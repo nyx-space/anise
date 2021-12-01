@@ -1,8 +1,8 @@
-mod anise_generated;
-mod common_generated;
-mod ephemeris_generated;
-mod orientation_generated;
-mod time_generated;
+pub(crate) mod anise_generated;
+pub(crate) mod common_generated;
+pub(crate) mod ephemeris_generated;
+pub(crate) mod orientation_generated;
+pub(crate) mod time_generated;
 
 #[test]
 fn it_works2() {

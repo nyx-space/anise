@@ -6,6 +6,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use anise_generated::anise::Anise;
+use crate::generated::anise_generated::anise::Anise;
 
 impl<'a> Anise<'a> {}
