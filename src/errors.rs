@@ -1,3 +1,4 @@
+use std::convert::From;
 use std::io::ErrorKind as IOErrorKind;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -12,4 +13,10 @@ pub enum AniseError {
     ParameterNotSpecified,
     /// For some reason weird reason (malformed file?), data that was expected to be in an array wasn't.
     IndexingError,
+}
+
+impl From<IOErrorKind> for AniseError {
+    fn from(e: IOErrorKind) -> Self {
+        Self::IOError(e)
+    }
 }
