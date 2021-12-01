@@ -6,6 +6,17 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+extern crate hifitime;
+
+pub use hifitime::Epoch;
+use std::convert::From;
+
 pub mod anise;
 pub mod errors;
-mod generated;
+pub mod generated;
+
+pub mod prelude {
+    pub use crate::generated::anise_generated::anise::time::Epoch as AniseEpoch;
+    pub use crate::generated::anise_generated::anise::{Anise, AniseArgs};
+    pub use crate::generated::anise_generated::anise::{Metadata, MetadataArgs};
+}
