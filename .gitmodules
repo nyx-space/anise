@@ -1,0 +1,3 @@
+[submodule "specs"]
+	path = specs
+	url = https://github.com/anise-toolkit/specs.git
