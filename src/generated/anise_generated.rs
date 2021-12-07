@@ -1766,6 +1766,7 @@ impl<'a> Ephemeris<'a> {
         args: &'args EphemerisArgs<'args>) -> flatbuffers::WIPOffset<Ephemeris<'bldr>> {
       let mut builder = EphemerisBuilder::new(_fbb);
       if let Some(x) = args.constants { builder.add_constants(x); }
+      builder.add_orientation_hash(args.orientation_hash);
       builder.add_parent_hash(args.parent_hash);
       if let Some(x) = args.interpolator { builder.add_interpolator(x); }
       if let Some(x) = args.start_epoch { builder.add_start_epoch(x); }
@@ -1781,7 +1782,8 @@ impl<'a> Ephemeris<'a> {
     pub const VT_INTERPOLATOR_TYPE: flatbuffers::VOffsetT = 10;
     pub const VT_INTERPOLATOR: flatbuffers::VOffsetT = 12;
     pub const VT_PARENT_HASH: flatbuffers::VOffsetT = 14;
-    pub const VT_CONSTANTS: flatbuffers::VOffsetT = 16;
+    pub const VT_ORIENTATION_HASH: flatbuffers::VOffsetT = 16;
+    pub const VT_CONSTANTS: flatbuffers::VOffsetT = 18;
 
   #[inline]
   pub fn name(&self) -> &'a str {
@@ -1806,6 +1808,10 @@ impl<'a> Ephemeris<'a> {
   #[inline]
   pub fn parent_hash(&self) -> i32 {
     self._tab.get::<i32>(Ephemeris::VT_PARENT_HASH, Some(0)).unwrap()
+  }
+  #[inline]
+  pub fn orientation_hash(&self) -> i32 {
+    self._tab.get::<i32>(Ephemeris::VT_ORIENTATION_HASH, Some(0)).unwrap()
   }
   #[inline]
   pub fn constants(&self) -> Option<super::common::ConstantMap<'a>> {
@@ -1853,6 +1859,7 @@ impl flatbuffers::Verifiable for Ephemeris<'_> {
         }
      })?
      .visit_field::<i32>(&"parent_hash", Self::VT_PARENT_HASH, false)?
+     .visit_field::<i32>(&"orientation_hash", Self::VT_ORIENTATION_HASH, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<super::common::ConstantMap>>(&"constants", Self::VT_CONSTANTS, false)?
      .finish();
     Ok(())
@@ -1865,6 +1872,7 @@ pub struct EphemerisArgs<'a> {
     pub interpolator_type: Interpolator,
     pub interpolator: Option<flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>>,
     pub parent_hash: i32,
+    pub orientation_hash: i32,
     pub constants: Option<flatbuffers::WIPOffset<super::common::ConstantMap<'a>>>,
 }
 impl<'a> Default for EphemerisArgs<'a> {
@@ -1877,6 +1885,7 @@ impl<'a> Default for EphemerisArgs<'a> {
             interpolator_type: Interpolator::NONE,
             interpolator: None, // required field
             parent_hash: 0,
+            orientation_hash: 0,
             constants: None,
         }
     }
@@ -1909,6 +1918,10 @@ impl<'a: 'b, 'b> EphemerisBuilder<'a, 'b> {
   #[inline]
   pub fn add_parent_hash(&mut self, parent_hash: i32) {
     self.fbb_.push_slot::<i32>(Ephemeris::VT_PARENT_HASH, parent_hash, 0);
+  }
+  #[inline]
+  pub fn add_orientation_hash(&mut self, orientation_hash: i32) {
+    self.fbb_.push_slot::<i32>(Ephemeris::VT_ORIENTATION_HASH, orientation_hash, 0);
   }
   #[inline]
   pub fn add_constants(&mut self, constants: flatbuffers::WIPOffset<super::common::ConstantMap<'b >>) {
@@ -1960,6 +1973,7 @@ impl std::fmt::Debug for Ephemeris<'_> {
         },
       };
       ds.field("parent_hash", &self.parent_hash());
+      ds.field("orientation_hash", &self.orientation_hash());
       ds.field("constants", &self.constants());
       ds.finish()
   }
