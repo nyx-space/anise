@@ -12,16 +12,27 @@ extern crate memmap2;
 
 use std::convert::TryFrom;
 
-impl<'a> Anise<'a> {}
+impl<'a> Anise<'a> {
+    /// Try to load an Anise file from a pointer of bytes
+    pub fn try_from_bytes(buf: &'a [u8]) -> Result<Self, AniseError> {
+        match root_as_anise(&buf) {
+            Ok(a) => Ok(a),
+            Err(e) => Err(AniseError::from(e)),
+        }
+    }
+
+    /// Forces to load an Anise file from a pointer of bytes.
+    /// **Panics** if the bytes cannot be interpreted as an Anise file.
+    pub fn from_bytes(buf: &'a [u8]) -> Self {
+        Self::try_from_bytes(buf).unwrap()
+    }
+}
 
 impl<'a> TryFrom<&'a [u8]> for Anise<'a> {
     type Error = AniseError;
 
     fn try_from(buf: &'a [u8]) -> Result<Self, Self::Error> {
-        match root_as_anise(&buf) {
-            Ok(a) => Ok(a),
-            Err(e) => Err(AniseError::from(e)),
-        }
+        Self::try_from_bytes(buf)
     }
 }
 

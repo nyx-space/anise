@@ -58,7 +58,7 @@ fn metadata_build_read() {
 
     // Read the file with the mmap macro (no allocation)
     let bytes = file_mmap!(filename).unwrap();
-    let ctx = Anise::try_from(&bytes as &[u8]).unwrap();
+    let ctx = Anise::from_bytes(&bytes);
     assert_eq!(ctx.metadata().comments().unwrap(), comment_str);
     assert_eq!(ctx.metadata().publisher(), publisher_str);
     assert_eq!(ctx.metadata().publication_date().hi(), 0.0);
