@@ -15,6 +15,7 @@ pub mod errors;
 pub mod generated;
 
 pub mod prelude {
+    pub use crate::errors::AniseError;
     pub use crate::generated::anise_generated::anise::time::Epoch as AniseEpoch;
     pub use crate::generated::anise_generated::anise::{Anise, AniseArgs};
     pub use crate::generated::anise_generated::anise::{Metadata, MetadataArgs};

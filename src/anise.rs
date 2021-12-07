@@ -8,7 +8,11 @@ use crate::{errors::AniseError, generated::anise_generated::anise::root_as_anise
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::{convert::TryFrom, fs::File, io::Read};
+extern crate memmap2;
+
+use std::convert::TryFrom;
+
+impl<'a> Anise<'a> {}
 
 impl<'a> TryFrom<&'a [u8]> for Anise<'a> {
     type Error = AniseError;
@@ -19,4 +23,21 @@ impl<'a> TryFrom<&'a [u8]> for Anise<'a> {
             Err(e) => Err(AniseError::from(e)),
         }
     }
+}
+
+/// file_mmap allows reading a file without memory allocation
+#[macro_export]
+macro_rules! file_mmap {
+    ($filename:ident) => {
+        match File::open($filename) {
+            Err(e) => Err(AniseError::IOError(e.kind())),
+            Ok(file) => unsafe {
+                use memmap2::MmapOptions;
+                match MmapOptions::new().map(&file) {
+                    Err(e) => Err(AniseError::IOUnknownError),
+                    Ok(mmap) => Ok(mmap),
+                }
+            },
+        }
+    };
 }

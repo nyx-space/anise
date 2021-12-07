@@ -1,4 +1,6 @@
-use anise::generated::anise_generated::anise::root_as_anise;
+use std::convert::TryFrom;
+
+use anise::file_mmap;
 
 /*
  * ANISE Toolkit
@@ -45,13 +47,22 @@ fn metadata_build_read() {
     let mut file = File::create(filename).unwrap();
     file.write_all(fbb.finished_data()).unwrap();
 
-    // Read the file
+    // Read the file from a manually loaded buffer
     let buf = std::fs::read(filename).unwrap();
-    let read_root = root_as_anise(&buf).unwrap();
-    assert_eq!(read_root.metadata().comments().unwrap(), comment_str);
-    assert_eq!(read_root.metadata().publisher(), publisher_str);
-    assert_eq!(read_root.metadata().publication_date().hi(), 0.0);
-    assert_eq!(read_root.metadata().publication_date().lo(), 0.0);
+    // We need the `... as &[u8]` because rustc fails to figure out what we want
+    let ctx = Anise::try_from(&buf as &[u8]).unwrap();
+    assert_eq!(ctx.metadata().comments().unwrap(), comment_str);
+    assert_eq!(ctx.metadata().publisher(), publisher_str);
+    assert_eq!(ctx.metadata().publication_date().hi(), 0.0);
+    assert_eq!(ctx.metadata().publication_date().lo(), 0.0);
+
+    // Read the file with the mmap macro (no allocation)
+    let bytes = file_mmap!(filename).unwrap();
+    let ctx = Anise::try_from(&bytes as &[u8]).unwrap();
+    assert_eq!(ctx.metadata().comments().unwrap(), comment_str);
+    assert_eq!(ctx.metadata().publisher(), publisher_str);
+    assert_eq!(ctx.metadata().publication_date().hi(), 0.0);
+    assert_eq!(ctx.metadata().publication_date().lo(), 0.0);
 
     std::fs::remove_file(filename).unwrap();
 }

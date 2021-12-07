@@ -17,3 +17,4 @@ license = "MPL-2.0"
 [dependencies]
 flatbuffers = "2.0.0"
 hifitime = "2.3"
+memmap2 = "0.5.0"
