@@ -9,7 +9,6 @@
 extern crate hifitime;
 
 pub use hifitime::Epoch;
-use std::convert::From;
 
 pub mod anise;
 pub mod errors;
