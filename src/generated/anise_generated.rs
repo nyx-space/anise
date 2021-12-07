@@ -1019,33 +1019,817 @@ impl<'a> flatbuffers::Verifiable for Interpolator {
 impl flatbuffers::SimpleToVerifyInSlice for Interpolator {}
 pub struct InterpolatorUnionTableOffset {}
 
-pub enum StateCoefficientsOffset {}
+// struct DiscreteState, aligned to 8
+#[repr(transparent)]
+#[derive(Clone, Copy, PartialEq)]
+pub struct DiscreteState(pub [u8; 232]);
+impl Default for DiscreteState { 
+  fn default() -> Self { 
+    Self([0; 232])
+  }
+}
+impl std::fmt::Debug for DiscreteState {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    f.debug_struct("DiscreteState")
+      .field("epoch", &self.epoch())
+      .field("x", &self.x())
+      .field("y", &self.y())
+      .field("z", &self.z())
+      .field("vx", &self.vx())
+      .field("vy", &self.vy())
+      .field("vz", &self.vz())
+      .field("cov_x_x", &self.cov_x_x())
+      .field("cov_y_x", &self.cov_y_x())
+      .field("cov_y_y", &self.cov_y_y())
+      .field("cov_z_x", &self.cov_z_x())
+      .field("cov_z_y", &self.cov_z_y())
+      .field("cov_z_z", &self.cov_z_z())
+      .field("cov_vx_x", &self.cov_vx_x())
+      .field("cov_vx_y", &self.cov_vx_y())
+      .field("cov_vx_z", &self.cov_vx_z())
+      .field("cov_vx_vx", &self.cov_vx_vx())
+      .field("cov_vy_x", &self.cov_vy_x())
+      .field("cov_vy_y", &self.cov_vy_y())
+      .field("cov_vy_z", &self.cov_vy_z())
+      .field("cov_vy_vx", &self.cov_vy_vx())
+      .field("cov_vy_vy", &self.cov_vy_vy())
+      .field("cov_vz_x", &self.cov_vz_x())
+      .field("cov_vz_y", &self.cov_vz_y())
+      .field("cov_vz_z", &self.cov_vz_z())
+      .field("cov_vz_vx", &self.cov_vz_vx())
+      .field("cov_vz_vy", &self.cov_vz_vy())
+      .field("cov_vz_vz", &self.cov_vz_vz())
+      .finish()
+  }
+}
+
+impl flatbuffers::SimpleToVerifyInSlice for DiscreteState {}
+impl flatbuffers::SafeSliceAccess for DiscreteState {}
+impl<'a> flatbuffers::Follow<'a> for DiscreteState {
+  type Inner = &'a DiscreteState;
+  #[inline]
+  fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    <&'a DiscreteState>::follow(buf, loc)
+  }
+}
+impl<'a> flatbuffers::Follow<'a> for &'a DiscreteState {
+  type Inner = &'a DiscreteState;
+  #[inline]
+  fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    flatbuffers::follow_cast_ref::<DiscreteState>(buf, loc)
+  }
+}
+impl<'b> flatbuffers::Push for DiscreteState {
+    type Output = DiscreteState;
+    #[inline]
+    fn push(&self, dst: &mut [u8], _rest: &[u8]) {
+        let src = unsafe {
+            ::std::slice::from_raw_parts(self as *const DiscreteState as *const u8, Self::size())
+        };
+        dst.copy_from_slice(src);
+    }
+}
+impl<'b> flatbuffers::Push for &'b DiscreteState {
+    type Output = DiscreteState;
+
+    #[inline]
+    fn push(&self, dst: &mut [u8], _rest: &[u8]) {
+        let src = unsafe {
+            ::std::slice::from_raw_parts(*self as *const DiscreteState as *const u8, Self::size())
+        };
+        dst.copy_from_slice(src);
+    }
+}
+
+impl<'a> flatbuffers::Verifiable for DiscreteState {
+  #[inline]
+  fn run_verifier(
+    v: &mut flatbuffers::Verifier, pos: usize
+  ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+    use self::flatbuffers::Verifiable;
+    v.in_buffer::<Self>(pos)
+  }
+}
+impl<'a> DiscreteState {
+  #[allow(clippy::too_many_arguments)]
+  pub fn new(
+    epoch: &super::time::Epoch,
+    x: f64,
+    y: f64,
+    z: f64,
+    vx: f64,
+    vy: f64,
+    vz: f64,
+    cov_x_x: f64,
+    cov_y_x: f64,
+    cov_y_y: f64,
+    cov_z_x: f64,
+    cov_z_y: f64,
+    cov_z_z: f64,
+    cov_vx_x: f64,
+    cov_vx_y: f64,
+    cov_vx_z: f64,
+    cov_vx_vx: f64,
+    cov_vy_x: f64,
+    cov_vy_y: f64,
+    cov_vy_z: f64,
+    cov_vy_vx: f64,
+    cov_vy_vy: f64,
+    cov_vz_x: f64,
+    cov_vz_y: f64,
+    cov_vz_z: f64,
+    cov_vz_vx: f64,
+    cov_vz_vy: f64,
+    cov_vz_vz: f64,
+  ) -> Self {
+    let mut s = Self([0; 232]);
+    s.set_epoch(&epoch);
+    s.set_x(x);
+    s.set_y(y);
+    s.set_z(z);
+    s.set_vx(vx);
+    s.set_vy(vy);
+    s.set_vz(vz);
+    s.set_cov_x_x(cov_x_x);
+    s.set_cov_y_x(cov_y_x);
+    s.set_cov_y_y(cov_y_y);
+    s.set_cov_z_x(cov_z_x);
+    s.set_cov_z_y(cov_z_y);
+    s.set_cov_z_z(cov_z_z);
+    s.set_cov_vx_x(cov_vx_x);
+    s.set_cov_vx_y(cov_vx_y);
+    s.set_cov_vx_z(cov_vx_z);
+    s.set_cov_vx_vx(cov_vx_vx);
+    s.set_cov_vy_x(cov_vy_x);
+    s.set_cov_vy_y(cov_vy_y);
+    s.set_cov_vy_z(cov_vy_z);
+    s.set_cov_vy_vx(cov_vy_vx);
+    s.set_cov_vy_vy(cov_vy_vy);
+    s.set_cov_vz_x(cov_vz_x);
+    s.set_cov_vz_y(cov_vz_y);
+    s.set_cov_vz_z(cov_vz_z);
+    s.set_cov_vz_vx(cov_vz_vx);
+    s.set_cov_vz_vy(cov_vz_vy);
+    s.set_cov_vz_vz(cov_vz_vz);
+    s
+  }
+
+  pub fn epoch(&self) -> &super::time::Epoch {
+    unsafe { &*(self.0[0..].as_ptr() as *const super::time::Epoch) }
+  }
+
+  pub fn set_epoch(&mut self, x: &super::time::Epoch) {
+    self.0[0..0+16].copy_from_slice(&x.0)
+  }
+
+  pub fn x(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[16..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_x(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[16..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn y(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[24..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_y(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[24..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn z(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[32..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_z(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[32..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn vx(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[40..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_vx(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[40..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn vy(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[48..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_vy(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[48..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn vz(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[56..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_vz(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[56..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_x_x(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[64..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_x_x(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[64..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_y_x(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[72..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_y_x(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[72..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_y_y(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[80..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_y_y(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[80..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_z_x(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[88..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_z_x(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[88..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_z_y(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[96..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_z_y(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[96..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_z_z(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[104..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_z_z(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[104..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_vx_x(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[112..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_vx_x(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[112..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_vx_y(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[120..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_vx_y(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[120..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_vx_z(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[128..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_vx_z(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[128..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_vx_vx(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[136..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_vx_vx(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[136..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_vy_x(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[144..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_vy_x(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[144..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_vy_y(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[152..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_vy_y(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[152..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_vy_z(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[160..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_vy_z(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[160..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_vy_vx(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[168..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_vy_vx(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[168..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_vy_vy(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[176..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_vy_vy(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[176..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_vz_x(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[184..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_vz_x(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[184..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_vz_y(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[192..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_vz_y(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[192..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_vz_z(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[200..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_vz_z(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[200..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_vz_vx(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[208..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_vz_vx(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[208..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_vz_vy(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[216..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_vz_vy(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[216..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_vz_vz(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[224..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_vz_vz(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[224..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+}
+
+pub enum SplineOffset {}
 #[derive(Copy, Clone, PartialEq)]
 
-pub struct StateCoefficients<'a> {
+pub struct Spline<'a> {
   pub _tab: flatbuffers::Table<'a>,
 }
 
-impl<'a> flatbuffers::Follow<'a> for StateCoefficients<'a> {
-    type Inner = StateCoefficients<'a>;
+impl<'a> flatbuffers::Follow<'a> for Spline<'a> {
+    type Inner = Spline<'a>;
     #[inline]
     fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
         Self { _tab: flatbuffers::Table { buf, loc } }
     }
 }
 
-impl<'a> StateCoefficients<'a> {
+impl<'a> Spline<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        StateCoefficients { _tab: table }
+        Spline { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args StateCoefficientsArgs<'args>) -> flatbuffers::WIPOffset<StateCoefficients<'bldr>> {
-      let mut builder = StateCoefficientsBuilder::new(_fbb);
-      builder.add_usable_end_time_offset_cs(args.usable_end_time_offset_cs);
-      builder.add_usable_start_time_offset_cs(args.usable_start_time_offset_cs);
+        args: &'args SplineArgs<'args>) -> flatbuffers::WIPOffset<Spline<'bldr>> {
+      let mut builder = SplineBuilder::new(_fbb);
       if let Some(x) = args.cov_vz_vz { builder.add_cov_vz_vz(x); }
       if let Some(x) = args.cov_vz_vy { builder.add_cov_vz_vy(x); }
       if let Some(x) = args.cov_vz_vx { builder.add_cov_vz_vx(x); }
@@ -1073,11 +1857,13 @@ impl<'a> StateCoefficients<'a> {
       if let Some(x) = args.z { builder.add_z(x); }
       if let Some(x) = args.y { builder.add_y(x); }
       if let Some(x) = args.x { builder.add_x(x); }
+      if let Some(x) = args.usable_end_state { builder.add_usable_end_state(x); }
+      if let Some(x) = args.usable_start_epoch { builder.add_usable_start_epoch(x); }
       builder.finish()
     }
 
-    pub const VT_USABLE_START_TIME_OFFSET_CS: flatbuffers::VOffsetT = 4;
-    pub const VT_USABLE_END_TIME_OFFSET_CS: flatbuffers::VOffsetT = 6;
+    pub const VT_USABLE_START_EPOCH: flatbuffers::VOffsetT = 4;
+    pub const VT_USABLE_END_STATE: flatbuffers::VOffsetT = 6;
     pub const VT_X: flatbuffers::VOffsetT = 8;
     pub const VT_Y: flatbuffers::VOffsetT = 10;
     pub const VT_Z: flatbuffers::VOffsetT = 12;
@@ -1107,132 +1893,132 @@ impl<'a> StateCoefficients<'a> {
     pub const VT_COV_VZ_VZ: flatbuffers::VOffsetT = 60;
 
   #[inline]
-  pub fn usable_start_time_offset_cs(&self) -> f64 {
-    self._tab.get::<f64>(StateCoefficients::VT_USABLE_START_TIME_OFFSET_CS, Some(0.0)).unwrap()
+  pub fn usable_start_epoch(&self) -> &'a super::time::Epoch {
+    self._tab.get::<super::time::Epoch>(Spline::VT_USABLE_START_EPOCH, None).unwrap()
   }
   #[inline]
-  pub fn usable_end_time_offset_cs(&self) -> f64 {
-    self._tab.get::<f64>(StateCoefficients::VT_USABLE_END_TIME_OFFSET_CS, Some(0.0)).unwrap()
+  pub fn usable_end_state(&self) -> &'a DiscreteState {
+    self._tab.get::<DiscreteState>(Spline::VT_USABLE_END_STATE, None).unwrap()
   }
   #[inline]
   pub fn x(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_X, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_X, None)
   }
   #[inline]
   pub fn y(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_Y, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_Y, None)
   }
   #[inline]
   pub fn z(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_Z, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_Z, None)
   }
   #[inline]
   pub fn vx(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_VX, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_VX, None)
   }
   #[inline]
   pub fn vy(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_VY, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_VY, None)
   }
   #[inline]
   pub fn vz(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_VZ, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_VZ, None)
   }
   #[inline]
   pub fn cov_x_x(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_X_X, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_X_X, None)
   }
   #[inline]
   pub fn cov_y_x(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_Y_X, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_Y_X, None)
   }
   #[inline]
   pub fn cov_y_y(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_Y_Y, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_Y_Y, None)
   }
   #[inline]
   pub fn cov_z_x(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_Z_X, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_Z_X, None)
   }
   #[inline]
   pub fn cov_z_y(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_Z_Y, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_Z_Y, None)
   }
   #[inline]
   pub fn cov_z_z(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_Z_Z, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_Z_Z, None)
   }
   #[inline]
   pub fn cov_vx_x(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_VX_X, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_VX_X, None)
   }
   #[inline]
   pub fn cov_vx_y(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_VX_Y, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_VX_Y, None)
   }
   #[inline]
   pub fn cov_vx_z(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_VX_Z, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_VX_Z, None)
   }
   #[inline]
   pub fn cov_vx_vx(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_VX_VX, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_VX_VX, None)
   }
   #[inline]
   pub fn cov_vy_x(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_VY_X, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_VY_X, None)
   }
   #[inline]
   pub fn cov_vy_y(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_VY_Y, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_VY_Y, None)
   }
   #[inline]
   pub fn cov_vy_z(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_VY_Z, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_VY_Z, None)
   }
   #[inline]
   pub fn cov_vy_vx(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_VY_VX, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_VY_VX, None)
   }
   #[inline]
   pub fn cov_vy_vy(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_VY_VY, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_VY_VY, None)
   }
   #[inline]
   pub fn cov_vz_x(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_VZ_X, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_VZ_X, None)
   }
   #[inline]
   pub fn cov_vz_y(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_VZ_Y, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_VZ_Y, None)
   }
   #[inline]
   pub fn cov_vz_z(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_VZ_Z, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_VZ_Z, None)
   }
   #[inline]
   pub fn cov_vz_vx(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_VZ_VX, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_VZ_VX, None)
   }
   #[inline]
   pub fn cov_vz_vy(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_VZ_VY, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_VZ_VY, None)
   }
   #[inline]
   pub fn cov_vz_vz(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(StateCoefficients::VT_COV_VZ_VZ, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_VZ_VZ, None)
   }
 }
 
-impl flatbuffers::Verifiable for StateCoefficients<'_> {
+impl flatbuffers::Verifiable for Spline<'_> {
   #[inline]
   fn run_verifier(
     v: &mut flatbuffers::Verifier, pos: usize
   ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
-     .visit_field::<f64>(&"usable_start_time_offset_cs", Self::VT_USABLE_START_TIME_OFFSET_CS, false)?
-     .visit_field::<f64>(&"usable_end_time_offset_cs", Self::VT_USABLE_END_TIME_OFFSET_CS, false)?
+     .visit_field::<super::time::Epoch>(&"usable_start_epoch", Self::VT_USABLE_START_EPOCH, true)?
+     .visit_field::<DiscreteState>(&"usable_end_state", Self::VT_USABLE_END_STATE, true)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, f64>>>(&"x", Self::VT_X, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, f64>>>(&"y", Self::VT_Y, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, f64>>>(&"z", Self::VT_Z, false)?
@@ -1264,9 +2050,9 @@ impl flatbuffers::Verifiable for StateCoefficients<'_> {
     Ok(())
   }
 }
-pub struct StateCoefficientsArgs<'a> {
-    pub usable_start_time_offset_cs: f64,
-    pub usable_end_time_offset_cs: f64,
+pub struct SplineArgs<'a> {
+    pub usable_start_epoch: Option<&'a super::time::Epoch>,
+    pub usable_end_state: Option<&'a DiscreteState>,
     pub x: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, f64>>>,
     pub y: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, f64>>>,
     pub z: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, f64>>>,
@@ -1295,12 +2081,12 @@ pub struct StateCoefficientsArgs<'a> {
     pub cov_vz_vy: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, f64>>>,
     pub cov_vz_vz: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, f64>>>,
 }
-impl<'a> Default for StateCoefficientsArgs<'a> {
+impl<'a> Default for SplineArgs<'a> {
     #[inline]
     fn default() -> Self {
-        StateCoefficientsArgs {
-            usable_start_time_offset_cs: 0.0,
-            usable_end_time_offset_cs: 0.0,
+        SplineArgs {
+            usable_start_epoch: None, // required field
+            usable_end_state: None, // required field
             x: None,
             y: None,
             z: None,
@@ -1331,147 +2117,149 @@ impl<'a> Default for StateCoefficientsArgs<'a> {
         }
     }
 }
-pub struct StateCoefficientsBuilder<'a: 'b, 'b> {
+pub struct SplineBuilder<'a: 'b, 'b> {
   fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
   start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
-impl<'a: 'b, 'b> StateCoefficientsBuilder<'a, 'b> {
+impl<'a: 'b, 'b> SplineBuilder<'a, 'b> {
   #[inline]
-  pub fn add_usable_start_time_offset_cs(&mut self, usable_start_time_offset_cs: f64) {
-    self.fbb_.push_slot::<f64>(StateCoefficients::VT_USABLE_START_TIME_OFFSET_CS, usable_start_time_offset_cs, 0.0);
+  pub fn add_usable_start_epoch(&mut self, usable_start_epoch: &super::time::Epoch) {
+    self.fbb_.push_slot_always::<&super::time::Epoch>(Spline::VT_USABLE_START_EPOCH, usable_start_epoch);
   }
   #[inline]
-  pub fn add_usable_end_time_offset_cs(&mut self, usable_end_time_offset_cs: f64) {
-    self.fbb_.push_slot::<f64>(StateCoefficients::VT_USABLE_END_TIME_OFFSET_CS, usable_end_time_offset_cs, 0.0);
+  pub fn add_usable_end_state(&mut self, usable_end_state: &DiscreteState) {
+    self.fbb_.push_slot_always::<&DiscreteState>(Spline::VT_USABLE_END_STATE, usable_end_state);
   }
   #[inline]
   pub fn add_x(&mut self, x: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_X, x);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_X, x);
   }
   #[inline]
   pub fn add_y(&mut self, y: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_Y, y);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_Y, y);
   }
   #[inline]
   pub fn add_z(&mut self, z: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_Z, z);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_Z, z);
   }
   #[inline]
   pub fn add_vx(&mut self, vx: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_VX, vx);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_VX, vx);
   }
   #[inline]
   pub fn add_vy(&mut self, vy: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_VY, vy);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_VY, vy);
   }
   #[inline]
   pub fn add_vz(&mut self, vz: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_VZ, vz);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_VZ, vz);
   }
   #[inline]
   pub fn add_cov_x_x(&mut self, cov_x_x: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_X_X, cov_x_x);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_X_X, cov_x_x);
   }
   #[inline]
   pub fn add_cov_y_x(&mut self, cov_y_x: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_Y_X, cov_y_x);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_Y_X, cov_y_x);
   }
   #[inline]
   pub fn add_cov_y_y(&mut self, cov_y_y: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_Y_Y, cov_y_y);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_Y_Y, cov_y_y);
   }
   #[inline]
   pub fn add_cov_z_x(&mut self, cov_z_x: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_Z_X, cov_z_x);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_Z_X, cov_z_x);
   }
   #[inline]
   pub fn add_cov_z_y(&mut self, cov_z_y: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_Z_Y, cov_z_y);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_Z_Y, cov_z_y);
   }
   #[inline]
   pub fn add_cov_z_z(&mut self, cov_z_z: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_Z_Z, cov_z_z);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_Z_Z, cov_z_z);
   }
   #[inline]
   pub fn add_cov_vx_x(&mut self, cov_vx_x: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_VX_X, cov_vx_x);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_VX_X, cov_vx_x);
   }
   #[inline]
   pub fn add_cov_vx_y(&mut self, cov_vx_y: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_VX_Y, cov_vx_y);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_VX_Y, cov_vx_y);
   }
   #[inline]
   pub fn add_cov_vx_z(&mut self, cov_vx_z: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_VX_Z, cov_vx_z);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_VX_Z, cov_vx_z);
   }
   #[inline]
   pub fn add_cov_vx_vx(&mut self, cov_vx_vx: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_VX_VX, cov_vx_vx);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_VX_VX, cov_vx_vx);
   }
   #[inline]
   pub fn add_cov_vy_x(&mut self, cov_vy_x: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_VY_X, cov_vy_x);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_VY_X, cov_vy_x);
   }
   #[inline]
   pub fn add_cov_vy_y(&mut self, cov_vy_y: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_VY_Y, cov_vy_y);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_VY_Y, cov_vy_y);
   }
   #[inline]
   pub fn add_cov_vy_z(&mut self, cov_vy_z: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_VY_Z, cov_vy_z);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_VY_Z, cov_vy_z);
   }
   #[inline]
   pub fn add_cov_vy_vx(&mut self, cov_vy_vx: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_VY_VX, cov_vy_vx);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_VY_VX, cov_vy_vx);
   }
   #[inline]
   pub fn add_cov_vy_vy(&mut self, cov_vy_vy: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_VY_VY, cov_vy_vy);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_VY_VY, cov_vy_vy);
   }
   #[inline]
   pub fn add_cov_vz_x(&mut self, cov_vz_x: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_VZ_X, cov_vz_x);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_VZ_X, cov_vz_x);
   }
   #[inline]
   pub fn add_cov_vz_y(&mut self, cov_vz_y: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_VZ_Y, cov_vz_y);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_VZ_Y, cov_vz_y);
   }
   #[inline]
   pub fn add_cov_vz_z(&mut self, cov_vz_z: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_VZ_Z, cov_vz_z);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_VZ_Z, cov_vz_z);
   }
   #[inline]
   pub fn add_cov_vz_vx(&mut self, cov_vz_vx: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_VZ_VX, cov_vz_vx);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_VZ_VX, cov_vz_vx);
   }
   #[inline]
   pub fn add_cov_vz_vy(&mut self, cov_vz_vy: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_VZ_VY, cov_vz_vy);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_VZ_VY, cov_vz_vy);
   }
   #[inline]
   pub fn add_cov_vz_vz(&mut self, cov_vz_vz: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(StateCoefficients::VT_COV_VZ_VZ, cov_vz_vz);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_VZ_VZ, cov_vz_vz);
   }
   #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> StateCoefficientsBuilder<'a, 'b> {
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> SplineBuilder<'a, 'b> {
     let start = _fbb.start_table();
-    StateCoefficientsBuilder {
+    SplineBuilder {
       fbb_: _fbb,
       start_: start,
     }
   }
   #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<StateCoefficients<'a>> {
+  pub fn finish(self) -> flatbuffers::WIPOffset<Spline<'a>> {
     let o = self.fbb_.end_table(self.start_);
+    self.fbb_.required(o, Spline::VT_USABLE_START_EPOCH,"usable_start_epoch");
+    self.fbb_.required(o, Spline::VT_USABLE_END_STATE,"usable_end_state");
     flatbuffers::WIPOffset::new(o.value())
   }
 }
 
-impl std::fmt::Debug for StateCoefficients<'_> {
+impl std::fmt::Debug for Spline<'_> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    let mut ds = f.debug_struct("StateCoefficients");
-      ds.field("usable_start_time_offset_cs", &self.usable_start_time_offset_cs());
-      ds.field("usable_end_time_offset_cs", &self.usable_end_time_offset_cs());
+    let mut ds = f.debug_struct("Spline");
+      ds.field("usable_start_epoch", &self.usable_start_epoch());
+      ds.field("usable_end_state", &self.usable_end_state());
       ds.field("x", &self.x());
       ds.field("y", &self.y());
       ds.field("z", &self.z());
@@ -1528,20 +2316,20 @@ impl<'a> EqualTimeSteps<'a> {
         args: &'args EqualTimeStepsArgs<'args>) -> flatbuffers::WIPOffset<EqualTimeSteps<'bldr>> {
       let mut builder = EqualTimeStepsBuilder::new(_fbb);
       builder.add_spline_duration_s(args.spline_duration_s);
-      if let Some(x) = args.coefficient_data { builder.add_coefficient_data(x); }
+      if let Some(x) = args.splines { builder.add_splines(x); }
       builder.finish()
     }
 
     pub const VT_SPLINE_DURATION_S: flatbuffers::VOffsetT = 4;
-    pub const VT_COEFFICIENT_DATA: flatbuffers::VOffsetT = 6;
+    pub const VT_SPLINES: flatbuffers::VOffsetT = 6;
 
   #[inline]
   pub fn spline_duration_s(&self) -> f64 {
     self._tab.get::<f64>(EqualTimeSteps::VT_SPLINE_DURATION_S, Some(0.0)).unwrap()
   }
   #[inline]
-  pub fn coefficient_data(&self) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<StateCoefficients<'a>>>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<StateCoefficients>>>>(EqualTimeSteps::VT_COEFFICIENT_DATA, None)
+  pub fn splines(&self) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Spline<'a>>>> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Spline>>>>(EqualTimeSteps::VT_SPLINES, None)
   }
 }
 
@@ -1553,21 +2341,21 @@ impl flatbuffers::Verifiable for EqualTimeSteps<'_> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
      .visit_field::<f64>(&"spline_duration_s", Self::VT_SPLINE_DURATION_S, false)?
-     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<StateCoefficients>>>>(&"coefficient_data", Self::VT_COEFFICIENT_DATA, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<Spline>>>>(&"splines", Self::VT_SPLINES, false)?
      .finish();
     Ok(())
   }
 }
 pub struct EqualTimeStepsArgs<'a> {
     pub spline_duration_s: f64,
-    pub coefficient_data: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<StateCoefficients<'a>>>>>,
+    pub splines: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Spline<'a>>>>>,
 }
 impl<'a> Default for EqualTimeStepsArgs<'a> {
     #[inline]
     fn default() -> Self {
         EqualTimeStepsArgs {
             spline_duration_s: 0.0,
-            coefficient_data: None,
+            splines: None,
         }
     }
 }
@@ -1581,8 +2369,8 @@ impl<'a: 'b, 'b> EqualTimeStepsBuilder<'a, 'b> {
     self.fbb_.push_slot::<f64>(EqualTimeSteps::VT_SPLINE_DURATION_S, spline_duration_s, 0.0);
   }
   #[inline]
-  pub fn add_coefficient_data(&mut self, coefficient_data: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<StateCoefficients<'b >>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(EqualTimeSteps::VT_COEFFICIENT_DATA, coefficient_data);
+  pub fn add_splines(&mut self, splines: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<Spline<'b >>>>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(EqualTimeSteps::VT_SPLINES, splines);
   }
   #[inline]
   pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> EqualTimeStepsBuilder<'a, 'b> {
@@ -1603,7 +2391,7 @@ impl std::fmt::Debug for EqualTimeSteps<'_> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let mut ds = f.debug_struct("EqualTimeSteps");
       ds.field("spline_duration_s", &self.spline_duration_s());
-      ds.field("coefficient_data", &self.coefficient_data());
+      ds.field("splines", &self.splines());
       ds.finish()
   }
 }
@@ -1634,13 +2422,13 @@ impl<'a> UnequalTimeSteps<'a> {
       let mut builder = UnequalTimeStepsBuilder::new(_fbb);
       builder.add_time_normalization_max(args.time_normalization_max);
       builder.add_time_normalization_min(args.time_normalization_min);
-      if let Some(x) = args.coefficient_data { builder.add_coefficient_data(x); }
+      if let Some(x) = args.splines { builder.add_splines(x); }
       if let Some(x) = args.spline_time_index_cs { builder.add_spline_time_index_cs(x); }
       builder.finish()
     }
 
     pub const VT_SPLINE_TIME_INDEX_CS: flatbuffers::VOffsetT = 4;
-    pub const VT_COEFFICIENT_DATA: flatbuffers::VOffsetT = 6;
+    pub const VT_SPLINES: flatbuffers::VOffsetT = 6;
     pub const VT_TIME_NORMALIZATION_MIN: flatbuffers::VOffsetT = 8;
     pub const VT_TIME_NORMALIZATION_MAX: flatbuffers::VOffsetT = 10;
 
@@ -1649,8 +2437,8 @@ impl<'a> UnequalTimeSteps<'a> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, i64>>>(UnequalTimeSteps::VT_SPLINE_TIME_INDEX_CS, None)
   }
   #[inline]
-  pub fn coefficient_data(&self) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<StateCoefficients<'a>>>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<StateCoefficients>>>>(UnequalTimeSteps::VT_COEFFICIENT_DATA, None)
+  pub fn splines(&self) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Spline<'a>>>> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Spline>>>>(UnequalTimeSteps::VT_SPLINES, None)
   }
   #[inline]
   pub fn time_normalization_min(&self) -> f64 {
@@ -1670,7 +2458,7 @@ impl flatbuffers::Verifiable for UnequalTimeSteps<'_> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, i64>>>(&"spline_time_index_cs", Self::VT_SPLINE_TIME_INDEX_CS, false)?
-     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<StateCoefficients>>>>(&"coefficient_data", Self::VT_COEFFICIENT_DATA, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<Spline>>>>(&"splines", Self::VT_SPLINES, false)?
      .visit_field::<f64>(&"time_normalization_min", Self::VT_TIME_NORMALIZATION_MIN, false)?
      .visit_field::<f64>(&"time_normalization_max", Self::VT_TIME_NORMALIZATION_MAX, false)?
      .finish();
@@ -1679,7 +2467,7 @@ impl flatbuffers::Verifiable for UnequalTimeSteps<'_> {
 }
 pub struct UnequalTimeStepsArgs<'a> {
     pub spline_time_index_cs: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, i64>>>,
-    pub coefficient_data: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<StateCoefficients<'a>>>>>,
+    pub splines: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Spline<'a>>>>>,
     pub time_normalization_min: f64,
     pub time_normalization_max: f64,
 }
@@ -1688,7 +2476,7 @@ impl<'a> Default for UnequalTimeStepsArgs<'a> {
     fn default() -> Self {
         UnequalTimeStepsArgs {
             spline_time_index_cs: None,
-            coefficient_data: None,
+            splines: None,
             time_normalization_min: -1.0,
             time_normalization_max: 1.0,
         }
@@ -1704,8 +2492,8 @@ impl<'a: 'b, 'b> UnequalTimeStepsBuilder<'a, 'b> {
     self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(UnequalTimeSteps::VT_SPLINE_TIME_INDEX_CS, spline_time_index_cs);
   }
   #[inline]
-  pub fn add_coefficient_data(&mut self, coefficient_data: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<StateCoefficients<'b >>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(UnequalTimeSteps::VT_COEFFICIENT_DATA, coefficient_data);
+  pub fn add_splines(&mut self, splines: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<Spline<'b >>>>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(UnequalTimeSteps::VT_SPLINES, splines);
   }
   #[inline]
   pub fn add_time_normalization_min(&mut self, time_normalization_min: f64) {
@@ -1734,7 +2522,7 @@ impl std::fmt::Debug for UnequalTimeSteps<'_> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let mut ds = f.debug_struct("UnequalTimeSteps");
       ds.field("spline_time_index_cs", &self.spline_time_index_cs());
-      ds.field("coefficient_data", &self.coefficient_data());
+      ds.field("splines", &self.splines());
       ds.field("time_normalization_min", &self.time_normalization_min());
       ds.field("time_normalization_max", &self.time_normalization_max());
       ds.finish()
@@ -1769,29 +2557,35 @@ impl<'a> Ephemeris<'a> {
       builder.add_orientation_hash(args.orientation_hash);
       builder.add_parent_hash(args.parent_hash);
       if let Some(x) = args.interpolator { builder.add_interpolator(x); }
-      if let Some(x) = args.start_epoch { builder.add_start_epoch(x); }
+      if let Some(x) = args.start_state { builder.add_start_state(x); }
       if let Some(x) = args.name { builder.add_name(x); }
       builder.add_interpolator_type(args.interpolator_type);
       builder.add_interpolation_kind(args.interpolation_kind);
+      builder.add_backward(args.backward);
       builder.finish()
     }
 
     pub const VT_NAME: flatbuffers::VOffsetT = 4;
-    pub const VT_START_EPOCH: flatbuffers::VOffsetT = 6;
-    pub const VT_INTERPOLATION_KIND: flatbuffers::VOffsetT = 8;
-    pub const VT_INTERPOLATOR_TYPE: flatbuffers::VOffsetT = 10;
-    pub const VT_INTERPOLATOR: flatbuffers::VOffsetT = 12;
-    pub const VT_PARENT_HASH: flatbuffers::VOffsetT = 14;
-    pub const VT_ORIENTATION_HASH: flatbuffers::VOffsetT = 16;
-    pub const VT_CONSTANTS: flatbuffers::VOffsetT = 18;
+    pub const VT_START_STATE: flatbuffers::VOffsetT = 6;
+    pub const VT_BACKWARD: flatbuffers::VOffsetT = 8;
+    pub const VT_INTERPOLATION_KIND: flatbuffers::VOffsetT = 10;
+    pub const VT_INTERPOLATOR_TYPE: flatbuffers::VOffsetT = 12;
+    pub const VT_INTERPOLATOR: flatbuffers::VOffsetT = 14;
+    pub const VT_PARENT_HASH: flatbuffers::VOffsetT = 16;
+    pub const VT_ORIENTATION_HASH: flatbuffers::VOffsetT = 18;
+    pub const VT_CONSTANTS: flatbuffers::VOffsetT = 20;
 
   #[inline]
   pub fn name(&self) -> &'a str {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(Ephemeris::VT_NAME, None).unwrap()
   }
   #[inline]
-  pub fn start_epoch(&self) -> &'a super::time::Epoch {
-    self._tab.get::<super::time::Epoch>(Ephemeris::VT_START_EPOCH, None).unwrap()
+  pub fn start_state(&self) -> &'a DiscreteState {
+    self._tab.get::<DiscreteState>(Ephemeris::VT_START_STATE, None).unwrap()
+  }
+  #[inline]
+  pub fn backward(&self) -> bool {
+    self._tab.get::<bool>(Ephemeris::VT_BACKWARD, Some(false)).unwrap()
   }
   #[inline]
   pub fn interpolation_kind(&self) -> super::common::InterpolationKind {
@@ -1849,7 +2643,8 @@ impl flatbuffers::Verifiable for Ephemeris<'_> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
      .visit_field::<flatbuffers::ForwardsUOffset<&str>>(&"name", Self::VT_NAME, true)?
-     .visit_field::<super::time::Epoch>(&"start_epoch", Self::VT_START_EPOCH, true)?
+     .visit_field::<DiscreteState>(&"start_state", Self::VT_START_STATE, true)?
+     .visit_field::<bool>(&"backward", Self::VT_BACKWARD, false)?
      .visit_field::<super::common::InterpolationKind>(&"interpolation_kind", Self::VT_INTERPOLATION_KIND, false)?
      .visit_union::<Interpolator, _>(&"interpolator_type", Self::VT_INTERPOLATOR_TYPE, &"interpolator", Self::VT_INTERPOLATOR, true, |key, v, pos| {
         match key {
@@ -1867,7 +2662,8 @@ impl flatbuffers::Verifiable for Ephemeris<'_> {
 }
 pub struct EphemerisArgs<'a> {
     pub name: Option<flatbuffers::WIPOffset<&'a str>>,
-    pub start_epoch: Option<&'a super::time::Epoch>,
+    pub start_state: Option<&'a DiscreteState>,
+    pub backward: bool,
     pub interpolation_kind: super::common::InterpolationKind,
     pub interpolator_type: Interpolator,
     pub interpolator: Option<flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>>,
@@ -1880,7 +2676,8 @@ impl<'a> Default for EphemerisArgs<'a> {
     fn default() -> Self {
         EphemerisArgs {
             name: None, // required field
-            start_epoch: None, // required field
+            start_state: None, // required field
+            backward: false,
             interpolation_kind: super::common::InterpolationKind::ChebyshevSeries,
             interpolator_type: Interpolator::NONE,
             interpolator: None, // required field
@@ -1900,8 +2697,12 @@ impl<'a: 'b, 'b> EphemerisBuilder<'a, 'b> {
     self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Ephemeris::VT_NAME, name);
   }
   #[inline]
-  pub fn add_start_epoch(&mut self, start_epoch: &super::time::Epoch) {
-    self.fbb_.push_slot_always::<&super::time::Epoch>(Ephemeris::VT_START_EPOCH, start_epoch);
+  pub fn add_start_state(&mut self, start_state: &DiscreteState) {
+    self.fbb_.push_slot_always::<&DiscreteState>(Ephemeris::VT_START_STATE, start_state);
+  }
+  #[inline]
+  pub fn add_backward(&mut self, backward: bool) {
+    self.fbb_.push_slot::<bool>(Ephemeris::VT_BACKWARD, backward, false);
   }
   #[inline]
   pub fn add_interpolation_kind(&mut self, interpolation_kind: super::common::InterpolationKind) {
@@ -1939,7 +2740,7 @@ impl<'a: 'b, 'b> EphemerisBuilder<'a, 'b> {
   pub fn finish(self) -> flatbuffers::WIPOffset<Ephemeris<'a>> {
     let o = self.fbb_.end_table(self.start_);
     self.fbb_.required(o, Ephemeris::VT_NAME,"name");
-    self.fbb_.required(o, Ephemeris::VT_START_EPOCH,"start_epoch");
+    self.fbb_.required(o, Ephemeris::VT_START_STATE,"start_state");
     self.fbb_.required(o, Ephemeris::VT_INTERPOLATOR,"interpolator");
     flatbuffers::WIPOffset::new(o.value())
   }
@@ -1949,7 +2750,8 @@ impl std::fmt::Debug for Ephemeris<'_> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let mut ds = f.debug_struct("Ephemeris");
       ds.field("name", &self.name());
-      ds.field("start_epoch", &self.start_epoch());
+      ds.field("start_state", &self.start_state());
+      ds.field("backward", &self.backward());
       ds.field("interpolation_kind", &self.interpolation_kind());
       ds.field("interpolator_type", &self.interpolator_type());
       match self.interpolator_type() {
@@ -2082,33 +2884,1025 @@ impl<'a> flatbuffers::Verifiable for Interpolator {
 impl flatbuffers::SimpleToVerifyInSlice for Interpolator {}
 pub struct InterpolatorUnionTableOffset {}
 
-pub enum OrientationCoefficientsOffset {}
+// struct DiscreteOrientation, aligned to 8
+#[repr(transparent)]
+#[derive(Clone, Copy, PartialEq)]
+pub struct DiscreteOrientation(pub [u8; 296]);
+impl Default for DiscreteOrientation { 
+  fn default() -> Self { 
+    Self([0; 296])
+  }
+}
+impl std::fmt::Debug for DiscreteOrientation {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    f.debug_struct("DiscreteOrientation")
+      .field("epoch", &self.epoch())
+      .field("quat_w", &self.quat_w())
+      .field("quat_x", &self.quat_x())
+      .field("quat_y", &self.quat_y())
+      .field("quat_z", &self.quat_z())
+      .field("rate_x", &self.rate_x())
+      .field("rate_y", &self.rate_y())
+      .field("rate_z", &self.rate_z())
+      .field("cov_quat_w_quat_w", &self.cov_quat_w_quat_w())
+      .field("cov_quat_x_quat_w", &self.cov_quat_x_quat_w())
+      .field("cov_quat_x_quat_x", &self.cov_quat_x_quat_x())
+      .field("cov_quat_y_quat_w", &self.cov_quat_y_quat_w())
+      .field("cov_quat_y_quat_x", &self.cov_quat_y_quat_x())
+      .field("cov_quat_y_quat_y", &self.cov_quat_y_quat_y())
+      .field("cov_quat_z_quat_w", &self.cov_quat_z_quat_w())
+      .field("cov_quat_z_quat_x", &self.cov_quat_z_quat_x())
+      .field("cov_quat_z_quat_y", &self.cov_quat_z_quat_y())
+      .field("cov_quat_z_quat_z", &self.cov_quat_z_quat_z())
+      .field("cov_rate_x_quat_w", &self.cov_rate_x_quat_w())
+      .field("cov_rate_x_quat_x", &self.cov_rate_x_quat_x())
+      .field("cov_rate_x_quat_y", &self.cov_rate_x_quat_y())
+      .field("cov_rate_x_quat_z", &self.cov_rate_x_quat_z())
+      .field("cov_rate_x_rate_x", &self.cov_rate_x_rate_x())
+      .field("cov_rate_y_quat_w", &self.cov_rate_y_quat_w())
+      .field("cov_rate_y_quat_x", &self.cov_rate_y_quat_x())
+      .field("cov_rate_y_quat_y", &self.cov_rate_y_quat_y())
+      .field("cov_rate_y_quat_z", &self.cov_rate_y_quat_z())
+      .field("cov_rate_y_rate_x", &self.cov_rate_y_rate_x())
+      .field("cov_rate_y_rate_y", &self.cov_rate_y_rate_y())
+      .field("cov_rate_z_quat_w", &self.cov_rate_z_quat_w())
+      .field("cov_rate_z_quat_x", &self.cov_rate_z_quat_x())
+      .field("cov_rate_z_quat_y", &self.cov_rate_z_quat_y())
+      .field("cov_rate_z_quat_z", &self.cov_rate_z_quat_z())
+      .field("cov_rate_z_rate_x", &self.cov_rate_z_rate_x())
+      .field("cov_rate_z_rate_y", &self.cov_rate_z_rate_y())
+      .field("cov_rate_z_rate_z", &self.cov_rate_z_rate_z())
+      .finish()
+  }
+}
+
+impl flatbuffers::SimpleToVerifyInSlice for DiscreteOrientation {}
+impl flatbuffers::SafeSliceAccess for DiscreteOrientation {}
+impl<'a> flatbuffers::Follow<'a> for DiscreteOrientation {
+  type Inner = &'a DiscreteOrientation;
+  #[inline]
+  fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    <&'a DiscreteOrientation>::follow(buf, loc)
+  }
+}
+impl<'a> flatbuffers::Follow<'a> for &'a DiscreteOrientation {
+  type Inner = &'a DiscreteOrientation;
+  #[inline]
+  fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    flatbuffers::follow_cast_ref::<DiscreteOrientation>(buf, loc)
+  }
+}
+impl<'b> flatbuffers::Push for DiscreteOrientation {
+    type Output = DiscreteOrientation;
+    #[inline]
+    fn push(&self, dst: &mut [u8], _rest: &[u8]) {
+        let src = unsafe {
+            ::std::slice::from_raw_parts(self as *const DiscreteOrientation as *const u8, Self::size())
+        };
+        dst.copy_from_slice(src);
+    }
+}
+impl<'b> flatbuffers::Push for &'b DiscreteOrientation {
+    type Output = DiscreteOrientation;
+
+    #[inline]
+    fn push(&self, dst: &mut [u8], _rest: &[u8]) {
+        let src = unsafe {
+            ::std::slice::from_raw_parts(*self as *const DiscreteOrientation as *const u8, Self::size())
+        };
+        dst.copy_from_slice(src);
+    }
+}
+
+impl<'a> flatbuffers::Verifiable for DiscreteOrientation {
+  #[inline]
+  fn run_verifier(
+    v: &mut flatbuffers::Verifier, pos: usize
+  ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+    use self::flatbuffers::Verifiable;
+    v.in_buffer::<Self>(pos)
+  }
+}
+impl<'a> DiscreteOrientation {
+  #[allow(clippy::too_many_arguments)]
+  pub fn new(
+    epoch: &super::time::Epoch,
+    quat_w: f64,
+    quat_x: f64,
+    quat_y: f64,
+    quat_z: f64,
+    rate_x: f64,
+    rate_y: f64,
+    rate_z: f64,
+    cov_quat_w_quat_w: f64,
+    cov_quat_x_quat_w: f64,
+    cov_quat_x_quat_x: f64,
+    cov_quat_y_quat_w: f64,
+    cov_quat_y_quat_x: f64,
+    cov_quat_y_quat_y: f64,
+    cov_quat_z_quat_w: f64,
+    cov_quat_z_quat_x: f64,
+    cov_quat_z_quat_y: f64,
+    cov_quat_z_quat_z: f64,
+    cov_rate_x_quat_w: f64,
+    cov_rate_x_quat_x: f64,
+    cov_rate_x_quat_y: f64,
+    cov_rate_x_quat_z: f64,
+    cov_rate_x_rate_x: f64,
+    cov_rate_y_quat_w: f64,
+    cov_rate_y_quat_x: f64,
+    cov_rate_y_quat_y: f64,
+    cov_rate_y_quat_z: f64,
+    cov_rate_y_rate_x: f64,
+    cov_rate_y_rate_y: f64,
+    cov_rate_z_quat_w: f64,
+    cov_rate_z_quat_x: f64,
+    cov_rate_z_quat_y: f64,
+    cov_rate_z_quat_z: f64,
+    cov_rate_z_rate_x: f64,
+    cov_rate_z_rate_y: f64,
+    cov_rate_z_rate_z: f64,
+  ) -> Self {
+    let mut s = Self([0; 296]);
+    s.set_epoch(&epoch);
+    s.set_quat_w(quat_w);
+    s.set_quat_x(quat_x);
+    s.set_quat_y(quat_y);
+    s.set_quat_z(quat_z);
+    s.set_rate_x(rate_x);
+    s.set_rate_y(rate_y);
+    s.set_rate_z(rate_z);
+    s.set_cov_quat_w_quat_w(cov_quat_w_quat_w);
+    s.set_cov_quat_x_quat_w(cov_quat_x_quat_w);
+    s.set_cov_quat_x_quat_x(cov_quat_x_quat_x);
+    s.set_cov_quat_y_quat_w(cov_quat_y_quat_w);
+    s.set_cov_quat_y_quat_x(cov_quat_y_quat_x);
+    s.set_cov_quat_y_quat_y(cov_quat_y_quat_y);
+    s.set_cov_quat_z_quat_w(cov_quat_z_quat_w);
+    s.set_cov_quat_z_quat_x(cov_quat_z_quat_x);
+    s.set_cov_quat_z_quat_y(cov_quat_z_quat_y);
+    s.set_cov_quat_z_quat_z(cov_quat_z_quat_z);
+    s.set_cov_rate_x_quat_w(cov_rate_x_quat_w);
+    s.set_cov_rate_x_quat_x(cov_rate_x_quat_x);
+    s.set_cov_rate_x_quat_y(cov_rate_x_quat_y);
+    s.set_cov_rate_x_quat_z(cov_rate_x_quat_z);
+    s.set_cov_rate_x_rate_x(cov_rate_x_rate_x);
+    s.set_cov_rate_y_quat_w(cov_rate_y_quat_w);
+    s.set_cov_rate_y_quat_x(cov_rate_y_quat_x);
+    s.set_cov_rate_y_quat_y(cov_rate_y_quat_y);
+    s.set_cov_rate_y_quat_z(cov_rate_y_quat_z);
+    s.set_cov_rate_y_rate_x(cov_rate_y_rate_x);
+    s.set_cov_rate_y_rate_y(cov_rate_y_rate_y);
+    s.set_cov_rate_z_quat_w(cov_rate_z_quat_w);
+    s.set_cov_rate_z_quat_x(cov_rate_z_quat_x);
+    s.set_cov_rate_z_quat_y(cov_rate_z_quat_y);
+    s.set_cov_rate_z_quat_z(cov_rate_z_quat_z);
+    s.set_cov_rate_z_rate_x(cov_rate_z_rate_x);
+    s.set_cov_rate_z_rate_y(cov_rate_z_rate_y);
+    s.set_cov_rate_z_rate_z(cov_rate_z_rate_z);
+    s
+  }
+
+  pub fn epoch(&self) -> &super::time::Epoch {
+    unsafe { &*(self.0[0..].as_ptr() as *const super::time::Epoch) }
+  }
+
+  pub fn set_epoch(&mut self, x: &super::time::Epoch) {
+    self.0[0..0+16].copy_from_slice(&x.0)
+  }
+
+  pub fn quat_w(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[16..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_quat_w(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[16..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn quat_x(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[24..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_quat_x(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[24..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn quat_y(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[32..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_quat_y(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[32..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn quat_z(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[40..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_quat_z(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[40..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn rate_x(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[48..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_rate_x(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[48..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn rate_y(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[56..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_rate_y(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[56..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn rate_z(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[64..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_rate_z(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[64..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_quat_w_quat_w(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[72..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_quat_w_quat_w(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[72..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_quat_x_quat_w(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[80..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_quat_x_quat_w(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[80..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_quat_x_quat_x(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[88..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_quat_x_quat_x(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[88..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_quat_y_quat_w(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[96..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_quat_y_quat_w(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[96..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_quat_y_quat_x(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[104..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_quat_y_quat_x(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[104..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_quat_y_quat_y(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[112..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_quat_y_quat_y(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[112..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_quat_z_quat_w(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[120..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_quat_z_quat_w(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[120..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_quat_z_quat_x(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[128..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_quat_z_quat_x(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[128..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_quat_z_quat_y(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[136..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_quat_z_quat_y(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[136..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_quat_z_quat_z(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[144..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_quat_z_quat_z(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[144..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_rate_x_quat_w(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[152..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_rate_x_quat_w(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[152..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_rate_x_quat_x(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[160..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_rate_x_quat_x(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[160..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_rate_x_quat_y(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[168..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_rate_x_quat_y(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[168..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_rate_x_quat_z(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[176..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_rate_x_quat_z(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[176..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_rate_x_rate_x(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[184..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_rate_x_rate_x(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[184..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_rate_y_quat_w(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[192..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_rate_y_quat_w(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[192..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_rate_y_quat_x(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[200..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_rate_y_quat_x(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[200..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_rate_y_quat_y(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[208..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_rate_y_quat_y(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[208..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_rate_y_quat_z(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[216..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_rate_y_quat_z(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[216..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_rate_y_rate_x(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[224..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_rate_y_rate_x(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[224..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_rate_y_rate_y(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[232..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_rate_y_rate_y(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[232..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_rate_z_quat_w(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[240..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_rate_z_quat_w(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[240..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_rate_z_quat_x(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[248..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_rate_z_quat_x(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[248..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_rate_z_quat_y(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[256..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_rate_z_quat_y(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[256..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_rate_z_quat_z(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[264..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_rate_z_quat_z(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[264..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_rate_z_rate_x(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[272..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_rate_z_rate_x(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[272..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_rate_z_rate_y(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[280..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_rate_z_rate_y(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[280..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+  pub fn cov_rate_z_rate_z(&self) -> f64 {
+    let mut mem = core::mem::MaybeUninit::<f64>::uninit();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[288..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<f64>(),
+      );
+      mem.assume_init()
+    }.from_little_endian()
+  }
+
+  pub fn set_cov_rate_z_rate_z(&mut self, x: f64) {
+    let x_le = x.to_little_endian();
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const f64 as *const u8,
+        self.0[288..].as_mut_ptr(),
+        core::mem::size_of::<f64>(),
+      );
+    }
+  }
+
+}
+
+pub enum SplineOffset {}
 #[derive(Copy, Clone, PartialEq)]
 
-pub struct OrientationCoefficients<'a> {
+pub struct Spline<'a> {
   pub _tab: flatbuffers::Table<'a>,
 }
 
-impl<'a> flatbuffers::Follow<'a> for OrientationCoefficients<'a> {
-    type Inner = OrientationCoefficients<'a>;
+impl<'a> flatbuffers::Follow<'a> for Spline<'a> {
+    type Inner = Spline<'a>;
     #[inline]
     fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
         Self { _tab: flatbuffers::Table { buf, loc } }
     }
 }
 
-impl<'a> OrientationCoefficients<'a> {
+impl<'a> Spline<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        OrientationCoefficients { _tab: table }
+        Spline { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args OrientationCoefficientsArgs<'args>) -> flatbuffers::WIPOffset<OrientationCoefficients<'bldr>> {
-      let mut builder = OrientationCoefficientsBuilder::new(_fbb);
-      builder.add_usable_end_time_offset_cs(args.usable_end_time_offset_cs);
-      builder.add_usable_start_time_offset_cs(args.usable_start_time_offset_cs);
+        args: &'args SplineArgs<'args>) -> flatbuffers::WIPOffset<Spline<'bldr>> {
+      let mut builder = SplineBuilder::new(_fbb);
       if let Some(x) = args.cov_rate_z_rate_z { builder.add_cov_rate_z_rate_z(x); }
       if let Some(x) = args.cov_rate_z_rate_y { builder.add_cov_rate_z_rate_y(x); }
       if let Some(x) = args.cov_rate_z_rate_x { builder.add_cov_rate_z_rate_x(x); }
@@ -2144,11 +3938,13 @@ impl<'a> OrientationCoefficients<'a> {
       if let Some(x) = args.quat_y { builder.add_quat_y(x); }
       if let Some(x) = args.quat_x { builder.add_quat_x(x); }
       if let Some(x) = args.quat_w { builder.add_quat_w(x); }
+      if let Some(x) = args.usable_end_state { builder.add_usable_end_state(x); }
+      if let Some(x) = args.usable_start_epoch { builder.add_usable_start_epoch(x); }
       builder.finish()
     }
 
-    pub const VT_USABLE_START_TIME_OFFSET_CS: flatbuffers::VOffsetT = 4;
-    pub const VT_USABLE_END_TIME_OFFSET_CS: flatbuffers::VOffsetT = 6;
+    pub const VT_USABLE_START_EPOCH: flatbuffers::VOffsetT = 4;
+    pub const VT_USABLE_END_STATE: flatbuffers::VOffsetT = 6;
     pub const VT_QUAT_W: flatbuffers::VOffsetT = 8;
     pub const VT_QUAT_X: flatbuffers::VOffsetT = 10;
     pub const VT_QUAT_Y: flatbuffers::VOffsetT = 12;
@@ -2186,164 +3982,164 @@ impl<'a> OrientationCoefficients<'a> {
     pub const VT_COV_RATE_Z_RATE_Z: flatbuffers::VOffsetT = 76;
 
   #[inline]
-  pub fn usable_start_time_offset_cs(&self) -> f64 {
-    self._tab.get::<f64>(OrientationCoefficients::VT_USABLE_START_TIME_OFFSET_CS, Some(0.0)).unwrap()
+  pub fn usable_start_epoch(&self) -> &'a super::time::Epoch {
+    self._tab.get::<super::time::Epoch>(Spline::VT_USABLE_START_EPOCH, None).unwrap()
   }
   #[inline]
-  pub fn usable_end_time_offset_cs(&self) -> f64 {
-    self._tab.get::<f64>(OrientationCoefficients::VT_USABLE_END_TIME_OFFSET_CS, Some(0.0)).unwrap()
+  pub fn usable_end_state(&self) -> &'a DiscreteOrientation {
+    self._tab.get::<DiscreteOrientation>(Spline::VT_USABLE_END_STATE, None).unwrap()
   }
   #[inline]
   pub fn quat_w(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_QUAT_W, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_QUAT_W, None)
   }
   #[inline]
   pub fn quat_x(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_QUAT_X, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_QUAT_X, None)
   }
   #[inline]
   pub fn quat_y(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_QUAT_Y, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_QUAT_Y, None)
   }
   #[inline]
   pub fn quat_z(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_QUAT_Z, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_QUAT_Z, None)
   }
   #[inline]
   pub fn rate_x(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_RATE_X, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_RATE_X, None)
   }
   #[inline]
   pub fn rate_y(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_RATE_Y, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_RATE_Y, None)
   }
   #[inline]
   pub fn rate_z(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_RATE_Z, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_RATE_Z, None)
   }
   #[inline]
   pub fn cov_quat_w_quat_w(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_QUAT_W_QUAT_W, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_QUAT_W_QUAT_W, None)
   }
   #[inline]
   pub fn cov_quat_x_quat_w(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_QUAT_X_QUAT_W, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_QUAT_X_QUAT_W, None)
   }
   #[inline]
   pub fn cov_quat_x_quat_x(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_QUAT_X_QUAT_X, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_QUAT_X_QUAT_X, None)
   }
   #[inline]
   pub fn cov_quat_y_quat_w(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_QUAT_Y_QUAT_W, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_QUAT_Y_QUAT_W, None)
   }
   #[inline]
   pub fn cov_quat_y_quat_x(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_QUAT_Y_QUAT_X, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_QUAT_Y_QUAT_X, None)
   }
   #[inline]
   pub fn cov_quat_y_quat_y(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_QUAT_Y_QUAT_Y, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_QUAT_Y_QUAT_Y, None)
   }
   #[inline]
   pub fn cov_quat_z_quat_w(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_QUAT_Z_QUAT_W, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_QUAT_Z_QUAT_W, None)
   }
   #[inline]
   pub fn cov_quat_z_quat_x(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_QUAT_Z_QUAT_X, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_QUAT_Z_QUAT_X, None)
   }
   #[inline]
   pub fn cov_quat_z_quat_y(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_QUAT_Z_QUAT_Y, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_QUAT_Z_QUAT_Y, None)
   }
   #[inline]
   pub fn cov_quat_z_quat_z(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_QUAT_Z_QUAT_Z, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_QUAT_Z_QUAT_Z, None)
   }
   #[inline]
   pub fn cov_rate_x_quat_w(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_RATE_X_QUAT_W, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_RATE_X_QUAT_W, None)
   }
   #[inline]
   pub fn cov_rate_x_quat_x(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_RATE_X_QUAT_X, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_RATE_X_QUAT_X, None)
   }
   #[inline]
   pub fn cov_rate_x_quat_y(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_RATE_X_QUAT_Y, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_RATE_X_QUAT_Y, None)
   }
   #[inline]
   pub fn cov_rate_x_quat_z(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_RATE_X_QUAT_Z, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_RATE_X_QUAT_Z, None)
   }
   #[inline]
   pub fn cov_rate_x_rate_x(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_RATE_X_RATE_X, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_RATE_X_RATE_X, None)
   }
   #[inline]
   pub fn cov_rate_y_quat_w(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_RATE_Y_QUAT_W, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_RATE_Y_QUAT_W, None)
   }
   #[inline]
   pub fn cov_rate_y_quat_x(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_RATE_Y_QUAT_X, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_RATE_Y_QUAT_X, None)
   }
   #[inline]
   pub fn cov_rate_y_quat_y(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_RATE_Y_QUAT_Y, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_RATE_Y_QUAT_Y, None)
   }
   #[inline]
   pub fn cov_rate_y_quat_z(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_RATE_Y_QUAT_Z, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_RATE_Y_QUAT_Z, None)
   }
   #[inline]
   pub fn cov_rate_y_rate_x(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_RATE_Y_RATE_X, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_RATE_Y_RATE_X, None)
   }
   #[inline]
   pub fn cov_rate_y_rate_y(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_RATE_Y_RATE_Y, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_RATE_Y_RATE_Y, None)
   }
   #[inline]
   pub fn cov_rate_z_quat_w(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_RATE_Z_QUAT_W, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_RATE_Z_QUAT_W, None)
   }
   #[inline]
   pub fn cov_rate_z_quat_x(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_RATE_Z_QUAT_X, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_RATE_Z_QUAT_X, None)
   }
   #[inline]
   pub fn cov_rate_z_quat_y(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_RATE_Z_QUAT_Y, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_RATE_Z_QUAT_Y, None)
   }
   #[inline]
   pub fn cov_rate_z_quat_z(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_RATE_Z_QUAT_Z, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_RATE_Z_QUAT_Z, None)
   }
   #[inline]
   pub fn cov_rate_z_rate_x(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_RATE_Z_RATE_X, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_RATE_Z_RATE_X, None)
   }
   #[inline]
   pub fn cov_rate_z_rate_y(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_RATE_Z_RATE_Y, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_RATE_Z_RATE_Y, None)
   }
   #[inline]
   pub fn cov_rate_z_rate_z(&self) -> Option<flatbuffers::Vector<'a, f64>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(OrientationCoefficients::VT_COV_RATE_Z_RATE_Z, None)
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, f64>>>(Spline::VT_COV_RATE_Z_RATE_Z, None)
   }
 }
 
-impl flatbuffers::Verifiable for OrientationCoefficients<'_> {
+impl flatbuffers::Verifiable for Spline<'_> {
   #[inline]
   fn run_verifier(
     v: &mut flatbuffers::Verifier, pos: usize
   ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
-     .visit_field::<f64>(&"usable_start_time_offset_cs", Self::VT_USABLE_START_TIME_OFFSET_CS, false)?
-     .visit_field::<f64>(&"usable_end_time_offset_cs", Self::VT_USABLE_END_TIME_OFFSET_CS, false)?
+     .visit_field::<super::time::Epoch>(&"usable_start_epoch", Self::VT_USABLE_START_EPOCH, true)?
+     .visit_field::<DiscreteOrientation>(&"usable_end_state", Self::VT_USABLE_END_STATE, true)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, f64>>>(&"quat_w", Self::VT_QUAT_W, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, f64>>>(&"quat_x", Self::VT_QUAT_X, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, f64>>>(&"quat_y", Self::VT_QUAT_Y, false)?
@@ -2383,9 +4179,9 @@ impl flatbuffers::Verifiable for OrientationCoefficients<'_> {
     Ok(())
   }
 }
-pub struct OrientationCoefficientsArgs<'a> {
-    pub usable_start_time_offset_cs: f64,
-    pub usable_end_time_offset_cs: f64,
+pub struct SplineArgs<'a> {
+    pub usable_start_epoch: Option<&'a super::time::Epoch>,
+    pub usable_end_state: Option<&'a DiscreteOrientation>,
     pub quat_w: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, f64>>>,
     pub quat_x: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, f64>>>,
     pub quat_y: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, f64>>>,
@@ -2422,12 +4218,12 @@ pub struct OrientationCoefficientsArgs<'a> {
     pub cov_rate_z_rate_y: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, f64>>>,
     pub cov_rate_z_rate_z: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, f64>>>,
 }
-impl<'a> Default for OrientationCoefficientsArgs<'a> {
+impl<'a> Default for SplineArgs<'a> {
     #[inline]
     fn default() -> Self {
-        OrientationCoefficientsArgs {
-            usable_start_time_offset_cs: 0.0,
-            usable_end_time_offset_cs: 0.0,
+        SplineArgs {
+            usable_start_epoch: None, // required field
+            usable_end_state: None, // required field
             quat_w: None,
             quat_x: None,
             quat_y: None,
@@ -2466,179 +4262,181 @@ impl<'a> Default for OrientationCoefficientsArgs<'a> {
         }
     }
 }
-pub struct OrientationCoefficientsBuilder<'a: 'b, 'b> {
+pub struct SplineBuilder<'a: 'b, 'b> {
   fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
   start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
-impl<'a: 'b, 'b> OrientationCoefficientsBuilder<'a, 'b> {
+impl<'a: 'b, 'b> SplineBuilder<'a, 'b> {
   #[inline]
-  pub fn add_usable_start_time_offset_cs(&mut self, usable_start_time_offset_cs: f64) {
-    self.fbb_.push_slot::<f64>(OrientationCoefficients::VT_USABLE_START_TIME_OFFSET_CS, usable_start_time_offset_cs, 0.0);
+  pub fn add_usable_start_epoch(&mut self, usable_start_epoch: &super::time::Epoch) {
+    self.fbb_.push_slot_always::<&super::time::Epoch>(Spline::VT_USABLE_START_EPOCH, usable_start_epoch);
   }
   #[inline]
-  pub fn add_usable_end_time_offset_cs(&mut self, usable_end_time_offset_cs: f64) {
-    self.fbb_.push_slot::<f64>(OrientationCoefficients::VT_USABLE_END_TIME_OFFSET_CS, usable_end_time_offset_cs, 0.0);
+  pub fn add_usable_end_state(&mut self, usable_end_state: &DiscreteOrientation) {
+    self.fbb_.push_slot_always::<&DiscreteOrientation>(Spline::VT_USABLE_END_STATE, usable_end_state);
   }
   #[inline]
   pub fn add_quat_w(&mut self, quat_w: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_QUAT_W, quat_w);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_QUAT_W, quat_w);
   }
   #[inline]
   pub fn add_quat_x(&mut self, quat_x: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_QUAT_X, quat_x);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_QUAT_X, quat_x);
   }
   #[inline]
   pub fn add_quat_y(&mut self, quat_y: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_QUAT_Y, quat_y);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_QUAT_Y, quat_y);
   }
   #[inline]
   pub fn add_quat_z(&mut self, quat_z: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_QUAT_Z, quat_z);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_QUAT_Z, quat_z);
   }
   #[inline]
   pub fn add_rate_x(&mut self, rate_x: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_RATE_X, rate_x);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_RATE_X, rate_x);
   }
   #[inline]
   pub fn add_rate_y(&mut self, rate_y: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_RATE_Y, rate_y);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_RATE_Y, rate_y);
   }
   #[inline]
   pub fn add_rate_z(&mut self, rate_z: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_RATE_Z, rate_z);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_RATE_Z, rate_z);
   }
   #[inline]
   pub fn add_cov_quat_w_quat_w(&mut self, cov_quat_w_quat_w: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_QUAT_W_QUAT_W, cov_quat_w_quat_w);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_QUAT_W_QUAT_W, cov_quat_w_quat_w);
   }
   #[inline]
   pub fn add_cov_quat_x_quat_w(&mut self, cov_quat_x_quat_w: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_QUAT_X_QUAT_W, cov_quat_x_quat_w);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_QUAT_X_QUAT_W, cov_quat_x_quat_w);
   }
   #[inline]
   pub fn add_cov_quat_x_quat_x(&mut self, cov_quat_x_quat_x: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_QUAT_X_QUAT_X, cov_quat_x_quat_x);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_QUAT_X_QUAT_X, cov_quat_x_quat_x);
   }
   #[inline]
   pub fn add_cov_quat_y_quat_w(&mut self, cov_quat_y_quat_w: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_QUAT_Y_QUAT_W, cov_quat_y_quat_w);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_QUAT_Y_QUAT_W, cov_quat_y_quat_w);
   }
   #[inline]
   pub fn add_cov_quat_y_quat_x(&mut self, cov_quat_y_quat_x: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_QUAT_Y_QUAT_X, cov_quat_y_quat_x);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_QUAT_Y_QUAT_X, cov_quat_y_quat_x);
   }
   #[inline]
   pub fn add_cov_quat_y_quat_y(&mut self, cov_quat_y_quat_y: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_QUAT_Y_QUAT_Y, cov_quat_y_quat_y);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_QUAT_Y_QUAT_Y, cov_quat_y_quat_y);
   }
   #[inline]
   pub fn add_cov_quat_z_quat_w(&mut self, cov_quat_z_quat_w: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_QUAT_Z_QUAT_W, cov_quat_z_quat_w);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_QUAT_Z_QUAT_W, cov_quat_z_quat_w);
   }
   #[inline]
   pub fn add_cov_quat_z_quat_x(&mut self, cov_quat_z_quat_x: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_QUAT_Z_QUAT_X, cov_quat_z_quat_x);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_QUAT_Z_QUAT_X, cov_quat_z_quat_x);
   }
   #[inline]
   pub fn add_cov_quat_z_quat_y(&mut self, cov_quat_z_quat_y: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_QUAT_Z_QUAT_Y, cov_quat_z_quat_y);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_QUAT_Z_QUAT_Y, cov_quat_z_quat_y);
   }
   #[inline]
   pub fn add_cov_quat_z_quat_z(&mut self, cov_quat_z_quat_z: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_QUAT_Z_QUAT_Z, cov_quat_z_quat_z);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_QUAT_Z_QUAT_Z, cov_quat_z_quat_z);
   }
   #[inline]
   pub fn add_cov_rate_x_quat_w(&mut self, cov_rate_x_quat_w: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_RATE_X_QUAT_W, cov_rate_x_quat_w);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_RATE_X_QUAT_W, cov_rate_x_quat_w);
   }
   #[inline]
   pub fn add_cov_rate_x_quat_x(&mut self, cov_rate_x_quat_x: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_RATE_X_QUAT_X, cov_rate_x_quat_x);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_RATE_X_QUAT_X, cov_rate_x_quat_x);
   }
   #[inline]
   pub fn add_cov_rate_x_quat_y(&mut self, cov_rate_x_quat_y: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_RATE_X_QUAT_Y, cov_rate_x_quat_y);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_RATE_X_QUAT_Y, cov_rate_x_quat_y);
   }
   #[inline]
   pub fn add_cov_rate_x_quat_z(&mut self, cov_rate_x_quat_z: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_RATE_X_QUAT_Z, cov_rate_x_quat_z);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_RATE_X_QUAT_Z, cov_rate_x_quat_z);
   }
   #[inline]
   pub fn add_cov_rate_x_rate_x(&mut self, cov_rate_x_rate_x: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_RATE_X_RATE_X, cov_rate_x_rate_x);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_RATE_X_RATE_X, cov_rate_x_rate_x);
   }
   #[inline]
   pub fn add_cov_rate_y_quat_w(&mut self, cov_rate_y_quat_w: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_RATE_Y_QUAT_W, cov_rate_y_quat_w);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_RATE_Y_QUAT_W, cov_rate_y_quat_w);
   }
   #[inline]
   pub fn add_cov_rate_y_quat_x(&mut self, cov_rate_y_quat_x: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_RATE_Y_QUAT_X, cov_rate_y_quat_x);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_RATE_Y_QUAT_X, cov_rate_y_quat_x);
   }
   #[inline]
   pub fn add_cov_rate_y_quat_y(&mut self, cov_rate_y_quat_y: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_RATE_Y_QUAT_Y, cov_rate_y_quat_y);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_RATE_Y_QUAT_Y, cov_rate_y_quat_y);
   }
   #[inline]
   pub fn add_cov_rate_y_quat_z(&mut self, cov_rate_y_quat_z: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_RATE_Y_QUAT_Z, cov_rate_y_quat_z);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_RATE_Y_QUAT_Z, cov_rate_y_quat_z);
   }
   #[inline]
   pub fn add_cov_rate_y_rate_x(&mut self, cov_rate_y_rate_x: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_RATE_Y_RATE_X, cov_rate_y_rate_x);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_RATE_Y_RATE_X, cov_rate_y_rate_x);
   }
   #[inline]
   pub fn add_cov_rate_y_rate_y(&mut self, cov_rate_y_rate_y: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_RATE_Y_RATE_Y, cov_rate_y_rate_y);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_RATE_Y_RATE_Y, cov_rate_y_rate_y);
   }
   #[inline]
   pub fn add_cov_rate_z_quat_w(&mut self, cov_rate_z_quat_w: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_RATE_Z_QUAT_W, cov_rate_z_quat_w);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_RATE_Z_QUAT_W, cov_rate_z_quat_w);
   }
   #[inline]
   pub fn add_cov_rate_z_quat_x(&mut self, cov_rate_z_quat_x: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_RATE_Z_QUAT_X, cov_rate_z_quat_x);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_RATE_Z_QUAT_X, cov_rate_z_quat_x);
   }
   #[inline]
   pub fn add_cov_rate_z_quat_y(&mut self, cov_rate_z_quat_y: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_RATE_Z_QUAT_Y, cov_rate_z_quat_y);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_RATE_Z_QUAT_Y, cov_rate_z_quat_y);
   }
   #[inline]
   pub fn add_cov_rate_z_quat_z(&mut self, cov_rate_z_quat_z: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_RATE_Z_QUAT_Z, cov_rate_z_quat_z);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_RATE_Z_QUAT_Z, cov_rate_z_quat_z);
   }
   #[inline]
   pub fn add_cov_rate_z_rate_x(&mut self, cov_rate_z_rate_x: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_RATE_Z_RATE_X, cov_rate_z_rate_x);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_RATE_Z_RATE_X, cov_rate_z_rate_x);
   }
   #[inline]
   pub fn add_cov_rate_z_rate_y(&mut self, cov_rate_z_rate_y: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_RATE_Z_RATE_Y, cov_rate_z_rate_y);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_RATE_Z_RATE_Y, cov_rate_z_rate_y);
   }
   #[inline]
   pub fn add_cov_rate_z_rate_z(&mut self, cov_rate_z_rate_z: flatbuffers::WIPOffset<flatbuffers::Vector<'b , f64>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(OrientationCoefficients::VT_COV_RATE_Z_RATE_Z, cov_rate_z_rate_z);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Spline::VT_COV_RATE_Z_RATE_Z, cov_rate_z_rate_z);
   }
   #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> OrientationCoefficientsBuilder<'a, 'b> {
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> SplineBuilder<'a, 'b> {
     let start = _fbb.start_table();
-    OrientationCoefficientsBuilder {
+    SplineBuilder {
       fbb_: _fbb,
       start_: start,
     }
   }
   #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<OrientationCoefficients<'a>> {
+  pub fn finish(self) -> flatbuffers::WIPOffset<Spline<'a>> {
     let o = self.fbb_.end_table(self.start_);
+    self.fbb_.required(o, Spline::VT_USABLE_START_EPOCH,"usable_start_epoch");
+    self.fbb_.required(o, Spline::VT_USABLE_END_STATE,"usable_end_state");
     flatbuffers::WIPOffset::new(o.value())
   }
 }
 
-impl std::fmt::Debug for OrientationCoefficients<'_> {
+impl std::fmt::Debug for Spline<'_> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    let mut ds = f.debug_struct("OrientationCoefficients");
-      ds.field("usable_start_time_offset_cs", &self.usable_start_time_offset_cs());
-      ds.field("usable_end_time_offset_cs", &self.usable_end_time_offset_cs());
+    let mut ds = f.debug_struct("Spline");
+      ds.field("usable_start_epoch", &self.usable_start_epoch());
+      ds.field("usable_end_state", &self.usable_end_state());
       ds.field("quat_w", &self.quat_w());
       ds.field("quat_x", &self.quat_x());
       ds.field("quat_y", &self.quat_y());
@@ -2703,20 +4501,20 @@ impl<'a> EqualTimeSteps<'a> {
         args: &'args EqualTimeStepsArgs<'args>) -> flatbuffers::WIPOffset<EqualTimeSteps<'bldr>> {
       let mut builder = EqualTimeStepsBuilder::new(_fbb);
       builder.add_spline_duration_s(args.spline_duration_s);
-      if let Some(x) = args.coefficient_data { builder.add_coefficient_data(x); }
+      if let Some(x) = args.splines { builder.add_splines(x); }
       builder.finish()
     }
 
     pub const VT_SPLINE_DURATION_S: flatbuffers::VOffsetT = 4;
-    pub const VT_COEFFICIENT_DATA: flatbuffers::VOffsetT = 6;
+    pub const VT_SPLINES: flatbuffers::VOffsetT = 6;
 
   #[inline]
   pub fn spline_duration_s(&self) -> f64 {
     self._tab.get::<f64>(EqualTimeSteps::VT_SPLINE_DURATION_S, Some(0.0)).unwrap()
   }
   #[inline]
-  pub fn coefficient_data(&self) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<OrientationCoefficients<'a>>>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<OrientationCoefficients>>>>(EqualTimeSteps::VT_COEFFICIENT_DATA, None)
+  pub fn splines(&self) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Spline<'a>>>> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Spline>>>>(EqualTimeSteps::VT_SPLINES, None)
   }
 }
 
@@ -2728,21 +4526,21 @@ impl flatbuffers::Verifiable for EqualTimeSteps<'_> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
      .visit_field::<f64>(&"spline_duration_s", Self::VT_SPLINE_DURATION_S, false)?
-     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<OrientationCoefficients>>>>(&"coefficient_data", Self::VT_COEFFICIENT_DATA, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<Spline>>>>(&"splines", Self::VT_SPLINES, false)?
      .finish();
     Ok(())
   }
 }
 pub struct EqualTimeStepsArgs<'a> {
     pub spline_duration_s: f64,
-    pub coefficient_data: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<OrientationCoefficients<'a>>>>>,
+    pub splines: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Spline<'a>>>>>,
 }
 impl<'a> Default for EqualTimeStepsArgs<'a> {
     #[inline]
     fn default() -> Self {
         EqualTimeStepsArgs {
             spline_duration_s: 0.0,
-            coefficient_data: None,
+            splines: None,
         }
     }
 }
@@ -2756,8 +4554,8 @@ impl<'a: 'b, 'b> EqualTimeStepsBuilder<'a, 'b> {
     self.fbb_.push_slot::<f64>(EqualTimeSteps::VT_SPLINE_DURATION_S, spline_duration_s, 0.0);
   }
   #[inline]
-  pub fn add_coefficient_data(&mut self, coefficient_data: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<OrientationCoefficients<'b >>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(EqualTimeSteps::VT_COEFFICIENT_DATA, coefficient_data);
+  pub fn add_splines(&mut self, splines: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<Spline<'b >>>>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(EqualTimeSteps::VT_SPLINES, splines);
   }
   #[inline]
   pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> EqualTimeStepsBuilder<'a, 'b> {
@@ -2778,7 +4576,7 @@ impl std::fmt::Debug for EqualTimeSteps<'_> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let mut ds = f.debug_struct("EqualTimeSteps");
       ds.field("spline_duration_s", &self.spline_duration_s());
-      ds.field("coefficient_data", &self.coefficient_data());
+      ds.field("splines", &self.splines());
       ds.finish()
   }
 }
@@ -2809,13 +4607,13 @@ impl<'a> UnequalTimeSteps<'a> {
       let mut builder = UnequalTimeStepsBuilder::new(_fbb);
       builder.add_time_normalization_max(args.time_normalization_max);
       builder.add_time_normalization_min(args.time_normalization_min);
-      if let Some(x) = args.coefficient_data { builder.add_coefficient_data(x); }
+      if let Some(x) = args.splines { builder.add_splines(x); }
       if let Some(x) = args.spline_time_index_cs { builder.add_spline_time_index_cs(x); }
       builder.finish()
     }
 
     pub const VT_SPLINE_TIME_INDEX_CS: flatbuffers::VOffsetT = 4;
-    pub const VT_COEFFICIENT_DATA: flatbuffers::VOffsetT = 6;
+    pub const VT_SPLINES: flatbuffers::VOffsetT = 6;
     pub const VT_TIME_NORMALIZATION_MIN: flatbuffers::VOffsetT = 8;
     pub const VT_TIME_NORMALIZATION_MAX: flatbuffers::VOffsetT = 10;
 
@@ -2824,8 +4622,8 @@ impl<'a> UnequalTimeSteps<'a> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, i64>>>(UnequalTimeSteps::VT_SPLINE_TIME_INDEX_CS, None)
   }
   #[inline]
-  pub fn coefficient_data(&self) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<OrientationCoefficients<'a>>>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<OrientationCoefficients>>>>(UnequalTimeSteps::VT_COEFFICIENT_DATA, None)
+  pub fn splines(&self) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Spline<'a>>>> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Spline>>>>(UnequalTimeSteps::VT_SPLINES, None)
   }
   #[inline]
   pub fn time_normalization_min(&self) -> f64 {
@@ -2845,7 +4643,7 @@ impl flatbuffers::Verifiable for UnequalTimeSteps<'_> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, i64>>>(&"spline_time_index_cs", Self::VT_SPLINE_TIME_INDEX_CS, false)?
-     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<OrientationCoefficients>>>>(&"coefficient_data", Self::VT_COEFFICIENT_DATA, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<Spline>>>>(&"splines", Self::VT_SPLINES, false)?
      .visit_field::<f64>(&"time_normalization_min", Self::VT_TIME_NORMALIZATION_MIN, false)?
      .visit_field::<f64>(&"time_normalization_max", Self::VT_TIME_NORMALIZATION_MAX, false)?
      .finish();
@@ -2854,7 +4652,7 @@ impl flatbuffers::Verifiable for UnequalTimeSteps<'_> {
 }
 pub struct UnequalTimeStepsArgs<'a> {
     pub spline_time_index_cs: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, i64>>>,
-    pub coefficient_data: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<OrientationCoefficients<'a>>>>>,
+    pub splines: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Spline<'a>>>>>,
     pub time_normalization_min: f64,
     pub time_normalization_max: f64,
 }
@@ -2863,7 +4661,7 @@ impl<'a> Default for UnequalTimeStepsArgs<'a> {
     fn default() -> Self {
         UnequalTimeStepsArgs {
             spline_time_index_cs: None,
-            coefficient_data: None,
+            splines: None,
             time_normalization_min: -1.0,
             time_normalization_max: 1.0,
         }
@@ -2879,8 +4677,8 @@ impl<'a: 'b, 'b> UnequalTimeStepsBuilder<'a, 'b> {
     self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(UnequalTimeSteps::VT_SPLINE_TIME_INDEX_CS, spline_time_index_cs);
   }
   #[inline]
-  pub fn add_coefficient_data(&mut self, coefficient_data: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<OrientationCoefficients<'b >>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(UnequalTimeSteps::VT_COEFFICIENT_DATA, coefficient_data);
+  pub fn add_splines(&mut self, splines: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<Spline<'b >>>>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(UnequalTimeSteps::VT_SPLINES, splines);
   }
   #[inline]
   pub fn add_time_normalization_min(&mut self, time_normalization_min: f64) {
@@ -2909,7 +4707,7 @@ impl std::fmt::Debug for UnequalTimeSteps<'_> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let mut ds = f.debug_struct("UnequalTimeSteps");
       ds.field("spline_time_index_cs", &self.spline_time_index_cs());
-      ds.field("coefficient_data", &self.coefficient_data());
+      ds.field("splines", &self.splines());
       ds.field("time_normalization_min", &self.time_normalization_min());
       ds.field("time_normalization_max", &self.time_normalization_max());
       ds.finish()
@@ -2943,28 +4741,34 @@ impl<'a> Orientation<'a> {
       if let Some(x) = args.constants { builder.add_constants(x); }
       builder.add_parent_hash(args.parent_hash);
       if let Some(x) = args.interpolator { builder.add_interpolator(x); }
-      if let Some(x) = args.start_epoch { builder.add_start_epoch(x); }
+      if let Some(x) = args.start_state { builder.add_start_state(x); }
       if let Some(x) = args.name { builder.add_name(x); }
       builder.add_interpolator_type(args.interpolator_type);
       builder.add_interpolation_kind(args.interpolation_kind);
+      builder.add_backward(args.backward);
       builder.finish()
     }
 
     pub const VT_NAME: flatbuffers::VOffsetT = 4;
-    pub const VT_START_EPOCH: flatbuffers::VOffsetT = 6;
-    pub const VT_INTERPOLATION_KIND: flatbuffers::VOffsetT = 8;
-    pub const VT_INTERPOLATOR_TYPE: flatbuffers::VOffsetT = 10;
-    pub const VT_INTERPOLATOR: flatbuffers::VOffsetT = 12;
-    pub const VT_PARENT_HASH: flatbuffers::VOffsetT = 14;
-    pub const VT_CONSTANTS: flatbuffers::VOffsetT = 16;
+    pub const VT_START_STATE: flatbuffers::VOffsetT = 6;
+    pub const VT_BACKWARD: flatbuffers::VOffsetT = 8;
+    pub const VT_INTERPOLATION_KIND: flatbuffers::VOffsetT = 10;
+    pub const VT_INTERPOLATOR_TYPE: flatbuffers::VOffsetT = 12;
+    pub const VT_INTERPOLATOR: flatbuffers::VOffsetT = 14;
+    pub const VT_PARENT_HASH: flatbuffers::VOffsetT = 16;
+    pub const VT_CONSTANTS: flatbuffers::VOffsetT = 18;
 
   #[inline]
   pub fn name(&self) -> &'a str {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(Orientation::VT_NAME, None).unwrap()
   }
   #[inline]
-  pub fn start_epoch(&self) -> &'a super::time::Epoch {
-    self._tab.get::<super::time::Epoch>(Orientation::VT_START_EPOCH, None).unwrap()
+  pub fn start_state(&self) -> &'a DiscreteOrientation {
+    self._tab.get::<DiscreteOrientation>(Orientation::VT_START_STATE, None).unwrap()
+  }
+  #[inline]
+  pub fn backward(&self) -> bool {
+    self._tab.get::<bool>(Orientation::VT_BACKWARD, Some(false)).unwrap()
   }
   #[inline]
   pub fn interpolation_kind(&self) -> super::common::InterpolationKind {
@@ -3018,7 +4822,8 @@ impl flatbuffers::Verifiable for Orientation<'_> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
      .visit_field::<flatbuffers::ForwardsUOffset<&str>>(&"name", Self::VT_NAME, true)?
-     .visit_field::<super::time::Epoch>(&"start_epoch", Self::VT_START_EPOCH, true)?
+     .visit_field::<DiscreteOrientation>(&"start_state", Self::VT_START_STATE, true)?
+     .visit_field::<bool>(&"backward", Self::VT_BACKWARD, false)?
      .visit_field::<super::common::InterpolationKind>(&"interpolation_kind", Self::VT_INTERPOLATION_KIND, false)?
      .visit_union::<Interpolator, _>(&"interpolator_type", Self::VT_INTERPOLATOR_TYPE, &"interpolator", Self::VT_INTERPOLATOR, true, |key, v, pos| {
         match key {
@@ -3035,7 +4840,8 @@ impl flatbuffers::Verifiable for Orientation<'_> {
 }
 pub struct OrientationArgs<'a> {
     pub name: Option<flatbuffers::WIPOffset<&'a str>>,
-    pub start_epoch: Option<&'a super::time::Epoch>,
+    pub start_state: Option<&'a DiscreteOrientation>,
+    pub backward: bool,
     pub interpolation_kind: super::common::InterpolationKind,
     pub interpolator_type: Interpolator,
     pub interpolator: Option<flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>>,
@@ -3047,7 +4853,8 @@ impl<'a> Default for OrientationArgs<'a> {
     fn default() -> Self {
         OrientationArgs {
             name: None, // required field
-            start_epoch: None, // required field
+            start_state: None, // required field
+            backward: false,
             interpolation_kind: super::common::InterpolationKind::ChebyshevSeries,
             interpolator_type: Interpolator::NONE,
             interpolator: None, // required field
@@ -3066,8 +4873,12 @@ impl<'a: 'b, 'b> OrientationBuilder<'a, 'b> {
     self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Orientation::VT_NAME, name);
   }
   #[inline]
-  pub fn add_start_epoch(&mut self, start_epoch: &super::time::Epoch) {
-    self.fbb_.push_slot_always::<&super::time::Epoch>(Orientation::VT_START_EPOCH, start_epoch);
+  pub fn add_start_state(&mut self, start_state: &DiscreteOrientation) {
+    self.fbb_.push_slot_always::<&DiscreteOrientation>(Orientation::VT_START_STATE, start_state);
+  }
+  #[inline]
+  pub fn add_backward(&mut self, backward: bool) {
+    self.fbb_.push_slot::<bool>(Orientation::VT_BACKWARD, backward, false);
   }
   #[inline]
   pub fn add_interpolation_kind(&mut self, interpolation_kind: super::common::InterpolationKind) {
@@ -3101,7 +4912,7 @@ impl<'a: 'b, 'b> OrientationBuilder<'a, 'b> {
   pub fn finish(self) -> flatbuffers::WIPOffset<Orientation<'a>> {
     let o = self.fbb_.end_table(self.start_);
     self.fbb_.required(o, Orientation::VT_NAME,"name");
-    self.fbb_.required(o, Orientation::VT_START_EPOCH,"start_epoch");
+    self.fbb_.required(o, Orientation::VT_START_STATE,"start_state");
     self.fbb_.required(o, Orientation::VT_INTERPOLATOR,"interpolator");
     flatbuffers::WIPOffset::new(o.value())
   }
@@ -3111,7 +4922,8 @@ impl std::fmt::Debug for Orientation<'_> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let mut ds = f.debug_struct("Orientation");
       ds.field("name", &self.name());
-      ds.field("start_epoch", &self.start_epoch());
+      ds.field("start_state", &self.start_state());
+      ds.field("backward", &self.backward());
       ds.field("interpolation_kind", &self.interpolation_kind());
       ds.field("interpolator_type", &self.interpolator_type());
       match self.interpolator_type() {
