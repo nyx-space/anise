@@ -16,7 +16,11 @@ pub mod generated;
 
 pub mod prelude {
     pub use crate::errors::AniseError;
+    pub use crate::file_mmap;
     pub use crate::generated::anise_generated::anise::time::Epoch as AniseEpoch;
     pub use crate::generated::anise_generated::anise::{Anise, AniseArgs};
     pub use crate::generated::anise_generated::anise::{Metadata, MetadataArgs};
+    pub use std::fs::File;
 }
+
+pub mod naif;
