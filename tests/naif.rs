@@ -6,27 +6,20 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use anise::prelude::*;
+use anise::{
+    naif::daf::{Endianness, DAF},
+    prelude::*,
+};
 
 #[test]
 fn test_de438s_load() {
     let filename = "data/de440.bsp";
     let bytes = file_mmap!(filename).unwrap();
-    let mut hdr_end_idx = 0;
-    loop {
-        if bytes[hdr_end_idx] == 0x0 {
-            break;
-        }
-        hdr_end_idx += 1;
-    }
-    assert_eq!(std::str::from_utf8(&bytes[0..8]).unwrap(), "DAF/SPK ");
-    dbg!(hdr_end_idx);
 
-    // const RCRD_SIZE: usize = 1024;
-
-    // for i in 0..10 {
-    //     println!("{:?}", &bytes[i * RCRD_SIZE..(i + 1) * RCRD_SIZE],)
-    // }
-
-    println!("{:?}", &bytes[0..8])
+    let de440 = DAF::parse(&bytes).unwrap();
+    assert_eq!(de440.nd, 2);
+    assert_eq!(de440.ni, 6);
+    assert_eq!(de440.fwrd, 62);
+    assert_eq!(de440.bwrd, 62);
+    assert_eq!(de440.endianness, Endianness::Little);
 }
