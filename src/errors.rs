@@ -16,6 +16,8 @@ pub enum AniseError {
     ParameterNotSpecified,
     /// For some reason weird reason (malformed file?), data that was expected to be in an array wasn't.
     IndexingError,
+    /// If the NAIF DAF file cannot be read or isn't supported
+    InvalidDAF(String),
 }
 
 impl From<IOErrorKind> for AniseError {
@@ -39,6 +41,9 @@ impl fmt::Display for AniseError {
             AniseError::ParameterNotSpecified => write!(f, "Anise Error: ParameterNotSpecified"),
             AniseError::IndexingError => write!(f, "Anise Error: IndexingError"),
             AniseError::InvalidFile(e) => write!(f, "Anise Error: InvalidFile: {:?}", e),
+            AniseError::InvalidDAF(reason) => {
+                write!(f, "Anise Error: invalid NAIF DAF file: {}", reason)
+            }
         }
     }
 }
