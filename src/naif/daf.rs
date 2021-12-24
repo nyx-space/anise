@@ -56,6 +56,8 @@ impl<'a> DAF<'a> {
                 "Cannot parse a NAIF DAF of type: `{}`",
                 locidw
             )));
+        } else if daftype[1].trim() != "PCK" {
+            println!("Good luck on the PCK debugging");
         }
 
         // We need to figure out if this file is big or little endian before we can convert some byte arrays into integer
@@ -148,23 +150,29 @@ impl<'a> DAF<'a> {
             // Parse the data of the summary.
             let name_record = self.record(record_num + 1);
             let step = num_summaries;
-            let length = 8 * self.nd + 4 * self.ni;
+            let length = DBL_SIZE * self.nd + INT_SIZE * self.ni;
             for i in (0..nsummaries * length).step_by(length) {
                 let j = 3 * DBL_SIZE + i;
                 let name = std::str::from_utf8(&name_record[i..i + length]).unwrap();
                 if name.chars().nth(0).unwrap() == ' ' {
                     println!("WARNING: Parsing might be wrong because the first character of the name summary is a space: `{}`", name);
+                    println!(
+                        "Full name data: `{}`",
+                        std::str::from_utf8(&name_record[..1000]).unwrap()
+                    );
                 }
                 let summary_data = &record[j..j + length];
                 println!("`{}` => {:?}", name.trim(), summary_data);
                 let mut nd = 0;
-                for double_data in summary_data[0..8 * self.nd].chunks(8) {
+                for double_data in summary_data[0..DBL_SIZE * self.nd].chunks(8) {
                     dbg!(parse_bytes_as!(f64, &double_data, self.endianness));
                     nd += 1;
                 }
                 assert_eq!(nd, self.nd);
                 let mut ni = 0;
-                for int_data in summary_data[8 * self.nd..(self.nd * 8 + self.ni * 4)].chunks(4) {
+                for int_data in
+                    summary_data[DBL_SIZE * self.nd..(self.nd * 8 + self.ni * 4)].chunks(4)
+                {
                     dbg!(parse_bytes_as!(i32, &int_data, self.endianness));
                     ni += 1;
                 }

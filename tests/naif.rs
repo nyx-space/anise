@@ -12,13 +12,15 @@ use anise::{
 };
 
 #[test]
-fn test_de438s_load() {
+fn test_de440_load() {
     // Using the DE421 as demo because the correct data is in the DAF documentation
     let filename = "data/de421.bsp";
     // let filename = "data/de440.bsp";
     let bytes = file_mmap!(filename).unwrap();
 
     let de421 = DAF::parse(&bytes).unwrap();
+    println!("{}", de421.comments());
+    de421.summaries();
     assert_eq!(de421.nd, 2);
     assert_eq!(de421.ni, 6);
     assert_eq!(de421.idword, "DAF/SPK");
@@ -30,4 +32,15 @@ fn test_de438s_load() {
     let comments = de421.comments();
     assert_eq!(comments.len(), 1379);
     de421.summaries();
+}
+
+#[test]
+fn test_binary_pck_load() {
+    // Using the DE421 as demo because the correct data is in the DAF documentation
+    let filename = "data/earth_old_high_prec.bpc";
+    let bytes = file_mmap!(filename).unwrap();
+
+    let high_prec = DAF::parse(&bytes).unwrap();
+    println!("{}", high_prec.comments());
+    high_prec.summaries();
 }
