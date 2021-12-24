@@ -19,10 +19,10 @@ pub enum Endianness {
 
 #[derive(Debug)]
 pub struct DAF<'a> {
-    pub locidw: &'a str,
+    pub idword: &'a str,
+    pub internal_filename: &'a str,
     pub ni: i32,
     pub nd: i32,
-    pub locifn: &'a str,
     pub fwrd: i32,
     pub bwrd: i32,
     pub freeaddr: i32,
@@ -82,8 +82,8 @@ impl<'a> DAF<'a> {
         // Ignore the FTPSTR (seems null in the DE440 and the padding to complete the record).
 
         Ok(Self {
-            locidw,
-            locifn,
+            idword: locidw.trim(),
+            internal_filename: locifn.trim(),
             nd,
             ni,
             fwrd,

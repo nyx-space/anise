@@ -13,13 +13,16 @@ use anise::{
 
 #[test]
 fn test_de438s_load() {
-    let filename = "data/de440.bsp";
+    // Using the DE421 as demo because the correct data is in the DAF documentation
+    let filename = "data/de421.bsp";
     let bytes = file_mmap!(filename).unwrap();
 
-    let de440 = DAF::parse(&bytes).unwrap();
-    assert_eq!(de440.nd, 2);
-    assert_eq!(de440.ni, 6);
-    assert_eq!(de440.fwrd, 62);
-    assert_eq!(de440.bwrd, 62);
-    assert_eq!(de440.endianness, Endianness::Little);
+    let de421 = DAF::parse(&bytes).unwrap();
+    assert_eq!(de421.nd, 2);
+    assert_eq!(de421.ni, 6);
+    assert_eq!(de421.idword, "DAF/SPK");
+    assert_eq!(de421.internal_filename, "NIO2SPK");
+    assert_eq!(de421.fwrd, 4);
+    assert_eq!(de421.bwrd, 4);
+    assert_eq!(de421.endianness, Endianness::Little);
 }
