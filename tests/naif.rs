@@ -23,10 +23,11 @@ fn test_de438s_load() {
     assert_eq!(de421.ni, 6);
     assert_eq!(de421.idword, "DAF/SPK");
     assert_eq!(de421.internal_filename, "NIO2SPK");
-    // assert_eq!(de421.fwrd, 4);
-    // assert_eq!(de421.bwrd, 4);
+    assert_eq!(de421.fwrd, 4);
+    assert_eq!(de421.bwrd, 4);
     assert_eq!(de421.endianness, Endianness::Little);
 
     let comments = de421.comments();
     assert_eq!(comments.len(), 1379);
+    de421.summaries();
 }
