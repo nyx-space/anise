@@ -21,10 +21,14 @@ pub enum Endianness {
 pub struct DAF<'a> {
     pub idword: &'a str,
     pub internal_filename: &'a str,
+    /// The number of double precision components in each array summary.
     pub ni: i32,
+    /// The number of integer components in each array summary.
     pub nd: i32,
-    pub fwrd: i32,
-    pub bwrd: i32,
+    /// The record number of the initial summary record in the file.
+    pub fwrd: usize,
+    /// The record number of the final summary record in the file.
+    pub bwrd: usize,
     pub freeaddr: i32,
     pub endianness: Endianness,
     pub bytes: &'a [u8],
@@ -72,8 +76,8 @@ impl<'a> DAF<'a> {
 
         let nd = parse_bytes_as!(i32, &bytes[8..12], endianness);
         let ni = parse_bytes_as!(i32, &bytes[12..16], endianness);
-        let fwrd = parse_bytes_as!(i32, &bytes[76..80], endianness);
-        let bwrd = parse_bytes_as!(i32, &bytes[80..84], endianness);
+        let fwrd = parse_bytes_as!(i32, &bytes[76..80], endianness) as usize;
+        let bwrd = parse_bytes_as!(i32, &bytes[80..84], endianness) as usize;
         let freeaddr = parse_bytes_as!(i32, &bytes[84..88], endianness);
 
         let locifn = std::str::from_utf8(&bytes[16..76])
@@ -92,5 +96,27 @@ impl<'a> DAF<'a> {
             endianness,
             bytes,
         })
+    }
+
+    pub fn comments(&self) -> String {
+        let mut rslt = String::new();
+        // FWRD has the initial record of the summary. So we assume that all records between the second record and that one are comments
+        for rid in 1..self.fwrd {
+            match std::str::from_utf8(&self.bytes[rid * RCRD_LEN..(rid + 1) * RCRD_LEN]) {
+                Ok(s) => rslt += &s.replace("\u{0}\u{0}", " ").replace("\u{0}", "\n").trim(),
+                Err(e) => {
+                    let valid_s = std::str::from_utf8(
+                        &self.bytes[rid * RCRD_LEN..(rid * RCRD_LEN + e.valid_up_to())],
+                    )
+                    .unwrap();
+                    rslt += valid_s
+                        .replace("\u{0}\u{0}", " ")
+                        .replace("\u{0}", "\n")
+                        .trim()
+                }
+            }
+        }
+
+        rslt
     }
 }
