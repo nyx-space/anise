@@ -7,6 +7,7 @@
  */
 
 pub mod daf;
+pub mod spk;
 
 #[macro_export]
 macro_rules! parse_bytes_as {

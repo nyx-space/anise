@@ -40,19 +40,19 @@ impl<'a> DAF<'a> {
     /// From https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/daf.html#Structure
     pub fn parse(bytes: &'a [u8]) -> Result<Self, AniseError> {
         let locidw = std::str::from_utf8(&bytes[0..8]).or_else(|_| {
-            Err(AniseError::InvalidDAF(
+            Err(AniseError::NAIFConversionError(
                 "Could not parse header (first 8 bytes)".to_owned(),
             ))
         })?;
 
         let daftype: Vec<&str> = locidw.split("/").collect();
         if daftype.len() != 2 {
-            return Err(AniseError::InvalidDAF(format!(
+            return Err(AniseError::NAIFConversionError(format!(
                 "Malformed header string: `{}`",
                 locidw
             )));
         } else if daftype[1].trim() != "SPK" {
-            return Err(AniseError::InvalidDAF(format!(
+            return Err(AniseError::NAIFConversionError(format!(
                 "Cannot parse a NAIF DAF of type: `{}`",
                 locidw
             )));
@@ -62,7 +62,7 @@ impl<'a> DAF<'a> {
 
         // We need to figure out if this file is big or little endian before we can convert some byte arrays into integer
         let str_endianness = std::str::from_utf8(&bytes[88..96]).or_else(|_| {
-            Err(AniseError::InvalidDAF(
+            Err(AniseError::NAIFConversionError(
                 "Could not parse endianness".to_owned(),
             ))
         })?;
@@ -72,7 +72,7 @@ impl<'a> DAF<'a> {
         } else if str_endianness == "BIG-IEEE" {
             Endianness::Big
         } else {
-            return Err(AniseError::InvalidDAF(format!(
+            return Err(AniseError::NAIFConversionError(format!(
                 "Could not understand endianness: `{}`",
                 str_endianness
             )));
@@ -86,8 +86,11 @@ impl<'a> DAF<'a> {
         let bwrd = parse_bytes_as!(u32, &bytes[80..80 + INT_SIZE], endianness) as usize;
         let freeaddr = parse_bytes_as!(u32, &bytes[84..84 + INT_SIZE], endianness) as usize;
 
-        let locifn = std::str::from_utf8(&bytes[16..76])
-            .or_else(|_| Err(AniseError::InvalidDAF("Could not parse locifn".to_owned())))?;
+        let locifn = std::str::from_utf8(&bytes[16..76]).or_else(|_| {
+            Err(AniseError::NAIFConversionError(
+                "Could not parse locifn".to_owned(),
+            ))
+        })?;
 
         // Ignore the FTPSTR (seems null in the DE440 and the padding to complete the record).
 
@@ -127,12 +130,13 @@ impl<'a> DAF<'a> {
     }
 
     /// The summaries are needed to decode the rest of the file
-    pub fn summaries(&self) {
+    pub fn summaries(&self) -> Vec<(&'a str, Vec<f64>, Vec<i32>)> {
         // Each summary need to be read in bytes of 8*nd then 4*self.ni
         let single_summary_size = self.nd + (self.ni + 1) / 2;
         let num_summaries = 125 / single_summary_size;
         dbg!(single_summary_size);
         let mut record_num = self.fwrd;
+        let mut rtn = Vec::new();
         loop {
             if record_num == 0 {
                 break;
@@ -149,7 +153,6 @@ impl<'a> DAF<'a> {
             dbg!(record.len());
             // Parse the data of the summary.
             let name_record = self.record(record_num + 1);
-            let step = num_summaries;
             let length = DBL_SIZE * self.nd + INT_SIZE * self.ni;
             for i in (0..nsummaries * length).step_by(length) {
                 let j = 3 * DBL_SIZE + i;
@@ -162,27 +165,25 @@ impl<'a> DAF<'a> {
                     );
                 }
                 let summary_data = &record[j..j + length];
-                println!("`{}` => {:?}", name.trim(), summary_data);
-                let mut nd = 0;
-                for double_data in summary_data[0..DBL_SIZE * self.nd].chunks(8) {
-                    dbg!(parse_bytes_as!(f64, &double_data, self.endianness));
-                    nd += 1;
+                let mut f64_summary = Vec::with_capacity(self.nd);
+                for double_data in summary_data[0..DBL_SIZE * self.nd].chunks(DBL_SIZE) {
+                    f64_summary.push(parse_bytes_as!(f64, &double_data, self.endianness));
                 }
-                assert_eq!(nd, self.nd);
-                let mut ni = 0;
-                for int_data in
-                    summary_data[DBL_SIZE * self.nd..(self.nd * 8 + self.ni * 4)].chunks(4)
+                let mut int_summary = Vec::with_capacity(self.ni);
+                for int_data in summary_data
+                    [DBL_SIZE * self.nd..(self.nd * DBL_SIZE + self.ni * INT_SIZE)]
+                    .chunks(INT_SIZE)
                 {
-                    dbg!(parse_bytes_as!(i32, &int_data, self.endianness));
-                    ni += 1;
+                    int_summary.push(parse_bytes_as!(i32, &int_data, self.endianness));
                 }
-                assert_eq!(ni, self.ni);
+                // Add this data to the return vec
+                rtn.push((name, f64_summary, int_summary));
             }
-            println!("{:?}", &name_record);
             record_num = next_record;
         }
 
         dbg!(num_summaries);
+        rtn
     }
 
     /// Records are indexed from one!!

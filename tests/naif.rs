@@ -6,8 +6,13 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use std::convert::TryInto;
+
 use anise::{
-    naif::daf::{Endianness, DAF},
+    naif::{
+        daf::{Endianness, DAF},
+        spk::SPK,
+    },
     prelude::*,
 };
 
@@ -19,8 +24,6 @@ fn test_de440_load() {
     let bytes = file_mmap!(filename).unwrap();
 
     let de421 = DAF::parse(&bytes).unwrap();
-    println!("{}", de421.comments());
-    de421.summaries();
     assert_eq!(de421.nd, 2);
     assert_eq!(de421.ni, 6);
     assert_eq!(de421.idword, "DAF/SPK");
@@ -28,12 +31,13 @@ fn test_de440_load() {
     assert_eq!(de421.fwrd, 4);
     assert_eq!(de421.bwrd, 4);
     assert_eq!(de421.endianness, Endianness::Little);
-
-    let comments = de421.comments();
-    assert_eq!(comments.len(), 1379);
-    de421.summaries();
+    assert_eq!(de421.comments().len(), 1379);
+    // Convert to SPK
+    let spk: SPK = (&de421).try_into().unwrap();
+    dbg!(spk.segments);
 }
 
+#[ignore]
 #[test]
 fn test_binary_pck_load() {
     // Using the DE421 as demo because the correct data is in the DAF documentation
