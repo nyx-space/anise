@@ -6,12 +6,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use hifitime::Epoch;
-
+use super::daf::{Endianness, DAF, DBL_SIZE};
+use crate::parse_bytes_as;
 use crate::prelude::AniseError;
+use hifitime::{Epoch, TimeSystem};
 use std::convert::{TryFrom, TryInto};
-
-use super::daf::DAF;
+use std::fmt;
 
 #[derive(Debug)]
 pub struct Segment<'a> {
@@ -25,10 +25,8 @@ pub struct Segment<'a> {
     start_idx: usize,
     end_idx: usize,
 }
-impl<'a> Segment<'a> {
-    // https://github.com/brandon-rhodes/python-jplephem/blob/1cb7dea45ac45b918258bd8c1de1d97a43993abe/jplephem/spk.py#L113
-    pub fn new() {}
-}
+
+impl<'a> Segment<'a> {}
 
 impl<'a> Default for Segment<'a> {
     fn default() -> Self {
@@ -46,10 +44,91 @@ impl<'a> Default for Segment<'a> {
     }
 }
 
+impl<'a> fmt::Display for Segment<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Segment `{}` (tgt: {}, ctr: {}, frame: {}) of type {:?} from {} ({}) to {} ({})",
+            self.name,
+            self.target_id,
+            self.center_id,
+            self.frame_id,
+            self.data_type,
+            self.start_epoch.as_gregorian_str(TimeSystem::ET),
+            self.start_epoch.as_et_duration().in_seconds(),
+            self.end_epoch.as_gregorian_str(TimeSystem::ET),
+            self.end_epoch.as_et_duration().in_seconds()
+        )
+    }
+}
+
 #[derive(Debug)]
 pub struct SPK<'a> {
     pub segments: Vec<Segment<'a>>,
     pub daf: &'a DAF<'a>,
+}
+
+impl<'a> SPK<'a> {
+    pub fn query(
+        &self,
+        seg_target_id: i32,
+        epoch_et_s: f64,
+    ) -> Result<([f64; 3], [f64; 3]), AniseError> {
+        for seg in &self.segments {
+            if seg.target_id != seg_target_id {
+                continue;
+            }
+
+            if seg.data_type != DataType::ChebyshevPositionOnly {
+                return Err(AniseError::NAIFConversionError(
+                    "Only cheby supported".to_string(),
+                ));
+            }
+
+            let mut pos = [0.0, 0.0, 0.0];
+            let mut vel = [0.0, 0.0, 0.0];
+
+            // For type 2, the config data is at the very end of the file
+            // https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/spk.html#Type%202:%20Chebyshev%20(position%20only)
+
+            let start_byte = seg.end_idx - 1;
+            let end_byte = seg.end_idx;
+
+            dbg!(start_byte, end_byte);
+
+            let init_s = parse_bytes_as!(
+                f64,
+                &self.daf.bytes[start_byte..start_byte + DBL_SIZE],
+                self.daf.endianness
+            );
+
+            let initlen = parse_bytes_as!(
+                f64,
+                &self.daf.bytes[start_byte + DBL_SIZE..start_byte + DBL_SIZE * 2],
+                self.daf.endianness
+            );
+
+            let rsize = parse_bytes_as!(
+                f64,
+                &self.daf.bytes[start_byte + DBL_SIZE * 2..start_byte + DBL_SIZE * 3],
+                self.daf.endianness
+            );
+
+            let n = parse_bytes_as!(
+                f64,
+                &self.daf.bytes[start_byte + 3 * DBL_SIZE..end_byte],
+                self.daf.endianness
+            );
+
+            dbg!(init_s, initlen, rsize, n);
+
+            return Ok((pos, vel));
+        }
+        Err(AniseError::NAIFConversionError(format!(
+            "Could not find segment {}",
+            seg_target_id
+        )))
+    }
 }
 
 impl<'a> TryInto<SPK<'a>> for &'a DAF<'a> {
@@ -70,8 +149,8 @@ impl<'a> TryInto<SPK<'a>> for &'a DAF<'a> {
                     f64_data.len()
                 )));
             }
-            let start_epoch = Epoch::from_tdb_seconds(f64_data[0]);
-            let end_epoch = Epoch::from_tdb_seconds(f64_data[1]);
+            let start_epoch = Epoch::from_et_seconds(f64_data[0]);
+            let end_epoch = Epoch::from_et_seconds(f64_data[1]);
 
             if int_data.len() != 6 {
                 return Err(AniseError::NAIFConversionError(format!(
@@ -100,6 +179,16 @@ impl<'a> TryInto<SPK<'a>> for &'a DAF<'a> {
         }
 
         Ok(spk)
+    }
+}
+
+impl<'a> fmt::Display for SPK<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} with segments:\n", self.daf.idword)?;
+        for seg in &self.segments {
+            write!(f, "\t{}\n", seg)?;
+        }
+        fmt::Result::Ok(())
     }
 }
 

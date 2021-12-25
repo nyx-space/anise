@@ -9,9 +9,9 @@
 use crate::{parse_bytes_as, prelude::AniseError};
 use std::convert::TryInto;
 
-const RCRD_LEN: usize = 1024;
-const DBL_SIZE: usize = 8;
-const INT_SIZE: usize = 4;
+pub(crate) const RCRD_LEN: usize = 1024;
+pub(crate) const DBL_SIZE: usize = 8;
+pub(crate) const INT_SIZE: usize = 4;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Endianness {
@@ -56,7 +56,7 @@ impl<'a> DAF<'a> {
                 "Cannot parse a NAIF DAF of type: `{}`",
                 locidw
             )));
-        } else if daftype[1].trim() != "PCK" {
+        } else if daftype[1].trim() == "PCK" {
             println!("Good luck on the PCK debugging");
         }
 
@@ -144,13 +144,11 @@ impl<'a> DAF<'a> {
             let record = self.record(record_num);
             // Note that the segment control data are stored as f64 but need to be converted to usize
             let next_record = parse_bytes_as!(f64, &record[0..DBL_SIZE], self.endianness) as usize;
-            let prev_record =
-                parse_bytes_as!(f64, &record[8..8 + DBL_SIZE], self.endianness) as usize;
+            // let prev_record =
+            //     parse_bytes_as!(f64, &record[8..8 + DBL_SIZE], self.endianness) as usize;
             let nsummaries =
                 parse_bytes_as!(f64, &record[16..16 + DBL_SIZE], self.endianness) as usize;
-            println!("{:?}", &record);
-            dbg!(next_record, prev_record, nsummaries);
-            dbg!(record.len());
+
             // Parse the data of the summary.
             let name_record = self.record(record_num + 1);
             let length = DBL_SIZE * self.nd + INT_SIZE * self.ni;

@@ -17,7 +17,7 @@ use anise::{
 };
 
 #[test]
-fn test_de440_load() {
+fn test_spk_load() {
     // Using the DE421 as demo because the correct data is in the DAF documentation
     let filename = "data/de421.bsp";
     // let filename = "data/de440.bsp";
@@ -34,7 +34,9 @@ fn test_de440_load() {
     assert_eq!(de421.comments().len(), 1379);
     // Convert to SPK
     let spk: SPK = (&de421).try_into().unwrap();
-    dbg!(spk.segments);
+    println!("{}", spk);
+
+    spk.query(301, 0.0).unwrap();
 }
 
 #[ignore]
