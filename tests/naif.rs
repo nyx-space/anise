@@ -55,6 +55,8 @@ fn test_spk_load() {
         (init_s_past_j2k - -3169195200.0).abs() < 2e-16,
         "Invalid start time"
     );
+
+    spk.query(301, 0.0).unwrap();
 }
 
 #[ignore]

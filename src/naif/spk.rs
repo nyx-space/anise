@@ -7,6 +7,7 @@
  */
 
 use super::daf::DAF;
+use crate::naif::{divmod, S_PER_DAY, T0};
 use crate::prelude::AniseError;
 use hifitime::{Epoch, TimeSystem};
 use std::convert::{TryFrom, TryInto};
@@ -124,10 +125,11 @@ impl<'a> SPK<'a> {
         )))
     }
 
+    /// Query the SPK for the target object ID (e.g. 301) at the epoch_tdb time in seconds
     pub fn query(
         &self,
         seg_target_id: i32,
-        epoch_et_s: f64,
+        epoch_tdb_s: f64,
     ) -> Result<([f64; 3], [f64; 3]), AniseError> {
         let (seg_coeff_idx, (init_s_past_j2k, interval_length, rsize, num_records_in_seg)) =
             self.segment_ptr(seg_target_id)?;
@@ -136,6 +138,43 @@ impl<'a> SPK<'a> {
             seg_coeff_idx,
             (init_s_past_j2k, interval_length, rsize, num_records_in_seg)
         ));
+
+        // Compute the correct offset
+        let epoch = init_s_past_j2k; // epoch_tdb_s
+        let (index, offset) = divmod(
+            dbg!(epoch - T0 * S_PER_DAY - init_s_past_j2k) as usize,
+            interval_length,
+        );
+
+        if index > num_records_in_seg {
+            return Err(AniseError::NAIFConversionError(format!(
+                "Would need record {} of {}",
+                index, num_records_in_seg
+            )));
+        }
+
+        let mut data = Vec::with_capacity(rsize);
+        for _ in 0..rsize {
+            data.push(0.0);
+        }
+
+        self.daf
+            .read_f64s_into(seg_coeff_idx + index - 1, rsize, &mut data);
+
+        let rcrd_mid_point = data[0];
+        let rcrd_radius_s = data[1];
+        let num_coeffs = (rsize - 2) / 3;
+        let mut c_idx = 2;
+        let x_coeffs = &data[c_idx..c_idx + num_coeffs];
+        c_idx += num_coeffs;
+        let y_coeffs = &data[c_idx..c_idx + num_coeffs];
+        c_idx += num_coeffs;
+        let z_coeffs = &data[c_idx..c_idx + num_coeffs];
+
+        dbg!(rcrd_mid_point, rcrd_radius_s);
+        dbg!(x_coeffs);
+        dbg!(y_coeffs);
+        dbg!(z_coeffs);
 
         Err(AniseError::NAIFConversionError(format!(
             "Could not find segment {}",

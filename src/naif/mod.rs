@@ -20,3 +20,10 @@ macro_rules! parse_bytes_as {
         }
     }};
 }
+
+const T0: f64 = 2451545.0;
+const S_PER_DAY: f64 = 86400.0;
+
+pub(crate) fn divmod(a: usize, b: usize) -> (usize, usize) {
+    (a / b, a % b)
+}

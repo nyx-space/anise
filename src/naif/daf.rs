@@ -198,4 +198,14 @@ impl<'a> DAF<'a> {
             self.endianness
         )
     }
+
+    pub(crate) fn read_f64s_into(&self, byte_idx: usize, num: usize, out: &mut [f64]) {
+        for i in 0..num {
+            out[i] = parse_bytes_as!(
+                f64,
+                &self.bytes[DBL_SIZE * (byte_idx + i)..DBL_SIZE * (byte_idx + i + 1)],
+                self.endianness
+            );
+        }
+    }
 }
