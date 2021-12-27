@@ -6,8 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use super::daf::{Endianness, DAF, DBL_SIZE};
-use crate::parse_bytes_as;
+use super::daf::DAF;
 use crate::prelude::AniseError;
 use hifitime::{Epoch, TimeSystem};
 use std::convert::{TryFrom, TryInto};
@@ -48,7 +47,7 @@ impl<'a> fmt::Display for Segment<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Segment `{}` (tgt: {}, ctr: {}, frame: {}) of type {:?} from {} ({}) to {} ({})",
+            "Segment `{}` (tgt: {}, ctr: {}, frame: {}) of type {:?} from {} ({}) to {} ({}) [{}..{}]",
             self.name,
             self.target_id,
             self.center_id,
@@ -57,7 +56,9 @@ impl<'a> fmt::Display for Segment<'a> {
             self.start_epoch.as_gregorian_str(TimeSystem::ET),
             self.start_epoch.as_et_duration().in_seconds(),
             self.end_epoch.as_gregorian_str(TimeSystem::ET),
-            self.end_epoch.as_et_duration().in_seconds()
+            self.end_epoch.as_et_duration().in_seconds(),
+            self.start_idx,
+            self.end_idx
         )
     }
 }
@@ -69,11 +70,11 @@ pub struct SPK<'a> {
 }
 
 impl<'a> SPK<'a> {
-    pub fn query(
+    /// Returns the segment buffer index and the config data of that segment as (init_s_past_j2k, interval_length, rsize, num_records_in_seg)
+    pub fn segment_ptr(
         &self,
         seg_target_id: i32,
-        epoch_et_s: f64,
-    ) -> Result<([f64; 3], [f64; 3]), AniseError> {
+    ) -> Result<(usize, (f64, usize, usize, usize)), AniseError> {
         for seg in &self.segments {
             if seg.target_id != seg_target_id {
                 continue;
@@ -85,45 +86,57 @@ impl<'a> SPK<'a> {
                 ));
             }
 
-            let mut pos = [0.0, 0.0, 0.0];
-            let mut vel = [0.0, 0.0, 0.0];
-
-            // For type 2, the config data is at the very end of the file
+            // For type 2, the config data is at the very end of the record
             // https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/spk.html#Type%202:%20Chebyshev%20(position%20only)
 
-            let start_byte = seg.end_idx - 1;
-            let end_byte = seg.end_idx;
+            let mut byte_idx = seg.end_idx - 4;
+            //  1. INIT is the initial epoch of the first record, given in ephemeris seconds past J2000.
+            let init_s_past_j2k = self.daf.read_f64(byte_idx);
 
-            dbg!(start_byte, end_byte);
+            byte_idx += 1;
 
-            let init_s = parse_bytes_as!(
-                f64,
-                &self.daf.bytes[start_byte..start_byte + DBL_SIZE],
-                self.daf.endianness
-            );
+            //  2. INTLEN is the length of the interval covered by each record, in seconds.
+            let interval_length = self.daf.read_f64(byte_idx);
 
-            let initlen = parse_bytes_as!(
-                f64,
-                &self.daf.bytes[start_byte + DBL_SIZE..start_byte + DBL_SIZE * 2],
-                self.daf.endianness
-            );
+            byte_idx += 1;
 
-            let rsize = parse_bytes_as!(
-                f64,
-                &self.daf.bytes[start_byte + DBL_SIZE * 2..start_byte + DBL_SIZE * 3],
-                self.daf.endianness
-            );
+            //  3. RSIZE is the total size of (number of array elements in) each record.
+            let rsize = self.daf.read_f64(byte_idx);
 
-            let n = parse_bytes_as!(
-                f64,
-                &self.daf.bytes[start_byte + 3 * DBL_SIZE..end_byte],
-                self.daf.endianness
-            );
+            byte_idx += 1;
 
-            dbg!(init_s, initlen, rsize, n);
+            //  4. N is the number of records contained in the segment.
+            let num_records_in_seg = self.daf.read_f64(byte_idx);
 
-            return Ok((pos, vel));
+            return Ok((
+                seg.start_idx,
+                (
+                    init_s_past_j2k,
+                    interval_length as usize,
+                    rsize as usize,
+                    num_records_in_seg as usize,
+                ),
+            ));
         }
+        Err(AniseError::NAIFConversionError(format!(
+            "Could not find segment {}",
+            seg_target_id
+        )))
+    }
+
+    pub fn query(
+        &self,
+        seg_target_id: i32,
+        epoch_et_s: f64,
+    ) -> Result<([f64; 3], [f64; 3]), AniseError> {
+        let (seg_coeff_idx, (init_s_past_j2k, interval_length, rsize, num_records_in_seg)) =
+            self.segment_ptr(seg_target_id)?;
+
+        dbg!((
+            seg_coeff_idx,
+            (init_s_past_j2k, interval_length, rsize, num_records_in_seg)
+        ));
+
         Err(AniseError::NAIFConversionError(format!(
             "Could not find segment {}",
             seg_target_id

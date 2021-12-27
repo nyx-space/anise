@@ -51,13 +51,13 @@ impl<'a> DAF<'a> {
                 "Malformed header string: `{}`",
                 locidw
             )));
+        } else if daftype[1].trim() == "PCK" {
+            println!("Good luck on the PCK debugging");
         } else if daftype[1].trim() != "SPK" {
             return Err(AniseError::NAIFConversionError(format!(
                 "Cannot parse a NAIF DAF of type: `{}`",
                 locidw
             )));
-        } else if daftype[1].trim() == "PCK" {
-            println!("Good luck on the PCK debugging");
         }
 
         // We need to figure out if this file is big or little endian before we can convert some byte arrays into integer
@@ -188,5 +188,14 @@ impl<'a> DAF<'a> {
     fn record(&self, num: usize) -> &'a [u8] {
         let start_idx = num * RCRD_LEN - RCRD_LEN;
         &self.bytes[start_idx..start_idx + RCRD_LEN]
+    }
+
+    /// Returns the 64-bit float at the provided address
+    pub(crate) fn read_f64(&self, byte_idx: usize) -> f64 {
+        parse_bytes_as!(
+            f64,
+            &self.bytes[DBL_SIZE * byte_idx..DBL_SIZE * (byte_idx + 1)],
+            self.endianness
+        )
     }
 }

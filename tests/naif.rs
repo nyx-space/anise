@@ -36,7 +36,25 @@ fn test_spk_load() {
     let spk: SPK = (&de421).try_into().unwrap();
     println!("{}", spk);
 
-    spk.query(301, 0.0).unwrap();
+    let (seg_coeff_idx, (init_s_past_j2k, interval_length, rsize, num_records_in_seg)) =
+        spk.segment_ptr(301).unwrap();
+    assert_eq!(
+        seg_coeff_idx, 944041,
+        "Invalid start of coeff index for DE421"
+    );
+    assert_eq!(
+        interval_length, 345600,
+        "Invalid interval length (in seconds) for DE421"
+    );
+    assert_eq!(rsize, 41, "Invalid rsize for DE421");
+    assert_eq!(
+        num_records_in_seg, 14080,
+        "Invalid num_records_in_seg for DE421"
+    );
+    assert!(
+        (init_s_past_j2k - -3169195200.0).abs() < 2e-16,
+        "Invalid start time"
+    );
 }
 
 #[ignore]
