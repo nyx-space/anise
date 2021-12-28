@@ -36,10 +36,10 @@ fn test_spk_load() {
     let spk: SPK = (&de421).try_into().unwrap();
     println!("{}", spk);
 
-    let (seg_coeff_idx, (init_s_past_j2k, interval_length, rsize, num_records_in_seg)) =
+    let (seg, (init_s_past_j2k, interval_length, rsize, num_records_in_seg)) =
         spk.segment_ptr(301).unwrap();
     assert_eq!(
-        seg_coeff_idx, 944041,
+        seg.start_idx, 944041,
         "Invalid start of coeff index for DE421"
     );
     assert_eq!(
@@ -56,7 +56,7 @@ fn test_spk_load() {
         "Invalid start time"
     );
 
-    spk.query(301, 0.0).unwrap();
+    spk.all_coefficients(301).unwrap();
 }
 
 #[ignore]
