@@ -6,10 +6,16 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+extern crate crc32fast;
 use super::daf::DAF;
-use crate::naif::{divmod, S_PER_DAY, T0};
+use crate::generated::anise_generated::anise::common::InterpolationKind;
+use crate::generated::anise_generated::anise::ephemeris::{
+    Ephemeris, EphemerisArgs, EqualTimeSteps, EqualTimeStepsArgs, Interpolator, Spline, SplineArgs,
+};
+use crate::generated::anise_generated::anise::time::System;
+use crate::generated::anise_generated::anise::{MapToIndex, MapToIndexArgs};
 use crate::prelude::AniseError;
-use core::num;
+use crc32fast::hash;
 use hifitime::{Epoch, TimeSystem};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
@@ -184,6 +190,122 @@ impl<'a> SPK<'a> {
         }
 
         Ok((seg, full_data))
+    }
+
+    /// Converts the provided SPK to an ANISE file
+    pub fn to_anise(&self, orig_file: &str, filename: &str) {
+        use crate::prelude::*;
+        use std::fs::File;
+        use std::io::Write;
+        let comment_str = format!("Converted from `{}` read as {}", orig_file, self.daf.idword);
+        let publisher_str = "ANISE Toolkit team, v0.1";
+        let mut fbb = flatbuffers::FlatBufferBuilder::with_capacity(1024);
+        let comments = fbb.create_string(&comment_str);
+        let publisher = fbb.create_string(publisher_str);
+        let metadata = Metadata::create(
+            &mut fbb,
+            &MetadataArgs {
+                comments: Some(comments),
+                publisher: Some(publisher),
+                publication_date: Some(&AniseEpoch::new(0.0, 0.0)),
+                ..Default::default()
+            },
+        );
+
+        // Iterate through all the segments and create the ANISE splines
+        // Start by building the CRC32 map to index
+        // We will store each ephemeris in the same order that they are in the initial file
+        let j2000_hash = hash("J2000".as_bytes());
+        let mut indexes = Vec::with_capacity(self.segments.len());
+        let mut hashes = Vec::with_capacity(self.segments.len());
+        let mut ephemerides = Vec::with_capacity(self.segments.len());
+        for (idx, seg) in self.segments.iter().enumerate() {
+            // Some files don't have a useful name in the segments, so we append the target ID in case
+            let name = format!("{} #{}", seg.name, seg.target_id);
+            let hashed_name = hash(name.as_bytes());
+            indexes.push(idx as u16);
+            hashes.push(hashed_name);
+            let (_, seg_coeffs) = self.all_coefficients(seg.target_id).unwrap();
+            let mut splines = Vec::with_capacity(self.segments.len());
+            // Build the splines
+            for seg_coeff in &seg_coeffs {
+                let s_x = fbb.create_vector_direct(&seg_coeff.x_coeffs);
+                let s_y = fbb.create_vector_direct(&seg_coeff.y_coeffs);
+                let s_z = fbb.create_vector_direct(&seg_coeff.z_coeffs);
+                splines.push(Spline::create(
+                    &mut fbb,
+                    &SplineArgs {
+                        usable_start_epoch: Some(&AniseEpoch::new(0.0, 0.0)),
+                        usable_end_epoch: Some(&AniseEpoch::new(0.0, 0.0)),
+                        x: Some(s_x),
+                        y: Some(s_y),
+                        z: Some(s_z),
+                        ..Default::default()
+                    },
+                ));
+            }
+            let et_splines = fbb.create_vector(&splines);
+            // TODO: Support unequal time step splines
+            let eqts = EqualTimeSteps::create(
+                &mut fbb,
+                &EqualTimeStepsArgs {
+                    spline_duration_s: seg_coeffs[0].rcrd_radius_s,
+                    splines: Some(et_splines),
+                },
+            );
+
+            // Build the ephemeris for this data
+            let e_name = fbb.create_string(&name);
+            // TODO: Actually create a hashmap to find the name of the parent
+            let name = format!("{} #{}", seg.name, seg.center_id);
+            let parent_hash = hash(name.as_bytes());
+
+            let ephem = Ephemeris::create(
+                &mut fbb,
+                &EphemerisArgs {
+                    name: Some(e_name),
+                    ref_epoch: Some(&AniseEpoch::new(0.0, 0.0)),
+                    ref_system: System::TDB,
+                    backward: false,
+                    parent_hash,
+                    orientation_hash: j2000_hash,
+                    constants: None,
+                    interpolation_kind: InterpolationKind::ChebyshevSeries,
+                    interpolator_type: Interpolator::equal_time_steps,
+                    interpolator: None,
+                },
+            );
+
+            ephemerides.push(ephem);
+        }
+        // Create the MapToIndex for the ephemeris map
+        let mti_hash = fbb.create_vector_direct(&hashes);
+        let mti_index = fbb.create_vector_direct(&indexes);
+        let ephemeris_map = MapToIndex::create(
+            &mut fbb,
+            &MapToIndexArgs {
+                hash: Some(mti_hash),
+                index: Some(mti_index),
+            },
+        );
+
+        // Create the Ephemeris structure
+        let ephem_vec = fbb.create_vector(&ephemerides);
+
+        let root = Anise::create(
+            &mut fbb,
+            &AniseArgs {
+                metadata: Some(metadata),
+                ephemeris_map: Some(ephemeris_map),
+                ephemerides: Some(ephem_vec),
+                ..Default::default()
+            },
+        );
+        fbb.finish(root, Some("ANIS"));
+
+        // Create the file
+        let mut file = File::create(filename).unwrap();
+        file.write_all(fbb.finished_data()).unwrap();
     }
 }
 

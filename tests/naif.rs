@@ -57,6 +57,9 @@ fn test_spk_load() {
     );
 
     spk.all_coefficients(301).unwrap();
+    // Build the ANISE file
+    // TODO: Compute the checksum and make sure it's correct
+    spk.to_anise(filename, "de421.anis");
 }
 
 #[ignore]
