@@ -256,7 +256,7 @@ impl<'a> SPK<'a> {
 
             // Build the ephemeris for this data
             let e_name = fbb.create_string(&name);
-            // TODO: Actually create a hashmap to find the name of the parent
+            // BUG: Actually create a hashmap to find the name of the parent
             let name = format!("{} #{}", seg.name, seg.center_id);
             let parent_hash = hash(name.as_bytes());
 
@@ -272,7 +272,7 @@ impl<'a> SPK<'a> {
                     constants: None,
                     interpolation_kind: InterpolationKind::ChebyshevSeries,
                     interpolator_type: Interpolator::equal_time_steps,
-                    interpolator: None,
+                    interpolator: Some(eqts.as_union_value()),
                 },
             );
 
