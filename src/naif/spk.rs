@@ -22,9 +22,9 @@ use std::fmt;
 
 #[derive(Debug)]
 pub struct Segment<'a> {
-    name: &'a str,
-    start_epoch: Epoch,
-    end_epoch: Epoch,
+    pub name: &'a str,
+    pub start_epoch: Epoch,
+    pub end_epoch: Epoch,
     target_id: i32,
     center_id: i32,
     frame_id: i32,
@@ -146,17 +146,9 @@ impl<'a> SPK<'a> {
         &self,
         seg_target_id: i32,
     ) -> Result<(&Segment, Vec<SegmentExportData>), AniseError> {
-        let (seg, (init_s_past_j2k, interval_length, rsize, num_records_in_seg)) =
-            self.segment_ptr(seg_target_id)?;
-
-        dbg!((
-            seg.start_idx,
-            (init_s_past_j2k, interval_length, rsize, num_records_in_seg)
-        ));
+        let (seg, (_, _, rsize, num_records_in_seg)) = self.segment_ptr(seg_target_id)?;
 
         let mut full_data = Vec::new();
-
-        dbg!(seg.start_idx, seg.end_idx, num_records_in_seg);
 
         for index in (0..num_records_in_seg).step_by(rsize) {
             let mut data = Vec::with_capacity(rsize);

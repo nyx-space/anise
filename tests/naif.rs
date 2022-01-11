@@ -6,7 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::convert::TryInto;
+use std::{convert::TryInto, f64::EPSILON};
 
 use anise::{
     naif::{
@@ -59,7 +59,83 @@ fn test_spk_load() {
     spk.all_coefficients(301).unwrap();
     // Build the ANISE file
     // TODO: Compute the checksum and make sure it's correct
-    spk.to_anise(filename, "de421.anis");
+    let filename_anis = "de421.anis";
+    spk.to_anise(filename, filename_anis);
+    // Load this ANIS file and make sure that it matches the original DE421 data.
+
+    let bytes = file_mmap!(filename_anis).unwrap();
+    let ctx = Anise::from_bytes(&bytes);
+    assert_eq!(
+        ctx.ephemeris_map().unwrap().hash().unwrap().len(),
+        spk.segments.len(),
+        "Incorrect number of ephem in map"
+    );
+    assert_eq!(
+        ctx.ephemeris_map().unwrap().index().unwrap().len(),
+        spk.segments.len(),
+        "Incorrect number of ephem in map"
+    );
+    assert_eq!(
+        ctx.ephemerides().unwrap().len(),
+        spk.segments.len(),
+        "Incorrect number of ephem in map"
+    );
+    // Try to calculate the raw bytes this would take
+    let mut byte_count = 0;
+    for ephem in &ctx.ephemerides().unwrap() {
+        let splt = ephem.name().split("#").collect::<Vec<&str>>();
+        let seg_target_id = str::parse::<i32>(splt[1]).unwrap();
+        // Fetch the SPK segment
+        let (seg, seg_data) = spk.all_coefficients(seg_target_id).unwrap();
+        assert_eq!(seg.name, splt[0].trim(), "incorrect name");
+        let eqts = ephem.interpolator_as_equal_time_steps().unwrap();
+        for (sidx, spline) in eqts.splines().unwrap().iter().enumerate() {
+            let anise_x = spline.x().unwrap();
+            assert_eq!(
+                anise_x.len(),
+                seg_data[sidx].x_coeffs.len(),
+                "invalid number of X coeffs for target {}, spline idx {}",
+                seg_target_id,
+                sidx
+            );
+            // Check that the data strictly matches
+            for (cidx, x) in anise_x.iter().enumerate() {
+                assert!((x - seg_data[sidx].x_coeffs[cidx]).abs() < EPSILON);
+            }
+            byte_count += 64 * anise_x.len();
+
+            // Repeat for Y
+            let anise_y = spline.y().unwrap();
+            assert_eq!(
+                anise_y.len(),
+                seg_data[sidx].y_coeffs.len(),
+                "invalid number of Y coeffs for target {}, spline idx {}",
+                seg_target_id,
+                sidx
+            );
+            // Check that the data strictly matches
+            for (cidx, y) in anise_y.iter().enumerate() {
+                assert!((y - seg_data[sidx].y_coeffs[cidx]).abs() < EPSILON);
+            }
+            byte_count += 64 * anise_y.len();
+
+            // Repeat for Z
+            let anise_z = spline.z().unwrap();
+            assert_eq!(
+                anise_z.len(),
+                seg_data[sidx].z_coeffs.len(),
+                "invalid number of Z coeffs for target {}, spline idx {}",
+                seg_target_id,
+                sidx
+            );
+            // Check that the data strictly matches
+            for (cidx, z) in anise_z.iter().enumerate() {
+                assert!((z - seg_data[sidx].z_coeffs[cidx]).abs() < EPSILON);
+            }
+            byte_count += 64 * anise_z.len();
+        }
+    }
+    println!("Expected KB if raw = {}", byte_count / 1000);
 }
 
 #[ignore]
