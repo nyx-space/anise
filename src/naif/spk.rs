@@ -150,7 +150,7 @@ impl<'a> SPK<'a> {
 
         let mut full_data = Vec::new();
 
-        for index in (0..num_records_in_seg).step_by(rsize) {
+        for index in (0..num_records_in_seg * rsize).step_by(rsize) {
             let mut data = Vec::with_capacity(rsize);
             for _ in 0..rsize {
                 data.push(0.0);

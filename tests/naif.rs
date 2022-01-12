@@ -80,15 +80,30 @@ fn test_spk_load() {
         spk.segments.len(),
         "Incorrect number of ephem in map"
     );
-    // Try to calculate the raw bytes this would take
-    let mut byte_count = 0;
-    for ephem in &ctx.ephemerides().unwrap() {
+
+    // From Python jplephem, an inspection of the coefficients of the DE421 file shows the number of segments we should have.
+    // So let's add it here as a test.
+    // >>> from jplephem.spk import SPK
+    // >>> de421 = SPK.open('../anise.rs/data/de421.bsp')
+    // >>> [c.load_array()[2].shape[1] for c in de421.segments]
+    let seg_len: &[usize] = &[
+        7040, 3520, 3520, 1760, 1760, 1760, 1760, 1760, 1760, 3520, 14080, 14080, 1, 1, 1,
+    ];
+
+    for (eidx, ephem) in ctx.ephemerides().unwrap().iter().enumerate() {
         let splt = ephem.name().split("#").collect::<Vec<&str>>();
         let seg_target_id = str::parse::<i32>(splt[1]).unwrap();
         // Fetch the SPK segment
         let (seg, seg_data) = spk.all_coefficients(seg_target_id).unwrap();
+        assert_eq!(
+            seg_data.len(),
+            seg_len[eidx],
+            "wrong number of segments for {}",
+            eidx
+        );
         assert_eq!(seg.name, splt[0].trim(), "incorrect name");
         let eqts = ephem.interpolator_as_equal_time_steps().unwrap();
+
         for (sidx, spline) in eqts.splines().unwrap().iter().enumerate() {
             let anise_x = spline.x().unwrap();
             assert_eq!(
@@ -102,7 +117,6 @@ fn test_spk_load() {
             for (cidx, x) in anise_x.iter().enumerate() {
                 assert!((x - seg_data[sidx].x_coeffs[cidx]).abs() < EPSILON);
             }
-            byte_count += 64 * anise_x.len();
 
             // Repeat for Y
             let anise_y = spline.y().unwrap();
@@ -117,7 +131,6 @@ fn test_spk_load() {
             for (cidx, y) in anise_y.iter().enumerate() {
                 assert!((y - seg_data[sidx].y_coeffs[cidx]).abs() < EPSILON);
             }
-            byte_count += 64 * anise_y.len();
 
             // Repeat for Z
             let anise_z = spline.z().unwrap();
@@ -132,10 +145,8 @@ fn test_spk_load() {
             for (cidx, z) in anise_z.iter().enumerate() {
                 assert!((z - seg_data[sidx].z_coeffs[cidx]).abs() < EPSILON);
             }
-            byte_count += 64 * anise_z.len();
         }
     }
-    println!("Expected KB if raw = {}", byte_count / 1000);
 }
 
 #[ignore]
