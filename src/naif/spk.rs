@@ -310,6 +310,8 @@ impl<'a> SPK<'a> {
 
         let mut all_reals = Vec::with_capacity(500_000);
 
+        let mut cnt_compressed = 0;
+
         // Iterate through all the segments and create the ANISE splines
         // Start by building the CRC32 map to index
         // We will store each ephemeris in the same order that they are in the initial file
@@ -327,6 +329,14 @@ impl<'a> SPK<'a> {
             // let mut splines = Vec::with_capacity(self.segments.len());
             // Build the splines
             for seg_coeff in &seg_coeffs {
+                for v in &seg_coeff.x_coeffs {
+                    if (*v).is_nan() || (*v).is_infinite() {
+                        cnt_compressed += 1;
+                    } else if (v.to_bits()) & (v.to_bits() - 1) == 0 {
+                        // Power of two!
+                        cnt_compressed += 1;
+                    }
+                }
                 let asn1_x: Vec<Real> = seg_coeff
                     .x_coeffs
                     .iter()
@@ -357,7 +367,11 @@ impl<'a> SPK<'a> {
             let asn1_vec: Vec<u8> = this_vec.to_vec().unwrap();
             file.write_all(&asn1_vec).unwrap();
         }
-        println!("Expecting ~ {} bytes", cnt * 8);
+        println!(
+            "Expecting ~ {} bytes ({} compressed)",
+            cnt * 8,
+            cnt_compressed * 8
+        );
     }
 }
 
