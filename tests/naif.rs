@@ -61,6 +61,7 @@ fn test_spk_load() {
     // TODO: Compute the checksum and make sure it's correct
     let filename_anis = "de421.anis";
     spk.to_anise(filename, filename_anis);
+    spk.to_anise_asn1(filename, "de421.anis.asn1");
     // Load this ANIS file and make sure that it matches the original DE421 data.
 
     let bytes = file_mmap!(filename_anis).unwrap();

@@ -7,7 +7,9 @@
  */
 
 extern crate crc32fast;
+extern crate der;
 use super::daf::DAF;
+use crate::asn1::Real;
 use crate::generated::anise_generated::anise::common::InterpolationKind;
 use crate::generated::anise_generated::anise::ephemeris::{
     Ephemeris, EphemerisArgs, EqualTimeSteps, EqualTimeStepsArgs, Interpolator, Spline, SplineArgs,
@@ -16,6 +18,7 @@ use crate::generated::anise_generated::anise::time::System;
 use crate::generated::anise_generated::anise::{MapToIndex, MapToIndexArgs};
 use crate::prelude::AniseError;
 use crc32fast::hash;
+use der::{Decodable, Decoder, Encodable, Sequence};
 use hifitime::{Epoch, TimeSystem};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
@@ -298,6 +301,61 @@ impl<'a> SPK<'a> {
         // Create the file
         let mut file = File::create(filename).unwrap();
         file.write_all(fbb.finished_data()).unwrap();
+    }
+
+    /// Converts the provided SPK to an ANISE file
+    pub fn to_anise_asn1(&self, orig_file: &str, filename: &str) {
+        use std::fs::File;
+        use std::io::Write;
+
+        let mut all_reals = Vec::with_capacity(500_000);
+
+        // Iterate through all the segments and create the ANISE splines
+        // Start by building the CRC32 map to index
+        // We will store each ephemeris in the same order that they are in the initial file
+        // let j2000_hash = hash("J2000".as_bytes());
+        let mut indexes = Vec::with_capacity(self.segments.len());
+        let mut hashes = Vec::with_capacity(self.segments.len());
+        // let mut ephemerides = Vec::with_capacity(self.segments.len());
+        for (idx, seg) in self.segments.iter().enumerate() {
+            // Some files don't have a useful name in the segments, so we append the target ID in case
+            let name = format!("{} #{}", seg.name, seg.target_id);
+            let hashed_name = hash(name.as_bytes());
+            indexes.push(idx as u16);
+            hashes.push(hashed_name);
+            let (_, seg_coeffs) = self.all_coefficients(seg.target_id).unwrap();
+            // let mut splines = Vec::with_capacity(self.segments.len());
+            // Build the splines
+            for seg_coeff in &seg_coeffs {
+                let asn1_x: Vec<Real> = seg_coeff
+                    .x_coeffs
+                    .iter()
+                    .map(|x| (*x).into())
+                    .collect::<Vec<Real>>();
+                all_reals.push(asn1_x);
+                let asn1_y: Vec<Real> = seg_coeff
+                    .y_coeffs
+                    .iter()
+                    .map(|x| (*x).into())
+                    .collect::<Vec<Real>>();
+                all_reals.push(asn1_y);
+                let asn1_z: Vec<Real> = seg_coeff
+                    .z_coeffs
+                    .iter()
+                    .map(|x| (*x).into())
+                    .collect::<Vec<Real>>();
+                all_reals.push(asn1_z);
+            }
+        }
+
+        // Create the file
+        let mut file = File::create(filename).unwrap();
+        // file.write_all(all_reals.to_vec()).unwrap();
+        for this_vec in &all_reals {
+            // dbg!(this_vec[0], this_vec[0].to_vec().unwrap());
+            let asn1_vec: Vec<u8> = this_vec.to_vec().unwrap();
+            file.write_all(&asn1_vec).unwrap();
+        }
     }
 }
 

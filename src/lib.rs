@@ -23,4 +23,5 @@ pub mod prelude {
     pub use std::fs::File;
 }
 
+pub mod asn1;
 pub mod naif;
