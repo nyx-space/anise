@@ -5,9 +5,10 @@ use der::{Decodable, Decoder, Encodable, Sequence};
 /// X.509 `AlgorithmIdentifier` (same as above)
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Real {
-    mantissa: i32,
+    // mantissa: i32,
     // realbase: u8,
-    exponent: i32,
+    // exponent: i32,
+    coerced: u64,
 }
 
 impl From<f64> for Real {
@@ -15,28 +16,31 @@ impl From<f64> for Real {
         // Using https://math.stackexchange.com/a/1049723/17452 , but rely on Ratio::new() to compute the gcd.
         // Find the max precision of this number
         // Note: the power computations happen in i32 until the end.
-        let mut exponent: i32 = 0;
-        let mut new_val = val;
-        let ten: f64 = 10.0;
+        // let mut exponent: i32 = 0;
+        // let mut new_val = val;
+        // let ten: f64 = 10.0;
 
-        loop {
-            if (new_val.floor() - new_val).abs() < f64::EPSILON {
-                // Yay, we've found the precision of this number
-                break;
-            }
-            // Multiply by the precision
-            // Note: we multiply by powers of ten to avoid this kind of round error with f32s:
-            // https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=b760579f103b7192c20413ebbe167b90
-            exponent += 1;
-            new_val = val * ten.powi(exponent);
-        }
+        // loop {
+        //     if (new_val.floor() - new_val).abs() < f64::EPSILON {
+        //         // Yay, we've found the precision of this number
+        //         break;
+        //     }
+        //     // Multiply by the precision
+        //     // Note: we multiply by powers of ten to avoid this kind of round error with f32s:
+        //     // https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=b760579f103b7192c20413ebbe167b90
+        //     exponent += 1;
+        //     new_val = val * ten.powi(exponent);
+        // }
 
-        let mantissa = new_val as i32;
+        // let mantissa = new_val as i32;
 
+        // Real {
+        //     mantissa,
+        //     // realbase: 10,
+        //     exponent,
+        // }
         Real {
-            mantissa,
-            // realbase: 10,
-            exponent,
+            coerced: val as u64,
         }
     }
 }
@@ -44,13 +48,16 @@ impl From<f64> for Real {
 impl<'a> Decodable<'a> for Real {
     fn decode(decoder: &mut Decoder) -> der::Result<Self> {
         decoder.sequence(|decoder| {
-            let mantissa = decoder.decode()?;
-            // let realbase = decoder.decode()?;
-            let exponent = decoder.decode()?;
+            // let mantissa = decoder.decode()?;
+            // // let realbase = decoder.decode()?;
+            // let exponent = decoder.decode()?;
+            // Ok(Self {
+            //     mantissa,
+            //     // realbase,
+            //     exponent,
+            // })
             Ok(Self {
-                mantissa,
-                // realbase,
-                exponent,
+                coerced: decoder.decode()?,
             })
         })
     }
@@ -61,7 +68,7 @@ impl<'a> Sequence<'a> for Real {
     where
         F: FnOnce(&[&dyn Encodable]) -> der::Result<T>,
     {
-        field_encoder(&[&self.mantissa, &self.exponent])
+        field_encoder(&[&self.coerced])
     }
 }
 
@@ -84,9 +91,10 @@ fn demo() {
     // };
 
     let reals = vec![Real {
-        mantissa: 19,
-        // realbase: 10,
-        exponent: -1,
+        // mantissa: 19,
+        // // realbase: 10,
+        // exponent: -1,
+        coerced: 1.9_f64 as u64,
     }];
 
     // Encode

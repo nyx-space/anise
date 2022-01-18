@@ -350,12 +350,14 @@ impl<'a> SPK<'a> {
 
         // Create the file
         let mut file = File::create(filename).unwrap();
-        // file.write_all(all_reals.to_vec()).unwrap();
+        let mut cnt = 0;
         for this_vec in &all_reals {
+            cnt += this_vec.len();
             // dbg!(this_vec[0], this_vec[0].to_vec().unwrap());
             let asn1_vec: Vec<u8> = this_vec.to_vec().unwrap();
             file.write_all(&asn1_vec).unwrap();
         }
+        println!("Expecting ~ {} bytes", cnt * 8);
     }
 }
 
