@@ -17,6 +17,7 @@ use crate::generated::anise_generated::anise::time::System;
 use crate::generated::anise_generated::anise::{MapToIndex, MapToIndexArgs};
 use crate::prelude::AniseError;
 use crc32fast::hash;
+use der::asn1::OctetString;
 use der::{Decodable, Decoder, Encodable, Sequence};
 use hifitime::{Epoch, TimeSystem};
 use std::convert::{TryFrom, TryInto};
@@ -303,11 +304,11 @@ impl<'a> SPK<'a> {
     }
 
     /// Converts the provided SPK to an ANISE file
-    pub fn to_anise_asn1(&self, orig_file: &str, filename: &str) {
+    pub fn to_anise_asn1(&self, _orig_file: &str, filename: &str) {
         use std::fs::File;
         use std::io::Write;
 
-        // let mut all_reals = Vec::with_capacity(500_000);
+        // let mut all_data = Vec::with_capacity(500_000);
         // Create the file
         let mut file = File::create(filename).unwrap();
         let mut cnt = 0;
@@ -329,20 +330,43 @@ impl<'a> SPK<'a> {
             // let mut splines = Vec::with_capacity(self.segments.len());
             // Build the splines
             for seg_coeff in &seg_coeffs {
-                let mut buffer = [0u8; 12];
                 cnt += seg_coeff.x_coeffs.len() * 3;
-                for val in &seg_coeff.x_coeffs {
-                    let encoded = val.encode_to_slice(&mut buffer).unwrap();
-                    file.write_all(&encoded).unwrap();
+                let mut buffer = [0u8; 14 * 8 + 10];
+
+                for (k, coeffs) in [
+                    &seg_coeff.x_coeffs,
+                    &seg_coeff.y_coeffs,
+                    &seg_coeff.z_coeffs,
+                ]
+                .iter()
+                .enumerate()
+                {
+                    for (i, val) in coeffs.iter().enumerate() {
+                        for (j, byte) in val.to_le_bytes().iter().enumerate() {
+                            // Place into byte array
+                            buffer[k * 3 + i * 8 + j] = *byte;
+                        }
+                    }
                 }
-                for val in &seg_coeff.y_coeffs {
-                    let encoded = val.encode_to_slice(&mut buffer).unwrap();
-                    file.write_all(&encoded).unwrap();
-                }
-                for val in &seg_coeff.z_coeffs {
-                    let encoded = val.encode_to_slice(&mut buffer).unwrap();
-                    file.write_all(&encoded).unwrap();
-                }
+                // Adding an extra two bytes of padding here for demo purposes.
+                // I think that the ASN1 structure will remove those bytes though.
+                let mut out_buffer = [0u8; 14 * 8 + 14];
+                OctetString::new(&buffer)
+                    .unwrap()
+                    .encode_to_slice(&mut out_buffer)
+                    .unwrap();
+                // let encoded = val.encode_to_slice(&mut buffer).unwrap();
+                // assert_eq!(out_buffer[2..], buffer); // -- Always identical
+                file.write_all(&out_buffer).unwrap();
+
+                // for val in &seg_coeff.y_coeffs {
+                //     let encoded = val.encode_to_slice(&mut buffer).unwrap();
+                //     file.write_all(&encoded).unwrap();
+                // }
+                // for val in &seg_coeff.z_coeffs {
+                //     let encoded = val.encode_to_slice(&mut buffer).unwrap();
+                //     file.write_all(&encoded).unwrap();
+                // }
 
                 // all_reals.push(seg_coeff.x_coeffs.clone());
                 // all_reals.push(seg_coeff.y_coeffs.clone());

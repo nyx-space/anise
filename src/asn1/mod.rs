@@ -4,7 +4,7 @@ use der::{asn1::OctetString, Decodable, Decoder, Encodable, Sequence};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ArrayOfDoubles<'a> {
-    data: OctetString<'a>,
+    pub data: OctetString<'a>,
 }
 
 // impl<'a> Decodable<'a> for ArrayOfDoubles<'a> {
