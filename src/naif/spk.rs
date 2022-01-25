@@ -391,6 +391,7 @@ impl<'a> TryInto<SPK<'a>> for &'a DAF<'a> {
 
     fn try_into(self) -> Result<SPK<'a>, Self::Error> {
         let mut spk = SPK {
+            // TODO : find a way to avoid alloc ?
             segments: Vec::new(),
             daf: &self,
         };

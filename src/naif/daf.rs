@@ -45,6 +45,7 @@ impl<'a> DAF<'a> {
             ))
         })?;
 
+        // TODO : Add daftype[0] check
         let daftype: Vec<&str> = locidw.split("/").collect();
         if daftype.len() != 2 {
             return Err(AniseError::NAIFConversionError(format!(
@@ -56,6 +57,11 @@ impl<'a> DAF<'a> {
         } else if daftype[1].trim() != "SPK" {
             return Err(AniseError::NAIFConversionError(format!(
                 "Cannot parse a NAIF DAF of type: `{}`",
+                locidw
+            )));
+        } else if daftype[0].trim() != "DAF" {
+            return Err(AniseError::NAIFConversionError(format!(
+                "Cannot parse file whose identifier is not DAF: `{}`",
                 locidw
             )));
         }
@@ -92,6 +98,7 @@ impl<'a> DAF<'a> {
             ))
         })?;
 
+        // TODO : Check FTPSTR when set ?
         // Ignore the FTPSTR (seems null in the DE440 and the padding to complete the record).
 
         Ok(Self {
