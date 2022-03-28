@@ -14,13 +14,13 @@ use der::{
 // Replace the mid point and radius with start and end usable epoch
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct SplineAsn1<'a> {
+pub struct SplineAsn1 {
     pub rcrd_mid_point: f64,
     pub rcrd_radius_s: f64,
-    pub x_data_ieee754: SequenceOf<f64, 17>,
+    pub x_data_ieee754: SequenceOf<f64, 14>,
     // pub x_data_ieee754: &'a OctetString<'a>,
-    pub y_data_ieee754: &'a OctetString<'a>,
-    pub z_data_ieee754: &'a OctetString<'a>,
+    pub y_data_ieee754: SequenceOf<f64, 14>,
+    pub z_data_ieee754: SequenceOf<f64, 14>,
     // pub x: Vec<f64>,
     // pub y: Vec<f64>,
     // pub z: Vec<f64>,
@@ -50,9 +50,9 @@ pub struct SplineAsn1<'a> {
     // pub cov_vz_vz: &'a [f64],
 }
 
-impl<'a> SplineAsn1<'a> {}
+// impl<'a> SplineAsn1<'a> {}
 
-impl<'a> Encode for SplineAsn1<'a> {
+impl<'a> Encode for SplineAsn1 {
     fn encoded_len(&self) -> der::Result<der::Length> {
         // XXX: How to handle variable length of the f64 data?
         // Maybe just store as big endian bytes and that's it?
@@ -70,8 +70,8 @@ impl<'a> Encode for SplineAsn1<'a> {
         encoder.encode(&self.rcrd_mid_point)?;
         encoder.encode(&self.rcrd_radius_s)?;
         encoder.encode(&self.x_data_ieee754)?;
-        encoder.encode(self.y_data_ieee754)?;
-        encoder.encode(self.z_data_ieee754)
+        encoder.encode(&self.y_data_ieee754)?;
+        encoder.encode(&self.z_data_ieee754)
     }
 }
 

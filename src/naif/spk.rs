@@ -323,6 +323,7 @@ impl<'a> SPK<'a> {
         let mut hashes = Vec::with_capacity(self.segments.len());
 
         // let mut ephemerides = Vec::with_capacity(self.segments.len());
+        let mut max_coeffs = 0;
         for (idx, seg) in self.segments.iter().enumerate() {
             // Some files don't have a useful name in the segments, so we append the target ID in case
             let name = format!("{} #{}", seg.name, seg.target_id);
@@ -333,31 +334,32 @@ impl<'a> SPK<'a> {
             // let mut splines = Vec::with_capacity(self.segments.len());
             // Build the splines
             for seg_coeff in &seg_coeffs {
+                if seg_coeff.x_coeffs.len() > max_coeffs {
+                    max_coeffs = seg_coeff.x_coeffs.len();
+                }
                 // Build the ASN1 data
                 // let mut x_data_ieee754 = Vec::new();
                 let mut x_data_ieee754 = SequenceOf::new();
                 for coeff in &seg_coeff.x_coeffs {
                     x_data_ieee754.add(*coeff).unwrap();
                 }
-                let mut y_data_ieee754 = Vec::new();
+                let mut y_data_ieee754 = SequenceOf::new();
                 for coeff in &seg_coeff.y_coeffs {
-                    for byte in coeff.to_be_bytes() {
-                        y_data_ieee754.push(byte);
-                    }
+                    y_data_ieee754.add(*coeff);
                 }
-                let mut z_data_ieee754 = Vec::new();
+                let mut z_data_ieee754 = SequenceOf::new();
                 for coeff in &seg_coeff.z_coeffs {
-                    for byte in coeff.to_be_bytes() {
-                        z_data_ieee754.push(byte);
-                    }
+                    z_data_ieee754.add(*coeff);
                 }
                 let spl = SplineAsn1 {
                     rcrd_mid_point: seg_coeff.rcrd_mid_point,
                     rcrd_radius_s: seg_coeff.rcrd_mid_point,
                     x_data_ieee754,
+                    y_data_ieee754,
+                    z_data_ieee754,
                     // x_data_ieee754: &OctetString::new(&x_data_ieee754).unwrap(),
-                    y_data_ieee754: &OctetString::new(&y_data_ieee754).unwrap(),
-                    z_data_ieee754: &OctetString::new(&z_data_ieee754).unwrap(),
+                    // y_data_ieee754: &OctetString::new(&y_data_ieee754).unwrap(),
+                    // z_data_ieee754: &OctetString::new(&z_data_ieee754).unwrap(),
                 };
                 cnt += seg_coeff.x_coeffs.len() * 3;
 
@@ -423,6 +425,8 @@ impl<'a> SPK<'a> {
                 // all_reals.push(seg_coeff.z_coeffs.clone());
             }
         }
+
+        dbg!(max_coeffs);
 
         // for this_vec in &all_reals {
         //     cnt += this_vec.len();
