@@ -364,6 +364,20 @@ impl<'a> SPK<'a> {
                 let mut out_buffer = [0u8; 364];
                 spl.encode_to_slice(&mut out_buffer).unwrap();
 
+                let mut zerocnt = 0;
+                for byte in &out_buffer {
+                    if *byte == 0x0 {
+                        zerocnt += 1;
+                        if zerocnt > 30 {
+                            println!("{:x?}", out_buffer);
+                            println!("x = {:?}", seg_coeff.x_coeffs);
+                            println!("y = {:?}", seg_coeff.y_coeffs);
+                            println!("z = {:?}", seg_coeff.z_coeffs);
+                            panic!();
+                        }
+                    }
+                }
+
                 // Adding an extra two bytes of padding here for demo purposes.
                 // I think that the ASN1 structure will remove those bytes though.
                 // XXX: Does encode to slice overwrite the previous buffer?
