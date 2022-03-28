@@ -9,6 +9,7 @@
 extern crate crc32fast;
 extern crate der;
 use super::daf::DAF;
+use crate::asn1::SplineAsn1;
 use crate::generated::anise_generated::anise::common::InterpolationKind;
 use crate::generated::anise_generated::anise::ephemeris::{
     Ephemeris, EphemerisArgs, EqualTimeSteps, EqualTimeStepsArgs, Interpolator, Spline, SplineArgs,
@@ -18,7 +19,8 @@ use crate::generated::anise_generated::anise::{MapToIndex, MapToIndexArgs};
 use crate::prelude::AniseError;
 use crc32fast::hash;
 use der::asn1::OctetString;
-use der::{Decodable, Decoder, Encodable, Sequence};
+// use der::{Decodable, Decoder, Encodable, Sequence};
+use der::Encode;
 use hifitime::{Epoch, TimeSystem};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
@@ -319,6 +321,7 @@ impl<'a> SPK<'a> {
         // let j2000_hash = hash("J2000".as_bytes());
         let mut indexes = Vec::with_capacity(self.segments.len());
         let mut hashes = Vec::with_capacity(self.segments.len());
+
         // let mut ephemerides = Vec::with_capacity(self.segments.len());
         for (idx, seg) in self.segments.iter().enumerate() {
             // Some files don't have a useful name in the segments, so we append the target ID in case
@@ -330,31 +333,44 @@ impl<'a> SPK<'a> {
             // let mut splines = Vec::with_capacity(self.segments.len());
             // Build the splines
             for seg_coeff in &seg_coeffs {
-                cnt += seg_coeff.x_coeffs.len() * 3;
-                let mut buffer = [0u8; 14 * 8 + 10];
-
-                for (k, coeffs) in [
-                    &seg_coeff.x_coeffs,
-                    &seg_coeff.y_coeffs,
-                    &seg_coeff.z_coeffs,
-                ]
-                .iter()
-                .enumerate()
-                {
-                    for (i, val) in coeffs.iter().enumerate() {
-                        for (j, byte) in val.to_le_bytes().iter().enumerate() {
-                            // Place into byte array
-                            buffer[k * 3 + i * 8 + j] = *byte;
-                        }
+                // Build the ASN1 data
+                let mut x_data_ieee754 = Vec::new();
+                for coeff in &seg_coeff.x_coeffs {
+                    for byte in coeff.to_be_bytes() {
+                        x_data_ieee754.push(byte);
                     }
                 }
+                let mut y_data_ieee754 = Vec::new();
+                for coeff in &seg_coeff.y_coeffs {
+                    for byte in coeff.to_be_bytes() {
+                        y_data_ieee754.push(byte);
+                    }
+                }
+                let mut z_data_ieee754 = Vec::new();
+                for coeff in &seg_coeff.z_coeffs {
+                    for byte in coeff.to_be_bytes() {
+                        z_data_ieee754.push(byte);
+                    }
+                }
+                let spl = SplineAsn1 {
+                    rcrd_mid_point: seg_coeff.rcrd_mid_point,
+                    rcrd_radius_s: seg_coeff.rcrd_mid_point,
+                    x_data_ieee754: &OctetString::new(&x_data_ieee754).unwrap(),
+                    y_data_ieee754: &OctetString::new(&y_data_ieee754).unwrap(),
+                    z_data_ieee754: &OctetString::new(&z_data_ieee754).unwrap(),
+                };
+                cnt += seg_coeff.x_coeffs.len() * 3;
+
+                let mut out_buffer = [0u8; 364];
+                spl.encode_to_slice(&mut out_buffer).unwrap();
+
                 // Adding an extra two bytes of padding here for demo purposes.
                 // I think that the ASN1 structure will remove those bytes though.
-                let mut out_buffer = [0u8; 14 * 8 + 14];
-                OctetString::new(&buffer)
-                    .unwrap()
-                    .encode_to_slice(&mut out_buffer)
-                    .unwrap();
+                // XXX: Does encode to slice overwrite the previous buffer?
+                // OctetString::new(&buffer)
+                //     .unwrap()
+                //     .encode_to_slice(&mut out_buffer)
+                //     .unwrap();
                 // let encoded = val.encode_to_slice(&mut buffer).unwrap();
                 // assert_eq!(out_buffer[2..], buffer); // -- Always identical
                 file.write_all(&out_buffer).unwrap();

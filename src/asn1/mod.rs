@@ -1,83 +1,98 @@
 extern crate der;
 
-use der::{asn1::OctetString, Decodable, Decoder, Encodable, Sequence};
+// use der::{
+//     asn1::{Any, OctetString},
+//     Sequence,
+// };
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct ArrayOfDoubles<'a> {
-    pub data: OctetString<'a>,
+use der::{
+    asn1::{BitString, OctetString},
+    Decode, Decoder, DerOrd, Encode, Length, Sequence, ValueOrd,
+};
+
+/// X.509 `AlgorithmIdentifier` (same as above)
+#[derive(Clone, Debug, PartialEq)]
+pub struct SplineAsn1<'a> {
+    pub rcrd_mid_point: f64,
+    pub rcrd_radius_s: f64,
+    pub x_data_ieee754: &'a OctetString<'a>,
+    pub y_data_ieee754: &'a OctetString<'a>,
+    pub z_data_ieee754: &'a OctetString<'a>,
+    // pub x: Vec<f64>,
+    // pub y: Vec<f64>,
+    // pub z: Vec<f64>,
+    // pub vx: &'a [f64],
+    // pub vy: &'a [f64],
+    // pub vz: &'a [f64],
+    // pub cov_x_x: &'a [f64],
+    // pub cov_y_x: &'a [f64],
+    // pub cov_y_y: &'a [f64],
+    // pub cov_z_x: &'a [f64],
+    // pub cov_z_y: &'a [f64],
+    // pub cov_z_z: &'a [f64],
+    // pub cov_vx_x: &'a [f64],
+    // pub cov_vx_y: &'a [f64],
+    // pub cov_vx_z: &'a [f64],
+    // pub cov_vx_vx: &'a [f64],
+    // pub cov_vy_x: &'a [f64],
+    // pub cov_vy_y: &'a [f64],
+    // pub cov_vy_z: &'a [f64],
+    // pub cov_vy_vx: &'a [f64],
+    // pub cov_vy_vy: &'a [f64],
+    // pub cov_vz_x: &'a [f64],
+    // pub cov_vz_y: &'a [f64],
+    // pub cov_vz_z: &'a [f64],
+    // pub cov_vz_vx: &'a [f64],
+    // pub cov_vz_vy: &'a [f64],
+    // pub cov_vz_vz: &'a [f64],
 }
 
-// impl<'a> Decodable<'a> for ArrayOfDoubles<'a> {
-//     fn decode(decoder: &mut Decoder) -> der::Result<Self> {
+impl<'a> SplineAsn1<'a> {}
+
+impl<'a> Encode for SplineAsn1<'a> {
+    fn encoded_len(&self) -> der::Result<der::Length> {
+        // XXX: How to handle variable length of the f64 data?
+        // Maybe just store as big endian bytes and that's it?
+        // Then, I'd need to figure out how to encode what data is present and what isn't.
+        // That could be a bit field of 27 items, each representing whether a given field is set. They will be assumed to be the same size, but that's probably wrong.
+
+        self.rcrd_mid_point.encoded_len()?
+            + self.rcrd_radius_s.encoded_len()?
+            + self.x_data_ieee754.encoded_len()?
+            + self.y_data_ieee754.encoded_len()?
+            + self.z_data_ieee754.encoded_len()?
+    }
+
+    fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
+        encoder.encode(&self.rcrd_mid_point)?;
+        encoder.encode(&self.rcrd_radius_s)?;
+        encoder.encode(self.x_data_ieee754)?;
+        encoder.encode(self.y_data_ieee754)?;
+        encoder.encode(self.z_data_ieee754)
+    }
+}
+
+// impl<'a> Decode<'a> for SplineAsn1<'a> {
+//     fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
 //         decoder.sequence(|decoder| {
-//             // let is_neg = decoder.decode()?;
-//             let mantissa = decoder.decode()?;
-//             // let realbase = decoder.decode()?;
-//             let exponent = decoder.decode()?;
+//             let usable_start_epoch = decoder.decode()?;
+//             let usable_end_epoch = decoder.decode()?;
+
+//             let x_data_ieee754: &'a OctetString = decoder.decode()?;
+
 //             Ok(Self {
-//                 // is_neg,
-//                 mantissa,
-//                 // realbase,
-//                 exponent,
+//                 usable_start_epoch,
+//                 usable_end_epoch,
+//                 x_data_ieee754,
+//                 y_data_ieee754: &OctetString::new(&[0; 0]).unwrap(),
+//                 z_data_ieee754: &OctetString::new(&[0; 0]).unwrap(),
 //             })
-//             // Ok(Self {
-//             //     coerced: decoder.decode()?,
-//             // })
 //         })
 //     }
-// }
 
-// impl<'a> Sequence<'a> for ArrayOfDoubles<'a> {
-//     fn fields<F, T>(&self, field_encoder: F) -> der::Result<T>
-//     where
-//         F: FnOnce(&[&dyn Encodable]) -> der::Result<T>,
-//     {
-//         field_encoder(&[&self.mantissa, &self.exponent])
-//     }
-// }
-
-// impl<'a> Encodable for Real {
-//     fn encoded_len(&self) -> der::Result<der::Length> {
-//         todo!()
-//     }
-
-//     fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
-//         todo!()
-//     }
-// }
-
-// #[test]
-// fn demo() {
-//     // let real = Real {
-//     //     mantissa: 19,
-//     //     realbase: 10,
-//     //     exponent: -1,
-//     // };
-
-//     // let reals = vec![Real {
-//     //     is_neg: false,
-//     //     mantissa: 19,
-//     //     // // realbase: 10,
-//     //     exponent: -1,
-//     //     // coerced: 1.9_f64.to_bits(),
-//     // }];
-//     let reals = vec![Real::from(1.9_f64)];
-
-//     // Encode
-//     let der_encoded_real = reals.to_vec().unwrap();
-
-//     // Decode
-//     let decoded_algorithm_identifier = Vec::<Real>::from_der(&der_encoded_real).unwrap();
-
-//     assert_eq!(reals, decoded_algorithm_identifier);
-//     for x in &reals {
-//         let val: Real = (*x).into();
-//         dbg!(val);
-//     }
-
-//     for x in &decoded_algorithm_identifier {
-//         // let val: f64 = f64::from_bits(x.coerced);
-//         let val: f64 = (*x).into();
-//         dbg!(val);
+//     fn from_der(bytes: &'a [u8]) -> der::Result<Self> {
+//         let mut decoder = Decoder::new(bytes)?;
+//         let result = Self::decode(&mut decoder)?;
+//         decoder.finish(result)
 //     }
 // }
