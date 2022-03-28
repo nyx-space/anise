@@ -364,19 +364,22 @@ impl<'a> SPK<'a> {
                 let mut out_buffer = [0u8; 364];
                 spl.encode_to_slice(&mut out_buffer).unwrap();
 
-                let mut zerocnt = 0;
-                for byte in &out_buffer {
+                // Only write the exact number of bytes used for the encoding
+                let mut useful_bytes = 0;
+                let mut prev_byte_was_zero = out_buffer[0] == 0x0;
+                for (idx, byte) in out_buffer.iter().enumerate().skip(1) {
                     if *byte == 0x0 {
-                        zerocnt += 1;
-                        if zerocnt > 30 {
-                            println!("{:x?}", out_buffer);
-                            println!("x = {:?}", seg_coeff.x_coeffs);
-                            println!("y = {:?}", seg_coeff.y_coeffs);
-                            println!("z = {:?}", seg_coeff.z_coeffs);
-                            panic!();
+                        if !prev_byte_was_zero {
+                            useful_bytes = idx;
+                        } else {
+                            prev_byte_was_zero = true;
                         }
                     }
                 }
+
+                let len: u32 = spl.encoded_len().unwrap().into();
+                dbg!(len, useful_bytes);
+                assert!(len as usize == useful_bytes);
 
                 // Adding an extra two bytes of padding here for demo purposes.
                 // I think that the ASN1 structure will remove those bytes though.
@@ -387,7 +390,21 @@ impl<'a> SPK<'a> {
                 //     .unwrap();
                 // let encoded = val.encode_to_slice(&mut buffer).unwrap();
                 // assert_eq!(out_buffer[2..], buffer); // -- Always identical
-                file.write_all(&out_buffer).unwrap();
+                file.write_all(&out_buffer[..useful_bytes - 1]).unwrap();
+
+                // let mut zerocnt = 0;
+                // for byte in &out_buffer[..useful_bytes] {
+                //     if *byte == 0x0 {
+                //         zerocnt += 1;
+                //         if zerocnt > 2 {
+                //             println!("{:x?}", out_buffer);
+                //             println!("x = {:?}", seg_coeff.x_coeffs);
+                //             println!("y = {:?}", seg_coeff.y_coeffs);
+                //             println!("z = {:?}", seg_coeff.z_coeffs);
+                //             panic!();
+                //         }
+                //     }
+                // }
 
                 // for val in &seg_coeff.y_coeffs {
                 //     let encoded = val.encode_to_slice(&mut buffer).unwrap();

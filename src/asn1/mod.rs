@@ -10,7 +10,9 @@ use der::{
     Decode, Decoder, DerOrd, Encode, Length, Sequence, ValueOrd,
 };
 
-/// X.509 `AlgorithmIdentifier` (same as above)
+// TODO:
+// Replace the mid point and radius with start and end usable epoch
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct SplineAsn1<'a> {
     pub rcrd_mid_point: f64,
