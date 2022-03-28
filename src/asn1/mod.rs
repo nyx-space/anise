@@ -6,7 +6,7 @@ extern crate der;
 // };
 
 use der::{
-    asn1::{BitString, OctetString},
+    asn1::{BitString, OctetString, SequenceOf},
     Decode, Decoder, DerOrd, Encode, Length, Sequence, ValueOrd,
 };
 
@@ -17,7 +17,8 @@ use der::{
 pub struct SplineAsn1<'a> {
     pub rcrd_mid_point: f64,
     pub rcrd_radius_s: f64,
-    pub x_data_ieee754: &'a OctetString<'a>,
+    pub x_data_ieee754: SequenceOf<f64, 17>,
+    // pub x_data_ieee754: &'a OctetString<'a>,
     pub y_data_ieee754: &'a OctetString<'a>,
     pub z_data_ieee754: &'a OctetString<'a>,
     // pub x: Vec<f64>,
@@ -68,7 +69,7 @@ impl<'a> Encode for SplineAsn1<'a> {
     fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
         encoder.encode(&self.rcrd_mid_point)?;
         encoder.encode(&self.rcrd_radius_s)?;
-        encoder.encode(self.x_data_ieee754)?;
+        encoder.encode(&self.x_data_ieee754)?;
         encoder.encode(self.y_data_ieee754)?;
         encoder.encode(self.z_data_ieee754)
     }

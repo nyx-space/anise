@@ -18,7 +18,7 @@ use crate::generated::anise_generated::anise::time::System;
 use crate::generated::anise_generated::anise::{MapToIndex, MapToIndexArgs};
 use crate::prelude::AniseError;
 use crc32fast::hash;
-use der::asn1::OctetString;
+use der::asn1::{OctetString, SequenceOf};
 // use der::{Decodable, Decoder, Encodable, Sequence};
 use der::Encode;
 use hifitime::{Epoch, TimeSystem};
@@ -334,11 +334,10 @@ impl<'a> SPK<'a> {
             // Build the splines
             for seg_coeff in &seg_coeffs {
                 // Build the ASN1 data
-                let mut x_data_ieee754 = Vec::new();
+                // let mut x_data_ieee754 = Vec::new();
+                let mut x_data_ieee754 = SequenceOf::new();
                 for coeff in &seg_coeff.x_coeffs {
-                    for byte in coeff.to_be_bytes() {
-                        x_data_ieee754.push(byte);
-                    }
+                    x_data_ieee754.add(*coeff).unwrap();
                 }
                 let mut y_data_ieee754 = Vec::new();
                 for coeff in &seg_coeff.y_coeffs {
@@ -355,31 +354,35 @@ impl<'a> SPK<'a> {
                 let spl = SplineAsn1 {
                     rcrd_mid_point: seg_coeff.rcrd_mid_point,
                     rcrd_radius_s: seg_coeff.rcrd_mid_point,
-                    x_data_ieee754: &OctetString::new(&x_data_ieee754).unwrap(),
+                    x_data_ieee754,
+                    // x_data_ieee754: &OctetString::new(&x_data_ieee754).unwrap(),
                     y_data_ieee754: &OctetString::new(&y_data_ieee754).unwrap(),
                     z_data_ieee754: &OctetString::new(&z_data_ieee754).unwrap(),
                 };
                 cnt += seg_coeff.x_coeffs.len() * 3;
 
-                let mut out_buffer = [0u8; 364];
+                let mut out_buffer = [0u8; 609];
                 spl.encode_to_slice(&mut out_buffer).unwrap();
 
                 // Only write the exact number of bytes used for the encoding
-                let mut useful_bytes = 0;
-                let mut prev_byte_was_zero = out_buffer[0] == 0x0;
-                for (idx, byte) in out_buffer.iter().enumerate().skip(1) {
-                    if *byte == 0x0 {
-                        if !prev_byte_was_zero {
-                            useful_bytes = idx;
-                        } else {
-                            prev_byte_was_zero = true;
-                        }
-                    }
-                }
+                // let mut useful_bytes = 0;
+                // let mut prev_byte_was_zero = out_buffer[0] == 0x0;
+                // for (idx, byte) in out_buffer.iter().enumerate().skip(1) {
+                //     if *byte == 0x0 {
+                //         if !prev_byte_was_zero {
+                //             useful_bytes = idx;
+                //         } else {
+                //             prev_byte_was_zero = true;
+                //         }
+                //     }
+                // }
 
-                let len: u32 = spl.encoded_len().unwrap().into();
-                dbg!(len, useful_bytes);
-                assert!(len as usize == useful_bytes);
+                let len: usize = spl.encoded_len().unwrap().try_into().unwrap();
+                // dbg!(len, useful_bytes);
+                // assert!(len as usize == useful_bytes);
+                // if len != useful_bytes {
+                //     println!("{len} != {useful_bytes}\n{out_buffer:x?}\n");
+                // }
 
                 // Adding an extra two bytes of padding here for demo purposes.
                 // I think that the ASN1 structure will remove those bytes though.
@@ -390,7 +393,7 @@ impl<'a> SPK<'a> {
                 //     .unwrap();
                 // let encoded = val.encode_to_slice(&mut buffer).unwrap();
                 // assert_eq!(out_buffer[2..], buffer); // -- Always identical
-                file.write_all(&out_buffer[..useful_bytes - 1]).unwrap();
+                file.write_all(&out_buffer[..len]).unwrap();
 
                 // let mut zerocnt = 0;
                 // for byte in &out_buffer[..useful_bytes] {
