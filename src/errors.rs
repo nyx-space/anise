@@ -18,6 +18,7 @@ pub enum AniseError {
     IndexingError,
     /// If the NAIF file cannot be read or isn't supported
     NAIFConversionError(String),
+    InvalidTimeSystem,
 }
 
 impl From<IOErrorKind> for AniseError {
@@ -35,15 +36,16 @@ impl From<InvalidFlatbuffer> for AniseError {
 impl fmt::Display for AniseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
-            AniseError::IOError(e) => write!(f, "Anise Error: IOError: {:?}", e),
-            AniseError::IOUnknownError => write!(f, "Anise Error: IOUnknownError"),
-            AniseError::DivisionByZero => write!(f, "Anise Error: DivisionByZero"),
-            AniseError::ParameterNotSpecified => write!(f, "Anise Error: ParameterNotSpecified"),
-            AniseError::IndexingError => write!(f, "Anise Error: IndexingError"),
-            AniseError::InvalidFile(e) => write!(f, "Anise Error: InvalidFile: {:?}", e),
-            AniseError::NAIFConversionError(reason) => {
+            Self::IOError(e) => write!(f, "Anise Error: IOError: {:?}", e),
+            Self::IOUnknownError => write!(f, "Anise Error: IOUnknownError"),
+            Self::DivisionByZero => write!(f, "Anise Error: DivisionByZero"),
+            Self::ParameterNotSpecified => write!(f, "Anise Error: ParameterNotSpecified"),
+            Self::IndexingError => write!(f, "Anise Error: IndexingError"),
+            Self::InvalidFile(e) => write!(f, "Anise Error: InvalidFile: {:?}", e),
+            Self::NAIFConversionError(reason) => {
                 write!(f, "Anise Error: invalid NAIF DAF file: {}", reason)
             }
+            Self::InvalidTimeSystem => write!(f, "Anise Error: invalid time system"),
         }
     }
 }
