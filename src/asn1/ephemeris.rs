@@ -11,7 +11,7 @@ pub struct Ephemeris<'a> {
     pub ref_epoch: Epoch,
     pub backward: bool,
     pub interpolation_kind: InterpolationKind,
-    pub interpolator: Interpolator,
+    pub interpolator: Interpolator<'a>,
     pub parent_ephemeris_hash: u32,
     pub orientation_hash: u32,
 }
@@ -56,12 +56,12 @@ impl<'a> Decode<'a> for Ephemeris<'a> {
     }
 }
 
-pub enum Interpolator {
-    EqualTimeSteps(EqualTimeSteps),
-    UnequalTimeSteps(UnequalTimeSteps),
+pub enum Interpolator<'a> {
+    EqualTimeSteps(EqualTimeSteps<'a>),
+    UnequalTimeSteps(UnequalTimeSteps<'a>),
 }
 
-impl<'a> Encode for Interpolator {
+impl<'a> Encode for Interpolator<'a> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         match self {
             Self::EqualTimeSteps(ets) => ets.encoded_len(),
@@ -77,7 +77,7 @@ impl<'a> Encode for Interpolator {
     }
 }
 
-impl<'a> Decode<'a> for Interpolator {
+impl<'a> Decode<'a> for Interpolator<'a> {
     fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
         decoder.sequence(|decoder| {
             let maybe_ets: _ = decoder.decode();
@@ -95,7 +95,7 @@ impl<'a> Decode<'a> for Interpolator {
 /// This approach is commonly used to interpolate the position of slow moving objects like celestial objects.
 
 #[derive(Default)]
-pub struct EqualTimeSteps {
+pub struct EqualTimeSteps<'a> {
     /// The duration of this spline in seconds, used to compute the offset of the vectors to fetch.
     /// To retrieve the appropriate index in the coefficient data, apply the following algorithm.
     /// 0. Let `epoch` be the desired epoch, and `start_epoch` the start epoch of the parent structure.
@@ -112,10 +112,10 @@ pub struct EqualTimeSteps {
     /// 5. Initialize the proper interpolation scheme with `t_prime` as the requested interpolation time.
     pub spline_duration_s: f64,
     // pub splines: &'a [Spline<'a>],
-    pub splines: SequenceOf<Spline, 32>,
+    pub splines: SequenceOf<Spline<'a>, 50>,
 }
 
-impl<'a> Encode for EqualTimeSteps {
+impl<'a> Encode for EqualTimeSteps<'a> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         // XXX: How to handle variable length of the f64 data?
         // Maybe just store as big endian bytes and that's it?
@@ -131,7 +131,7 @@ impl<'a> Encode for EqualTimeSteps {
     }
 }
 
-impl<'a> Decode<'a> for EqualTimeSteps {
+impl<'a> Decode<'a> for EqualTimeSteps<'a> {
     fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
         decoder.sequence(|decoder| {
             Ok(Self {
@@ -159,7 +159,7 @@ impl<'a> Decode<'a> for EqualTimeSteps {
 /// 6. Find the interpolation coefficients (ANISE will provide these algorithms).
 /// 7. Optionally, verify that querying the interpolation at the initial epochs returns the original state data (x, y, z,... cov_vz_vz).
 #[derive(Default)]
-pub struct UnequalTimeSteps {
+pub struct UnequalTimeSteps<'a> {
     /// A pre-sorted list of all of the offsets from the start_epoch of the Ephemeris
     /// available in the list of coefficient data.
     /// These time entries are centiseconds (10 milliseconds) past the start_epoch (defined
@@ -186,12 +186,12 @@ pub struct UnequalTimeSteps {
     // pub spline_time_index: &'a [i64],
     pub spline_time_index: SetOf<i64, 16>,
     // pub splines: &'a [Spline],
-    pub splines: SequenceOf<Spline, 16>,
+    pub splines: SequenceOf<Spline<'a>, 16>,
     pub time_normalization_min: f64,
     pub time_normalization_max: f64,
 }
 
-impl<'a> Encode for UnequalTimeSteps {
+impl<'a> Encode for UnequalTimeSteps<'a> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         // XXX: How to handle variable length of the f64 data?
         // Maybe just store as big endian bytes and that's it?
@@ -212,7 +212,7 @@ impl<'a> Encode for UnequalTimeSteps {
     }
 }
 
-impl<'a> Decode<'a> for UnequalTimeSteps {
+impl<'a> Decode<'a> for UnequalTimeSteps<'a> {
     fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
         decoder.sequence(|decoder| {
             Ok(Self {

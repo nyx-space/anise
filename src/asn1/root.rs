@@ -113,7 +113,7 @@ impl<'a> Decode<'a> for Metadata<'a> {
 #[derive(Default)]
 pub struct LookUpTable {
     /// Hashes of the general hashing algorithm
-    pub hashes: SetOf<u32, 16>,
+    pub hashes: SequenceOf<u32, 16>,
     /// Corresponding index for each hash, may only have 65_535 entries
     pub indexes: SequenceOf<u16, 16>,
 }

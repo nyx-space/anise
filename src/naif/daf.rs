@@ -215,4 +215,8 @@ impl<'a> DAF<'a> {
             );
         }
     }
+
+    pub(crate) fn ptr_to_read_u8(&'a self, byte_idx: usize) -> &'a [u8] {
+        &self.bytes[DBL_SIZE * (byte_idx)..DBL_SIZE * (byte_idx + 1)]
+    }
 }

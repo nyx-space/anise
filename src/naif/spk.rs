@@ -8,12 +8,13 @@
 
 extern crate crc32fast;
 extern crate der;
-use super::daf::DAF;
+use super::daf::{Endianness, DAF, DBL_SIZE};
 use crate::asn1::common::InterpolationKind;
 use crate::asn1::ephemeris::{Ephemeris, EqualTimeSteps, Interpolator};
 use crate::asn1::root::{LookUpTable, Metadata, TrajectoryFile, ANISE_VERSION};
 use crate::asn1::spline::Spline;
 use crate::asn1::time::Epoch as AniseEpoch;
+use crate::parse_bytes_as;
 // use crate::asn1::SplineAsn1;
 // use crate::generated::anise_generated::anise::common::InterpolationKind;
 // use crate::generated::anise_generated::anise::ephemeris::{
@@ -82,12 +83,12 @@ impl<'a> fmt::Display for Segment<'a> {
 }
 
 #[derive(Debug, Clone)]
-pub struct SegmentExportData {
+pub struct SegmentExportData<'a> {
     pub rcrd_mid_point: f64,
     pub rcrd_radius_s: f64,
-    pub x_coeffs: Vec<f64>,
-    pub y_coeffs: Vec<f64>,
-    pub z_coeffs: Vec<f64>,
+    pub x_coeffs: &'a [u8],
+    pub y_coeffs: &'a [u8],
+    pub z_coeffs: &'a [u8],
 }
 
 #[derive(Debug)]
@@ -155,29 +156,44 @@ impl<'a> SPK<'a> {
     pub fn all_coefficients(
         &self,
         seg_target_id: i32,
-    ) -> Result<(&Segment, Vec<SegmentExportData>), AniseError> {
+    ) -> Result<(&Segment, Vec<SegmentExportData<'a>>), AniseError> {
         let (seg, (_, _, rsize, num_records_in_seg)) = self.segment_ptr(seg_target_id)?;
 
         let mut full_data = Vec::new();
 
         for index in (0..num_records_in_seg * rsize).step_by(rsize) {
-            let mut data = Vec::with_capacity(rsize);
-            for _ in 0..rsize {
-                data.push(0.0);
-            }
+            // let mut data = Vec::with_capacity(rsize);
+            // for _ in 0..rsize {
+            //     data.push(0.0);
+            // }
 
-            self.daf
-                .read_f64s_into(seg.start_idx + index - 1, rsize, &mut data);
+            // self.daf
+            //     .read_f64s_into(seg.start_idx + index - 1, rsize, &mut data);
 
-            let rcrd_mid_point = data[0];
-            let rcrd_radius_s = data[1];
+            let data = self.daf.ptr_to_read_u8(seg.start_idx + index - 1);
+
+            let mut byte_idx = 0;
+            let rcrd_mid_point = parse_bytes_as!(
+                f64,
+                &self.daf.bytes[DBL_SIZE * (byte_idx)..DBL_SIZE * (byte_idx + 1)],
+                Endianness::Little
+            );
+            byte_idx += 1;
+            let rcrd_radius_s = parse_bytes_as!(
+                f64,
+                &self.daf.bytes[DBL_SIZE * (byte_idx)..DBL_SIZE * (byte_idx + 1)],
+                Endianness::Little
+            );
             let num_coeffs = (rsize - 2) / 3;
             let mut c_idx = 2;
-            let x_coeffs = data[c_idx..c_idx + num_coeffs].to_vec();
+            let x_coeffs = &self.daf.bytes[DBL_SIZE * (byte_idx + 1) + c_idx
+                ..(c_idx + num_coeffs) + DBL_SIZE * (byte_idx + 1)];
             c_idx += num_coeffs;
-            let y_coeffs = data[c_idx..c_idx + num_coeffs].to_vec();
+            let y_coeffs = &self.daf.bytes[DBL_SIZE * (byte_idx + 1) + c_idx
+                ..(c_idx + num_coeffs) + DBL_SIZE * (byte_idx + 1)];
             c_idx += num_coeffs;
-            let z_coeffs = data[c_idx..c_idx + num_coeffs].to_vec();
+            let z_coeffs = &self.daf.bytes[DBL_SIZE * (byte_idx + 1) + c_idx
+                ..(c_idx + num_coeffs) + DBL_SIZE * (byte_idx + 1)];
 
             // Prep the data to be exported
             let export = SegmentExportData {
@@ -311,7 +327,7 @@ impl<'a> SPK<'a> {
     }
 
     /// Converts the provided SPK to an ANISE file
-    pub fn to_anise_asn1(&self, orig_file: &str, filename: &str) {
+    pub fn to_anise_asn1(&'a self, orig_file: &str, filename: &str) {
         let meta = Metadata {
             file_version: crate::asn1::root::Semver {
                 major: 4,
@@ -340,15 +356,18 @@ impl<'a> SPK<'a> {
             for seg_coeff in &seg_coeffs {
                 let mut spline = Spline::default();
                 // TODO: Add the start and end epoch for each spline
-                for coeff in &seg_coeff.x_coeffs {
-                    spline.x.add(*coeff).unwrap();
-                }
-                for coeff in &seg_coeff.y_coeffs {
-                    spline.y.add(*coeff).unwrap();
-                }
-                for coeff in &seg_coeff.z_coeffs {
-                    spline.z.add(*coeff).unwrap();
-                }
+                // for coeff in &seg_coeff.x_coeffs {
+                //     spline.x.add(*coeff).unwrap();
+                // }
+                spline.x = &seg_coeff.x_coeffs;
+                // spline.y = &seg_coeff.y_coeffs;
+                // spline.x = &seg_coeff.z_coeffs;
+                // for coeff in seg_coeff.y_coeffs {
+                //     spline.y.add(*coeff).unwrap();
+                // }
+                // for coeff in seg_coeff.z_coeffs {
+                //     spline.z.add(*coeff).unwrap();
+                // }
                 interpolator.splines.add(spline).unwrap();
             }
 
@@ -374,8 +393,8 @@ impl<'a> SPK<'a> {
 
         let mut buf = Vec::new();
         let mut file = File::create(filename).unwrap();
-        file.write_all(traj_file.encode_to_slice(&mut buf).unwrap())
-            .unwrap();
+        traj_file.encode_to_vec(&mut buf).unwrap();
+        file.write_all(&buf).unwrap();
     }
 }
 
