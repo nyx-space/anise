@@ -1,7 +1,4 @@
-use der::{
-    asn1::{OctetString, SequenceOf},
-    Decode, Decoder, Encode,
-};
+use der::{asn1::OctetString, Decode, Decoder, Encode};
 
 use super::time::Epoch;
 
@@ -90,25 +87,24 @@ impl<'a> Encode for Spline<'a> {
         // That could be a bit field of 27 items, each representing whether a given field is set. They will be assumed to be the same size, but that's probably wrong.
 
         let mut x_data_ieee754_be = [0x0; 8 * MAX_INTERP_DEGREE];
+        let mut x_size = 0;
         for x in self.x {
             for (i, byte) in x.to_be_bytes().iter().enumerate() {
                 x_data_ieee754_be[i] = *byte;
+                x_size += 1;
             }
         }
+
         self.start_epoch.encoded_len()?
             + self.end_epoch.encoded_len()?
-            + OctetString::new(&x_data_ieee754_be)?.encoded_len()?
-            + OctetString::new(&x_data_ieee754_be)?.encoded_len()?
-            + OctetString::new(&x_data_ieee754_be)?.encoded_len()?
-        // + self.x.encoded_len()?
-        // + self.y.encoded_len()?
-        // + self.z.encoded_len()?
+            + OctetString::new(&x_data_ieee754_be[..x_size])?.encoded_len()?
+            + OctetString::new(&x_data_ieee754_be[..x_size])?.encoded_len()?
+            + OctetString::new(&x_data_ieee754_be[..x_size])?.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
         encoder.encode(&self.start_epoch)?;
         encoder.encode(&self.end_epoch)?;
-        // encoder.encode(&self.x)?;
         let mut x_data_ieee754_be = [0x0; 8 * MAX_INTERP_DEGREE];
         let mut size = 0;
         for x in self.x {
@@ -120,8 +116,6 @@ impl<'a> Encode for Spline<'a> {
         encoder.encode(&OctetString::new(&x_data_ieee754_be[..size])?)?;
         encoder.encode(&OctetString::new(&x_data_ieee754_be[..size])?)?;
         encoder.encode(&OctetString::new(&x_data_ieee754_be[..size])?)
-        // encoder.encode(&self.y)?;
-        // encoder.encode(&self.z)
     }
 }
 
@@ -131,14 +125,15 @@ impl<'a> Decode<'a> for Spline<'a> {
             let start_epoch = decoder.decode()?;
             let end_epoch = decoder.decode()?;
             let x_data_ieee754_be: OctetString = decoder.decode()?;
-            // let mut x: &'a [f64; 8 * MAX_INTERP_DEGREE] = &[0.0; 8 * MAX_INTERP_DEGREE];
+            let y_data_ieee754_be: OctetString = decoder.decode()?;
+            let z_data_ieee754_be: OctetString = decoder.decode()?;
 
             Ok(Self {
                 start_epoch,
                 end_epoch,
                 x: x_data_ieee754_be.as_bytes(),
-                // y: decoder.decode()?,
-                // z: decoder.decode()?,
+                y: y_data_ieee754_be.as_bytes(),
+                z: z_data_ieee754_be.as_bytes(),
                 ..Default::default()
             })
         })

@@ -1,5 +1,5 @@
 use der::{
-    asn1::{OctetString, SequenceOf, SetOf, Utf8String},
+    asn1::{OctetString, SequenceOf, Utf8String},
     DateTime, Decode, Decoder, Encode, Error, ErrorKind, Length,
 };
 

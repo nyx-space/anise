@@ -6,17 +6,15 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::{convert::TryInto, f64::EPSILON};
+use std::convert::TryInto;
 
 use anise::{
-    asn1::root::TrajectoryFile,
     naif::{
         daf::{Endianness, DAF},
         spk::SPK,
     },
     prelude::*,
 };
-use der::Decode;
 
 #[test]
 fn test_spk_load() {

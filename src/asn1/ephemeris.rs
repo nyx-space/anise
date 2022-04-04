@@ -1,7 +1,7 @@
 use der::{
     asn1::SequenceOf,
     asn1::{SetOf, Utf8String},
-    Decode, Decoder, Encode,
+    Decode, Decoder, Encode, Length,
 };
 
 use super::{common::InterpolationKind, spline::Spline, time::Epoch};
@@ -111,8 +111,8 @@ pub struct EqualTimeSteps<'a> {
     /// 4. Retrieve the coefficient data at key `index`.
     /// 5. Initialize the proper interpolation scheme with `t_prime` as the requested interpolation time.
     pub spline_duration_s: f64,
-    // pub splines: &'a [Spline<'a>],
-    pub splines: SequenceOf<Spline<'a>, 50>,
+    pub splines: &'a [Spline<'a>],
+    // pub splines: SequenceOf<Spline<'a>, 50>,
 }
 
 impl<'a> Encode for EqualTimeSteps<'a> {
@@ -122,23 +122,31 @@ impl<'a> Encode for EqualTimeSteps<'a> {
         // Then, I'd need to figure out how to encode what data is present and what isn't.
         // That could be a bit field of 27 items, each representing whether a given field is set. They will be assumed to be the same size, but that's probably wrong.
 
-        self.spline_duration_s.encoded_len()? + self.splines.encoded_len()?
+        self.spline_duration_s.encoded_len()?
+            + self.splines.iter().fold(Length::new(0), |acc, spline| {
+                (acc + spline.encoded_len().unwrap()).unwrap()
+            })
     }
 
     fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
         encoder.encode(&self.spline_duration_s)?;
-        encoder.encode(&self.splines)
+        for spline in self.splines {
+            encoder.encode(spline)?;
+        }
+        Ok(())
+        // encoder.encode(&self.splines)
     }
 }
 
 impl<'a> Decode<'a> for EqualTimeSteps<'a> {
     fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
-        decoder.sequence(|decoder| {
-            Ok(Self {
-                spline_duration_s: decoder.decode()?,
-                splines: decoder.decode()?,
-            })
-        })
+        // decoder.sequence(|decoder| {
+        //     Ok(Self {
+        //         spline_duration_s: decoder.decode()?,
+        //         splines: decoder.decode()?,
+        //     })
+        // })
+        todo!()
     }
 }
 

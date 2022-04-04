@@ -45,7 +45,7 @@ macro_rules! file_mmap {
             Ok(file) => unsafe {
                 use memmap2::MmapOptions;
                 match MmapOptions::new().map(&file) {
-                    Err(e) => Err(AniseError::IOUnknownError),
+                    Err(_) => Err(AniseError::IOUnknownError),
                     Ok(mmap) => Ok(mmap),
                 }
             },

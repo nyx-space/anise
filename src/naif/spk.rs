@@ -11,10 +11,12 @@ extern crate der;
 use super::daf::{Endianness, DAF, DBL_SIZE};
 use crate::asn1::common::InterpolationKind;
 use crate::asn1::ephemeris::{Ephemeris, EqualTimeSteps, Interpolator};
-use crate::asn1::root::{LookUpTable, Metadata, TrajectoryFile, ANISE_VERSION};
+use crate::asn1::root::{Metadata, TrajectoryFile};
 use crate::asn1::spline::Spline;
 use crate::asn1::time::Epoch as AniseEpoch;
-use crate::parse_bytes_as;
+use crate::{file_mmap, parse_bytes_as};
+use std::fs::File;
+use std::io::Write;
 // use crate::asn1::SplineAsn1;
 // use crate::generated::anise_generated::anise::common::InterpolationKind;
 // use crate::generated::anise_generated::anise::ephemeris::{
@@ -24,9 +26,7 @@ use crate::parse_bytes_as;
 // use crate::generated::anise_generated::anise::{MapToIndex, MapToIndexArgs};
 use crate::prelude::AniseError;
 use crc32fast::hash;
-use der::asn1::{OctetString, SequenceOf};
-// use der::{Decodable, Decoder, Encodable, Sequence};
-use der::{DateTime, Encode};
+use der::{Decode, Encode};
 use hifitime::{Epoch, TimeSystem};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
@@ -161,17 +161,7 @@ impl<'a> SPK<'a> {
 
         let mut full_data = Vec::new();
 
-        for index in (0..num_records_in_seg * rsize).step_by(rsize) {
-            // let mut data = Vec::with_capacity(rsize);
-            // for _ in 0..rsize {
-            //     data.push(0.0);
-            // }
-
-            // self.daf
-            //     .read_f64s_into(seg.start_idx + index - 1, rsize, &mut data);
-
-            let data = self.daf.ptr_to_read_u8(seg.start_idx + index - 1);
-
+        for _ in (0..num_records_in_seg * rsize).step_by(rsize) {
             let mut byte_idx = 0;
             let rcrd_mid_point = parse_bytes_as!(
                 f64,
@@ -338,10 +328,16 @@ impl<'a> SPK<'a> {
             ..Default::default()
         };
 
+        // Start the trajectory file so we can populate the lookup table (LUT)
+
         let mut traj_file = TrajectoryFile::default();
         traj_file.metadata = meta;
 
+        // let mut all_splines = [Spline::default(); 20_000];
+        let mut all_intermediate_files = Vec::new();
+
         for (idx, seg) in self.segments.iter().enumerate() {
+            let mut all_splines = Vec::with_capacity(20_000);
             // Some files don't have a useful name in the segments, so we append the target ID in case
             let name = format!("{} #{}", seg.name, seg.target_id);
             let hashed_name = hash(name.as_bytes());
@@ -351,7 +347,7 @@ impl<'a> SPK<'a> {
             let mut interpolator = EqualTimeSteps::default();
 
             let (_, seg_coeffs) = self.all_coefficients(seg.target_id).unwrap();
-            // let mut splines = Vec::with_capacity(self.segments.len());
+            // let mut splines: Vec<Spline, 'a> = Vec::with_capacity(seg_coeffs.len());
             // Build the splines
             for seg_coeff in &seg_coeffs {
                 let mut spline = Spline::default();
@@ -360,6 +356,8 @@ impl<'a> SPK<'a> {
                 //     spline.x.add(*coeff).unwrap();
                 // }
                 spline.x = &seg_coeff.x_coeffs;
+                spline.y = &seg_coeff.y_coeffs;
+                spline.z = &seg_coeff.z_coeffs;
                 // spline.y = &seg_coeff.y_coeffs;
                 // spline.x = &seg_coeff.z_coeffs;
                 // for coeff in seg_coeff.y_coeffs {
@@ -368,12 +366,13 @@ impl<'a> SPK<'a> {
                 // for coeff in seg_coeff.z_coeffs {
                 //     spline.z.add(*coeff).unwrap();
                 // }
-                interpolator.splines.add(spline).unwrap();
+                all_splines.push(spline);
             }
+            interpolator.splines = &all_splines;
 
             // Create the ephemeris
             let ephem = Ephemeris {
-                name: seg.name, // TODO: How can I change this name?!
+                name: name.as_str(),
                 ref_epoch: AniseEpoch {
                     epoch: seg.start_epoch,
                     system: TimeSystem::TDB,
@@ -385,11 +384,29 @@ impl<'a> SPK<'a> {
                 interpolator: Interpolator::EqualTimeSteps(interpolator),
             };
 
-            traj_file.ephemeris_data.add(ephem).unwrap();
+            // Serialize this ephemeris and rebuild the full file in a minute
+
+            let mut buf = Vec::new();
+            let fname = format!("{idx}-{hashed_name}-{filename}");
+            all_intermediate_files.push(fname.clone());
+            let mut file = File::create(fname).unwrap();
+            ephem.encode_to_vec(&mut buf).unwrap();
+            let ephem_dec: Ephemeris = Ephemeris::from_der(&buf).unwrap();
+            file.write_all(&buf).unwrap();
         }
 
-        use std::fs::File;
-        use std::io::Write;
+        // Now concat all of the files
+        let mut all_bufs = Vec::new();
+        for fname in all_intermediate_files {
+            let bytes = file_mmap!(fname).unwrap();
+            all_bufs.push(bytes);
+            break;
+        }
+        for buf in &all_bufs {
+            let ephem: Ephemeris = Ephemeris::from_der(&buf).unwrap();
+            traj_file.ephemeris_data.add(ephem).unwrap();
+            break;
+        }
 
         let mut buf = Vec::new();
         let mut file = File::create(filename).unwrap();
