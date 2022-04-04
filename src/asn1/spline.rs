@@ -121,21 +121,19 @@ impl<'a> Encode for Spline<'a> {
 
 impl<'a> Decode<'a> for Spline<'a> {
     fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
-        decoder.sequence(|decoder| {
-            let start_epoch = decoder.decode()?;
-            let end_epoch = decoder.decode()?;
-            let x_data_ieee754_be: OctetString = decoder.decode()?;
-            let y_data_ieee754_be: OctetString = decoder.decode()?;
-            let z_data_ieee754_be: OctetString = decoder.decode()?;
+        let start_epoch = decoder.decode()?;
+        let end_epoch = decoder.decode()?;
+        let x_data_ieee754_be: OctetString = decoder.decode()?;
+        let y_data_ieee754_be: OctetString = decoder.decode()?;
+        let z_data_ieee754_be: OctetString = decoder.decode()?;
 
-            Ok(Self {
-                start_epoch,
-                end_epoch,
-                x: x_data_ieee754_be.as_bytes(),
-                y: y_data_ieee754_be.as_bytes(),
-                z: z_data_ieee754_be.as_bytes(),
-                ..Default::default()
-            })
+        Ok(Self {
+            start_epoch,
+            end_epoch,
+            x: x_data_ieee754_be.as_bytes(),
+            y: y_data_ieee754_be.as_bytes(),
+            z: z_data_ieee754_be.as_bytes(),
+            ..Default::default()
         })
     }
 }

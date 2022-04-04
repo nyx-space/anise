@@ -40,18 +40,16 @@ impl<'a> Encode for Ephemeris<'a> {
 
 impl<'a> Decode<'a> for Ephemeris<'a> {
     fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
-        decoder.sequence(|decoder| {
-            let name: Utf8String = decoder.decode()?;
+        let name: Utf8String = decoder.decode()?;
 
-            Ok(Self {
-                name: name.as_str(),
-                ref_epoch: decoder.decode()?,
-                backward: decoder.decode()?,
-                interpolation_kind: decoder.decode()?,
-                interpolator: decoder.decode()?,
-                parent_ephemeris_hash: decoder.decode()?,
-                orientation_hash: decoder.decode()?,
-            })
+        Ok(Self {
+            name: name.as_str(),
+            ref_epoch: decoder.decode()?,
+            backward: decoder.decode()?,
+            interpolation_kind: decoder.decode()?,
+            interpolator: decoder.decode()?,
+            parent_ephemeris_hash: decoder.decode()?,
+            orientation_hash: decoder.decode()?,
         })
     }
 }
@@ -79,13 +77,11 @@ impl<'a> Encode for Interpolator<'a> {
 
 impl<'a> Decode<'a> for Interpolator<'a> {
     fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
-        decoder.sequence(|decoder| {
-            let maybe_ets: _ = decoder.decode();
-            match maybe_ets {
-                Ok(ets) => Ok(Self::EqualTimeSteps(ets)),
-                Err(_) => Ok(Self::UnequalTimeSteps(decoder.decode()?)),
-            }
-        })
+        let maybe_ets: _ = decoder.decode();
+        match maybe_ets {
+            Ok(ets) => Ok(Self::EqualTimeSteps(ets)),
+            Err(_) => Ok(Self::UnequalTimeSteps(decoder.decode()?)),
+        }
     }
 }
 
@@ -123,30 +119,44 @@ impl<'a> Encode for EqualTimeSteps<'a> {
         // That could be a bit field of 27 items, each representing whether a given field is set. They will be assumed to be the same size, but that's probably wrong.
 
         self.spline_duration_s.encoded_len()?
-            + self.splines.iter().fold(Length::new(0), |acc, spline| {
+            + self.splines.iter().fold(Length::new(2), |acc, spline| {
                 (acc + spline.encoded_len().unwrap()).unwrap()
             })
     }
 
     fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
         encoder.encode(&self.spline_duration_s)?;
-        for spline in self.splines {
-            encoder.encode(spline)?;
-        }
-        Ok(())
+        encoder.sequence(Length::new(self.splines.len() as u16), |encoder| {
+            for spline in self.splines {
+                encoder.encode(spline)?;
+            }
+            Ok(())
+        })
+        // for spline in self.splines {
+        //     encoder.encode(spline)?;
+        // }
+        // Ok(())
         // encoder.encode(&self.splines)
     }
 }
 
 impl<'a> Decode<'a> for EqualTimeSteps<'a> {
     fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
-        // decoder.sequence(|decoder| {
-        //     Ok(Self {
-        //         spline_duration_s: decoder.decode()?,
-        //         splines: decoder.decode()?,
-        //     })
-        // })
-        todo!()
+        let spline_duration_s = decoder.decode()?;
+        let expected_len: u32 = decoder.peek_header().unwrap().length.into();
+        dbg!(expected_len);
+        // TODO: Consider switching back to SeqOf. It _may_ not be as problematic as the spline encoding since the latter uses octet string
+        let mut splines: &'a [Spline<'a>; 1000] = &mut [Spline::default(); 1000];
+        decoder.sequence(|decoder| {
+            for idx in 0..expected_len {
+                splines[idx as usize] = decoder.decode()?;
+            }
+            Ok(())
+        });
+        Ok(Self {
+            spline_duration_s,
+            splines,
+        })
     }
 }
 

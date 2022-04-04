@@ -36,23 +36,21 @@ impl<'a> Encode for Semver {
 
 impl<'a> Decode<'a> for Semver {
     fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
-        decoder.sequence(|decoder| {
-            let data: OctetString = decoder.decode()?;
-            if data.len() != Length::new(3) {
-                return Err(Error::new(
-                    ErrorKind::Incomplete {
-                        expected_len: Length::new(3),
-                        actual_len: data.len(),
-                    },
-                    Length::new(0),
-                ));
-            }
+        let data: OctetString = decoder.decode()?;
+        if data.len() != Length::new(3) {
+            return Err(Error::new(
+                ErrorKind::Incomplete {
+                    expected_len: Length::new(3),
+                    actual_len: data.len(),
+                },
+                Length::new(0),
+            ));
+        }
 
-            Ok(Self {
-                major: data.as_bytes()[0],
-                minor: data.as_bytes()[1],
-                patch: data.as_bytes()[2],
-            })
+        Ok(Self {
+            major: data.as_bytes()[0],
+            minor: data.as_bytes()[1],
+            patch: data.as_bytes()[2],
         })
     }
 }
@@ -94,21 +92,20 @@ impl<'a> Encode for Metadata<'a> {
 
 impl<'a> Decode<'a> for Metadata<'a> {
     fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
-        decoder.sequence(|decoder| {
-            let anise_version = decoder.decode()?;
-            let file_version = decoder.decode()?;
-            let originator: Utf8String<'a> = decoder.decode()?;
-            let creation_date = decoder.decode()?;
-            Ok(Self {
-                anise_version,
-                file_version,
-                originator: originator.as_str(),
-                creation_date,
-            })
+        let anise_version = decoder.decode()?;
+        let file_version = decoder.decode()?;
+        let originator: Utf8String<'a> = decoder.decode()?;
+        let creation_date = decoder.decode()?;
+        Ok(Self {
+            anise_version,
+            file_version,
+            originator: originator.as_str(),
+            creation_date,
         })
     }
 }
 
+// TODO: Determine if this shouldn't be a single SeqOf with a tuple or a LUT Entry of {Hash, Index}
 /// A LookUpTable enables O(1) access to any ephemeris data
 #[derive(Default)]
 pub struct LookUpTable {
@@ -131,11 +128,9 @@ impl<'a> Encode for LookUpTable {
 
 impl<'a> Decode<'a> for LookUpTable {
     fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
-        decoder.sequence(|decoder| {
-            Ok(Self {
-                hashes: decoder.decode()?,
-                indexes: decoder.decode()?,
-            })
+        Ok(Self {
+            hashes: decoder.decode()?,
+            indexes: decoder.decode()?,
         })
     }
 }
@@ -167,13 +162,11 @@ impl<'a> Encode for TrajectoryFile<'a> {
 
 impl<'a> Decode<'a> for TrajectoryFile<'a> {
     fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
-        decoder.sequence(|decoder| {
-            Ok(Self {
-                metadata: decoder.decode()?,
-                ephemeris_lut: decoder.decode()?,
-                orientation_lut: decoder.decode()?,
-                ephemeris_data: decoder.decode()?,
-            })
+        Ok(Self {
+            metadata: decoder.decode()?,
+            ephemeris_lut: decoder.decode()?,
+            orientation_lut: decoder.decode()?,
+            ephemeris_data: decoder.decode()?,
         })
     }
 }
