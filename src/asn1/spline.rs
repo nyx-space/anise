@@ -1,10 +1,140 @@
-use der::{asn1::OctetString, Decode, Decoder, Encode};
+use der::{asn1::OctetString, Decode, Decoder, Encode, Length};
 
-use super::time::Epoch;
+// use super::time::Epoch;
 
 /// Maximum interpolation degree for splines. This is needed for encoding and decoding of Splines in ASN1 using the `der` library.
 pub const MAX_INTERP_DEGREE: usize = 32;
 
+/// Defines the two kinds of splines supports: equal time steps (fixed window) or unequal time steps (also called sliding window)
+pub enum SplineKind<'a> {
+    FixedWindow {
+        window_duration_s: f64,
+    },
+    SlidingWindow {
+        /// Sliding window ephemerides may only span 4 centuries to constraint stack size
+        indexes: [TimeIndex<'a>; 4],
+    },
+}
+
+pub struct TimeIndex<'a> {
+    pub century: i16,
+    /// Nanoseconds are on 64 bit unsigned integer (u64) but stored as u8
+    /// TODO: Figure out how to keep this as u64 (might have lifetime issues? Maybe easiest is to seek and convert as needed? But that's hard for a binary search)
+    pub nanoseconds: &'a [u8],
+}
+
+impl<'a> Encode for TimeIndex<'a> {
+    fn encoded_len(&self) -> der::Result<der::Length> {
+        self.century.encoded_len()? + OctetString::new(self.nanoseconds).unwrap().encoded_len()?
+    }
+
+    fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
+        encoder.encode(&self.century)?;
+        encoder.encode(&OctetString::new(self.nanoseconds).unwrap())
+    }
+}
+
+impl<'a> Decode<'a> for TimeIndex<'a> {
+    fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
+        let century = decoder.decode()?;
+        let ns_bytes: OctetString = decoder.decode()?;
+        Ok(Self {
+            century,
+            nanoseconds: ns_bytes.as_bytes(),
+        })
+    }
+}
+
+// #[derive(Enumerated)]
+// #[repr(u8)]
+// pub enum TrunctationStrategy {
+//     None = 0,
+//     TruncateLow = 1,
+//     TruncateHigh = 2,
+// }
+
+// WARNING: How do I specify the start and end epochs for variable sized windows where the duration in the window is needed to rebuild the state?
+// Is that some kind of header? If so, what's its size? If it's a high precision epoch, it would be 80 bits, but more likely people will provide 64 bit floats.
+// Also, I can't use an offset from the index because the splines are built separately from the index via multithreading, so that would be difficult to build (would need to mutate the spline prior to encoding)
+
+pub struct SplineCoeffCount {
+    pub epochs: u8,
+    pub position_coeffs: u8,
+    pub position_dt_coeffs: u8,
+    pub velocity_coeffs: u8,
+    pub velocity_dt_coeffs: u8,
+}
+
+pub struct Splines<'a> {
+    pub kind: SplineKind<'a>,
+    pub config: SplineCoeffCount,
+    // TODO: Figure out how to properly add the covariance info, it's a bit hard because of the diag size
+    // pub cov_position_coeff_len: u8,
+    // pub cov_velocity_coeff_len: u8,
+    // pub cov_acceleration_coeff_len: u8,
+    pub data: &'a [u8],
+}
+
+impl<'a> Encode for SplineKind<'a> {
+    fn encoded_len(&self) -> der::Result<der::Length> {
+        match self {
+            Self::FixedWindow { window_duration_s } => window_duration_s.encoded_len(),
+            Self::SlidingWindow { indexes } => {
+                let mut len = Length::new(2);
+                for index in indexes {
+                    len = (len + OctetString::new(index.nanoseconds).unwrap().encoded_len()?)?;
+                }
+                Ok(len)
+            }
+        }
+    }
+
+    fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
+        match self {
+            Self::FixedWindow { window_duration_s } => encoder.encode(window_duration_s),
+            Self::SlidingWindow { indexes } => {
+                encoder.sequence(Length::new(indexes.len() as u16), |sencoder| {
+                    for index in indexes {
+                        sencoder.encode(&OctetString::new(index.nanoseconds).unwrap())?;
+                    }
+                    Ok(())
+                })
+            }
+        }
+    }
+}
+
+impl Encode for SplineCoeffCount {
+    fn encoded_len(&self) -> der::Result<der::Length> {
+        self.epochs.encoded_len()?
+            + self.position_coeffs.encoded_len()?
+            + self.position_dt_coeffs.encoded_len()?
+            + self.velocity_coeffs.encoded_len()?
+            + self.velocity_dt_coeffs.encoded_len()?
+    }
+
+    fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
+        encoder.encode(&self.epochs)?;
+        encoder.encode(&self.position_coeffs)?;
+        encoder.encode(&self.position_dt_coeffs)?;
+        encoder.encode(&self.velocity_coeffs)?;
+        encoder.encode(&self.velocity_dt_coeffs)
+    }
+}
+
+impl<'a> Decode<'a> for SplineCoeffCount {
+    fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
+        Ok(Self {
+            epochs: decoder.decode()?,
+            position_coeffs: decoder.decode()?,
+            position_dt_coeffs: decoder.decode()?,
+            velocity_coeffs: decoder.decode()?,
+            velocity_dt_coeffs: decoder.decode()?,
+        })
+    }
+}
+
+/*
 /// Spline defines all of the coefficients to interpolate any of the values of this state.
 /// If the array is empty, it means the data for that parameter is non existent (this does NOT mean it is zero).
 #[derive(Default, Debug)]
@@ -137,3 +267,5 @@ impl<'a> Decode<'a> for Spline<'a> {
         })
     }
 }
+
+ */

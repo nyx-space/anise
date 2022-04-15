@@ -4,16 +4,16 @@ use der::{
     Decode, Decoder, Encode, Length,
 };
 
-use super::{common::InterpolationKind, spline::Spline, time::Epoch};
+use super::{common::InterpolationKind, spline::Splines, time::Epoch};
 
 pub struct Ephemeris<'a> {
     pub name: &'a str,
     pub ref_epoch: Epoch,
     pub backward: bool,
-    pub interpolation_kind: InterpolationKind,
-    pub interpolator: Interpolator<'a>,
     pub parent_ephemeris_hash: u32,
     pub orientation_hash: u32,
+    pub interpolation_kind: InterpolationKind,
+    pub splines: Splines<'a>, // pub interpolator: Interpolator<'a>,
 }
 
 impl<'a> Encode for Ephemeris<'a> {
@@ -107,7 +107,7 @@ pub struct EqualTimeSteps<'a> {
     /// 4. Retrieve the coefficient data at key `index`.
     /// 5. Initialize the proper interpolation scheme with `t_prime` as the requested interpolation time.
     pub spline_duration_s: f64,
-    pub splines: &'a [Spline<'a>],
+    pub splines: &'a [Splines<'a>],
     // pub splines: SequenceOf<Spline<'a>, 50>,
 }
 
@@ -146,7 +146,7 @@ impl<'a> Decode<'a> for EqualTimeSteps<'a> {
         let expected_len: u32 = decoder.peek_header().unwrap().length.into();
         dbg!(expected_len);
         // TODO: Consider switching back to SeqOf. It _may_ not be as problematic as the spline encoding since the latter uses octet string
-        let mut splines: &'a [Spline<'a>; 1000] = &mut [Spline::default(); 1000];
+        let mut splines: &'a [Splines<'a>; 1000];
         decoder.sequence(|decoder| {
             for idx in 0..expected_len {
                 splines[idx as usize] = decoder.decode()?;
@@ -204,7 +204,7 @@ pub struct UnequalTimeSteps<'a> {
     // pub spline_time_index: &'a [i64],
     pub spline_time_index: SetOf<i64, 16>,
     // pub splines: &'a [Spline],
-    pub splines: SequenceOf<Spline<'a>, 16>,
+    pub splines: SequenceOf<Splines<'a>, 16>,
     pub time_normalization_min: f64,
     pub time_normalization_max: f64,
 }
