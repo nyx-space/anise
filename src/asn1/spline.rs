@@ -1,4 +1,4 @@
-use der::{asn1::OctetString, Decode, Decoder, Encode, Length};
+use der::{asn1::OctetString, Decode, Decoder, Encode, Length, Tag};
 
 // use super::time::Epoch;
 
@@ -95,11 +95,29 @@ impl<'a> Encode for SplineKind<'a> {
             Self::SlidingWindow { indexes } => {
                 encoder.sequence(Length::new(indexes.len() as u16), |sencoder| {
                     for index in indexes {
-                        sencoder.encode(&OctetString::new(index.nanoseconds).unwrap())?;
+                        OctetString::new(index.nanoseconds)
+                            .unwrap()
+                            .encode(sencoder)?;
                     }
                     Ok(())
                 })
             }
+        }
+    }
+}
+
+impl<'a> Decode<'a> for SplineKind<'a> {
+    fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
+        // Check the header tag to decode this CHOICE
+        if decoder.peek_tag()? == Tag::Real {
+            Ok(Self::FixedWindow {
+                window_duration_s: decoder.decode()?,
+            })
+        } else {
+            decoder.sequence(|sdecoder| {
+                let indexes = sdecoder.decode()?;
+                Ok(Self::SlidingWindow { indexes })
+            })
         }
     }
 }
@@ -114,11 +132,11 @@ impl Encode for SplineCoeffCount {
     }
 
     fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
-        encoder.encode(&self.epochs)?;
-        encoder.encode(&self.position_coeffs)?;
-        encoder.encode(&self.position_dt_coeffs)?;
-        encoder.encode(&self.velocity_coeffs)?;
-        encoder.encode(&self.velocity_dt_coeffs)
+        self.epochs.encode(encoder)?;
+        self.position_coeffs.encode(encoder)?;
+        self.position_dt_coeffs.encode(encoder)?;
+        self.velocity_coeffs.encode(encoder)?;
+        self.velocity_dt_coeffs.encode(encoder)
     }
 }
 
@@ -130,6 +148,33 @@ impl<'a> Decode<'a> for SplineCoeffCount {
             position_dt_coeffs: decoder.decode()?,
             velocity_coeffs: decoder.decode()?,
             velocity_dt_coeffs: decoder.decode()?,
+        })
+    }
+}
+
+impl<'a> Encode for Splines<'a> {
+    fn encoded_len(&self) -> der::Result<Length> {
+        self.kind.encoded_len()?
+            + self.config.encoded_len()?
+            + OctetString::new(&self.data).unwrap().encoded_len()?
+    }
+
+    fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
+        self.kind.encode(encoder)?;
+        self.config.encode(encoder)?;
+        OctetString::new(&self.data).unwrap().encode(encoder)
+    }
+}
+
+impl<'a> Decode<'a> for Splines<'a> {
+    fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
+        let kind = decoder.decode()?;
+        let config = decoder.decode()?;
+        let data_bytes: OctetString = decoder.decode()?;
+        Ok(Self {
+            kind,
+            config,
+            data: data_bytes.as_bytes(),
         })
     }
 }
