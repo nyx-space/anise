@@ -110,9 +110,9 @@ impl<'a> Decode<'a> for Metadata<'a> {
 #[derive(Default)]
 pub struct LookUpTable {
     /// Hashes of the general hashing algorithm
-    pub hashes: SequenceOf<u32, 16>,
+    pub hashes: SequenceOf<u32, 512>,
     /// Corresponding index for each hash, may only have 65_535 entries
-    pub indexes: SequenceOf<u16, 16>,
+    pub indexes: SequenceOf<u16, 512>,
 }
 
 impl<'a> Encode for LookUpTable {

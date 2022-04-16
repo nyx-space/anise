@@ -1,3 +1,5 @@
+use std::mem::transmute;
+
 use der::{asn1::OctetString, Decode, Decoder, Encode, Length, Tag};
 
 // use super::time::Epoch;
@@ -59,11 +61,30 @@ impl<'a> Decode<'a> for TimeIndex<'a> {
 
 #[derive(Debug, Default)]
 pub struct SplineCoeffCount {
-    pub epochs: u8,
-    pub position_coeffs: u8,
-    pub position_dt_coeffs: u8,
-    pub velocity_coeffs: u8,
-    pub velocity_dt_coeffs: u8,
+    pub degree: u8,
+    pub num_epochs: u8,
+    pub num_position_coeffs: u8,
+    pub num_position_dt_coeffs: u8,
+    pub num_velocity_coeffs: u8,
+    pub num_velocity_dt_coeffs: u8,
+}
+
+impl SplineCoeffCount {
+    /// Returns the offset (in bytes) in the octet string
+    pub fn spline_offset(&self, idx: usize) -> usize {
+        idx * self.len()
+    }
+
+    /// Returns the length of a spline in bytes
+    pub fn len(&self) -> usize {
+        ((self.num_epochs
+            + self.num_position_coeffs * self.degree
+            + self.num_position_dt_coeffs * self.degree
+            + self.num_velocity_coeffs * self.degree
+            + self.num_velocity_dt_coeffs * self.degree)
+            * 8)
+        .into()
+    }
 }
 
 pub struct Splines<'a> {
@@ -75,6 +96,18 @@ pub struct Splines<'a> {
     // pub cov_velocity_coeff_len: u8,
     // pub cov_acceleration_coeff_len: u8,
     pub data: &'a [u8],
+}
+
+impl<'a> Splines<'a> {
+    /// Returns a pointer to f64 data that contains the splines
+    /// TODO: Return a Result and check the CRC before transmute
+    pub fn get(&self, idx: usize) -> &'a [f64] {
+        let offset = self.config.spline_offset(idx);
+        if offset <= self.data.len() {
+            return unsafe { transmute(&self.data[offset..offset + self.config.len()]) };
+        }
+        panic!("oh no");
+    }
 }
 
 impl<'a> Encode for SplineKind<'a> {
@@ -126,30 +159,33 @@ impl<'a> Decode<'a> for SplineKind<'a> {
 
 impl Encode for SplineCoeffCount {
     fn encoded_len(&self) -> der::Result<der::Length> {
-        self.epochs.encoded_len()?
-            + self.position_coeffs.encoded_len()?
-            + self.position_dt_coeffs.encoded_len()?
-            + self.velocity_coeffs.encoded_len()?
-            + self.velocity_dt_coeffs.encoded_len()?
+        self.degree.encoded_len()?
+            + self.num_epochs.encoded_len()?
+            + self.num_position_coeffs.encoded_len()?
+            + self.num_position_dt_coeffs.encoded_len()?
+            + self.num_velocity_coeffs.encoded_len()?
+            + self.num_velocity_dt_coeffs.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
-        self.epochs.encode(encoder)?;
-        self.position_coeffs.encode(encoder)?;
-        self.position_dt_coeffs.encode(encoder)?;
-        self.velocity_coeffs.encode(encoder)?;
-        self.velocity_dt_coeffs.encode(encoder)
+        self.degree.encode(encoder)?;
+        self.num_epochs.encode(encoder)?;
+        self.num_position_coeffs.encode(encoder)?;
+        self.num_position_dt_coeffs.encode(encoder)?;
+        self.num_velocity_coeffs.encode(encoder)?;
+        self.num_velocity_dt_coeffs.encode(encoder)
     }
 }
 
 impl<'a> Decode<'a> for SplineCoeffCount {
     fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
         Ok(Self {
-            epochs: decoder.decode()?,
-            position_coeffs: decoder.decode()?,
-            position_dt_coeffs: decoder.decode()?,
-            velocity_coeffs: decoder.decode()?,
-            velocity_dt_coeffs: decoder.decode()?,
+            degree: decoder.decode()?,
+            num_epochs: decoder.decode()?,
+            num_position_coeffs: decoder.decode()?,
+            num_position_dt_coeffs: decoder.decode()?,
+            num_velocity_coeffs: decoder.decode()?,
+            num_velocity_dt_coeffs: decoder.decode()?,
         })
     }
 }

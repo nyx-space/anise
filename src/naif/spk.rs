@@ -97,12 +97,16 @@ pub struct SPK<'a> {
     pub daf: &'a DAF<'a>,
 }
 
+pub struct SegMetaData {
+    pub init_s_past_j2k: f64,
+    pub interval_length: usize,
+    pub rsize: usize,
+    pub num_records_in_seg: usize,
+}
+
 impl<'a> SPK<'a> {
     /// Returns the segment buffer index and the config data of that segment as (init_s_past_j2k, interval_length, rsize, num_records_in_seg)
-    pub fn segment_ptr(
-        &self,
-        seg_target_id: i32,
-    ) -> Result<(&Segment, (f64, usize, usize, usize)), AniseError> {
+    pub fn segment_ptr(&self, seg_target_id: i32) -> Result<(&Segment, SegMetaData), AniseError> {
         for seg in &self.segments {
             if seg.target_id != seg_target_id {
                 continue;
@@ -138,12 +142,12 @@ impl<'a> SPK<'a> {
 
             return Ok((
                 seg,
-                (
+                SegMetaData {
                     init_s_past_j2k,
-                    interval_length as usize,
-                    rsize as usize,
-                    num_records_in_seg as usize,
-                ),
+                    interval_length: interval_length as usize,
+                    rsize: rsize as usize,
+                    num_records_in_seg: num_records_in_seg as usize,
+                },
             ));
         }
         Err(AniseError::NAIFConversionError(format!(
@@ -156,12 +160,12 @@ impl<'a> SPK<'a> {
     pub fn all_coefficients(
         &self,
         seg_target_id: i32,
-    ) -> Result<(&Segment, Vec<SegmentExportData<'a>>), AniseError> {
-        let (seg, (_, _, rsize, num_records_in_seg)) = self.segment_ptr(seg_target_id)?;
+    ) -> Result<(&Segment, SegMetaData, Vec<SegmentExportData<'a>>), AniseError> {
+        let (seg, meta) = self.segment_ptr(seg_target_id)?;
 
         let mut full_data = Vec::new();
 
-        for _ in (0..num_records_in_seg * rsize).step_by(rsize) {
+        for _ in (0..meta.num_records_in_seg * meta.rsize).step_by(meta.rsize) {
             let mut byte_idx = 0;
             let rcrd_mid_point = parse_bytes_as!(
                 f64,
@@ -174,8 +178,8 @@ impl<'a> SPK<'a> {
                 &self.daf.bytes[DBL_SIZE * (byte_idx)..DBL_SIZE * (byte_idx + 1)],
                 Endianness::Little
             );
-            let num_coeffs = (rsize - 2) / 3;
-            let mut c_idx = 2;
+            let num_coeffs = (meta.rsize - 2) / 3;
+            let mut c_idx = 0;
             let x_coeffs = &self.daf.bytes[DBL_SIZE * (byte_idx + 1) + c_idx
                 ..(c_idx + num_coeffs) + DBL_SIZE * (byte_idx + 1)];
             c_idx += num_coeffs;
@@ -197,7 +201,7 @@ impl<'a> SPK<'a> {
             full_data.push(export);
         }
 
-        Ok((seg, full_data))
+        Ok((seg, meta, full_data))
     }
 
     /// Converts the provided SPK to an ANISE file
@@ -344,14 +348,14 @@ impl<'a> SPK<'a> {
             traj_file.ephemeris_lut.indexes.add(idx as u16).unwrap();
             traj_file.ephemeris_lut.hashes.add(hashed_name).unwrap();
 
-            // let mut interpolator = EqualTimeSteps::default();
-
-            let (_, seg_coeffs) = self.all_coefficients(seg.target_id).unwrap();
+            let (_, meta, seg_coeffs) = self.all_coefficients(seg.target_id).unwrap();
+            let degree = (meta.rsize - 2) / 6 - 1;
             let kind = SplineKind::FixedWindow {
                 window_duration_s: seg_coeffs[0].rcrd_radius_s,
             };
             let config = SplineCoeffCount {
-                position_coeffs: 3,
+                degree: degree.try_into().unwrap(),
+                num_position_coeffs: 3,
                 ..Default::default()
             };
             let mut spline_data = Vec::with_capacity(20_000);
@@ -362,15 +366,12 @@ impl<'a> SPK<'a> {
                 for coeffbyte in seg_coeff.x_coeffs {
                     spline_data.push(*coeffbyte)
                 }
-                dbg!(spline_data.len());
                 for coeffbyte in seg_coeff.y_coeffs {
                     spline_data.push(*coeffbyte)
                 }
-                dbg!(spline_data.len());
                 for coeffbyte in seg_coeff.z_coeffs {
                     spline_data.push(*coeffbyte)
                 }
-                dbg!(spline_data.len());
             }
             // Build the spline struct
             let splines = Splines {
