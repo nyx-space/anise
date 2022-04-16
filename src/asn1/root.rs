@@ -140,7 +140,7 @@ pub struct TrajectoryFile<'a> {
     pub metadata: Metadata<'a>,
     pub ephemeris_lut: LookUpTable,
     pub orientation_lut: LookUpTable,
-    pub ephemeris_data: SequenceOf<Ephemeris<'a>, 16>,
+    pub ephemeris_data: SequenceOf<Ephemeris<'a>, 512>,
     // TODO: Add orientation data
 }
 

@@ -13,7 +13,7 @@ pub struct Ephemeris<'a> {
     pub parent_ephemeris_hash: u32,
     pub orientation_hash: u32,
     pub interpolation_kind: InterpolationKind,
-    pub splines: Splines<'a>, // pub interpolator: Interpolator<'a>,
+    pub splines: Splines<'a>,
 }
 
 impl<'a> Encode for Ephemeris<'a> {
@@ -54,111 +54,112 @@ impl<'a> Decode<'a> for Ephemeris<'a> {
     }
 }
 
-pub enum Interpolator<'a> {
-    EqualTimeSteps(EqualTimeSteps<'a>),
-    UnequalTimeSteps(UnequalTimeSteps<'a>),
-}
+// pub enum Interpolator<'a> {
+//     EqualTimeSteps(EqualTimeSteps<'a>),
+//     UnequalTimeSteps(UnequalTimeSteps<'a>),
+// }
 
-impl<'a> Encode for Interpolator<'a> {
-    fn encoded_len(&self) -> der::Result<der::Length> {
-        match self {
-            Self::EqualTimeSteps(ets) => ets.encoded_len(),
-            Self::UnequalTimeSteps(uts) => uts.encoded_len(),
-        }
-    }
+// impl<'a> Encode for Interpolator<'a> {
+//     fn encoded_len(&self) -> der::Result<der::Length> {
+//         match self {
+//             Self::EqualTimeSteps(ets) => ets.encoded_len(),
+//             Self::UnequalTimeSteps(uts) => uts.encoded_len(),
+//         }
+//     }
 
-    fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
-        match self {
-            Self::EqualTimeSteps(ets) => ets.encode(encoder),
-            Self::UnequalTimeSteps(uts) => uts.encode(encoder),
-        }
-    }
-}
+//     fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
+//         match self {
+//             Self::EqualTimeSteps(ets) => ets.encode(encoder),
+//             Self::UnequalTimeSteps(uts) => uts.encode(encoder),
+//         }
+//     }
+// }
 
-impl<'a> Decode<'a> for Interpolator<'a> {
-    fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
-        let maybe_ets: _ = decoder.decode();
-        match maybe_ets {
-            Ok(ets) => Ok(Self::EqualTimeSteps(ets)),
-            Err(_) => Ok(Self::UnequalTimeSteps(decoder.decode()?)),
-        }
-    }
-}
+// impl<'a> Decode<'a> for Interpolator<'a> {
+//     fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
+//         let maybe_ets: _ = decoder.decode();
+//         match maybe_ets {
+//             Ok(ets) => Ok(Self::EqualTimeSteps(ets)),
+//             Err(_) => Ok(Self::UnequalTimeSteps(decoder.decode()?)),
+//         }
+//     }
+// }
 
-/// EqualTimeSteps defines an interpolated trajectory where each spline has the same duration, specified in seconds.
-/// This method allows for O(1) access to any set of coefficients, thereby O(1) access to compute the position, and
-/// optional velocity, of any ephemeris data.
-/// This approach is commonly used to interpolate the position of slow moving objects like celestial objects.
+// /// EqualTimeSteps defines an interpolated trajectory where each spline has the same duration, specified in seconds.
+// /// This method allows for O(1) access to any set of coefficients, thereby O(1) access to compute the position, and
+// /// optional velocity, of any ephemeris data.
+// /// This approach is commonly used to interpolate the position of slow moving objects like celestial objects.
 
-#[derive(Default)]
-pub struct EqualTimeSteps<'a> {
-    /// The duration of this spline in seconds, used to compute the offset of the vectors to fetch.
-    /// To retrieve the appropriate index in the coefficient data, apply the following algorithm.
-    /// 0. Let `epoch` be the desired epoch, and `start_epoch` the start epoch of the parent structure.
-    /// 1. Compute the offset between the desired epoch and the start_epoch:
-    ///
-    ///     `ephem_offset <- desired_epoch - start_epoch`
-    /// 2. Compute the index in splines as:
-    ///
-    ///     `index <- floor( ephem_offset / spline_duration_s)`
-    /// 3. Compute the time offset, in seconds, within that window:
-    ///
-    ///     `t_prime <- ephem_offset - index * spline_duration_s`
-    /// 4. Retrieve the coefficient data at key `index`.
-    /// 5. Initialize the proper interpolation scheme with `t_prime` as the requested interpolation time.
-    pub spline_duration_s: f64,
-    pub splines: &'a [Splines<'a>],
-    // pub splines: SequenceOf<Spline<'a>, 50>,
-}
+// #[derive(Default)]
+// pub struct EqualTimeSteps<'a> {
+//     /// The duration of this spline in seconds, used to compute the offset of the vectors to fetch.
+//     /// To retrieve the appropriate index in the coefficient data, apply the following algorithm.
+//     /// 0. Let `epoch` be the desired epoch, and `start_epoch` the start epoch of the parent structure.
+//     /// 1. Compute the offset between the desired epoch and the start_epoch:
+//     ///
+//     ///     `ephem_offset <- desired_epoch - start_epoch`
+//     /// 2. Compute the index in splines as:
+//     ///
+//     ///     `index <- floor( ephem_offset / spline_duration_s)`
+//     /// 3. Compute the time offset, in seconds, within that window:
+//     ///
+//     ///     `t_prime <- ephem_offset - index * spline_duration_s`
+//     /// 4. Retrieve the coefficient data at key `index`.
+//     /// 5. Initialize the proper interpolation scheme with `t_prime` as the requested interpolation time.
+//     pub spline_duration_s: f64,
+//     pub splines: &'a [Splines<'a>],
+//     // pub splines: SequenceOf<Spline<'a>, 50>,
+// }
 
-impl<'a> Encode for EqualTimeSteps<'a> {
-    fn encoded_len(&self) -> der::Result<der::Length> {
-        // XXX: How to handle variable length of the f64 data?
-        // Maybe just store as big endian bytes and that's it?
-        // Then, I'd need to figure out how to encode what data is present and what isn't.
-        // That could be a bit field of 27 items, each representing whether a given field is set. They will be assumed to be the same size, but that's probably wrong.
+// impl<'a> Encode for EqualTimeSteps<'a> {
+//     fn encoded_len(&self) -> der::Result<der::Length> {
+//         // XXX: How to handle variable length of the f64 data?
+//         // Maybe just store as big endian bytes and that's it?
+//         // Then, I'd need to figure out how to encode what data is present and what isn't.
+//         // That could be a bit field of 27 items, each representing whether a given field is set. They will be assumed to be the same size, but that's probably wrong.
 
-        self.spline_duration_s.encoded_len()?
-            + self.splines.iter().fold(Length::new(2), |acc, spline| {
-                (acc + spline.encoded_len().unwrap()).unwrap()
-            })
-    }
+//         self.spline_duration_s.encoded_len()?
+//             + self.splines.iter().fold(Length::new(2), |acc, spline| {
+//                 (acc + spline.encoded_len().unwrap()).unwrap()
+//             })
+//     }
 
-    fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
-        encoder.encode(&self.spline_duration_s)?;
-        encoder.sequence(Length::new(self.splines.len() as u16), |encoder| {
-            for spline in self.splines {
-                encoder.encode(spline)?;
-            }
-            Ok(())
-        })
-        // for spline in self.splines {
-        //     encoder.encode(spline)?;
-        // }
-        // Ok(())
-        // encoder.encode(&self.splines)
-    }
-}
+//     fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
+//         encoder.encode(&self.spline_duration_s)?;
+//         encoder.sequence(Length::new(self.splines.len() as u16), |encoder| {
+//             for spline in self.splines {
+//                 encoder.encode(spline)?;
+//             }
+//             Ok(())
+//         })
+//         // for spline in self.splines {
+//         //     encoder.encode(spline)?;
+//         // }
+//         // Ok(())
+//         // encoder.encode(&self.splines)
+//     }
+// }
 
-impl<'a> Decode<'a> for EqualTimeSteps<'a> {
-    fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
-        let spline_duration_s = decoder.decode()?;
-        let expected_len: u32 = decoder.peek_header().unwrap().length.into();
-        dbg!(expected_len);
-        // TODO: Consider switching back to SeqOf. It _may_ not be as problematic as the spline encoding since the latter uses octet string
-        let mut splines: &'a [Splines<'a>; 1000];
-        decoder.sequence(|decoder| {
-            for idx in 0..expected_len {
-                splines[idx as usize] = decoder.decode()?;
-            }
-            Ok(())
-        });
-        Ok(Self {
-            spline_duration_s,
-            splines,
-        })
-    }
-}
+// impl<'a> Decode<'a> for EqualTimeSteps<'a> {
+//     fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
+//         let spline_duration_s = decoder.decode()?;
+//         let expected_len: u32 = decoder.peek_header().unwrap().length.into();
+//         dbg!(expected_len);
+//         // TODO: Consider switching back to SeqOf. It _may_ not be as problematic as the spline encoding since the latter uses octet string
+//         let mut splines: &'a [Splines<'a>; 1000];
+//         decoder.sequence(|decoder| {
+//             for idx in 0..expected_len {
+//                 // splines[idx as usize] = decoder.decode()?;
+//                 todo!();
+//             }
+//             Ok(())
+//         });
+//         Ok(Self {
+//             spline_duration_s,
+//             splines,
+//         })
+//     }
+// }
 
 /// UnequalTimeSteps defines an interpolated trajectory where each spline has its own duration.
 /// This is common for spacecraft trajectories as the dynamics may vary greatly throughout the mission.

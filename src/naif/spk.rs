@@ -10,9 +10,9 @@ extern crate crc32fast;
 extern crate der;
 use super::daf::{Endianness, DAF, DBL_SIZE};
 use crate::asn1::common::InterpolationKind;
-use crate::asn1::ephemeris::{Ephemeris, EqualTimeSteps, Interpolator};
+use crate::asn1::ephemeris::Ephemeris;
 use crate::asn1::root::{Metadata, TrajectoryFile};
-use crate::asn1::spline::Spline;
+use crate::asn1::spline::{SplineCoeffCount, SplineKind, Splines};
 use crate::asn1::time::Epoch as AniseEpoch;
 use crate::{file_mmap, parse_bytes_as};
 use std::fs::File;
@@ -337,38 +337,49 @@ impl<'a> SPK<'a> {
         let mut all_intermediate_files = Vec::new();
 
         for (idx, seg) in self.segments.iter().enumerate() {
-            let mut all_splines = Vec::with_capacity(20_000);
+            // let mut all_splines = Vec::with_capacity(20_000);
             // Some files don't have a useful name in the segments, so we append the target ID in case
             let name = format!("{} #{}", seg.name, seg.target_id);
             let hashed_name = hash(name.as_bytes());
             traj_file.ephemeris_lut.indexes.add(idx as u16).unwrap();
             traj_file.ephemeris_lut.hashes.add(hashed_name).unwrap();
 
-            let mut interpolator = EqualTimeSteps::default();
+            // let mut interpolator = EqualTimeSteps::default();
 
             let (_, seg_coeffs) = self.all_coefficients(seg.target_id).unwrap();
+            let kind = SplineKind::FixedWindow {
+                window_duration_s: seg_coeffs[0].rcrd_radius_s,
+            };
+            let config = SplineCoeffCount {
+                position_coeffs: 3,
+                ..Default::default()
+            };
+            let mut spline_data = Vec::with_capacity(20_000);
+
             // let mut splines: Vec<Spline, 'a> = Vec::with_capacity(seg_coeffs.len());
             // Build the splines
             for seg_coeff in &seg_coeffs {
-                let mut spline = Spline::default();
-                // TODO: Add the start and end epoch for each spline
-                // for coeff in &seg_coeff.x_coeffs {
-                //     spline.x.add(*coeff).unwrap();
-                // }
-                spline.x = &seg_coeff.x_coeffs;
-                spline.y = &seg_coeff.y_coeffs;
-                spline.z = &seg_coeff.z_coeffs;
-                // spline.y = &seg_coeff.y_coeffs;
-                // spline.x = &seg_coeff.z_coeffs;
-                // for coeff in seg_coeff.y_coeffs {
-                //     spline.y.add(*coeff).unwrap();
-                // }
-                // for coeff in seg_coeff.z_coeffs {
-                //     spline.z.add(*coeff).unwrap();
-                // }
-                all_splines.push(spline);
+                for coeffbyte in seg_coeff.x_coeffs {
+                    spline_data.push(*coeffbyte)
+                }
+                dbg!(spline_data.len());
+                for coeffbyte in seg_coeff.y_coeffs {
+                    spline_data.push(*coeffbyte)
+                }
+                dbg!(spline_data.len());
+                for coeffbyte in seg_coeff.z_coeffs {
+                    spline_data.push(*coeffbyte)
+                }
+                dbg!(spline_data.len());
             }
-            interpolator.splines = &all_splines;
+            // Build the spline struct
+            let splines = Splines {
+                kind,
+                config,
+                data: &spline_data,
+            };
+
+            // interpolator.splines = &all_splines;
 
             // Create the ephemeris
             let ephem = Ephemeris {
@@ -381,7 +392,7 @@ impl<'a> SPK<'a> {
                 interpolation_kind: InterpolationKind::ChebyshevSeries,
                 parent_ephemeris_hash: 0, // TODO: Fix this
                 orientation_hash: 0,      // TODO: Set J2000 orientation
-                interpolator: Interpolator::EqualTimeSteps(interpolator),
+                splines,
             };
 
             // Serialize this ephemeris and rebuild the full file in a minute
@@ -391,7 +402,7 @@ impl<'a> SPK<'a> {
             all_intermediate_files.push(fname.clone());
             let mut file = File::create(fname).unwrap();
             ephem.encode_to_vec(&mut buf).unwrap();
-            let ephem_dec: Ephemeris = Ephemeris::from_der(&buf).unwrap();
+            // let ephem_dec: Ephemeris = Ephemeris::from_der(&buf).unwrap();
             file.write_all(&buf).unwrap();
         }
 
@@ -400,12 +411,11 @@ impl<'a> SPK<'a> {
         for fname in all_intermediate_files {
             let bytes = file_mmap!(fname).unwrap();
             all_bufs.push(bytes);
-            break;
         }
         for buf in &all_bufs {
             let ephem: Ephemeris = Ephemeris::from_der(&buf).unwrap();
+            println!("Add {}", ephem.name);
             traj_file.ephemeris_data.add(ephem).unwrap();
-            break;
         }
 
         let mut buf = Vec::new();
