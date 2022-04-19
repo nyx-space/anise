@@ -109,10 +109,11 @@ impl<'a> Decode<'a> for Metadata<'a> {
 /// A LookUpTable enables O(1) access to any ephemeris data
 #[derive(Default)]
 pub struct LookUpTable {
+    // TODO: Add CRC32 and pack the hashes in BE
     /// Hashes of the general hashing algorithm
-    pub hashes: SequenceOf<u32, 512>,
+    pub hashes: SequenceOf<u32, 16>,
     /// Corresponding index for each hash, may only have 65_535 entries
-    pub indexes: SequenceOf<u16, 512>,
+    pub indexes: SequenceOf<u16, 16>,
 }
 
 impl<'a> Encode for LookUpTable {
