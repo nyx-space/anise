@@ -14,23 +14,15 @@ use crate::asn1::ephemeris::Ephemeris;
 use crate::asn1::root::{Metadata, TrajectoryFile};
 use crate::asn1::spline::{SplineCoeffCount, SplineKind, Splines};
 use crate::asn1::time::Epoch as AniseEpoch;
-use crate::{file_mmap, parse_bytes_as};
-use std::fs::{remove_file, File};
-use std::intrinsics::transmute;
-use std::io::Write;
-// use crate::asn1::SplineAsn1;
-// use crate::generated::anise_generated::anise::common::InterpolationKind;
-// use crate::generated::anise_generated::anise::ephemeris::{
-//     Ephemeris, EphemerisArgs, EqualTimeSteps, EqualTimeStepsArgs, Interpolator, Spline, SplineArgs,
-// };
-// use crate::generated::anise_generated::anise::time::System;
-// use crate::generated::anise_generated::anise::{MapToIndex, MapToIndexArgs};
 use crate::prelude::AniseError;
+use crate::{file_mmap, parse_bytes_as};
 use crc32fast::hash;
 use der::{Decode, Encode};
 use hifitime::{Epoch, TimeSystem};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
+use std::fs::{remove_file, File};
+use std::io::Write;
 
 #[derive(Debug)]
 pub struct Segment<'a> {
@@ -244,11 +236,6 @@ impl<'a> SPK<'a> {
     /// Converts the provided SPK to an ANISE file
     pub fn to_anise(&'a self, orig_file: &str, filename: &str) {
         let meta = Metadata {
-            file_version: crate::asn1::root::Semver {
-                major: 4,
-                minor: 3,
-                patch: 1,
-            },
             originator: orig_file,
             ..Default::default()
         };
@@ -362,10 +349,13 @@ impl<'a> SPK<'a> {
                 //     }
                 // }
             }
+            // Compute the crc32 of this data
+            let chksum = hash(&spline_data);
             // Build the spline struct
             let splines = Splines {
                 kind,
                 config,
+                data_checksum: chksum,
                 data: &spline_data,
             };
 

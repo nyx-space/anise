@@ -1,5 +1,6 @@
 use std::mem::transmute;
 
+use crc32fast::hash;
 use der::{asn1::OctetString, Decode, Decoder, Encode, Length, Tag};
 
 // use super::time::Epoch;
@@ -90,6 +91,8 @@ impl SplineCoeffCount {
 pub struct Splines<'a> {
     pub kind: SplineKind<'a>,
     pub config: SplineCoeffCount,
+    /// Store the CRC32 checksum of the stored data. This should be checked prior to interpreting the data in the spline.
+    pub data_checksum: u32,
     // TODO: Add CRC32 for data integrity check before the transmute
     // TODO: Figure out how to properly add the covariance info, it's a bit hard because of the diag size
     // pub cov_position_coeff_len: u8,
@@ -103,12 +106,20 @@ impl<'a> Splines<'a> {
     /// TODO: Return a Result and check the CRC before transmute
     /// TODO: Consider indexing into the array, but that's a pain.
     pub fn get(&self, idx: usize) -> &'a [f64] {
+        assert!(self.check_integrity());
         let offset = self.config.spline_offset(idx);
         if offset <= self.data.len() {
             // TODO: Should the config.len be multiplied by the DBLSIZE?
             return unsafe { transmute(&self.data[offset..offset + self.config.len()]) };
         }
         panic!("oh no");
+    }
+
+    pub fn check_integrity(&self) -> bool {
+        // TODO: Convert to Result type as all of the functions
+        // Ensure that the data is correctly decoded
+        let computed_chksum = hash(self.data);
+        computed_chksum == self.data_checksum
     }
 }
 
@@ -196,12 +207,14 @@ impl<'a> Encode for Splines<'a> {
     fn encoded_len(&self) -> der::Result<Length> {
         self.kind.encoded_len()?
             + self.config.encoded_len()?
+            + self.data_checksum.encoded_len()?
             + OctetString::new(&self.data).unwrap().encoded_len()?
     }
 
     fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
         self.kind.encode(encoder)?;
         self.config.encode(encoder)?;
+        self.data_checksum.encode(encoder)?;
         OctetString::new(&self.data).unwrap().encode(encoder)
     }
 }
@@ -210,10 +223,12 @@ impl<'a> Decode<'a> for Splines<'a> {
     fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
         let kind = decoder.decode()?;
         let config = decoder.decode()?;
+        let data_checksum = decoder.decode()?;
         let data_bytes: OctetString = decoder.decode()?;
         Ok(Self {
             kind,
             config,
+            data_checksum,
             data: data_bytes.as_bytes(),
         })
     }

@@ -57,19 +57,23 @@ impl<'a> Decode<'a> for Semver {
 
 #[derive(Clone, Debug)]
 pub struct Metadata<'a> {
+    /// The ANISE version number. Can be used for partial decoding to determine whether a file is compatible with a library.
     pub anise_version: Semver,
-    pub file_version: Semver,
-    pub originator: &'a str,
+    /// Date time of the creation of this file.
     pub creation_date: DateTime,
+    /// Originator of the file, either an organization, a person, a tool, or a combination thereof
+    pub originator: &'a str,
+    /// Unique resource identifier to the metadata of this file. This is for FAIR compliance.
+    pub metadata_uri: &'a str,
 }
 
 impl Default for Metadata<'_> {
     fn default() -> Self {
         Self {
             anise_version: ANISE_VERSION,
-            file_version: Default::default(),
-            originator: Default::default(),
             creation_date: DateTime::new(2022, 1, 1, 0, 0, 0).unwrap(),
+            originator: Default::default(),
+            metadata_uri: Default::default(),
         }
     }
 }
@@ -77,30 +81,30 @@ impl Default for Metadata<'_> {
 impl<'a> Encode for Metadata<'a> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         self.anise_version.encoded_len()?
-            + self.file_version.encoded_len()?
-            + Utf8String::new(self.originator)?.encoded_len()?
             + self.creation_date.encoded_len()?
+            + Utf8String::new(self.originator)?.encoded_len()?
+            + Utf8String::new(self.metadata_uri)?.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
         self.anise_version.encode(encoder)?;
-        self.file_version.encode(encoder)?;
+        self.creation_date.encode(encoder)?;
         Utf8String::new(self.originator)?.encode(encoder)?;
-        self.creation_date.encode(encoder)
+        Utf8String::new(self.metadata_uri)?.encode(encoder)
     }
 }
 
 impl<'a> Decode<'a> for Metadata<'a> {
     fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
         let anise_version = decoder.decode()?;
-        let file_version = decoder.decode()?;
-        let originator: Utf8String<'a> = decoder.decode()?;
         let creation_date = decoder.decode()?;
+        let originator: Utf8String<'a> = decoder.decode()?;
+        let metadata_uri: Utf8String<'a> = decoder.decode()?;
         Ok(Self {
             anise_version,
-            file_version,
             originator: originator.as_str(),
             creation_date,
+            metadata_uri: metadata_uri.as_str(),
         })
     }
 }

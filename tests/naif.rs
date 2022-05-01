@@ -120,8 +120,8 @@ fn test_spk_load() {
         for (sidx, seg_data) in all_seg_data.iter().enumerate() {
             let spline = splines.get(sidx);
             let mut idx = 0;
-            let pos_len = (splines.config.num_position_coeffs * splines.config.degree) as usize;
-            let x_coeffs = &spline[idx..pos_len];
+            let degree = splines.config.degree as usize;
+            let x_coeffs = &spline[idx * degree..(idx + 1) * degree];
             assert_eq!(
                 x_coeffs.len(),
                 seg_data.x_coeffs.len(),
@@ -134,8 +134,8 @@ fn test_spk_load() {
             //     spk_f64 = all_seg_data[sidx].x_coeffs[cidx]
             //     assert!((*x - all_seg_data[sidx].x_coeffs[cidx]).abs() < f64::EPSILON);
             // }
-            idx += pos_len;
-            let y_coeffs = &spline[idx..pos_len];
+            idx += 1;
+            let y_coeffs = &spline[idx * degree..(idx + 1) * degree];
             assert_eq!(
                 y_coeffs.len(),
                 seg_data.y_coeffs.len(),
@@ -143,8 +143,8 @@ fn test_spk_load() {
                 seg_target_id,
                 sidx
             );
-            idx += pos_len;
-            let z_coeffs = &spline[idx..pos_len];
+            idx += 1;
+            let z_coeffs = &spline[idx * degree..(idx + 1) * degree];
             assert_eq!(
                 z_coeffs.len(),
                 seg_data.z_coeffs.len(),
