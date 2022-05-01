@@ -15,7 +15,7 @@ use crate::asn1::root::{Metadata, TrajectoryFile};
 use crate::asn1::spline::{SplineCoeffCount, SplineKind, Splines};
 use crate::asn1::time::Epoch as AniseEpoch;
 use crate::{file_mmap, parse_bytes_as};
-use std::fs::File;
+use std::fs::{remove_file, File};
 use std::intrinsics::transmute;
 use std::io::Write;
 // use crate::asn1::SplineAsn1;
@@ -173,7 +173,7 @@ impl<'a> SPK<'a> {
         let mut full_data = Vec::new();
 
         let mut dbl_idx = seg.start_idx;
-        for _ in (0..(meta.num_records_in_seg - 1) * meta.rsize).step_by(meta.rsize) {
+        for _ in (0..meta.num_records_in_seg * meta.rsize).step_by(meta.rsize) {
             let mut r_dbl_idx = dbl_idx;
             let rcrd_mid_point = parse_bytes_as!(
                 f64,
@@ -277,10 +277,11 @@ impl<'a> SPK<'a> {
             let kind = SplineKind::FixedWindow {
                 window_duration_s: seg_coeffs[0].rcrd_radius_s,
             };
+            // TODO: This should be a const fn for each interp type
             let config = SplineCoeffCount {
                 degree: degree.try_into().unwrap(),
                 num_position_coeffs: 3,
-                num_velocity_coeffs: 3,
+                num_velocity_coeffs: 0,
                 ..Default::default()
             };
             let mut spline_data = Vec::with_capacity(20_000);
@@ -385,7 +386,7 @@ impl<'a> SPK<'a> {
             // Serialize this ephemeris and rebuild the full file in a minute
 
             let mut buf = Vec::new();
-            let fname = format!("{idx}-{hashed_name}-{filename}");
+            let fname = format!("{idx}-{hashed_name}-{filename}.tmp");
             all_intermediate_files.push(fname.clone());
             let mut file = File::create(fname).unwrap();
             ephem.encode_to_vec(&mut buf).unwrap();
@@ -395,7 +396,7 @@ impl<'a> SPK<'a> {
 
         // Now concat all of the files
         let mut all_bufs = Vec::new();
-        for fname in all_intermediate_files {
+        for fname in &all_intermediate_files {
             let bytes = file_mmap!(fname).unwrap();
             all_bufs.push(bytes);
         }
@@ -409,6 +410,10 @@ impl<'a> SPK<'a> {
         let mut file = File::create(filename).unwrap();
         traj_file.encode_to_vec(&mut buf).unwrap();
         file.write_all(&buf).unwrap();
+        // And delete the temporary files
+        for fname in &all_intermediate_files {
+            remove_file(fname).unwrap();
+        }
     }
 }
 

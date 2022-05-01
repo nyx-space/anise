@@ -101,9 +101,11 @@ pub struct Splines<'a> {
 impl<'a> Splines<'a> {
     /// Returns a pointer to f64 data that contains the splines
     /// TODO: Return a Result and check the CRC before transmute
+    /// TODO: Consider indexing into the array, but that's a pain.
     pub fn get(&self, idx: usize) -> &'a [f64] {
         let offset = self.config.spline_offset(idx);
         if offset <= self.data.len() {
+            // TODO: Should the config.len be multiplied by the DBLSIZE?
             return unsafe { transmute(&self.data[offset..offset + self.config.len()]) };
         }
         panic!("oh no");

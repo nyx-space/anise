@@ -69,12 +69,12 @@ fn test_spk_load() {
     let ctx = TrajectoryFile::from_der(&bytes).unwrap();
     assert_eq!(
         ctx.ephemeris_lut.hashes.len(),
-        12,
+        spk.segments.len(),
         "Incorrect number of ephem in map"
     );
     assert_eq!(
         ctx.ephemeris_lut.indexes.len(),
-        12,
+        spk.segments.len(),
         "Incorrect number of ephem in map"
     );
 
