@@ -18,7 +18,7 @@ use crate::prelude::AniseError;
 use crate::{file_mmap, parse_bytes_as};
 use crc32fast::hash;
 use der::{Decode, Encode};
-use hifitime::{Epoch, TimeSystem};
+use hifitime::{Duration, Epoch, TimeSystem, TimeUnits};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::fs::{remove_file, File};
@@ -138,6 +138,8 @@ impl<'a> SPK<'a> {
 
             //  4. N is the number of records contained in the segment.
             let num_records_in_seg = self.daf.read_f64(byte_idx);
+            let interval_dur: Duration = interval_length.seconds();
+            println!("{seg_target_id} => {interval_length} s => {interval_dur}");
 
             return Ok((
                 seg,
@@ -262,7 +264,7 @@ impl<'a> SPK<'a> {
 
             let degree = (meta.rsize - 2) / 3 - 1;
             let kind = SplineKind::FixedWindow {
-                window_duration_s: seg_coeffs[0].rcrd_radius_s,
+                window_duration_s: meta.interval_length as f64,
             };
             // TODO: This should be a const fn for each interp type
             let config = SplineCoeffCount {

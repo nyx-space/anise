@@ -19,6 +19,8 @@ pub enum AniseError {
     /// If the NAIF file cannot be read or isn't supported
     NAIFConversionError(String),
     InvalidTimeSystem,
+    /// Raised if the checksum of the encoded data does not match the stored data.
+    IntegrityError,
 }
 
 impl From<IOErrorKind> for AniseError {
@@ -46,6 +48,10 @@ impl fmt::Display for AniseError {
                 write!(f, "Anise Error: invalid NAIF DAF file: {}", reason)
             }
             Self::InvalidTimeSystem => write!(f, "Anise Error: invalid time system"),
+            Self::IntegrityError => write!(
+                f,
+                "Anise Error: data array checksum verification failed (file is corrupted)"
+            ),
         }
     }
 }

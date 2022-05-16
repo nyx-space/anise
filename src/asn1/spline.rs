@@ -1,7 +1,7 @@
 use std::mem::transmute;
 
 use crc32fast::hash;
-use der::{asn1::OctetString, Decode, Decoder, Encode, Length, Tag};
+use der::{asn1::OctetStringRef, Decode, Encode, Length, Reader, Tag, Writer};
 
 // use super::time::Epoch;
 
@@ -9,41 +9,39 @@ use der::{asn1::OctetString, Decode, Decoder, Encode, Length, Tag};
 pub const MAX_INTERP_DEGREE: usize = 32;
 
 /// Defines the two kinds of splines supports: equal time steps (fixed window) or unequal time steps (also called sliding window)
-pub enum SplineKind<'a> {
+pub enum SplineKind {
     FixedWindow {
         window_duration_s: f64,
     },
     SlidingWindow {
         /// Sliding window ephemerides may only span 4 centuries to constraint stack size
-        indexes: [TimeIndex<'a>; 4],
+        indexes: [TimeIndex; 4],
     },
 }
 
-pub struct TimeIndex<'a> {
+pub struct TimeIndex {
     pub century: i16,
     /// Nanoseconds are on 64 bit unsigned integer (u64) but stored as u8
     /// TODO: Figure out how to keep this as u64 (might have lifetime issues? Maybe easiest is to seek and convert as needed? But that's hard for a binary search)
-    pub nanoseconds: &'a [u8],
+    pub nanoseconds: u64,
 }
 
-impl<'a> Encode for TimeIndex<'a> {
+impl<'a> Encode for TimeIndex {
     fn encoded_len(&self) -> der::Result<der::Length> {
-        self.century.encoded_len()? + OctetString::new(self.nanoseconds).unwrap().encoded_len()?
+        self.century.encoded_len()? + self.nanoseconds.encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
-        encoder.encode(&self.century)?;
-        encoder.encode(&OctetString::new(self.nanoseconds).unwrap())
+    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+        self.century.encode(encoder)?;
+        self.nanoseconds.encode(encoder)
     }
 }
 
-impl<'a> Decode<'a> for TimeIndex<'a> {
-    fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
-        let century = decoder.decode()?;
-        let ns_bytes: OctetString = decoder.decode()?;
+impl<'a> Decode<'a> for TimeIndex {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         Ok(Self {
-            century,
-            nanoseconds: ns_bytes.as_bytes(),
+            century: decoder.decode()?,
+            nanoseconds: decoder.decode()?,
         })
     }
 }
@@ -89,11 +87,10 @@ impl SplineCoeffCount {
 }
 
 pub struct Splines<'a> {
-    pub kind: SplineKind<'a>,
+    pub kind: SplineKind,
     pub config: SplineCoeffCount,
     /// Store the CRC32 checksum of the stored data. This should be checked prior to interpreting the data in the spline.
     pub data_checksum: u32,
-    // TODO: Add CRC32 for data integrity check before the transmute
     // TODO: Figure out how to properly add the covariance info, it's a bit hard because of the diag size
     // pub cov_position_coeff_len: u8,
     // pub cov_velocity_coeff_len: u8,
@@ -123,39 +120,28 @@ impl<'a> Splines<'a> {
     }
 }
 
-impl<'a> Encode for SplineKind<'a> {
+impl<'a> Encode for SplineKind {
     fn encoded_len(&self) -> der::Result<der::Length> {
         match self {
-            Self::FixedWindow { window_duration_s } => window_duration_s.encoded_len(),
-            Self::SlidingWindow { indexes } => {
-                let mut len = Length::new(2);
-                for index in indexes {
-                    len = (len + OctetString::new(index.nanoseconds).unwrap().encoded_len()?)?;
-                }
-                Ok(len)
+            Self::FixedWindow { window_duration_s } => (*window_duration_s).encoded_len(),
+            Self::SlidingWindow { indexes: _indexes } => {
+                todo!()
             }
         }
     }
 
-    fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
+    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
         match self {
-            Self::FixedWindow { window_duration_s } => encoder.encode(window_duration_s),
-            Self::SlidingWindow { indexes } => {
-                encoder.sequence(Length::new(indexes.len() as u16), |sencoder| {
-                    for index in indexes {
-                        OctetString::new(index.nanoseconds)
-                            .unwrap()
-                            .encode(sencoder)?;
-                    }
-                    Ok(())
-                })
+            Self::FixedWindow { window_duration_s } => (*window_duration_s).encode(encoder),
+            Self::SlidingWindow { indexes: _indexes } => {
+                todo!()
             }
         }
     }
 }
 
-impl<'a> Decode<'a> for SplineKind<'a> {
-    fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
+impl<'a> Decode<'a> for SplineKind {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         // Check the header tag to decode this CHOICE
         if decoder.peek_tag()? == Tag::Real {
             Ok(Self::FixedWindow {
@@ -180,7 +166,7 @@ impl Encode for SplineCoeffCount {
             + self.num_velocity_dt_coeffs.encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
+    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
         self.degree.encode(encoder)?;
         self.num_epochs.encode(encoder)?;
         self.num_position_coeffs.encode(encoder)?;
@@ -191,7 +177,7 @@ impl Encode for SplineCoeffCount {
 }
 
 impl<'a> Decode<'a> for SplineCoeffCount {
-    fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         Ok(Self {
             degree: decoder.decode()?,
             num_epochs: decoder.decode()?,
@@ -208,23 +194,23 @@ impl<'a> Encode for Splines<'a> {
         self.kind.encoded_len()?
             + self.config.encoded_len()?
             + self.data_checksum.encoded_len()?
-            + OctetString::new(&self.data).unwrap().encoded_len()?
+            + OctetStringRef::new(self.data).unwrap().encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
+    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
         self.kind.encode(encoder)?;
         self.config.encode(encoder)?;
         self.data_checksum.encode(encoder)?;
-        OctetString::new(&self.data).unwrap().encode(encoder)
+        OctetStringRef::new(self.data).unwrap().encode(encoder)
     }
 }
 
 impl<'a> Decode<'a> for Splines<'a> {
-    fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         let kind = decoder.decode()?;
         let config = decoder.decode()?;
         let data_checksum = decoder.decode()?;
-        let data_bytes: OctetString = decoder.decode()?;
+        let data_bytes: OctetStringRef = decoder.decode()?;
         Ok(Self {
             kind,
             config,
@@ -327,12 +313,12 @@ impl<'a> Encode for Spline<'a> {
 
         self.start_epoch.encoded_len()?
             + self.end_epoch.encoded_len()?
-            + OctetString::new(&x_data_ieee754_be[..x_size])?.encoded_len()?
-            + OctetString::new(&x_data_ieee754_be[..x_size])?.encoded_len()?
-            + OctetString::new(&x_data_ieee754_be[..x_size])?.encoded_len()?
+            + OctetStringRef::new(&x_data_ieee754_be[..x_size])?.encoded_len()?
+            + OctetStringRef::new(&x_data_ieee754_be[..x_size])?.encoded_len()?
+            + OctetStringRef::new(&x_data_ieee754_be[..x_size])?.encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
+    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
         encoder.encode(&self.start_epoch)?;
         encoder.encode(&self.end_epoch)?;
         let mut x_data_ieee754_be = [0x0; 8 * MAX_INTERP_DEGREE];
@@ -343,19 +329,19 @@ impl<'a> Encode for Spline<'a> {
                 size += 1;
             }
         }
-        encoder.encode(&OctetString::new(&x_data_ieee754_be[..size])?)?;
-        encoder.encode(&OctetString::new(&x_data_ieee754_be[..size])?)?;
-        encoder.encode(&OctetString::new(&x_data_ieee754_be[..size])?)
+        encoder.encode(&OctetStringRef::new(&x_data_ieee754_be[..size])?)?;
+        encoder.encode(&OctetStringRef::new(&x_data_ieee754_be[..size])?)?;
+        encoder.encode(&OctetStringRef::new(&x_data_ieee754_be[..size])?)
     }
 }
 
 impl<'a> Decode<'a> for Spline<'a> {
-    fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         let start_epoch = decoder.decode()?;
         let end_epoch = decoder.decode()?;
-        let x_data_ieee754_be: OctetString = decoder.decode()?;
-        let y_data_ieee754_be: OctetString = decoder.decode()?;
-        let z_data_ieee754_be: OctetString = decoder.decode()?;
+        let x_data_ieee754_be: OctetStringRef = decoder.decode()?;
+        let y_data_ieee754_be: OctetStringRef = decoder.decode()?;
+        let z_data_ieee754_be: OctetStringRef = decoder.decode()?;
 
         Ok(Self {
             start_epoch,

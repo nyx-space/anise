@@ -1,6 +1,6 @@
 use der::{
-    asn1::{OctetString, SequenceOf, Utf8String},
-    DateTime, Decode, Decoder, Encode, Error, ErrorKind, Length,
+    asn1::{OctetStringRef, SequenceOf, Utf8StringRef},
+    DateTime, Decode, Encode, Error, ErrorKind, Length, Reader, Writer,
 };
 
 use super::ephemeris::Ephemeris;
@@ -23,20 +23,20 @@ pub struct Semver {
 impl<'a> Encode for Semver {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let data: [u8; 3] = [self.major, self.minor, self.patch];
-        let as_octet_string = OctetString::new(&data).unwrap();
+        let as_octet_string = OctetStringRef::new(&data).unwrap();
         as_octet_string.encoded_len()
     }
 
-    fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
+    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
         let data: [u8; 3] = [self.major, self.minor, self.patch];
-        let as_octet_string = OctetString::new(&data).unwrap();
+        let as_octet_string = OctetStringRef::new(&data).unwrap();
         as_octet_string.encode(encoder)
     }
 }
 
 impl<'a> Decode<'a> for Semver {
-    fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
-        let data: OctetString = decoder.decode()?;
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
+        let data: OctetStringRef = decoder.decode()?;
         if data.len() != Length::new(3) {
             return Err(Error::new(
                 ErrorKind::Incomplete {
@@ -82,24 +82,24 @@ impl<'a> Encode for Metadata<'a> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         self.anise_version.encoded_len()?
             + self.creation_date.encoded_len()?
-            + Utf8String::new(self.originator)?.encoded_len()?
-            + Utf8String::new(self.metadata_uri)?.encoded_len()?
+            + Utf8StringRef::new(self.originator)?.encoded_len()?
+            + Utf8StringRef::new(self.metadata_uri)?.encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
+    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
         self.anise_version.encode(encoder)?;
         self.creation_date.encode(encoder)?;
-        Utf8String::new(self.originator)?.encode(encoder)?;
-        Utf8String::new(self.metadata_uri)?.encode(encoder)
+        Utf8StringRef::new(self.originator)?.encode(encoder)?;
+        Utf8StringRef::new(self.metadata_uri)?.encode(encoder)
     }
 }
 
 impl<'a> Decode<'a> for Metadata<'a> {
-    fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         let anise_version = decoder.decode()?;
         let creation_date = decoder.decode()?;
-        let originator: Utf8String<'a> = decoder.decode()?;
-        let metadata_uri: Utf8String<'a> = decoder.decode()?;
+        let originator: Utf8StringRef<'a> = decoder.decode()?;
+        let metadata_uri: Utf8StringRef<'a> = decoder.decode()?;
         Ok(Self {
             anise_version,
             originator: originator.as_str(),
@@ -125,14 +125,14 @@ impl<'a> Encode for LookUpTable {
         self.hashes.encoded_len()? + self.indexes.encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
+    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
         self.hashes.encode(encoder)?;
         self.indexes.encode(encoder)
     }
 }
 
 impl<'a> Decode<'a> for LookUpTable {
-    fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         Ok(Self {
             hashes: decoder.decode()?,
             indexes: decoder.decode()?,
@@ -157,7 +157,7 @@ impl<'a> Encode for TrajectoryFile<'a> {
             + self.ephemeris_data.encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
+    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
         self.metadata.encode(encoder)?;
         self.ephemeris_lut.encode(encoder)?;
         self.orientation_lut.encode(encoder)?;
@@ -166,7 +166,7 @@ impl<'a> Encode for TrajectoryFile<'a> {
 }
 
 impl<'a> Decode<'a> for TrajectoryFile<'a> {
-    fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         Ok(Self {
             metadata: decoder.decode()?,
             ephemeris_lut: decoder.decode()?,

@@ -4,7 +4,7 @@ use hifitime::{Epoch as EpochHifitime, TimeSystem};
 
 use crate::prelude::AniseError;
 
-use super::der::{Decode, Decoder, Encode};
+use super::der::{Decode, Encode, Reader, Writer};
 
 #[derive(Debug)]
 pub struct Epoch {
@@ -52,28 +52,22 @@ impl<'a> Encode for Epoch {
             + self.time_system_as_u8().encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut der::Encoder<'_>) -> der::Result<()> {
+    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
         let (centuries, nanoseconds) = self.epoch.as_tai_duration().to_parts();
 
-        encoder.encode(&centuries)?;
-        encoder.encode(&nanoseconds)?;
-        encoder.encode(&self.time_system_as_u8())
+        centuries.encode(encoder)?;
+        nanoseconds.encode(encoder)?;
+        self.time_system_as_u8().encode(encoder)
     }
 }
 
 impl<'a> Decode<'a> for Epoch {
-    fn decode(decoder: &mut Decoder<'a>) -> der::Result<Self> {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         let centuries = decoder.decode()?;
         let nanoseconds = decoder.decode()?;
         let ts_u8 = decoder.decode()?;
         let epoch = EpochHifitime::from_tai_parts(centuries, nanoseconds);
         let system = Epoch::time_system_from_u8(ts_u8).unwrap();
         Ok(Self { epoch, system })
-    }
-
-    fn from_der(bytes: &'a [u8]) -> der::Result<Self> {
-        let mut decoder = Decoder::new(bytes)?;
-        let result = Self::decode(&mut decoder)?;
-        decoder.finish(result)
     }
 }

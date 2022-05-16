@@ -91,7 +91,7 @@ fn test_spk_load() {
         let splt = ephem.name.split("#").collect::<Vec<&str>>();
         let seg_target_id = str::parse::<i32>(splt[1]).unwrap();
         // Fetch the SPK segment
-        let (seg, _meta, all_seg_data) = spk.all_coefficients(seg_target_id).unwrap();
+        let (seg, meta, all_seg_data) = spk.all_coefficients(seg_target_id).unwrap();
         if all_seg_data.is_empty() {
             continue;
         }
@@ -107,6 +107,10 @@ fn test_spk_load() {
         match splines.kind {
             SplineKind::FixedWindow { window_duration_s } => {
                 dbg!(window_duration_s);
+                assert_eq!(
+                    window_duration_s, meta.interval_length as f64,
+                    "incorrect interval duration"
+                );
             }
             _ => panic!("wrong spline kind"),
         };
