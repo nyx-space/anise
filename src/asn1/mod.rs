@@ -1,3 +1,4 @@
+extern crate bytemuck;
 extern crate der;
 
 pub mod common;

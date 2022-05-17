@@ -6,11 +6,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::{parse_bytes_as, prelude::AniseError};
+use crate::{parse_bytes_as, prelude::AniseError, DBL_SIZE};
 use std::convert::TryInto;
 
 pub(crate) const RCRD_LEN: usize = 1024;
-pub(crate) const DBL_SIZE: usize = 8;
 pub(crate) const INT_SIZE: usize = 4;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]

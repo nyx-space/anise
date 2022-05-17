@@ -8,17 +8,17 @@
 
 extern crate crc32fast;
 extern crate der;
-use super::daf::{Endianness, DAF, DBL_SIZE};
+use super::daf::{Endianness, DAF};
 use crate::asn1::common::InterpolationKind;
 use crate::asn1::ephemeris::Ephemeris;
 use crate::asn1::root::{Metadata, TrajectoryFile};
 use crate::asn1::spline::{SplineCoeffCount, SplineKind, Splines};
 use crate::asn1::time::Epoch as AniseEpoch;
 use crate::prelude::AniseError;
-use crate::{file_mmap, parse_bytes_as};
+use crate::{file_mmap, parse_bytes_as, DBL_SIZE};
 use crc32fast::hash;
 use der::{Decode, Encode};
-use hifitime::{Duration, Epoch, TimeSystem, TimeUnits};
+use hifitime::{Epoch, TimeSystem};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::fs::{remove_file, File};
@@ -96,6 +96,7 @@ pub struct SPK<'a> {
     pub daf: &'a DAF<'a>,
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct SegMetaData {
     pub init_s_past_j2k: f64,
     pub interval_length: usize,
@@ -138,8 +139,6 @@ impl<'a> SPK<'a> {
 
             //  4. N is the number of records contained in the segment.
             let num_records_in_seg = self.daf.read_f64(byte_idx);
-            let interval_dur: Duration = interval_length.seconds();
-            println!("{seg_target_id} => {interval_length} s => {interval_dur}");
 
             return Ok((
                 seg,
@@ -251,7 +250,7 @@ impl<'a> SPK<'a> {
         let mut all_intermediate_files = Vec::new();
 
         for (idx, seg) in self.segments.iter().enumerate() {
-            let (_, meta, seg_coeffs) = self.all_coefficients(seg.target_id).unwrap();
+            let (seg, meta, seg_coeffs) = self.all_coefficients(seg.target_id).unwrap();
             if seg_coeffs.is_empty() {
                 continue;
             }
@@ -275,65 +274,32 @@ impl<'a> SPK<'a> {
             };
             let mut spline_data = Vec::with_capacity(20_000);
 
+            let mut printed = false;
+
             // Build the splines
             for seg_coeff in &seg_coeffs {
-                // for coeffidx in (0..seg_coeff.x_coeffs.len()).step_by(DBL_SIZE) {
-                //     // Rebuild the f64 one at a time
-                //     let coeff = parse_bytes_as!(
-                //         f64,
-                //         &seg_coeff.x_coeffs[coeffidx..DBL_SIZE],
-                //         Endianness::Little
-                //     );
-
-                //     for coeffbyte in coeff.to_be_bytes() {
-                //         spline_data.push(coeffbyte);
-                //     }
-                // }
-
-                // for coeffidx in (0..seg_coeff.y_coeffs.len()).step_by(DBL_SIZE) {
-                //     // Rebuild the f64 one at a time
-                //     let coeff = parse_bytes_as!(
-                //         f64,
-                //         &seg_coeff.y_coeffs[coeffidx..DBL_SIZE],
-                //         Endianness::Little
-                //     );
-
-                //     for coeffbyte in coeff.to_be_bytes() {
-                //         spline_data.push(coeffbyte);
-                //     }
-                // }
-
-                // for coeffidx in (0..seg_coeff.z_coeffs.len()).step_by(DBL_SIZE) {
-                //     // Rebuild the f64 one at a time
-                //     let coeff = parse_bytes_as!(
-                //         f64,
-                //         &seg_coeff.z_coeffs[coeffidx..DBL_SIZE],
-                //         Endianness::Little
-                //     );
-
-                //     for coeffbyte in coeff.to_be_bytes() {
-                //         spline_data.push(coeffbyte);
-                //     }
-                // }
-
                 for coeff in &seg_coeff.x_coeffs {
                     for coeffbyte in coeff.to_be_bytes() {
                         spline_data.push(coeffbyte);
                     }
-                    // spline_data.push(*coeff);
                 }
 
                 for coeff in &seg_coeff.y_coeffs {
                     for coeffbyte in coeff.to_be_bytes() {
                         spline_data.push(coeffbyte);
                     }
-                    // spline_data.push(*coeff);
                 }
                 for coeff in &seg_coeff.z_coeffs {
                     for coeffbyte in coeff.to_be_bytes() {
                         spline_data.push(coeffbyte);
                     }
-                    // spline_data.push(*coeff);
+                }
+
+                // Check that we've added the correct number of items
+                assert!(spline_data.len() / (8 * degree) % 3 == 0);
+                if !printed {
+                    dbg!(seg, meta, spline_data.len() / 8, degree);
+                    printed = true;
                 }
                 // for coeff in seg_coeff.vx_coeffs {
                 //     for coeffbyte in coeff.to_be_bytes() {

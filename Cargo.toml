@@ -19,7 +19,7 @@ flatbuffers = "2.0.0"
 hifitime = "3.1.0"
 memmap2 = "0.5.0"
 crc32fast = "1.3.0"
-# bytemuck = "1.9.1"
-der = {version = "0.6", features = ["derive", "alloc", "real"]}
+bytemuck = "1.9.1"
+der = {version = "0.6.0", features = ["derive", "alloc", "real"]}
 # der = {path = "/home/chris/Workspace/rust/formats/der"}
 # der = { git = "https://github.com/RustCrypto/formats.git", commit = "0dca45e8e3b542582a9bc4f51af7605d4e871337", features = ["derive", "alloc"]}

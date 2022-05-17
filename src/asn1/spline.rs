@@ -1,7 +1,8 @@
-use std::mem::transmute;
-
+use bytemuck::{try_cast_ref, try_cast_slice};
 use crc32fast::hash;
 use der::{asn1::OctetStringRef, Decode, Encode, Length, Reader, Tag, Writer};
+
+use crate::{naif::daf::Endianness, parse_bytes_as, prelude::AniseError, DBL_SIZE};
 
 // use super::time::Epoch;
 
@@ -19,10 +20,44 @@ pub enum SplineKind {
     },
 }
 
+impl<'a> Encode for SplineKind {
+    fn encoded_len(&self) -> der::Result<der::Length> {
+        match self {
+            Self::FixedWindow { window_duration_s } => (*window_duration_s).encoded_len(),
+            Self::SlidingWindow { indexes: _indexes } => {
+                todo!()
+            }
+        }
+    }
+
+    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+        match self {
+            Self::FixedWindow { window_duration_s } => (*window_duration_s).encode(encoder),
+            Self::SlidingWindow { indexes: _indexes } => {
+                todo!()
+            }
+        }
+    }
+}
+
+impl<'a> Decode<'a> for SplineKind {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
+        // Check the header tag to decode this CHOICE
+        if decoder.peek_tag()? == Tag::Real {
+            Ok(Self::FixedWindow {
+                window_duration_s: decoder.decode()?,
+            })
+        } else {
+            decoder.sequence(|sdecoder| {
+                let indexes = sdecoder.decode()?;
+                Ok(Self::SlidingWindow { indexes })
+            })
+        }
+    }
+}
+
 pub struct TimeIndex {
     pub century: i16,
-    /// Nanoseconds are on 64 bit unsigned integer (u64) but stored as u8
-    /// TODO: Figure out how to keep this as u64 (might have lifetime issues? Maybe easiest is to seek and convert as needed? But that's hard for a binary search)
     pub nanoseconds: u64,
 }
 
@@ -76,83 +111,13 @@ impl SplineCoeffCount {
 
     /// Returns the length of a spline in bytes
     pub fn len(&self) -> usize {
-        ((self.num_epochs
+        let num_items: usize = (self.num_epochs
             + self.num_position_coeffs * self.degree
             + self.num_position_dt_coeffs * self.degree
             + self.num_velocity_coeffs * self.degree
             + self.num_velocity_dt_coeffs * self.degree)
-            * 8)
-        .into()
-    }
-}
-
-pub struct Splines<'a> {
-    pub kind: SplineKind,
-    pub config: SplineCoeffCount,
-    /// Store the CRC32 checksum of the stored data. This should be checked prior to interpreting the data in the spline.
-    pub data_checksum: u32,
-    // TODO: Figure out how to properly add the covariance info, it's a bit hard because of the diag size
-    // pub cov_position_coeff_len: u8,
-    // pub cov_velocity_coeff_len: u8,
-    // pub cov_acceleration_coeff_len: u8,
-    pub data: &'a [u8],
-}
-
-impl<'a> Splines<'a> {
-    /// Returns a pointer to f64 data that contains the splines
-    /// TODO: Return a Result and check the CRC before transmute
-    /// TODO: Consider indexing into the array, but that's a pain.
-    pub fn get(&self, idx: usize) -> &'a [f64] {
-        assert!(self.check_integrity());
-        let offset = self.config.spline_offset(idx);
-        if offset <= self.data.len() {
-            // TODO: Should the config.len be multiplied by the DBLSIZE?
-            return unsafe { transmute(&self.data[offset..offset + self.config.len()]) };
-        }
-        panic!("oh no");
-    }
-
-    pub fn check_integrity(&self) -> bool {
-        // TODO: Convert to Result type as all of the functions
-        // Ensure that the data is correctly decoded
-        let computed_chksum = hash(self.data);
-        computed_chksum == self.data_checksum
-    }
-}
-
-impl<'a> Encode for SplineKind {
-    fn encoded_len(&self) -> der::Result<der::Length> {
-        match self {
-            Self::FixedWindow { window_duration_s } => (*window_duration_s).encoded_len(),
-            Self::SlidingWindow { indexes: _indexes } => {
-                todo!()
-            }
-        }
-    }
-
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
-        match self {
-            Self::FixedWindow { window_duration_s } => (*window_duration_s).encode(encoder),
-            Self::SlidingWindow { indexes: _indexes } => {
-                todo!()
-            }
-        }
-    }
-}
-
-impl<'a> Decode<'a> for SplineKind {
-    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
-        // Check the header tag to decode this CHOICE
-        if decoder.peek_tag()? == Tag::Real {
-            Ok(Self::FixedWindow {
-                window_duration_s: decoder.decode()?,
-            })
-        } else {
-            decoder.sequence(|sdecoder| {
-                let indexes = sdecoder.decode()?;
-                Ok(Self::SlidingWindow { indexes })
-            })
-        }
+            .into();
+        DBL_SIZE * num_items
     }
 }
 
@@ -186,6 +151,71 @@ impl<'a> Decode<'a> for SplineCoeffCount {
             num_velocity_coeffs: decoder.decode()?,
             num_velocity_dt_coeffs: decoder.decode()?,
         })
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Coefficient {
+    X,
+    Xdt,
+    Y,
+    Ydt,
+    Z,
+    Zdt,
+    VX,
+    VXdt,
+    VY,
+    VYdt,
+    VZ,
+    VZdt,
+}
+
+pub struct Splines<'a> {
+    pub kind: SplineKind,
+    pub config: SplineCoeffCount,
+    /// Store the CRC32 checksum of the stored data. This should be checked prior to interpreting the data in the spline.
+    pub data_checksum: u32,
+    // TODO: Figure out how to properly add the covariance info, it's a bit hard because of the diag size
+    // pub cov_position_coeff_len: u8,
+    // pub cov_velocity_coeff_len: u8,
+    // pub cov_acceleration_coeff_len: u8,
+    pub data: &'a [u8],
+}
+
+impl<'a> Splines<'a> {
+    pub fn fetch(
+        &self,
+        spline_idx: usize,
+        coeff_idx: usize,
+        coeff: Coefficient,
+    ) -> Result<f64, AniseError> {
+        self.check_integrity()?;
+        let mut offset = self.config.spline_offset(spline_idx);
+        // Calculate the f64's offset in this spline
+        offset += match coeff {
+            Coefficient::X => 0,
+            Coefficient::Y => (self.config.degree as usize) * DBL_SIZE,
+            Coefficient::Z => (2 * self.config.degree as usize) * DBL_SIZE,
+            _ => todo!(),
+        };
+        offset += coeff_idx * DBL_SIZE;
+        // TODO: use try_cast_ref to avoid copying
+        if offset + DBL_SIZE <= self.data.len() {
+            let ptr = &self.data[offset..offset + DBL_SIZE];
+            return Ok(parse_bytes_as!(f64, ptr, Endianness::Big));
+        } else {
+            Err(AniseError::IndexingError)
+        }
+    }
+
+    pub fn check_integrity(&self) -> Result<(), AniseError> {
+        // Ensure that the data is correctly decoded
+        let computed_chksum = hash(self.data);
+        if computed_chksum == self.data_checksum {
+            Ok(())
+        } else {
+            Err(AniseError::IntegrityError)
+        }
     }
 }
 

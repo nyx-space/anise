@@ -25,3 +25,5 @@ pub mod prelude {
 
 pub mod asn1;
 pub mod naif;
+
+pub(crate) const DBL_SIZE: usize = 8;
