@@ -238,10 +238,6 @@ impl<'a> SPK<'a> {
                 dbg!(seg);
                 dbg!(meta);
                 dbg!(&export);
-                let mut file = File::create(format!("{seg_target_id}_first.dump")).unwrap();
-                file.write_all(&&self.daf.bytes[dbl_idx..(DBL_SIZE * meta.rsize) + dbl_idx])
-                    .unwrap();
-
                 // The rcrd_radius_s should be a round integer, so let's check that
                 assert!(dbg!(rcrd_radius_s % rcrd_radius_s.floor()).abs() < EPSILON);
             }
