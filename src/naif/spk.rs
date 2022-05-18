@@ -20,6 +20,7 @@ use crc32fast::hash;
 use der::{Decode, Encode};
 use hifitime::{Epoch, TimeSystem};
 use std::convert::{TryFrom, TryInto};
+use std::f64::EPSILON;
 use std::fmt;
 use std::fs::{remove_file, File};
 use std::io::Write;
@@ -104,6 +105,14 @@ pub struct SegMetaData {
     pub num_records_in_seg: usize,
 }
 
+impl SegMetaData {
+    /// Returns the degree of this segment.
+    /// The docs say that the degree has a minus one compared to this formula, but that prevent proper reading of the file.
+    fn degree(&self) -> usize {
+        (self.rsize - 2) / 3
+    }
+}
+
 impl<'a> SPK<'a> {
     /// Returns the segment buffer index and the config data of that segment as (init_s_past_j2k, interval_length, rsize, num_records_in_seg)
     pub fn segment_ptr(&self, seg_target_id: i32) -> Result<(&Segment, SegMetaData), AniseError> {
@@ -165,8 +174,8 @@ impl<'a> SPK<'a> {
 
         let mut full_data = Vec::new();
 
-        let mut dbl_idx = seg.start_idx;
-        for _ in (0..meta.num_records_in_seg * meta.rsize).step_by(meta.rsize) {
+        let mut dbl_idx = (seg.start_idx - 1) * DBL_SIZE;
+        for rnum in (0..meta.num_records_in_seg * meta.rsize).step_by(meta.rsize) {
             let mut r_dbl_idx = dbl_idx;
             let rcrd_mid_point = parse_bytes_as!(
                 f64,
@@ -179,13 +188,12 @@ impl<'a> SPK<'a> {
                 &self.daf.bytes[r_dbl_idx..DBL_SIZE + r_dbl_idx],
                 Endianness::Little
             );
+
             r_dbl_idx += DBL_SIZE;
 
-            let degree = (meta.rsize - 2) / 3 - 1;
+            let raw_x_coeffs = &self.daf.bytes[r_dbl_idx..r_dbl_idx + DBL_SIZE * meta.degree()];
 
-            let raw_x_coeffs = &self.daf.bytes[r_dbl_idx..r_dbl_idx + DBL_SIZE * degree];
-
-            let x_coeffs: Vec<f64> = (0..degree)
+            let x_coeffs: Vec<f64> = (0..meta.degree())
                 .map(|item| {
                     parse_bytes_as!(
                         f64,
@@ -194,9 +202,9 @@ impl<'a> SPK<'a> {
                     )
                 })
                 .collect::<_>();
-            r_dbl_idx += DBL_SIZE * degree;
-            let raw_y_coeffs = &self.daf.bytes[r_dbl_idx..r_dbl_idx + DBL_SIZE * degree];
-            let y_coeffs: Vec<f64> = (0..degree)
+            r_dbl_idx += DBL_SIZE * meta.degree();
+            let raw_y_coeffs = &self.daf.bytes[r_dbl_idx..r_dbl_idx + DBL_SIZE * meta.degree()];
+            let y_coeffs: Vec<f64> = (0..meta.degree())
                 .map(|item| {
                     parse_bytes_as!(
                         f64,
@@ -205,9 +213,9 @@ impl<'a> SPK<'a> {
                     )
                 })
                 .collect::<_>();
-            r_dbl_idx += DBL_SIZE * degree;
-            let raw_z_coeffs = &self.daf.bytes[r_dbl_idx..r_dbl_idx + DBL_SIZE * degree];
-            let z_coeffs: Vec<f64> = (0..degree)
+            r_dbl_idx += DBL_SIZE * meta.degree();
+            let raw_z_coeffs = &self.daf.bytes[r_dbl_idx..r_dbl_idx + DBL_SIZE * meta.degree()];
+            let z_coeffs: Vec<f64> = (0..meta.degree())
                 .map(|item| {
                     parse_bytes_as!(
                         f64,
@@ -217,8 +225,6 @@ impl<'a> SPK<'a> {
                 })
                 .collect::<_>();
 
-            r_dbl_idx += DBL_SIZE * degree;
-            dbl_idx = r_dbl_idx;
             // Prep the data to be exported
             let export = SegmentExportData {
                 rcrd_mid_point,
@@ -228,8 +234,21 @@ impl<'a> SPK<'a> {
                 z_coeffs,
             };
 
+            if rnum == 0 {
+                dbg!(seg);
+                dbg!(meta);
+                dbg!(&export);
+                let mut file = File::create(format!("{seg_target_id}_first.dump")).unwrap();
+                file.write_all(&&self.daf.bytes[dbl_idx..(DBL_SIZE * meta.rsize) + dbl_idx])
+                    .unwrap();
+
+                // The rcrd_radius_s should be a round integer, so let's check that
+                assert!(dbg!(rcrd_radius_s % rcrd_radius_s.floor()).abs() < EPSILON);
+            }
+
             full_data.push(export);
-            dbl_idx += meta.rsize * DBL_SIZE;
+            r_dbl_idx += DBL_SIZE * meta.degree();
+            dbl_idx = r_dbl_idx;
         }
 
         Ok((seg, meta, full_data))
@@ -261,7 +280,7 @@ impl<'a> SPK<'a> {
             traj_file.ephemeris_lut.indexes.add(idx as u16).unwrap();
             traj_file.ephemeris_lut.hashes.add(hashed_name).unwrap();
 
-            let degree = (meta.rsize - 2) / 3 - 1;
+            let degree = (meta.rsize - 2) / 3;
             let kind = SplineKind::FixedWindow {
                 window_duration_s: meta.interval_length as f64,
             };
@@ -273,8 +292,6 @@ impl<'a> SPK<'a> {
                 ..Default::default()
             };
             let mut spline_data = Vec::with_capacity(20_000);
-
-            let mut printed = false;
 
             // Build the splines
             for seg_coeff in &seg_coeffs {
@@ -296,11 +313,12 @@ impl<'a> SPK<'a> {
                 }
 
                 // Check that we've added the correct number of items
-                assert!(spline_data.len() / (8 * degree) % 3 == 0);
-                if !printed {
-                    dbg!(seg, meta, spline_data.len() / 8, degree);
-                    printed = true;
-                }
+                // if spline_data.len() / (8 * degree) % 3 != 0 {
+                //     dbg!(seg);
+                //     dbg!(meta);
+                //     dbg!(spline_data.len(), degree);
+                //     panic!();
+                // }
                 // for coeff in seg_coeff.vx_coeffs {
                 //     for coeffbyte in coeff.to_be_bytes() {
                 //         spline_data.push(coeffbyte);

@@ -121,11 +121,6 @@ fn test_spk_load() {
         assert_eq!(splines.config.num_epochs, 0);
 
         for (sidx, seg_data) in all_seg_data.iter().enumerate() {
-            // let spline = splines.get(sidx).unwrap();
-            // let mut idx = 0;
-            // let degree = splines.config.degree as usize;
-            // let x_coeffs = &spline[idx * degree..(idx + 1) * degree];
-
             for (cidx, x_truth) in seg_data.x_coeffs.iter().enumerate() {
                 assert_eq!(
                     splines
