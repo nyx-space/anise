@@ -9,7 +9,7 @@
 use std::convert::TryInto;
 
 use anise::{
-    asn1::{root::TrajectoryFile, spline::SplineKind},
+    asn1::{root::TrajectoryFile, splinekind::SplineKind},
     naif::{
         daf::{Endianness, DAF},
         spk::SPK,
