@@ -8,6 +8,9 @@
 
 extern crate crc32fast;
 extern crate der;
+use self::datatype::DataType;
+use self::segment::{SegMetaData, Segment, SegmentExportData};
+
 use super::daf::{Endianness, DAF};
 use crate::asn1::common::InterpolationKind;
 use crate::asn1::ephemeris::Ephemeris;
@@ -21,98 +24,19 @@ use crate::{file_mmap, parse_bytes_as, DBL_SIZE};
 use crc32fast::hash;
 use der::{Decode, Encode};
 use hifitime::{Epoch, TimeSystem};
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryInto;
 use std::f64::EPSILON;
 use std::fmt;
 use std::fs::{remove_file, File};
 use std::io::Write;
 
-#[derive(Debug)]
-pub struct Segment<'a> {
-    pub name: &'a str,
-    pub start_epoch: Epoch,
-    pub end_epoch: Epoch,
-    target_id: i32,
-    center_id: i32,
-    frame_id: i32,
-    data_type: DataType,
-    pub start_idx: usize,
-    end_idx: usize,
-}
-
-impl<'a> Segment<'a> {}
-
-impl<'a> Default for Segment<'a> {
-    fn default() -> Self {
-        Self {
-            name: "No name",
-            start_epoch: Epoch::from_tdb_seconds(0.0),
-            end_epoch: Epoch::from_tdb_seconds(0.0),
-            target_id: 0,
-            center_id: 0,
-            frame_id: 0,
-            data_type: DataType::ModifiedDifferenceArrays,
-            start_idx: 0,
-            end_idx: 0,
-        }
-    }
-}
-
-impl<'a> fmt::Display for Segment<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Segment `{}` (tgt: {}, ctr: {}, frame: {}) of type {:?} from {} ({}) to {} ({}) [{}..{}]",
-            self.name,
-            self.target_id,
-            self.center_id,
-            self.frame_id,
-            self.data_type,
-            self.start_epoch.as_gregorian_str(TimeSystem::ET),
-            self.start_epoch.as_et_duration().in_seconds(),
-            self.end_epoch.as_gregorian_str(TimeSystem::ET),
-            self.end_epoch.as_et_duration().in_seconds(),
-            self.start_idx,
-            self.end_idx
-        )
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct SegmentExportData {
-    pub rcrd_mid_point: f64,
-    pub rcrd_radius_s: f64,
-    pub x_coeffs: Vec<f64>,
-    pub y_coeffs: Vec<f64>,
-    pub z_coeffs: Vec<f64>,
-    // pub x_coeffs: &'a [u8],
-    // pub y_coeffs: &'a [u8],
-    // pub z_coeffs: &'a [u8],
-    // pub vx_coeffs: &'a [f64],
-    // pub vy_coeffs: &'a [f64],
-    // pub vz_coeffs: &'a [f64],
-}
+pub mod datatype;
+pub mod segment;
 
 #[derive(Debug)]
 pub struct SPK<'a> {
     pub segments: Vec<Segment<'a>>,
     pub daf: &'a DAF<'a>,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct SegMetaData {
-    pub init_s_past_j2k: f64,
-    pub interval_length: usize,
-    pub rsize: usize,
-    pub num_records_in_seg: usize,
-}
-
-impl SegMetaData {
-    /// Returns the degree of this segment.
-    /// The docs say that the degree has a minus one compared to this formula, but that prevent proper reading of the file.
-    fn degree(&self) -> usize {
-        (self.rsize - 2) / 3
-    }
 }
 
 impl<'a> SPK<'a> {
@@ -234,9 +158,11 @@ impl<'a> SPK<'a> {
                 x_coeffs,
                 y_coeffs,
                 z_coeffs,
+                ..Default::default()
             };
 
             if rnum == 0 {
+                // TODO Change this to a logging
                 dbg!(seg);
                 dbg!(meta);
                 dbg!(&export);
@@ -251,6 +177,7 @@ impl<'a> SPK<'a> {
 
         Ok((seg, meta, full_data))
     }
+
     /// Converts the provided SPK to an ANISE file
     pub fn to_anise(&'a self, orig_file: &str, filename: &str) {
         let meta = Metadata {
@@ -333,6 +260,7 @@ impl<'a> SPK<'a> {
                 //     }
                 // }
             }
+
             // Compute the crc32 of this data
             let chksum = hash(&spline_data);
             // Build the spline struct
@@ -450,69 +378,5 @@ impl<'a> fmt::Display for SPK<'a> {
             write!(f, "\t{}\n", seg)?;
         }
         fmt::Result::Ok(())
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum DataType {
-    /// Type 1
-    ModifiedDifferenceArrays,
-    /// Type 2
-    ChebyshevPositionOnly,
-    /// Type 3
-    ChebyshevPositionVelocity,
-    /// Type 5  (two body propagation)
-    DiscreteStates,
-    /// Type 8
-    LagrangeInterpolationEqualTimeSteps,
-    /// Type 9
-    LagrangeInterpolationUnequalTimeSteps,
-    /// Type 10
-    SpaceCommandTwoLineElements,
-    /// Type 12
-    HermiteInterpolationEqualTimeSteps,
-    /// Type 13
-    HermiteInterpolationUnequalTimeSteps,
-    /// Type 14
-    ChebyshevPolynomialsUnequalTimeSteps,
-    /// Type 15
-    PrecessingConicPropagation,
-    /// Type 17
-    EquinoctialElements,
-    /// Type 18
-    ESOCHermiteLagrangeInterpolation,
-    /// Type 19
-    ESOCPiecewiseInterpolation,
-    /// Type 20
-    ChebyshevVelocityOnly,
-    /// Type 21
-    ExtendedModifiedDifferenceArrays,
-}
-
-impl TryFrom<i32> for DataType {
-    type Error = AniseError;
-    fn try_from(data_type: i32) -> Result<Self, AniseError> {
-        match data_type {
-            1 => Ok(Self::ModifiedDifferenceArrays),
-            2 => Ok(Self::ChebyshevPositionOnly),
-            3 => Ok(Self::ChebyshevPositionVelocity),
-            5 => Ok(Self::DiscreteStates),
-            8 => Ok(Self::LagrangeInterpolationEqualTimeSteps),
-            9 => Ok(Self::LagrangeInterpolationUnequalTimeSteps),
-            10 => Ok(Self::SpaceCommandTwoLineElements),
-            12 => Ok(Self::HermiteInterpolationEqualTimeSteps),
-            13 => Ok(Self::HermiteInterpolationUnequalTimeSteps),
-            14 => Ok(Self::ChebyshevPolynomialsUnequalTimeSteps),
-            15 => Ok(Self::PrecessingConicPropagation),
-            17 => Ok(Self::EquinoctialElements),
-            18 => Ok(Self::ESOCHermiteLagrangeInterpolation),
-            19 => Ok(Self::ESOCPiecewiseInterpolation),
-            20 => Ok(Self::ChebyshevVelocityOnly),
-            21 => Ok(Self::ExtendedModifiedDifferenceArrays),
-            _ => Err(AniseError::NAIFConversionError(format!(
-                "unknwon data type {}",
-                data_type
-            ))),
-        }
     }
 }

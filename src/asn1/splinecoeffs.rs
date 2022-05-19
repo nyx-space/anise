@@ -1,8 +1,6 @@
-use crc32fast::hash;
-use der::{asn1::OctetStringRef, Decode, Encode, Length, Reader, Writer};
+use der::{Decode, Encode, Reader, Writer};
 
-use super::splinekind::SplineKind;
-use crate::{naif::daf::Endianness, parse_bytes_as, prelude::AniseError, DBL_SIZE};
+use crate::DBL_SIZE;
 
 #[derive(Debug, Default)]
 pub struct SplineCoeffCount {

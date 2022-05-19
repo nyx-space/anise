@@ -9,7 +9,8 @@
 use std::convert::TryInto;
 
 use anise::{
-    asn1::{root::TrajectoryFile, splinekind::SplineKind},
+    asn1::{root::TrajectoryFile, splinecoeffs::Coefficient, splinekind::SplineKind},
+    file_mmap,
     naif::{
         daf::{Endianness, DAF},
         spk::SPK,
@@ -122,30 +123,15 @@ fn test_spk_load() {
 
         for (sidx, seg_data) in all_seg_data.iter().enumerate() {
             for (cidx, x_truth) in seg_data.x_coeffs.iter().enumerate() {
-                assert_eq!(
-                    splines
-                        .fetch(sidx, cidx, anise::asn1::spline::Coefficient::X)
-                        .unwrap(),
-                    *x_truth
-                );
+                assert_eq!(splines.fetch(sidx, cidx, Coefficient::X).unwrap(), *x_truth);
             }
 
             for (cidx, y_truth) in seg_data.y_coeffs.iter().enumerate() {
-                assert_eq!(
-                    splines
-                        .fetch(sidx, cidx, anise::asn1::spline::Coefficient::Y)
-                        .unwrap(),
-                    *y_truth
-                );
+                assert_eq!(splines.fetch(sidx, cidx, Coefficient::Y).unwrap(), *y_truth);
             }
 
             for (cidx, z_truth) in seg_data.z_coeffs.iter().enumerate() {
-                assert_eq!(
-                    splines
-                        .fetch(sidx, cidx, anise::asn1::spline::Coefficient::Z)
-                        .unwrap(),
-                    *z_truth
-                );
+                assert_eq!(splines.fetch(sidx, cidx, Coefficient::Z).unwrap(), *z_truth);
             }
 
             // assert_eq!(
