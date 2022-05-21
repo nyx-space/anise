@@ -2,16 +2,15 @@ extern crate der;
 extern crate hifitime;
 pub mod common;
 pub mod ephemeris;
-pub mod metadata;
-pub mod root;
-pub mod semver;
-use self::semver::Semver;
 pub mod lookuptable;
+pub mod metadata;
+pub mod semver;
 pub mod spline;
 pub mod splinecoeffs;
 pub mod splinekind;
 pub mod time;
 
+use self::semver::Semver;
 /// The current version of ANISE
 pub const ANISE_VERSION: Semver = Semver {
     major: 0,

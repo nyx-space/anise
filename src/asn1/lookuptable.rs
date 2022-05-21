@@ -4,11 +4,10 @@ use der::{asn1::SequenceOf, Decode, Encode, Reader, Writer};
 /// A LookUpTable enables O(1) access to any ephemeris data
 #[derive(Default)]
 pub struct LookUpTable {
-    // TODO: Add CRC32 and pack the hashes in BE
     /// Hashes of the general hashing algorithm
-    pub hashes: SequenceOf<u32, 16>,
+    pub hashes: SequenceOf<u32, 512>,
     /// Corresponding index for each hash, may only have 65_535 entries
-    pub indexes: SequenceOf<u16, 16>,
+    pub indexes: SequenceOf<u16, 512>,
 }
 
 impl<'a> Encode for LookUpTable {

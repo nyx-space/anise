@@ -133,37 +133,6 @@ fn test_spk_load() {
             for (cidx, z_truth) in seg_data.z_coeffs.iter().enumerate() {
                 assert_eq!(splines.fetch(sidx, cidx, Coefficient::Z).unwrap(), *z_truth);
             }
-
-            // assert_eq!(
-            //     x_coeffs.len(),
-            //     seg_data.x_coeffs.len(),
-            //     "invalid number of X coeffs for target {}, spline idx {}",
-            //     seg_target_id,
-            //     sidx
-            // );
-            // Check that the data strictly matches
-            // for (cidx, x) in x_coeffs.iter().enumerate() {
-            //     spk_f64 = all_seg_data[sidx].x_coeffs[cidx]
-            //     assert!((*x - all_seg_data[sidx].x_coeffs[cidx]).abs() < f64::EPSILON);
-            // }
-            // idx += 1;
-            // let y_coeffs = &spline[idx * degree..(idx + 1) * degree];
-            // assert_eq!(
-            //     y_coeffs.len(),
-            //     seg_data.y_coeffs.len(),
-            //     "invalid number of y coeffs for target {}, spline idx {}",
-            //     seg_target_id,
-            //     sidx
-            // );
-            // idx += 1;
-            // let z_coeffs = &spline[idx * degree..(idx + 1) * degree];
-            // assert_eq!(
-            //     z_coeffs.len(),
-            //     seg_data.z_coeffs.len(),
-            //     "invalid number of z coeffs for target {}, spline idx {}",
-            //     seg_target_id,
-            //     sidx
-            // );
         }
     }
 }

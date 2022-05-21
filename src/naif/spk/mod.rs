@@ -198,7 +198,6 @@ impl<'a> SPK<'a> {
             if seg_coeffs.is_empty() {
                 continue;
             }
-            // let mut all_splines = Vec::with_capacity(20_000);
             // Some files don't have a useful name in the segments, so we append the target ID in case
             let name = format!("{} #{}", seg.name, seg.target_id);
             let hashed_name = hash(name.as_bytes());
