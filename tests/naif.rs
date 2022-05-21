@@ -9,7 +9,7 @@
 use std::convert::TryInto;
 
 use anise::{
-    asn1::{root::TrajectoryFile, splinecoeffs::Coefficient, splinekind::SplineKind},
+    asn1::{splinecoeffs::Coefficient, splinekind::SplineKind, AniseContext},
     file_mmap,
     naif::{
         daf::{Endianness, DAF},
@@ -67,7 +67,7 @@ fn test_spk_load() {
     // Load this ANIS file and make sure that it matches the original DE421 data.
 
     let bytes = file_mmap!(filename_anis).unwrap();
-    let ctx = TrajectoryFile::from_der(&bytes).unwrap();
+    let ctx = AniseContext::from_der(&bytes).unwrap();
     assert_eq!(
         ctx.ephemeris_lut.hashes.len(),
         spk.segments.len(),

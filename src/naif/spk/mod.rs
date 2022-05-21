@@ -14,11 +14,12 @@ use self::segment::{SegMetaData, Segment, SegmentExportData};
 use super::daf::{Endianness, DAF};
 use crate::asn1::common::InterpolationKind;
 use crate::asn1::ephemeris::Ephemeris;
-use crate::asn1::root::{Metadata, TrajectoryFile};
+use crate::asn1::metadata::Metadata;
 use crate::asn1::spline::Splines;
 use crate::asn1::splinecoeffs::SplineCoeffCount;
 use crate::asn1::splinekind::SplineKind;
 use crate::asn1::time::Epoch as AniseEpoch;
+use crate::asn1::AniseContext;
 use crate::prelude::AniseError;
 use crate::{file_mmap, parse_bytes_as, DBL_SIZE};
 use crc32fast::hash;
@@ -165,7 +166,6 @@ impl<'a> SPK<'a> {
                 // TODO Change this to a logging
                 dbg!(seg);
                 dbg!(meta);
-                dbg!(&export);
                 // The rcrd_radius_s should be a round integer, so let's check that
                 assert!(dbg!(rcrd_radius_s % rcrd_radius_s.floor()).abs() < EPSILON);
             }
@@ -187,7 +187,7 @@ impl<'a> SPK<'a> {
 
         // Start the trajectory file so we can populate the lookup table (LUT)
 
-        let mut traj_file = TrajectoryFile::default();
+        let mut traj_file = AniseContext::default();
         traj_file.metadata = meta;
 
         // let mut all_splines = [Spline::default(); 20_000];
