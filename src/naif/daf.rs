@@ -97,9 +97,6 @@ impl<'a> DAF<'a> {
             ))
         })?;
 
-        // TODO : Check FTPSTR when set ?
-        // Ignore the FTPSTR (seems null in the DE440 and the padding to complete the record).
-
         Ok(Self {
             idword: locidw.trim(),
             internal_filename: locifn.trim(),
@@ -203,19 +200,5 @@ impl<'a> DAF<'a> {
             &self.bytes[DBL_SIZE * byte_idx..DBL_SIZE * (byte_idx + 1)],
             self.endianness
         )
-    }
-
-    pub(crate) fn read_f64s_into(&self, byte_idx: usize, num: usize, out: &mut [f64]) {
-        for i in 0..num {
-            out[i] = parse_bytes_as!(
-                f64,
-                &self.bytes[DBL_SIZE * (byte_idx + i)..DBL_SIZE * (byte_idx + i + 1)],
-                self.endianness
-            );
-        }
-    }
-
-    pub(crate) fn ptr_to_read_u8(&'a self, byte_idx: usize) -> &'a [u8] {
-        &self.bytes[DBL_SIZE * (byte_idx)..DBL_SIZE * (byte_idx + 1)]
     }
 }

@@ -237,28 +237,22 @@ impl<'a> SPK<'a> {
                     }
                 }
 
-                // Check that we've added the correct number of items
-                // if spline_data.len() / (8 * degree) % 3 != 0 {
-                //     dbg!(seg);
-                //     dbg!(meta);
-                //     dbg!(spline_data.len(), degree);
-                //     panic!();
-                // }
-                // for coeff in seg_coeff.vx_coeffs {
-                //     for coeffbyte in coeff.to_be_bytes() {
-                //         spline_data.push(coeffbyte);
-                //     }
-                // }
-                // for coeff in seg_coeff.vy_coeffs {
-                //     for coeffbyte in coeff.to_be_bytes() {
-                //         spline_data.push(coeffbyte);
-                //     }
-                // }
-                // for coeff in seg_coeff.vz_coeffs {
-                //     for coeffbyte in coeff.to_be_bytes() {
-                //         spline_data.push(coeffbyte);
-                //     }
-                // }
+                for coeff in &seg_coeff.vx_coeffs {
+                    for coeffbyte in coeff.to_be_bytes() {
+                        spline_data.push(coeffbyte);
+                    }
+                }
+
+                for coeff in &seg_coeff.vy_coeffs {
+                    for coeffbyte in coeff.to_be_bytes() {
+                        spline_data.push(coeffbyte);
+                    }
+                }
+                for coeff in &seg_coeff.vz_coeffs {
+                    for coeffbyte in coeff.to_be_bytes() {
+                        spline_data.push(coeffbyte);
+                    }
+                }
             }
 
             // Compute the crc32 of this data

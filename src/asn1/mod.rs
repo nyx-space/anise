@@ -1,4 +1,5 @@
 extern crate der;
+extern crate hifitime;
 
 pub mod common;
 pub mod ephemeris;
