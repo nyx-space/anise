@@ -6,7 +6,6 @@ Please refer to https://github.com/anise-toolkit/specs for the specifications.
 
 ## Development
 ### Requirements
-1. `flatc` version `2.0.0`: https://github.com/google/flatbuffers/releases/tag/v2.0.0
 1. `rustc` version `1.56` or higher (required for the 2021 edition): https://rust-lang.org/
 1. `git`
 

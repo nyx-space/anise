@@ -4,9 +4,11 @@
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * Documentation: https://nyxspace.com/
  */
-extern crate der;
 
+use crate::der::Decode;
 use crate::{
     asn1::{
         context::AniseContext, ephemeris::Ephemeris, semver::Semver, ANISE_VERSION,
@@ -14,9 +16,8 @@ use crate::{
     },
     errors::{AniseError, InternalErrorKind},
 };
+use core::convert::TryFrom;
 use crc32fast::hash;
-use der::Decode;
-use std::convert::TryFrom;
 
 impl<'a> AniseContext<'a> {
     /// Try to load an Anise file from a pointer of bytes

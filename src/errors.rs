@@ -1,7 +1,17 @@
+/*
+ * ANISE Toolkit
+ * Copyright (C) 2021 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * Documentation: https://nyxspace.com/
+ */
+
 use crate::asn1::semver::Semver;
 use crate::der::Error as Asn1Error;
-use std::convert::From;
-use std::fmt;
+use core::convert::From;
+use core::fmt;
 use std::io::ErrorKind as IOErrorKind;
 
 #[derive(Clone, PartialEq, Eq, Debug)]

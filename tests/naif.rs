@@ -4,9 +4,11 @@
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * Documentation: https://nyxspace.com/
  */
 
-use std::convert::TryInto;
+use core::convert::TryInto;
 
 use anise::{
     asn1::{context::AniseContext, splinecoeffs::Coefficient, splinekind::SplineKind},
