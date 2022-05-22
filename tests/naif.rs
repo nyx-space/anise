@@ -9,7 +9,7 @@
 use std::convert::TryInto;
 
 use anise::{
-    asn1::{splinecoeffs::Coefficient, splinekind::SplineKind, AniseContext},
+    asn1::{context::AniseContext, splinecoeffs::Coefficient, splinekind::SplineKind},
     file_mmap,
     naif::{
         daf::{Endianness, DAF},

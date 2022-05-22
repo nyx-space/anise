@@ -13,13 +13,13 @@ use self::segment::{SegMetaData, Segment, SegmentExportData};
 
 use super::daf::{Endianness, DAF};
 use crate::asn1::common::InterpolationKind;
+use crate::asn1::context::AniseContext;
 use crate::asn1::ephemeris::Ephemeris;
 use crate::asn1::metadata::Metadata;
 use crate::asn1::spline::Splines;
 use crate::asn1::splinecoeffs::SplineCoeffCount;
 use crate::asn1::splinekind::SplineKind;
 use crate::asn1::time::Epoch as AniseEpoch;
-use crate::asn1::AniseContext;
 use crate::prelude::AniseError;
 use crate::{file_mmap, parse_bytes_as, DBL_SIZE};
 use crc32fast::hash;

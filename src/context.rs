@@ -8,7 +8,7 @@
 extern crate der;
 
 use crate::{
-    asn1::{semver::Semver, AniseContext, ANISE_VERSION},
+    asn1::{context::AniseContext, semver::Semver, ANISE_VERSION},
     errors::AniseError,
 };
 use der::Decode;
@@ -41,6 +41,9 @@ impl<'a> AniseContext<'a> {
     pub fn from_bytes(buf: &'a [u8]) -> Self {
         Self::try_from_bytes(buf).unwrap()
     }
+
+    /// Merges another Anise context into this one
+    pub fn merge(&mut self, context: Self) {}
 }
 
 impl<'a> TryFrom<&'a [u8]> for AniseContext<'a> {

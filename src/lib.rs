@@ -15,6 +15,7 @@ pub mod context;
 pub mod errors;
 
 pub mod prelude {
+    pub use crate::asn1::context::AniseContext;
     pub use crate::errors::AniseError;
     pub use std::fs::File;
 }
