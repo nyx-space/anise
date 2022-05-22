@@ -1,5 +1,4 @@
 use crate::asn1::semver::Semver;
-use crate::asn1::ANISE_VERSION;
 use crate::der::Error as Asn1Error;
 use std::convert::From;
 use std::fmt;
@@ -26,8 +25,18 @@ pub enum AniseError {
     DecodingError(Asn1Error),
     /// Raised if the ANISE version of the file is incompatible with the library.
     IncompatibleVersion {
-        file_version: Semver,
+        got: Semver,
+        exp: Semver,
     },
+    /// Raised if the item sought after is not found in the context
+    ItemNotFound,
+    /// If this is raised, please report a bug
+    InternalError(InternalErrorKind),
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum InternalErrorKind {
+    LUTAppendFailure,
 }
 
 impl From<IOErrorKind> for AniseError {
@@ -36,37 +45,42 @@ impl From<IOErrorKind> for AniseError {
     }
 }
 
+impl From<InternalErrorKind> for AniseError {
+    fn from(e: InternalErrorKind) -> Self {
+        Self::InternalError(e)
+    }
+}
+
 impl fmt::Display for AniseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
-            Self::IOError(e) => write!(f, "Anise Error: IOError: {:?}", e),
-            Self::IOUnknownError => write!(f, "Anise Error: IOUnknownError"),
-            Self::DivisionByZero => write!(f, "Anise Error: DivisionByZero"),
-            Self::ParameterNotSpecified => write!(f, "Anise Error: ParameterNotSpecified"),
-            Self::IndexingError => write!(f, "Anise Error: IndexingError"),
+            Self::IOError(e) => write!(f, "ANISE error: IOError: {:?}", e),
+            Self::IOUnknownError => write!(f, "ANISE error: IOUnknownError"),
+            Self::DivisionByZero => write!(f, "ANISE error: DivisionByZero"),
+            Self::ParameterNotSpecified => write!(f, "ANISE error: ParameterNotSpecified"),
+            Self::IndexingError => write!(f, "ANISE error: IndexingError"),
             Self::NAIFConversionError(reason) => {
-                write!(f, "Anise Error: invalid NAIF DAF file: {}", reason)
+                write!(f, "ANISE error: invalid NAIF DAF file: {}", reason)
             }
-            Self::InvalidTimeSystem => write!(f, "Anise Error: invalid time system"),
+            Self::InvalidTimeSystem => write!(f, "ANISE error: invalid time system"),
             Self::IntegrityError => write!(
                 f,
-                "Anise Error: data array checksum verification failed (file is corrupted)"
+                "ANISE error: data array checksum verification failed (file is corrupted)"
             ),
             Self::DecodingError(err) => write!(
                 f,
-                "Anise Error: bytes could not be decoded into a valid ANISE file - {}",
+                "ANISE error: bytes could not be decoded into a valid ANISE file - {}",
                 err
             ),
-            Self::IncompatibleVersion{file_version} => write!(
+            Self::ItemNotFound => write!(f, "ANISE error: requested item not found in context"),
+            Self::IncompatibleVersion { got, exp } => write!(
                 f,
-                "Anise Error: File encoded with ANISE version {}.{}.{} but this library is for version {}.{}.{}",
-                file_version.major,
-                file_version.minor,
-                file_version.patch,
-                ANISE_VERSION.major,
-                ANISE_VERSION.minor,
-                ANISE_VERSION.patch
-            )
+                "ANISE error: Incompatible version: got {}.{}.{} - expected {}.{}.{}",
+                got.major, got.minor, got.patch, exp.major, exp.minor, exp.patch
+            ),
+            Self::InternalError(e) => {
+                write!(f, "ANISE internal error: {:?} -- please report a bug", e)
+            }
         }
     }
 }

@@ -1,15 +1,15 @@
 use der::{asn1::SequenceOf, Decode, Encode, Reader, Writer};
 
-use super::{ephemeris::Ephemeris, lookuptable::LookUpTable, metadata::Metadata};
+use super::{ephemeris::Ephemeris, lookuptable::LookUpTable, metadata::Metadata, MAX_TRAJECTORIES};
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct AniseContext<'a> {
     pub metadata: Metadata<'a>,
     pub ephemeris_lut: LookUpTable,
     pub orientation_lut: LookUpTable,
-    pub ephemeris_data: SequenceOf<Ephemeris<'a>, 256>,
+    pub ephemeris_data: SequenceOf<Ephemeris<'a>, MAX_TRAJECTORIES>,
     // TODO: Add orientation data
-    pub orientation_data: SequenceOf<Ephemeris<'a>, 256>,
+    pub orientation_data: SequenceOf<Ephemeris<'a>, MAX_TRAJECTORIES>,
 }
 
 impl<'a> Encode for AniseContext<'a> {

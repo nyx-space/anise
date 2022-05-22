@@ -6,7 +6,7 @@ use crate::prelude::AniseError;
 
 use super::der::{Decode, Encode, Reader, Writer};
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Epoch {
     pub epoch: EpochHifitime,
     pub system: TimeSystem,

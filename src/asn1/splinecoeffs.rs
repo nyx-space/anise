@@ -2,7 +2,7 @@ use der::{Decode, Encode, Reader, Writer};
 
 use crate::DBL_SIZE;
 
-#[derive(Debug, Default)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
 pub struct SplineCoeffCount {
     pub degree: u8,
     pub num_epochs: u8,

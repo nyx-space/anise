@@ -18,3 +18,6 @@ pub const ANISE_VERSION: Semver = Semver {
     minor: 0,
     patch: 1,
 };
+
+/// The maximum number of trajectories that can be loaded in a single context
+pub const MAX_TRAJECTORIES: usize = 256;

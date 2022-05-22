@@ -22,6 +22,7 @@ pub const MAX_INTERP_DEGREE: usize = 32;
 // Is that some kind of header? If so, what's its size? If it's a high precision epoch, it would be 80 bits, but more likely people will provide 64 bit floats.
 // Also, I can't use an offset from the index because the splines are built separately from the index via multithreading, so that would be difficult to build (would need to mutate the spline prior to encoding)
 
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Splines<'a> {
     pub kind: SplineKind,
     pub config: SplineCoeffCount,

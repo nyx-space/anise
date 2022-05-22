@@ -2,7 +2,7 @@ use der::{asn1::OctetStringRef, Decode, Encode, Error, ErrorKind, Length, Reader
 
 /// Semantic versioning is used throughout ANISE
 /// It is encoded as a single octet string of 3 bytes of content (prependded by 1 one tag byte and 1 length byte)
-#[derive(Clone, Default, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Semver {
     pub major: u8,
     pub minor: u8,

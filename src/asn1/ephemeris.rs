@@ -2,6 +2,7 @@ use der::{asn1::Utf8StringRef, Decode, Encode, Reader, Writer};
 
 use super::{common::InterpolationKind, spline::Splines, time::Epoch};
 
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Ephemeris<'a> {
     pub name: &'a str,
     pub ref_epoch: Epoch,

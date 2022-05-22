@@ -1,6 +1,7 @@
 use der::{Decode, Encode, Reader, Tag, Writer};
 
 /// Defines the two kinds of splines supports: equal time steps (fixed window) or unequal time steps (also called sliding window)
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum SplineKind {
     FixedWindow {
         window_duration_s: f64,
@@ -47,6 +48,7 @@ impl<'a> Decode<'a> for SplineKind {
     }
 }
 
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
 pub struct TimeIndex {
     pub century: i16,
     pub nanoseconds: u64,
