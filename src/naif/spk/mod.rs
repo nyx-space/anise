@@ -201,8 +201,6 @@ impl<'a> SPK<'a> {
             // Some files don't have a useful name in the segments, so we append the target ID in case
             let name = format!("{} #{}", seg.name, seg.target_id);
             let hashed_name = hash(name.as_bytes());
-            traj_file.ephemeris_lut.indexes.add(idx as u16).unwrap();
-            traj_file.ephemeris_lut.hashes.add(hashed_name).unwrap();
 
             let degree = (meta.rsize - 2) / 3;
             let kind = SplineKind::FixedWindow {
@@ -298,7 +296,8 @@ impl<'a> SPK<'a> {
         for buf in &all_bufs {
             let ephem: Ephemeris = Ephemeris::from_der(&buf).unwrap();
             println!("Add {}", ephem.name);
-            traj_file.ephemeris_data.add(ephem).unwrap();
+            // traj_file.ephemeris_data.add(ephem).unwrap();
+            traj_file.append_ephemeris_mut(ephem).unwrap();
         }
 
         let mut buf = Vec::new();

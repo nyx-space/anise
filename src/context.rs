@@ -8,9 +8,13 @@
 extern crate der;
 
 use crate::{
-    asn1::{context::AniseContext, semver::Semver, ANISE_VERSION, MAX_TRAJECTORIES},
+    asn1::{
+        context::AniseContext, ephemeris::Ephemeris, semver::Semver, ANISE_VERSION,
+        MAX_TRAJECTORIES,
+    },
     errors::{AniseError, InternalErrorKind},
 };
+use crc32fast::hash;
 use der::Decode;
 use std::convert::TryFrom;
 
@@ -66,7 +70,7 @@ impl<'a> AniseContext<'a> {
     /// + The resulting file would have too many trajectories compared to the maximum number of trajectories
     /// + Two trajectories have the same name but different contents
     /// + Incomatible versions: the versions of self and other must match
-    pub fn merge_mut(&mut self, other: Self) -> Result<(), AniseError> {
+    pub fn merge_mut(&mut self, other: Self) -> Result<(usize, usize), AniseError> {
         // Check the versions match (eventually, we need to make sure that the versions are compatible)
         if self.metadata.anise_version != other.metadata.anise_version {
             return Err(AniseError::IncompatibleVersion {
@@ -79,97 +83,134 @@ impl<'a> AniseContext<'a> {
             self.metadata.creation_date = other.metadata.creation_date;
         }
         // Append the Ephemeris data tables
-        let mut num_added = 0;
+        let mut num_ephem_added = 0;
         for new_hash in other.ephemeris_lut.hashes.iter() {
             let data_idx = other.ephemeris_lut.index_for_hash(*new_hash)?.into();
-            if let Ok(self_idx) = self.ephemeris_lut.index_for_hash(*new_hash) {
-                if self.ephemeris_data.get(self_idx.into()) != other.ephemeris_data.get(data_idx) {
-                    // The ephemeris data differ but the name is the same
-                    return Err(AniseError::IntegrityError);
-                }
-            } else {
-                // This hash does not exist, let's append it.
-
-                // Check that we can add one item
-                if self.ephemeris_lut.indexes.len() == MAX_TRAJECTORIES {
-                    // We're full!
-                    return Err(AniseError::IndexingError);
-                }
-
-                self.ephemeris_lut
-                    .hashes
-                    .add(*new_hash)
-                    .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
-                // Push the index too
-                self.ephemeris_lut
-                    .indexes
-                    .add(
-                        (self.ephemeris_lut.indexes.len() + num_added)
-                            .try_into()
-                            .unwrap(),
-                    )
-                    .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
-                // Add the ephemeris data
-                self.ephemeris_data
-                    .add(
-                        *other
-                            .ephemeris_data
-                            .get(data_idx)
-                            .ok_or(AniseError::IntegrityError)?,
-                    )
-                    .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
-                // Increment the number of added items
-                num_added += 1;
+            let other_e = other
+                .ephemeris_data
+                .get(data_idx)
+                .ok_or(AniseError::IntegrityError)?;
+            if self.append_ephemeris_mut(*other_e)? {
+                num_ephem_added += 1;
             }
         }
 
         // Append the Orientation data tables
-        let mut num_added = 0;
+        let mut num_orientation_added = 0;
         for new_hash in other.orientation_lut.hashes.iter() {
             let data_idx = other.orientation_lut.index_for_hash(*new_hash)?.into();
-            if let Ok(self_idx) = self.orientation_lut.index_for_hash(*new_hash) {
-                if self.orientation_data.get(self_idx.into())
-                    != other.orientation_data.get(data_idx)
-                {
-                    // The orientation data differ but the name is the same
-                    return Err(AniseError::IntegrityError);
-                }
-            } else {
-                // This hash does not exist, let's append it.
-
-                // Check that we can add one item
-                if self.orientation_lut.indexes.len() == MAX_TRAJECTORIES {
-                    // We're full!
-                    return Err(AniseError::IndexingError);
-                }
-
-                self.orientation_lut
-                    .hashes
-                    .add(*new_hash)
-                    .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
-                // Push the index too
-                self.orientation_lut
-                    .indexes
-                    .add(
-                        (self.orientation_lut.indexes.len() + num_added)
-                            .try_into()
-                            .unwrap(),
-                    )
-                    .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
-                // Add the orientation data
-                self.orientation_data
-                    .add(
-                        *other
-                            .orientation_data
-                            .get(data_idx)
-                            .ok_or(AniseError::IntegrityError)?,
-                    )
-                    .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
-                // Increment the number of added items
-                num_added += 1;
+            let other_o = other
+                .orientation_data
+                .get(data_idx)
+                .ok_or(AniseError::IntegrityError)?;
+            if self.append_orientation_mut(*other_o)? {
+                num_orientation_added += 1;
             }
         }
-        Ok(())
+        Ok((num_ephem_added, num_orientation_added))
+    }
+
+    /// Appends the provided ephemeris to this context
+    ///
+    /// # Implementation defails
+    /// + If the provided ephemeris already exists in this context, nothing happens and this function returns Ok(false).
+    /// This is an Ok to specify that no error happened and false to specify that nothing was appended
+    /// + If the provided ephemeris' hash is already in the lookup table but the data do not match, this returns an Integrity Error
+    /// specifying that nothing was added to prevent an integrity error.
+    /// + If this ephemeris should have been added but there are already too many items compared to what the library supports,
+    /// then this returns an Indexing Error.
+    pub fn append_ephemeris_mut(&mut self, e: Ephemeris<'a>) -> Result<bool, AniseError> {
+        let new_hash = hash(e.name.as_bytes());
+        if let Ok(self_idx) = self.ephemeris_lut.index_for_hash(new_hash) {
+            if self
+                .ephemeris_data
+                .get(self_idx.into())
+                .ok_or(AniseError::IntegrityError)?
+                != &e
+            {
+                // The ephemeris data differ but the name is the same
+                return Err(AniseError::IntegrityError);
+            } else {
+                // Data already exists and matches.
+                Ok(false)
+            }
+        } else {
+            // This hash does not exist, let's append it.
+
+            // Check that we can add one item
+            if self.ephemeris_lut.indexes.len() == MAX_TRAJECTORIES {
+                // We're full!
+                return Err(AniseError::IndexingError);
+            }
+
+            self.ephemeris_lut
+                .hashes
+                .add(new_hash)
+                .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
+            // Push the index too
+            self.ephemeris_lut
+                .indexes
+                .add((self.ephemeris_lut.indexes.len() + 1).try_into().unwrap())
+                .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
+            // Add the ephemeris data
+            self.ephemeris_data
+                .add(e)
+                .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
+            // Increment the number of added items
+            Ok(true)
+        }
+    }
+
+    /// Appends the provided ephemeris to this context
+    ///
+    /// # Implementation defails
+    /// + If the provided ephemeris already exists in this context, nothing happens and this function returns Ok(false).
+    /// This is an Ok to specify that no error happened and false to specify that nothing was appended
+    /// + If the provided ephemeris' hash is already in the lookup table but the data do not match, this returns an Integrity Error
+    /// specifying that nothing was added to prevent an integrity error.
+    /// + If this ephemeris should have been added but there are already too many items compared to what the library supports,
+    /// then this returns an Indexing Error.
+    /// TODO: Change this from ephemeris to Orientation and update visibility
+    pub(crate) fn append_orientation_mut(&mut self, o: Ephemeris<'a>) -> Result<bool, AniseError> {
+        let new_hash = hash(o.name.as_bytes());
+        if let Ok(self_idx) = self.orientation_lut.index_for_hash(new_hash) {
+            if self
+                .orientation_data
+                .get(self_idx.into())
+                .ok_or(AniseError::IntegrityError)?
+                != &o
+            {
+                // The ephemeris data differ but the name is the same
+                return Err(AniseError::IntegrityError);
+            } else {
+                // Data already exists and matches.
+                Ok(false)
+            }
+        } else {
+            // This hash does not exist, let's append it.
+
+            // Check that we can add one item
+            if self.orientation_lut.indexes.len() == MAX_TRAJECTORIES {
+                // We're full!
+                return Err(AniseError::IndexingError);
+            }
+
+            self.orientation_lut
+                .hashes
+                .add(new_hash)
+                .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
+            // Push the index too
+            self.orientation_lut
+                .indexes
+                .add((self.orientation_lut.indexes.len() + 1).try_into().unwrap())
+                .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
+            // Add the ephemeris data
+            self.orientation_data
+                .add(o)
+                .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
+            // Increment the number of added items
+            Ok(true)
+        }
     }
 
     pub fn rename_ephemeris_traj_mut(&mut self) {}
