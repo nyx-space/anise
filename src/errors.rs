@@ -1,3 +1,6 @@
+use crate::asn1::semver::Semver;
+use crate::asn1::ANISE_VERSION;
+use crate::der::Error as Asn1Error;
 use std::convert::From;
 use std::fmt;
 use std::io::ErrorKind as IOErrorKind;
@@ -19,6 +22,12 @@ pub enum AniseError {
     InvalidTimeSystem,
     /// Raised if the checksum of the encoded data does not match the stored data.
     IntegrityError,
+    /// Raised if the file could not be decoded correctly
+    DecodingError(Asn1Error),
+    /// Raised if the ANISE version of the file is incompatible with the library.
+    IncompatibleVersion {
+        file_version: Semver,
+    },
 }
 
 impl From<IOErrorKind> for AniseError {
@@ -43,6 +52,21 @@ impl fmt::Display for AniseError {
                 f,
                 "Anise Error: data array checksum verification failed (file is corrupted)"
             ),
+            Self::DecodingError(err) => write!(
+                f,
+                "Anise Error: bytes could not be decoded into a valid ANISE file - {}",
+                err
+            ),
+            Self::IncompatibleVersion{file_version} => write!(
+                f,
+                "Anise Error: File encoded with ANISE version {}.{}.{} but this library is for version {}.{}.{}",
+                file_version.major,
+                file_version.minor,
+                file_version.patch,
+                ANISE_VERSION.major,
+                ANISE_VERSION.minor,
+                ANISE_VERSION.patch
+            )
         }
     }
 }

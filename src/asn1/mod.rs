@@ -27,7 +27,8 @@ pub struct AniseContext<'a> {
     pub metadata: Metadata<'a>,
     pub ephemeris_lut: LookUpTable,
     pub orientation_lut: LookUpTable,
-    pub ephemeris_data: SequenceOf<Ephemeris<'a>, 512>,
+    pub ephemeris_data: SequenceOf<Ephemeris<'a>, 256>,
+    pub orientation_data: SequenceOf<Ephemeris<'a>, 256>,
     // TODO: Add orientation data
 }
 
@@ -54,6 +55,7 @@ impl<'a> Decode<'a> for AniseContext<'a> {
             ephemeris_lut: decoder.decode()?,
             orientation_lut: decoder.decode()?,
             ephemeris_data: decoder.decode()?,
+            ..Default::default()
         })
     }
 }

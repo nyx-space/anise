@@ -5,9 +5,9 @@ use der::{asn1::SequenceOf, Decode, Encode, Reader, Writer};
 #[derive(Default)]
 pub struct LookUpTable {
     /// Hashes of the general hashing algorithm
-    pub hashes: SequenceOf<u32, 512>,
+    pub hashes: SequenceOf<u32, 256>,
     /// Corresponding index for each hash, may only have 65_535 entries
-    pub indexes: SequenceOf<u16, 512>,
+    pub indexes: SequenceOf<u16, 256>,
 }
 
 impl<'a> Encode for LookUpTable {

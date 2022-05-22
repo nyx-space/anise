@@ -17,7 +17,6 @@ use anise::{
     },
     prelude::*,
 };
-use der::Decode;
 
 #[test]
 fn test_spk_load() {
@@ -67,7 +66,7 @@ fn test_spk_load() {
     // Load this ANIS file and make sure that it matches the original DE421 data.
 
     let bytes = file_mmap!(filename_anis).unwrap();
-    let ctx = AniseContext::from_der(&bytes).unwrap();
+    let ctx = AniseContext::from_bytes(&bytes);
     assert_eq!(
         ctx.ephemeris_lut.hashes.len(),
         spk.segments.len(),

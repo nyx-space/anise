@@ -5,33 +5,48 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
+extern crate der;
 
-// extern crate memmap2;
+use crate::{
+    asn1::{semver::Semver, AniseContext, ANISE_VERSION},
+    errors::AniseError,
+};
+use der::Decode;
+use std::convert::TryFrom;
 
-// use std::convert::TryFrom;
+impl<'a> AniseContext<'a> {
+    /// Try to load an Anise file from a pointer of bytes
+    pub fn try_from_bytes(bytes: &'a [u8]) -> Result<Self, AniseError> {
+        match Self::from_der(&bytes) {
+            Ok(ctx) => Ok(ctx),
+            Err(e) => {
+                // If we can't load the file, let's try to load the version only to be helpful
+                match Semver::from_der(&bytes[0..5]) {
+                    Ok(file_version) => {
+                        if file_version == ANISE_VERSION {
+                            // Versions match but the rest of the file is corrupted
+                            Err(AniseError::DecodingError(e))
+                        } else {
+                            Err(AniseError::IncompatibleVersion { file_version })
+                        }
+                    }
+                    Err(_) => Err(AniseError::DecodingError(e)),
+                }
+            }
+        }
+    }
 
-// pub struct Context {}
+    /// Forces to load an Anise file from a pointer of bytes.
+    /// **Panics** if the bytes cannot be interpreted as an Anise file.
+    pub fn from_bytes(buf: &'a [u8]) -> Self {
+        Self::try_from_bytes(buf).unwrap()
+    }
+}
 
-// impl<'a> Anise<'a> {
-//     /// Try to load an Anise file from a pointer of bytes
-//     pub fn try_from_bytes(buf: &'a [u8]) -> Result<Self, AniseError> {
-//         match root_as_anise(&buf) {
-//             Ok(a) => Ok(a),
-//             Err(e) => Err(AniseError::from(e)),
-//         }
-//     }
+impl<'a> TryFrom<&'a [u8]> for AniseContext<'a> {
+    type Error = AniseError;
 
-//     /// Forces to load an Anise file from a pointer of bytes.
-//     /// **Panics** if the bytes cannot be interpreted as an Anise file.
-//     pub fn from_bytes(buf: &'a [u8]) -> Self {
-//         Self::try_from_bytes(buf).unwrap()
-//     }
-// }
-
-// impl<'a> TryFrom<&'a [u8]> for Anise<'a> {
-//     type Error = AniseError;
-
-//     fn try_from(buf: &'a [u8]) -> Result<Self, Self::Error> {
-//         Self::try_from_bytes(buf)
-//     }
-// }
+    fn try_from(buf: &'a [u8]) -> Result<Self, Self::Error> {
+        Self::try_from_bytes(buf)
+    }
+}
