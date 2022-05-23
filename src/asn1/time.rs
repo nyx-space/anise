@@ -8,16 +8,24 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::hifitime::{Epoch as EpochHifitime, TimeSystem};
-
-use crate::prelude::AniseError;
-
 use super::der::{Decode, Encode, Reader, Writer};
+use super::hifitime::{Epoch as EpochHifitime, TimeSystem};
+use crate::prelude::AniseError;
+use core::convert::From;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Epoch {
     pub epoch: EpochHifitime,
     pub system: TimeSystem,
+}
+
+impl From<EpochHifitime> for Epoch {
+    fn from(epoch: EpochHifitime) -> Self {
+        Self {
+            epoch,
+            system: TimeSystem::TAI,
+        }
+    }
 }
 
 impl Epoch {

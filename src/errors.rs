@@ -40,13 +40,18 @@ pub enum AniseError {
     },
     /// Raised if the item sought after is not found in the context
     ItemNotFound,
+    /// Raised when requesting the interpolation for data that is not available in this spline.
+    NoInterpolationData,
     /// If this is raised, please report a bug
     InternalError(InternalErrorKind),
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum InternalErrorKind {
+    /// Appending to the lookup table failed
     LUTAppendFailure,
+    /// May happen if the interpolation scheme is not yet supported
+    InterpolationNotSupported,
 }
 
 impl From<IOErrorKind> for AniseError {
@@ -91,6 +96,10 @@ impl fmt::Display for AniseError {
             Self::InternalError(e) => {
                 write!(f, "ANISE internal error: {:?} -- please report a bug", e)
             }
+            Self::NoInterpolationData => write!(
+                f,
+                "ANISE error: No interpolation for the requested component"
+            ),
         }
     }
 }

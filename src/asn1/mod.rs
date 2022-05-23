@@ -7,6 +7,11 @@
  *
  * Documentation: https://nyxspace.com/
  */
+
+/**
+ * This module only contains the serialization and deserialization components of ANISE.
+ * All other computations are at a higher level module.
+ */
 extern crate der;
 extern crate hifitime;
 pub mod common;
@@ -30,3 +35,7 @@ pub const ANISE_VERSION: Semver = Semver {
 
 /// The maximum number of trajectories that can be loaded in a single context
 pub const MAX_TRAJECTORIES: usize = 256;
+
+/// The maximum degree supported by ANISE.
+/// Remove this once https://github.com/anise-toolkit/anise.rs/issues/19 is implemented.
+pub const MAX_DEGREE: usize = 128;

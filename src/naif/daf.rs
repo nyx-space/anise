@@ -9,7 +9,7 @@
  */
 
 use crate::{parse_bytes_as, prelude::AniseError, DBL_SIZE};
-use std::convert::TryInto;
+use core::convert::TryInto;
 
 pub(crate) const RCRD_LEN: usize = 1024;
 pub(crate) const INT_SIZE: usize = 4;

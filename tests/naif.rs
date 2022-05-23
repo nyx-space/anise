@@ -63,7 +63,6 @@ fn test_spk_load() {
     // Build the ANISE file
     // TODO: Compute the checksum and make sure it's correct
     let filename_anis = "de421.anis";
-    // spk.to_anise(filename, filename_anis);
     spk.to_anise(bsp_path, filename_anis);
     // Load this ANIS file and make sure that it matches the original DE421 data.
 

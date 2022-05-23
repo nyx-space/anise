@@ -14,7 +14,10 @@ extern crate hifitime;
 pub use hifitime::Epoch;
 
 pub mod context;
+pub mod ephemeris;
 pub mod errors;
+pub mod frame;
+pub mod spline;
 
 pub mod prelude {
     pub use crate::asn1::context::AniseContext;

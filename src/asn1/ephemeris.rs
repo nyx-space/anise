@@ -22,9 +22,6 @@ pub struct Ephemeris<'a> {
     pub splines: Splines<'a>,
 }
 
-// Question: do you query the ephemeris, the trajectory file, or the container of several files?
-impl<'a> Ephemeris<'a> {}
-
 impl<'a> Encode for Ephemeris<'a> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         Utf8StringRef::new(self.name)?.encoded_len()?
