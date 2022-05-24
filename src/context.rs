@@ -18,6 +18,10 @@ use crate::{
 };
 use core::convert::TryFrom;
 use crc32fast::hash;
+use der::Encode;
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
 
 impl<'a> AniseContext<'a> {
     /// Try to load an Anise file from a pointer of bytes
@@ -211,6 +215,42 @@ impl<'a> AniseContext<'a> {
                 .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
             // Increment the number of added items
             Ok(true)
+        }
+    }
+
+    /// Saves this context in the providef filename.
+    /// If overwrite is set to false, and the filename already exists, this function will return an error.
+    ///
+    /// TODO: This function should only be available with the alloc feature gate.
+    pub fn save_as(&self, filename: &'a str, overwrite: bool) -> Result<(), AniseError> {
+        let mut buf = Vec::new();
+        self.save_as_via_buffer(filename, overwrite, &mut buf)
+    }
+
+    /// Saves this context in the providef filename.
+    /// If overwrite is set to false, and the filename already exists, this function will return an error.
+    pub fn save_as_via_buffer(
+        &self,
+        filename: &'a str,
+        overwrite: bool,
+        buf: &mut [u8],
+    ) -> Result<(), AniseError> {
+        if !overwrite && Path::new(filename).exists() {
+            return Err(AniseError::FileExists);
+        }
+
+        match File::create(filename) {
+            Ok(mut file) => {
+                if let Err(e) = self.encode_to_slice(buf) {
+                    return Err(InternalErrorKind::Asn1Error(e).into());
+                }
+                if let Err(e) = file.write_all(&buf) {
+                    Err(e.kind().into())
+                } else {
+                    Ok(())
+                }
+            }
+            Err(e) => Err(e.kind().into()),
         }
     }
 

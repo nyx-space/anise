@@ -15,4 +15,6 @@ pub enum CliErrors {
     FileNotFound(#[from] io::Error),
     #[error("ANISE error encountered")]
     AniseError(#[from] AniseError),
+    #[error("{0}")]
+    ArgumentError(String),
 }

@@ -22,6 +22,7 @@ use crate::asn1::spline::Splines;
 use crate::asn1::splinecoeffs::SplineCoeffCount;
 use crate::asn1::splinekind::SplineKind;
 use crate::asn1::time::Epoch as AniseEpoch;
+use crate::errors::InternalErrorKind;
 use crate::prelude::AniseError;
 use crate::{file_mmap, parse_bytes_as, DBL_SIZE};
 use crc32fast::hash;
@@ -181,7 +182,7 @@ impl<'a> SPK<'a> {
     }
 
     /// Converts the provided SPK to an ANISE file
-    pub fn to_anise(&'a self, orig_file: &str, filename: &str) {
+    pub fn to_anise(&'a self, orig_file: &str, filename: &str) -> Result<(), AniseError> {
         let meta = Metadata {
             originator: orig_file,
             ..Default::default()
@@ -189,14 +190,14 @@ impl<'a> SPK<'a> {
 
         // Start the trajectory file so we can populate the lookup table (LUT)
 
-        let mut traj_file = AniseContext::default();
-        traj_file.metadata = meta;
+        let mut ctx = AniseContext::default();
+        ctx.metadata = meta;
 
         // let mut all_splines = [Spline::default(); 20_000];
         let mut all_intermediate_files = Vec::new();
 
         for (idx, seg) in self.segments.iter().enumerate() {
-            let (seg, meta, seg_coeffs) = self.all_coefficients(seg.target_id).unwrap();
+            let (seg, meta, seg_coeffs) = self.all_coefficients(seg.target_id)?;
             if seg_coeffs.is_empty() {
                 continue;
             }
@@ -283,10 +284,19 @@ impl<'a> SPK<'a> {
             let mut buf = Vec::new();
             let fname = format!("{filename}-{idx}-{hashed_name}.tmp");
             all_intermediate_files.push(fname.clone());
-            let mut file = File::create(fname).unwrap();
-            ephem.encode_to_vec(&mut buf).unwrap();
-            // let ephem_dec: Ephemeris = Ephemeris::from_der(&buf).unwrap();
-            file.write_all(&buf).unwrap();
+            match File::create(fname) {
+                Ok(mut file) => {
+                    if let Err(e) = ephem.encode_to_vec(&mut buf) {
+                        return Err((InternalErrorKind::from(e)).into());
+                    }
+                    if let Err(e) = file.write_all(&buf) {
+                        return Err(e.kind().into());
+                    }
+                }
+                Err(e) => {
+                    return Err(AniseError::IOError(e.kind()));
+                }
+            }
         }
 
         // Now concat all of the files
@@ -295,21 +305,19 @@ impl<'a> SPK<'a> {
             let bytes = file_mmap!(fname).unwrap();
             all_bufs.push(bytes);
         }
+        // Unwrap all of the possibly failing calls because we just created these files so we assume they're valid
         for buf in &all_bufs {
             let ephem: Ephemeris = Ephemeris::from_der(&buf).unwrap();
             println!("Add {}", ephem.name);
-            // traj_file.ephemeris_data.add(ephem).unwrap();
-            traj_file.append_ephemeris_mut(ephem).unwrap();
+            ctx.append_ephemeris_mut(ephem).unwrap();
         }
 
-        let mut buf = Vec::new();
-        let mut file = File::create(filename).unwrap();
-        traj_file.encode_to_vec(&mut buf).unwrap();
-        file.write_all(&buf).unwrap();
+        ctx.save_as(filename, false)?;
         // And delete the temporary files
         for fname in &all_intermediate_files {
             remove_file(fname).unwrap();
         }
+        Ok(())
     }
 }
 

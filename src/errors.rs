@@ -10,6 +10,7 @@
 
 use crate::asn1::semver::Semver;
 use crate::der::Error as Asn1Error;
+use crate::der::Error as DerError;
 use core::convert::From;
 use core::fmt;
 use std::io::ErrorKind as IOErrorKind;
@@ -44,6 +45,8 @@ pub enum AniseError {
     NoInterpolationData,
     /// If this is raised, please report a bug
     InternalError(InternalErrorKind),
+    /// Raised to prevent overwriting an existing file
+    FileExists,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -52,6 +55,7 @@ pub enum InternalErrorKind {
     LUTAppendFailure,
     /// May happen if the interpolation scheme is not yet supported
     InterpolationNotSupported,
+    Asn1Error(DerError),
 }
 
 impl From<IOErrorKind> for AniseError {
@@ -63,6 +67,12 @@ impl From<IOErrorKind> for AniseError {
 impl From<InternalErrorKind> for AniseError {
     fn from(e: InternalErrorKind) -> Self {
         Self::InternalError(e)
+    }
+}
+
+impl From<DerError> for InternalErrorKind {
+    fn from(e: DerError) -> Self {
+        Self::Asn1Error(e)
     }
 }
 
@@ -99,6 +109,10 @@ impl fmt::Display for AniseError {
             Self::NoInterpolationData => write!(
                 f,
                 "ANISE error: No interpolation for the requested component"
+            ),
+            Self::FileExists => write!(
+                f,
+                "ANISE error: operation aborted to prevent overwriting an existing file"
             ),
         }
     }
