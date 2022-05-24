@@ -22,7 +22,7 @@ impl<'a> Splines<'a> {
         window_length_s: f64,
         kind: InterpolationKind,
     ) -> Result<[f64; 3], AniseError> {
-        let orbit = self.orbit_at(spline_idx, offset_s, window_length_s, kind)?;
+        let orbit = self.posvel_at(spline_idx, offset_s, window_length_s, kind)?;
         Ok([orbit[0], orbit[1], orbit[2]])
     }
 
@@ -34,12 +34,12 @@ impl<'a> Splines<'a> {
         window_length_s: f64,
         kind: InterpolationKind,
     ) -> Result<[f64; 3], AniseError> {
-        let orbit = self.orbit_at(spline_idx, offset_s, window_length_s, kind)?;
+        let orbit = self.posvel_at(spline_idx, offset_s, window_length_s, kind)?;
         Ok([orbit[3], orbit[4], orbit[5]])
     }
 
     /// Evaluate this ephemeris at the requested epoch and returns an orbit structure.
-    pub fn orbit_at(
+    pub fn posvel_at(
         &self,
         spline_idx: usize,
         offset_s: f64,

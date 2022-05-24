@@ -16,16 +16,18 @@ use crate::{
 impl<'a> Ephemeris<'a> {
     /// Evaluate this ephemeris at the requested epoch and returns the position only.
     pub fn position_at(&self, req_epoch: Epoch) -> Result<[f64; 3], AniseError> {
-        todo!()
+        let orbit = self.posvel_at(req_epoch)?;
+        Ok([orbit[0], orbit[1], orbit[2]])
     }
 
     /// Evaluate this ephemeris at the requested epoch and returns the velocity only.
     pub fn velocity_at(&self, req_epoch: Epoch) -> Result<[f64; 3], AniseError> {
-        todo!()
+        let orbit = self.posvel_at(req_epoch)?;
+        Ok([orbit[3], orbit[4], orbit[5]])
     }
 
     /// Evaluate this ephemeris at the requested epoch and returns an orbit structure.
-    pub fn orbit_at(&self, req_epoch: Epoch) -> Result<[f64; 6], AniseError> {
+    pub fn posvel_at(&self, req_epoch: Epoch) -> Result<[f64; 6], AniseError> {
         if self.interpolation_kind != InterpolationKind::ChebyshevSeries {
             return Err(InternalErrorKind::InterpolationNotSupported.into());
         }
@@ -49,7 +51,7 @@ impl<'a> Ephemeris<'a> {
                 };
 
                 // Then let the spline compute the state.
-                self.splines.orbit_at(
+                self.splines.posvel_at(
                     index as usize,
                     offset_s,
                     window_duration_s,

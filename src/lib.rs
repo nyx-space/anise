@@ -28,6 +28,8 @@ pub mod prelude {
 pub mod asn1;
 pub mod naif;
 
+pub mod cli;
+
 /// Defines the number of bytes in a double (prevents magic numbers)
 pub(crate) const DBL_SIZE: usize = 8;
 
