@@ -27,7 +27,7 @@ pub enum AniseError {
     /// For some reason weird reason (malformed file?), data that was expected to be in an array wasn't.
     IndexingError,
     /// If the NAIF file cannot be read or isn't supported
-    NAIFConversionError(String),
+    NAIFParseError(String),
     InvalidTimeSystem,
     /// Raised if the checksum of the encoded data does not match the stored data.
     IntegrityError,
@@ -74,7 +74,7 @@ impl fmt::Display for AniseError {
             Self::DivisionByZero => write!(f, "ANISE error: DivisionByZero"),
             Self::ParameterNotSpecified => write!(f, "ANISE error: ParameterNotSpecified"),
             Self::IndexingError => write!(f, "ANISE error: IndexingError"),
-            Self::NAIFConversionError(reason) => {
+            Self::NAIFParseError(reason) => {
                 write!(f, "ANISE error: invalid NAIF DAF file: {}", reason)
             }
             Self::InvalidTimeSystem => write!(f, "ANISE error: invalid time system"),

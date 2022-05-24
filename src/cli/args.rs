@@ -17,6 +17,12 @@ pub enum Actions {
         #[clap(parse(from_os_str))]
         file: PathBuf,
     },
+    /// Checks whether the integrity of the file seems correct by checking the hash of the packed data and that all of the information in the lookup tables exist in the file.
+    IntegrityCheck {
+        /// Path to ANISE file
+        #[clap(parse(from_os_str))]
+        file: PathBuf,
+    },
     /// Merge several ANISE files together
     Merge {
         /// Input files are all of the files but the last one

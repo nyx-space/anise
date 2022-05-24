@@ -23,6 +23,9 @@ fn main() -> Result<(), CliErrors> {
             spk.to_anise(spk_filename, &anise_filename);
             Ok(())
         }
+        Actions::IntegrityCheck { file: _ } => {
+            todo!()
+        }
         Actions::Merge { files } => {
             todo!("merge {files:?}")
         }

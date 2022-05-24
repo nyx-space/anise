@@ -51,7 +51,7 @@ impl<'a> SPK<'a> {
             }
 
             if seg.data_type != DataType::ChebyshevPositionOnly {
-                return Err(AniseError::NAIFConversionError(
+                return Err(AniseError::NAIFParseError(
                     "Only cheby supported".to_string(),
                 ));
             }
@@ -88,7 +88,7 @@ impl<'a> SPK<'a> {
                 },
             ));
         }
-        Err(AniseError::NAIFConversionError(format!(
+        Err(AniseError::NAIFParseError(format!(
             "Could not find segment {}",
             seg_target_id
         )))
@@ -281,7 +281,7 @@ impl<'a> SPK<'a> {
             // Serialize this ephemeris and rebuild the full file in a minute
 
             let mut buf = Vec::new();
-            let fname = format!("{idx}-{hashed_name}-{filename}.tmp");
+            let fname = format!("{filename}-{idx}-{hashed_name}.tmp");
             all_intermediate_files.push(fname.clone());
             let mut file = File::create(fname).unwrap();
             ephem.encode_to_vec(&mut buf).unwrap();
@@ -327,7 +327,7 @@ impl<'a> TryInto<SPK<'a>> for &'a DAF<'a> {
         for seg_data in self.summaries() {
             let (name, f64_data, int_data) = seg_data;
             if f64_data.len() != 2 {
-                return Err(AniseError::NAIFConversionError(format!(
+                return Err(AniseError::NAIFParseError(format!(
                     "SPK should have exactly two f64 data, found {}",
                     f64_data.len()
                 )));
@@ -336,7 +336,7 @@ impl<'a> TryInto<SPK<'a>> for &'a DAF<'a> {
             let end_epoch = Epoch::from_et_seconds(f64_data[1]);
 
             if int_data.len() != 6 {
-                return Err(AniseError::NAIFConversionError(format!(
+                return Err(AniseError::NAIFParseError(format!(
                     "SPK should have exactly five int data, found {}",
                     int_data.len()
                 )));

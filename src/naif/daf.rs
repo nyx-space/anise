@@ -41,7 +41,7 @@ impl<'a> DAF<'a> {
     /// From https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/daf.html#Structure
     pub fn parse(bytes: &'a [u8]) -> Result<Self, AniseError> {
         let locidw = std::str::from_utf8(&bytes[0..8]).or_else(|_| {
-            Err(AniseError::NAIFConversionError(
+            Err(AniseError::NAIFParseError(
                 "Could not parse header (first 8 bytes)".to_owned(),
             ))
         })?;
@@ -49,19 +49,19 @@ impl<'a> DAF<'a> {
         // TODO : Add daftype[0] check
         let daftype: Vec<&str> = locidw.split("/").collect();
         if daftype.len() != 2 {
-            return Err(AniseError::NAIFConversionError(format!(
+            return Err(AniseError::NAIFParseError(format!(
                 "Malformed header string: `{}`",
                 locidw
             )));
         } else if daftype[1].trim() == "PCK" {
             println!("Good luck on the PCK debugging");
         } else if daftype[1].trim() != "SPK" {
-            return Err(AniseError::NAIFConversionError(format!(
+            return Err(AniseError::NAIFParseError(format!(
                 "Cannot parse a NAIF DAF of type: `{}`",
                 locidw
             )));
         } else if daftype[0].trim() != "DAF" {
-            return Err(AniseError::NAIFConversionError(format!(
+            return Err(AniseError::NAIFParseError(format!(
                 "Cannot parse file whose identifier is not DAF: `{}`",
                 locidw
             )));
@@ -69,7 +69,7 @@ impl<'a> DAF<'a> {
 
         // We need to figure out if this file is big or little endian before we can convert some byte arrays into integer
         let str_endianness = std::str::from_utf8(&bytes[88..96]).or_else(|_| {
-            Err(AniseError::NAIFConversionError(
+            Err(AniseError::NAIFParseError(
                 "Could not parse endianness".to_owned(),
             ))
         })?;
@@ -79,7 +79,7 @@ impl<'a> DAF<'a> {
         } else if str_endianness == "BIG-IEEE" {
             Endianness::Big
         } else {
-            return Err(AniseError::NAIFConversionError(format!(
+            return Err(AniseError::NAIFParseError(format!(
                 "Could not understand endianness: `{}`",
                 str_endianness
             )));
@@ -94,7 +94,7 @@ impl<'a> DAF<'a> {
         let freeaddr = parse_bytes_as!(u32, &bytes[84..84 + INT_SIZE], endianness) as usize;
 
         let locifn = std::str::from_utf8(&bytes[16..76]).or_else(|_| {
-            Err(AniseError::NAIFConversionError(
+            Err(AniseError::NAIFParseError(
                 "Could not parse locifn".to_owned(),
             ))
         })?;
