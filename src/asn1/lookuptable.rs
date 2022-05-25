@@ -32,9 +32,9 @@ impl LookUpTable {
     ///
     /// NOTE: Until https://github.com/anise-toolkit/anise.rs/issues/18 is addressed
     /// this function has a time complexity of O(N)
-    pub fn index_for_hash(&self, hash: u32) -> Result<u16, AniseError> {
+    pub fn index_for_hash(&self, hash: &u32) -> Result<u16, AniseError> {
         for (idx, item) in self.hashes.iter().enumerate() {
-            if item == &hash {
+            if item == hash {
                 return match self.indexes.get(idx) {
                     Some(item_index) => Ok(*item_index),
                     None => Err(AniseError::IndexingError),
@@ -52,7 +52,7 @@ impl LookUpTable {
     /// NOTE: Until https://github.com/anise-toolkit/anise.rs/issues/18 is addressed
     /// this function has a time complexity of O(N)
     pub fn index_for_key(&self, key: &str) -> Result<u16, AniseError> {
-        self.index_for_hash(hash(key.as_bytes()))
+        self.index_for_hash(&hash(key.as_bytes()))
     }
 }
 

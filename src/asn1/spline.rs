@@ -14,7 +14,10 @@ use super::{
     splinecoeffs::{Coefficient, SplineCoeffCount},
     splinekind::SplineKind,
 };
-use crate::{naif::daf::Endianness, parse_bytes_as, prelude::AniseError, DBL_SIZE};
+use crate::{
+    errors::IntegrityErrorKind, naif::daf::Endianness, parse_bytes_as, prelude::AniseError,
+    DBL_SIZE,
+};
 
 /// Maximum interpolation degree for splines. This is needed for encoding and decoding of Splines in ASN1 using the `der` library.
 pub const MAX_INTERP_DEGREE: usize = 32;
@@ -75,7 +78,9 @@ impl<'a> Splines<'a> {
         if computed_chksum == self.data_checksum {
             Ok(())
         } else {
-            Err(AniseError::IntegrityError)
+            Err(AniseError::IntegrityError(
+                IntegrityErrorKind::ChecksumInvalid,
+            ))
         }
     }
 }

@@ -1,3 +1,4 @@
+extern crate env_logger;
 use anise::cli::args::{Actions, Args};
 use anise::cli::CliErrors;
 use anise::file_mmap;
@@ -7,6 +8,8 @@ use anise::prelude::*;
 use clap::Parser;
 
 fn main() -> Result<(), CliErrors> {
+    env_logger::init();
+
     let cli = Args::parse();
     match cli.action {
         Actions::Convert { file } => {

@@ -9,6 +9,8 @@
  */
 
 use crate::der::Decode;
+use crate::errors::IntegrityErrorKind;
+use crate::log::{error, info, trace};
 use crate::{
     asn1::{
         context::AniseContext, ephemeris::Ephemeris, semver::Semver, ANISE_VERSION,
@@ -19,6 +21,7 @@ use crate::{
 use core::convert::TryFrom;
 use crc32fast::hash;
 use der::Encode;
+use log::warn;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -86,15 +89,21 @@ impl<'a> AniseContext<'a> {
         // Update the creation date
         if self.metadata.creation_date > other.metadata.creation_date {
             self.metadata.creation_date = other.metadata.creation_date;
+            info!(
+                "[merge] new creation data set to {}",
+                self.metadata.creation_date
+            );
         }
         // Append the Ephemeris data tables
         let mut num_ephem_added = 0;
+        trace!("{:?}", other.ephemeris_lut.indexes);
         for new_hash in other.ephemeris_lut.hashes.iter() {
-            let data_idx = other.ephemeris_lut.index_for_hash(*new_hash)?.into();
+            let data_idx = other.ephemeris_lut.index_for_hash(new_hash)?.into();
+            trace!("[merge] fetching ephemeris idx={data_idx} for hash {new_hash}");
             let other_e = other
                 .ephemeris_data
                 .get(data_idx)
-                .ok_or(AniseError::IntegrityError)?;
+                .ok_or(AniseError::IntegrityError(IntegrityErrorKind::DataMissing))?;
             if self.append_ephemeris_mut(*other_e)? {
                 num_ephem_added += 1;
             }
@@ -103,11 +112,12 @@ impl<'a> AniseContext<'a> {
         // Append the Orientation data tables
         let mut num_orientation_added = 0;
         for new_hash in other.orientation_lut.hashes.iter() {
-            let data_idx = other.orientation_lut.index_for_hash(*new_hash)?.into();
+            let data_idx = other.orientation_lut.index_for_hash(new_hash)?.into();
+            trace!("[merge] fetching orientation idx={data_idx} for hash {new_hash}");
             let other_o = other
                 .orientation_data
                 .get(data_idx)
-                .ok_or(AniseError::IntegrityError)?;
+                .ok_or(AniseError::IntegrityError(IntegrityErrorKind::DataMissing))?;
             if self.append_orientation_mut(*other_o)? {
                 num_orientation_added += 1;
             }
@@ -126,16 +136,26 @@ impl<'a> AniseContext<'a> {
     /// then this returns an Indexing Error.
     pub fn append_ephemeris_mut(&mut self, e: Ephemeris<'a>) -> Result<bool, AniseError> {
         let new_hash = hash(e.name.as_bytes());
-        if let Ok(self_idx) = self.ephemeris_lut.index_for_hash(new_hash) {
+        if let Ok(self_idx) = self.ephemeris_lut.index_for_hash(&new_hash) {
             if self
                 .ephemeris_data
                 .get(self_idx.into())
-                .ok_or(AniseError::IntegrityError)?
+                .ok_or(AniseError::IntegrityError(IntegrityErrorKind::DataMissing))?
                 != &e
             {
+                error!(
+                    "[append] ephemeris `{}` exists with hash {} but data differ",
+                    e.name, new_hash
+                );
                 // The ephemeris data differ but the name is the same
-                return Err(AniseError::IntegrityError);
+                return Err(AniseError::IntegrityError(
+                    IntegrityErrorKind::DataMismatchOnMerge,
+                ));
             } else {
+                trace!(
+                    "[append] nothing to do for ephemeris `{}` (data matches)",
+                    e.name
+                );
                 // Data already exists and matches.
                 Ok(false)
             }
@@ -144,7 +164,7 @@ impl<'a> AniseContext<'a> {
 
             // Check that we can add one item
             if self.ephemeris_lut.indexes.len() == MAX_TRAJECTORIES {
-                // We're full!
+                error!("[append] cannnot append ephemeris, look up table is full");
                 return Err(AniseError::IndexingError);
             }
 
@@ -155,13 +175,18 @@ impl<'a> AniseContext<'a> {
             // Push the index too
             self.ephemeris_lut
                 .indexes
-                .add((self.ephemeris_lut.indexes.len() + 1).try_into().unwrap())
+                .add((self.ephemeris_lut.indexes.len()).try_into().unwrap())
                 .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
             // Add the ephemeris data
             self.ephemeris_data
                 .add(e)
                 .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
-            // Increment the number of added items
+            trace!(
+                "[append] added {} (hash={}) in position {}",
+                e.name,
+                new_hash,
+                self.ephemeris_data.len()
+            );
             Ok(true)
         }
     }
@@ -178,15 +203,17 @@ impl<'a> AniseContext<'a> {
     /// TODO: Change this from ephemeris to Orientation and update visibility
     pub(crate) fn append_orientation_mut(&mut self, o: Ephemeris<'a>) -> Result<bool, AniseError> {
         let new_hash = hash(o.name.as_bytes());
-        if let Ok(self_idx) = self.orientation_lut.index_for_hash(new_hash) {
+        if let Ok(self_idx) = self.orientation_lut.index_for_hash(&new_hash) {
             if self
                 .orientation_data
                 .get(self_idx.into())
-                .ok_or(AniseError::IntegrityError)?
+                .ok_or(AniseError::IntegrityError(IntegrityErrorKind::DataMissing))?
                 != &o
             {
                 // The ephemeris data differ but the name is the same
-                return Err(AniseError::IntegrityError);
+                return Err(AniseError::IntegrityError(
+                    IntegrityErrorKind::DataMismatchOnMerge,
+                ));
             } else {
                 // Data already exists and matches.
                 Ok(false)
@@ -207,7 +234,7 @@ impl<'a> AniseContext<'a> {
             // Push the index too
             self.orientation_lut
                 .indexes
-                .add((self.orientation_lut.indexes.len() + 1).try_into().unwrap())
+                .add((self.orientation_lut.indexes.len()).try_into().unwrap())
                 .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
             // Add the ephemeris data
             self.orientation_data
@@ -223,8 +250,15 @@ impl<'a> AniseContext<'a> {
     ///
     /// TODO: This function should only be available with the alloc feature gate.
     pub fn save_as(&self, filename: &'a str, overwrite: bool) -> Result<(), AniseError> {
-        let mut buf = Vec::new();
-        self.save_as_via_buffer(filename, overwrite, &mut buf)
+        match self.encoded_len() {
+            Err(e) => Err(AniseError::InternalError(e.into())),
+            Ok(length) => {
+                let len: u32 = length.into();
+                // Fill the vector with zeros
+                let mut buf = vec![0x0; len as usize];
+                self.save_as_via_buffer(filename, overwrite, &mut buf)
+            }
+        }
     }
 
     /// Saves this context in the providef filename.
@@ -235,8 +269,12 @@ impl<'a> AniseContext<'a> {
         overwrite: bool,
         buf: &mut [u8],
     ) -> Result<(), AniseError> {
-        if !overwrite && Path::new(filename).exists() {
-            return Err(AniseError::FileExists);
+        if Path::new(filename).exists() {
+            if !overwrite {
+                return Err(AniseError::FileExists);
+            } else {
+                warn!("[save_as] overwriting {filename}");
+            }
         }
 
         match File::create(filename) {

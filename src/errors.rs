@@ -31,7 +31,7 @@ pub enum AniseError {
     NAIFParseError(String),
     InvalidTimeSystem,
     /// Raised if the checksum of the encoded data does not match the stored data.
-    IntegrityError,
+    IntegrityError(IntegrityErrorKind),
     /// Raised if the file could not be decoded correctly
     DecodingError(Asn1Error),
     /// Raised if the ANISE version of the file is incompatible with the library.
@@ -56,6 +56,16 @@ pub enum InternalErrorKind {
     /// May happen if the interpolation scheme is not yet supported
     InterpolationNotSupported,
     Asn1Error(DerError),
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum IntegrityErrorKind {
+    /// Checksum of ephemeris data differs from expected checksum
+    ChecksumInvalid,
+    /// Data between two ephemerides expected to be identical mismatch (may happen on merger of files)
+    DataMismatchOnMerge,
+    /// Could not fetch spline data that was expected to be there
+    DataMissing,
 }
 
 impl From<IOErrorKind> for AniseError {
@@ -88,10 +98,7 @@ impl fmt::Display for AniseError {
                 write!(f, "ANISE error: invalid NAIF DAF file: {}", reason)
             }
             Self::InvalidTimeSystem => write!(f, "ANISE error: invalid time system"),
-            Self::IntegrityError => write!(
-                f,
-                "ANISE error: data array checksum verification failed (file is corrupted)"
-            ),
+            Self::IntegrityError(e) => write!(f, "ANISE error: data integrity error: {:?}", e),
             Self::DecodingError(err) => write!(
                 f,
                 "ANISE error: bytes could not be decoded into a valid ANISE file - {}",

@@ -137,9 +137,6 @@ impl<'a> DAF<'a> {
     /// The summaries are needed to decode the rest of the file
     pub fn summaries(&self) -> Vec<(&'a str, Vec<f64>, Vec<i32>)> {
         // Each summary need to be read in bytes of 8*nd then 4*self.ni
-        let single_summary_size = self.nd + (self.ni + 1) / 2;
-        let num_summaries = 125 / single_summary_size;
-        dbg!(single_summary_size);
         let mut record_num = self.fwrd;
         let mut rtn = Vec::new();
         loop {
@@ -185,7 +182,6 @@ impl<'a> DAF<'a> {
             record_num = next_record;
         }
 
-        dbg!(num_summaries);
         rtn
     }
 

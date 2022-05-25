@@ -24,7 +24,6 @@ use anise::{
 fn test_spk_load() {
     // Using the DE421 as demo because the correct data is in the DAF documentation
     let bsp_path = "data/de421.bsp";
-    // let filename = "data/de440.bsp";
     let bytes = file_mmap!(bsp_path).unwrap();
 
     let de421 = DAF::parse(&bytes).unwrap();
@@ -59,13 +58,13 @@ fn test_spk_load() {
         "Invalid start time"
     );
 
-    spk.all_coefficients(301).unwrap();
-    // Build the ANISE file
-    // TODO: Compute the checksum and make sure it's correct
-    let filename_anis = "de421.anis";
-    spk.to_anise(bsp_path, filename_anis);
-    // Load this ANIS file and make sure that it matches the original DE421 data.
+    spk.copy_coeffs(301).unwrap();
 
+    // Build the ANISE file
+    let filename_anis = "de421.anis";
+    spk.to_anise(bsp_path, filename_anis).unwrap();
+
+    // Load this ANIS file and make sure that it matches the original DE421 data.
     let bytes = file_mmap!(filename_anis).unwrap();
     let ctx = AniseContext::from_bytes(&bytes);
     assert_eq!(
@@ -92,7 +91,7 @@ fn test_spk_load() {
         let splt = ephem.name.split("#").collect::<Vec<&str>>();
         let seg_target_id = str::parse::<i32>(splt[1]).unwrap();
         // Fetch the SPK segment
-        let (seg, meta, all_seg_data) = spk.all_coefficients(seg_target_id).unwrap();
+        let (seg, meta, all_seg_data) = spk.copy_coeffs(seg_target_id).unwrap();
         if all_seg_data.is_empty() {
             continue;
         }

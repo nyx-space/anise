@@ -28,6 +28,7 @@ use crate::{file_mmap, parse_bytes_as, DBL_SIZE};
 use crc32fast::hash;
 use der::{Decode, Encode};
 use hifitime::{Epoch, TimeSystem};
+use log::info;
 use std::convert::TryInto;
 use std::f64::EPSILON;
 use std::fmt;
@@ -96,7 +97,7 @@ impl<'a> SPK<'a> {
     }
 
     /// Returns all of the coefficients
-    pub fn all_coefficients(
+    pub fn copy_coeffs(
         &self,
         seg_target_id: i32,
     ) -> Result<(&Segment, SegMetaData, Vec<SegmentExportData>), AniseError> {
@@ -166,11 +167,21 @@ impl<'a> SPK<'a> {
             };
 
             if rnum == 0 {
-                // TODO Change this to a logging
-                dbg!(seg);
-                dbg!(meta);
+                info!(
+                    "[copy_coeffs] [{}..{}] ({} rps) `{}` (tgt={}, ctr={}, frame={}) {:?} | {} .. {}",
+                    seg.start_idx,
+                    seg.end_idx,
+                    meta.num_records_in_seg,
+                    seg.name,
+                    seg.target_id,
+                    seg.center_id,
+                    seg.frame_id,
+                    seg.data_type,
+                    seg.start_epoch,
+                    seg.end_epoch,
+                );
                 // The rcrd_radius_s should be a round integer, so let's check that
-                assert!(dbg!(rcrd_radius_s % rcrd_radius_s.floor()).abs() < EPSILON);
+                assert!((rcrd_radius_s % rcrd_radius_s.floor()).abs() < EPSILON);
             }
 
             full_data.push(export);
@@ -197,7 +208,7 @@ impl<'a> SPK<'a> {
         let mut all_intermediate_files = Vec::new();
 
         for (idx, seg) in self.segments.iter().enumerate() {
-            let (seg, meta, seg_coeffs) = self.all_coefficients(seg.target_id)?;
+            let (seg, meta, seg_coeffs) = self.copy_coeffs(seg.target_id)?;
             if seg_coeffs.is_empty() {
                 continue;
             }
@@ -308,11 +319,10 @@ impl<'a> SPK<'a> {
         // Unwrap all of the possibly failing calls because we just created these files so we assume they're valid
         for buf in &all_bufs {
             let ephem: Ephemeris = Ephemeris::from_der(&buf).unwrap();
-            println!("Add {}", ephem.name);
             ctx.append_ephemeris_mut(ephem).unwrap();
         }
 
-        ctx.save_as(filename, false)?;
+        ctx.save_as(filename, true)?;
         // And delete the temporary files
         for fname in &all_intermediate_files {
             remove_file(fname).unwrap();

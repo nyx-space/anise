@@ -10,6 +10,7 @@
 
 extern crate der;
 extern crate hifitime;
+extern crate log;
 
 pub use hifitime::Epoch;
 
