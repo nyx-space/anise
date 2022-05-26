@@ -66,6 +66,8 @@ pub enum IntegrityErrorKind {
     DataMismatchOnMerge,
     /// Could not fetch spline data that was expected to be there
     DataMissing,
+    /// The lookup table is broken somehow
+    LookupTable,
 }
 
 impl From<IOErrorKind> for AniseError {

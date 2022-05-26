@@ -7,17 +7,9 @@
  *
  * Documentation: https://nyxspace.com/
  */
-use crc32fast::hash;
 use der::{asn1::OctetStringRef, Decode, Encode, Length, Reader, Writer};
 
-use super::{
-    splinecoeffs::{Coefficient, SplineCoeffCount},
-    splinekind::SplineKind,
-};
-use crate::{
-    errors::IntegrityErrorKind, naif::daf::Endianness, parse_bytes_as, prelude::AniseError,
-    DBL_SIZE,
-};
+use super::{splinecoeffs::SplineCoeffCount, splinekind::SplineKind};
 
 /// Maximum interpolation degree for splines. This is needed for encoding and decoding of Splines in ASN1 using the `der` library.
 pub const MAX_INTERP_DEGREE: usize = 32;
@@ -45,44 +37,6 @@ pub struct Splines<'a> {
     // pub cov_velocity_coeff_len: u8,
     // pub cov_acceleration_coeff_len: u8,
     pub data: &'a [u8],
-}
-
-impl<'a> Splines<'a> {
-    pub fn fetch(
-        &self,
-        spline_idx: usize,
-        coeff_idx: usize,
-        coeff: Coefficient,
-    ) -> Result<f64, AniseError> {
-        self.check_integrity()?;
-        let mut offset = self.config.spline_offset(spline_idx);
-        // Calculate the f64's offset in this spline
-        offset += match coeff {
-            Coefficient::X => 0,
-            Coefficient::Y => (self.config.degree as usize) * DBL_SIZE,
-            Coefficient::Z => (2 * self.config.degree as usize) * DBL_SIZE,
-            _ => todo!(),
-        };
-        offset += coeff_idx * DBL_SIZE;
-        if offset + DBL_SIZE <= self.data.len() {
-            let ptr = &self.data[offset..offset + DBL_SIZE];
-            return Ok(parse_bytes_as!(f64, ptr, Endianness::Big));
-        } else {
-            Err(AniseError::IndexingError)
-        }
-    }
-
-    pub fn check_integrity(&self) -> Result<(), AniseError> {
-        // Ensure that the data is correctly decoded
-        let computed_chksum = hash(self.data);
-        if computed_chksum == self.data_checksum {
-            Ok(())
-        } else {
-            Err(AniseError::IntegrityError(
-                IntegrityErrorKind::ChecksumInvalid,
-            ))
-        }
-    }
 }
 
 impl<'a> Encode for Splines<'a> {

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use super::clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
-#[clap(name="ANISE", author="Rabotin et ANISE contributors", version, about, long_about = None)]
+#[clap(name="ANISE", author="Rabotin and ANISE contributors", version, about, long_about = None)]
 pub struct Args {
     #[clap(subcommand)]
     pub action: Actions,
@@ -17,8 +17,8 @@ pub enum Actions {
         #[clap(parse(from_os_str))]
         file: PathBuf,
     },
-    /// Checks whether the integrity of the file seems correct by checking the hash of the packed data and that all of the information in the lookup tables exist in the file.
-    IntegrityCheck {
+    /// Checks the integrity of the file
+    Check {
         /// Path to ANISE file
         #[clap(parse(from_os_str))]
         file: PathBuf,

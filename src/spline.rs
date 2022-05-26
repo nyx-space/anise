@@ -8,12 +8,61 @@
  * Documentation: https://nyxspace.com/
  */
 
+use crc32fast::hash;
+use log::error;
+
 use crate::{
     asn1::{common::InterpolationKind, spline::Splines, splinecoeffs::Coefficient, MAX_DEGREE},
-    errors::{AniseError, InternalErrorKind},
+    errors::{AniseError, IntegrityErrorKind, InternalErrorKind},
+    naif::daf::Endianness,
+    parse_bytes_as, DBL_SIZE,
 };
 
 impl<'a> Splines<'a> {
+    pub fn fetch(
+        &self,
+        spline_idx: usize,
+        coeff_idx: usize,
+        coeff: Coefficient,
+    ) -> Result<f64, AniseError> {
+        self.check_integrity()?;
+        let mut offset = self.config.spline_offset(spline_idx);
+        // Calculate the f64's offset in this spline
+        offset += match coeff {
+            Coefficient::X => 0,
+            Coefficient::Y => (self.config.degree as usize) * DBL_SIZE,
+            Coefficient::Z => (2 * self.config.degree as usize) * DBL_SIZE,
+            _ => todo!(),
+        };
+        offset += coeff_idx * DBL_SIZE;
+        match self.data.get(offset..offset + DBL_SIZE) {
+            Some(ptr) => Ok(parse_bytes_as!(f64, ptr, Endianness::Big)),
+            None => {
+                error!(
+                    "[fetch] could not fetch {}-th {:?} in spline {}",
+                    coeff_idx, coeff, spline_idx
+                );
+                Err(AniseError::IndexingError)
+            }
+        }
+    }
+
+    pub fn check_integrity(&self) -> Result<(), AniseError> {
+        // Ensure that the data is correctly decoded
+        let computed_chksum = hash(self.data);
+        if computed_chksum == self.data_checksum {
+            Ok(())
+        } else {
+            error!(
+                "[integrity] expected hash {} but computed {}",
+                self.data_checksum, computed_chksum
+            );
+            Err(AniseError::IntegrityError(
+                IntegrityErrorKind::ChecksumInvalid,
+            ))
+        }
+    }
+
     /// Evaluate this spline at the requested epoch and returns the position only.
     pub fn position_at(
         &self,

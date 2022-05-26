@@ -31,8 +31,17 @@ fn main() -> Result<(), CliErrors> {
                 Err(e) => Err(e.into()),
             }
         }
-        Actions::IntegrityCheck { file: _ } => {
-            todo!()
+        Actions::Check { file } => {
+            let path_str = file.clone();
+            match file_mmap!(file) {
+                Ok(bytes) => {
+                    let context = AniseContext::try_from_bytes(&bytes)?;
+                    context.check_integrity()?;
+                    println!("[OK] {:?}", path_str);
+                    Ok(())
+                }
+                Err(e) => return Err(e.into()),
+            }
         }
         Actions::Inspect { file: _ } => {
             todo!()
