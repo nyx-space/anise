@@ -8,6 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 
+use std::fmt::{Display, Formatter};
+
 use super::der::Enumerated;
 
 #[derive(Enumerated, Copy, Clone, Debug, Eq, PartialEq)]
@@ -18,4 +20,10 @@ pub enum InterpolationKind {
     LagrangeSeries = 2,
     Polynomial = 3,
     Trigonometric = 4, // Sometimes called Fourier Series interpolation
+}
+
+impl Display for InterpolationKind {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
+        write!(f, "{:?}", self)
+    }
 }

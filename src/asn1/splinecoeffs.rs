@@ -23,23 +23,22 @@ pub struct SplineCoeffCount {
 
 impl SplineCoeffCount {
     /// Returns the offset (in bytes) in the octet string
-    pub fn spline_offset(&self, idx: usize) -> usize {
+    pub const fn spline_offset(&self, idx: usize) -> usize {
         idx * self.len()
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
     /// Returns the length of a spline in bytes
-    pub fn len(&self) -> usize {
-        let num_items: usize = (self.num_epochs
+    pub const fn len(&self) -> usize {
+        let num_items = self.num_epochs
             + self.num_position_coeffs * self.degree
             + self.num_position_dt_coeffs * self.degree
             + self.num_velocity_coeffs * self.degree
-            + self.num_velocity_dt_coeffs * self.degree)
-            .into();
-        DBL_SIZE * num_items
+            + self.num_velocity_dt_coeffs * self.degree;
+        DBL_SIZE * (num_items as usize)
     }
 }
 

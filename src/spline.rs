@@ -19,6 +19,15 @@ use crate::{
 };
 
 impl<'a> Splines<'a> {
+    pub const fn empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Returns the number of splines
+    pub const fn len(&self) -> usize {
+        self.data.len() / self.config.len() + 1
+    }
+
     pub fn fetch(
         &self,
         spline_idx: usize,

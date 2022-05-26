@@ -8,12 +8,49 @@
  * Documentation: https://nyxspace.com/
  */
 
+use hifitime::TimeUnits;
+
 use crate::{
     asn1::{common::InterpolationKind, ephemeris::Ephemeris, splinekind::SplineKind, time::Epoch},
     errors::{AniseError, InternalErrorKind},
 };
 
 impl<'a> Ephemeris<'a> {
+    /// Returns the first epoch in the data, which will be the chronological "end" epoch if the ephemeris is generated backward
+    fn first_epoch(&self) -> Epoch {
+        self.ref_epoch
+    }
+
+    /// Returns the last epoch in the data, which will be the chronological "start" epoch if the ephemeris is generated backward
+    fn last_epoch(&self) -> Epoch {
+        match self.splines.kind {
+            SplineKind::FixedWindow { window_duration_s } => {
+                // Grab the number of splines
+                (self.ref_epoch.epoch + ((self.splines.len() as f64) * window_duration_s).seconds())
+                    .into()
+            }
+            SplineKind::SlidingWindow { indexes: _ } => {
+                todo!()
+            }
+        }
+    }
+
+    pub fn start_epoch(&self) -> Epoch {
+        if self.first_epoch().epoch > self.last_epoch().epoch {
+            self.last_epoch()
+        } else {
+            self.first_epoch()
+        }
+    }
+
+    pub fn end_epoch(&self) -> Epoch {
+        if self.first_epoch().epoch > self.last_epoch().epoch {
+            self.first_epoch()
+        } else {
+            self.last_epoch()
+        }
+    }
+
     /// Evaluate this ephemeris at the requested epoch and returns the position only.
     pub fn position_at(&self, req_epoch: Epoch) -> Result<[f64; 3], AniseError> {
         let orbit = self.posvel_at(req_epoch)?;

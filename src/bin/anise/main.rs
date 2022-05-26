@@ -43,8 +43,17 @@ fn main() -> Result<(), CliErrors> {
                 Err(e) => return Err(e.into()),
             }
         }
-        Actions::Inspect { file: _ } => {
-            todo!()
+        Actions::Inspect { file } => {
+            // Start by checking the integrity
+            match file_mmap!(file) {
+                Ok(bytes) => {
+                    let context = AniseContext::try_from_bytes(&bytes)?;
+                    context.check_integrity()?;
+                    println!("{}", context);
+                    Ok(())
+                }
+                Err(e) => return Err(e.into()),
+            }
         }
         Actions::Merge { files } => {
             if files.len() < 2 {

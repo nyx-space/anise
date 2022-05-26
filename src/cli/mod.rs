@@ -1,4 +1,5 @@
 extern crate clap;
+extern crate tabled;
 extern crate thiserror;
 
 use std::io;
@@ -8,6 +9,8 @@ use thiserror::Error;
 use crate::prelude::AniseError;
 
 pub mod args;
+
+mod inspect;
 
 #[derive(Debug, Error)]
 pub enum CliErrors {
