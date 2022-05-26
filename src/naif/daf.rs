@@ -40,14 +40,12 @@ pub struct DAF<'a> {
 impl<'a> DAF<'a> {
     /// From https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/daf.html#Structure
     pub fn parse(bytes: &'a [u8]) -> Result<Self, AniseError> {
-        let locidw = std::str::from_utf8(&bytes[0..8]).or_else(|_| {
-            Err(AniseError::NAIFParseError(
-                "Could not parse header (first 8 bytes)".to_owned(),
-            ))
+        let locidw = std::str::from_utf8(&bytes[0..8]).map_err(|_| {
+            AniseError::NAIFParseError("Could not parse header (first 8 bytes)".to_owned())
         })?;
 
         // TODO : Add daftype[0] check
-        let daftype: Vec<&str> = locidw.split("/").collect();
+        let daftype: Vec<&str> = locidw.split('/').collect();
         if daftype.len() != 2 {
             return Err(AniseError::NAIFParseError(format!(
                 "Malformed header string: `{}`",
@@ -68,11 +66,8 @@ impl<'a> DAF<'a> {
         }
 
         // We need to figure out if this file is big or little endian before we can convert some byte arrays into integer
-        let str_endianness = std::str::from_utf8(&bytes[88..96]).or_else(|_| {
-            Err(AniseError::NAIFParseError(
-                "Could not parse endianness".to_owned(),
-            ))
-        })?;
+        let str_endianness = std::str::from_utf8(&bytes[88..96])
+            .map_err(|_| AniseError::NAIFParseError("Could not parse endianness".to_owned()))?;
 
         let endianness = if str_endianness == "LTL-IEEE" {
             Endianness::Little
@@ -93,11 +88,8 @@ impl<'a> DAF<'a> {
         let bwrd = parse_bytes_as!(u32, &bytes[80..80 + INT_SIZE], endianness) as usize;
         let freeaddr = parse_bytes_as!(u32, &bytes[84..84 + INT_SIZE], endianness) as usize;
 
-        let locifn = std::str::from_utf8(&bytes[16..76]).or_else(|_| {
-            Err(AniseError::NAIFParseError(
-                "Could not parse locifn".to_owned(),
-            ))
-        })?;
+        let locifn = std::str::from_utf8(&bytes[16..76])
+            .map_err(|_| AniseError::NAIFParseError("Could not parse locifn".to_owned()))?;
 
         Ok(Self {
             idword: locidw.trim(),
@@ -117,7 +109,7 @@ impl<'a> DAF<'a> {
         // FWRD has the initial record of the summary. So we assume that all records between the second record and that one are comments
         for rid in 1..self.fwrd {
             match std::str::from_utf8(&self.bytes[rid * RCRD_LEN..(rid + 1) * RCRD_LEN]) {
-                Ok(s) => rslt += &s.replace("\u{0}\u{0}", " ").replace("\u{0}", "\n").trim(),
+                Ok(s) => rslt += s.replace("\u{0}\u{0}", " ").replace('\u{0}', "\n").trim(),
                 Err(e) => {
                     let valid_s = std::str::from_utf8(
                         &self.bytes[rid * RCRD_LEN..(rid * RCRD_LEN + e.valid_up_to())],
@@ -125,7 +117,7 @@ impl<'a> DAF<'a> {
                     .unwrap();
                     rslt += valid_s
                         .replace("\u{0}\u{0}", " ")
-                        .replace("\u{0}", "\n")
+                        .replace('\u{0}', "\n")
                         .trim()
                 }
             }
@@ -157,7 +149,7 @@ impl<'a> DAF<'a> {
             for i in (0..nsummaries * length).step_by(length) {
                 let j = 3 * DBL_SIZE + i;
                 let name = std::str::from_utf8(&name_record[i..i + length]).unwrap();
-                if name.chars().nth(0).unwrap() == ' ' {
+                if name.starts_with(' ') {
                     println!("WARNING: Parsing might be wrong because the first character of the name summary is a space: `{}`", name);
                     println!(
                         "Full name data: `{}`",
@@ -167,14 +159,14 @@ impl<'a> DAF<'a> {
                 let summary_data = &record[j..j + length];
                 let mut f64_summary = Vec::with_capacity(self.nd);
                 for double_data in summary_data[0..DBL_SIZE * self.nd].chunks(DBL_SIZE) {
-                    f64_summary.push(parse_bytes_as!(f64, &double_data, self.endianness));
+                    f64_summary.push(parse_bytes_as!(f64, double_data, self.endianness));
                 }
                 let mut int_summary = Vec::with_capacity(self.ni);
                 for int_data in summary_data
                     [DBL_SIZE * self.nd..(self.nd * DBL_SIZE + self.ni * INT_SIZE)]
                     .chunks(INT_SIZE)
                 {
-                    int_summary.push(parse_bytes_as!(i32, &int_data, self.endianness));
+                    int_summary.push(parse_bytes_as!(i32, int_data, self.endianness));
                 }
                 // Add this data to the return vec
                 rtn.push((name, f64_summary, int_summary));

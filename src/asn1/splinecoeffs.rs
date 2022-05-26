@@ -27,6 +27,10 @@ impl SplineCoeffCount {
         idx * self.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Returns the length of a spline in bytes
     pub fn len(&self) -> usize {
         let num_items: usize = (self.num_epochs

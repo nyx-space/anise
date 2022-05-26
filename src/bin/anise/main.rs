@@ -53,9 +53,8 @@ fn main() -> Result<(), CliErrors> {
                         let mut context = AniseContext::try_from_bytes(&bytes)?;
                         // We can't borrow some bytes and let them drop out of scope, so we'll copy them into a vector.
                         let mut all_bytes = Vec::with_capacity(files.len() - 1);
-                        for file_no in 0..files.len() - 1 {
+                        for this_file in files.iter().take(files.len() - 1) {
                             // Try load this file
-                            let this_file = &files[file_no];
                             match file_mmap!(this_file) {
                                 Ok(these_bytes) => {
                                     all_bytes.push(these_bytes);
@@ -65,7 +64,7 @@ fn main() -> Result<(), CliErrors> {
                         }
                         // And now add them to the previous context
                         for (num, bytes) in all_bytes.iter().enumerate() {
-                            let other = AniseContext::try_from_bytes(&bytes)?;
+                            let other = AniseContext::try_from_bytes(bytes)?;
                             let (num_ephem_added, num_orientation_added) =
                                 context.merge_mut(other.clone())?;
                             println!("Added {num_ephem_added} ephemeris and {num_orientation_added} orientations from {:?}", files[num]);

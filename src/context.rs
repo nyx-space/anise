@@ -29,7 +29,7 @@ use std::path::Path;
 impl<'a> AniseContext<'a> {
     /// Try to load an Anise file from a pointer of bytes
     pub fn try_from_bytes(bytes: &'a [u8]) -> Result<Self, AniseError> {
-        match Self::from_der(&bytes) {
+        match Self::from_der(bytes) {
             Ok(ctx) => Ok(ctx),
             Err(e) => {
                 // If we can't load the file, let's try to load the version only to be helpful
@@ -147,9 +147,9 @@ impl<'a> AniseContext<'a> {
                     e.name, new_hash
                 );
                 // The ephemeris data differ but the name is the same
-                return Err(AniseError::IntegrityError(
+                Err(AniseError::IntegrityError(
                     IntegrityErrorKind::DataMismatchOnMerge,
-                ));
+                ))
             } else {
                 trace!(
                     "[append] nothing to do for ephemeris `{}` (data matches)",
@@ -170,16 +170,16 @@ impl<'a> AniseContext<'a> {
             self.ephemeris_lut
                 .hashes
                 .add(new_hash)
-                .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
+                .map_err(|_| InternalErrorKind::LUTAppendFailure)?;
             // Push the index too
             self.ephemeris_lut
                 .indexes
                 .add((self.ephemeris_lut.indexes.len()).try_into().unwrap())
-                .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
+                .map_err(|_| InternalErrorKind::LUTAppendFailure)?;
             // Add the ephemeris data
             self.ephemeris_data
                 .add(e)
-                .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
+                .map_err(|_| InternalErrorKind::LUTAppendFailure)?;
             trace!(
                 "[append] added {} (hash={}) in position {}",
                 e.name,
@@ -210,9 +210,9 @@ impl<'a> AniseContext<'a> {
                 != &o
             {
                 // The ephemeris data differ but the name is the same
-                return Err(AniseError::IntegrityError(
+                Err(AniseError::IntegrityError(
                     IntegrityErrorKind::DataMismatchOnMerge,
-                ));
+                ))
             } else {
                 // Data already exists and matches.
                 Ok(false)
@@ -229,16 +229,16 @@ impl<'a> AniseContext<'a> {
             self.orientation_lut
                 .hashes
                 .add(new_hash)
-                .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
+                .map_err(|_| InternalErrorKind::LUTAppendFailure)?;
             // Push the index too
             self.orientation_lut
                 .indexes
                 .add((self.orientation_lut.indexes.len()).try_into().unwrap())
-                .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
+                .map_err(|_| InternalErrorKind::LUTAppendFailure)?;
             // Add the ephemeris data
             self.orientation_data
                 .add(o)
-                .or_else(|_| Err(InternalErrorKind::LUTAppendFailure))?;
+                .map_err(|_| InternalErrorKind::LUTAppendFailure)?;
             // Increment the number of added items
             Ok(true)
         }
@@ -281,7 +281,7 @@ impl<'a> AniseContext<'a> {
                 if let Err(e) = self.encode_to_slice(buf) {
                     return Err(InternalErrorKind::Asn1Error(e).into());
                 }
-                if let Err(e) = file.write_all(&buf) {
+                if let Err(e) = file.write_all(buf) {
                     Err(e.kind().into())
                 } else {
                     Ok(())

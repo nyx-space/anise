@@ -201,8 +201,10 @@ impl<'a> SPK<'a> {
 
         // Start the trajectory file so we can populate the lookup table (LUT)
 
-        let mut ctx = AniseContext::default();
-        ctx.metadata = meta;
+        let mut ctx = AniseContext {
+            metadata: meta,
+            ..Default::default()
+        };
 
         // let mut all_splines = [Spline::default(); 20_000];
         let mut all_intermediate_files = Vec::new();
@@ -318,7 +320,7 @@ impl<'a> SPK<'a> {
         }
         // Unwrap all of the possibly failing calls because we just created these files so we assume they're valid
         for buf in &all_bufs {
-            let ephem: Ephemeris = Ephemeris::from_der(&buf).unwrap();
+            let ephem: Ephemeris = Ephemeris::from_der(buf).unwrap();
             ctx.append_ephemeris_mut(ephem).unwrap();
         }
 
@@ -338,7 +340,7 @@ impl<'a> TryInto<SPK<'a>> for &'a DAF<'a> {
         let mut spk = SPK {
             // TODO : find a way to avoid alloc ?
             segments: Vec::new(),
-            daf: &self,
+            daf: self,
         };
 
         // Convert the summaries into segments
@@ -385,9 +387,9 @@ impl<'a> TryInto<SPK<'a>> for &'a DAF<'a> {
 
 impl<'a> fmt::Display for SPK<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} with segments:\n", self.daf.idword)?;
+        writeln!(f, "{} with segments:", self.daf.idword)?;
         for seg in &self.segments {
-            write!(f, "\t{}\n", seg)?;
+            writeln!(f, "\t{}", seg)?;
         }
         fmt::Result::Ok(())
     }
