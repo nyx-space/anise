@@ -96,7 +96,6 @@ impl<'a> AniseContext<'a> {
         }
         // Append the Ephemeris data tables
         let mut num_ephem_added = 0;
-        trace!("{:?}", other.ephemeris_lut.indexes);
         for new_hash in other.ephemeris_lut.hashes.iter() {
             let data_idx = other.ephemeris_lut.index_for_hash(new_hash)?.into();
             trace!("[merge] fetching ephemeris idx={data_idx} for hash {new_hash}");

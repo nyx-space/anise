@@ -1,4 +1,6 @@
 extern crate env_logger;
+use std::fs::rename;
+
 use anise::cli::args::{Actions, Args};
 use anise::cli::CliErrors;
 use anise::file_mmap;
@@ -32,6 +34,9 @@ fn main() -> Result<(), CliErrors> {
         Actions::IntegrityCheck { file: _ } => {
             todo!()
         }
+        Actions::Inspect { file: _ } => {
+            todo!()
+        }
         Actions::Merge { files } => {
             if files.len() < 2 {
                 Err(CliErrors::ArgumentError(
@@ -40,6 +45,9 @@ fn main() -> Result<(), CliErrors> {
             } else {
                 // Open the last file in the list
                 let destination = files.last().unwrap().clone();
+                // This is the temporary file.
+                let dest_str = files.last().unwrap().to_str().as_ref().unwrap().to_string();
+                let tmp_dest_str = dest_str.clone() + ".tmp";
                 match file_mmap!(destination) {
                     Ok(bytes) => {
                         let mut context = AniseContext::try_from_bytes(&bytes)?;
@@ -63,13 +71,20 @@ fn main() -> Result<(), CliErrors> {
                             println!("Added {num_ephem_added} ephemeris and {num_orientation_added} orientations from {:?}", files[num]);
                         }
                         // And finally save.
-                        Ok(())
+                        if let Err(e) = context.save_as(&tmp_dest_str, false) {
+                            return Err(e.into());
+                        }
                     }
                     Err(e) => return Err(e.into()),
                 }
-                // Ok(())
+                // Now that we have written the data to the temp file
+                // and that the mmap is out of scope, we can move the tmp file into the old file
+                if let Err(e) = rename(tmp_dest_str, dest_str) {
+                    Err(CliErrors::AniseError(AniseError::IOError(e.kind())))
+                } else {
+                    Ok(())
+                }
             }
-            // todo!("merge {files:?}")
         }
     }
 }

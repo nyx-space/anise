@@ -14,13 +14,17 @@ use crate::prelude::AniseError;
 
 use super::MAX_TRAJECTORIES;
 
-// TODO: Determine if this shouldn't be a single SeqOf with a tuple or a LUT Entry of {Hash, Index}
-/// A LookUpTable enables O(1) access to any ephemeris data
+/// A LookUpTable allows looking up the data given the hash.
+///
+/// # Note
+/// In this version of ANISE, the look up is O(N) due to a limitation in the ASN1 library used.
+/// Eventually, the specification will require the hashes will be ordered for a binary search on the index,
+/// thereby greatly reducing the search time for each data, from O(N) to O(log N).
 #[derive(Clone, Default, PartialEq)]
 pub struct LookUpTable {
     /// Hashes of the general hashing algorithm
     pub hashes: SequenceOf<u32, MAX_TRAJECTORIES>,
-    /// Corresponding index for each hash, may only have 65_535 entries
+    /// Corresponding index for each hash
     pub indexes: SequenceOf<u16, MAX_TRAJECTORIES>,
 }
 

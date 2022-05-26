@@ -23,6 +23,12 @@ pub enum Actions {
         #[clap(parse(from_os_str))]
         file: PathBuf,
     },
+    /// Inspects what's in an ANISE file (and also checks the integrity)
+    Inspect {
+        /// Path to ANISE file
+        #[clap(parse(from_os_str))]
+        file: PathBuf,
+    },
     /// Merge several ANISE files together
     Merge {
         /// Input files are all of the files but the last one
