@@ -28,7 +28,7 @@ use crate::{file_mmap, parse_bytes_as, DBL_SIZE};
 use crc32fast::hash;
 use der::{Decode, Encode};
 use hifitime::{Epoch, TimeSystem};
-use log::info;
+use log::{info, warn};
 use std::convert::TryInto;
 use std::f64::EPSILON;
 use std::fmt;
@@ -193,29 +193,34 @@ impl<'a> SPK<'a> {
     }
 
     /// Converts the provided SPK to an ANISE file
-    pub fn to_anise(&'a self, orig_file: &str, filename: &str) -> Result<(), AniseError> {
-        let meta = Metadata {
-            originator: orig_file,
-            ..Default::default()
-        };
-
+    ///
+    /// WARNING: The segment name will be automatically switched to the human name of the celestial body
+    /// from its unspecific "DE-0438LE-0438" if that name can be infered correctly.
+    pub fn to_anise(
+        &'a self,
+        orig_file: &str,
+        filename: &str,
+        skip_empty: bool,
+    ) -> Result<(), AniseError> {
         // Start the trajectory file so we can populate the lookup table (LUT)
-
         let mut ctx = AniseContext {
-            metadata: meta,
+            metadata: Metadata {
+                originator: orig_file,
+                ..Default::default()
+            },
             ..Default::default()
         };
 
-        // let mut all_splines = [Spline::default(); 20_000];
         let mut all_intermediate_files = Vec::new();
 
         for (idx, seg) in self.segments.iter().enumerate() {
             let (seg, meta, seg_coeffs) = self.copy_coeffs(seg.target_id)?;
-            if seg_coeffs.is_empty() {
+            if seg_coeffs.len() <= 1 && skip_empty {
+                warn!("Skipping empty {seg}");
                 continue;
             }
             // Some files don't have a useful name in the segments, so we append the target ID in case
-            let name = format!("{} #{}", seg.name, seg.target_id);
+            let name = format!("{}", seg.human_name());
             let hashed_name = hash(name.as_bytes());
 
             let degree = (meta.rsize - 2) / 3;

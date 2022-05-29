@@ -41,7 +41,59 @@ pub struct Segment<'a> {
     pub end_idx: usize,
 }
 
-impl<'a> Segment<'a> {}
+impl<'a> Segment<'a> {
+    /// Returns the human name of this segment if it can be guessed, else the standard name.
+    ///
+    /// # Returned value
+    /// 1. Typically, this will return the name of the celestial body
+    /// 2. The name is appended with "Barycenter" if the celestial object is know to have moons
+    ///
+    /// # Limitations
+    /// 0. In BSP files, the name is stored as a comment and is unstructured. So it's hard to copy those. (Help needed)
+    /// 1. One limitation of this approach is that given file may only contain one "Earth"
+    /// 2. Another limitation is that this code does not know all of the possible moons in the whole solar system.
+    pub(crate) fn human_name(&self) -> &'a str {
+        if self.name.starts_with("DE-") {
+            // We're converting a DE file, so let's return something useful
+            if self.target_id % 100 == 99 {
+                // This is the planet itself
+                match self.target_id / 100 {
+                    1 => "Mercury",
+                    2 => "Venus",
+                    3 => "Earth",
+                    4 => "Mars",
+                    5 => "Jupiter",
+                    6 => "Saturn",
+                    7 => "Uranus",
+                    8 => "Neptune",
+                    9 => "Pluto",
+                    _ => panic!("Human name unknown for {self}"),
+                }
+            } else if self.target_id == 301 {
+                "Luna"
+            } else if self.target_id <= 10 {
+                // This is the barycenter
+                match self.target_id {
+                    1 => "Mercury",
+                    2 => "Venus",
+                    3 => "Earth-Moon Barycenter",
+                    4 => "Mars Barycenter",
+                    5 => "Jupiter Barycenter",
+                    6 => "Saturn Barycenter",
+                    7 => "Uranus Barycenter",
+                    8 => "Neptune Barycenter",
+                    9 => "Pluto Barycenter",
+                    10 => "Sun",
+                    _ => panic!("Human name unknown for {self}"),
+                }
+            } else {
+                panic!("Human name unknown for {self}");
+            }
+        } else {
+            self.name
+        }
+    }
+}
 
 impl<'a> Default for Segment<'a> {
     fn default() -> Self {

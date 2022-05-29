@@ -13,6 +13,9 @@ pub struct Args {
 pub enum Actions {
     /// Convert a supported SPICE file into an ANISE file
     Convert {
+        /// Set to true to include empty ephemerides in the ANISE file (default: false)
+        #[clap(long)]
+        allow_empty: bool,
         /// Path to SPICE file
         #[clap(parse(from_os_str))]
         file: PathBuf,

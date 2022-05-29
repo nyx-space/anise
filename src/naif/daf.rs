@@ -44,7 +44,6 @@ impl<'a> DAF<'a> {
             AniseError::NAIFParseError("Could not parse header (first 8 bytes)".to_owned())
         })?;
 
-        // TODO : Add daftype[0] check
         let daftype: Vec<&str> = locidw.split('/').collect();
         if daftype.len() != 2 {
             return Err(AniseError::NAIFParseError(format!(

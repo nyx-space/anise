@@ -14,7 +14,7 @@ fn main() -> Result<(), CliErrors> {
 
     let cli = Args::parse();
     match cli.action {
-        Actions::Convert { file } => {
+        Actions::Convert { allow_empty, file } => {
             let file_clone = file.clone();
             // Memory map the file
             match file_mmap!(file) {
@@ -25,7 +25,7 @@ fn main() -> Result<(), CliErrors> {
                     // Convert to ANISE
                     let spk_filename = file_clone.to_str().unwrap();
                     let anise_filename = spk_filename.replace(".bsp", ".anise");
-                    spk.to_anise(spk_filename, &anise_filename)?;
+                    spk.to_anise(spk_filename, &anise_filename, !allow_empty)?;
                     Ok(())
                 }
                 Err(e) => Err(e.into()),

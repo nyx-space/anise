@@ -62,7 +62,7 @@ fn test_spk_load() {
 
     // Build the ANISE file
     let filename_anis = "de421.anis";
-    spk.to_anise(bsp_path, filename_anis).unwrap();
+    spk.to_anise(bsp_path, filename_anis, false).unwrap();
 
     // Load this ANIS file and make sure that it matches the original DE421 data.
     let bytes = file_mmap!(filename_anis).unwrap();
