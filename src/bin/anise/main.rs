@@ -1,4 +1,5 @@
-extern crate env_logger;
+extern crate pretty_env_logger;
+use std::env::{set_var, var};
 use std::fs::rename;
 
 use anise::cli::args::{Actions, Args};
@@ -9,8 +10,16 @@ use anise::naif::spk::SPK;
 use anise::prelude::*;
 use clap::Parser;
 
+const LOG_VAR: &str = "ANISE_LOG";
+
 fn main() -> Result<(), CliErrors> {
-    env_logger::init();
+    if var(LOG_VAR).is_err() {
+        set_var(LOG_VAR, "INFO");
+    }
+
+    if pretty_env_logger::try_init_custom_env(LOG_VAR).is_err() {
+        println!("could not init logger");
+    }
 
     let cli = Args::parse();
     match cli.action {
