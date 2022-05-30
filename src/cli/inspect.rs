@@ -1,3 +1,4 @@
+use crc32fast::hash;
 use hifitime::Epoch;
 use std::fmt::{Display, Error as FmtError, Formatter};
 use tabled::{Style, Table, Tabled};
@@ -9,6 +10,7 @@ use crate::{asn1::common::InterpolationKind, prelude::AniseContext};
 struct Row<'a> {
     name: &'a str,
     data_kind: &'a str,
+    hash: u32,
     start_epoch: Epoch,
     end_epoch: Epoch,
     interpolation_kind: InterpolationKind,
@@ -49,6 +51,7 @@ impl<'a> Display for AniseContext<'a> {
             rows.push(Row {
                 name: ephem.name,
                 data_kind: "Ephemeris",
+                hash: hash(ephem.name.as_bytes()),
                 start_epoch: ephem.start_epoch().epoch,
                 end_epoch: ephem.end_epoch().epoch,
                 interpolation_kind: ephem.interpolation_kind,
@@ -59,6 +62,7 @@ impl<'a> Display for AniseContext<'a> {
             rows.push(Row {
                 name: orientation.name,
                 data_kind: "Orientation",
+                hash: hash(orientation.name.as_bytes()),
                 start_epoch: orientation.start_epoch().epoch,
                 end_epoch: orientation.end_epoch().epoch,
                 interpolation_kind: orientation.interpolation_kind,

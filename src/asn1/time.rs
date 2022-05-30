@@ -49,6 +49,20 @@ impl Epoch {
             _ => Err(AniseError::InvalidTimeSystem),
         }
     }
+
+    /// Returns the parts of this epoch perserving the time system initially used
+    fn to_parts(&self) -> (i16, u64) {
+        match self.system {
+            TimeSystem::ET => self.epoch.as_et_duration().to_parts(),
+            TimeSystem::TAI => self.epoch.as_tai_duration().to_parts(),
+            TimeSystem::TDB => self.epoch.as_tdb_duration().to_parts(),
+            TimeSystem::TT => self.epoch.as_tt_duration().to_parts(),
+            TimeSystem::UTC => {
+                // self.epoch.as_utc_duration().to_parts()
+                unimplemented!("hifitime as_utc_duration is not yet a public function");
+            }
+        }
+    }
 }
 
 impl Default for Epoch {
@@ -62,14 +76,14 @@ impl Default for Epoch {
 
 impl<'a> Encode for Epoch {
     fn encoded_len(&self) -> der::Result<der::Length> {
-        let (centuries, nanoseconds) = self.epoch.as_tai_duration().to_parts();
+        let (centuries, nanoseconds) = self.to_parts();
         centuries.encoded_len()?
             + nanoseconds.encoded_len()?
             + self.time_system_as_u8().encoded_len()?
     }
 
     fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
-        let (centuries, nanoseconds) = self.epoch.as_tai_duration().to_parts();
+        let (centuries, nanoseconds) = self.to_parts();
 
         centuries.encode(encoder)?;
         nanoseconds.encode(encoder)?;

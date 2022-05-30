@@ -19,9 +19,9 @@ use crate::asn1::context::AniseContext;
 use crate::asn1::ephemeris::Ephemeris;
 use crate::asn1::metadata::Metadata;
 use crate::asn1::spline::Splines;
-use crate::asn1::splinecoeffs::SplineCoeffCount;
 use crate::asn1::splinekind::SplineKind;
 use crate::asn1::time::Epoch as AniseEpoch;
+use crate::constants::orientations::J2000;
 use crate::errors::InternalErrorKind;
 use crate::prelude::AniseError;
 use crate::{file_mmap, parse_bytes_as, DBL_SIZE};
@@ -220,20 +220,14 @@ impl<'a> SPK<'a> {
                 continue;
             }
             // Some files don't have a useful name in the segments, so we append the target ID in case
-            let name = format!("{}", seg.human_name());
-            let hashed_name = hash(name.as_bytes());
+            let hashed_name = hash(seg.human_name().as_bytes());
 
             let degree = (meta.rsize - 2) / 3;
             let kind = SplineKind::FixedWindow {
                 window_duration_s: meta.interval_length as f64,
             };
-            // TODO: This should be a const fn for each interp type
-            let config = SplineCoeffCount {
-                degree: degree.try_into().unwrap(),
-                num_position_coeffs: 3,
-                num_velocity_coeffs: 0,
-                ..Default::default()
-            };
+
+            let config = seg.data_type.to_anise_spline_coeff(degree);
             let mut spline_data = Vec::with_capacity(20_000);
 
             // Build the splines
@@ -285,15 +279,15 @@ impl<'a> SPK<'a> {
 
             // Create the ephemeris
             let ephem = Ephemeris {
-                name: name.as_str(),
+                name: seg.human_name(),
                 ref_epoch: AniseEpoch {
                     epoch: seg.start_epoch,
                     system: TimeSystem::TDB,
                 },
                 backward: false,
                 interpolation_kind: InterpolationKind::ChebyshevSeries,
-                parent_ephemeris_hash: 0, // TODO: Fix this
-                orientation_hash: 0,      // TODO: Set J2000 orientation
+                parent_ephemeris_hash: hash(Segment::id_to_human_name(seg.target_id)?.as_bytes()),
+                orientation_hash: J2000,
                 splines,
             };
 
@@ -343,7 +337,8 @@ impl<'a> TryInto<SPK<'a>> for &'a DAF<'a> {
 
     fn try_into(self) -> Result<SPK<'a>, Self::Error> {
         let mut spk = SPK {
-            // TODO : find a way to avoid alloc ?
+            // TODO: find a way to avoid alloc ?
+            // Alloc for conversion of SPICE files is _reasonable_
             segments: Vec::new(),
             daf: self,
         };

@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::prelude::AniseError;
+use crate::{asn1::splinecoeffs::SplineCoeffCount, prelude::AniseError};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DataType {
@@ -44,6 +44,25 @@ pub enum DataType {
     ChebyshevVelocityOnly,
     /// Type 21
     ExtendedModifiedDifferenceArrays,
+}
+
+impl DataType {
+    pub fn to_anise_spline_coeff(&self, degree: usize) -> SplineCoeffCount {
+        let num_velocity_coeffs = match self {
+            Self::ChebyshevPositionOnly => 0,
+            _ => todo!(),
+        };
+        let num_position_coeffs = match self {
+            Self::ChebyshevVelocityOnly => 0,
+            _ => 3,
+        };
+        SplineCoeffCount {
+            degree: degree.try_into().unwrap(),
+            num_position_coeffs,
+            num_velocity_coeffs,
+            ..Default::default()
+        }
+    }
 }
 
 impl TryFrom<i32> for DataType {

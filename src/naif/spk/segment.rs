@@ -8,8 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 
+use crate::prelude::AniseError;
+
 use super::datatype::DataType;
 use hifitime::{Epoch, TimeSystem};
+use log::error;
 use std::fmt;
 
 #[derive(Copy, Clone, Debug)]
@@ -42,6 +45,49 @@ pub struct Segment<'a> {
 }
 
 impl<'a> Segment<'a> {
+    /// Converts the provided ID to its human name.
+    /// Only works for the common celestial bodies
+    pub(crate) fn id_to_human_name(id: i32) -> Result<&'a str, AniseError> {
+        if id % 100 == 99 {
+            // This is the planet itself
+            match id / 100 {
+                1 => Ok("Mercury"),
+                2 => Ok("Venus"),
+                3 => Ok("Earth"),
+                4 => Ok("Mars"),
+                5 => Ok("Jupiter"),
+                6 => Ok("Saturn"),
+                7 => Ok("Uranus"),
+                8 => Ok("Neptune"),
+                9 => Ok("Pluto"),
+                _ => Err(AniseError::NAIFParseError(format!(
+                    "Human name unknown for {id}"
+                ))),
+            }
+        } else if id == 301 {
+            Ok("Luna")
+        } else if id <= 10 {
+            // This is the barycenter
+            match id {
+                1 => Ok("Mercury"),
+                2 => Ok("Venus"),
+                3 => Ok("Earth-Moon Barycenter"),
+                4 => Ok("Mars Barycenter"),
+                5 => Ok("Jupiter Barycenter"),
+                6 => Ok("Saturn Barycenter"),
+                7 => Ok("Uranus Barycenter"),
+                8 => Ok("Neptune Barycenter"),
+                9 => Ok("Pluto Barycenter"),
+                10 => Ok("Sun"),
+                _ => Err(AniseError::NAIFParseError(format!(
+                    "Human name unknown for {id}"
+                ))),
+            }
+        } else {
+            panic!("Human name unknown for {id}");
+        }
+    }
+
     /// Returns the human name of this segment if it can be guessed, else the standard name.
     ///
     /// # Returned value
@@ -54,40 +100,12 @@ impl<'a> Segment<'a> {
     /// 2. Another limitation is that this code does not know all of the possible moons in the whole solar system.
     pub(crate) fn human_name(&self) -> &'a str {
         if self.name.starts_with("DE-") {
-            // We're converting a DE file, so let's return something useful
-            if self.target_id % 100 == 99 {
-                // This is the planet itself
-                match self.target_id / 100 {
-                    1 => "Mercury",
-                    2 => "Venus",
-                    3 => "Earth",
-                    4 => "Mars",
-                    5 => "Jupiter",
-                    6 => "Saturn",
-                    7 => "Uranus",
-                    8 => "Neptune",
-                    9 => "Pluto",
-                    _ => panic!("Human name unknown for {self}"),
+            match Self::id_to_human_name(self.target_id) {
+                Ok(name) => name,
+                Err(e) => {
+                    error!("{}", e);
+                    panic!("Human name unknown for {self}")
                 }
-            } else if self.target_id == 301 {
-                "Luna"
-            } else if self.target_id <= 10 {
-                // This is the barycenter
-                match self.target_id {
-                    1 => "Mercury",
-                    2 => "Venus",
-                    3 => "Earth-Moon Barycenter",
-                    4 => "Mars Barycenter",
-                    5 => "Jupiter Barycenter",
-                    6 => "Saturn Barycenter",
-                    7 => "Uranus Barycenter",
-                    8 => "Neptune Barycenter",
-                    9 => "Pluto Barycenter",
-                    10 => "Sun",
-                    _ => panic!("Human name unknown for {self}"),
-                }
-            } else {
-                panic!("Human name unknown for {self}");
             }
         } else {
             self.name
