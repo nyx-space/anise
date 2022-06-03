@@ -55,10 +55,7 @@ impl<'a> AniseContext<'a> {
         for new_hash in other.ephemeris_lut.hashes.iter() {
             let data_idx = other.ephemeris_lut.index_for_hash(new_hash)?.into();
             trace!("[merge] fetching ephemeris idx={data_idx} for hash {new_hash}");
-            let other_e = other
-                .ephemeris_data
-                .get(data_idx)
-                .ok_or(AniseError::IntegrityError(IntegrityErrorKind::DataMissing))?;
+            let other_e = other.try_ephemeris_data(data_idx)?;
             if self.append_ephemeris_mut(*other_e)? {
                 num_ephem_added += 1;
             }
@@ -69,10 +66,7 @@ impl<'a> AniseContext<'a> {
         for new_hash in other.orientation_lut.hashes.iter() {
             let data_idx = other.orientation_lut.index_for_hash(new_hash)?.into();
             trace!("[merge] fetching orientation idx={data_idx} for hash {new_hash}");
-            let other_o = other
-                .orientation_data
-                .get(data_idx)
-                .ok_or(AniseError::IntegrityError(IntegrityErrorKind::DataMissing))?;
+            let other_o = other.try_orientation_data(data_idx)?;
             if self.append_orientation_mut(*other_o)? {
                 num_orientation_added += 1;
             }

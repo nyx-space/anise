@@ -11,11 +11,12 @@
 use crate::asn1::semver::Semver;
 use crate::der::Error as Asn1Error;
 use crate::der::Error as DerError;
+use crate::frame::Frame;
 use core::convert::From;
 use core::fmt;
 use std::io::ErrorKind as IOErrorKind;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum AniseError {
     /// Raised for an error in reading or writing the file(s)
     IOError(IOErrorKind),
@@ -47,6 +48,13 @@ pub enum AniseError {
     InternalError(InternalErrorKind),
     /// Raised to prevent overwriting an existing file
     FileExists,
+    /// Raised if a transformation is requested but the frames have no common origin
+    DisjointFrames {
+        from: Frame,
+        to: Frame,
+    },
+    /// Raised if the ephemeris or orientation is deeper to the context origin than this library supports
+    MaxTreeDepth,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -123,6 +131,15 @@ impl fmt::Display for AniseError {
                 f,
                 "ANISE error: operation aborted to prevent overwriting an existing file"
             ),
+            Self::DisjointFrames { from, to } => write!(
+                f,
+                "ANISE error: frame {} and {} do not share a common origin",
+                to, from
+            ),
+            Self::MaxTreeDepth => write!(
+                f,
+                "ANISE error: the ephemeris or orientation is deeper to the context origin than this library supports"
+            )
         }
     }
 }

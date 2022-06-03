@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021 Christopher Rabotin <christop&her.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -33,9 +33,34 @@ pub mod celestial_bodies {
     pub const LUNA: u32 = 1668777413;
     /// Source bytes: `Earth`
     pub const EARTH: u32 = 2330221028;
+
+    pub const fn hash_celestial_name<'a>(hash: u32) -> Option<&'a str> {
+        match hash {
+            MERCURY => Some("Mercury"),
+            VENUS => Some("Venus"),
+            EARTH_MOON_BARYCENTER => Some("Earth-Moon Barycenter"),
+            MARS_BARYCENTER => Some("Mars Barycenter"),
+            JUPITER_BARYCENTER => Some("Jupiter Barycenter"),
+            SATURN_BARYCENTER => Some("Saturn Barycenter"),
+            URANUS_BARYCENTER => Some("Uranus Barycenter"),
+            NEPTUNE_BARYCENTER => Some("Neptune Barycenter"),
+            PLUTO_BARYCENTER => Some("Pluto Barycenter"),
+            SUN => Some("Sun"),
+            LUNA => Some("Luna"),
+            EARTH => Some("Earth"),
+            _ => None,
+        }
+    }
 }
 
 pub mod orientations {
     /// Source bytes: `J2000`
     pub const J2000: u32 = 1404527632;
+
+    pub const fn hash_orientation_name<'a>(hash: u32) -> Option<&'a str> {
+        match hash {
+            J2000 => Some("J2000"),
+            _ => None,
+        }
+    }
 }

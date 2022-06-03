@@ -11,6 +11,7 @@
 extern crate der;
 extern crate hifitime;
 extern crate log;
+extern crate const_format;
 
 pub use hifitime::Epoch;
 
