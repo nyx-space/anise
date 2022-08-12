@@ -77,28 +77,25 @@ fn main() -> Result<(), CliErrors> {
                 let tmp_dest_str = dest_str.clone() + ".tmp";
                 match file_mmap!(destination) {
                     Ok(bytes) => {
-                        let mut context = AniseContext::try_from_bytes(&bytes)?;
-                        // We can't borrow some bytes and let them drop out of scope, so we'll copy them into a vector.
-                        let mut all_bytes = Vec::with_capacity(files.len() - 1);
-                        for this_file in files.iter().take(files.len() - 1) {
+                        // We can't borrow some bytes and let them drop out of scope, so we'll open the data to be merged before we open the destination.
+                        // This means we need to re-open the destination every time but at least we don't have leaky pointers =(
+                        for (num, this_file) in files.iter().enumerate().take(files.len() - 1) {
                             // Try load this file
                             match file_mmap!(this_file) {
                                 Ok(these_bytes) => {
-                                    all_bytes.push(these_bytes);
+                                    let other = AniseContext::try_from_bytes(&these_bytes)?;
+                                    let mut dest_context = AniseContext::try_from_bytes(&bytes)?;
+                                    let (num_ephem_added, num_orientation_added) =
+                                        dest_context.merge_mut(&other)?;
+                                    println!("Added {num_ephem_added} ephemeris and {num_orientation_added} orientations from {:?}", files[num]);
+
+                                    // And finally save.
+                                    if let Err(e) = dest_context.save_as(&tmp_dest_str, false) {
+                                        return Err(e.into());
+                                    }
                                 }
                                 Err(e) => return Err(e.into()),
                             }
-                        }
-                        // And now add them to the previous context
-                        for (num, bytes) in all_bytes.iter().enumerate() {
-                            let other = AniseContext::try_from_bytes(bytes)?;
-                            let (num_ephem_added, num_orientation_added) =
-                                context.merge_mut(other.clone())?;
-                            println!("Added {num_ephem_added} ephemeris and {num_orientation_added} orientations from {:?}", files[num]);
-                        }
-                        // And finally save.
-                        if let Err(e) = context.save_as(&tmp_dest_str, false) {
-                            return Err(e.into());
                         }
                     }
                     Err(e) => return Err(e.into()),

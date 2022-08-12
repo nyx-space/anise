@@ -8,7 +8,6 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::errors::IntegrityErrorKind;
 use crate::log::{info, trace};
 use crate::{asn1::context::AniseContext, errors::AniseError};
 
@@ -17,7 +16,7 @@ impl<'a> AniseContext<'a> {
     ///
     /// # Warning
     /// Cloning is an expensive operation.
-    pub fn merge(&self, other: Self) -> Result<Self, AniseError> {
+    pub fn merge(&self, other: &'a Self) -> Result<Self, AniseError> {
         let mut me = self.clone();
         me.merge_mut(other)?;
         Ok(me)
@@ -34,7 +33,7 @@ impl<'a> AniseContext<'a> {
     /// + The resulting file would have too many trajectories compared to the maximum number of trajectories
     /// + Two trajectories have the same name but different contents
     /// + Incomatible versions: the versions of self and other must match
-    pub fn merge_mut(&mut self, other: Self) -> Result<(usize, usize), AniseError> {
+    pub fn merge_mut(&mut self, other: &'a Self) -> Result<(usize, usize), AniseError> {
         // Check the versions match (eventually, we need to make sure that the versions are compatible)
         if self.metadata.anise_version != other.metadata.anise_version {
             return Err(AniseError::IncompatibleVersion {
