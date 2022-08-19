@@ -16,7 +16,7 @@ use anise::{file_mmap, prelude::AniseContext};
 #[test]
 fn de438s_direct() {
     // TODO: Still need to define the API here.
-    let path = "./data/de348s.anise";
+    let path = "./data/de438s.anise";
     let buf = file_mmap!(path).unwrap();
     // let ctx = AniseContext::from_bytes(&buf);
     let ctx: AniseContext = (&buf).try_into().unwrap();
