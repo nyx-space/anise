@@ -21,7 +21,7 @@ pub enum SplineKind {
     },
 }
 
-impl<'a> Encode for SplineKind {
+impl Encode for SplineKind {
     fn encoded_len(&self) -> der::Result<der::Length> {
         match self {
             Self::FixedWindow { window_duration_s } => (*window_duration_s).encoded_len(),
@@ -63,7 +63,7 @@ pub struct TimeIndex {
     pub nanoseconds: u64,
 }
 
-impl<'a> Encode for TimeIndex {
+impl Encode for TimeIndex {
     fn encoded_len(&self) -> der::Result<der::Length> {
         self.century.encoded_len()? + self.nanoseconds.encoded_len()?
     }

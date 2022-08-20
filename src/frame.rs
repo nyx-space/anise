@@ -10,7 +10,7 @@
 
 use std::fmt::{Display, Formatter};
 
-use crate::constants::celestial_bodies::hash_celestial_name;
+use crate::constants::celestial_objects::hash_celestial_name;
 use crate::constants::orientations::hash_orientation_name;
 
 /// A Frame uniquely defined by its ephemeris center and orientation. Refer to FrameDetail for frames combined with parameters.

@@ -8,7 +8,9 @@
  * Documentation: https://nyxspace.com/
  */
 
-pub mod celestial_bodies {
+pub mod celestial_objects {
+    /// Solar System barycenter is fixed to a hash of zero.
+    pub const SOLAR_SYSTEM_BARYCENTER: u32 = 0;
     /// Source bytes: `Mercury`
     pub const MERCURY: u32 = 753059387;
     /// Source bytes: `Venus`
@@ -68,7 +70,7 @@ pub mod orientations {
 pub mod frames {
     use crate::frame::Frame;
 
-    use super::{celestial_bodies::*, orientations::J2000};
+    use super::{celestial_objects::*, orientations::J2000};
 
     pub const MERCURY_J2000: Frame = Frame::from_ephem_orient_hashes(MERCURY, J2000);
     pub const VENUS_J2000: Frame = Frame::from_ephem_orient_hashes(VENUS, J2000);

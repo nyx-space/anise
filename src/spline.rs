@@ -19,7 +19,7 @@ use crate::{
 };
 
 impl<'a> Splines<'a> {
-    pub const fn empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
 

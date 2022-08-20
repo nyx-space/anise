@@ -20,7 +20,7 @@ use super::MAX_TRAJECTORIES;
 /// In this version of ANISE, the look up is O(N) due to a limitation in the ASN1 library used.
 /// Eventually, the specification will require the hashes will be ordered for a binary search on the index,
 /// thereby greatly reducing the search time for each data, from O(N) to O(log N).
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq, Eq)]
 pub struct LookUpTable {
     /// Hashes of the general hashing algorithm
     pub hashes: SequenceOf<u32, MAX_TRAJECTORIES>,
@@ -60,7 +60,7 @@ impl LookUpTable {
     }
 }
 
-impl<'a> Encode for LookUpTable {
+impl Encode for LookUpTable {
     fn encoded_len(&self) -> der::Result<der::Length> {
         self.hashes.encoded_len()? + self.indexes.encoded_len()?
     }

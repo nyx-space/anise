@@ -18,7 +18,7 @@ pub struct Semver {
     pub patch: u8,
 }
 
-impl<'a> Encode for Semver {
+impl Encode for Semver {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let data: [u8; 3] = [self.major, self.minor, self.patch];
         let as_octet_string = OctetStringRef::new(&data).unwrap();

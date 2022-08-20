@@ -22,9 +22,9 @@ fn de438s_direct() {
     let buf = file_mmap!(path).unwrap();
     let ctx: AniseContext = (&buf).try_into().unwrap();
     let zero_vec = ctx
-        .posvel_of_wrt(EARTH_J2000, EARTH_J2000, Epoch::now().unwrap())
+        .translate_from_to(EARTH_J2000, EARTH_J2000, Epoch::now().unwrap())
         .unwrap();
     dbg!(zero_vec);
-    // ctx.posvel_of_wrt_corr(Earth, Moon, LTCorr, epoch) -> position and velocity of the Earth with respect to the Moon with light time correction at epoch
-    // ctx.quat()
+    // ctx.lt_translate_from_to(Earth, Moon, epoch, LTCorr) -> position and velocity of the Earth with respect to the Moon with light time correction at epoch
+    // ctx.rotate_to_from() -> quaternion
 }

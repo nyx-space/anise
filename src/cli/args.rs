@@ -9,7 +9,7 @@ pub struct Args {
     pub action: Actions,
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Subcommand)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Subcommand)]
 pub enum Actions {
     /// Convert a supported SPICE file into an ANISE file
     Convert {

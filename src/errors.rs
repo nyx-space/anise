@@ -16,7 +16,7 @@ use core::convert::From;
 use core::fmt;
 use std::io::ErrorKind as IOErrorKind;
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum AniseError {
     /// Raised for an error in reading or writing the file(s)
     IOError(IOErrorKind),

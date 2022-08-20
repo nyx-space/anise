@@ -49,7 +49,7 @@ fn main() -> Result<(), CliErrors> {
                     println!("[OK] {:?}", path_str);
                     Ok(())
                 }
-                Err(e) => return Err(e.into()),
+                Err(e) => Err(e.into()),
             }
         }
         Actions::Inspect { file } => {
@@ -61,7 +61,7 @@ fn main() -> Result<(), CliErrors> {
                     println!("{}", context);
                     Ok(())
                 }
-                Err(e) => return Err(e.into()),
+                Err(e) => Err(e.into()),
             }
         }
         Actions::Merge { files } => {

@@ -13,7 +13,7 @@ use super::hifitime::{Epoch as EpochHifitime, TimeSystem};
 use crate::prelude::AniseError;
 use core::convert::From;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Epoch {
     pub epoch: EpochHifitime,
     pub system: TimeSystem,
@@ -51,7 +51,7 @@ impl Epoch {
     }
 
     /// Returns the parts of this epoch perserving the time system initially used
-    fn to_parts(&self) -> (i16, u64) {
+    fn to_parts(self) -> (i16, u64) {
         match self.system {
             TimeSystem::ET => self.epoch.as_et_duration().to_parts(),
             TimeSystem::TAI => self.epoch.as_tai_duration().to_parts(),
@@ -74,7 +74,7 @@ impl Default for Epoch {
     }
 }
 
-impl<'a> Encode for Epoch {
+impl Encode for Epoch {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let (centuries, nanoseconds) = self.to_parts();
         centuries.encoded_len()?

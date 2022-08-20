@@ -78,6 +78,7 @@ impl Display for FrameDetail {
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl Into<Frame> for FrameDetail {
     /// Lossy operation to convert FrameDetail into a Frame.
     ///
