@@ -1,14 +1,16 @@
-use crate::constants::celestial_objects::SOLAR_SYSTEM_BARYCENTER;
 /*
  * ANISE Toolkit
- * Copyright (C) 2021 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  *
  * Documentation: https://nyxspace.com/
  */
+
+use crate::constants::celestial_objects::SOLAR_SYSTEM_BARYCENTER;
 use crate::hifitime::Epoch;
+use crate::math::Vector3;
 use crate::{
     asn1::{context::AniseContext, ephemeris::Ephemeris},
     errors::{AniseError, IntegrityErrorKind},
@@ -57,7 +59,7 @@ impl<'a> AniseContext<'a> {
         Err(AniseError::MaxTreeDepth)
     }
 
-    /// Returns the path to the root of two frames.
+    /// Returns the root of two frames. This may return a `DisjointRoots` error if the frames do not share a common root, which is considered a file integrity error.
     ///
     /// # Example
     ///
@@ -73,17 +75,22 @@ impl<'a> AniseContext<'a> {
     /// Solar System barycenter
     /// ╰─> Earth Moon Barycenter
     ///     ╰─> Luna
+    ///         ╰─> LRO
     /// ```
     ///
-    /// Then this function will return a path length of one (1) whose first entry is the hash of the "Earth Moon Barycenter".
-    pub fn find_path_to_root(
+    /// Then this function will return the common root/node as a hash, in this case, the hash of the "Earth Moon Barycenter".
+    ///
+    /// # Note
+    /// A proper ANISE file should only have a single root and if two paths are empty, then they should be the same frame.
+    /// If a DisjointRoots error is reported here, it means that the ANISE file is invalid.
+    pub fn find_ephemeris_root(
         &self,
         from_frame: Frame,
         to_frame: Frame,
-    ) -> Result<(usize, [Option<u32>; MAX_TREE_DEPTH]), AniseError> {
+    ) -> Result<u32, AniseError> {
         if from_frame == to_frame {
-            // Both frames match, return a vector of zeros.
-            return Ok((0, [None; MAX_TREE_DEPTH]));
+            // Both frames match, return this frame's hash (i.e. no need to go higher up).
+            return Ok(from_frame.ephemeris_hash);
         }
 
         // Grab the paths
@@ -94,40 +101,44 @@ impl<'a> AniseContext<'a> {
 
         // If either path is of zero length, that means one of them is at the root of this ANISE file, so the common
         // path is which brings the non zero-length path back to the file root.
-        if from_len == 0 && to_len != 0 {
-            Ok((to_len, to_path))
+        if from_len == 0 && to_len == 0 {
+            Err(AniseError::IntegrityError(
+                IntegrityErrorKind::DisjointRoots {
+                    from_frame,
+                    to_frame,
+                },
+            ))
         } else if from_len != 0 && to_len == 0 {
-            Ok((from_len, from_path))
+            // One has an empty path but not the other, so the root is at the empty path
+            Ok(to_frame.ephemeris_hash)
+        } else if from_len != 0 && to_len == 0 {
+            // One has an empty path but not the other, so the root is at the empty path
+            Ok(from_frame.ephemeris_hash)
         } else {
-            // This is NOT the root of the ephemeris
-            let mut common_root = [None; MAX_TREE_DEPTH];
-            let mut common_len: usize = 0;
-
+            // Either are at the ephemeris root, so we'll step through the paths until we find the common root.
+            let mut root: u32 = 0;
             if from_len < to_len {
                 // Iterate through the items in from_path because the shortest path is necessarily included in the longer one.
                 for (n, obj) in from_path.iter().enumerate() {
-                    if &to_path[n] == obj {
-                        common_root[common_len] = *obj;
-                        common_len += 1;
-                    } else {
-                        // Found the end of the matching objects
+                    if &to_path[n] != obj {
+                        // This is where the paths branch out, so the root is the parent of the current item
                         break;
+                    } else {
+                        root = obj.unwrap();
                     }
                 }
             } else {
                 // Iterate through the items in to_path for the same reason.
                 for (n, obj) in to_path.iter().enumerate() {
                     if &from_path[n] == obj {
-                        common_root[common_len] = *obj;
-                        common_len += 1;
-                    } else {
-                        // Found the end of the matching objects
+                        // This is where the paths branch out, so the root is the parent of the current item
                         break;
+                    } else {
+                        root = obj.unwrap();
                     }
                 }
             }
-
-            Ok((common_len, common_root))
+            Ok(root)
         }
     }
 
@@ -137,15 +148,22 @@ impl<'a> AniseContext<'a> {
         from_frame: Frame,
         to_frame: Frame,
         epoch: Epoch,
-    ) -> Result<([f64; 3], [f64; 3]), AniseError> {
+    ) -> Result<(Vector3, Vector3), AniseError> {
+        if from_frame == to_frame {
+            // Both frames match, return this frame's hash (i.e. no need to go higher up).
+            return Ok((Vector3::zeros(), Vector3::zeros()));
+        }
+
+        let ephem_root = self.find_ephemeris_root(from_frame, to_frame)?;
+
         todo!()
     }
 
     /// Provided a state with its origin and orientation, returns that state with respect to the requested frame
     pub fn state_in_frame(
         &self,
-        position_km: [f64; 3],
-        velocity_kmps: [f64; 3],
+        position_km: Vector3,
+        velocity_kmps: Vector3,
         wrt_frame: Frame,
         epoch: Epoch,
     ) -> Result<[f64; 6], AniseError> {

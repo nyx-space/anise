@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -50,8 +50,8 @@ pub enum AniseError {
     FileExists,
     /// Raised if a transformation is requested but the frames have no common origin
     DisjointFrames {
-        from: Frame,
-        to: Frame,
+        from_frame: Frame,
+        to_frame: Frame,
     },
     /// Raised if the ephemeris or orientation is deeper to the context origin than this library supports
     MaxTreeDepth,
@@ -76,6 +76,8 @@ pub enum IntegrityErrorKind {
     DataMissing,
     /// The lookup table is broken somehow
     LookupTable,
+    /// Raised if a transformation is requested but the frames have no common origin
+    DisjointRoots { from_frame: Frame, to_frame: Frame },
 }
 
 impl From<IOErrorKind> for AniseError {
@@ -131,7 +133,7 @@ impl fmt::Display for AniseError {
                 f,
                 "ANISE error: operation aborted to prevent overwriting an existing file"
             ),
-            Self::DisjointFrames { from, to } => write!(
+            Self::DisjointFrames { from_frame: from, to_frame: to } => write!(
                 f,
                 "ANISE error: frame {} and {} do not share a common origin",
                 to, from
