@@ -7,9 +7,9 @@
  *
  * Documentation: https://nyxspace.com/
  */
+use crate::hifitime::Epoch;
 use crate::{
-    asn1::{context::AniseContext, ephemeris::Ephemeris, time::Epoch},
-    constants::celestial_bodies::SUN,
+    asn1::{context::AniseContext, ephemeris::Ephemeris},
     errors::{AniseError, IntegrityErrorKind, InternalErrorKind},
     frame::Frame,
 };
@@ -19,7 +19,8 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-const MAX_PATH_LEN: usize = 5;
+/// **Limitation:** no translation or rotation may have more than 8 nodes.
+pub const MAX_TREE_DEPTH: usize = 8;
 
 impl<'a> AniseContext<'a> {
     /// Try to return the ephemeris for the provided index, or returns an error.
@@ -40,13 +41,13 @@ impl<'a> AniseContext<'a> {
     pub fn try_ephemeris_path(
         &self,
         source: &Frame,
-    ) -> Result<(usize, [Option<u32>; MAX_PATH_LEN]), AniseError> {
+    ) -> Result<(usize, [Option<u32>; MAX_TREE_DEPTH]), AniseError> {
         // Build a tree, set a fixed depth to avoid allocations
         // TODO: Consider switching to array vec or tinyvec
-        let mut of_path = [None; MAX_PATH_LEN];
+        let mut of_path = [None; MAX_TREE_DEPTH];
         let mut of_path_len = 0;
         let mut prev_ephem_hash = source.ephemeris_hash;
-        for i in 0..MAX_PATH_LEN {
+        for _ in 0..MAX_TREE_DEPTH {
             // The solar system barycenter has a hash of 0.
             // TODO: Find a way to specify the true root of the context.
             let idx = self.ephemeris_lut.index_for_hash(&prev_ephem_hash)?;
@@ -67,13 +68,13 @@ impl<'a> AniseContext<'a> {
         epoch: Epoch,
     ) -> Result<[f64; 6], AniseError> {
         if of_frame == wrt_frame {
-            // Both frames match
+            // Both frames match, return a vector of zeros.
             return Ok([0.0; 6]);
         }
         // Grab the paths
         let (of_path_len, of_path) = self.try_ephemeris_path(&of_frame)?;
         let (wrt_path_len, wrt_path) = self.try_ephemeris_path(&wrt_frame)?;
-        // Now that we have the paths, we can find the matching origin.
+        // Now that we have the paths, we can find the matching origin. (I can probably get that from the Nyx code)
 
         todo!()
     }

@@ -64,3 +64,29 @@ pub mod orientations {
         }
     }
 }
+
+pub mod frames {
+    use crate::frame::Frame;
+
+    use super::{celestial_bodies::*, orientations::J2000};
+
+    pub const MERCURY_J2000: Frame = Frame::from_ephem_orient_hashes(MERCURY, J2000);
+    pub const VENUS_J2000: Frame = Frame::from_ephem_orient_hashes(VENUS, J2000);
+    pub const EARTH_MOON_BARYCENTER_J2000: Frame =
+        Frame::from_ephem_orient_hashes(EARTH_MOON_BARYCENTER, J2000);
+    pub const MARS_BARYCENTER_J2000: Frame =
+        Frame::from_ephem_orient_hashes(MARS_BARYCENTER, J2000);
+    pub const JUPITER_BARYCENTER_J2000: Frame =
+        Frame::from_ephem_orient_hashes(JUPITER_BARYCENTER, J2000);
+    pub const SATURN_BARYCENTER_J2000: Frame =
+        Frame::from_ephem_orient_hashes(SATURN_BARYCENTER, J2000);
+    pub const URANUS_BARYCENTER_J2000: Frame =
+        Frame::from_ephem_orient_hashes(URANUS_BARYCENTER, J2000);
+    pub const NEPTUNE_BARYCENTER_J2000: Frame =
+        Frame::from_ephem_orient_hashes(NEPTUNE_BARYCENTER, J2000);
+    pub const PLUTO_BARYCENTER_J2000: Frame =
+        Frame::from_ephem_orient_hashes(PLUTO_BARYCENTER, J2000);
+    pub const SUN_J2000: Frame = Frame::from_ephem_orient_hashes(SUN, J2000);
+    pub const LUNA_J2000: Frame = Frame::from_ephem_orient_hashes(LUNA, J2000);
+    pub const EARTH_J2000: Frame = Frame::from_ephem_orient_hashes(EARTH, J2000);
+}

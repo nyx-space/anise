@@ -13,42 +13,40 @@ use std::fmt::{Display, Formatter};
 use crate::constants::celestial_bodies::hash_celestial_name;
 use crate::constants::orientations::hash_orientation_name;
 
-/// A Frame uniquely defined by its ephemeris center and orientation.
-///
-/// # Notes
-/// 1. If a frame defines a gravity parameter μ (mu), then it it considered a celestial object.
-/// 2. If a frame defines an equatorial radius, a semi major radius, and a flattening ratio, then
-/// is considered a geoid.
-#[derive(Copy, Clone, Debug, PartialEq)]
+/// A Frame uniquely defined by its ephemeris center and orientation. Refer to FrameDetail for frames combined with parameters.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Frame {
     pub ephemeris_hash: u32,
     pub orientation_hash: u32,
-    pub mu_km3s: Option<f64>,
-    pub equatorial_radius: Option<f64>,
-    pub semi_major_radius: Option<f64>,
-    pub flattening: Option<f64>,
 }
 
 impl Frame {
-    /// Returns whether this frame is a celestial frame
-    pub const fn is_celestial(&self) -> bool {
-        self.mu_km3s.is_some()
+    /// Simple constructor which avoids the struct definition
+    pub const fn from_ephem_orient_hashes(ephemeris_hash: u32, orientation_hash: u32) -> Self {
+        Self {
+            ephemeris_hash,
+            orientation_hash,
+        }
     }
 
-    /// Returns whether this frame is a geoid frame
-    pub const fn is_geoid(&self) -> bool {
-        self.is_celestial()
-            && self.equatorial_radius.is_some()
-            && self.semi_major_radius.is_some()
-            && self.flattening.is_some()
+    /// Returns true if the ephemeris origin is equal to the provided hash
+    pub const fn ephem_origin_hash_match(&self, other_hash: u32) -> bool {
+        self.ephemeris_hash == other_hash
     }
 
-    pub const fn ephem_origin_match(&self, other: u32) -> bool {
-        self.ephemeris_hash == other
+    /// Returns true if the orientation origin is equal to the provided hash
+    pub const fn orient_origin_hash_match(&self, other_hash: u32) -> bool {
+        self.orientation_hash == other_hash
     }
 
-    pub const fn orient_origin_match(&self, other: u32) -> bool {
-        self.orientation_hash == other
+    /// Returns true if the ephemeris origin is equal to the provided frame
+    pub const fn ephem_origin_match(&self, other: Self) -> bool {
+        self.ephemeris_hash == other.ephemeris_hash
+    }
+
+    /// Returns true if the orientation origin is equal to the provided frame
+    pub const fn orient_origin_match(&self, other: Self) -> bool {
+        self.orientation_hash == other.orientation_hash
     }
 }
 
@@ -64,20 +62,6 @@ impl Display for Frame {
             None => format!("orientation {}", self.orientation_hash),
         };
 
-        write!(f, "{body_name} {orientation_name}")?;
-        if self.is_celestial() {
-            write!(f, " (μ = {} km3/s", self.mu_km3s.unwrap())?;
-        }
-        if self.is_geoid() {
-            write!(
-                f,
-                ", eq. radius = {} km, sm axis = {} km, f = {})",
-                self.equatorial_radius.unwrap(),
-                self.semi_major_radius.unwrap(),
-                self.flattening.unwrap()
-            )
-        } else {
-            write!(f, ")")
-        }
+        write!(f, "{body_name} {orientation_name}")
     }
 }

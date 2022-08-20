@@ -8,10 +8,10 @@
  * Documentation: https://nyxspace.com/
  */
 
+extern crate const_format;
 extern crate der;
 extern crate hifitime;
 extern crate log;
-extern crate const_format;
 
 pub use hifitime::Epoch;
 
@@ -20,6 +20,7 @@ pub mod context;
 pub mod ephemeris;
 pub mod errors;
 pub mod frame;
+pub mod framedetail;
 pub mod spline;
 
 pub mod prelude {
