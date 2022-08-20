@@ -57,6 +57,80 @@ impl<'a> AniseContext<'a> {
         Err(AniseError::MaxTreeDepth)
     }
 
+    /// Returns the path to the root of two frames.
+    ///
+    /// # Example
+    ///
+    /// If the "from" frame is _Earth Barycenter_ whose path to the ANISE root is the following:
+    /// ```text
+    /// Solar System barycenter
+    /// ╰─> Earth Moon Barycenter
+    ///     ╰─> Earth
+    /// ```
+    ///
+    /// And the "to" frame is _Luna_, whose path is:
+    /// ```text
+    /// Solar System barycenter
+    /// ╰─> Earth Moon Barycenter
+    ///     ╰─> Luna
+    /// ```
+    ///
+    /// Then this function will return a path length of one (1) whose first entry is the hash of the "Earth Moon Barycenter".
+    pub fn find_path_to_root(
+        &self,
+        from_frame: Frame,
+        to_frame: Frame,
+    ) -> Result<(usize, [Option<u32>; MAX_TREE_DEPTH]), AniseError> {
+        if from_frame == to_frame {
+            // Both frames match, return a vector of zeros.
+            return Ok((0, [None; MAX_TREE_DEPTH]));
+        }
+
+        // Grab the paths
+        let (from_len, from_path) = self.try_ephemeris_path(&from_frame)?;
+        let (to_len, to_path) = self.try_ephemeris_path(&to_frame)?;
+
+        // Now that we have the paths, we can find the matching origin.
+
+        // If either path is of zero length, that means one of them is at the root of this ANISE file, so the common
+        // path is which brings the non zero-length path back to the file root.
+        if from_len == 0 && to_len != 0 {
+            Ok((to_len, to_path))
+        } else if from_len != 0 && to_len == 0 {
+            Ok((from_len, from_path))
+        } else {
+            // This is NOT the root of the ephemeris
+            let mut common_root = [None; MAX_TREE_DEPTH];
+            let mut common_len: usize = 0;
+
+            if from_len < to_len {
+                // Iterate through the items in from_path because the shortest path is necessarily included in the longer one.
+                for (n, obj) in from_path.iter().enumerate() {
+                    if &to_path[n] == obj {
+                        common_root[common_len] = *obj;
+                        common_len += 1;
+                    } else {
+                        // Found the end of the matching objects
+                        break;
+                    }
+                }
+            } else {
+                // Iterate through the items in to_path for the same reason.
+                for (n, obj) in to_path.iter().enumerate() {
+                    if &from_path[n] == obj {
+                        common_root[common_len] = *obj;
+                        common_len += 1;
+                    } else {
+                        // Found the end of the matching objects
+                        break;
+                    }
+                }
+            }
+
+            Ok((common_len, common_root))
+        }
+    }
+
     /// Returns the position vector and velocity vector needed to translate the `from_frame` to the `to_frame`.
     pub fn translate_from_to(
         &self,
@@ -64,15 +138,6 @@ impl<'a> AniseContext<'a> {
         to_frame: Frame,
         epoch: Epoch,
     ) -> Result<([f64; 3], [f64; 3]), AniseError> {
-        if from_frame == to_frame {
-            // Both frames match, return a vector of zeros.
-            return Ok(([0.0; 3], [0.0; 3]));
-        }
-        // Grab the paths
-        let (of_path_len, of_path) = self.try_ephemeris_path(&from_frame)?;
-        let (wrt_path_len, wrt_path) = self.try_ephemeris_path(&to_frame)?;
-        // Now that we have the paths, we can find the matching origin. (I can probably get that from the Nyx code)
-
         todo!()
     }
 
