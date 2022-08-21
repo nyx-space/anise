@@ -57,13 +57,11 @@ impl<'a> AniseContext<'a> {
             of_path_len += 1;
             if parent_hash == SOLAR_SYSTEM_BARYCENTER {
                 return Ok((of_path_len, of_path));
-            } else {
-                if let Err(e) = self.ephemeris_lut.index_for_hash(&parent_hash) {
-                    if e == AniseError::ItemNotFound {
-                        // We have reached the root of this ephemeris and it has no parent.
-                        trace!("{parent_hash} has no parent in this context");
-                        return Ok((of_path_len, of_path));
-                    }
+            } else if let Err(e) = self.ephemeris_lut.index_for_hash(&parent_hash) {
+                if e == AniseError::ItemNotFound {
+                    // We have reached the root of this ephemeris and it has no parent.
+                    trace!("{parent_hash} has no parent in this context");
+                    return Ok((of_path_len, of_path));
                 }
             }
             prev_ephem_hash = parent_hash;
@@ -127,7 +125,7 @@ impl<'a> AniseContext<'a> {
         } else if from_len != 0 && to_len == 0 {
             // One has an empty path but not the other, so the root is at the empty path
             Ok(to_frame.ephemeris_hash)
-        } else if from_len != 0 && to_len == 0 {
+        } else if to_len != 0 && from_len == 0 {
             // One has an empty path but not the other, so the root is at the empty path
             Ok(from_frame.ephemeris_hash)
         } else {
@@ -135,10 +133,8 @@ impl<'a> AniseContext<'a> {
             if from_len > to_len {
                 // Iterate through the items in to_path because the longest path is necessarily includes in the shorter one,
                 // so we can shrink the outer loop here
-                for n in 0..to_len {
-                    let to_obj = &to_path[n];
-                    for m in 0..from_len {
-                        let from_obj = &from_path[m];
+                for to_obj in to_path.iter().take(to_len) {
+                    for from_obj in from_path.iter().take(from_len) {
                         if from_obj == to_obj {
                             // This is where the paths branch meet, so the root is the parent of the current item.
                             // Recall that the path is _from_ the source to the root of the context, so we're walking them
@@ -149,10 +145,8 @@ impl<'a> AniseContext<'a> {
                 }
             } else {
                 // Same algorithm as above, just flipped
-                for n in 0..from_len {
-                    let from_obj = &from_path[n];
-                    for m in 0..to_len {
-                        let to_obj = &to_path[m];
+                for from_obj in from_path.iter().take(from_len) {
+                    for to_obj in to_path.iter().take(to_len) {
                         if from_obj == to_obj {
                             // This is where the paths branch meet, so the root is the parent of the current item.
                             // Recall that the path is _from_ the source to the root of the context, so we're walking them

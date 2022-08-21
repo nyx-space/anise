@@ -4,7 +4,10 @@ on:
     branches:
       - master
 
-name: Test Workflow
+name: ANISE Ephemeris Workflow
+
+env:
+  RUST_BACKTRACE: 1
 
 jobs:
   check:
@@ -26,8 +29,8 @@ jobs:
         with:
           command: check
 
-  build-anise-files:
-    name: Convert SPICE BSP files into ANISE files
+  spice-convert-and-test:
+    name: Converts SPICE BSP files into ANISE files and runs the tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -56,26 +59,18 @@ jobs:
       
       - name: Convert DE440
         run: cargo run --release -- convert ./data/de440.bsp
-
-  test:
-    name: Test Suite
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
-
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - name: Test (default features)
-        run: cargo test
       
+      - name: Test debug (default features) # This has overflow checks etc.
+        run: cargo test
+
       - name: Test (no default features)
         run: cargo test --no-default-features
+
+      - name: Test (default features and release)
+        run: cargo test --release
+      
+      - name: Test (no default features and release)
+        run: cargo test --no-default-features --release
 
   lints:
     name: Lints
