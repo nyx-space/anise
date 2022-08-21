@@ -69,6 +69,7 @@ impl<'a> Segment<'a> {
         } else if id <= 10 {
             // This is the barycenter
             match id {
+                0 => Ok("Solar System Barycenter"),
                 1 => Ok("Mercury"),
                 2 => Ok("Venus"),
                 3 => Ok("Earth-Moon Barycenter"),
@@ -80,7 +81,7 @@ impl<'a> Segment<'a> {
                 9 => Ok("Pluto Barycenter"),
                 10 => Ok("Sun"),
                 _ => Err(AniseError::NAIFParseError(format!(
-                    "Human name unknown for {id}"
+                    "Human name unknown for barycenter {id}"
                 ))),
             }
         } else {

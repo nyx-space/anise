@@ -48,6 +48,22 @@ impl Frame {
     pub const fn orient_origin_match(&self, other: Self) -> bool {
         self.orientation_hash == other.orientation_hash
     }
+
+    /// Returns a copy of this Frame whose ephemeris hash is set to the provided hash
+    pub const fn with_ephem(&self, new_ephem_hash: u32) -> Self {
+        Self {
+            ephemeris_hash: new_ephem_hash,
+            orientation_hash: self.orientation_hash,
+        }
+    }
+
+    /// Returns a copy of this Frame whose orientation hash is set to the provided hash
+    pub const fn with_orient(&self, new_orient_hash: u32) -> Self {
+        Self {
+            ephemeris_hash: self.ephemeris_hash,
+            orientation_hash: new_orient_hash,
+        }
+    }
 }
 
 impl Display for Frame {

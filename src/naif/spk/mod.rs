@@ -286,7 +286,7 @@ impl<'a> SPK<'a> {
                 },
                 backward: false,
                 interpolation_kind: InterpolationKind::ChebyshevSeries,
-                parent_ephemeris_hash: hash(Segment::id_to_human_name(seg.target_id)?.as_bytes()),
+                parent_ephemeris_hash: hash(Segment::id_to_human_name(seg.center_id)?.as_bytes()),
                 orientation_hash: J2000,
                 splines,
             };

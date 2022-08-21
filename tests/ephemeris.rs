@@ -8,7 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 
-use anise::constants::frames::EARTH_J2000;
+use core::f64::EPSILON;
+
+use anise::constants::celestial_objects::SOLAR_SYSTEM_BARYCENTER;
+use anise::constants::frames::LUNA_J2000;
+use anise::constants::frames::VENUS_J2000;
 use anise::constants::orientations::J2000;
 use anise::frame::Frame;
 use anise::prelude::AniseError;
@@ -18,8 +22,7 @@ use anise::{file_mmap, prelude::AniseContext};
 
 /// Tests the ephemeris computations from the de438s which don't require any frame transformation.
 #[test]
-fn de438s_paths() {
-    // TODO: Still need to define the API here.
+fn de438s_zero_paths() {
     let path = "./data/de438s.anise";
     let buf = file_mmap!(path).unwrap();
     let ctx: AniseContext = (&buf).try_into().unwrap();
@@ -43,12 +46,35 @@ fn de438s_paths() {
 
         assert_eq!(root_ephem, *ephemeris_hash);
 
-        // let zero_vec = ctx
-        //     .translate_from_to(this_frame_j2k, this_frame_j2k, Epoch::now().unwrap())
-        //     .unwrap();
-        // dbg!(zero_vec);
+        // Check that in these cases, the translation returns a zero vector in position and in velocity.
+
+        let (delta_pos, delta_vel) = ctx
+            .translate_from_to(this_frame_j2k, this_frame_j2k, Epoch::now().unwrap())
+            .unwrap();
+        assert!(delta_pos.norm() < EPSILON);
+        assert!(delta_vel.norm() < EPSILON);
     }
 
     // ctx.lt_translate_from_to(Earth, Moon, epoch, LTCorr) -> position and velocity of the Earth with respect to the Moon with light time correction at epoch
     // ctx.rotate_to_from() -> quaternion
+}
+
+/// Tests that direct path computations match what SPICE returned to within good precision.
+#[test]
+fn de438s_common_root_verifications() {
+    // Load the context
+    let path = "./data/de438s.anise";
+    let buf = file_mmap!(path).unwrap();
+    let ctx: AniseContext = (&buf).try_into().unwrap();
+
+    // Common root between Venus and Moon should be the solar system barycenter
+    assert_eq!(
+        ctx.find_ephemeris_root(VENUS_J2000, LUNA_J2000).unwrap(),
+        SOLAR_SYSTEM_BARYCENTER
+    );
+
+    assert_eq!(
+        ctx.find_ephemeris_root(LUNA_J2000, VENUS_J2000).unwrap(),
+        SOLAR_SYSTEM_BARYCENTER
+    );
 }

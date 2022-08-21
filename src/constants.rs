@@ -9,8 +9,8 @@
  */
 
 pub mod celestial_objects {
-    /// Solar System barycenter is fixed to a hash of zero.
-    pub const SOLAR_SYSTEM_BARYCENTER: u32 = 0;
+    /// Source bytes: `Solar System barycenter`
+    pub const SOLAR_SYSTEM_BARYCENTER: u32 = 3135540444;
     /// Source bytes: `Mercury`
     pub const MERCURY: u32 = 753059387;
     /// Source bytes: `Venus`
