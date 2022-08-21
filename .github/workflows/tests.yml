@@ -32,6 +32,8 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
+        with:
+          lfs: true
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -41,9 +43,7 @@ jobs:
           override: true
 
       - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build --release
+        run: cargo build --release
       
       - name: Convert DE421
         run: cargo run --release -- convert ./data/de421.bsp
