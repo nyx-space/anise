@@ -1,0 +1,105 @@
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+name: Test Workflow
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Run cargo check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+
+  build-anise-files:
+    name: Convert SPICE BSP files into ANISE files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build --release
+      
+      - name: Convert DE421
+        run: cargo run --release -- convert ./data/de421.bsp
+      
+      - name: Convert DE430
+        run: cargo run --release -- convert ./data/de430.bsp
+      
+      - name: Convert DE438s
+        run: cargo run --release -- convert ./data/de438s.bsp
+      
+      - name: Convert DE440
+        run: cargo run --release -- convert ./data/de440.bsp
+
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Test (default features)
+        run: cargo test
+      
+      - name: Test (no default features)
+        run: cargo test --no-default-features
+
+  lints:
+    name: Lints
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+      - name: Run cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -D warnings
