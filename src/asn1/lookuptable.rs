@@ -10,7 +10,7 @@
 use crc32fast::hash;
 use der::{asn1::SequenceOf, Decode, Encode, Reader, Writer};
 
-use crate::prelude::AniseError;
+use crate::{prelude::AniseError, HashType};
 
 use super::MAX_TRAJECTORIES;
 
@@ -23,7 +23,7 @@ use super::MAX_TRAJECTORIES;
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct LookUpTable {
     /// Hashes of the general hashing algorithm
-    pub hashes: SequenceOf<u32, MAX_TRAJECTORIES>,
+    pub hashes: SequenceOf<HashType, MAX_TRAJECTORIES>,
     /// Corresponding index for each hash
     pub indexes: SequenceOf<u16, MAX_TRAJECTORIES>,
 }
@@ -36,7 +36,7 @@ impl LookUpTable {
     ///
     /// NOTE: Until https://github.com/anise-toolkit/anise.rs/issues/18 is addressed
     /// this function has a time complexity of O(N)
-    pub fn index_for_hash(&self, hash: &u32) -> Result<u16, AniseError> {
+    pub fn index_for_hash(&self, hash: &HashType) -> Result<u16, AniseError> {
         for (idx, item) in self.hashes.iter().enumerate() {
             if item == hash {
                 return match self.indexes.get(idx) {

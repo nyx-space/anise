@@ -9,34 +9,36 @@
  */
 
 pub mod celestial_objects {
-    /// Source bytes: `Solar System barycenter`
-    pub const SOLAR_SYSTEM_BARYCENTER: u32 = 3135540444;
-    /// Source bytes: `Mercury`
-    pub const MERCURY: u32 = 753059387;
-    /// Source bytes: `Venus`
-    pub const VENUS: u32 = 2760147288;
-    /// Source bytes: `Earth-Moon Barycenter`
-    pub const EARTH_MOON_BARYCENTER: u32 = 46073813;
-    /// Source bytes: `Mars Barycenter`
-    pub const MARS_BARYCENTER: u32 = 1223981629;
-    /// Source bytes: `Jupyter Barycenter`
-    pub const JUPITER_BARYCENTER: u32 = 2905700239;
-    /// Source bytes: `Saturn Barycenter`
-    pub const SATURN_BARYCENTER: u32 = 2400246439;
-    /// Source bytes: `Uranus Barycenter`
-    pub const URANUS_BARYCENTER: u32 = 1449143244;
-    /// Source bytes: `Neptune Barycenter`
-    pub const NEPTUNE_BARYCENTER: u32 = 199396881;
-    /// Source bytes: `Pluto Barycenter`
-    pub const PLUTO_BARYCENTER: u32 = 1544737610;
-    /// Source bytes: `Sun`
-    pub const SUN: u32 = 1777960983;
-    /// Source bytes: `Luna`
-    pub const LUNA: u32 = 1668777413;
-    /// Source bytes: `Earth`
-    pub const EARTH: u32 = 2330221028;
+    use crate::HashType;
 
-    pub const fn hash_celestial_name<'a>(hash: u32) -> Option<&'a str> {
+    /// Source bytes: `Solar System barycenter`
+    pub const SOLAR_SYSTEM_BARYCENTER: HashType = 3135540444;
+    /// Source bytes: `Mercury`
+    pub const MERCURY: HashType = 753059387;
+    /// Source bytes: `Venus`
+    pub const VENUS: HashType = 2760147288;
+    /// Source bytes: `Earth-Moon Barycenter`
+    pub const EARTH_MOON_BARYCENTER: HashType = 46073813;
+    /// Source bytes: `Mars Barycenter`
+    pub const MARS_BARYCENTER: HashType = 1223981629;
+    /// Source bytes: `Jupyter Barycenter`
+    pub const JUPITER_BARYCENTER: HashType = 2905700239;
+    /// Source bytes: `Saturn Barycenter`
+    pub const SATURN_BARYCENTER: HashType = 2400246439;
+    /// Source bytes: `Uranus Barycenter`
+    pub const URANUS_BARYCENTER: HashType = 1449143244;
+    /// Source bytes: `Neptune Barycenter`
+    pub const NEPTUNE_BARYCENTER: HashType = 199396881;
+    /// Source bytes: `Pluto Barycenter`
+    pub const PLUTO_BARYCENTER: HashType = 1544737610;
+    /// Source bytes: `Sun`
+    pub const SUN: HashType = 1777960983;
+    /// Source bytes: `Luna`
+    pub const LUNA: HashType = 1668777413;
+    /// Source bytes: `Earth`
+    pub const EARTH: HashType = 2330221028;
+
+    pub const fn hash_celestial_name<'a>(hash: HashType) -> Option<&'a str> {
         match hash {
             MERCURY => Some("Mercury"),
             VENUS => Some("Venus"),
@@ -56,10 +58,11 @@ pub mod celestial_objects {
 }
 
 pub mod orientations {
+    use crate::HashType;
     /// Source bytes: `J2000`
-    pub const J2000: u32 = 1404527632;
+    pub const J2000: HashType = 1404527632;
 
-    pub const fn hash_orientation_name<'a>(hash: u32) -> Option<&'a str> {
+    pub const fn hash_orientation_name<'a>(hash: HashType) -> Option<&'a str> {
         match hash {
             J2000 => Some("J2000"),
             _ => None,

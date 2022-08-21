@@ -3,6 +3,7 @@ use hifitime::Epoch;
 use std::fmt::{Display, Error as FmtError, Formatter};
 use tabled::{Style, Table, Tabled};
 
+use crate::HashType;
 use crate::{asn1::common::InterpolationKind, prelude::AniseContext};
 
 /// A row is used only to display a context
@@ -10,7 +11,7 @@ use crate::{asn1::common::InterpolationKind, prelude::AniseContext};
 struct Row<'a> {
     name: &'a str,
     data_kind: &'a str,
-    hash: u32,
+    hash: HashType,
     start_epoch: Epoch,
     end_epoch: Epoch,
     interpolation_kind: InterpolationKind,

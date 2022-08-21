@@ -11,6 +11,7 @@
 use std::fmt::{Display, Formatter};
 
 use crate::frame::Frame;
+use crate::HashType;
 
 /// A Frame uniquely defined by its ephemeris center and orientation.
 ///
@@ -41,11 +42,11 @@ impl FrameDetail {
             && self.flattening.is_some()
     }
 
-    pub const fn ephem_origin_hash_match(&self, other_hash: u32) -> bool {
+    pub const fn ephem_origin_hash_match(&self, other_hash: HashType) -> bool {
         self.frame.ephem_origin_hash_match(other_hash)
     }
 
-    pub const fn orient_origin_hash_match(&self, other_hash: u32) -> bool {
+    pub const fn orient_origin_hash_match(&self, other_hash: HashType) -> bool {
         self.frame.orient_origin_hash_match(other_hash)
     }
 

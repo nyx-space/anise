@@ -23,36 +23,43 @@ use anise::{file_mmap, prelude::AniseContext};
 /// Tests the ephemeris computations from the de438s which don't require any frame transformation.
 #[test]
 fn de438s_zero_paths() {
-    let path = "./data/de438s.anise";
-    let buf = file_mmap!(path).unwrap();
-    let ctx: AniseContext = (&buf).try_into().unwrap();
+    // Check that this test works for DE430, DE438s (short), and DE440
+    for path in &[
+        "./data/de430.anise",
+        "./data/de438s.anise",
+        "./data/de440.anise",
+    ] {
+        // "Load" the file via a memory map (avoids allocations)
+        let buf = file_mmap!(path).unwrap();
+        let ctx: AniseContext = (&buf).try_into().unwrap();
 
-    // We know that the DE438s has exactly 14 ephemerides.
-    assert_eq!(
-        ctx.ephemeris_lut.hashes.len(),
-        12,
-        "DE438s should have 12 ephemerides"
-    );
+        // We know that these ephemerides files has exactly 14 ephemerides.
+        assert_eq!(
+            ctx.ephemeris_lut.hashes.len(),
+            12,
+            "DE438s should have 12 ephemerides"
+        );
 
-    // For all of the frames in this context, let's make sure that the translation between the same frames is always zero.
-    for ephemeris_hash in ctx.ephemeris_lut.hashes.iter() {
-        // Build a J2000 oriented frame with this ephemeris center
-        let this_frame_j2k = Frame::from_ephem_orient_hashes(*ephemeris_hash, J2000);
+        // For all of the frames in this context, let's make sure that the translation between the same frames is always zero.
+        for ephemeris_hash in ctx.ephemeris_lut.hashes.iter() {
+            // Build a J2000 oriented frame with this ephemeris center
+            let this_frame_j2k = Frame::from_ephem_orient_hashes(*ephemeris_hash, J2000);
 
-        // Check that the common root between the same frame is that frame's hash.
-        let root_ephem = ctx
-            .find_ephemeris_root(this_frame_j2k, this_frame_j2k)
-            .unwrap();
+            // Check that the common root between the same frame is that frame's hash.
+            let root_ephem = ctx
+                .find_ephemeris_root(this_frame_j2k, this_frame_j2k)
+                .unwrap();
 
-        assert_eq!(root_ephem, *ephemeris_hash);
+            assert_eq!(root_ephem, *ephemeris_hash);
 
-        // Check that in these cases, the translation returns a zero vector in position and in velocity.
+            // Check that in these cases, the translation returns a zero vector in position and in velocity.
 
-        let (delta_pos, delta_vel) = ctx
-            .translate_from_to(this_frame_j2k, this_frame_j2k, Epoch::now().unwrap())
-            .unwrap();
-        assert!(delta_pos.norm() < EPSILON);
-        assert!(delta_vel.norm() < EPSILON);
+            let (delta_pos, delta_vel) = ctx
+                .translate_from_to(this_frame_j2k, this_frame_j2k, Epoch::now().unwrap())
+                .unwrap();
+            assert!(delta_pos.norm() < EPSILON);
+            assert!(delta_vel.norm() < EPSILON);
+        }
     }
 
     // ctx.lt_translate_from_to(Earth, Moon, epoch, LTCorr) -> position and velocity of the Earth with respect to the Moon with light time correction at epoch
@@ -63,18 +70,24 @@ fn de438s_zero_paths() {
 #[test]
 fn de438s_common_root_verifications() {
     // Load the context
-    let path = "./data/de438s.anise";
-    let buf = file_mmap!(path).unwrap();
-    let ctx: AniseContext = (&buf).try_into().unwrap();
+    // Check that this test works for DE430, DE438s (short), and DE440
+    for path in &[
+        "./data/de430.anise",
+        "./data/de438s.anise",
+        // "./data/de440.anise",
+    ] {
+        let buf = file_mmap!(path).unwrap();
+        let ctx: AniseContext = (&buf).try_into().unwrap();
 
-    // Common root between Venus and Moon should be the solar system barycenter
-    assert_eq!(
-        ctx.find_ephemeris_root(VENUS_J2000, LUNA_J2000).unwrap(),
-        SOLAR_SYSTEM_BARYCENTER
-    );
+        // Common root between Venus and Moon should be the solar system barycenter
+        assert_eq!(
+            ctx.find_ephemeris_root(VENUS_J2000, LUNA_J2000).unwrap(),
+            SOLAR_SYSTEM_BARYCENTER
+        );
 
-    assert_eq!(
-        ctx.find_ephemeris_root(LUNA_J2000, VENUS_J2000).unwrap(),
-        SOLAR_SYSTEM_BARYCENTER
-    );
+        assert_eq!(
+            ctx.find_ephemeris_root(LUNA_J2000, VENUS_J2000).unwrap(),
+            SOLAR_SYSTEM_BARYCENTER
+        );
+    }
 }

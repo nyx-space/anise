@@ -38,6 +38,9 @@ pub mod cli;
 /// Defines the number of bytes in a double (prevents magic numbers)
 pub(crate) const DBL_SIZE: usize = 8;
 
+/// Defines the hash used to identify parents.
+pub(crate) type HashType = u32;
+
 /// file_mmap allows reading a file without memory allocation
 #[macro_export]
 macro_rules! file_mmap {

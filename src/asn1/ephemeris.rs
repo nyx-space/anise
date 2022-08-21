@@ -9,6 +9,8 @@
  */
 use der::{asn1::Utf8StringRef, Decode, Encode, Reader, Writer};
 
+use crate::HashType;
+
 use super::{common::InterpolationKind, spline::Splines, time::Epoch};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -16,8 +18,8 @@ pub struct Ephemeris<'a> {
     pub name: &'a str,
     pub ref_epoch: Epoch,
     pub backward: bool,
-    pub parent_ephemeris_hash: u32,
-    pub orientation_hash: u32,
+    pub parent_ephemeris_hash: HashType,
+    pub orientation_hash: HashType,
     pub interpolation_kind: InterpolationKind,
     pub splines: Splines<'a>,
 }

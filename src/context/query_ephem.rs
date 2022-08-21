@@ -13,6 +13,7 @@ use log::trace;
 use crate::constants::celestial_objects::SOLAR_SYSTEM_BARYCENTER;
 use crate::hifitime::Epoch;
 use crate::math::Vector3;
+use crate::HashType;
 use crate::{
     asn1::{context::AniseContext, ephemeris::Ephemeris},
     errors::{AniseError, IntegrityErrorKind},
@@ -23,6 +24,15 @@ use crate::{
 pub const MAX_TREE_DEPTH: usize = 8;
 
 impl<'a> AniseContext<'a> {
+    /// Returns the hash of the
+    pub fn find_context_root(&self) -> Result<HashType, AniseError> {
+        todo!()
+    }
+
+    pub fn find_grandparent(&self) -> Result<HashType, AniseError> {
+        todo!()
+    }
+
     /// Try to return the ephemeris for the provided index, or returns an error.
     pub fn try_ephemeris_data(&self, idx: usize) -> Result<&'a Ephemeris, AniseError> {
         self.ephemeris_data
@@ -41,7 +51,7 @@ impl<'a> AniseContext<'a> {
     pub fn try_ephemeris_path(
         &self,
         source: &Frame,
-    ) -> Result<(usize, [Option<u32>; MAX_TREE_DEPTH]), AniseError> {
+    ) -> Result<(usize, [Option<HashType>; MAX_TREE_DEPTH]), AniseError> {
         // Build a tree, set a fixed depth to avoid allocations
         let mut of_path = [None; MAX_TREE_DEPTH];
         let mut of_path_len = 0;
@@ -101,7 +111,7 @@ impl<'a> AniseContext<'a> {
         &self,
         from_frame: Frame,
         to_frame: Frame,
-    ) -> Result<u32, AniseError> {
+    ) -> Result<HashType, AniseError> {
         if from_frame == to_frame {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
             return Ok(from_frame.ephemeris_hash);
@@ -144,7 +154,7 @@ impl<'a> AniseContext<'a> {
                     }
                 }
             } else {
-                // Same algorithm as above, just flipped
+                // Same algorithm as above, just flipped to make sure the outer loop is the shorter one
                 for from_obj in from_path.iter().take(from_len) {
                     for to_obj in to_path.iter().take(to_len) {
                         if from_obj == to_obj {
@@ -156,7 +166,7 @@ impl<'a> AniseContext<'a> {
                     }
                 }
             }
-            // If the root is still unset, this is weird and I don't think it should happen, so let's raise an error.
+            // This is weird and I don't think it should happen, so let's raise an error.
             Err(AniseError::IntegrityError(IntegrityErrorKind::DataMissing))
         }
     }
