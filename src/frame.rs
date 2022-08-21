@@ -22,11 +22,8 @@ pub struct Frame {
 }
 
 impl Frame {
-    /// Simple constructor which avoids the struct definition
-    pub const fn from_ephem_orient_hashes(
-        ephemeris_hash: HashType,
-        orientation_hash: HashType,
-    ) -> Self {
+    /// Constructs a new frame given its ephemeris and orientations hashes.
+    pub const fn from_ephem_orient(ephemeris_hash: HashType, orientation_hash: HashType) -> Self {
         Self {
             ephemeris_hash,
             orientation_hash,

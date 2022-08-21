@@ -277,6 +277,8 @@ impl<'a> SPK<'a> {
                 data: &spline_data,
             };
 
+            let parent_ephemeris_hash = hash(Segment::id_to_human_name(seg.center_id)?.as_bytes());
+
             // Create the ephemeris
             let ephem = Ephemeris {
                 name: seg.human_name(),
@@ -286,7 +288,7 @@ impl<'a> SPK<'a> {
                 },
                 backward: false,
                 interpolation_kind: InterpolationKind::ChebyshevSeries,
-                parent_ephemeris_hash: hash(Segment::id_to_human_name(seg.center_id)?.as_bytes()),
+                parent_ephemeris_hash,
                 orientation_hash: J2000,
                 splines,
             };

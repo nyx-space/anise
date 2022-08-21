@@ -64,6 +64,8 @@ pub enum InternalErrorKind {
     /// May happen if the interpolation scheme is not yet supported
     InterpolationNotSupported,
     Asn1Error(DerError),
+    /// Some generic internal error, check the logs of the program and file a bug report
+    Generic,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]

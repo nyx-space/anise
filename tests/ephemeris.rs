@@ -10,8 +10,17 @@
 
 use core::f64::EPSILON;
 
+use anise::constants::celestial_objects::EARTH_MOON_BARYCENTER;
 use anise::constants::celestial_objects::SOLAR_SYSTEM_BARYCENTER;
+use anise::constants::frames::EARTH_J2000;
+use anise::constants::frames::JUPITER_BARYCENTER_J2000;
 use anise::constants::frames::LUNA_J2000;
+use anise::constants::frames::MARS_BARYCENTER_J2000;
+use anise::constants::frames::MERCURY_J2000;
+use anise::constants::frames::NEPTUNE_BARYCENTER_J2000;
+use anise::constants::frames::PLUTO_BARYCENTER_J2000;
+use anise::constants::frames::SATURN_BARYCENTER_J2000;
+use anise::constants::frames::URANUS_BARYCENTER_J2000;
 use anise::constants::frames::VENUS_J2000;
 use anise::constants::orientations::J2000;
 use anise::frame::Frame;
@@ -43,7 +52,7 @@ fn de438s_zero_paths() {
         // For all of the frames in this context, let's make sure that the translation between the same frames is always zero.
         for ephemeris_hash in ctx.ephemeris_lut.hashes.iter() {
             // Build a J2000 oriented frame with this ephemeris center
-            let this_frame_j2k = Frame::from_ephem_orient_hashes(*ephemeris_hash, J2000);
+            let this_frame_j2k = Frame::from_ephem_orient(*ephemeris_hash, J2000);
 
             // Check that the common root between the same frame is that frame's hash.
             let root_ephem = ctx
@@ -74,20 +83,47 @@ fn de438s_common_root_verifications() {
     for path in &[
         "./data/de430.anise",
         "./data/de438s.anise",
-        // "./data/de440.anise",
+        "./data/de440.anise",
     ] {
         let buf = file_mmap!(path).unwrap();
         let ctx: AniseContext = (&buf).try_into().unwrap();
 
-        // Common root between Venus and Moon should be the solar system barycenter
+        // The root of all these files should be the SSB
         assert_eq!(
-            ctx.find_ephemeris_root(VENUS_J2000, LUNA_J2000).unwrap(),
+            ctx.try_find_context_root().unwrap(),
             SOLAR_SYSTEM_BARYCENTER
         );
 
+        // Common root between all planets (apart from Earth) and the Moon should be the solar system barycenter
+        for planet_ctr in &[
+            MERCURY_J2000,
+            VENUS_J2000,
+            MARS_BARYCENTER_J2000,
+            JUPITER_BARYCENTER_J2000,
+            SATURN_BARYCENTER_J2000,
+            NEPTUNE_BARYCENTER_J2000,
+            URANUS_BARYCENTER_J2000,
+            PLUTO_BARYCENTER_J2000,
+        ] {
+            assert_eq!(
+                ctx.find_ephemeris_root(*planet_ctr, LUNA_J2000).unwrap(),
+                SOLAR_SYSTEM_BARYCENTER
+            );
+
+            assert_eq!(
+                ctx.find_ephemeris_root(LUNA_J2000, *planet_ctr).unwrap(),
+                SOLAR_SYSTEM_BARYCENTER
+            );
+        }
+
+        // Common root between Earth and Moon should be EMB
         assert_eq!(
-            ctx.find_ephemeris_root(LUNA_J2000, VENUS_J2000).unwrap(),
-            SOLAR_SYSTEM_BARYCENTER
+            ctx.find_ephemeris_root(LUNA_J2000, EARTH_J2000).unwrap(),
+            EARTH_MOON_BARYCENTER
+        );
+        assert_eq!(
+            ctx.find_ephemeris_root(EARTH_J2000, LUNA_J2000).unwrap(),
+            EARTH_MOON_BARYCENTER
         );
     }
 }

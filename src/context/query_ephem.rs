@@ -8,9 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 
-use log::trace;
+use log::{error, trace};
 
 use crate::constants::celestial_objects::SOLAR_SYSTEM_BARYCENTER;
+use crate::constants::orientations::J2000;
+use crate::errors::InternalErrorKind;
 use crate::hifitime::Epoch;
 use crate::math::Vector3;
 use crate::HashType;
@@ -24,13 +26,58 @@ use crate::{
 pub const MAX_TREE_DEPTH: usize = 8;
 
 impl<'a> AniseContext<'a> {
-    /// Returns the hash of the
-    pub fn find_context_root(&self) -> Result<HashType, AniseError> {
-        todo!()
+    /// Goes through each ephemeris data and make sure that the root of each is the same.
+    /// A context is only valid if the data is a tree with a single top level root.
+    pub fn try_find_context_root(&self) -> Result<HashType, AniseError> {
+        let mut common_parent_hash = 0;
+        for e in self.ephemeris_data.iter() {
+            let mut child = e;
+            if common_parent_hash == 0 {
+                common_parent_hash = child.parent_ephemeris_hash;
+            }
+
+            for _ in 0..MAX_TREE_DEPTH {
+                match self.try_find_parent(child) {
+                    Ok(e) => child = e,
+                    Err(AniseError::ItemNotFound) => {
+                        // We've found the end of this branch, so let's store the parent of the child as the top root if the top root is not set
+                        if common_parent_hash == 0 {
+                            common_parent_hash = child.parent_ephemeris_hash;
+                        } else if common_parent_hash != child.parent_ephemeris_hash {
+                            // Integrity error!
+                            error!("at least one ephemeris hierarchy takes root in hash {} but {}'s parent is {}", common_parent_hash, child.name, child.parent_ephemeris_hash);
+                            return Err(AniseError::IntegrityError(
+                                IntegrityErrorKind::DisjointRoots {
+                                    from_frame: Frame::from_ephem_orient(common_parent_hash, J2000),
+                                    to_frame: Frame::from_ephem_orient(
+                                        child.parent_ephemeris_hash,
+                                        J2000,
+                                    ),
+                                },
+                            ));
+                        } else {
+                            // We're found the root and it matches the previous one, so we can stop searching.
+                            break;
+                        }
+                    }
+                    Err(err) => {
+                        error!("{err} occured when it should not have");
+                        return Err(AniseError::InternalError(InternalErrorKind::Generic));
+                    }
+                };
+            }
+        }
+        Ok(common_parent_hash)
     }
 
-    pub fn find_grandparent(&self) -> Result<HashType, AniseError> {
-        todo!()
+    /// Try to find the parent ephemeris data of the provided ephemeris.
+    ///
+    /// Will return an [Err] if the parent does not have ephemeris data in this context.
+    pub fn try_find_parent(&self, child: &'a Ephemeris) -> Result<&'a Ephemeris, AniseError> {
+        let idx = self
+            .ephemeris_lut
+            .index_for_hash(&child.parent_ephemeris_hash)?;
+        self.try_ephemeris_data(idx.into())
     }
 
     /// Try to return the ephemeris for the provided index, or returns an error.
@@ -60,7 +107,6 @@ impl<'a> AniseContext<'a> {
             // The solar system barycenter has a hash of 0.
             // TODO: Find a way to specify the true root of the context -- maybe catch this err and set this as the root?
             let idx = self.ephemeris_lut.index_for_hash(&prev_ephem_hash)?;
-            // let parent_hash = self.try_ephemeris_data(idx.into())?.parent_ephemeris_hash;
             let parent_ephem = self.try_ephemeris_data(idx.into())?;
             let parent_hash = parent_ephem.parent_ephemeris_hash;
             of_path[of_path_len] = Some(parent_hash);
