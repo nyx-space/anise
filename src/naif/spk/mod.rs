@@ -232,6 +232,7 @@ impl<'a> SPK<'a> {
 
             // Build the splines
             for seg_coeff in &seg_coeffs {
+                assert_eq!(meta.interval_length as f64, 2. * seg_coeff.rcrd_radius_s);
                 for coeff in &seg_coeff.x_coeffs {
                     for coeffbyte in coeff.to_be_bytes() {
                         spline_data.push(coeffbyte);

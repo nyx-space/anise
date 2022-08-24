@@ -10,7 +10,6 @@
 
 use log::{error, trace};
 
-use crate::constants::celestial_objects::SOLAR_SYSTEM_BARYCENTER;
 use crate::constants::orientations::J2000;
 use crate::errors::InternalErrorKind;
 use crate::hifitime::Epoch;
@@ -94,7 +93,7 @@ impl<'a> AniseContext<'a> {
             .ok_or(AniseError::IntegrityError(IntegrityErrorKind::LookupTable))
     }
 
-    /// Try to construct the path from the source frame all the way to the solar system barycenter or to the root ephemeris of this context
+    /// Try to construct the path from the source frame all the way to the root ephemeris of this context.
     pub fn try_ephemeris_path(
         &self,
         source: &Frame,
@@ -104,14 +103,13 @@ impl<'a> AniseContext<'a> {
         let mut of_path_len = 0;
         let mut prev_ephem_hash = source.ephemeris_hash;
         for _ in 0..MAX_TREE_DEPTH {
-            // The solar system barycenter has a hash of 0.
-            // TODO: Find a way to specify the true root of the context -- maybe catch this err and set this as the root?
             let idx = self.ephemeris_lut.index_for_hash(&prev_ephem_hash)?;
             let parent_ephem = self.try_ephemeris_data(idx.into())?;
             let parent_hash = parent_ephem.parent_ephemeris_hash;
             of_path[of_path_len] = Some(parent_hash);
             of_path_len += 1;
-            if parent_hash == SOLAR_SYSTEM_BARYCENTER {
+
+            if parent_hash == self.try_find_context_root()? {
                 return Ok((of_path_len, of_path));
             } else if let Err(e) = self.ephemeris_lut.index_for_hash(&parent_hash) {
                 if e == AniseError::ItemNotFound {
@@ -125,7 +123,7 @@ impl<'a> AniseContext<'a> {
         Err(AniseError::MaxTreeDepth)
     }
 
-    /// Returns the root of two frames. This may return a `DisjointRoots` error if the frames do not share a common root, which is considered a file integrity error.
+    /// Returns the common node of two frames. This may return a `DisjointRoots` error if the frames do not share a common root, which is considered a file integrity error.
     ///
     /// # Example
     ///
@@ -153,7 +151,7 @@ impl<'a> AniseContext<'a> {
     /// # Time complexity
     /// This can likely be simplified as this as a time complexity of O(n×m) where n, m are the lengths of the paths from
     /// the ephemeris up to the root.
-    pub fn find_ephemeris_root(
+    pub fn find_common_ephemeris_node(
         &self,
         from_frame: Frame,
         to_frame: Frame,
@@ -233,7 +231,10 @@ impl<'a> AniseContext<'a> {
             return Ok((Vector3::zeros(), Vector3::zeros()));
         }
 
-        let ephem_root = self.find_ephemeris_root(from_frame, to_frame)?;
+        let ephem_root = self.find_common_ephemeris_node(from_frame, to_frame)?;
+
+        // Compute from the center back to its origin and then translate from that origin to the
+
         // Now that we have the root, let's simply add the vectors from each frame to the root.
 
         let (pos_from_to_root, vel_from_to_root) =

@@ -8,9 +8,4 @@
  * Documentation: https://nyxspace.com/
  */
 
-extern crate nalgebra;
-
-// Vector3 is nalgebra's Vector3 with a 64-bit floating point representation.
-pub type Vector3 = nalgebra::Vector3<f64>;
-
-pub mod interpolation;
+pub mod chebyshev;
