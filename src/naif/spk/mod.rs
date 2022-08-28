@@ -21,6 +21,7 @@ use crate::asn1::metadata::Metadata;
 use crate::asn1::spline::Splines;
 use crate::asn1::splinecoeffs::Coefficient;
 use crate::asn1::splinekind::SplineKind;
+use crate::asn1::time::Epoch as AniseEpoch;
 use crate::constants::orientations::J2000;
 use crate::errors::InternalErrorKind;
 use crate::prelude::AniseError;
@@ -178,7 +179,8 @@ impl<'a> SPK<'a> {
                     seg.frame_id,
                     seg.data_type,
                     seg.start_epoch.as_gregorian_str(TimeSystem::ET),
-                    seg.end_epoch.as_gregorian_str(TimeSystem::ET),
+                    seg.start_epoch.as_gregorian_str(TimeSystem::TT),
+                    // seg.end_epoch.as_gregorian_str(TimeSystem::ET),
                 );
                 // The rcrd_radius_s should be a round integer, so let's check that
                 assert!((rcrd_radius_s % rcrd_radius_s.floor()).abs() < EPSILON);
@@ -286,7 +288,11 @@ impl<'a> SPK<'a> {
             // Create the ephemeris
             let ephem = Ephemeris {
                 name: seg.human_name(),
-                ref_epoch: seg.start_epoch.into(),
+                // ref_epoch: seg.start_epoch.into(), // Don't do this, cf. hifitime#106
+                ref_epoch: AniseEpoch {
+                    epoch: seg.start_epoch,
+                    system: TimeSystem::ET, // Force it to be in ET
+                },
                 backward: false,
                 interpolation_kind: InterpolationKind::ChebyshevSeries,
                 parent_ephemeris_hash,
@@ -434,7 +440,7 @@ impl<'a> TryInto<SPK<'a>> for &'a DAF<'a> {
                 )));
             }
             // NOTE: SPICE stores data in J2000 but hifitime stores it in J1900, so we shift everything by one century
-            let start_epoch = Epoch::from_et_seconds(f64_data[0]) + 1.0.centuries();
+            let start_epoch = Epoch::from_et_seconds(dbg!(f64_data[0])) + 1.0.centuries();
             let end_epoch = Epoch::from_et_seconds(f64_data[1]) + 1.0.centuries();
 
             if int_data.len() != 6 {

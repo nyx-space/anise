@@ -8,6 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 
+use hifitime::{Epoch, TimeSystem};
+
 use crate::asn1::semver::Semver;
 use crate::der::Error as Asn1Error;
 use crate::der::Error as DerError;
@@ -55,6 +57,8 @@ pub enum AniseError {
     },
     /// Raised if the ephemeris or orientation is deeper to the context origin than this library supports
     MaxTreeDepth,
+    /// Raised if there is no interpolation data for the requested epoch, i.e. ephemeris/orientation starts after or ends before the requested epoch
+    MissingInterpolationData(Epoch),
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -143,7 +147,11 @@ impl fmt::Display for AniseError {
             Self::MaxTreeDepth => write!(
                 f,
                 "ANISE error: the ephemeris or orientation is deeper to the context origin than this library supports"
-            )
+            ),
+            Self::MissingInterpolationData(e) => write!(
+                f,
+                "ANISE error: No interpolation as epoch {}", e.as_gregorian_str(TimeSystem::ET) 
+            ),
         }
     }
 }

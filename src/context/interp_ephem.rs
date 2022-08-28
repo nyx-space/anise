@@ -27,7 +27,7 @@ impl<'a> AniseContext<'a> {
     pub fn translate_to_parent(
         &self,
         source: Frame,
-        epoch: Epoch,
+        eval_epoch: Epoch,
     ) -> Result<(Vector3, Vector3), AniseError> {
         // First, let's get a reference to the ephemeris given the frame.
 
@@ -45,15 +45,21 @@ impl<'a> AniseContext<'a> {
         let splines = &ephem.splines;
         match ephem.interpolation_kind {
             InterpolationKind::ChebyshevSeries => {
-                trace!("start = {}\tfetch = {}", ephem.start_epoch().epoch, epoch);
-                let start_epoch_s = ephem.start_epoch().epoch.as_tdb_seconds();
-                let eval_epoch_s = epoch.as_tdb_seconds();
+                trace!(
+                    "start = {}\tfetch = {}",
+                    ephem
+                        .start_epoch()
+                        .epoch
+                        .as_gregorian_str(hifitime::TimeSystem::ET),
+                    eval_epoch
+                );
+                let start_epoch = ephem.start_epoch().epoch;
 
                 for (cno, coeff) in [Coefficient::X, Coefficient::Y, Coefficient::Z]
                     .iter()
                     .enumerate()
                 {
-                    let (val, deriv) = cheby_eval(eval_epoch_s, start_epoch_s, splines, *coeff)?;
+                    let (val, deriv) = cheby_eval(eval_epoch, start_epoch, splines, *coeff)?;
                     pos[cno] = val;
                     vel[cno] = deriv;
                 }
@@ -64,7 +70,7 @@ impl<'a> AniseContext<'a> {
                         .iter()
                         .enumerate()
                     {
-                        let (val, _) = cheby_eval(eval_epoch_s, start_epoch_s, splines, *coeff)?;
+                        let (val, _) = cheby_eval(eval_epoch, start_epoch, splines, *coeff)?;
                         vel[cno] = val;
                     }
                 }

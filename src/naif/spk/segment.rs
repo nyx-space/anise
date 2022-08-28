@@ -103,7 +103,7 @@ impl<'a> Segment<'a> {
             "Neptune" => Ok(899),
             "Pluto" => Ok(999),
             "Luna" => Ok(301),
-            "Sun Barycenter" => Ok(10),
+            "Sun" => Ok(10),
             "Earth-Moon Barycenter" => Ok(3),
             "Mars Barycenter" => Ok(4),
             "Jupiter Barycenter" => Ok(5),
@@ -111,7 +111,10 @@ impl<'a> Segment<'a> {
             "Uranus Barycenter" => Ok(7),
             "Neptune Barycenter" => Ok(8),
             "Pluto Barycenter" => Ok(9),
-            _ => todo!(),
+            _ => {
+                error!("[human_name_to_id] unknown NAIF ID for `{name}`");
+                todo!()
+            }
         }
     }
 

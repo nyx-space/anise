@@ -10,6 +10,9 @@
 
 // TODO: Consider making a trait for these
 
+use hifitime::Epoch;
+use log::trace;
+
 use crate::{
     asn1::{spline::Splines, splinecoeffs::Coefficient, splinekind::SplineKind},
     prelude::AniseError,
@@ -20,8 +23,8 @@ use crate::{
 /// # Notes
 /// 1. At this point, the splines are expected to be in Chebyshev format and no verification is done.
 pub(crate) fn cheby_eval(
-    eval_epoch_s: f64,  // Must be in the same time system at this point
-    start_epoch_s: f64, // Must be in the same time system at this point
+    eval_epoch: Epoch,  // Must be in the same time system at this point
+    start_epoch: Epoch, // Must be in the same time system at this point
     splines: &Splines,
     coeff: Coefficient,
 ) -> Result<(f64, f64), AniseError> {
@@ -31,7 +34,14 @@ pub(crate) fn cheby_eval(
     match splines.kind {
         SplineKind::FixedWindow { window_duration_s } => {
             let radius_s = dbg!(window_duration_s) / 2.0;
-            let delta_s = eval_epoch_s - start_epoch_s;
+            trace!("delta = {}", eval_epoch - start_epoch);
+            let delta_s = (eval_epoch - start_epoch).in_seconds();
+            if delta_s < 0.0 {
+                return Err(AniseError::MissingInterpolationData(eval_epoch));
+            }
+            // Convert to seconds
+            let eval_epoch_s = eval_epoch.as_tdb_seconds();
+            let start_epoch_s = start_epoch.as_tdb_seconds();
             let spline_idx_f = (dbg!(delta_s) / window_duration_s).floor();
             let midpoint = start_epoch_s + spline_idx_f * window_duration_s + radius_s;
             let normalized_t = (eval_epoch_s - midpoint) / radius_s;
