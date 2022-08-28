@@ -24,6 +24,7 @@ use anise::constants::frames::URANUS_BARYCENTER_J2000;
 use anise::constants::frames::VENUS_J2000;
 use anise::constants::orientations::J2000;
 use anise::frame::Frame;
+use anise::math::Vector3;
 use anise::prelude::AniseError;
 use anise::prelude::File;
 use anise::Epoch;
@@ -77,7 +78,7 @@ fn de438s_zero_paths() {
 
 /// Tests that direct path computations match what SPICE returned to within good precision.
 #[test]
-fn de438s_common_root_verifications() {
+fn de438s_common_root_verif() {
     // Load the context
     // Check that this test works for DE430, DE438s (short), and DE440
     for path in &[
@@ -130,4 +131,42 @@ fn de438s_common_root_verifications() {
             EARTH_MOON_BARYCENTER
         );
     }
+}
+
+#[test]
+fn de438s_translation_verif() {
+    if pretty_env_logger::try_init().is_err() {
+        println!("could not init env_logger");
+    }
+
+    // "Load" the file via a memory map (avoids allocations)
+    let path = "./data/de438s.anise";
+    let buf = file_mmap!(path).unwrap();
+    let ctx: AniseContext = (&buf).try_into().unwrap();
+
+    let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
+
+    let (pos, vel) = ctx.translate_to_parent(VENUS_J2000, epoch).unwrap();
+
+    let pos_expct = Vector3::new(
+        95205638.5746064484119415,
+        -46160711.6414288505911827,
+        -26779481.3282318264245987,
+    );
+
+    let vel_expct = Vector3::new(
+        132.8963917239523767,
+        28.2720670932998246,
+        11.6685757331618056,
+    );
+
+    dbg!(pos, pos_expct);
+
+    assert!(dbg!(pos - pos_expct).norm() < 1e-16);
+    assert!(dbg!(vel - vel_expct).norm() < 1e-16);
+
+    // assert!(dbg!(ven2ear_state.y - -1.356_125_479_230_852_7e8).abs() < 7e-4);
+    // assert!(dbg!(ven2ear_state.z - -6.557_839_967_615_153e7).abs() < 4e-4);
+    // assert!(dbg!(ven2ear_state.vy - 4.888_902_462_217_076_6e1).abs() < 1e-8);
+    // assert!(dbg!(ven2ear_state.vz - 2.070_293_380_084_308_4e1).abs() < 1e-8);
 }

@@ -89,6 +89,32 @@ impl<'a> Segment<'a> {
         }
     }
 
+    /// Converts the provided ID to its human name.
+    /// Only works for the common celestial bodies
+    pub(crate) fn human_name_to_id(name: &'a str) -> Result<i32, AniseError> {
+        match name {
+            "Mercury" => Ok(1),
+            "Venus" => Ok(2),
+            "Earth" => Ok(399),
+            "Mars" => Ok(499),
+            "Jupiter" => Ok(599),
+            "Saturn" => Ok(699),
+            "Uranus" => Ok(799),
+            "Neptune" => Ok(899),
+            "Pluto" => Ok(999),
+            "Luna" => Ok(301),
+            "Sun Barycenter" => Ok(10),
+            "Earth-Moon Barycenter" => Ok(3),
+            "Mars Barycenter" => Ok(4),
+            "Jupiter Barycenter" => Ok(5),
+            "Saturn Barycenter" => Ok(6),
+            "Uranus Barycenter" => Ok(7),
+            "Neptune Barycenter" => Ok(8),
+            "Pluto Barycenter" => Ok(9),
+            _ => todo!(),
+        }
+    }
+
     /// Returns the human name of this segment if it can be guessed, else the standard name.
     ///
     /// # Returned value

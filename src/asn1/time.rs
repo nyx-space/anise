@@ -8,6 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 
+use hifitime::Duration;
+
 use super::der::{Decode, Encode, Reader, Writer};
 use super::hifitime::{Epoch as EpochHifitime, TimeSystem};
 use crate::prelude::AniseError;
@@ -57,10 +59,7 @@ impl Epoch {
             TimeSystem::TAI => self.epoch.as_tai_duration().to_parts(),
             TimeSystem::TDB => self.epoch.as_tdb_duration().to_parts(),
             TimeSystem::TT => self.epoch.as_tt_duration().to_parts(),
-            TimeSystem::UTC => {
-                // self.epoch.as_utc_duration().to_parts()
-                unimplemented!("hifitime as_utc_duration is not yet a public function");
-            }
+            TimeSystem::UTC => self.epoch.as_utc_duration().to_parts(),
         }
     }
 }
@@ -96,8 +95,29 @@ impl<'a> Decode<'a> for Epoch {
         let centuries = decoder.decode()?;
         let nanoseconds = decoder.decode()?;
         let ts_u8 = decoder.decode()?;
-        let epoch = EpochHifitime::from_tai_parts(centuries, nanoseconds);
         let system = Epoch::time_system_from_u8(ts_u8).unwrap();
+        let epoch;
+        match system {
+            TimeSystem::ET => {
+                let dur = Duration::from_parts(centuries, nanoseconds);
+                epoch = EpochHifitime::from_et_seconds(dur.in_seconds());
+            }
+            TimeSystem::TAI => {
+                epoch = EpochHifitime::from_tai_parts(centuries, nanoseconds);
+            }
+            TimeSystem::TDB => {
+                let dur = Duration::from_parts(centuries, nanoseconds);
+                epoch = EpochHifitime::from_tdb_seconds(dur.in_seconds());
+            }
+            TimeSystem::TT => {
+                let dur = Duration::from_parts(centuries, nanoseconds);
+                epoch = EpochHifitime::from_tt_seconds(dur.in_seconds());
+            }
+            TimeSystem::UTC => {
+                let dur = Duration::from_parts(centuries, nanoseconds);
+                epoch = EpochHifitime::from_utc_seconds(dur.in_seconds());
+            }
+        }
         Ok(Self { epoch, system })
     }
 }

@@ -19,15 +19,15 @@ use crate::asn1::context::AniseContext;
 use crate::asn1::ephemeris::Ephemeris;
 use crate::asn1::metadata::Metadata;
 use crate::asn1::spline::Splines;
+use crate::asn1::splinecoeffs::Coefficient;
 use crate::asn1::splinekind::SplineKind;
-use crate::asn1::time::Epoch as AniseEpoch;
 use crate::constants::orientations::J2000;
 use crate::errors::InternalErrorKind;
 use crate::prelude::AniseError;
 use crate::{file_mmap, parse_bytes_as, DBL_SIZE};
 use crc32fast::hash;
 use der::{Decode, Encode};
-use hifitime::{Epoch, TimeSystem};
+use hifitime::{Epoch, TimeSystem, TimeUnits};
 use log::{info, warn};
 use std::convert::TryInto;
 use std::f64::EPSILON;
@@ -177,8 +177,8 @@ impl<'a> SPK<'a> {
                     seg.center_id,
                     seg.frame_id,
                     seg.data_type,
-                    seg.start_epoch,
-                    seg.end_epoch,
+                    seg.start_epoch.as_gregorian_str(TimeSystem::ET),
+                    seg.end_epoch.as_gregorian_str(TimeSystem::ET),
                 );
                 // The rcrd_radius_s should be a round integer, so let's check that
                 assert!((rcrd_radius_s % rcrd_radius_s.floor()).abs() < EPSILON);
@@ -201,6 +201,7 @@ impl<'a> SPK<'a> {
         orig_file: &str,
         filename: &str,
         skip_empty: bool,
+        check: bool,
     ) -> Result<(), AniseError> {
         // Start the trajectory file so we can populate the lookup table (LUT)
         let mut ctx = AniseContext {
@@ -216,7 +217,7 @@ impl<'a> SPK<'a> {
         for (idx, seg) in self.segments.iter().enumerate() {
             let (seg, meta, seg_coeffs) = self.copy_coeffs(seg.target_id)?;
             if seg_coeffs.len() <= 1 && skip_empty {
-                warn!("Skipping empty {seg}");
+                warn!("[to_anise] skipping empty {seg}");
                 continue;
             }
             // Some files don't have a useful name in the segments, so we append the target ID in case
@@ -232,7 +233,9 @@ impl<'a> SPK<'a> {
 
             // Build the splines
             for seg_coeff in &seg_coeffs {
+                // Check that the interval length is indeed twice the radius
                 assert_eq!(meta.interval_length as f64, 2. * seg_coeff.rcrd_radius_s);
+
                 for coeff in &seg_coeff.x_coeffs {
                     for coeffbyte in coeff.to_be_bytes() {
                         spline_data.push(coeffbyte);
@@ -283,10 +286,7 @@ impl<'a> SPK<'a> {
             // Create the ephemeris
             let ephem = Ephemeris {
                 name: seg.human_name(),
-                ref_epoch: AniseEpoch {
-                    epoch: seg.start_epoch,
-                    system: TimeSystem::TDB,
-                },
+                ref_epoch: seg.start_epoch.into(),
                 backward: false,
                 interpolation_kind: InterpolationKind::ChebyshevSeries,
                 parent_ephemeris_hash,
@@ -331,6 +331,85 @@ impl<'a> SPK<'a> {
         for fname in &all_intermediate_files {
             remove_file(fname).unwrap();
         }
+
+        // Now, let's load this newly created file and make sure that everything matches
+        if check {
+            info!("[to_anise] checking conversion was correct (this will take a while)");
+            // Load this ANIS file and make sure that it matches the original data.
+            let bytes = file_mmap!(filename).unwrap();
+            let ctx = AniseContext::from_bytes(&bytes);
+            // If we skiped empty ephems, we can't check thet exact length, so skip that
+            if !skip_empty {
+                assert_eq!(
+                    ctx.ephemeris_lut.hashes.len(),
+                    self.segments.len(),
+                    "Incorrect number of ephem in map"
+                );
+                assert_eq!(
+                    ctx.ephemeris_lut.indexes.len(),
+                    self.segments.len(),
+                    "Incorrect number of ephem in map"
+                );
+            }
+
+            for (eidx, ephem) in ctx.ephemeris_data.iter().enumerate() {
+                let seg_target_id = Segment::human_name_to_id(ephem.name)?;
+                // Fetch the SPK segment
+                let (seg, meta, all_seg_data) = self.copy_coeffs(seg_target_id).unwrap();
+                if all_seg_data.is_empty() {
+                    continue;
+                }
+
+                assert_eq!(
+                    seg.start_epoch,
+                    ephem.start_epoch().epoch,
+                    "start epochs differ for {} (eidx = {}): {} != {}",
+                    ephem.name,
+                    eidx,
+                    seg.start_epoch.as_gregorian_str(TimeSystem::ET),
+                    ephem.start_epoch().epoch.as_gregorian_str(TimeSystem::ET),
+                );
+
+                let splines = &ephem.splines;
+                match splines.kind {
+                    SplineKind::FixedWindow { window_duration_s } => {
+                        assert_eq!(
+                            window_duration_s, meta.interval_length as f64,
+                            "incorrect interval duration"
+                        );
+                    }
+                    _ => panic!("wrong spline kind"),
+                };
+
+                assert_eq!(splines.config.num_position_coeffs, 3);
+                assert_eq!(splines.config.num_position_dt_coeffs, 0);
+                assert_eq!(splines.config.num_velocity_coeffs, 0);
+                assert_eq!(splines.config.num_velocity_dt_coeffs, 0);
+                assert_eq!(splines.config.num_epochs, 0);
+
+                info!(
+                    "[to_anise] metadata OK for {}. Now checking each coefficient.",
+                    ephem.name
+                );
+
+                for (sidx, seg_data) in all_seg_data.iter().enumerate() {
+                    for (cidx, x_truth) in seg_data.x_coeffs.iter().enumerate() {
+                        assert_eq!(splines.fetch(sidx, cidx, Coefficient::X).unwrap(), *x_truth);
+                    }
+
+                    for (cidx, y_truth) in seg_data.y_coeffs.iter().enumerate() {
+                        assert_eq!(splines.fetch(sidx, cidx, Coefficient::Y).unwrap(), *y_truth);
+                    }
+
+                    for (cidx, z_truth) in seg_data.z_coeffs.iter().enumerate() {
+                        assert_eq!(splines.fetch(sidx, cidx, Coefficient::Z).unwrap(), *z_truth);
+                    }
+                }
+
+                info!("[to_anise] spline data OK for {}.", ephem.name);
+            }
+        }
+
         Ok(())
     }
 }
@@ -340,8 +419,7 @@ impl<'a> TryInto<SPK<'a>> for &'a DAF<'a> {
 
     fn try_into(self) -> Result<SPK<'a>, Self::Error> {
         let mut spk = SPK {
-            // TODO: find a way to avoid alloc ?
-            // Alloc for conversion of SPICE files is _reasonable_
+            // Alloc for conversion of SPICE files is _reasonable_ as it won't be used onboard
             segments: Vec::new(),
             daf: self,
         };
@@ -355,8 +433,9 @@ impl<'a> TryInto<SPK<'a>> for &'a DAF<'a> {
                     f64_data.len()
                 )));
             }
-            let start_epoch = Epoch::from_et_seconds(f64_data[0]);
-            let end_epoch = Epoch::from_et_seconds(f64_data[1]);
+            // NOTE: SPICE stores data in J2000 but hifitime stores it in J1900, so we shift everything by one century
+            let start_epoch = Epoch::from_et_seconds(f64_data[0]) + 1.0.centuries();
+            let end_epoch = Epoch::from_et_seconds(f64_data[1]) + 1.0.centuries();
 
             if int_data.len() != 6 {
                 return Err(AniseError::NAIFParseError(format!(

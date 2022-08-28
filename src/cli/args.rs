@@ -16,6 +16,9 @@ pub enum Actions {
         /// Set to true to include empty ephemerides in the ANISE file (default: false)
         #[clap(long)]
         allow_empty: bool,
+        /// Load the ANISE file and check that it was correctly converted
+        #[clap(long)]
+        check: bool,
         /// Path to SPICE file
         #[clap(parse(from_os_str))]
         file: PathBuf,
