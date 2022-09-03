@@ -35,34 +35,69 @@ pub(crate) fn cheby_eval(
         SplineKind::FixedWindow { window_duration_s } => {
             let radius_s = dbg!(window_duration_s) / 2.0;
             trace!("delta = {}", eval_epoch - start_epoch);
-            let delta_s = (eval_epoch - start_epoch).in_seconds();
+            let delta_s = (eval_epoch - start_epoch).in_seconds(); // - 86400.0;
+
             if delta_s < 0.0 {
                 return Err(AniseError::MissingInterpolationData(eval_epoch));
             }
+
             // Convert to seconds
-            let eval_epoch_s = eval_epoch.as_tdb_seconds();
-            let start_epoch_s = start_epoch.as_tdb_seconds();
+            let eval_epoch_jde_d = dbg!(eval_epoch.as_jde_tdb_days());
+            let start_epoch_jde_d = dbg!(start_epoch.as_jde_tdb_days());
             let spline_idx_f = (dbg!(delta_s) / window_duration_s).floor();
-            let midpoint = start_epoch_s + spline_idx_f * window_duration_s + radius_s;
-            let normalized_t = (eval_epoch_s - midpoint) / radius_s;
+            let midpoint = start_epoch_jde_d
+                + spline_idx_f * (window_duration_s / 86400.0)
+                + radius_s / 86400.;
+            let normalized_t = (eval_epoch_jde_d - midpoint) / (radius_s / 86400.0);
+
+            // let s = (eval_epoch_jde_d
+            //     - (start_epoch_jde_d
+            //         + spline_idx_f * (window_duration_s / 86400.0)
+            //         + (radius_s / 86400.0)))
+            //     / (radius_s / 86400.0);
+
+            // let sp = (eval_epoch.as_tdb_seconds()
+            //     - (start_epoch.as_tdb_seconds() + spline_idx_f * window_duration_s + radius_s))
+            //     / radius_s;
+
+            let normalized_t_e = 9.286013664677739e-5;
+            dbg!(normalized_t, normalized_t_e);
+
             let normalized_t2 = 2.0 * normalized_t;
             // Workspace arrays
             let mut w = [0.0_f64; 3];
             let mut dw = [0.0_f64; 3];
+
+            let coeffs = [
+                94037325.71993284,
+                11411525.13992438,
+                -1166083.2349016676,
+                -23695.241672735978,
+                1162.9591476829928,
+                14.443131926291102,
+                -0.39727576281757704,
+                -0.0038013779050788425,
+                1.6737073018552924e-5,
+                2.681835938104285e-7,
+            ];
+
             dbg!(splines.config.degree, coeff, spline_idx_f);
             for j in (2..=splines.config.degree.into()).rev() {
                 w[2] = w[1];
                 w[1] = w[0];
-                w[0] = dbg!(splines.fetch(spline_idx_f as usize, j - 1, coeff)?)
-                    + (normalized_t2 * w[1] - w[2]);
+                // w[0] = dbg!(splines.fetch(spline_idx_f as usize, j - 1, coeff)?)
+                //     + (normalized_t2 * w[1] - w[2]);
+                w[0] = coeffs[j - 1] + (normalized_t2 * w[1] - w[2]);
 
                 dw[2] = dw[1];
                 dw[1] = dw[0];
                 dw[0] = w[1] * 2. + dw[1] * normalized_t2 - dw[2];
             }
 
-            let val = dbg!(splines.fetch(spline_idx_f as usize, 0, coeff)?)
-                + (normalized_t * w[0] - w[1]);
+            // let val = dbg!(splines.fetch(spline_idx_f as usize, 0, coeff)?)
+            //     + (normalized_t * w[0] - w[1]);
+            let val = coeffs[0] + (normalized_t * w[0] - w[1]);
+
             let deriv = w[0] + normalized_t * dw[0] - dw[1];
             Ok((val, deriv))
         }

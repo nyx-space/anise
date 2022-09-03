@@ -35,6 +35,7 @@ impl<'a> Splines<'a> {
         coeff: Coefficient,
     ) -> Result<f64, AniseError> {
         self.check_integrity()?;
+        // Compute the index in bytes at which the relevant dtata starts
         let mut offset = self.config.spline_offset(spline_idx);
         // Calculate the f64's offset in this spline
         offset += match coeff {

@@ -29,6 +29,7 @@ use anise::prelude::AniseError;
 use anise::prelude::File;
 use anise::Epoch;
 use anise::{file_mmap, prelude::AniseContext};
+use hifitime::TimeUnits;
 
 /// Tests the ephemeris computations from the de438s which don't require any frame transformation.
 #[test]

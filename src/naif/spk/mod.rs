@@ -125,13 +125,18 @@ impl<'a> SPK<'a> {
 
             let raw_x_coeffs = &self.daf.bytes[r_dbl_idx..r_dbl_idx + DBL_SIZE * meta.degree()];
 
+            let mut haystack = false;
             let x_coeffs: Vec<f64> = (0..meta.degree())
                 .map(|item| {
-                    parse_bytes_as!(
+                    let v = parse_bytes_as!(
                         f64,
                         raw_x_coeffs[DBL_SIZE * item..DBL_SIZE * (item + 1)],
                         Endianness::Little
-                    )
+                    );
+                    if (v - 11411525.13992438).abs() < 1e-6 {
+                        haystack = true;
+                    }
+                    v
                 })
                 .collect::<_>();
             r_dbl_idx += DBL_SIZE * meta.degree();
@@ -157,6 +162,10 @@ impl<'a> SPK<'a> {
                 })
                 .collect::<_>();
 
+            if haystack {
+                println!("{rnum}\n{x_coeffs:?}");
+            }
+
             // Prep the data to be exported
             let export = SegmentExportData {
                 rcrd_mid_point,
@@ -178,9 +187,8 @@ impl<'a> SPK<'a> {
                     seg.center_id,
                     seg.frame_id,
                     seg.data_type,
-                    seg.start_epoch.as_gregorian_str(TimeSystem::ET),
-                    seg.start_epoch.as_gregorian_str(TimeSystem::TT),
-                    // seg.end_epoch.as_gregorian_str(TimeSystem::ET),
+                    (seg.start_epoch + 1.centuries()).as_gregorian_str(TimeSystem::ET),
+                    (seg.end_epoch + 1.centuries()).as_gregorian_str(TimeSystem::ET),
                 );
                 // The rcrd_radius_s should be a round integer, so let's check that
                 assert!((rcrd_radius_s % rcrd_radius_s.floor()).abs() < EPSILON);
@@ -440,8 +448,8 @@ impl<'a> TryInto<SPK<'a>> for &'a DAF<'a> {
                 )));
             }
             // NOTE: SPICE stores data in J2000 but hifitime stores it in J1900, so we shift everything by one century
-            let start_epoch = Epoch::from_et_seconds(dbg!(f64_data[0])) + 1.0.centuries();
-            let end_epoch = Epoch::from_et_seconds(f64_data[1]) + 1.0.centuries();
+            let start_epoch = Epoch::from_et_seconds(f64_data[0]);
+            let end_epoch = Epoch::from_et_seconds(f64_data[1]);
 
             if int_data.len() != 6 {
                 return Err(AniseError::NAIFParseError(format!(
