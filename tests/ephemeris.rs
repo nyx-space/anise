@@ -147,18 +147,30 @@ fn de438s_translation_verif() {
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
+    /*
+    Python code:
+    >>> import spiceypy as sp
+    >>> sp.furnsh('data/de438s.bsp')
+    >>> sp.furnsh('../../hifitime/naif0012.txt')
+    >>> et = sp.utc2et('2002 FEB 07 00:00:00')
+    >>> et
+    66312064.18493876
+    >>> ['{:.16e}'.format(x) for x in sp.spkez(2, et, "J2000", "NONE", 0)[0]]
+    ['9.5205638574810922e+07', '-4.6160711641080864e+07', '-2.6779481328088202e+07', '1.6612048965376893e+01', '2.8272067093357247e+01', '1.1668575733195270e+01']
+    */
+
     let (pos, vel) = ctx.translate_to_parent(VENUS_J2000, epoch).unwrap();
 
     let pos_expct = Vector3::new(
-        95205638.5746064484119415,
-        -46160711.6414288505911827,
-        -26779481.3282318264245987,
+        9.5205638574810922e+07,
+        -4.6160711641080864e+07,
+        -2.6779481328088202e+07,
     );
 
     let vel_expct = Vector3::new(
-        132.8963917239523767,
-        28.2720670932998246,
-        11.6685757331618056,
+        1.6612048965376893e+01,
+        2.8272067093357247e+01,
+        1.1668575733195270e+01,
     );
 
     dbg!(pos, pos_expct);

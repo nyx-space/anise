@@ -58,7 +58,7 @@ fn test_spk_load() {
         "Invalid start time"
     );
 
-    spk.copy_coeffs(301).unwrap();
+    spk.copy_segments(301).unwrap();
 
     // Build the ANISE file
     let filename_anis = "de421.anis";
@@ -91,7 +91,7 @@ fn test_spk_load() {
         let splt = ephem.name.split("#").collect::<Vec<&str>>();
         let seg_target_id = str::parse::<i32>(splt[1]).unwrap();
         // Fetch the SPK segment
-        let (seg, meta, all_seg_data) = spk.copy_coeffs(seg_target_id).unwrap();
+        let (seg, meta, all_seg_data) = spk.copy_segments(seg_target_id).unwrap();
         if all_seg_data.is_empty() {
             continue;
         }

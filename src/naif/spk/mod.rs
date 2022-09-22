@@ -11,7 +11,7 @@
 extern crate crc32fast;
 extern crate der;
 use self::datatype::DataType;
-use self::segment::{SegMetaData, Segment, SegmentExportData};
+use self::segment::{Record, SegMetaData, Segment};
 
 use super::daf::{Endianness, DAF};
 use crate::asn1::common::InterpolationKind;
@@ -28,7 +28,7 @@ use crate::prelude::AniseError;
 use crate::{file_mmap, parse_bytes_as, DBL_SIZE};
 use crc32fast::hash;
 use der::{Decode, Encode};
-use hifitime::{Epoch, TimeSystem, TimeUnits};
+use hifitime::{Epoch, TimeSystem, Unit};
 use log::{info, warn};
 use std::convert::TryInto;
 use std::f64::EPSILON;
@@ -98,13 +98,13 @@ impl<'a> SPK<'a> {
     }
 
     /// Returns all of the coefficients
-    pub fn copy_coeffs(
+    pub fn copy_segments(
         &self,
         seg_target_id: i32,
-    ) -> Result<(&Segment, SegMetaData, Vec<SegmentExportData>), AniseError> {
+    ) -> Result<(&Segment, SegMetaData, Vec<Record>), AniseError> {
         let (seg, meta) = self.segment_ptr(seg_target_id)?;
 
-        let mut full_data = Vec::new();
+        let mut records = Vec::new();
 
         let mut dbl_idx = (seg.start_idx - 1) * DBL_SIZE;
         for rnum in (0..meta.num_records_in_seg * meta.rsize).step_by(meta.rsize) {
@@ -125,18 +125,13 @@ impl<'a> SPK<'a> {
 
             let raw_x_coeffs = &self.daf.bytes[r_dbl_idx..r_dbl_idx + DBL_SIZE * meta.degree()];
 
-            let mut haystack = false;
             let x_coeffs: Vec<f64> = (0..meta.degree())
                 .map(|item| {
-                    let v = parse_bytes_as!(
+                    parse_bytes_as!(
                         f64,
                         raw_x_coeffs[DBL_SIZE * item..DBL_SIZE * (item + 1)],
                         Endianness::Little
-                    );
-                    if (v - 11411525.13992438).abs() < 1e-6 {
-                        haystack = true;
-                    }
-                    v
+                    )
                 })
                 .collect::<_>();
             r_dbl_idx += DBL_SIZE * meta.degree();
@@ -162,12 +157,8 @@ impl<'a> SPK<'a> {
                 })
                 .collect::<_>();
 
-            if haystack {
-                println!("{rnum}\n{x_coeffs:?}");
-            }
-
             // Prep the data to be exported
-            let export = SegmentExportData {
+            let rcrd = Record {
                 rcrd_mid_point,
                 rcrd_radius_s,
                 x_coeffs,
@@ -177,29 +168,20 @@ impl<'a> SPK<'a> {
             };
 
             if rnum == 0 {
-                info!(
-                    "[copy_coeffs] [{}..{}] ({} rps) `{}` (tgt={}, ctr={}, frame={}) {:?} | {} .. {}",
-                    seg.start_idx,
-                    seg.end_idx,
-                    meta.num_records_in_seg,
-                    seg.name,
-                    seg.target_id,
-                    seg.center_id,
-                    seg.frame_id,
-                    seg.data_type,
-                    (seg.start_epoch + 1.centuries()).as_gregorian_str(TimeSystem::ET),
-                    (seg.end_epoch + 1.centuries()).as_gregorian_str(TimeSystem::ET),
-                );
+                info!("[copy_segments] {seg} \tmid={rcrd_mid_point}\tradius={rcrd_radius_s}");
                 // The rcrd_radius_s should be a round integer, so let's check that
-                assert!((rcrd_radius_s % rcrd_radius_s.floor()).abs() < EPSILON);
+                assert!(
+                    (rcrd_radius_s % rcrd_radius_s.floor()).abs() < EPSILON,
+                    "Record radius is not an integer number of seconds"
+                );
             }
 
-            full_data.push(export);
+            records.push(rcrd);
             r_dbl_idx += DBL_SIZE * meta.degree();
             dbl_idx = r_dbl_idx;
         }
 
-        Ok((seg, meta, full_data))
+        Ok((seg, meta, records))
     }
 
     /// Converts the provided SPK to an ANISE file
@@ -225,8 +207,8 @@ impl<'a> SPK<'a> {
         let mut all_intermediate_files = Vec::new();
 
         for (idx, seg) in self.segments.iter().enumerate() {
-            let (seg, meta, seg_coeffs) = self.copy_coeffs(seg.target_id)?;
-            if seg_coeffs.len() <= 1 && skip_empty {
+            let (seg, meta, records) = self.copy_segments(seg.target_id)?;
+            if records.len() <= 1 && skip_empty {
                 warn!("[to_anise] skipping empty {seg}");
                 continue;
             }
@@ -241,40 +223,50 @@ impl<'a> SPK<'a> {
             let config = seg.data_type.to_anise_spline_coeff(degree);
             let mut spline_data = Vec::with_capacity(20_000);
 
+            let mut delta_mid = None;
+
             // Build the splines
-            for seg_coeff in &seg_coeffs {
-                // Check that the interval length is indeed twice the radius
-                assert_eq!(meta.interval_length as f64, 2. * seg_coeff.rcrd_radius_s);
-
-                for coeff in &seg_coeff.x_coeffs {
-                    for coeffbyte in coeff.to_be_bytes() {
-                        spline_data.push(coeffbyte);
-                    }
+            for record in &records {
+                // Check that the interval length is indeed twice the radius, this is fixed.
+                assert_eq!(meta.interval_length as f64, 2. * record.rcrd_radius_s);
+                if delta_mid.is_none() {
+                    delta_mid = Some(record.rcrd_mid_point);
+                } else {
+                    assert_eq!(
+                        delta_mid.unwrap() + meta.interval_length as f64,
+                        record.rcrd_mid_point
+                    );
                 }
 
-                for coeff in &seg_coeff.y_coeffs {
-                    for coeffbyte in coeff.to_be_bytes() {
-                        spline_data.push(coeffbyte);
-                    }
-                }
-                for coeff in &seg_coeff.z_coeffs {
+                for coeff in &record.x_coeffs {
                     for coeffbyte in coeff.to_be_bytes() {
                         spline_data.push(coeffbyte);
                     }
                 }
 
-                for coeff in &seg_coeff.vx_coeffs {
+                for coeff in &record.y_coeffs {
+                    for coeffbyte in coeff.to_be_bytes() {
+                        spline_data.push(coeffbyte);
+                    }
+                }
+                for coeff in &record.z_coeffs {
                     for coeffbyte in coeff.to_be_bytes() {
                         spline_data.push(coeffbyte);
                     }
                 }
 
-                for coeff in &seg_coeff.vy_coeffs {
+                for coeff in &record.vx_coeffs {
                     for coeffbyte in coeff.to_be_bytes() {
                         spline_data.push(coeffbyte);
                     }
                 }
-                for coeff in &seg_coeff.vz_coeffs {
+
+                for coeff in &record.vy_coeffs {
+                    for coeffbyte in coeff.to_be_bytes() {
+                        spline_data.push(coeffbyte);
+                    }
+                }
+                for coeff in &record.vz_coeffs {
                     for coeffbyte in coeff.to_be_bytes() {
                         spline_data.push(coeffbyte);
                     }
@@ -369,7 +361,7 @@ impl<'a> SPK<'a> {
             for (eidx, ephem) in ctx.ephemeris_data.iter().enumerate() {
                 let seg_target_id = Segment::human_name_to_id(ephem.name)?;
                 // Fetch the SPK segment
-                let (seg, meta, all_seg_data) = self.copy_coeffs(seg_target_id).unwrap();
+                let (seg, meta, all_seg_data) = self.copy_segments(seg_target_id).unwrap();
                 if all_seg_data.is_empty() {
                     continue;
                 }
@@ -447,7 +439,7 @@ impl<'a> TryInto<SPK<'a>> for &'a DAF<'a> {
                     f64_data.len()
                 )));
             }
-            // NOTE: SPICE stores data in J2000 but hifitime stores it in J1900, so we shift everything by one century
+
             let start_epoch = Epoch::from_et_seconds(f64_data[0]);
             let end_epoch = Epoch::from_et_seconds(f64_data[1]);
 

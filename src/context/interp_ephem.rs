@@ -53,7 +53,9 @@ impl<'a> AniseContext<'a> {
                         .as_gregorian_str(hifitime::TimeSystem::ET),
                     eval_epoch
                 );
+
                 let start_epoch = ephem.start_epoch().epoch;
+                let end_epoch = ephem.end_epoch().epoch;
 
                 for (cno, coeff) in [Coefficient::X, Coefficient::Y, Coefficient::Z]
                     .iter()

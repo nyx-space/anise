@@ -13,7 +13,7 @@ use der::{Decode, Encode, Reader, Tag, Writer};
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum SplineKind {
     FixedWindow {
-        window_duration_s: f64,
+        window_duration_s: f64, // TODO: Duration not seconds
     },
     SlidingWindow {
         /// Sliding window ephemerides may only span one millenia to constraint stack size

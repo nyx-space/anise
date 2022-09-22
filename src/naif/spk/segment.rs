@@ -11,7 +11,7 @@
 use crate::prelude::AniseError;
 
 use super::datatype::DataType;
-use hifitime::{Epoch, TimeSystem};
+use hifitime::Epoch;
 use log::error;
 use std::fmt;
 
@@ -147,8 +147,8 @@ impl<'a> Default for Segment<'a> {
     fn default() -> Self {
         Self {
             name: "No name",
-            start_epoch: Epoch::from_tdb_seconds(0.0),
-            end_epoch: Epoch::from_tdb_seconds(0.0),
+            start_epoch: Epoch::from_et_seconds(0.0),
+            end_epoch: Epoch::from_et_seconds(0.0),
             target_id: 0,
             center_id: 0,
             frame_id: 0,
@@ -163,15 +163,15 @@ impl<'a> fmt::Display for Segment<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Segment `{}` (tgt: {}, ctr: {}, frame: {}) of type {:?} from {} ({}) to {} ({}) [{}..{}]",
+            "Segment `{}` (tgt: {}, ctr: {}, frame: {}) of type {:?} from {:E} ({}) to {:E} ({}) [{}..{}]",
             self.name,
             self.target_id,
             self.center_id,
             self.frame_id,
             self.data_type,
-            self.start_epoch.as_gregorian_str(TimeSystem::ET),
+            self.start_epoch,
             self.start_epoch.as_et_duration().in_seconds(),
-            self.end_epoch.as_gregorian_str(TimeSystem::ET),
+            self.end_epoch,
             self.end_epoch.as_et_duration().in_seconds(),
             self.start_idx,
             self.end_idx
@@ -180,7 +180,7 @@ impl<'a> fmt::Display for Segment<'a> {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct SegmentExportData {
+pub struct Record {
     pub rcrd_mid_point: f64,
     pub rcrd_radius_s: f64,
     pub x_coeffs: Vec<f64>,
