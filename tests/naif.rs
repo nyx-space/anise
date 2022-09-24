@@ -45,7 +45,7 @@ fn test_spk_load() {
         "Invalid start of coeff index for DE421"
     );
     assert_eq!(
-        meta.interval_length, 345600,
+        meta.interval_length_s, 345600,
         "Invalid interval length (in seconds) for DE421"
     );
     assert_eq!(meta.rsize, 41, "Invalid rsize for DE421");
@@ -107,7 +107,7 @@ fn test_spk_load() {
         match splines.kind {
             SplineSpacing::Even { window_duration_s } => {
                 assert_eq!(
-                    window_duration_s, meta.interval_length as f64,
+                    window_duration_s, meta.interval_length_s as f64,
                     "incorrect interval duration"
                 );
             }

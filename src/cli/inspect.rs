@@ -53,8 +53,8 @@ impl<'a> Display for AniseContext<'a> {
                 name: ephem.name,
                 data_kind: "Ephemeris",
                 hash: hash(ephem.name.as_bytes()),
-                start_epoch: ephem.start_epoch().epoch,
-                end_epoch: ephem.end_epoch().epoch,
+                start_epoch: ephem.start_epoch(),
+                end_epoch: ephem.end_epoch(),
                 interpolation_kind: ephem.interpolation_kind,
             });
         }
@@ -64,8 +64,8 @@ impl<'a> Display for AniseContext<'a> {
                 name: orientation.name,
                 data_kind: "Orientation",
                 hash: hash(orientation.name.as_bytes()),
-                start_epoch: orientation.start_epoch().epoch,
-                end_epoch: orientation.end_epoch().epoch,
+                start_epoch: orientation.start_epoch(),
+                end_epoch: orientation.end_epoch(),
                 interpolation_kind: orientation.interpolation_kind,
             });
         }

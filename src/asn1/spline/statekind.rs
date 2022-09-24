@@ -64,19 +64,29 @@ pub enum StateKind {
 }
 
 impl StateKind {
-    pub const fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
     /// Returns the length in octets required to store this covariance information
-    pub const fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         let num_items = match self {
             StateKind::None => 0,
             StateKind::Position { degree } => degree * 3,
             StateKind::PositionVelocity { degree } => degree * 6,
             StateKind::PositionVelocityAcceleration { degree } => degree * 9,
         };
-        DBL_SIZE * usize::from(num_items)
+        DBL_SIZE * (num_items as usize)
+    }
+
+    /// Returns the interpolation degree
+    pub const fn degree(&self) -> u8 {
+        match self {
+            StateKind::None => 0,
+            StateKind::Position { degree } => *degree,
+            StateKind::PositionVelocity { degree } => *degree,
+            StateKind::PositionVelocityAcceleration { degree } => *degree,
+        }
     }
 }
 

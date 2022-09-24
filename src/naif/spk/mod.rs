@@ -18,10 +18,7 @@ use crate::asn1::common::InterpolationKind;
 use crate::asn1::context::AniseContext;
 use crate::asn1::ephemeris::Ephemeris;
 use crate::asn1::metadata::Metadata;
-use crate::asn1::spline::Splines;
-use crate::asn1::splinecoeffs::Coefficient;
-use crate::asn1::splinekind::SplineSpacing;
-use crate::asn1::time::Epoch as AniseEpoch;
+use crate::asn1::spline::{Evenness, Field, SplineMeta, Splines, StateKind};
 use crate::constants::orientations::J2000;
 use crate::errors::InternalErrorKind;
 use crate::prelude::AniseError;
@@ -85,7 +82,7 @@ impl<'a> SPK<'a> {
                 seg,
                 SegMetaData {
                     init_s_past_j2k,
-                    interval_length: interval_length as usize,
+                    interval_length_s: interval_length as usize,
                     rsize: rsize as usize,
                     num_records_in_seg: num_records_in_seg as usize,
                 },
@@ -216,8 +213,11 @@ impl<'a> SPK<'a> {
             let hashed_name = hash(seg.human_name().as_bytes());
 
             let degree = (meta.rsize - 2) / 3;
-            let kind = SplineSpacing::Even {
-                window_duration_s: meta.interval_length as f64,
+            let metadata = SplineMeta {
+                evenness: Evenness::Even {
+                    duration_ns: (meta.interval_length_s * 1_000_000_000) as u64,
+                },
+                ..Default::default()
             };
 
             let config = seg.data_type.to_anise_spline_coeff(degree);
@@ -228,12 +228,12 @@ impl<'a> SPK<'a> {
             // Build the splines
             for record in &records {
                 // Check that the interval length is indeed twice the radius, this is fixed.
-                assert_eq!(meta.interval_length as f64, 2. * record.rcrd_radius_s);
+                assert_eq!(meta.interval_length_s as f64, 2. * record.rcrd_radius_s);
                 if delta_mid.is_none() {
                     delta_mid = Some(record.rcrd_mid_point);
                 } else {
                     assert_eq!(
-                        delta_mid.unwrap() + meta.interval_length as f64,
+                        delta_mid.unwrap() + meta.interval_length_s as f64,
                         record.rcrd_mid_point
                     );
                 }
@@ -277,8 +277,7 @@ impl<'a> SPK<'a> {
             let chksum = hash(&spline_data);
             // Build the spline struct
             let splines = Splines {
-                kind,
-                config,
+                metadata,
                 data_checksum: chksum,
                 data: &spline_data,
             };
@@ -288,11 +287,7 @@ impl<'a> SPK<'a> {
             // Create the ephemeris
             let ephem = Ephemeris {
                 name: seg.human_name(),
-                // ref_epoch: seg.start_epoch.into(), // Don't do this, cf. hifitime#106
-                ref_epoch: AniseEpoch {
-                    epoch: seg.start_epoch,
-                    system: TimeSystem::ET, // Force it to be in ET
-                },
+                ref_epoch: seg.start_epoch.into(),
                 backward: false,
                 interpolation_kind: InterpolationKind::ChebyshevSeries,
                 parent_ephemeris_hash,
@@ -368,30 +363,31 @@ impl<'a> SPK<'a> {
 
                 assert_eq!(
                     seg.start_epoch,
-                    ephem.start_epoch().epoch,
-                    "start epochs differ for {} (eidx = {}): {} != {}",
+                    ephem.start_epoch(),
+                    "start epochs differ for {} (eidx = {}): {:E} != {:E}",
                     ephem.name,
                     eidx,
-                    seg.start_epoch.as_gregorian_str(TimeSystem::ET),
-                    ephem.start_epoch().epoch.as_gregorian_str(TimeSystem::ET),
+                    seg.start_epoch,
+                    ephem.start_epoch()
                 );
 
                 let splines = &ephem.splines;
-                match splines.kind {
-                    SplineSpacing::Even { window_duration_s } => {
+                match splines.metadata.evenness {
+                    Evenness::Even { duration_ns } => {
                         assert_eq!(
-                            window_duration_s, meta.interval_length as f64,
+                            duration_ns,
+                            (meta.interval_length_s * 1_000_000_000) as u64,
                             "incorrect interval duration"
                         );
                     }
                     _ => panic!("wrong spline kind"),
                 };
 
-                assert_eq!(splines.config.num_position_coeffs, 3);
-                assert_eq!(splines.config.num_position_dt_coeffs, 0);
-                assert_eq!(splines.config.num_velocity_coeffs, 0);
-                assert_eq!(splines.config.num_velocity_dt_coeffs, 0);
-                assert_eq!(splines.config.num_epochs, 0);
+                assert_eq!(
+                    splines.metadata.state_kind,
+                    StateKind::Position { degree: 3 }
+                );
+                assert!(splines.metadata.cov_kind.is_empty());
 
                 info!(
                     "[to_anise] metadata OK for {}. Now checking each coefficient.",
@@ -400,15 +396,15 @@ impl<'a> SPK<'a> {
 
                 for (sidx, seg_data) in all_seg_data.iter().enumerate() {
                     for (cidx, x_truth) in seg_data.x_coeffs.iter().enumerate() {
-                        assert_eq!(splines.fetch(sidx, cidx, Coefficient::X).unwrap(), *x_truth);
+                        assert_eq!(splines.fetch(sidx, cidx, Field::X).unwrap(), *x_truth);
                     }
 
                     for (cidx, y_truth) in seg_data.y_coeffs.iter().enumerate() {
-                        assert_eq!(splines.fetch(sidx, cidx, Coefficient::Y).unwrap(), *y_truth);
+                        assert_eq!(splines.fetch(sidx, cidx, Field::Y).unwrap(), *y_truth);
                     }
 
                     for (cidx, z_truth) in seg_data.z_coeffs.iter().enumerate() {
-                        assert_eq!(splines.fetch(sidx, cidx, Coefficient::Z).unwrap(), *z_truth);
+                        assert_eq!(splines.fetch(sidx, cidx, Field::Z).unwrap(), *z_truth);
                     }
                 }
 

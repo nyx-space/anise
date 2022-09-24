@@ -21,7 +21,7 @@ pub mod lookuptable;
 pub mod metadata;
 pub mod semver;
 pub mod spline;
-pub mod splinecoeffs;
+// pub mod splinecoeffs;
 pub mod units;
 
 use self::semver::Semver;
@@ -35,6 +35,6 @@ pub const ANISE_VERSION: Semver = Semver {
 /// The maximum number of trajectories that can be loaded in a single context
 pub const MAX_TRAJECTORIES: usize = 128;
 
-/// The maximum degree supported by ANISE.
-/// Remove this once https://github.com/anise-toolkit/anise.rs/issues/19 is implemented.
-pub const MAX_DEGREE: usize = 128;
+// The maximum degree supported by ANISE.
+// Remove this once https://github.com/anise-toolkit/anise.rs/issues/19 is implemented.
+// pub const MAX_DEGREE: usize = 128;

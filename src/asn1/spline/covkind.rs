@@ -124,7 +124,17 @@ impl CovKind {
             StateKind::PositionVelocity { degree } => degree * (6 + 15),
             StateKind::PositionVelocityAcceleration { degree } => degree * (6 + 15 + 21),
         };
-        DBL_SIZE * usize::from(num_items)
+        DBL_SIZE * (num_items as usize)
+    }
+
+    /// Returns the interpolation degree
+    pub const fn degree(&self) -> u8 {
+        match &self.data {
+            StateKind::None => 0,
+            StateKind::Position { degree } => *degree,
+            StateKind::PositionVelocity { degree } => *degree,
+            StateKind::PositionVelocityAcceleration { degree } => *degree,
+        }
     }
 }
 

@@ -8,21 +8,73 @@
  * Documentation: https://nyxspace.com/
  */
 
-pub mod covkind;
-pub mod evenness;
-pub mod meta;
-pub mod splines;
-pub mod statekind;
+mod covkind;
+pub use covkind::*;
+mod evenness;
+pub use evenness::*;
+mod meta;
+pub use meta::*;
+mod splines;
+pub use splines::*;
+mod statekind;
+pub use statekind::*;
 
+/// The fields that can be queried for spline data.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Field {
+    MidPoint,
     X,
     Y,
     Z,
-    VX,
-    VY,
-    VZ,
-    AX,
-    AY,
-    AZ,
+    Vx,
+    Vy,
+    Vz,
+    Ax,
+    Ay,
+    Az,
+    CovXX,
+    CovYZ,
+    CovYY,
+    CovZX,
+    CovZY,
+    CovZZ,
+    CovVxX,
+    CovVxY,
+    CovVxZ,
+    CovVxVx,
+    CovVyX,
+    CovVyY,
+    CovVyZ,
+    CovVyVx,
+    CovVyVy,
+    CovVzX,
+    CovVzY,
+    CovVzZ,
+    CovVzVx,
+    CovVzVy,
+    CovVzVz,
+    CovAxX,
+    CovAxY,
+    CovAxZ,
+    CovAxVx,
+    CovAxVy,
+    CovAxVz,
+    CovAxAx,
+    CovAyX,
+    CovAyY,
+    CovAyZ,
+    CovAyVx,
+    CovAyVy,
+    CovAyVz,
+    CovAyAx,
+    CovAyAy,
+    CovAzX,
+    CovAzY,
+    CovAzZ,
+    CovAzVx,
+    CovAzVy,
+    CovAzVz,
+    CovAzAx,
+    CovAzAy,
+    CovAzAz,
 }

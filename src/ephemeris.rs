@@ -8,12 +8,10 @@
  * Documentation: https://nyxspace.com/
  */
 
-use hifitime::TimeUnits;
+use hifitime::Epoch;
 
 use crate::{
-    asn1::{
-        common::InterpolationKind, ephemeris::Ephemeris, splinekind::SplineSpacing, time::Epoch,
-    },
+    asn1::{common::InterpolationKind, ephemeris::Ephemeris},
     errors::{AniseError, InternalErrorKind},
 };
 
@@ -25,20 +23,21 @@ impl<'a> Ephemeris<'a> {
 
     /// Returns the last epoch in the data, which will be the chronological "start" epoch if the ephemeris is generated backward
     fn last_epoch(&self) -> Epoch {
-        match self.splines.kind {
-            SplineSpacing::Even { window_duration_s } => {
-                // Grab the number of splines
-                (self.ref_epoch.epoch + ((self.splines.len() as f64) * window_duration_s).seconds())
-                    .into()
-            }
-            SplineSpacing::Uneven { indexes: _ } => {
-                todo!()
-            }
-        }
+        todo!()
+        // match self.splines.kind {
+        //     SplineSpacing::Even { window_duration_s } => {
+        //         // Grab the number of splines
+        //         (self.ref_epoch.epoch + ((self.splines.len() as f64) * window_duration_s).seconds())
+        //             .into()
+        //     }
+        //     SplineSpacing::Uneven { indexes: _ } => {
+        //         todo!()
+        //     }
+        // }
     }
 
     pub fn start_epoch(&self) -> Epoch {
-        if self.first_epoch().epoch > self.last_epoch().epoch {
+        if self.first_epoch() > self.last_epoch() {
             self.last_epoch()
         } else {
             self.first_epoch()
@@ -46,7 +45,7 @@ impl<'a> Ephemeris<'a> {
     }
 
     pub fn end_epoch(&self) -> Epoch {
-        if self.first_epoch().epoch > self.last_epoch().epoch {
+        if self.first_epoch() > self.last_epoch() {
             self.first_epoch()
         } else {
             self.last_epoch()
@@ -70,33 +69,34 @@ impl<'a> Ephemeris<'a> {
         if self.interpolation_kind != InterpolationKind::ChebyshevSeries {
             return Err(InternalErrorKind::InterpolationNotSupported.into());
         }
-        match self.splines.kind {
-            SplineSpacing::Uneven { .. } => {
-                Err(InternalErrorKind::InterpolationNotSupported.into())
-            }
-            SplineSpacing::Even { window_duration_s } => {
-                // Compute the offset compared to the reference epoch of this ephemeris.
-                let offset_s = if self.backward {
-                    (req_epoch.epoch - self.ref_epoch.epoch).in_seconds()
-                } else {
-                    (self.ref_epoch.epoch - req_epoch.epoch).in_seconds()
-                };
+        todo!()
+        // match self.splines.kind {
+        //     SplineSpacing::Uneven { .. } => {
+        //         Err(InternalErrorKind::InterpolationNotSupported.into())
+        //     }
+        //     SplineSpacing::Even { window_duration_s } => {
+        //         // Compute the offset compared to the reference epoch of this ephemeris.
+        //         let offset_s = if self.backward {
+        //             (req_epoch.epoch - self.ref_epoch.epoch).in_seconds()
+        //         } else {
+        //             (self.ref_epoch.epoch - req_epoch.epoch).in_seconds()
+        //         };
 
-                // The index for a fixed window is simply the rounded division.
-                let index = if self.backward {
-                    (offset_s / window_duration_s).ceil()
-                } else {
-                    (offset_s / window_duration_s).floor()
-                };
+        //         // The index for a fixed window is simply the rounded division.
+        //         let index = if self.backward {
+        //             (offset_s / window_duration_s).ceil()
+        //         } else {
+        //             (offset_s / window_duration_s).floor()
+        //         };
 
-                // Then let the spline compute the state.
-                self.splines.posvel_at(
-                    index as usize,
-                    offset_s,
-                    window_duration_s,
-                    self.interpolation_kind,
-                )
-            }
-        }
+        //         // Then let the spline compute the state.
+        //         self.splines.posvel_at(
+        //             index as usize,
+        //             offset_s,
+        //             window_duration_s,
+        //             self.interpolation_kind,
+        //         )
+        //     }
+        // }
     }
 }

@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::{asn1::splinecoeffs::SplineCoeffCount, prelude::AniseError};
+use crate::{asn1::spline::StateKind, prelude::AniseError};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DataType {
@@ -47,20 +47,15 @@ pub enum DataType {
 }
 
 impl DataType {
-    pub fn to_anise_spline_coeff(&self, degree: usize) -> SplineCoeffCount {
-        let num_velocity_coeffs = match self {
-            Self::ChebyshevPositionOnly => 0,
+    pub fn to_anise_spline_coeff(&self, degree: usize) -> StateKind {
+        match self {
+            Self::ChebyshevPositionOnly => StateKind::Position {
+                degree: degree.try_into().unwrap(),
+            },
+            Self::ChebyshevPositionVelocity => StateKind::PositionVelocity {
+                degree: degree.try_into().unwrap(),
+            },
             _ => todo!(),
-        };
-        let num_position_coeffs = match self {
-            Self::ChebyshevVelocityOnly => 0,
-            _ => 3,
-        };
-        SplineCoeffCount {
-            degree: degree.try_into().unwrap(),
-            num_position_coeffs,
-            num_velocity_coeffs,
-            ..Default::default()
         }
     }
 }
@@ -86,7 +81,7 @@ impl TryFrom<i32> for DataType {
             20 => Ok(Self::ChebyshevVelocityOnly),
             21 => Ok(Self::ExtendedModifiedDifferenceArrays),
             _ => Err(AniseError::NAIFParseError(format!(
-                "unknwon data type {}",
+                "unknown data type {}",
                 data_type
             ))),
         }

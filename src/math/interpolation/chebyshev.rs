@@ -10,11 +10,15 @@
 
 // TODO: Consider making a trait for these
 
-use hifitime::{Epoch, TimeUnits, Unit};
+use hifitime::{Epoch, TimeUnits, Unit as DurationUnit};
 use log::trace;
 
 use crate::{
-    asn1::{ephemeris, spline::Splines, splinecoeffs::Coefficient, splinekind::SplineSpacing},
+    asn1::{
+        ephemeris,
+        spline::Evenness,
+        spline::{Field, Splines},
+    },
     prelude::AniseError,
 };
 
@@ -26,19 +30,22 @@ pub(crate) fn cheby_eval(
     eval_epoch: Epoch,  // Must be in the same time system at this point
     start_epoch: Epoch, // Must be in the same time system at this point
     splines: &Splines,
-    coeff: Coefficient,
+    field: Field,
 ) -> Result<(f64, f64), AniseError> {
     // TODO: Figure how what I do with the radius and midpoint data
     // assert_eq!(meta.interval_length as f64, 2. * seg_coeff.rcrd_radius_s); ==> always true
     // Figure out whether the first parameter should be the ephem instead of the spline ... and if so, maybe put it in interp_ephem directly? There are only five cases there when not accounting for covariance and pos only vs pos+vel
-    match splines.kind {
-        SplineSpacing::Even { window_duration_s } => {
+    match splines.metadata.evenness {
+        Evenness::Even { duration_ns } => {
+            let window_duration_s: f64 =
+                ((duration_ns as f64) * DurationUnit::Nanosecond).in_seconds();
+
             let radius_s = window_duration_s / 2.0;
             let ephem_start_delta = eval_epoch - start_epoch;
             println!(
                 "window_duration_s = {}\tdelta = {ephem_start_delta}={} days ==> {}",
                 window_duration_s.seconds(),
-                ephem_start_delta.in_unit(Unit::Day),
+                ephem_start_delta.in_unit(DurationUnit::Day),
                 start_epoch
             );
             let ephem_start_delta_s = ephem_start_delta.in_seconds();
@@ -62,9 +69,11 @@ pub(crate) fn cheby_eval(
             let start_epoch_et_s = start_epoch.as_et_seconds();
             let spline_idx_f = (ephem_start_delta_s / window_duration_s).round(); // Round seems to work
 
-            let midpoint = start_epoch_et_s
-                + window_duration_s * (ephem_start_delta_s / window_duration_s).floor()
-                + radius_s;
+            // let midpoint = start_epoch_et_s
+            //     + window_duration_s * (ephem_start_delta_s / window_duration_s).floor()
+            //     + radius_s;
+            let midpoint = splines.fetch(spline_idx_f as usize, 0, Field::MidPoint)?;
+
             let normalized_t = (eval_epoch_et_s - midpoint) / radius_s;
 
             let s = (eval_epoch.as_jde_et_days()
@@ -98,12 +107,12 @@ pub(crate) fn cheby_eval(
             //     2.681835938104285e-7,
             // ];
 
-            dbg!(splines.config.degree, coeff, spline_idx_f);
-            for j in (2..=splines.config.degree.into()).rev() {
+            dbg!(splines.metadata.state_kind.degree(), field, spline_idx_f);
+            for j in (2..=splines.metadata.state_kind.degree().into()).rev() {
                 w[2] = w[1];
                 w[1] = w[0];
                 // dbg!(splines.fetch(spline_idx_f as usize, j - 1, coeff)?);
-                w[0] = dbg!(splines.fetch(spline_idx_f as usize, j - 1, coeff)?)
+                w[0] = dbg!(splines.fetch(spline_idx_f as usize, j - 1, field)?)
                     + (normalized_t2 * w[1] - w[2]);
                 // w[0] = coeffs[j - 1] + (normalized_t2 * w[1] - w[2]);
 
@@ -112,13 +121,13 @@ pub(crate) fn cheby_eval(
                 dw[0] = w[1] * 2. + dw[1] * normalized_t2 - dw[2];
             }
 
-            let val = dbg!(splines.fetch(spline_idx_f as usize, 0, coeff)?)
+            let val = dbg!(splines.fetch(spline_idx_f as usize, 0, field)?)
                 + (normalized_t * w[0] - w[1]);
             // let val = coeffs[0] + (normalized_t * w[0] - w[1]);
 
             let deriv = w[0] + normalized_t * dw[0] - dw[1];
             Ok((val, deriv))
         }
-        SplineSpacing::Uneven { indexes: _indexes } => todo!(),
+        Evenness::Uneven { indexes: _indexes } => todo!(),
     }
 }

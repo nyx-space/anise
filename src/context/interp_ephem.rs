@@ -11,7 +11,7 @@
 use log::trace;
 
 use crate::asn1::common::InterpolationKind;
-use crate::asn1::splinecoeffs::Coefficient;
+use crate::asn1::spline::{Field, StateKind};
 use crate::hifitime::Epoch;
 use crate::math::interpolation::chebyshev::cheby_eval;
 use crate::math::Vector3;
@@ -45,37 +45,28 @@ impl<'a> AniseContext<'a> {
         let splines = &ephem.splines;
         match ephem.interpolation_kind {
             InterpolationKind::ChebyshevSeries => {
-                trace!(
-                    "start = {}\tfetch = {}",
-                    ephem
-                        .start_epoch()
-                        .epoch
-                        .as_gregorian_str(hifitime::TimeSystem::ET),
-                    eval_epoch
-                );
+                trace!("start = {:E}\tfetch = {}", ephem.start_epoch(), eval_epoch);
 
-                let start_epoch = ephem.start_epoch().epoch;
-                let end_epoch = ephem.end_epoch().epoch;
+                let start_epoch = ephem.start_epoch();
+                let end_epoch = ephem.end_epoch();
 
-                for (cno, coeff) in [Coefficient::X, Coefficient::Y, Coefficient::Z]
-                    .iter()
-                    .enumerate()
-                {
+                for (cno, coeff) in [Field::X, Field::Y, Field::Z].iter().enumerate() {
                     let (val, deriv) = cheby_eval(eval_epoch, start_epoch, splines, *coeff)?;
                     pos[cno] = val;
                     vel[cno] = deriv;
                 }
 
-                if splines.config.num_velocity_coeffs > 0 {
-                    // Overwrite the velocity by the direct computation since there are specific coefficients for the velocity
-                    for (cno, coeff) in [Coefficient::VX, Coefficient::VY, Coefficient::VZ]
-                        .iter()
-                        .enumerate()
-                    {
-                        let (val, _) = cheby_eval(eval_epoch, start_epoch, splines, *coeff)?;
-                        vel[cno] = val;
+                match splines.metadata.state_kind {
+                    StateKind::PositionVelocity { degree: _ }
+                    | StateKind::PositionVelocityAcceleration { degree: _ } => {
+                        // Overwrite the velocity by the direct computation since there are specific coefficients for the velocity
+                        for (cno, field) in [Field::Vx, Field::Vy, Field::Vz].iter().enumerate() {
+                            let (val, _) = cheby_eval(eval_epoch, start_epoch, splines, *field)?;
+                            vel[cno] = val;
+                        }
                     }
-                }
+                    _ => {}
+                };
             }
             InterpolationKind::HermiteSeries => todo!(),
             InterpolationKind::LagrangeSeries => todo!(),

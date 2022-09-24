@@ -17,7 +17,7 @@ use super::{covkind::CovKind, evenness::Evenness, statekind::StateKind};
 
 pub struct SplineMeta {
     /// Defines whether this is an evenly or unevenly timed spline
-    pub spacing: Evenness,
+    pub evenness: Evenness,
     /// Defines what kind of state data is stored in this spline
     pub state_kind: StateKind,
     /// Defines what kind of covariance data is stored in this spline
@@ -30,23 +30,23 @@ pub struct SplineMeta {
 
 impl SplineMeta {
     /// Returns the offset (in bytes) in the octet string
-    pub const fn spline_offset(&self, idx: usize) -> usize {
+    pub fn spline_offset(&self, idx: usize) -> usize {
         idx * self.len()
     }
 
-    pub const fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
     /// Returns the length of a spline in bytes
-    pub const fn len(&self) -> usize {
-        self.spacing.len() + self.state_kind.len() + self.cov_kind.len()
+    pub fn len(&self) -> usize {
+        self.evenness.len() + self.state_kind.len() + self.cov_kind.len()
     }
 }
 
 impl Encode for SplineMeta {
     fn encoded_len(&self) -> der::Result<der::Length> {
-        self.spacing.encoded_len()?
+        self.evenness.encoded_len()?
             + self.state_kind.encoded_len()?
             + self.cov_kind.encoded_len()?
             + self.numerator_unit.encoded_len()?
@@ -54,7 +54,7 @@ impl Encode for SplineMeta {
     }
 
     fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
-        self.spacing.encode(encoder)?;
+        self.evenness.encode(encoder)?;
         self.state_kind.encode(encoder)?;
         self.cov_kind.encode(encoder)?;
         self.numerator_unit.encode(encoder)?;
@@ -71,7 +71,7 @@ impl<'a> Decode<'a> for SplineMeta {
         let denominator_unit = decoder.decode()?;
 
         Ok(Self {
-            spacing,
+            evenness: spacing,
             state_kind,
             cov_kind,
             numerator_unit,
