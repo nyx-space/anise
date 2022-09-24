@@ -25,6 +25,7 @@ pub mod splinecoeffs;
 pub mod splinemeta;
 pub mod splinespacing;
 pub mod time;
+pub mod units;
 
 use self::semver::Semver;
 /// The current version of ANISE

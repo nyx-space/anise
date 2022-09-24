@@ -10,7 +10,7 @@
 use der::{Decode, Encode, Reader, Tag, Writer};
 use hifitime::Duration;
 
-/// Defines the two kinds of splines supports: equal time steps (fixed window) or unequal time steps (also called sliding window)
+/// Defines the two kinds of spacing splines supports: equal time steps (fixed sized interpolation) or unequal time steps (also called sliding window)
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum SplineSpacing {
     Even {

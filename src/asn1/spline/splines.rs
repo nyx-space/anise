@@ -9,7 +9,7 @@
  */
 use der::{asn1::OctetStringRef, Decode, Encode, Length, Reader, Writer};
 
-use super::{splinecoeffs::SplineCoeffCount, splinekind::SplineSpacing, splinemeta::SplineMeta};
+use super::{meta::SplineMeta, spacing::SplineSpacing};
 
 /// Maximum interpolation degree for splines. This is needed for encoding and decoding of Splines in ASN1 using the `der` library.
 pub const MAX_INTERP_DEGREE: usize = 32;
@@ -29,7 +29,7 @@ pub const MAX_INTERP_DEGREE: usize = 32;
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Splines<'a> {
     pub metadata: SplineMeta,
-    pub config: SplineCoeffCount,
+    // pub config: SplineCoeffCount,
     /// Store the CRC32 checksum of the stored data. This should be checked prior to interpreting the data in the spline.
     pub data_checksum: u32,
     // TODO: Figure out how to properly add the covariance info, it's a bit hard because of the diag size
