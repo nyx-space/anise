@@ -9,7 +9,20 @@
  */
 
 pub mod covkind;
+pub mod evenness;
 pub mod meta;
-pub mod spacing;
 pub mod splines;
 pub mod statekind;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Field {
+    X,
+    Y,
+    Z,
+    VX,
+    VY,
+    VZ,
+    AX,
+    AY,
+    AZ,
+}

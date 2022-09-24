@@ -116,7 +116,7 @@ impl CovKind {
         self.len() == 0
     }
 
-    /// Returns the length required to store this covariance information
+    /// Returns the length in octets required to store this covariance information
     pub const fn len(&self) -> usize {
         let num_items = match self.data {
             StateKind::None => 0,

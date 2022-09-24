@@ -9,7 +9,7 @@
  */
 use der::{asn1::OctetStringRef, Decode, Encode, Length, Reader, Writer};
 
-use super::{meta::SplineMeta, spacing::SplineSpacing};
+use super::meta::SplineMeta;
 
 /// Maximum interpolation degree for splines. This is needed for encoding and decoding of Splines in ASN1 using the `der` library.
 pub const MAX_INTERP_DEGREE: usize = 32;
@@ -28,28 +28,23 @@ pub const MAX_INTERP_DEGREE: usize = 32;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Splines<'a> {
+    /// Metadata of the spline
     pub metadata: SplineMeta,
-    // pub config: SplineCoeffCount,
-    /// Store the CRC32 checksum of the stored data. This should be checked prior to interpreting the data in the spline.
+    /// Stores the CRC32 checksum of the data octet string.
     pub data_checksum: u32,
-    // TODO: Figure out how to properly add the covariance info, it's a bit hard because of the diag size
-    // pub cov_position_coeff_len: u8,
-    // pub cov_velocity_coeff_len: u8,
-    // pub cov_acceleration_coeff_len: u8,
+    /// The data as a packed struct of octets
     pub data: &'a [u8],
 }
 
 impl<'a> Encode for Splines<'a> {
     fn encoded_len(&self) -> der::Result<Length> {
-        self.kind.encoded_len()?
-            + self.config.encoded_len()?
+        self.metadata.encoded_len()?
             + self.data_checksum.encoded_len()?
             + OctetStringRef::new(self.data).unwrap().encoded_len()?
     }
 
     fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
-        self.kind.encode(encoder)?;
-        self.config.encode(encoder)?;
+        self.metadata.encode(encoder)?;
         self.data_checksum.encode(encoder)?;
         OctetStringRef::new(self.data).unwrap().encode(encoder)
     }
@@ -57,13 +52,11 @@ impl<'a> Encode for Splines<'a> {
 
 impl<'a> Decode<'a> for Splines<'a> {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
-        let kind = decoder.decode()?;
-        let config = decoder.decode()?;
+        let metadata = decoder.decode()?;
         let data_checksum = decoder.decode()?;
         let data_bytes: OctetStringRef = decoder.decode()?;
         Ok(Self {
-            kind,
-            config,
+            metadata,
             data_checksum,
             data: data_bytes.as_bytes(),
         })

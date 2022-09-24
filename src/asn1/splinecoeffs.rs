@@ -74,19 +74,3 @@ impl<'a> Decode<'a> for SplineCoeffCount {
         })
     }
 }
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Coefficient {
-    X,
-    Xdt,
-    Y,
-    Ydt,
-    Z,
-    Zdt,
-    VX,
-    VXdt,
-    VY,
-    VYdt,
-    VZ,
-    VZdt,
-}

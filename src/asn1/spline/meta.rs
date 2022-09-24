@@ -7,19 +7,25 @@
  *
  * Documentation: https://nyxspace.com/
  */
-use der::{Decode, Encode, Reader, Tag, Writer};
-use hifitime::Duration;
+use der::{Decode, Encode, Reader, Writer};
 
-use crate::DBL_SIZE;
+use crate::asn1::units::{DistanceUnit, TimeUnit};
 
-use super::{covkind::CovKind, spacing::SplineSpacing, statekind::StateKind};
+use super::{covkind::CovKind, evenness::Evenness, statekind::StateKind};
 
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
 
 pub struct SplineMeta {
-    pub spacing: SplineSpacing,
+    /// Defines whether this is an evenly or unevenly timed spline
+    pub spacing: Evenness,
+    /// Defines what kind of state data is stored in this spline
     pub state_kind: StateKind,
+    /// Defines what kind of covariance data is stored in this spline
     pub cov_kind: CovKind,
+    /// Defines the numerator unit of the state data (e.g. "kilometer", the default)
+    pub numerator_unit: DistanceUnit,
+    /// Defines the denominator unit of the state data (e.g. "second", the default)
+    pub denominator_unit: TimeUnit,
 }
 
 impl SplineMeta {
@@ -34,12 +40,43 @@ impl SplineMeta {
 
     /// Returns the length of a spline in bytes
     pub const fn len(&self) -> usize {
-        let num_items = self.num_epochs
-            + self.num_position_coeffs * self.degree
-            + self.num_position_dt_coeffs * self.degree
-            + self.num_velocity_coeffs * self.degree
-            + self.num_velocity_dt_coeffs * self.degree;
-        DBL_SIZE * (num_items as usize)
+        self.spacing.len() + self.state_kind.len() + self.cov_kind.len()
+    }
+}
+
+impl Encode for SplineMeta {
+    fn encoded_len(&self) -> der::Result<der::Length> {
+        self.spacing.encoded_len()?
+            + self.state_kind.encoded_len()?
+            + self.cov_kind.encoded_len()?
+            + self.numerator_unit.encoded_len()?
+            + self.denominator_unit.encoded_len()?
+    }
+
+    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+        self.spacing.encode(encoder)?;
+        self.state_kind.encode(encoder)?;
+        self.cov_kind.encode(encoder)?;
+        self.numerator_unit.encode(encoder)?;
+        self.denominator_unit.encode(encoder)
+    }
+}
+
+impl<'a> Decode<'a> for SplineMeta {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
+        let spacing = decoder.decode()?;
+        let state_kind = decoder.decode()?;
+        let cov_kind = decoder.decode()?;
+        let numerator_unit = decoder.decode()?;
+        let denominator_unit = decoder.decode()?;
+
+        Ok(Self {
+            spacing,
+            state_kind,
+            cov_kind,
+            numerator_unit,
+            denominator_unit,
+        })
     }
 }
 

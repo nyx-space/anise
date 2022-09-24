@@ -22,6 +22,12 @@ pub enum DistanceUnit {
     Megameter,
 }
 
+impl Default for DistanceUnit {
+    fn default() -> Self {
+        Self::Kilometer
+    }
+}
+
 /// Allows conversion of a Distance into a u8 with the following mapping.
 /// Mapping: Micrometer: 0; Millimeter: 1; Meter: 2; Kilometer: 3; Megameter: 4.
 impl From<DistanceUnit> for u8 {

@@ -15,7 +15,8 @@ license = "MPL-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-hifitime = {version = "3.4.0", features = ["asn1der"]}
+# hifitime = {version = "3.4.0", features = ["asn1der"]}
+hifitime = {path = "../../../nyx-space/hifitime", features = ["asn1der"]}
 memmap2 = "0.5.7"
 crc32fast = "1.3.0"
 der = {version = "0.6.0", features = ["derive", "alloc", "real"]}
