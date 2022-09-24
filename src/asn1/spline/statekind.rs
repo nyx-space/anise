@@ -9,6 +9,8 @@
  */
 use der::{Decode, Encode, Reader, Writer};
 
+use crate::DBL_SIZE;
+
 /// State Kind defines what kind of state is stored in the spline.
 ///
 /// # Limitations
@@ -38,6 +40,14 @@ use der::{Decode, Encode, Reader, Writer};
 /// | 266 | Position and Velocity | 266-255 = 11
 /// | 0 | None | _not applicable_
 ///
+/// # Storage
+///
+/// Position data will always require three fields (x, y, z). Velocity adds another three (vx, vy, vz), and so does acceleration (ax, ay, az).
+///
+/// ## Example
+/// Storing the position and velocity with an 11 degree polynomial will require 11*6 = 66 coefficient. Each coefficient is stored as packed structure of 8 octets floating point values in IEEE754 format.
+/// Hence, this would require 66*8 = 528 octets per spline.
+///
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub enum StateKind {
     /// No state data at all, i.e. this spline only has covariance information
@@ -51,6 +61,23 @@ pub enum StateKind {
     PositionVelocityAcceleration {
         degree: u8,
     },
+}
+
+impl StateKind {
+    pub const fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Returns the length required to store this covariance information
+    pub const fn len(&self) -> usize {
+        let num_items = match self {
+            StateKind::None => 0,
+            StateKind::Position { degree } => degree * 3,
+            StateKind::PositionVelocity { degree } => degree * 6,
+            StateKind::PositionVelocityAcceleration { degree } => degree * 9,
+        };
+        DBL_SIZE * usize::from(num_items)
+    }
 }
 
 impl Default for StateKind {

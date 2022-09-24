@@ -44,10 +44,6 @@ impl SplineMeta {
 }
 
 /*
-    + Move degree into the kinds for each data
-    + Specify state kind: None, Position, PositionVelocity, PositionVelocityAcceleration and later MRP, MRPRates, etc.
-    + Specify cov kind: None, etc. idem
-    + Encode those as single u8 each.
     + All Spline data has both the start epoch of the spline and the duration: this will be 11 and 10 octets each! Hopefully that isn't too large.
     + If it is too large, if spline space is set to evenly spaced, then remove the duration ==> that means the first entry should be duration and not epoch
         => it's OK to remove the first item or the last, weird to remove any other one.

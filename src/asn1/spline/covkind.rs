@@ -112,8 +112,8 @@ pub struct CovKind {
 }
 
 impl CovKind {
-    pub fn is_empty(&self) -> bool {
-        self.data == StateKind::None
+    pub const fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     /// Returns the length required to store this covariance information
@@ -124,7 +124,7 @@ impl CovKind {
             StateKind::PositionVelocity { degree } => degree * (6 + 15),
             StateKind::PositionVelocityAcceleration { degree } => degree * (6 + 15 + 21),
         };
-        DBL_SIZE * (num_items as usize)
+        DBL_SIZE * usize::from(num_items)
     }
 }
 
