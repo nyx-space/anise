@@ -14,7 +14,7 @@ use crate::DBL_SIZE;
 #[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
 pub struct SplineCoeffCount {
     pub degree: u8,
-    pub num_epochs: u8,
+    pub state: u8, //
     pub num_position_coeffs: u8,
     pub num_position_dt_coeffs: u8,
     pub num_velocity_coeffs: u8,

@@ -22,7 +22,8 @@ pub mod metadata;
 pub mod semver;
 pub mod spline;
 pub mod splinecoeffs;
-pub mod splinekind;
+pub mod splinemeta;
+pub mod splinespacing;
 pub mod time;
 
 use self::semver::Semver;

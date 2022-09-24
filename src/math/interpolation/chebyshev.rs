@@ -14,7 +14,7 @@ use hifitime::{Epoch, TimeUnits, Unit};
 use log::trace;
 
 use crate::{
-    asn1::{ephemeris, spline::Splines, splinecoeffs::Coefficient, splinekind::SplineKind},
+    asn1::{ephemeris, spline::Splines, splinecoeffs::Coefficient, splinekind::SplineSpacing},
     prelude::AniseError,
 };
 
@@ -32,7 +32,7 @@ pub(crate) fn cheby_eval(
     // assert_eq!(meta.interval_length as f64, 2. * seg_coeff.rcrd_radius_s); ==> always true
     // Figure out whether the first parameter should be the ephem instead of the spline ... and if so, maybe put it in interp_ephem directly? There are only five cases there when not accounting for covariance and pos only vs pos+vel
     match splines.kind {
-        SplineKind::FixedWindow { window_duration_s } => {
+        SplineSpacing::Even { window_duration_s } => {
             let radius_s = window_duration_s / 2.0;
             let ephem_start_delta = eval_epoch - start_epoch;
             println!(
@@ -119,6 +119,6 @@ pub(crate) fn cheby_eval(
             let deriv = w[0] + normalized_t * dw[0] - dw[1];
             Ok((val, deriv))
         }
-        SplineKind::SlidingWindow { indexes: _indexes } => todo!(),
+        SplineSpacing::Uneven { indexes: _indexes } => todo!(),
     }
 }

@@ -8,10 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 use der::{asn1::Utf8StringRef, Decode, Encode, Reader, Writer};
+use hifitime::Epoch;
 
 use crate::HashType;
 
-use super::{common::InterpolationKind, spline::Splines, time::Epoch};
+use super::{common::InterpolationKind, spline::Splines};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Ephemeris<'a> {

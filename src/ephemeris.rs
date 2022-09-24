@@ -11,7 +11,9 @@
 use hifitime::TimeUnits;
 
 use crate::{
-    asn1::{common::InterpolationKind, ephemeris::Ephemeris, splinekind::SplineKind, time::Epoch},
+    asn1::{
+        common::InterpolationKind, ephemeris::Ephemeris, splinekind::SplineSpacing, time::Epoch,
+    },
     errors::{AniseError, InternalErrorKind},
 };
 
@@ -24,12 +26,12 @@ impl<'a> Ephemeris<'a> {
     /// Returns the last epoch in the data, which will be the chronological "start" epoch if the ephemeris is generated backward
     fn last_epoch(&self) -> Epoch {
         match self.splines.kind {
-            SplineKind::FixedWindow { window_duration_s } => {
+            SplineSpacing::Even { window_duration_s } => {
                 // Grab the number of splines
                 (self.ref_epoch.epoch + ((self.splines.len() as f64) * window_duration_s).seconds())
                     .into()
             }
-            SplineKind::SlidingWindow { indexes: _ } => {
+            SplineSpacing::Uneven { indexes: _ } => {
                 todo!()
             }
         }
@@ -69,10 +71,10 @@ impl<'a> Ephemeris<'a> {
             return Err(InternalErrorKind::InterpolationNotSupported.into());
         }
         match self.splines.kind {
-            SplineKind::SlidingWindow { .. } => {
+            SplineSpacing::Uneven { .. } => {
                 Err(InternalErrorKind::InterpolationNotSupported.into())
             }
-            SplineKind::FixedWindow { window_duration_s } => {
+            SplineSpacing::Even { window_duration_s } => {
                 // Compute the offset compared to the reference epoch of this ephemeris.
                 let offset_s = if self.backward {
                     (req_epoch.epoch - self.ref_epoch.epoch).in_seconds()

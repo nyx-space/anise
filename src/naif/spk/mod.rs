@@ -20,7 +20,7 @@ use crate::asn1::ephemeris::Ephemeris;
 use crate::asn1::metadata::Metadata;
 use crate::asn1::spline::Splines;
 use crate::asn1::splinecoeffs::Coefficient;
-use crate::asn1::splinekind::SplineKind;
+use crate::asn1::splinekind::SplineSpacing;
 use crate::asn1::time::Epoch as AniseEpoch;
 use crate::constants::orientations::J2000;
 use crate::errors::InternalErrorKind;
@@ -216,7 +216,7 @@ impl<'a> SPK<'a> {
             let hashed_name = hash(seg.human_name().as_bytes());
 
             let degree = (meta.rsize - 2) / 3;
-            let kind = SplineKind::FixedWindow {
+            let kind = SplineSpacing::Even {
                 window_duration_s: meta.interval_length as f64,
             };
 
@@ -378,7 +378,7 @@ impl<'a> SPK<'a> {
 
                 let splines = &ephem.splines;
                 match splines.kind {
-                    SplineKind::FixedWindow { window_duration_s } => {
+                    SplineSpacing::Even { window_duration_s } => {
                         assert_eq!(
                             window_duration_s, meta.interval_length as f64,
                             "incorrect interval duration"

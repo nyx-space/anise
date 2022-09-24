@@ -11,7 +11,7 @@
 use core::convert::TryInto;
 
 use anise::{
-    asn1::{context::AniseContext, splinecoeffs::Coefficient, splinekind::SplineKind},
+    asn1::{context::AniseContext, splinecoeffs::Coefficient, splinekind::SplineSpacing},
     file_mmap,
     naif::{
         daf::{Endianness, DAF},
@@ -105,7 +105,7 @@ fn test_spk_load() {
 
         let splines = &ephem.splines;
         match splines.kind {
-            SplineKind::FixedWindow { window_duration_s } => {
+            SplineSpacing::Even { window_duration_s } => {
                 assert_eq!(
                     window_duration_s, meta.interval_length as f64,
                     "incorrect interval duration"
