@@ -223,19 +223,23 @@ impl<'a> SPK<'a> {
             let config = seg.data_type.to_anise_spline_coeff(degree);
             let mut spline_data = Vec::with_capacity(20_000);
 
-            let mut delta_mid = None;
+            // let mut delta_mid = None;
 
             // Build the splines
             for record in &records {
                 // Check that the interval length is indeed twice the radius, this is fixed.
                 assert_eq!(meta.interval_length_s as f64, 2. * record.rcrd_radius_s);
-                if delta_mid.is_none() {
-                    delta_mid = Some(record.rcrd_mid_point);
-                } else {
-                    assert_eq!(
-                        delta_mid.unwrap() + meta.interval_length_s as f64,
-                        record.rcrd_mid_point
-                    );
+                // if delta_mid.is_none() {
+                //     delta_mid = Some(record.rcrd_mid_point);
+                // } else {
+                //     assert_eq!(
+                //         delta_mid.unwrap() - meta.interval_length_s as f64,
+                //         record.rcrd_mid_point
+                //     );
+                // }
+
+                for midpoint_byte in record.rcrd_mid_point.to_be_bytes() {
+                    spline_data.push(midpoint_byte);
                 }
 
                 for coeff in &record.x_coeffs {
