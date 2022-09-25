@@ -18,7 +18,7 @@ use crate::math::Vector3;
 use crate::{asn1::context::AniseContext, errors::AniseError, frame::Frame};
 
 impl<'a> AniseContext<'a> {
-    /// Returns the position vector and velocity vector of the `source` with respect to its parent at the provided epoch.
+    /// Returns the position vector and velocity vector of the `source` with respect to its parent in the ephemeris at the provided epoch.
     ///
     /// # Errors
     /// + As of now, some interpolation types are not supported, and if that were to happen, this would return an error.
@@ -50,8 +50,12 @@ impl<'a> AniseContext<'a> {
                 let start_epoch = ephem.start_epoch();
                 let end_epoch = ephem.end_epoch();
 
-                for (cno, coeff) in [Field::X, Field::Y, Field::Z].iter().enumerate() {
-                    let (val, deriv) = cheby_eval(eval_epoch, start_epoch, splines, *coeff)?;
+                if eval_epoch < start_epoch || eval_epoch > end_epoch {
+                    return Err(AniseError::MissingInterpolationData(eval_epoch));
+                }
+
+                for (cno, field) in [Field::X, Field::Y, Field::Z].iter().enumerate() {
+                    let (val, deriv) = cheby_eval(eval_epoch, start_epoch, splines, *field)?;
                     pos[cno] = val;
                     vel[cno] = deriv;
                 }

@@ -29,7 +29,8 @@ use anise::prelude::AniseError;
 use anise::prelude::File;
 use anise::Epoch;
 use anise::{file_mmap, prelude::AniseContext};
-use hifitime::TimeUnits;
+
+use hifitime::SECONDS_PER_DAY;
 
 /// Tests the ephemeris computations from the de438s which don't require any frame transformation.
 #[test]
@@ -161,21 +162,21 @@ fn de438s_translation_verif() {
 
     let (pos, vel) = ctx.translate_to_parent(VENUS_J2000, epoch).unwrap();
 
-    let pos_expct = Vector3::new(
+    let pos_expct_km = Vector3::new(
         9.5205638574810922e+07,
         -4.6160711641080864e+07,
         -2.6779481328088202e+07,
     );
 
     let vel_expct = Vector3::new(
-        1.6612048965376893e+01,
-        2.8272067093357247e+01,
-        1.1668575733195270e+01,
+        1.6612048965376893e+01 * SECONDS_PER_DAY,
+        2.8272067093357247e+01 * SECONDS_PER_DAY,
+        1.1668575733195270e+01 * SECONDS_PER_DAY,
     );
 
-    dbg!(pos, pos_expct);
+    dbg!(vel, vel_expct);
 
-    assert!(dbg!(pos - pos_expct).norm() < 1e-16);
+    assert!(dbg!(pos - pos_expct_km).norm() < 1e-16);
     assert!(dbg!(vel - vel_expct).norm() < 1e-16);
 
     // assert!(dbg!(ven2ear_state.y - -1.356_125_479_230_852_7e8).abs() < 7e-4);

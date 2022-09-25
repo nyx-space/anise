@@ -34,6 +34,11 @@ impl<'a> Ephemeris<'a> {
         }
     }
 
+    /// Returns the starting epoch of this ephemeris. It is guaranteed that start_epoch <= end_epoch.
+    ///
+    /// # Note
+    /// + If the ephemeris is stored in chronological order, then the start epoch is the same as the first epoch.
+    /// + If the ephemeris is stored in anti-chronological order, then the start epoch is the last epoch.
     pub fn start_epoch(&self) -> Epoch {
         if self.first_epoch() > self.last_epoch() {
             self.last_epoch()

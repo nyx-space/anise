@@ -19,6 +19,7 @@ use crate::asn1::context::AniseContext;
 use crate::asn1::ephemeris::Ephemeris;
 use crate::asn1::metadata::Metadata;
 use crate::asn1::spline::{Evenness, Field, SplineMeta, Splines, StateKind};
+use crate::asn1::units::{DistanceUnit, TimeUnit};
 use crate::constants::orientations::J2000;
 use crate::errors::InternalErrorKind;
 use crate::prelude::AniseError;
@@ -298,6 +299,8 @@ impl<'a> SPK<'a> {
                 interpolation_kind: InterpolationKind::ChebyshevSeries,
                 parent_ephemeris_hash,
                 orientation_hash: J2000,
+                distance_unit: DistanceUnit::Kilometer,
+                duration_unit: TimeUnit::Second,
                 splines,
             };
 

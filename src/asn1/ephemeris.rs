@@ -12,7 +12,11 @@ use hifitime::{asn1der::Asn1Epoch, Epoch, TimeSystem};
 
 use crate::HashType;
 
-use super::{common::InterpolationKind, spline::Splines};
+use super::{
+    common::InterpolationKind,
+    spline::Splines,
+    units::{DistanceUnit, TimeUnit},
+};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Ephemeris<'a> {
@@ -23,6 +27,10 @@ pub struct Ephemeris<'a> {
     pub parent_ephemeris_hash: HashType,
     pub orientation_hash: HashType,
     pub interpolation_kind: InterpolationKind,
+    /// Answer the question: What distance unit is the output of the interpolation data for distances? E.g. kilometer (default)
+    pub distance_unit: DistanceUnit,
+    /// Answer the question: What time is the output of the interpolation data for distances? E.g. second (default), for kilometer per second velocity
+    pub duration_unit: TimeUnit,
     pub splines: Splines<'a>,
 }
 
@@ -34,6 +42,8 @@ impl<'a> Encode for Ephemeris<'a> {
             + self.parent_ephemeris_hash.encoded_len()?
             + self.orientation_hash.encoded_len()?
             + self.interpolation_kind.encoded_len()?
+            + self.distance_unit.encoded_len()?
+            + self.duration_unit.encoded_len()?
             + self.splines.encoded_len()?
     }
 
@@ -44,6 +54,8 @@ impl<'a> Encode for Ephemeris<'a> {
         self.parent_ephemeris_hash.encode(encoder)?;
         self.orientation_hash.encode(encoder)?;
         self.interpolation_kind.encode(encoder)?;
+        self.distance_unit.encode(encoder)?;
+        self.duration_unit.encode(encoder)?;
         self.splines.encode(encoder)
     }
 }
@@ -60,6 +72,8 @@ impl<'a> Decode<'a> for Ephemeris<'a> {
             parent_ephemeris_hash: decoder.decode()?,
             orientation_hash: decoder.decode()?,
             interpolation_kind: decoder.decode()?,
+            distance_unit: decoder.decode()?,
+            duration_unit: decoder.decode()?,
             splines: decoder.decode()?,
         })
     }
