@@ -75,7 +75,7 @@ pub(crate) fn cheby_eval(
             let val =
                 (splines.fetch(spline_idx_f as usize, 0, field)?) + (normalized_t * w[0] - w[1]);
 
-            let deriv = w[0] + normalized_t * dw[0] - dw[1];
+            let deriv = (w[0] + normalized_t * dw[0] - dw[1]) / radius_s;
             Ok((val, deriv))
         }
         Evenness::Uneven { indexes: _indexes } => todo!(),

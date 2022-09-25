@@ -30,8 +30,6 @@ use anise::prelude::File;
 use anise::Epoch;
 use anise::{file_mmap, prelude::AniseContext};
 
-use hifitime::SECONDS_PER_DAY;
-
 /// Tests the ephemeris computations from the de438s which don't require any frame transformation.
 #[test]
 fn de438s_zero_paths() {
@@ -169,9 +167,9 @@ fn de438s_translation_verif() {
     );
 
     let vel_expct = Vector3::new(
-        1.6612048965376893e+01 * SECONDS_PER_DAY,
-        2.8272067093357247e+01 * SECONDS_PER_DAY,
-        1.1668575733195270e+01 * SECONDS_PER_DAY,
+        1.6612048965376893e+01,
+        2.8272067093357247e+01,
+        1.1668575733195270e+01,
     );
 
     dbg!(vel, vel_expct);
