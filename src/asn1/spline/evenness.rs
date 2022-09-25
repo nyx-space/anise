@@ -82,7 +82,7 @@ impl Encode for Evenness {
 impl<'a> Decode<'a> for Evenness {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         // Check the header tag to decode this CHOICE
-        if decoder.peek_tag()? == Tag::Real {
+        if decoder.peek_tag()? == Tag::Integer {
             Ok(Self::Even {
                 duration_ns: decoder.decode()?,
             })

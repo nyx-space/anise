@@ -165,7 +165,7 @@ impl<'a> SPK<'a> {
             };
 
             if rnum == 0 {
-                info!("[copy_segments] {seg} \tmid={rcrd_mid_point}\tradius={rcrd_radius_s}");
+                info!("[copy_segments] {seg}");
                 // The rcrd_radius_s should be a round integer, so let's check that
                 assert!(
                     (rcrd_radius_s % rcrd_radius_s.floor()).abs() < EPSILON,
