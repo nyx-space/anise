@@ -11,7 +11,8 @@
 use core::convert::TryInto;
 
 use anise::{
-    asn1::{context::AniseContext, splinecoeffs::Coefficient, splinekind::SplineSpacing},
+    asn1::context::AniseContext,
+    asn1::spline::{Evenness, Field, StateKind},
     file_mmap,
     naif::{
         daf::{Endianness, DAF},
@@ -45,7 +46,7 @@ fn test_spk_load() {
         "Invalid start of coeff index for DE421"
     );
     assert_eq!(
-        meta.interval_length_s, 345600,
+        meta.interval_length_s, 345600.0,
         "Invalid interval length (in seconds) for DE421"
     );
     assert_eq!(meta.rsize, 41, "Invalid rsize for DE421");
@@ -104,33 +105,35 @@ fn test_spk_load() {
         assert_eq!(seg.name, splt[0].trim(), "incorrect name");
 
         let splines = &ephem.splines;
-        match splines.kind {
-            SplineSpacing::Even { window_duration_s } => {
+        match splines.metadata.evenness {
+            Evenness::Even { duration_ns } => {
                 assert_eq!(
-                    window_duration_s, meta.interval_length_s as f64,
+                    (duration_ns as i64).nanoseconds().in_seconds(),
+                    meta.interval_length_s,
                     "incorrect interval duration"
                 );
             }
             _ => panic!("wrong spline kind"),
         };
 
-        assert_eq!(splines.config.num_position_coeffs, 3);
-        assert_eq!(splines.config.num_position_dt_coeffs, 0);
-        assert_eq!(splines.config.num_velocity_coeffs, 0);
-        assert_eq!(splines.config.num_velocity_dt_coeffs, 0);
-        assert_eq!(splines.config.num_epochs, 0);
+        assert_eq!(
+            splines.metadata.state_kind,
+            StateKind::Position {
+                degree: ((meta.rsize - 2) / 3) as u8
+            }
+        );
 
         for (sidx, seg_data) in all_seg_data.iter().enumerate() {
             for (cidx, x_truth) in seg_data.x_coeffs.iter().enumerate() {
-                assert_eq!(splines.fetch(sidx, cidx, Coefficient::X).unwrap(), *x_truth);
+                assert_eq!(splines.fetch(sidx, cidx, Field::X).unwrap(), *x_truth);
             }
 
             for (cidx, y_truth) in seg_data.y_coeffs.iter().enumerate() {
-                assert_eq!(splines.fetch(sidx, cidx, Coefficient::Y).unwrap(), *y_truth);
+                assert_eq!(splines.fetch(sidx, cidx, Field::Y).unwrap(), *y_truth);
             }
 
             for (cidx, z_truth) in seg_data.z_coeffs.iter().enumerate() {
-                assert_eq!(splines.fetch(sidx, cidx, Coefficient::Z).unwrap(), *z_truth);
+                assert_eq!(splines.fetch(sidx, cidx, Field::Z).unwrap(), *z_truth);
             }
         }
     }

@@ -41,32 +41,32 @@ impl SplineMeta {
     /// Returns the offset of this field in the spline given how this spline is set up.
     /// This may return an error when requesting a field that is not available.
     pub fn field_offset(&self, field: Field, coeff_idx: usize) -> Result<usize, AniseError> {
-        if self.cov_kind.is_empty() {
-            if field >= Field::CovXX {
-                Err(AniseError::ParameterNotSpecified)
-            } else {
-                // Padding from header (e.g. one double for even splines, two for uneven splines).
-                let header_padding = self.evenness.len();
-                // Offset from the requested field (e.g. coefficients for X are stored before those for Y components).
-                let field_offset = match field {
-                    Field::X => 0,
-                    Field::Y => 1,
-                    Field::Z => 2,
-                    Field::Vx => 3,
-                    Field::Vy => 4,
-                    Field::Vz => 5,
-                    _ => unreachable!(),
-                };
-
-                // Offset to reach the correct coefficient given the index, e.g. to get the 3rd Y component,
-                // the total offset in the spline should be header_padding + 1 * num of coeffs + coefficient index.
-
-                Ok(header_padding
-                    + field_offset * (self.state_kind.degree() as usize) * DBL_SIZE
-                    + coeff_idx * DBL_SIZE)
-            }
+        // Make the field is valid in this spline.
+        if (self.cov_kind.is_empty() && field.is_covariance())
+            || (!field.is_covariance() && self.state_kind.is_empty())
+        {
+            Err(AniseError::ParameterNotSpecified)
         } else {
-            todo!()
+            // TODO Make sure the position data is also there.
+            // Padding from header (e.g. one double for even splines, two for uneven splines).
+            let header_padding = self.evenness.len();
+            // Offset from the requested field (e.g. coefficients for X are stored before those for Y components).
+            let field_offset = match field {
+                Field::X => 0,
+                Field::Y => 1,
+                Field::Z => 2,
+                Field::Vx => 3,
+                Field::Vy => 4,
+                Field::Vz => 5,
+                _ => unreachable!(),
+            };
+
+            // Offset to reach the correct coefficient given the index, e.g. to get the 3rd Y component,
+            // the total offset in the spline should be header_padding + 1 * num of coeffs + coefficient index.
+
+            Ok(header_padding
+                + field_offset * (self.state_kind.degree() as usize) * DBL_SIZE
+                + coeff_idx * DBL_SIZE)
         }
     }
 
