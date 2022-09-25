@@ -52,6 +52,18 @@ impl SplineMeta {
             let header_padding = self.evenness.len();
             // Offset from the requested field (e.g. coefficients for X are stored before those for Y components).
             let field_offset = match field {
+                Field::MidPoint => {
+                    // Special case: the midpoint is always at the start of each spline.
+                    return Ok(0);
+                }
+                Field::Duration => {
+                    if header_padding == 2 {
+                        // Special case: the duration of the spline is always the second item of each spline, if this spline type supports it
+                        return Ok(DBL_SIZE);
+                    } else {
+                        return Err(AniseError::ParameterNotSpecified);
+                    }
+                }
                 Field::X => 0,
                 Field::Y => 1,
                 Field::Z => 2,
