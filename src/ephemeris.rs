@@ -8,10 +8,10 @@
  * Documentation: https://nyxspace.com/
  */
 
-use hifitime::Epoch;
+use hifitime::{Epoch, TimeUnits};
 
 use crate::{
-    asn1::{common::InterpolationKind, ephemeris::Ephemeris},
+    asn1::{common::InterpolationKind, ephemeris::Ephemeris, spline::Evenness},
     errors::{AniseError, InternalErrorKind},
 };
 
@@ -23,17 +23,15 @@ impl<'a> Ephemeris<'a> {
 
     /// Returns the last epoch in the data, which will be the chronological "start" epoch if the ephemeris is generated backward
     fn last_epoch(&self) -> Epoch {
-        todo!()
-        // match self.splines.kind {
-        //     SplineSpacing::Even { window_duration_s } => {
-        //         // Grab the number of splines
-        //         (self.ref_epoch.epoch + ((self.splines.len() as f64) * window_duration_s).seconds())
-        //             .into()
-        //     }
-        //     SplineSpacing::Uneven { indexes: _ } => {
-        //         todo!()
-        //     }
-        // }
+        match self.splines.metadata.evenness {
+            Evenness::Even { duration_ns } => {
+                // Grab the number of splines
+                self.ref_epoch + ((self.splines.len() as f64) * (duration_ns as i64).nanoseconds())
+            }
+            Evenness::Uneven { indexes: _ } => {
+                todo!()
+            }
+        }
     }
 
     pub fn start_epoch(&self) -> Epoch {

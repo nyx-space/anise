@@ -22,14 +22,13 @@ use crate::{
 };
 
 impl<'a> Splines<'a> {
-    pub const fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
     /// Returns the number of splines
-    pub const fn len(&self) -> usize {
-        todo!()
-        // self.data.len() / self.config.len() + 1
+    pub fn len(&self) -> usize {
+        self.data.len() / self.metadata.len() + 1
     }
 
     pub fn fetch(
@@ -40,28 +39,27 @@ impl<'a> Splines<'a> {
     ) -> Result<f64, AniseError> {
         self.check_integrity()?;
 
-        todo!()
-
-        // // Compute the index in bytes at which the relevant dtata starts
-        // let mut offset = self.config.spline_offset(spline_idx);
+        // Compute the index in bytes at which the data starts
+        let mut offset = self.metadata.spline_offset(spline_idx)
+            + self.metadata.field_offset(field, coeff_idx)?;
         // // Calculate the f64's offset in this spline
-        // offset += match coeff {
+        // offset += match field {
         //     Coefficient::X => 0,
         //     Coefficient::Y => (self.config.degree as usize) * DBL_SIZE,
         //     Coefficient::Z => (2 * self.config.degree as usize) * DBL_SIZE,
         //     _ => todo!(),
         // };
-        // offset += coeff_idx * DBL_SIZE;
-        // match self.data.get(offset..offset + DBL_SIZE) {
-        //     Some(ptr) => Ok(parse_bytes_as!(f64, ptr, Endianness::Big)),
-        //     None => {
-        //         error!(
-        //             "[fetch] could not fetch {}-th {:?} in spline {}",
-        //             coeff_idx, coeff, spline_idx
-        //         );
-        //         Err(AniseError::IndexingError)
-        //     }
-        // }
+        offset += coeff_idx * DBL_SIZE;
+        match self.data.get(offset..offset + DBL_SIZE) {
+            Some(ptr) => Ok(parse_bytes_as!(f64, ptr, Endianness::Big)),
+            None => {
+                error!(
+                    "[fetch] could not fetch {}-th {:?} in spline {}",
+                    coeff_idx, field, spline_idx
+                );
+                Err(AniseError::IndexingError)
+            }
+        }
     }
 
     pub fn check_integrity(&self) -> Result<(), AniseError> {

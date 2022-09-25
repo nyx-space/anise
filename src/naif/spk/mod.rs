@@ -25,7 +25,7 @@ use crate::prelude::AniseError;
 use crate::{file_mmap, parse_bytes_as, DBL_SIZE};
 use crc32fast::hash;
 use der::{Decode, Encode};
-use hifitime::{Epoch, TimeSystem, Unit};
+use hifitime::{Epoch, TimeSystem, TimeUnits, Unit};
 use log::{info, warn};
 use std::convert::TryInto;
 use std::f64::EPSILON;
@@ -213,14 +213,16 @@ impl<'a> SPK<'a> {
             let hashed_name = hash(seg.human_name().as_bytes());
 
             let degree = (meta.rsize - 2) / 3;
+            let state_kind = seg.data_type.to_anise_spline_coeff(degree);
+
             let metadata = SplineMeta {
                 evenness: Evenness::Even {
-                    duration_ns: (meta.interval_length_s * 1_000_000_000) as u64,
+                    duration_ns: ((meta.interval_length_s as i64).seconds()).to_parts().1,
                 },
+                state_kind,
                 ..Default::default()
             };
 
-            let config = seg.data_type.to_anise_spline_coeff(degree);
             let mut spline_data = Vec::with_capacity(20_000);
 
             // let mut delta_mid = None;
@@ -389,7 +391,9 @@ impl<'a> SPK<'a> {
 
                 assert_eq!(
                     splines.metadata.state_kind,
-                    StateKind::Position { degree: 3 }
+                    StateKind::Position {
+                        degree: ((meta.rsize - 2) / 3) as u8
+                    }
                 );
                 assert!(splines.metadata.cov_kind.is_empty());
 
@@ -401,14 +405,17 @@ impl<'a> SPK<'a> {
                 for (sidx, seg_data) in all_seg_data.iter().enumerate() {
                     for (cidx, x_truth) in seg_data.x_coeffs.iter().enumerate() {
                         assert_eq!(splines.fetch(sidx, cidx, Field::X).unwrap(), *x_truth);
+                        println!("{cidx} X OK");
                     }
 
                     for (cidx, y_truth) in seg_data.y_coeffs.iter().enumerate() {
                         assert_eq!(splines.fetch(sidx, cidx, Field::Y).unwrap(), *y_truth);
+                        println!("{cidx} Y OK");
                     }
 
                     for (cidx, z_truth) in seg_data.z_coeffs.iter().enumerate() {
                         assert_eq!(splines.fetch(sidx, cidx, Field::Z).unwrap(), *z_truth);
+                        println!("{cidx} Z OK");
                     }
                 }
 

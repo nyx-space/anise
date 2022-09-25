@@ -9,9 +9,13 @@
  */
 use der::{Decode, Encode, Reader, Writer};
 
-use crate::asn1::units::{DistanceUnit, TimeUnit};
+use crate::{
+    asn1::units::{DistanceUnit, TimeUnit},
+    prelude::AniseError,
+    DBL_SIZE,
+};
 
-use super::{covkind::CovKind, evenness::Evenness, statekind::StateKind};
+use super::{covkind::CovKind, evenness::Evenness, statekind::StateKind, Field};
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
 
@@ -32,6 +36,30 @@ impl SplineMeta {
     /// Returns the offset (in bytes) in the octet string
     pub fn spline_offset(&self, idx: usize) -> usize {
         idx * self.len()
+    }
+
+    /// Returns the offset of this field in the spline given how this spline is set up.
+    /// This may return an error when requesting a field that is not available.
+    pub fn field_offset(&self, field: Field, coeff_idx: usize) -> Result<usize, AniseError> {
+        if self.cov_kind.is_empty() {
+            if field >= Field::CovXX {
+                Err(AniseError::ParameterNotSpecified)
+            } else {
+                let header_len = self.evenness.len();
+                let field_offset = match field {
+                    Field::X => 0,
+                    Field::Y => 1,
+                    Field::Z => 2,
+                    Field::Vx => 3,
+                    Field::Vy => 4,
+                    Field::Vz => 5,
+                    _ => unreachable!(),
+                };
+                Ok(header_len + field_offset * DBL_SIZE)
+            }
+        } else {
+            todo!()
+        }
     }
 
     pub fn is_empty(&self) -> bool {

@@ -11,9 +11,6 @@ use der::{asn1::OctetStringRef, Decode, Encode, Length, Reader, Writer};
 
 use super::meta::SplineMeta;
 
-/// Maximum interpolation degree for splines. This is needed for encoding and decoding of Splines in ASN1 using the `der` library.
-pub const MAX_INTERP_DEGREE: usize = 32;
-
 // #[derive(Enumerated)]
 // #[repr(u8)]
 // pub enum TrunctationStrategy {

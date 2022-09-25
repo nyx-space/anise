@@ -23,6 +23,7 @@ pub use statekind::*;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Field {
     MidPoint,
+    Duration,
     X,
     Y,
     Z,
