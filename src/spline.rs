@@ -40,16 +40,10 @@ impl<'a> Splines<'a> {
         self.check_integrity()?;
 
         // Compute the index in bytes at which the data starts
-        let mut offset = self.metadata.spline_offset(spline_idx)
+        let offset = self.metadata.spline_offset(spline_idx)
             + self.metadata.field_offset(field, coeff_idx)?;
-        // // Calculate the f64's offset in this spline
-        // offset += match field {
-        //     Coefficient::X => 0,
-        //     Coefficient::Y => (self.config.degree as usize) * DBL_SIZE,
-        //     Coefficient::Z => (2 * self.config.degree as usize) * DBL_SIZE,
-        //     _ => todo!(),
-        // };
-        offset += coeff_idx * DBL_SIZE;
+
+        // Safely fetch this coefficient, returning an error if we're out of bounds.
         match self.data.get(offset..offset + DBL_SIZE) {
             Some(ptr) => Ok(parse_bytes_as!(f64, ptr, Endianness::Big)),
             None => {

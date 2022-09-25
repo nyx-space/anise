@@ -18,7 +18,7 @@ use std::fmt;
 #[derive(Copy, Clone, Debug)]
 pub struct SegMetaData {
     pub init_s_past_j2k: f64,
-    pub interval_length_s: usize,
+    pub interval_length_s: f64,
     pub rsize: usize,
     pub num_records_in_seg: usize,
 }

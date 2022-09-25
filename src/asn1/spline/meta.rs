@@ -45,7 +45,9 @@ impl SplineMeta {
             if field >= Field::CovXX {
                 Err(AniseError::ParameterNotSpecified)
             } else {
-                let header_len = self.evenness.len();
+                // Padding from header (e.g. one double for even splines, two for uneven splines).
+                let header_padding = self.evenness.len();
+                // Offset from the requested field (e.g. coefficients for X are stored before those for Y components).
                 let field_offset = match field {
                     Field::X => 0,
                     Field::Y => 1,
@@ -55,7 +57,13 @@ impl SplineMeta {
                     Field::Vz => 5,
                     _ => unreachable!(),
                 };
-                Ok(header_len + field_offset * DBL_SIZE)
+
+                // Offset to reach the correct coefficient given the index, e.g. to get the 3rd Y component,
+                // the total offset in the spline should be header_padding + 1 * num of coeffs + coefficient index.
+
+                Ok(header_padding
+                    + field_offset * (self.state_kind.degree() as usize) * DBL_SIZE
+                    + coeff_idx * DBL_SIZE)
             }
         } else {
             todo!()

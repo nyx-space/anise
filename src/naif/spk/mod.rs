@@ -66,7 +66,7 @@ impl<'a> SPK<'a> {
             byte_idx += 1;
 
             //  2. INTLEN is the length of the interval covered by each record, in seconds.
-            let interval_length = self.daf.read_f64(byte_idx);
+            let interval_length_s = self.daf.read_f64(byte_idx);
 
             byte_idx += 1;
 
@@ -82,7 +82,7 @@ impl<'a> SPK<'a> {
                 seg,
                 SegMetaData {
                     init_s_past_j2k,
-                    interval_length_s: interval_length as usize,
+                    interval_length_s,
                     rsize: rsize as usize,
                     num_records_in_seg: num_records_in_seg as usize,
                 },
@@ -217,7 +217,7 @@ impl<'a> SPK<'a> {
 
             let metadata = SplineMeta {
                 evenness: Evenness::Even {
-                    duration_ns: ((meta.interval_length_s as i64).seconds()).to_parts().1,
+                    duration_ns: ((meta.interval_length_s as f64).seconds()).to_parts().1,
                 },
                 state_kind,
                 ..Default::default()
@@ -382,7 +382,7 @@ impl<'a> SPK<'a> {
                     Evenness::Even { duration_ns } => {
                         assert_eq!(
                             duration_ns,
-                            (meta.interval_length_s * 1_000_000_000) as u64,
+                            meta.interval_length_s.seconds().to_parts().1,
                             "incorrect interval duration"
                         );
                     }
@@ -405,17 +405,14 @@ impl<'a> SPK<'a> {
                 for (sidx, seg_data) in all_seg_data.iter().enumerate() {
                     for (cidx, x_truth) in seg_data.x_coeffs.iter().enumerate() {
                         assert_eq!(splines.fetch(sidx, cidx, Field::X).unwrap(), *x_truth);
-                        println!("{cidx} X OK");
                     }
 
                     for (cidx, y_truth) in seg_data.y_coeffs.iter().enumerate() {
                         assert_eq!(splines.fetch(sidx, cidx, Field::Y).unwrap(), *y_truth);
-                        println!("{cidx} Y OK");
                     }
 
                     for (cidx, z_truth) in seg_data.z_coeffs.iter().enumerate() {
                         assert_eq!(splines.fetch(sidx, cidx, Field::Z).unwrap(), *z_truth);
-                        println!("{cidx} Z OK");
                     }
                 }
 
