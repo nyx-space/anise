@@ -27,6 +27,7 @@ use anise::frame::Frame;
 use anise::math::Vector3;
 use anise::prelude::AniseError;
 use anise::prelude::File;
+use anise::prelude::{DistanceUnit, TimeUnit};
 use anise::Epoch;
 use anise::{file_mmap, prelude::AniseContext};
 
@@ -166,7 +167,14 @@ fn de438s_translation_verif() {
     ['9.5205638574810922e+07', '-4.6160711641080864e+07', '-2.6779481328088202e+07', '1.6612048965376893e+01', '2.8272067093357247e+01', '1.1668575733195270e+01']
     */
 
-    let (pos, vel) = ctx.translate_to_parent(VENUS_J2000, epoch).unwrap();
+    let (pos, vel, accel) = ctx
+        .translate_to_parent(
+            VENUS_J2000,
+            epoch,
+            DistanceUnit::Kilometer,
+            TimeUnit::Second,
+        )
+        .unwrap();
 
     let pos_expct_km = Vector3::new(
         9.5205638574810922e+07,
@@ -174,19 +182,40 @@ fn de438s_translation_verif() {
         -2.6779481328088202e+07,
     );
 
-    let vel_expct = Vector3::new(
+    let vel_expct_km_s = Vector3::new(
         1.6612048965376893e+01,
         2.8272067093357247e+01,
         1.1668575733195270e+01,
     );
 
-    dbg!(vel, vel_expct);
+    // We expect exactly the same output as SPICE to machine precision.
+    assert!((pos - pos_expct_km).norm() < EPSILON);
+    assert!((vel - vel_expct_km_s).norm() < EPSILON);
+    assert!(accel.norm() < EPSILON);
 
-    assert!(dbg!(pos - pos_expct_km).norm() < 1e-16);
-    assert!(dbg!(vel - vel_expct).norm() < 1e-16);
+    // Same thing but in Megameters per millisecond
+    let (pos, vel, accel) = ctx
+        .translate_to_parent(
+            VENUS_J2000,
+            epoch,
+            DistanceUnit::Megameter,
+            TimeUnit::Millisecond,
+        )
+        .unwrap();
 
-    // assert!(dbg!(ven2ear_state.y - -1.356_125_479_230_852_7e8).abs() < 7e-4);
-    // assert!(dbg!(ven2ear_state.z - -6.557_839_967_615_153e7).abs() < 4e-4);
-    // assert!(dbg!(ven2ear_state.vy - 4.888_902_462_217_076_6e1).abs() < 1e-8);
-    // assert!(dbg!(ven2ear_state.vz - 2.070_293_380_084_308_4e1).abs() < 1e-8);
+    // We expect exactly the same output as SPICE to machine precision.
+    assert!(
+        (pos - pos_expct_km * 1e-3).norm() < EPSILON,
+        "got {} but want {}",
+        pos,
+        pos_expct_km * 1e-3
+    );
+    // NOTE: km/s and Mm/ms correspond to the same number: times 1e3 for km -> Mm and times 1e-3 for s -> ms.
+    assert!(
+        (vel - vel_expct_km_s).norm() < EPSILON,
+        "got {} but want {}",
+        vel,
+        vel_expct_km_s
+    );
+    assert!(accel.norm() < EPSILON);
 }

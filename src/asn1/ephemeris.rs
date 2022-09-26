@@ -30,7 +30,7 @@ pub struct Ephemeris<'a> {
     /// Answer the question: What distance unit is the output of the interpolation data for distances? E.g. kilometer (default)
     pub distance_unit: DistanceUnit,
     /// Answer the question: What time is the output of the interpolation data for distances? E.g. second (default), for kilometer per second velocity
-    pub duration_unit: TimeUnit,
+    pub time_unit: TimeUnit,
     pub splines: Splines<'a>,
 }
 
@@ -43,7 +43,7 @@ impl<'a> Encode for Ephemeris<'a> {
             + self.orientation_hash.encoded_len()?
             + self.interpolation_kind.encoded_len()?
             + self.distance_unit.encoded_len()?
-            + self.duration_unit.encoded_len()?
+            + self.time_unit.encoded_len()?
             + self.splines.encoded_len()?
     }
 
@@ -55,7 +55,7 @@ impl<'a> Encode for Ephemeris<'a> {
         self.orientation_hash.encode(encoder)?;
         self.interpolation_kind.encode(encoder)?;
         self.distance_unit.encode(encoder)?;
-        self.duration_unit.encode(encoder)?;
+        self.time_unit.encode(encoder)?;
         self.splines.encode(encoder)
     }
 }
@@ -73,7 +73,7 @@ impl<'a> Decode<'a> for Ephemeris<'a> {
             orientation_hash: decoder.decode()?,
             interpolation_kind: decoder.decode()?,
             distance_unit: decoder.decode()?,
-            duration_unit: decoder.decode()?,
+            time_unit: decoder.decode()?,
             splines: decoder.decode()?,
         })
     }

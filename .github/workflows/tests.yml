@@ -71,7 +71,7 @@ jobs:
       - name: Create DE ANISE artifacts # At this stage, all of the tests have passed, so let's store these artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: jpl-spk-{{ github.sha }}
+          name: anise-jpl-development-ephemerides
           path: data/*.anise
 
   lints:

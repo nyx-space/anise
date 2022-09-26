@@ -290,7 +290,7 @@ impl<'a> SPK<'a> {
                 parent_ephemeris_hash,
                 orientation_hash: J2000,
                 distance_unit: DistanceUnit::Kilometer,
-                duration_unit: TimeUnit::Second,
+                time_unit: TimeUnit::Second,
                 splines,
             };
 

@@ -10,7 +10,7 @@
 
 // TODO: Consider making a trait for these
 
-use hifitime::{Epoch, TimeUnits, Unit as DurationUnit};
+use hifitime::{Epoch, Unit as DurationUnit};
 
 use crate::{
     asn1::{
@@ -37,12 +37,6 @@ pub(crate) fn cheby_eval(
 
             let radius_s = window_duration_s / 2.0;
             let ephem_start_delta = eval_epoch - start_epoch;
-            println!(
-                "window_duration_s = {}\tdelta = {ephem_start_delta}={} days ==> {}",
-                window_duration_s.seconds(),
-                ephem_start_delta.in_unit(DurationUnit::Day),
-                start_epoch
-            );
             let ephem_start_delta_s = ephem_start_delta.in_seconds();
 
             if ephem_start_delta_s < 0.0 {

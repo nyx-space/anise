@@ -88,6 +88,24 @@ impl StateKind {
             StateKind::PositionVelocityAcceleration { degree } => *degree,
         }
     }
+
+    /// Returns whether this state kind includes the position interpolation coefficients
+    pub const fn includes_position(&self) -> bool {
+        !matches!(self, Self::None)
+    }
+
+    /// Returns whether this state kind includes velocity interpolation coefficients
+    pub const fn includes_velocity(&self) -> bool {
+        matches!(
+            self,
+            Self::PositionVelocity { degree: _ } | Self::PositionVelocityAcceleration { degree: _ }
+        )
+    }
+
+    /// Returns whether this state kind includes acceleration interpolation coefficients.
+    pub const fn includes_acceleration(&self) -> bool {
+        matches!(self, Self::PositionVelocityAcceleration { degree: _ })
+    }
 }
 
 impl Default for StateKind {

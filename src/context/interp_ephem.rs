@@ -11,14 +11,20 @@
 use log::trace;
 
 use crate::asn1::common::InterpolationKind;
-use crate::asn1::spline::{Field, StateKind};
+use crate::asn1::spline::Field;
+use crate::asn1::units::*;
 use crate::hifitime::Epoch;
 use crate::math::interpolation::chebyshev::cheby_eval;
 use crate::math::Vector3;
 use crate::{asn1::context::AniseContext, errors::AniseError, frame::Frame};
 
 impl<'a> AniseContext<'a> {
-    /// Returns the position vector and velocity vector of the `source` with respect to its parent in the ephemeris at the provided epoch.
+    /// Returns the position vector and velocity vector of the `source` with respect to its parent in the ephemeris at the provided epoch,
+    /// and in the provided distance and time units.
+    ///
+    /// # Example
+    /// If the ephemeris stores position interpolation coefficients in kilometer but this function is called with millimeters as a distance unit,
+    /// the output vectors will be in mm, mm/s, mm/s^2 respectively.
     ///
     /// # Errors
     /// + As of now, some interpolation types are not supported, and if that were to happen, this would return an error.
@@ -28,7 +34,9 @@ impl<'a> AniseContext<'a> {
         &self,
         source: Frame,
         eval_epoch: Epoch,
-    ) -> Result<(Vector3, Vector3), AniseError> {
+        distance_unit: DistanceUnit,
+        time_unit: TimeUnit,
+    ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
         // First, let's get a reference to the ephemeris given the frame.
 
         // Grab the index of the data from the frame's ephemeris hash.
@@ -40,6 +48,7 @@ impl<'a> AniseContext<'a> {
         // Perform a translation with position and velocity;
         let mut pos = Vector3::zeros();
         let mut vel = Vector3::zeros();
+        let mut accel = Vector3::zeros();
 
         // Grab the pointer to the splines.
         let splines = &ephem.splines;
@@ -54,29 +63,48 @@ impl<'a> AniseContext<'a> {
                     return Err(AniseError::MissingInterpolationData(eval_epoch));
                 }
 
+                if !splines.metadata.state_kind.includes_position() {
+                    return Err(AniseError::NoInterpolationData);
+                }
+
+                // Compute the position and its derivative
                 for (cno, field) in [Field::X, Field::Y, Field::Z].iter().enumerate() {
                     let (val, deriv) = cheby_eval(eval_epoch, start_epoch, splines, *field)?;
                     pos[cno] = val;
                     vel[cno] = deriv;
                 }
 
-                match splines.metadata.state_kind {
-                    StateKind::PositionVelocity { degree: _ }
-                    | StateKind::PositionVelocityAcceleration { degree: _ } => {
-                        // Overwrite the velocity by the direct computation since there are specific coefficients for the velocity
-                        for (cno, field) in [Field::Vx, Field::Vy, Field::Vz].iter().enumerate() {
+                // If relevant, compute the velocity from the coefficients directly by overwriting the derivative we just computed.
+                if splines.metadata.state_kind.includes_velocity() {
+                    for (cno, field) in [Field::Vx, Field::Vy, Field::Vz].iter().enumerate() {
+                        let (val, deriv) = cheby_eval(eval_epoch, start_epoch, splines, *field)?;
+                        vel[cno] = val;
+                        accel[cno] = deriv;
+                    }
+
+                    // Similarly, if there is acceleration, we should compute that too.
+                    if splines.metadata.state_kind.includes_acceleration() {
+                        for (cno, field) in [Field::Ax, Field::Ay, Field::Az].iter().enumerate() {
                             let (val, _) = cheby_eval(eval_epoch, start_epoch, splines, *field)?;
-                            vel[cno] = val;
+                            accel[cno] = val;
                         }
                     }
-                    _ => {}
-                };
+                }
             }
             InterpolationKind::HermiteSeries => todo!(),
             InterpolationKind::LagrangeSeries => todo!(),
             InterpolationKind::Polynomial => todo!(),
             InterpolationKind::Trigonometric => todo!(),
         }
-        Ok((pos, vel))
+
+        // Convert the units based on the storage units.
+        let dist_unit_factor = ephem.distance_unit.from_meters() * distance_unit.in_meters();
+        let time_unit_factor = ephem.time_unit.from_seconds() * time_unit.in_seconds();
+
+        Ok((
+            pos * dist_unit_factor,
+            vel * dist_unit_factor / time_unit_factor,
+            accel * dist_unit_factor / time_unit_factor.powi(2),
+        ))
     }
 }

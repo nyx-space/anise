@@ -26,6 +26,7 @@ pub mod spline;
 
 pub mod prelude {
     pub use crate::asn1::context::AniseContext;
+    pub use crate::asn1::units::*;
     pub use crate::errors::AniseError;
     pub use hifitime::{Epoch, TimeSystem, TimeUnits};
     pub use std::fs::File;
