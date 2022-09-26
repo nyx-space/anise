@@ -18,7 +18,7 @@ use super::{
     units::{DistanceUnit, TimeUnit},
 };
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Ephemeris<'a> {
     pub name: &'a str,
     /// All epochs are encoded as high precision TDB durations since J2000 TDB.

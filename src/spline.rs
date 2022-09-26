@@ -102,9 +102,9 @@ impl<'a> Splines<'a> {
     /// Evaluate this ephemeris at the requested epoch and returns an orbit structure.
     pub fn posvel_at(
         &self,
-        spline_idx: usize,
-        offset_s: f64,
-        window_length_s: f64,
+        _spline_idx: usize,
+        _offset_s: f64,
+        _window_length_s: f64,
         kind: InterpolationKind,
     ) -> Result<[f64; 6], AniseError> {
         if kind != InterpolationKind::ChebyshevSeries {

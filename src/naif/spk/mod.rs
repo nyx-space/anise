@@ -284,7 +284,7 @@ impl<'a> SPK<'a> {
             // Create the ephemeris
             let ephem = Ephemeris {
                 name: seg.human_name(),
-                ref_epoch: seg.start_epoch.into(),
+                ref_epoch: seg.start_epoch,
                 backward: false,
                 interpolation_kind: InterpolationKind::ChebyshevSeries,
                 parent_ephemeris_hash,

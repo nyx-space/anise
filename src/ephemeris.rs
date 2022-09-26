@@ -68,7 +68,7 @@ impl<'a> Ephemeris<'a> {
     }
 
     /// Evaluate this ephemeris at the requested epoch and returns an orbit structure.
-    pub fn posvel(&self, req_epoch: Epoch) -> Result<[f64; 6], AniseError> {
+    pub fn posvel(&self, _req_epoch: Epoch) -> Result<[f64; 6], AniseError> {
         if self.interpolation_kind != InterpolationKind::ChebyshevSeries {
             return Err(InternalErrorKind::InterpolationNotSupported.into());
         }
