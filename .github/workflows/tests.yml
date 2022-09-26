@@ -54,19 +54,19 @@ jobs:
           cargo run --release -- convert ./data/de421.bsp
           cargo run --release -- convert ./data/de430.bsp
           cargo run --release -- convert ./data/de438s.bsp
-          cargo run --release -- convert ./data/de440.bsp --check
+          cargo run --release -- convert ./data/de440.bsp
 
-      - name: Test debug mode (default features) # This has overflow checks etc.
+      - name: Test debug (default features) # This has overflow checks etc.
         run: cargo test
 
       - name: Test debug (no default features)
         run: cargo test --no-default-features
 
-      - name: Test release and long tests (default features and release)
-        run: cargo test --release --ignored
+      - name: Test release (default features and release)
+        run: cargo test --release
 
       - name: Test (no default features and release)
-        run: cargo test --no-default-features --release --ignored
+        run: cargo test --no-default-features --release
 
       - name: Create DE ANISE artifacts # At this stage, all of the tests have passed, so let's store these artifacts
         uses: actions/upload-artifact@v3
