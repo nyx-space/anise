@@ -8,6 +8,7 @@ name: ANISE Ephemeris Workflow
 
 env:
   RUST_BACKTRACE: 1
+  RUST_LOG: info
 
 jobs:
   check:
@@ -53,19 +54,19 @@ jobs:
           cargo run --release -- convert ./data/de421.bsp
           cargo run --release -- convert ./data/de430.bsp
           cargo run --release -- convert ./data/de438s.bsp
-          cargo run --release -- convert ./data/de440.bsp
+          cargo run --release -- convert ./data/de440.bsp --check
 
-      - name: Test debug (default features) # This has overflow checks etc.
+      - name: Test debug mode (default features) # This has overflow checks etc.
         run: cargo test
 
-      - name: Test (no default features)
+      - name: Test debug (no default features)
         run: cargo test --no-default-features
 
-      - name: Test (default features and release)
-        run: cargo test --release
+      - name: Test release and long tests (default features and release)
+        run: cargo test --release --ignored
 
       - name: Test (no default features and release)
-        run: cargo test --no-default-features --release
+        run: cargo test --no-default-features --release --ignored
 
       - name: Create DE ANISE artifacts # At this stage, all of the tests have passed, so let's store these artifacts
         uses: actions/upload-artifact@v3

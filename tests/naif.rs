@@ -21,7 +21,9 @@ use anise::{
     prelude::*,
 };
 
+// Ignore this test by default because it's very slow. It's also tested in the conversion of JPL SPKs.
 #[test]
+#[ignore]
 fn test_spk_load() {
     if pretty_env_logger::try_init().is_err() {
         println!("could not init env_logger");
