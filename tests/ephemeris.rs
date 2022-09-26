@@ -33,6 +33,10 @@ use anise::{file_mmap, prelude::AniseContext};
 /// Tests the ephemeris computations from the de438s which don't require any frame transformation.
 #[test]
 fn de438s_zero_paths() {
+    if pretty_env_logger::try_init().is_err() {
+        println!("could not init env_logger");
+    }
+
     // Check that this test works for DE430, DE438s (short), and DE440
     for path in &[
         "./data/de430.anise",
@@ -79,6 +83,10 @@ fn de438s_zero_paths() {
 /// Tests that direct path computations match what SPICE returned to within good precision.
 #[test]
 fn de438s_common_root_verif() {
+    if pretty_env_logger::try_init().is_err() {
+        println!("could not init env_logger");
+    }
+
     // Load the context
     // Check that this test works for DE430, DE438s (short), and DE440
     for path in &[

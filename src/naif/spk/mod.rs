@@ -26,7 +26,7 @@ use crate::prelude::AniseError;
 use crate::{file_mmap, parse_bytes_as, DBL_SIZE};
 use crc32fast::hash;
 use der::{Decode, Encode};
-use hifitime::{Epoch, TimeSystem, TimeUnits, Unit};
+use hifitime::{Epoch, TimeUnits};
 use log::{info, warn};
 use std::convert::TryInto;
 use std::f64::EPSILON;
@@ -226,20 +226,10 @@ impl<'a> SPK<'a> {
 
             let mut spline_data = Vec::with_capacity(20_000);
 
-            // let mut delta_mid = None;
-
             // Build the splines
             for record in &records {
                 // Check that the interval length is indeed twice the radius, this is fixed.
                 assert_eq!(meta.interval_length_s as f64, 2. * record.rcrd_radius_s);
-                // if delta_mid.is_none() {
-                //     delta_mid = Some(record.rcrd_mid_point);
-                // } else {
-                //     assert_eq!(
-                //         delta_mid.unwrap() - meta.interval_length_s as f64,
-                //         record.rcrd_mid_point
-                //     );
-                // }
 
                 for midpoint_byte in record.rcrd_mid_point.to_be_bytes() {
                     spline_data.push(midpoint_byte);
@@ -332,8 +322,11 @@ impl<'a> SPK<'a> {
         }
         // Unwrap all of the possibly failing calls because we just created these files so we assume they're valid
         for buf in &all_bufs {
-            let ephem: Ephemeris = Ephemeris::from_der(buf).unwrap();
-            ctx.append_ephemeris_mut(ephem).unwrap();
+            let ephem: Ephemeris = match Ephemeris::from_der(buf) {
+                Ok(it) => it,
+                Err(err) => return Err(AniseError::DecodingError(err)),
+            };
+            ctx.append_ephemeris_mut(ephem)?;
         }
 
         ctx.save_as(filename, true)?;
@@ -365,7 +358,7 @@ impl<'a> SPK<'a> {
             for (eidx, ephem) in ctx.ephemeris_data.iter().enumerate() {
                 let seg_target_id = Segment::human_name_to_id(ephem.name)?;
                 // Fetch the SPK segment
-                let (seg, meta, all_seg_data) = self.copy_segments(seg_target_id).unwrap();
+                let (seg, meta, all_seg_data) = self.copy_segments(seg_target_id)?;
                 if all_seg_data.is_empty() {
                     continue;
                 }
@@ -407,15 +400,15 @@ impl<'a> SPK<'a> {
 
                 for (sidx, seg_data) in all_seg_data.iter().enumerate() {
                     for (cidx, x_truth) in seg_data.x_coeffs.iter().enumerate() {
-                        assert_eq!(splines.fetch(sidx, cidx, Field::X).unwrap(), *x_truth);
+                        assert_eq!(splines.fetch(sidx, cidx, Field::X)?, *x_truth);
                     }
 
                     for (cidx, y_truth) in seg_data.y_coeffs.iter().enumerate() {
-                        assert_eq!(splines.fetch(sidx, cidx, Field::Y).unwrap(), *y_truth);
+                        assert_eq!(splines.fetch(sidx, cidx, Field::Y)?, *y_truth);
                     }
 
                     for (cidx, z_truth) in seg_data.z_coeffs.iter().enumerate() {
-                        assert_eq!(splines.fetch(sidx, cidx, Field::Z).unwrap(), *z_truth);
+                        assert_eq!(splines.fetch(sidx, cidx, Field::Z)?, *z_truth);
                     }
                 }
 

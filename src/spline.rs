@@ -67,7 +67,10 @@ impl<'a> Splines<'a> {
                 self.data_checksum, computed_chksum
             );
             Err(AniseError::IntegrityError(
-                IntegrityErrorKind::ChecksumInvalid,
+                IntegrityErrorKind::ChecksumInvalid {
+                    expected: self.data_checksum,
+                    computed: computed_chksum,
+                },
             ))
         }
     }

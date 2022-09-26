@@ -74,8 +74,8 @@ pub enum InternalErrorKind {
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum IntegrityErrorKind {
-    /// Checksum of ephemeris data differs from expected checksum
-    ChecksumInvalid,
+    /// Data checksum differs from expected checksum
+    ChecksumInvalid { expected: u32, computed: u32 },
     /// Data between two ephemerides expected to be identical mismatch (may happen on merger of files)
     DataMismatchOnMerge,
     /// Could not fetch spline data that was expected to be there
