@@ -47,19 +47,14 @@ jobs:
 
       - name: Build
         run: cargo build --release
-      
-      - name: Convert DE421
-        run: cargo run --release -- convert ./data/de421.bsp
-      
-      - name: Convert DE430
-        run: cargo run --release -- convert ./data/de430.bsp
-      
-      - name: Convert DE438s
-        run: cargo run --release -- convert ./data/de438s.bsp
-      
-      - name: Convert DE440
-        run: cargo run --release -- convert ./data/de440.bsp
-      
+
+      - name: Convert DE421, DE430, DE438s, DE440
+        run: |
+          cargo run --release -- convert ./data/de421.bsp
+          cargo run --release -- convert ./data/de430.bsp
+          cargo run --release -- convert ./data/de438s.bsp
+          cargo run --release -- convert ./data/de440.bsp
+
       - name: Test debug (default features) # This has overflow checks etc.
         run: cargo test
 
@@ -68,9 +63,15 @@ jobs:
 
       - name: Test (default features and release)
         run: cargo test --release
-      
+
       - name: Test (no default features and release)
         run: cargo test --no-default-features --release
+
+      - name: Create DE ANISE artifacts # At this stage, all of the tests have passed, so let's store these artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: jpl-spk-{{ github.sha }}
+          path: data/*.anise
 
   lints:
     name: Lints

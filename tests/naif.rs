@@ -23,6 +23,10 @@ use anise::{
 
 #[test]
 fn test_spk_load() {
+    if pretty_env_logger::try_init().is_err() {
+        println!("could not init env_logger");
+    }
+
     // Using the DE421 as demo because the correct data is in the DAF documentation
     let bsp_path = "data/de421.bsp";
     let bytes = file_mmap!(bsp_path).unwrap();
@@ -62,10 +66,10 @@ fn test_spk_load() {
     spk.copy_segments(301).unwrap();
 
     // Build the ANISE file
-    let filename_anis = "de421.anis";
-    spk.to_anise(bsp_path, filename_anis, false, true).unwrap();
+    let filename_anis = "de421.anise";
+    spk.to_anise(bsp_path, filename_anis, true, true).unwrap();
 
-    // Load this ANIS file and make sure that it matches the original DE421 data.
+    // Load this ANISE file and make sure that it matches the original DE421 data.
     let bytes = file_mmap!(filename_anis).unwrap();
     let ctx = AniseContext::from_bytes(&bytes);
     assert_eq!(
@@ -142,6 +146,10 @@ fn test_spk_load() {
 #[ignore]
 #[test]
 fn test_binary_pck_load() {
+    if pretty_env_logger::try_init().is_err() {
+        println!("could not init env_logger");
+    }
+
     // Using the DE421 as demo because the correct data is in the DAF documentation
     let filename = "data/earth_old_high_prec.bpc";
     let bytes = file_mmap!(filename).unwrap();
