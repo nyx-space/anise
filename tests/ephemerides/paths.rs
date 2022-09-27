@@ -10,36 +10,23 @@
 
 use core::f64::EPSILON;
 
-use anise::constants::celestial_objects::EARTH_MOON_BARYCENTER;
-use anise::constants::celestial_objects::SOLAR_SYSTEM_BARYCENTER;
-use anise::constants::frames::EARTH_J2000;
-use anise::constants::frames::JUPITER_BARYCENTER_J2000;
-use anise::constants::frames::LUNA_J2000;
-use anise::constants::frames::MARS_BARYCENTER_J2000;
-use anise::constants::frames::MERCURY_J2000;
-use anise::constants::frames::NEPTUNE_BARYCENTER_J2000;
-use anise::constants::frames::PLUTO_BARYCENTER_J2000;
-use anise::constants::frames::SATURN_BARYCENTER_J2000;
-use anise::constants::frames::URANUS_BARYCENTER_J2000;
-use anise::constants::frames::VENUS_J2000;
+use anise::constants::celestial_objects::{EARTH_MOON_BARYCENTER, SOLAR_SYSTEM_BARYCENTER};
+use anise::constants::frames::*;
 use anise::constants::orientations::J2000;
 use anise::frame::Frame;
-use anise::math::Vector3;
-use anise::prelude::AniseError;
-use anise::prelude::File;
-use anise::prelude::{DistanceUnit, TimeUnit};
-use anise::Epoch;
+use anise::prelude::*;
 use anise::{file_mmap, prelude::AniseContext};
 
 /// Tests the ephemeris computations from the de438s which don't require any frame transformation.
 #[test]
-fn de438s_zero_paths() {
+fn zero_translations() {
     if pretty_env_logger::try_init().is_err() {
         println!("could not init env_logger");
     }
 
-    // Check that this test works for DE430, DE438s (short), and DE440
-    for path in &[
+    // Check that this test works for DE421, DE430, DE438s (short), and DE440
+    for path in [
+        "./data/de421.anise",
         "./data/de430.anise",
         "./data/de438s.anise",
         "./data/de440.anise",
@@ -83,14 +70,14 @@ fn de438s_zero_paths() {
 
 /// Tests that direct path computations match what SPICE returned to within good precision.
 #[test]
-fn de438s_common_root_verif() {
+fn common_root_verif() {
     if pretty_env_logger::try_init().is_err() {
         println!("could not init env_logger");
     }
 
     // Load the context
     // Check that this test works for DE430, DE438s (short), and DE440
-    for path in &[
+    for path in [
         "./data/de430.anise",
         "./data/de438s.anise",
         "./data/de440.anise",
@@ -140,82 +127,4 @@ fn de438s_common_root_verif() {
             EARTH_MOON_BARYCENTER
         );
     }
-}
-
-#[test]
-fn de438s_translation_verif() {
-    if pretty_env_logger::try_init().is_err() {
-        println!("could not init env_logger");
-    }
-
-    // "Load" the file via a memory map (avoids allocations)
-    let path = "./data/de438s.anise";
-    let buf = file_mmap!(path).unwrap();
-    let ctx: AniseContext = (&buf).try_into().unwrap();
-
-    let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
-
-    /*
-    Python code:
-    >>> import spiceypy as sp
-    >>> sp.furnsh('data/de438s.bsp')
-    >>> sp.furnsh('../../hifitime/naif0012.txt')
-    >>> et = sp.utc2et('2002 FEB 07 00:00:00')
-    >>> et
-    66312064.18493876
-    >>> ['{:.16e}'.format(x) for x in sp.spkez(2, et, "J2000", "NONE", 0)[0]]
-    ['9.5205638574810922e+07', '-4.6160711641080864e+07', '-2.6779481328088202e+07', '1.6612048965376893e+01', '2.8272067093357247e+01', '1.1668575733195270e+01']
-    */
-
-    let (pos, vel, accel) = ctx
-        .translate_to_parent(
-            VENUS_J2000,
-            epoch,
-            DistanceUnit::Kilometer,
-            TimeUnit::Second,
-        )
-        .unwrap();
-
-    let pos_expct_km = Vector3::new(
-        9.5205638574810922e+07,
-        -4.6160711641080864e+07,
-        -2.6779481328088202e+07,
-    );
-
-    let vel_expct_km_s = Vector3::new(
-        1.6612048965376893e+01,
-        2.8272067093357247e+01,
-        1.1668575733195270e+01,
-    );
-
-    // We expect exactly the same output as SPICE to machine precision.
-    assert!((pos - pos_expct_km).norm() < EPSILON);
-    assert!((vel - vel_expct_km_s).norm() < EPSILON);
-    assert!(accel.norm() < EPSILON);
-
-    // Same thing but in Megameters per millisecond
-    let (pos, vel, accel) = ctx
-        .translate_to_parent(
-            VENUS_J2000,
-            epoch,
-            DistanceUnit::Megameter,
-            TimeUnit::Millisecond,
-        )
-        .unwrap();
-
-    // We expect exactly the same output as SPICE to machine precision.
-    assert!(
-        (pos - pos_expct_km * 1e-3).norm() < EPSILON,
-        "got {} but want {}",
-        pos,
-        pos_expct_km * 1e-3
-    );
-    // NOTE: km/s and Mm/ms correspond to the same number: times 1e3 for km -> Mm and times 1e-3 for s -> ms.
-    assert!(
-        (vel - vel_expct_km_s).norm() < EPSILON,
-        "got {} but want {}",
-        vel,
-        vel_expct_km_s
-    );
-    assert!(accel.norm() < EPSILON);
 }

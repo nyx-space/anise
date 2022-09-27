@@ -8,5 +8,5 @@
  * Documentation: https://nyxspace.com/
  */
 
-mod ephemerides;
-mod frames;
+mod direct_translation_verif;
+mod paths;

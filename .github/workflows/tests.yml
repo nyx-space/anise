@@ -49,11 +49,13 @@ jobs:
       - name: Build
         run: cargo build --release
 
-      - name: Convert DE421, DE430, DE438s, DE440
+      - name: Convert DE438s and verify every coefficient (slow)
+        run: cargo run --release -- convert ./data/de438s.bsp --check
+
+      - name: Convert DE421, DE430, DE440
         run: |
           cargo run --release -- convert ./data/de421.bsp
           cargo run --release -- convert ./data/de430.bsp
-          cargo run --release -- convert ./data/de438s.bsp --check
           cargo run --release -- convert ./data/de440.bsp
 
       - name: Test debug (default features) # This has overflow checks etc.
