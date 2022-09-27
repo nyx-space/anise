@@ -14,3 +14,10 @@ extern crate nalgebra;
 pub type Vector3 = nalgebra::Vector3<f64>;
 
 pub mod interpolation;
+
+/// Defines the aberration corrections to the state of the target body to account for one-way light time and stellar aberration.
+/// **WARNING:** This enum is a placeholder until [https://github.com/anise-toolkit/anise.rs/issues/26] is implemented.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Aberration {
+    None,
+}

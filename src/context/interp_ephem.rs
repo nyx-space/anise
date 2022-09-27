@@ -15,7 +15,7 @@ use crate::asn1::spline::Field;
 use crate::asn1::units::*;
 use crate::hifitime::Epoch;
 use crate::math::interpolation::chebyshev::cheby_eval;
-use crate::math::Vector3;
+use crate::math::{Aberration, Vector3};
 use crate::{asn1::context::AniseContext, errors::AniseError, frame::Frame};
 
 impl<'a> AniseContext<'a> {
@@ -33,7 +33,8 @@ impl<'a> AniseContext<'a> {
     pub fn translate_to_parent(
         &self,
         source: Frame,
-        eval_epoch: Epoch,
+        epoch: Epoch,
+        _ab_corr: Aberration,
         distance_unit: DistanceUnit,
         time_unit: TimeUnit,
     ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
@@ -54,13 +55,13 @@ impl<'a> AniseContext<'a> {
         let splines = &ephem.splines;
         match ephem.interpolation_kind {
             InterpolationKind::ChebyshevSeries => {
-                trace!("start = {:E}\tfetch = {}", ephem.start_epoch(), eval_epoch);
+                trace!("start = {:E}\tfetch = {}", ephem.start_epoch(), epoch);
 
                 let start_epoch = ephem.start_epoch();
                 let end_epoch = ephem.end_epoch();
 
-                if eval_epoch < start_epoch || eval_epoch > end_epoch {
-                    return Err(AniseError::MissingInterpolationData(eval_epoch));
+                if epoch < start_epoch || epoch > end_epoch {
+                    return Err(AniseError::MissingInterpolationData(epoch));
                 }
 
                 if !splines.metadata.state_kind.includes_position() {
@@ -69,7 +70,7 @@ impl<'a> AniseContext<'a> {
 
                 // Compute the position and its derivative
                 for (cno, field) in [Field::X, Field::Y, Field::Z].iter().enumerate() {
-                    let (val, deriv) = cheby_eval(eval_epoch, start_epoch, splines, *field)?;
+                    let (val, deriv) = cheby_eval(epoch, start_epoch, splines, *field)?;
                     pos[cno] = val;
                     vel[cno] = deriv;
                 }
@@ -77,7 +78,7 @@ impl<'a> AniseContext<'a> {
                 // If relevant, compute the velocity from the coefficients directly by overwriting the derivative we just computed.
                 if splines.metadata.state_kind.includes_velocity() {
                     for (cno, field) in [Field::Vx, Field::Vy, Field::Vz].iter().enumerate() {
-                        let (val, deriv) = cheby_eval(eval_epoch, start_epoch, splines, *field)?;
+                        let (val, deriv) = cheby_eval(epoch, start_epoch, splines, *field)?;
                         vel[cno] = val;
                         accel[cno] = deriv;
                     }
@@ -85,7 +86,7 @@ impl<'a> AniseContext<'a> {
                     // Similarly, if there is acceleration, we should compute that too.
                     if splines.metadata.state_kind.includes_acceleration() {
                         for (cno, field) in [Field::Ax, Field::Ay, Field::Az].iter().enumerate() {
-                            let (val, _) = cheby_eval(eval_epoch, start_epoch, splines, *field)?;
+                            let (val, _) = cheby_eval(epoch, start_epoch, splines, *field)?;
                             accel[cno] = val;
                         }
                     }

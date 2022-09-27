@@ -56,11 +56,17 @@ fn zero_translations() {
 
             // Check that in these cases, the translation returns a zero vector in position and in velocity.
 
-            let (delta_pos, delta_vel) = ctx
-                .translate_from_to(this_frame_j2k, this_frame_j2k, Epoch::now().unwrap())
+            let (delta_pos, delta_vel, delta_accel) = ctx
+                .translate_from_to_km_s(
+                    this_frame_j2k,
+                    this_frame_j2k,
+                    Epoch::now().unwrap(),
+                    Aberration::None,
+                )
                 .unwrap();
             assert!(delta_pos.norm() < EPSILON);
             assert!(delta_vel.norm() < EPSILON);
+            assert!(delta_accel.norm() < EPSILON);
         }
     }
 

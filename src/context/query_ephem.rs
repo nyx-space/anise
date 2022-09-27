@@ -10,10 +10,11 @@
 
 use log::{error, trace};
 
+use crate::asn1::units::*;
 use crate::constants::orientations::J2000;
 use crate::errors::InternalErrorKind;
 use crate::hifitime::Epoch;
-use crate::math::Vector3;
+use crate::math::{Aberration, Vector3};
 use crate::HashType;
 use crate::{
     asn1::{context::AniseContext, ephemeris::Ephemeris},
@@ -56,22 +57,24 @@ impl<'a> AniseContext<'a> {
                             ));
                         } else {
                             // We're found the root and it matches the previous one, so we can stop searching.
-                            break;
+                            return Ok(common_parent_hash);
+                            // break;
                         }
                     }
                     Err(err) => {
-                        error!("{err} occured when it should not have");
+                        error!("{err} occurred when it should not have");
                         return Err(AniseError::InternalError(InternalErrorKind::Generic));
                     }
                 };
             }
         }
-        Ok(common_parent_hash)
+        // return Ok(common_parent_hash);
+        Err(AniseError::MaxTreeDepth)
     }
 
     /// Try to find the parent ephemeris data of the provided ephemeris.
     ///
-    /// Will return an [Err] if the parent does not have ephemeris data in this context.
+    /// Will return an [AniseError] if the parent does not have ephemeris data in this context.
     pub fn try_find_parent(&self, child: &'a Ephemeris) -> Result<&'a Ephemeris, AniseError> {
         let idx = self
             .ephemeris_lut
@@ -102,6 +105,7 @@ impl<'a> AniseContext<'a> {
         let mut of_path = [None; MAX_TREE_DEPTH];
         let mut of_path_len = 0;
         let mut prev_ephem_hash = source.ephemeris_hash;
+
         for _ in 0..MAX_TREE_DEPTH {
             let idx = self.ephemeris_lut.index_for_hash(&prev_ephem_hash)?;
             let parent_ephem = self.try_ephemeris_data(idx.into())?;
@@ -215,7 +219,7 @@ impl<'a> AniseContext<'a> {
         }
     }
 
-    /// Returns the position vector and velocity vector needed to translate the `from_frame` to the `to_frame`.
+    /// Returns the position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`.
     ///
     /// **WARNING:** This function only performs the translation and no rotation whatsoever. Use the `transform_from_to` function instead to include rotations.
     ///
@@ -225,10 +229,13 @@ impl<'a> AniseContext<'a> {
         from_frame: Frame,
         to_frame: Frame,
         epoch: Epoch,
-    ) -> Result<(Vector3, Vector3), AniseError> {
+        ab_corr: Aberration,
+        distance_unit: DistanceUnit,
+        time_unit: TimeUnit,
+    ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
         if from_frame == to_frame {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
-            return Ok((Vector3::zeros(), Vector3::zeros()));
+            return Ok((Vector3::zeros(), Vector3::zeros(), Vector3::zeros()));
         }
 
         let ephem_root = self.find_common_ephemeris_node(from_frame, to_frame)?;
@@ -237,33 +244,74 @@ impl<'a> AniseContext<'a> {
 
         // Now that we have the root, let's simply add the vectors from each frame to the root.
 
-        let (pos_from_to_root, vel_from_to_root) =
-            self.translate_from_to(from_frame, from_frame.with_ephem(ephem_root), epoch)?;
+        let (pos_from_to_root, vel_from_to_root, accel_from_to_root) = self.translate_from_to(
+            from_frame,
+            from_frame.with_ephem(ephem_root),
+            epoch,
+            ab_corr,
+            distance_unit,
+            time_unit,
+        )?;
 
-        let (pos_to_to_root, vel_to_to_root) =
-            self.translate_from_to(to_frame, to_frame.with_ephem(ephem_root), epoch)?;
+        let (pos_to_to_root, vel_to_to_root, accel_to_to_root) = self.translate_from_to(
+            to_frame,
+            to_frame.with_ephem(ephem_root),
+            epoch,
+            ab_corr,
+            distance_unit,
+            time_unit,
+        )?;
 
         // Return the difference of both vectors.
         Ok((
             pos_from_to_root - pos_to_to_root,
             vel_from_to_root - vel_to_to_root,
+            accel_from_to_root - accel_to_to_root,
         ))
     }
 
-    /// Translates a state with its origin (`to_frame`), returns that state with respect to the requested frame
+    /// Returns the position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in km, the velocity in km/s, and the acceleration in km/s^2.
+    pub fn translate_from_to_km_s(
+        &self,
+        from_frame: Frame,
+        to_frame: Frame,
+        epoch: Epoch,
+        ab_corr: Aberration,
+    ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
+        self.translate_from_to(
+            from_frame,
+            to_frame,
+            epoch,
+            ab_corr,
+            DistanceUnit::Kilometer,
+            TimeUnit::Second,
+        )
+    }
+
+    /// Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame
     ///
     /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_state_to` function instead to include rotations.
     pub fn translate_state_to(
         &self,
-        position_km: Vector3,
-        velocity_kmps: Vector3,
+        position: Vector3,
+        velocity: Vector3,
         from_frame: Frame,
         to_frame: Frame,
         epoch: Epoch,
+        ab_corr: Aberration,
+        distance_unit: DistanceUnit,
+        time_unit: TimeUnit,
     ) -> Result<(Vector3, Vector3), AniseError> {
         // Compute the frame translation
-        let (frame_pos, frame_vel) = self.translate_from_to(from_frame, to_frame, epoch)?;
+        let (frame_pos, frame_vel, _) = self.translate_from_to(
+            from_frame,
+            to_frame,
+            epoch,
+            ab_corr,
+            distance_unit,
+            time_unit,
+        )?;
 
-        Ok((position_km + frame_pos, velocity_kmps + frame_vel))
+        Ok((position + frame_pos, velocity + frame_vel))
     }
 }

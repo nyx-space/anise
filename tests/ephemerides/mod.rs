@@ -8,5 +8,6 @@
  * Documentation: https://nyxspace.com/
  */
 
-mod direct_translation_verif;
+mod parent_translation_verif;
 mod paths;
+mod translation_verif;

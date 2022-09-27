@@ -10,13 +10,13 @@
 
 use core::f64::EPSILON;
 
-use anise::constants::frames::VENUS_J2000;
+use anise::constants::frames::{EARTH_MOON_BARYCENTER_J2000, LUNA_J2000, VENUS_J2000};
 use anise::file_mmap;
 use anise::math::Vector3;
 use anise::prelude::*;
 
 #[test]
-fn de438s_translation_verif() {
+fn de438s_translation_verif_venus2emb() {
     if pretty_env_logger::try_init().is_err() {
         println!("could not init env_logger");
     }
@@ -34,61 +34,34 @@ fn de438s_translation_verif() {
     >>> sp.furnsh('data/de438s.bsp')
     >>> sp.furnsh('../../hifitime/naif0012.txt')
     >>> et = sp.utc2et('2002 FEB 07 00:00:00')
-    >>> et
-    66312064.18493876
-    >>> ['{:.16e}'.format(x) for x in sp.spkez(2, et, "J2000", "NONE", 0)[0]]
-    ['9.5205638574810922e+07', '-4.6160711641080864e+07', '-2.6779481328088202e+07', '1.6612048965376893e+01', '2.8272067093357247e+01', '1.1668575733195270e+01']
+    >>> ['{:.16e}'.format(x) for x in sp.spkez(2, et, "J2000", "NONE", 3)[0]]
+    ['2.0504464298094124e+08', '-1.3595802361226091e+08', '-6.5722791535179183e+07', '3.7012086122583923e+01', '4.8685441396743641e+01', '2.0519128283382937e+01']
     */
 
-    let (pos, vel, accel) = ctx
-        .translate_to_parent(
+    let (pos, vel, _) = ctx
+        .translate_from_to(
             VENUS_J2000,
+            EARTH_MOON_BARYCENTER_J2000,
             epoch,
+            Aberration::None,
             DistanceUnit::Kilometer,
             TimeUnit::Second,
         )
         .unwrap();
 
     let pos_expct_km = Vector3::new(
-        9.5205638574810922e+07,
-        -4.6160711641080864e+07,
-        -2.6779481328088202e+07,
+        2.0504464298094124e+08,
+        -1.3595802361226091e+08,
+        -6.5722791535179183e+07,
     );
 
     let vel_expct_km_s = Vector3::new(
-        1.6612048965376893e+01,
-        2.8272067093357247e+01,
-        1.1668575733195270e+01,
+        3.7012086122583923e+01,
+        4.8685441396743641e+01,
+        2.0519128283382937e+01,
     );
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!((pos - pos_expct_km).norm() < EPSILON);
     assert!((vel - vel_expct_km_s).norm() < EPSILON);
-    assert!(accel.norm() < EPSILON);
-
-    // Same thing but in Megameters per millisecond
-    let (pos, vel, accel) = ctx
-        .translate_to_parent(
-            VENUS_J2000,
-            epoch,
-            DistanceUnit::Megameter,
-            TimeUnit::Millisecond,
-        )
-        .unwrap();
-
-    // We expect exactly the same output as SPICE to machine precision.
-    assert!(
-        (pos - pos_expct_km * 1e-3).norm() < EPSILON,
-        "got {} but want {}",
-        pos,
-        pos_expct_km * 1e-3
-    );
-    // NOTE: km/s and Mm/ms correspond to the same number: times 1e3 for km -> Mm and times 1e-3 for s -> ms.
-    assert!(
-        (vel - vel_expct_km_s).norm() < EPSILON,
-        "got {} but want {}",
-        vel,
-        vel_expct_km_s
-    );
-    assert!(accel.norm() < EPSILON);
 }
