@@ -53,7 +53,7 @@ jobs:
         run: |
           cargo run --release -- convert ./data/de421.bsp
           cargo run --release -- convert ./data/de430.bsp
-          cargo run --release -- convert ./data/de438s.bsp
+          cargo run --release -- convert ./data/de438s.bsp --check
           cargo run --release -- convert ./data/de440.bsp
 
       - name: Test debug (default features) # This has overflow checks etc.
