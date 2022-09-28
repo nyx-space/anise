@@ -49,8 +49,9 @@ fn zero_translations() {
 
             // Check that the common root between the same frame is that frame's hash.
             let root_ephem = ctx
-                .find_common_ephemeris_node(this_frame_j2k, this_frame_j2k)
-                .unwrap();
+                .common_ephemeris_path(this_frame_j2k, this_frame_j2k)
+                .unwrap()
+                .2;
 
             assert_eq!(root_ephem, *ephemeris_hash);
 
@@ -109,27 +110,31 @@ fn common_root_verif() {
             PLUTO_BARYCENTER_J2000,
         ] {
             assert_eq!(
-                ctx.find_common_ephemeris_node(*planet_ctr, LUNA_J2000)
-                    .unwrap(),
+                ctx.common_ephemeris_path(*planet_ctr, LUNA_J2000)
+                    .unwrap()
+                    .2,
                 SOLAR_SYSTEM_BARYCENTER
             );
 
             assert_eq!(
-                ctx.find_common_ephemeris_node(LUNA_J2000, *planet_ctr)
-                    .unwrap(),
+                ctx.common_ephemeris_path(LUNA_J2000, *planet_ctr)
+                    .unwrap()
+                    .2,
                 SOLAR_SYSTEM_BARYCENTER
             );
         }
 
         // Common root between Earth and Moon should be EMB
         assert_eq!(
-            ctx.find_common_ephemeris_node(LUNA_J2000, EARTH_J2000)
-                .unwrap(),
+            ctx.common_ephemeris_path(LUNA_J2000, EARTH_J2000)
+                .unwrap()
+                .2,
             EARTH_MOON_BARYCENTER
         );
         assert_eq!(
-            ctx.find_common_ephemeris_node(EARTH_J2000, LUNA_J2000)
-                .unwrap(),
+            ctx.common_ephemeris_path(EARTH_J2000, LUNA_J2000)
+                .unwrap()
+                .2,
             EARTH_MOON_BARYCENTER
         );
     }

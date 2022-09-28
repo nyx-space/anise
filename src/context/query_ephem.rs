@@ -97,7 +97,7 @@ impl<'a> AniseContext<'a> {
     }
 
     /// Try to construct the path from the source frame all the way to the root ephemeris of this context.
-    pub fn try_ephemeris_path(
+    pub fn ephemeris_path_to_root(
         &self,
         source: &Frame,
     ) -> Result<(usize, [Option<HashType>; MAX_TREE_DEPTH]), AniseError> {
@@ -127,7 +127,7 @@ impl<'a> AniseContext<'a> {
         Err(AniseError::MaxTreeDepth)
     }
 
-    /// Returns the common node of two frames. This may return a `DisjointRoots` error if the frames do not share a common root, which is considered a file integrity error.
+    /// Returns the ephemeris path between two frames and the common node. This may return a `DisjointRoots` error if the frames do not share a common root, which is considered a file integrity error.
     ///
     /// # Example
     ///
@@ -146,7 +146,7 @@ impl<'a> AniseContext<'a> {
     ///         ╰─> LRO
     /// ```
     ///
-    /// Then this function will return the common root/node as a hash, in this case, the hash of the "Earth Moon Barycenter".
+    /// Then this function will return the path an array of hashes of up to [MAX_TREE_DEPTH] items. In this example, the array with the hashes of the "Earth Moon Barycenter" and "Luna".
     ///
     /// # Note
     /// A proper ANISE file should only have a single root and if two paths are empty, then they should be the same frame.
@@ -155,19 +155,20 @@ impl<'a> AniseContext<'a> {
     /// # Time complexity
     /// This can likely be simplified as this as a time complexity of O(n×m) where n, m are the lengths of the paths from
     /// the ephemeris up to the root.
-    pub fn find_common_ephemeris_node(
+    pub fn common_ephemeris_path(
         &self,
         from_frame: Frame,
         to_frame: Frame,
-    ) -> Result<HashType, AniseError> {
+    ) -> Result<(usize, [Option<HashType>; MAX_TREE_DEPTH], HashType), AniseError> {
+        // TODO: Consider returning a structure that has explicit fields
         if from_frame == to_frame {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
-            return Ok(from_frame.ephemeris_hash);
+            return Ok((0, [None; MAX_TREE_DEPTH], from_frame.ephemeris_hash));
         }
 
         // Grab the paths
-        let (from_len, from_path) = self.try_ephemeris_path(&from_frame)?;
-        let (to_len, to_path) = self.try_ephemeris_path(&to_frame)?;
+        let (from_len, from_path) = self.ephemeris_path_to_root(&from_frame)?;
+        let (to_len, to_path) = self.ephemeris_path_to_root(&to_frame)?;
 
         // Now that we have the paths, we can find the matching origin.
 
@@ -182,12 +183,15 @@ impl<'a> AniseContext<'a> {
             ))
         } else if from_len != 0 && to_len == 0 {
             // One has an empty path but not the other, so the root is at the empty path
-            Ok(to_frame.ephemeris_hash)
+            Ok((from_len, from_path, to_frame.ephemeris_hash))
         } else if to_len != 0 && from_len == 0 {
             // One has an empty path but not the other, so the root is at the empty path
-            Ok(from_frame.ephemeris_hash)
+            Ok((to_len, to_path, from_frame.ephemeris_hash))
         } else {
             // Either are at the ephemeris root, so we'll step through the paths until we find the common root.
+            let mut common_path = [None; MAX_TREE_DEPTH];
+            let mut items: usize = 0;
+
             if from_len > to_len {
                 // Iterate through the items in to_path because the longest path is necessarily includes in the shorter one,
                 // so we can shrink the outer loop here
@@ -197,7 +201,10 @@ impl<'a> AniseContext<'a> {
                             // This is where the paths branch meet, so the root is the parent of the current item.
                             // Recall that the path is _from_ the source to the root of the context, so we're walking them
                             // backward until we find "where" the paths branched out.
-                            return Ok(to_obj.unwrap());
+                            return Ok((items, common_path, to_obj.unwrap()));
+                        } else {
+                            common_path[items] = Some(from_obj.unwrap());
+                            items += 1;
                         }
                     }
                 }
@@ -209,7 +216,10 @@ impl<'a> AniseContext<'a> {
                             // This is where the paths branch meet, so the root is the parent of the current item.
                             // Recall that the path is _from_ the source to the root of the context, so we're walking them
                             // backward until we find "where" the paths branched out.
-                            return Ok(to_obj.unwrap());
+                            return Ok((items, common_path, to_obj.unwrap()));
+                        } else {
+                            common_path[items] = Some(to_obj.unwrap());
+                            items += 1;
                         }
                     }
                 }
@@ -238,29 +248,13 @@ impl<'a> AniseContext<'a> {
             return Ok((Vector3::zeros(), Vector3::zeros(), Vector3::zeros()));
         }
 
-        let ephem_root = self.find_common_ephemeris_node(from_frame, to_frame)?;
+        // Compute from each frame back to the ephemeris root
 
-        // Compute from the center back to its origin and then translate from that origin to the
+        let (pos_from_to_root, vel_from_to_root, accel_from_to_root) =
+            self.translate_to_root(from_frame, epoch, ab_corr, distance_unit, time_unit)?;
 
-        // Now that we have the root, let's simply add the vectors from each frame to the root.
-
-        let (pos_from_to_root, vel_from_to_root, accel_from_to_root) = self.translate_from_to(
-            from_frame,
-            from_frame.with_ephem(ephem_root),
-            epoch,
-            ab_corr,
-            distance_unit,
-            time_unit,
-        )?;
-
-        let (pos_to_to_root, vel_to_to_root, accel_to_to_root) = self.translate_from_to(
-            to_frame,
-            to_frame.with_ephem(ephem_root),
-            epoch,
-            ab_corr,
-            distance_unit,
-            time_unit,
-        )?;
+        let (pos_to_to_root, vel_to_to_root, accel_to_to_root) =
+            self.translate_to_root(to_frame, epoch, ab_corr, distance_unit, time_unit)?;
 
         // Return the difference of both vectors.
         Ok((
@@ -286,6 +280,100 @@ impl<'a> AniseContext<'a> {
             DistanceUnit::Kilometer,
             TimeUnit::Second,
         )
+    }
+
+    /// Returns the position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in m, the velocity in m/s, and the acceleration in m/s^2.
+    pub fn translate_from_to_m_s(
+        &self,
+        from_frame: Frame,
+        to_frame: Frame,
+        epoch: Epoch,
+        ab_corr: Aberration,
+    ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
+        self.translate_from_to(
+            from_frame,
+            to_frame,
+            epoch,
+            ab_corr,
+            DistanceUnit::Meter,
+            TimeUnit::Second,
+        )
+    }
+
+    /// Returns the geometric position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in km, the velocity in km/s, and the acceleration in km/s^2.
+    pub fn translate_from_to_km_s_geometric(
+        &self,
+        from_frame: Frame,
+        to_frame: Frame,
+        epoch: Epoch,
+    ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
+        self.translate_from_to(
+            from_frame,
+            to_frame,
+            epoch,
+            Aberration::None,
+            DistanceUnit::Kilometer,
+            TimeUnit::Second,
+        )
+    }
+
+    /// Returns the geometric position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in m, the velocity in m/s, and the acceleration in m/s^2.
+    pub fn translate_from_to_m_s_geometric(
+        &self,
+        from_frame: Frame,
+        to_frame: Frame,
+        epoch: Epoch,
+    ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
+        self.translate_from_to(
+            from_frame,
+            to_frame,
+            epoch,
+            Aberration::None,
+            DistanceUnit::Meter,
+            TimeUnit::Second,
+        )
+    }
+
+    /// Try to construct the path from the source frame all the way to the root ephemeris of this context.
+    pub fn translate_to_root(
+        &self,
+        source: Frame,
+        epoch: Epoch,
+        ab_corr: Aberration,
+        distance_unit: DistanceUnit,
+        time_unit: TimeUnit,
+    ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
+        // Build a tree, set a fixed depth to avoid allocations
+        let mut prev_ephem_hash = source.ephemeris_hash;
+
+        let mut pos = Vector3::zeros();
+        let mut vel = Vector3::zeros();
+        let mut accel = Vector3::zeros();
+
+        for _ in 0..MAX_TREE_DEPTH {
+            let idx = self.ephemeris_lut.index_for_hash(&prev_ephem_hash)?;
+            let parent_ephem = self.try_ephemeris_data(idx.into())?;
+            let parent_hash = parent_ephem.parent_ephemeris_hash;
+
+            let (this_pos, this_vel, this_accel) =
+                self.translate_to_parent(source, epoch, ab_corr, distance_unit, time_unit)?;
+
+            pos += this_pos;
+            vel += this_vel;
+            accel += this_accel;
+
+            if parent_hash == self.try_find_context_root()? {
+                return Ok((pos, vel, accel));
+            } else if let Err(e) = self.ephemeris_lut.index_for_hash(&parent_hash) {
+                if e == AniseError::ItemNotFound {
+                    // We have reached the root of this ephemeris and it has no parent.
+                    error!("{parent_hash} has no parent in this context");
+                    return Ok((pos, vel, accel));
+                }
+            }
+            prev_ephem_hash = parent_hash;
+        }
+        Err(AniseError::MaxTreeDepth)
     }
 
     /// Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame

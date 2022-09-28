@@ -9,6 +9,7 @@
  */
 use crc32fast::hash;
 use der::{asn1::SequenceOf, Decode, Encode, Reader, Writer};
+use log::error;
 
 use crate::{prelude::AniseError, HashType};
 
@@ -41,7 +42,11 @@ impl LookUpTable {
             if item == hash {
                 return match self.indexes.get(idx) {
                     Some(item_index) => Ok(*item_index),
-                    None => Err(AniseError::IndexingError),
+                    None => {
+                        error!("lookup table contain {hash:x} ({hash}) but it does not have an entry for it");
+                        // TODO: Change to integrity error
+                        Err(AniseError::IndexingError)
+                    }
                 };
             }
         }
