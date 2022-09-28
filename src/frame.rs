@@ -11,7 +11,7 @@
 use std::fmt::{Display, Formatter};
 
 use crate::constants::celestial_objects::hash_celestial_name;
-use crate::constants::orientations::hash_orientation_name;
+use crate::constants::orientations::{hash_orientation_name, J2000};
 use crate::HashType;
 
 /// A Frame uniquely defined by its ephemeris center and orientation. Refer to FrameDetail for frames combined with parameters.
@@ -28,6 +28,10 @@ impl Frame {
             ephemeris_hash,
             orientation_hash,
         }
+    }
+
+    pub const fn from_ephem_j2000(ephemeris_hash: HashType) -> Self {
+        Self::from_ephem_orient(ephemeris_hash, J2000)
     }
 
     /// Returns true if the ephemeris origin is equal to the provided hash

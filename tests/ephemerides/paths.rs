@@ -137,5 +137,19 @@ fn common_root_verif() {
                 .2,
             EARTH_MOON_BARYCENTER
         );
+
+        // Common root between EMB and Moon should be EMB
+        assert_eq!(
+            ctx.common_ephemeris_path(LUNA_J2000, EARTH_MOON_BARYCENTER_J2000)
+                .unwrap()
+                .2,
+            EARTH_MOON_BARYCENTER
+        );
+        assert_eq!(
+            ctx.common_ephemeris_path(EARTH_MOON_BARYCENTER_J2000, LUNA_J2000)
+                .unwrap()
+                .2,
+            EARTH_MOON_BARYCENTER
+        );
     }
 }

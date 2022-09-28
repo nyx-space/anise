@@ -42,7 +42,7 @@ fn de438s_parent_translation_verif() {
     ['9.5205638574810922e+07', '-4.6160711641080864e+07', '-2.6779481328088202e+07', '1.6612048965376893e+01', '2.8272067093357247e+01', '1.1668575733195270e+01']
     */
 
-    let (pos, vel, accel) = ctx
+    let (pos, vel, acc) = ctx
         .translate_to_parent(
             VENUS_J2000,
             epoch,
@@ -67,10 +67,10 @@ fn de438s_parent_translation_verif() {
     // We expect exactly the same output as SPICE to machine precision.
     assert!((pos - pos_expct_km).norm() < EPSILON);
     assert!((vel - vel_expct_km_s).norm() < EPSILON);
-    assert!(accel.norm() < EPSILON);
+    assert!(acc.norm() < EPSILON);
 
     // Same thing but in Megameters per millisecond
-    let (pos, vel, accel) = ctx
+    let (pos, vel, acc) = ctx
         .translate_to_parent(
             VENUS_J2000,
             epoch,
@@ -95,5 +95,5 @@ fn de438s_parent_translation_verif() {
         vel,
         vel_expct_km_s
     );
-    assert!(accel.norm() < EPSILON);
+    assert!(acc.norm() < EPSILON);
 }

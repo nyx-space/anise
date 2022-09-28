@@ -160,7 +160,7 @@ impl<'a> AniseContext<'a> {
         from_frame: Frame,
         to_frame: Frame,
     ) -> Result<(usize, [Option<HashType>; MAX_TREE_DEPTH], HashType), AniseError> {
-        // TODO: Consider returning a structure that has explicit fields
+        // TODO: Consider returning a structure that has explicit fields -- see how I use it first
         if from_frame == to_frame {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
             return Ok((0, [None; MAX_TREE_DEPTH], from_frame.ephemeris_hash));
@@ -192,38 +192,35 @@ impl<'a> AniseContext<'a> {
             let mut common_path = [None; MAX_TREE_DEPTH];
             let mut items: usize = 0;
 
-            if from_len > to_len {
-                // Iterate through the items in to_path because the longest path is necessarily includes in the shorter one,
-                // so we can shrink the outer loop here
-                for to_obj in to_path.iter().take(to_len) {
-                    for from_obj in from_path.iter().take(from_len) {
-                        if from_obj == to_obj {
-                            // This is where the paths branch meet, so the root is the parent of the current item.
-                            // Recall that the path is _from_ the source to the root of the context, so we're walking them
-                            // backward until we find "where" the paths branched out.
-                            return Ok((items, common_path, to_obj.unwrap()));
-                        } else {
-                            common_path[items] = Some(from_obj.unwrap());
-                            items += 1;
-                        }
-                    }
+            for to_obj in to_path.iter().take(to_len) {
+                // Check the trivial case of the common node being one of the input frames
+                if to_obj.unwrap() == from_frame.ephemeris_hash {
+                    common_path[0] = Some(from_frame.ephemeris_hash);
+                    items = 1;
+                    return Ok((items, common_path, from_frame.ephemeris_hash));
                 }
-            } else {
-                // Same algorithm as above, just flipped to make sure the outer loop is the shorter one
+
                 for from_obj in from_path.iter().take(from_len) {
-                    for to_obj in to_path.iter().take(to_len) {
-                        if from_obj == to_obj {
-                            // This is where the paths branch meet, so the root is the parent of the current item.
-                            // Recall that the path is _from_ the source to the root of the context, so we're walking them
-                            // backward until we find "where" the paths branched out.
-                            return Ok((items, common_path, to_obj.unwrap()));
-                        } else {
-                            common_path[items] = Some(to_obj.unwrap());
-                            items += 1;
-                        }
+                    // Check the trivial case of the common node being one of the input frames
+                    if items == 0 && from_obj.unwrap() == to_frame.ephemeris_hash {
+                        common_path[0] = Some(to_frame.ephemeris_hash);
+                        items = 1;
+                        return Ok((items, common_path, to_frame.ephemeris_hash));
+                    }
+
+                    if from_obj == to_obj {
+                        // This is where the paths branch meet, so the root is the parent of the current item.
+                        // Recall that the path is _from_ the source to the root of the context, so we're walking them
+                        // backward until we find "where" the paths branched out.
+                        trace!("common path: {common_path:?}");
+                        return Ok((items, common_path, to_obj.unwrap()));
+                    } else {
+                        common_path[items] = Some(from_obj.unwrap());
+                        items += 1;
                     }
                 }
             }
+
             // This is weird and I don't think it should happen, so let's raise an error.
             Err(AniseError::IntegrityError(IntegrityErrorKind::DataMissing))
         }
@@ -248,19 +245,62 @@ impl<'a> AniseContext<'a> {
             return Ok((Vector3::zeros(), Vector3::zeros(), Vector3::zeros()));
         }
 
-        // Compute from each frame back to the ephemeris root
+        let (node_count, path, common_node) = self.common_ephemeris_path(to_frame, from_frame)?;
 
-        let (pos_from_to_root, vel_from_to_root, accel_from_to_root) =
-            self.translate_to_root(from_frame, epoch, ab_corr, distance_unit, time_unit)?;
+        // The fwrd variables are the states from the `from frame` to the common node
+        let (mut pos_fwrd, mut vel_fwrd, mut acc_fwrd) =
+            if from_frame.ephem_origin_hash_match(common_node) {
+                (Vector3::zeros(), Vector3::zeros(), Vector3::zeros())
+            } else {
+                self.translate_to_parent(from_frame, epoch, ab_corr, distance_unit, time_unit)?
+            };
 
-        let (pos_to_to_root, vel_to_to_root, accel_to_to_root) =
-            self.translate_to_root(to_frame, epoch, ab_corr, distance_unit, time_unit)?;
+        // The bwrd variables are the states from the `to frame` back to the common node
+        let (mut pos_bwrd, mut vel_bwrd, mut acc_bwrd) =
+            if to_frame.ephem_origin_hash_match(common_node) {
+                (Vector3::zeros(), Vector3::zeros(), Vector3::zeros())
+            } else {
+                self.translate_to_parent(to_frame, epoch, ab_corr, distance_unit, time_unit)?
+            };
 
-        // Return the difference of both vectors.
+        for node_idx in 0..node_count {
+            // We know this exist, so we can safely unwrap it
+            let cur_node_hash = path[node_idx].unwrap();
+            if cur_node_hash == common_node {
+                break;
+            }
+
+            trace!("fwrd");
+            let (cur_pos_fwrd, cur_vel_fwrd, cur_acc_fwrd) = self.translate_to_parent(
+                from_frame.with_ephem(cur_node_hash),
+                epoch,
+                ab_corr,
+                distance_unit,
+                time_unit,
+            )?;
+
+            pos_fwrd += cur_pos_fwrd;
+            vel_fwrd += cur_vel_fwrd;
+            acc_fwrd += cur_acc_fwrd;
+
+            trace!("bwrd");
+            let (cur_pos_bwrd, cur_vel_bwrd, cur_acc_bwrd) = self.translate_to_parent(
+                to_frame.with_ephem(cur_node_hash),
+                epoch,
+                ab_corr,
+                distance_unit,
+                time_unit,
+            )?;
+
+            pos_bwrd += cur_pos_bwrd;
+            vel_bwrd += cur_vel_bwrd;
+            acc_bwrd += cur_acc_bwrd;
+        }
+
         Ok((
-            pos_from_to_root - pos_to_to_root,
-            vel_from_to_root - vel_to_to_root,
-            accel_from_to_root - accel_to_to_root,
+            pos_fwrd - pos_bwrd,
+            vel_fwrd - vel_bwrd,
+            acc_fwrd - acc_bwrd,
         ))
     }
 
@@ -348,7 +388,7 @@ impl<'a> AniseContext<'a> {
 
         let mut pos = Vector3::zeros();
         let mut vel = Vector3::zeros();
-        let mut accel = Vector3::zeros();
+        let mut acc = Vector3::zeros();
 
         for _ in 0..MAX_TREE_DEPTH {
             let idx = self.ephemeris_lut.index_for_hash(&prev_ephem_hash)?;
@@ -360,15 +400,15 @@ impl<'a> AniseContext<'a> {
 
             pos += this_pos;
             vel += this_vel;
-            accel += this_accel;
+            acc += this_accel;
 
             if parent_hash == self.try_find_context_root()? {
-                return Ok((pos, vel, accel));
+                return Ok((pos, vel, acc));
             } else if let Err(e) = self.ephemeris_lut.index_for_hash(&parent_hash) {
                 if e == AniseError::ItemNotFound {
                     // We have reached the root of this ephemeris and it has no parent.
                     error!("{parent_hash} has no parent in this context");
-                    return Ok((pos, vel, accel));
+                    return Ok((pos, vel, acc));
                 }
             }
             prev_ephem_hash = parent_hash;

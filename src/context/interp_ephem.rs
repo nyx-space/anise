@@ -46,17 +46,21 @@ impl<'a> AniseContext<'a> {
         // And the pointer to the data
         let ephem = self.try_ephemeris_data(idx.into())?;
 
+        trace!(
+            "query {source} wrt to {} @ {}",
+            source.with_ephem(ephem.parent_ephemeris_hash),
+            epoch
+        );
+
         // Perform a translation with position and velocity;
         let mut pos = Vector3::zeros();
         let mut vel = Vector3::zeros();
-        let mut accel = Vector3::zeros();
+        let mut acc = Vector3::zeros();
 
         // Grab the pointer to the splines.
         let splines = &ephem.splines;
         match ephem.interpolation_kind {
             InterpolationKind::ChebyshevSeries => {
-                trace!("start = {:E}\tfetch = {}", ephem.start_epoch(), epoch);
-
                 let start_epoch = ephem.start_epoch();
                 let end_epoch = ephem.end_epoch();
 
@@ -80,14 +84,14 @@ impl<'a> AniseContext<'a> {
                     for (cno, field) in [Field::Vx, Field::Vy, Field::Vz].iter().enumerate() {
                         let (val, deriv) = cheby_eval(epoch, start_epoch, splines, *field)?;
                         vel[cno] = val;
-                        accel[cno] = deriv;
+                        acc[cno] = deriv;
                     }
 
                     // Similarly, if there is acceleration, we should compute that too.
                     if splines.metadata.state_kind.includes_acceleration() {
                         for (cno, field) in [Field::Ax, Field::Ay, Field::Az].iter().enumerate() {
                             let (val, _) = cheby_eval(epoch, start_epoch, splines, *field)?;
-                            accel[cno] = val;
+                            acc[cno] = val;
                         }
                     }
                 }
@@ -105,7 +109,7 @@ impl<'a> AniseContext<'a> {
         Ok((
             pos * dist_unit_factor,
             vel * dist_unit_factor / time_unit_factor,
-            accel * dist_unit_factor / time_unit_factor.powi(2),
+            acc * dist_unit_factor / time_unit_factor.powi(2),
         ))
     }
 }

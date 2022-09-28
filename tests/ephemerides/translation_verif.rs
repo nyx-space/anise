@@ -182,7 +182,7 @@ fn de438s_translation_verif_emb2luna() {
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
-    // Venus to Earth Moon
+    // Earth Moon Barycenter to Earth Moon
 
     /*
     Python code:
@@ -190,7 +190,7 @@ fn de438s_translation_verif_emb2luna() {
     >>> sp.furnsh('data/de438s.bsp')
     >>> sp.furnsh('../../hifitime/naif0012.txt')
     >>> et = sp.utc2et('2002 FEB 07 00:00:00')
-    >>> ['{:.16e}'.format(x) for x in sp.spkez(3, et, "J2000", "NONE", 301)[0]]
+    >>> ['{:.16e}'.format(x) for x in sp.spkez(3, et, "J2000", "NONE", 301)[0]] # Target = 3; Obs = 301
     ['8.1576591043659311e+04', '3.4547568914467981e+05', '1.4439185901453768e+05', '-9.6071184439665624e-01', '2.0358322542331578e-01', '1.8380551745802590e-01']
     */
 
@@ -224,6 +224,28 @@ fn de438s_translation_verif_emb2luna() {
     );
     assert!(
         dbg!(vel - vel_expct_km_s).norm() < EPSILON,
+        "vel = {vel}\nexp = {vel_expct_km_s}"
+    );
+
+    // Try the opposite
+    let (pos, vel, _) = ctx
+        .translate_from_to(
+            LUNA_J2000,
+            EARTH_MOON_BARYCENTER_J2000,
+            epoch,
+            Aberration::None,
+            DistanceUnit::Kilometer,
+            TimeUnit::Second,
+        )
+        .unwrap();
+
+    // We expect exactly the same output as SPICE to machine precision.
+    assert!(
+        dbg!(pos + pos_expct_km).norm() < EPSILON,
+        "pos = {pos}\nexp = {pos_expct_km}"
+    );
+    assert!(
+        dbg!(vel + vel_expct_km_s).norm() < EPSILON,
         "vel = {vel}\nexp = {vel_expct_km_s}"
     );
 }
