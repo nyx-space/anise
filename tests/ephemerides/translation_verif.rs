@@ -67,12 +67,15 @@ fn de438s_translation_verif_venus2emb() {
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        (pos - pos_expct_km).norm() < EPSILON,
-        "pos = {pos}\nexp = {pos_expct_km}"
+        relative_eq!(pos, pos_expct_km, epsilon = EPSILON),
+        "pos = {pos}\nexp = {pos_expct_km}\nerr = {:e}",
+        pos_expct_km - pos
     );
+
     assert!(
-        (vel - vel_expct_km_s).norm() < EPSILON,
-        "vel = {vel}\nexp = {vel_expct_km_s}"
+        relative_eq!(vel, vel_expct_km_s, epsilon = EPSILON),
+        "vel = {vel}\nexp = {vel_expct_km_s}\nerr = {:e}",
+        vel_expct_km_s - vel
     );
 
     // Test the opposite translation
@@ -82,12 +85,15 @@ fn de438s_translation_verif_venus2emb() {
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        (pos + pos_expct_km).norm() < EPSILON,
-        "pos = {pos}\nexp = {pos_expct_km}"
+        relative_eq!(pos, -pos_expct_km, epsilon = EPSILON),
+        "pos = {pos}\nexp = {pos_expct_km}\nerr = {:e}",
+        pos_expct_km + pos
     );
+
     assert!(
-        (vel + vel_expct_km_s).norm() < EPSILON,
-        "vel = {vel}\nexp = {vel_expct_km_s}"
+        relative_eq!(vel, -vel_expct_km_s, epsilon = EPSILON),
+        "vel = {vel}\nexp = {vel_expct_km_s}\nerr = {:e}",
+        vel_expct_km_s + vel
     );
 }
 
@@ -145,12 +151,15 @@ fn de438s_translation_verif_venus2luna() {
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        dbg!(pos - pos_expct_km).norm() < EPSILON,
-        "pos = {pos}\nexp = {pos_expct_km}"
+        relative_eq!(pos, pos_expct_km, epsilon = EPSILON),
+        "pos = {pos}\nexp = {pos_expct_km}\nerr = {:e}",
+        pos_expct_km - pos
     );
+
     assert!(
-        dbg!(vel - vel_expct_km_s).norm() < EPSILON,
-        "vel = {vel}\nexp = {vel_expct_km_s}"
+        relative_eq!(vel, vel_expct_km_s, epsilon = EPSILON),
+        "vel = {vel}\nexp = {vel_expct_km_s}\nerr = {:e}",
+        vel_expct_km_s - vel
     );
 
     // Test the opposite translation
@@ -160,12 +169,15 @@ fn de438s_translation_verif_venus2luna() {
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        dbg!(pos + pos_expct_km).norm() < EPSILON,
-        "pos = {pos}\nexp = {pos_expct_km}"
+        relative_eq!(pos, -pos_expct_km, epsilon = EPSILON),
+        "pos = {pos}\nexp = {pos_expct_km}\nerr = {:e}",
+        pos_expct_km + pos
     );
+
     assert!(
-        dbg!(vel + vel_expct_km_s).norm() < EPSILON,
-        "vel = {vel}\nexp = {vel_expct_km_s}"
+        relative_eq!(vel, -vel_expct_km_s, epsilon = EPSILON),
+        "vel = {vel}\nexp = {vel_expct_km_s}\nerr = {:e}",
+        vel_expct_km_s + vel
     );
 }
 
@@ -219,12 +231,15 @@ fn de438s_translation_verif_emb2luna() {
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        dbg!(pos - pos_expct_km).norm() < EPSILON,
-        "pos = {pos}\nexp = {pos_expct_km}"
+        relative_eq!(pos, pos_expct_km, epsilon = EPSILON),
+        "pos = {pos}\nexp = {pos_expct_km}\nerr = {:e}",
+        pos_expct_km - pos
     );
+
     assert!(
-        dbg!(vel - vel_expct_km_s).norm() < EPSILON,
-        "vel = {vel}\nexp = {vel_expct_km_s}"
+        relative_eq!(vel, vel_expct_km_s, epsilon = EPSILON),
+        "vel = {vel}\nexp = {vel_expct_km_s}\nerr = {:e}",
+        vel_expct_km_s - vel
     );
 
     // Try the opposite
@@ -241,11 +256,14 @@ fn de438s_translation_verif_emb2luna() {
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        dbg!(pos + pos_expct_km).norm() < EPSILON,
-        "pos = {pos}\nexp = {pos_expct_km}"
+        relative_eq!(pos, -pos_expct_km, epsilon = EPSILON),
+        "pos = {pos}\nexp = {pos_expct_km}\nerr = {:e}",
+        pos_expct_km - pos
     );
+
     assert!(
-        dbg!(vel + vel_expct_km_s).norm() < EPSILON,
-        "vel = {vel}\nexp = {vel_expct_km_s}"
+        relative_eq!(vel, -vel_expct_km_s, epsilon = EPSILON),
+        "vel = {vel}\nexp = {vel_expct_km_s}\nerr = {:e}",
+        vel_expct_km_s - vel
     );
 }

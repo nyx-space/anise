@@ -8,5 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+#[macro_use]
+extern crate approx;
 mod ephemerides;
 mod frames;
