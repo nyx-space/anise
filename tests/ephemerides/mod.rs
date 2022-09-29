@@ -8,7 +8,6 @@
  * Documentation: https://nyxspace.com/
  */
 
-#[macro_use]
-extern crate approx;
-mod ephemerides;
-mod frames;
+mod parent_translation_verif;
+mod paths;
+mod translation_verif;

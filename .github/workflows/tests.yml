@@ -1,0 +1,104 @@
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+name: ANISE Ephemeris Workflow
+
+env:
+  RUST_BACKTRACE: 1
+  RUST_LOG: info
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Run cargo check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+
+  spice-convert-and-test:
+    name: Converts SPICE BSP files into ANISE files and runs the tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+        with:
+          lfs: true
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Convert DE438s and verify every coefficient (slow)
+        run: cargo run --release -- convert ./data/de438s.bsp --check
+
+      - name: Convert DE421, DE430, DE440
+        run: |
+          cargo run --release -- convert ./data/de421.bsp
+          cargo run --release -- convert ./data/de430.bsp
+          cargo run --release -- convert ./data/de440.bsp
+
+      - name: Test debug (default features) # This has overflow checks etc.
+        run: cargo test
+
+      - name: Test debug (no default features)
+        run: cargo test --no-default-features
+
+      - name: Test release (default features and release)
+        run: cargo test --release
+
+      - name: Test (no default features and release)
+        run: cargo test --no-default-features --release
+
+      - name: Create DE ANISE artifacts # At this stage, all of the tests have passed, so let's store these artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: anise-jpl-development-ephemerides
+          path: data/*.anise
+
+  lints:
+    name: Lints
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+      - name: Run cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -D warnings

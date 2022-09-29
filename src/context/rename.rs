@@ -8,7 +8,13 @@
  * Documentation: https://nyxspace.com/
  */
 
-#[macro_use]
-extern crate approx;
-mod ephemerides;
-mod frames;
+use crate::asn1::context::AniseContext;
+
+impl<'a> AniseContext<'a> {
+    pub fn rename_ephemeris_traj_mut(&mut self) {
+        todo!()
+    }
+    pub fn rename_orientation_traj_mut(&mut self) {
+        todo!()
+    }
+}
