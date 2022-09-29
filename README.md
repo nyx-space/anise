@@ -1,6 +1,13 @@
 # ANISE
 
-**This is a proof of concept implementation of the ANISE toolkit specification.**
+This is the main implementation of the ANISE toolkit specifications in Rust.
+
+# Features
+
+- Thread safe computations from the SPICE toolkit
+- Convert NAIF SPK files into ANISE files with `anise convert path-to-spk`, yields a 5% space reduction (only Chebyshev Type 2 currently supported)
+- Inspect an ANISE file with `anise inspect path-to-file`
+- Perform frame translations (no rotations yet) between whichever ephemeris is in the context, or from a provided Cartesian state into another frame
 
 Please refer to https://github.com/anise-toolkit/specs for the specifications.
 
@@ -30,11 +37,5 @@ Solar System barycenter
 
 # Development
 ## Requirements
-1. `rustc` version `1.56` or higher (required for the 2021 edition): https://rust-lang.org/ (TODO: Set a minimum compatible rust version)
-1. `git`
-
-## Generating the Rust files
-1. Update the submodule with the specs: `git submodule update --init --recursive`
-1. Then generate the files in the `generated` folder: `flatc --gen-all --rust -o generated ../specs/*.fbs`
-
-_Note:_ Because this code will (eventually) have CI/CD, it's easier for now to check-in the generated files instead of creating them at compilation time. It's also much easier for development because rust-analyzer will do all the autocompletion!
+1. `rustc` version `1.64` or higher (required for the 2021 edition): https://rust-lang.org/ (TODO: Set a minimum compatible rust version)
+2. `git`
