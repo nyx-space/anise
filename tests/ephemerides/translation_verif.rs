@@ -127,8 +127,6 @@ fn de438s_translation_verif_venus2luna() {
     ['8.1576591043659311e+04', '3.4547568914467981e+05', '1.4439185901453768e+05', '-9.6071184439665624e-01', '2.0358322542331578e-01', '1.8380551745802590e-01']
     */
 
-    dbg!(ctx.common_ephemeris_path(VENUS_J2000, LUNA_J2000).unwrap());
-
     let (pos, vel, _) = ctx
         .translate_from_to(
             VENUS_J2000,
@@ -160,7 +158,7 @@ fn de438s_translation_verif_venus2luna() {
     );
 
     assert!(
-        relative_eq!(vel, vel_expct_km_s, epsilon = EPSILON),
+        relative_eq!(vel, vel_expct_km_s, epsilon = VELOCITY_EPSILON_KM_S),
         "vel = {vel}\nexp = {vel_expct_km_s}\nerr = {:e}",
         vel_expct_km_s - vel
     );
@@ -178,7 +176,7 @@ fn de438s_translation_verif_venus2luna() {
     );
 
     assert!(
-        relative_eq!(vel, -vel_expct_km_s, epsilon = EPSILON),
+        relative_eq!(vel, -vel_expct_km_s, epsilon = VELOCITY_EPSILON_KM_S),
         "vel = {vel}\nexp = {vel_expct_km_s}\nerr = {:e}",
         vel_expct_km_s + vel
     );
@@ -261,12 +259,12 @@ fn de438s_translation_verif_emb2luna() {
     assert!(
         relative_eq!(pos, -pos_expct_km, epsilon = EPSILON),
         "pos = {pos}\nexp = {pos_expct_km}\nerr = {:e}",
-        pos_expct_km - pos
+        pos_expct_km + pos
     );
 
     assert!(
         relative_eq!(vel, -vel_expct_km_s, epsilon = VELOCITY_EPSILON_KM_S),
         "vel = {vel}\nexp = {vel_expct_km_s}\nerr = {:e}",
-        vel_expct_km_s - vel
+        vel_expct_km_s + vel
     );
 }

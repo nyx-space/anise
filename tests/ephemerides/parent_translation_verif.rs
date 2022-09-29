@@ -42,7 +42,7 @@ fn de438s_parent_translation_verif() {
     ['9.5205638574810922e+07', '-4.6160711641080864e+07', '-2.6779481328088202e+07', '1.6612048965376893e+01', '2.8272067093357247e+01', '1.1668575733195270e+01']
     */
 
-    let (pos, vel, acc) = ctx
+    let (pos, vel, acc, _) = ctx
         .translate_to_parent(
             VENUS_J2000,
             epoch,
@@ -70,7 +70,7 @@ fn de438s_parent_translation_verif() {
     assert!(acc.norm() < EPSILON);
 
     // Same thing but in Megameters per millisecond
-    let (pos, vel, acc) = ctx
+    let (pos, vel, acc, _) = ctx
         .translate_to_parent(
             VENUS_J2000,
             epoch,

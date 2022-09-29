@@ -248,17 +248,27 @@ impl<'a> AniseContext<'a> {
         let (node_count, path, common_node) = self.common_ephemeris_path(to_frame, from_frame)?;
 
         // The fwrd variables are the states from the `from frame` to the common node
-        let (mut pos_fwrd, mut vel_fwrd, mut acc_fwrd) =
+        let (mut pos_fwrd, mut vel_fwrd, mut acc_fwrd, mut frame_fwrd) =
             if from_frame.ephem_origin_hash_match(common_node) {
-                (Vector3::zeros(), Vector3::zeros(), Vector3::zeros())
+                (
+                    Vector3::zeros(),
+                    Vector3::zeros(),
+                    Vector3::zeros(),
+                    from_frame,
+                )
             } else {
                 self.translate_to_parent(from_frame, epoch, ab_corr, distance_unit, time_unit)?
             };
 
         // The bwrd variables are the states from the `to frame` back to the common node
-        let (mut pos_bwrd, mut vel_bwrd, mut acc_bwrd) =
+        let (mut pos_bwrd, mut vel_bwrd, mut acc_bwrd, mut frame_bwrd) =
             if to_frame.ephem_origin_hash_match(common_node) {
-                (Vector3::zeros(), Vector3::zeros(), Vector3::zeros())
+                (
+                    Vector3::zeros(),
+                    Vector3::zeros(),
+                    Vector3::zeros(),
+                    to_frame,
+                )
             } else {
                 self.translate_to_parent(to_frame, epoch, ab_corr, distance_unit, time_unit)?
             };
@@ -266,35 +276,30 @@ impl<'a> AniseContext<'a> {
         for node_idx in 0..node_count {
             // We know this exist, so we can safely unwrap it
             let cur_node_hash = path[node_idx].unwrap();
+
+            if !frame_fwrd.ephem_origin_hash_match(common_node) {
+                let (cur_pos_fwrd, cur_vel_fwrd, cur_acc_fwrd, cur_frame_fwrd) =
+                    self.translate_to_parent(frame_fwrd, epoch, ab_corr, distance_unit, time_unit)?;
+
+                pos_fwrd += cur_pos_fwrd;
+                vel_fwrd += cur_vel_fwrd;
+                acc_fwrd += cur_acc_fwrd;
+                frame_fwrd = cur_frame_fwrd;
+            }
+
+            if !frame_bwrd.ephem_origin_hash_match(common_node) {
+                let (cur_pos_bwrd, cur_vel_bwrd, cur_acc_bwrd, cur_frame_bwrd) =
+                    self.translate_to_parent(frame_bwrd, epoch, ab_corr, distance_unit, time_unit)?;
+
+                pos_bwrd += cur_pos_bwrd;
+                vel_bwrd += cur_vel_bwrd;
+                acc_bwrd += cur_acc_bwrd;
+                frame_bwrd = cur_frame_bwrd;
+            }
+
             if cur_node_hash == common_node {
                 break;
             }
-
-            trace!("fwrd");
-            let (cur_pos_fwrd, cur_vel_fwrd, cur_acc_fwrd) = self.translate_to_parent(
-                from_frame.with_ephem(cur_node_hash),
-                epoch,
-                ab_corr,
-                distance_unit,
-                time_unit,
-            )?;
-
-            pos_fwrd += cur_pos_fwrd;
-            vel_fwrd += cur_vel_fwrd;
-            acc_fwrd += cur_acc_fwrd;
-
-            trace!("bwrd");
-            let (cur_pos_bwrd, cur_vel_bwrd, cur_acc_bwrd) = self.translate_to_parent(
-                to_frame.with_ephem(cur_node_hash),
-                epoch,
-                ab_corr,
-                distance_unit,
-                time_unit,
-            )?;
-
-            pos_bwrd += cur_pos_bwrd;
-            vel_bwrd += cur_vel_bwrd;
-            acc_bwrd += cur_acc_bwrd;
         }
 
         Ok((
@@ -395,7 +400,7 @@ impl<'a> AniseContext<'a> {
             let parent_ephem = self.try_ephemeris_data(idx.into())?;
             let parent_hash = parent_ephem.parent_ephemeris_hash;
 
-            let (this_pos, this_vel, this_accel) =
+            let (this_pos, this_vel, this_accel, _) =
                 self.translate_to_parent(source, epoch, ab_corr, distance_unit, time_unit)?;
 
             pos += this_pos;

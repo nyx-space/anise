@@ -37,7 +37,9 @@ impl<'a> AniseContext<'a> {
         _ab_corr: Aberration,
         distance_unit: DistanceUnit,
         time_unit: TimeUnit,
-    ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
+    ) -> Result<(Vector3, Vector3, Vector3, Frame), AniseError> {
+        // TODO: Create a CartesianState struct which can be "upgraded" to an Orbit if the frame is of the correct type?
+        // I guess this is what the `Orbit` struct in Nyx does.
         // First, let's get a reference to the ephemeris given the frame.
 
         // Grab the index of the data from the frame's ephemeris hash.
@@ -46,11 +48,9 @@ impl<'a> AniseContext<'a> {
         // And the pointer to the data
         let ephem = self.try_ephemeris_data(idx.into())?;
 
-        trace!(
-            "query {source} wrt to {} @ {}",
-            source.with_ephem(ephem.parent_ephemeris_hash),
-            epoch
-        );
+        let new_frame = source.with_ephem(ephem.parent_ephemeris_hash);
+
+        trace!("query {source} wrt to {} @ {}", new_frame, epoch);
 
         // Perform a translation with position and velocity;
         let mut pos = Vector3::zeros();
@@ -110,6 +110,7 @@ impl<'a> AniseContext<'a> {
             pos * dist_unit_factor,
             vel * dist_unit_factor / time_unit_factor,
             acc * dist_unit_factor / time_unit_factor.powi(2),
+            new_frame,
         ))
     }
 }
