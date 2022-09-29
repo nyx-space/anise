@@ -15,6 +15,9 @@ use anise::file_mmap;
 use anise::math::Vector3;
 use anise::prelude::*;
 
+// For the Earth Moon Barycenter to Luna, there velocity error is up to 3e-14 km/s, or 3e-11 m/s, or 13 picometers per second.
+const VELOCITY_EPSILON_KM_S: f64 = 1e-13;
+
 #[test]
 fn de438s_translation_verif_venus2emb() {
     if pretty_env_logger::try_init().is_err() {
@@ -237,7 +240,7 @@ fn de438s_translation_verif_emb2luna() {
     );
 
     assert!(
-        relative_eq!(vel, vel_expct_km_s, epsilon = EPSILON),
+        relative_eq!(vel, vel_expct_km_s, epsilon = VELOCITY_EPSILON_KM_S),
         "vel = {vel}\nexp = {vel_expct_km_s}\nerr = {:e}",
         vel_expct_km_s - vel
     );
@@ -262,7 +265,7 @@ fn de438s_translation_verif_emb2luna() {
     );
 
     assert!(
-        relative_eq!(vel, -vel_expct_km_s, epsilon = EPSILON),
+        relative_eq!(vel, -vel_expct_km_s, epsilon = VELOCITY_EPSILON_KM_S),
         "vel = {vel}\nexp = {vel_expct_km_s}\nerr = {:e}",
         vel_expct_km_s - vel
     );
