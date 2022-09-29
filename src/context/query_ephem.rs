@@ -273,10 +273,7 @@ impl<'a> AniseContext<'a> {
                 self.translate_to_parent(to_frame, epoch, ab_corr, distance_unit, time_unit)?
             };
 
-        for node_idx in 0..node_count {
-            // We know this exist, so we can safely unwrap it
-            let cur_node_hash = path[node_idx].unwrap();
-
+        for cur_node_hash in path.iter().take(node_count) {
             if !frame_fwrd.ephem_origin_hash_match(common_node) {
                 let (cur_pos_fwrd, cur_vel_fwrd, cur_acc_fwrd, cur_frame_fwrd) =
                     self.translate_to_parent(frame_fwrd, epoch, ab_corr, distance_unit, time_unit)?;
@@ -297,7 +294,8 @@ impl<'a> AniseContext<'a> {
                 frame_bwrd = cur_frame_bwrd;
             }
 
-            if cur_node_hash == common_node {
+            // We know this exist, so we can safely unwrap it
+            if cur_node_hash.unwrap() == common_node {
                 break;
             }
         }
@@ -424,6 +422,7 @@ impl<'a> AniseContext<'a> {
     /// Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame
     ///
     /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_state_to` function instead to include rotations.
+    #[allow(clippy::too_many_arguments)]
     pub fn translate_state_to(
         &self,
         position: Vector3,
