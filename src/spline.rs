@@ -37,8 +37,6 @@ impl<'a> Splines<'a> {
         coeff_idx: usize,
         field: Field,
     ) -> Result<f64, AniseError> {
-        self.check_integrity()?;
-
         // Compute the index in bytes at which the data starts
         let offset = self.metadata.spline_offset(spline_idx)
             + self.metadata.field_offset(field, coeff_idx)?;

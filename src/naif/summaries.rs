@@ -8,9 +8,5 @@
  * Documentation: https://nyxspace.com/
  */
 
-pub mod append;
-pub mod integrity;
-pub mod load;
-pub mod merge;
-pub mod rename;
-pub mod save;
+// TODO: Implement an iterator on the summaries.
+pub struct Summary;

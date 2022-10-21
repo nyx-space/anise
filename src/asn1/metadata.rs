@@ -38,19 +38,15 @@ impl Default for Metadata<'_> {
 
 impl<'a> Encode for Metadata<'a> {
     fn encoded_len(&self) -> der::Result<der::Length> {
-        let (centuries, nanoseconds) = self.creation_date.to_tai_parts();
         self.anise_version.encoded_len()?
-            + centuries.encoded_len()?
-            + nanoseconds.encoded_len()?
+            + self.creation_date.encoded_len()?
             + Utf8StringRef::new(self.originator)?.encoded_len()?
             + Utf8StringRef::new(self.metadata_uri)?.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
-        let (centuries, nanoseconds) = self.creation_date.to_tai_parts();
         self.anise_version.encode(encoder)?;
-        centuries.encode(encoder)?;
-        nanoseconds.encode(encoder)?;
+        self.creation_date.encode(encoder)?;
         Utf8StringRef::new(self.originator)?.encode(encoder)?;
         Utf8StringRef::new(self.metadata_uri)?.encode(encoder)
     }
@@ -58,16 +54,11 @@ impl<'a> Encode for Metadata<'a> {
 
 impl<'a> Decode<'a> for Metadata<'a> {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
-        let anise_version = decoder.decode()?;
-        let centuries = decoder.decode()?;
-        let nanoseconds = decoder.decode()?;
-        let originator: Utf8StringRef<'a> = decoder.decode()?;
-        let metadata_uri: Utf8StringRef<'a> = decoder.decode()?;
         Ok(Self {
-            anise_version,
-            originator: originator.as_str(),
-            creation_date: Epoch::from_tai_parts(centuries, nanoseconds),
-            metadata_uri: metadata_uri.as_str(),
+            anise_version: decoder.decode()?,
+            creation_date: decoder.decode()?,
+            originator: decoder.decode::<Utf8StringRef<'a>>()?.as_str(),
+            metadata_uri: decoder.decode::<Utf8StringRef<'a>>()?.as_str(),
         })
     }
 }

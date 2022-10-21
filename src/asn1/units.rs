@@ -27,7 +27,7 @@ impl DistanceUnit {
     /// Returns the conversion factor of this distance unit to meters.
     /// E.g. To convert Self::Kilometers into Self::Meters, multiply by 1e-3.
     #[must_use]
-    pub const fn in_meters(&self) -> f64 {
+    pub const fn to_meters(&self) -> f64 {
         match self {
             Self::Micrometer => 1e6,
             Self::Millimeter => 1e3,

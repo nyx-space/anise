@@ -23,6 +23,8 @@ impl<'a> AniseContext<'a> {
         match Self::from_der(bytes) {
             Ok(ctx) => {
                 trace!("[try_from_bytes] loaded context successfully");
+                // Check the full integrity on load of the file.
+                ctx.check_integrity()?;
                 Ok(ctx)
             }
             Err(e) => {

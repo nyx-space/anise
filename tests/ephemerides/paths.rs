@@ -10,10 +10,10 @@
 
 use core::f64::EPSILON;
 
+use anise::astro::RefFrame;
 use anise::constants::celestial_objects::{EARTH_MOON_BARYCENTER, SOLAR_SYSTEM_BARYCENTER};
 use anise::constants::frames::*;
 use anise::constants::orientations::J2000;
-use anise::frame::Frame;
 use anise::prelude::*;
 use anise::{file_mmap, prelude::AniseContext};
 
@@ -45,7 +45,7 @@ fn zero_translations() {
         // For all of the frames in this context, let's make sure that the translation between the same frames is always zero.
         for ephemeris_hash in ctx.ephemeris_lut.hashes.iter() {
             // Build a J2000 oriented frame with this ephemeris center
-            let this_frame_j2k = Frame::from_ephem_orient(*ephemeris_hash, J2000);
+            let this_frame_j2k = RefFrame::from_ephem_orient(*ephemeris_hash, J2000);
 
             // Check that the common root between the same frame is that frame's hash.
             let root_ephem = ctx

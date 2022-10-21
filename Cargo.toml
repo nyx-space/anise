@@ -31,8 +31,23 @@ approx = "0.5.1"
 
 [dev-dependencies]
 rust-spice = "0.7.3"
-rstats = "1"
+online-statistics = "0.2.6"
+parquet = "25.0.0"
+arrow = "25.0.0"
+criterion = "0.3"
+iai = "0.1"
 
 [features]
 default = ["std"]
 std = []
+
+[profile.bench]
+debug = true
+
+[[bench]]
+name = "iai_ephemerides"
+harness = false
+
+[[bench]]
+name = "crit_ephemerides"
+harness = false

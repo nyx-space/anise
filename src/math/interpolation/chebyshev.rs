@@ -8,8 +8,6 @@
  * Documentation: https://nyxspace.com/
  */
 
-// TODO: Consider making a trait for these
-
 use hifitime::{Epoch, Unit as DurationUnit};
 
 use crate::{
@@ -45,7 +43,7 @@ pub(crate) fn cheby_eval(
 
             // In seconds
             let eval_epoch_et_s = eval_epoch.to_et_seconds();
-            let spline_idx_f = (ephem_start_delta_s / window_duration_s).round(); // Round seems to work
+            let spline_idx_f = (ephem_start_delta_s / window_duration_s).round();
 
             let midpoint = splines.fetch(spline_idx_f as usize, 0, Field::MidPoint)?;
 

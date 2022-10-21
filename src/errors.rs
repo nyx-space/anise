@@ -11,9 +11,9 @@
 use hifitime::Epoch;
 
 use crate::asn1::semver::Semver;
+use crate::astro::RefFrame;
 use crate::der::Error as Asn1Error;
 use crate::der::Error as DerError;
-use crate::frame::Frame;
 use core::convert::From;
 use core::fmt;
 use std::io::ErrorKind as IOErrorKind;
@@ -52,8 +52,8 @@ pub enum AniseError {
     FileExists,
     /// Raised if a transformation is requested but the frames have no common origin
     DisjointFrames {
-        from_frame: Frame,
-        to_frame: Frame,
+        from_frame: RefFrame,
+        to_frame: RefFrame,
     },
     /// Raised if the ephemeris or orientation is deeper to the context origin than this library supports
     MaxTreeDepth,
@@ -83,7 +83,10 @@ pub enum IntegrityErrorKind {
     /// The lookup table is broken somehow
     LookupTable,
     /// Raised if a transformation is requested but the frames have no common origin
-    DisjointRoots { from_frame: Frame, to_frame: Frame },
+    DisjointRoots {
+        from_frame: RefFrame,
+        to_frame: RefFrame,
+    },
 }
 
 impl From<IOErrorKind> for AniseError {

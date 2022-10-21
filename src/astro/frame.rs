@@ -16,12 +16,12 @@ use crate::HashType;
 
 /// A Frame uniquely defined by its ephemeris center and orientation. Refer to FrameDetail for frames combined with parameters.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Frame {
+pub struct RefFrame {
     pub ephemeris_hash: HashType,
     pub orientation_hash: HashType,
 }
 
-impl Frame {
+impl RefFrame {
     /// Constructs a new frame given its ephemeris and orientations hashes.
     pub const fn from_ephem_orient(ephemeris_hash: HashType, orientation_hash: HashType) -> Self {
         Self {
@@ -71,7 +71,7 @@ impl Frame {
     }
 }
 
-impl Display for Frame {
+impl Display for RefFrame {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         let body_name = match hash_celestial_name(self.ephemeris_hash) {
             Some(name) => name.to_string(),

@@ -61,7 +61,6 @@ fn main() -> Result<(), CliErrors> {
             match file_mmap!(file) {
                 Ok(bytes) => {
                     let context = AniseContext::try_from_bytes(&bytes)?;
-                    context.check_integrity()?;
                     println!("{}", context);
                     Ok(())
                 }

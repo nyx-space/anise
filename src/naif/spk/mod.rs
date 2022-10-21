@@ -51,10 +51,13 @@ impl<'a> SPK<'a> {
                 continue;
             }
 
-            if seg.data_type != DataType::ChebyshevPositionOnly {
-                return Err(AniseError::DAFParserError(
-                    "Only cheby supported".to_string(),
-                ));
+            if seg.data_type != DataType::ChebyshevPositionOnly
+                && seg.data_type != DataType::ChebyshevPositionVelocity
+            {
+                return Err(AniseError::DAFParserError(format!(
+                    "{:?} not yet supported",
+                    seg.data_type
+                )));
             }
 
             // For type 2, the config data is at the very end of the record
@@ -110,13 +113,13 @@ impl<'a> SPK<'a> {
             let rcrd_mid_point = parse_bytes_as!(
                 f64,
                 &self.daf.bytes[r_dbl_idx..DBL_SIZE + r_dbl_idx],
-                Endian::Little
+                self.daf.endianness
             );
             r_dbl_idx += DBL_SIZE;
             let rcrd_radius_s = parse_bytes_as!(
                 f64,
                 &self.daf.bytes[r_dbl_idx..DBL_SIZE + r_dbl_idx],
-                Endian::Little
+                self.daf.endianness
             );
 
             r_dbl_idx += DBL_SIZE;
@@ -128,7 +131,7 @@ impl<'a> SPK<'a> {
                     parse_bytes_as!(
                         f64,
                         raw_x_coeffs[DBL_SIZE * item..DBL_SIZE * (item + 1)],
-                        Endian::Little
+                        self.daf.endianness
                     )
                 })
                 .collect::<_>();
@@ -139,7 +142,7 @@ impl<'a> SPK<'a> {
                     parse_bytes_as!(
                         f64,
                         raw_y_coeffs[DBL_SIZE * item..DBL_SIZE * (item + 1)],
-                        Endian::Little
+                        self.daf.endianness
                     )
                 })
                 .collect::<_>();
@@ -150,7 +153,7 @@ impl<'a> SPK<'a> {
                     parse_bytes_as!(
                         f64,
                         raw_z_coeffs[DBL_SIZE * item..DBL_SIZE * (item + 1)],
-                        Endian::Little
+                        self.daf.endianness
                     )
                 })
                 .collect::<_>();

@@ -8,4 +8,6 @@
  * Documentation: https://nyxspace.com/
  */
 
+// TODO: Consider making a trait for all interpolation schemes.
+
 pub mod chebyshev;

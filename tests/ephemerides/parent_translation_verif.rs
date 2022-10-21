@@ -17,8 +17,6 @@ use anise::prelude::*;
 
 #[test]
 fn de438s_parent_translation_verif() {
-    // TODO: _Greatly_ expand this test case.
-
     if pretty_env_logger::try_init().is_err() {
         println!("could not init env_logger");
     }

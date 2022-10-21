@@ -17,26 +17,24 @@ pub use hifitime::Epoch;
 
 pub mod constants;
 pub mod context;
-pub mod ephemeris;
+pub mod ephemerides;
 pub mod errors;
-pub mod frame;
-pub mod framedetail;
 pub mod math;
 pub mod spline;
 
 pub mod prelude {
     pub use crate::asn1::context::AniseContext;
     pub use crate::asn1::units::*;
+    pub use crate::astro::Aberration;
     pub use crate::errors::AniseError;
-    pub use crate::math::Aberration;
     pub use hifitime::{Epoch, TimeScale, TimeUnits};
     pub use std::fs::File;
 }
 
 pub mod asn1;
-pub mod naif;
-
+pub mod astro;
 pub mod cli;
+pub mod naif;
 
 /// Defines the number of bytes in a double (prevents magic numbers)
 pub(crate) const DBL_SIZE: usize = 8;

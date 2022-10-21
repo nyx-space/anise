@@ -10,6 +10,7 @@
 
 pub mod daf;
 pub mod spk;
+pub mod summaries;
 
 #[macro_export]
 macro_rules! parse_bytes_as {

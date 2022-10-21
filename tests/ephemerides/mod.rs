@@ -10,4 +10,4 @@
 
 mod parent_translation_verif;
 mod paths;
-mod translation_verif;
+mod translation;

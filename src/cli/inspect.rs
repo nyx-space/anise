@@ -1,5 +1,4 @@
 use crc32fast::hash;
-use hifitime::Epoch;
 use std::fmt::{Display, Error as FmtError, Formatter};
 use tabled::{Style, Table, Tabled};
 
@@ -12,8 +11,8 @@ struct Row<'a> {
     name: &'a str,
     data_kind: &'a str,
     hash: HashType,
-    start_epoch: Epoch,
-    end_epoch: Epoch,
+    start_epoch: String,
+    end_epoch: String,
     interpolation_kind: InterpolationKind,
 }
 
@@ -53,8 +52,8 @@ impl<'a> Display for AniseContext<'a> {
                 name: ephem.name,
                 data_kind: "Ephemeris",
                 hash: hash(ephem.name.as_bytes()),
-                start_epoch: ephem.start_epoch(),
-                end_epoch: ephem.end_epoch(),
+                start_epoch: format!("{:?}", ephem.start_epoch()),
+                end_epoch: format!("{:?}", ephem.end_epoch()),
                 interpolation_kind: ephem.interpolation_kind,
             });
         }
@@ -64,8 +63,8 @@ impl<'a> Display for AniseContext<'a> {
                 name: orientation.name,
                 data_kind: "Orientation",
                 hash: hash(orientation.name.as_bytes()),
-                start_epoch: orientation.start_epoch(),
-                end_epoch: orientation.end_epoch(),
+                start_epoch: format!("{:?}", orientation.start_epoch()),
+                end_epoch: format!("{:?}", orientation.end_epoch()),
                 interpolation_kind: orientation.interpolation_kind,
             });
         }

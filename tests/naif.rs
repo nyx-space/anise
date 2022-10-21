@@ -65,20 +65,21 @@ fn test_spk_load() {
     spk.copy_segments(301).unwrap();
 
     // Build the ANISE file
-    let filename_anis = "de421.anise";
+    let filename_anis = "target/de421.anise";
     spk.to_anise(bsp_path, filename_anis, true, true).unwrap();
 
     // Load this ANISE file and make sure that it matches the original DE421 data.
     let bytes = file_mmap!(filename_anis).unwrap();
     let ctx = AniseContext::from_bytes(&bytes);
+    // Ignore the three empty ones
     assert_eq!(
         ctx.ephemeris_lut.hashes.len(),
-        spk.segments.len(),
+        spk.segments.len() - 3,
         "Incorrect number of ephem in map"
     );
     assert_eq!(
         ctx.ephemeris_lut.indexes.len(),
-        spk.segments.len(),
+        spk.segments.len() - 3,
         "Incorrect number of ephem in map"
     );
 
@@ -93,6 +94,7 @@ fn test_spk_load() {
 
     for (eidx, ephem) in ctx.ephemeris_data.iter().enumerate() {
         let splt = ephem.name.split("#").collect::<Vec<&str>>();
+        dbg!(&splt);
         let seg_target_id = str::parse::<i32>(splt[1]).unwrap();
         // Fetch the SPK segment
         let (seg, meta, all_seg_data) = spk.copy_segments(seg_target_id).unwrap();

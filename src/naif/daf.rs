@@ -11,7 +11,7 @@
 pub(crate) use super::Endian;
 use crate::{parse_bytes_as, prelude::AniseError, DBL_SIZE};
 use core::convert::TryInto;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 
 pub(crate) const RCRD_LEN: usize = 1024;
 pub(crate) const INT_SIZE: usize = 4;
@@ -53,7 +53,7 @@ impl<'a> DAF<'a> {
             if idx == 0 && content != "DAF" {
                 return Err(AniseError::DAFParserError(format!(
                     "Cannot parse file whose identifier is not DAF: `{}`",
-                    locidw
+                    locidw,
                 )));
             } else if idx == 1 {
                 match content.trim() {
@@ -153,11 +153,10 @@ impl<'a> DAF<'a> {
         let mut rslt = String::new();
         // FWRD has the initial record of the summary. So we assume that all records between the second record and that one are comments
         for rid in 1..self.fwrd {
-            // match core::str::from_utf8(&self.bytes[rid * RCRD_LEN..(rid + 1) * RCRD_LEN]) {
             match core::str::from_utf8(
                 self.bytes
                     .get(rid * RCRD_LEN..(rid + 1) * RCRD_LEN)
-                    .ok_or(AniseError::MalformedData(0))?,
+                    .ok_or(AniseError::MalformedData((rid + 1) * RCRD_LEN))?,
             ) {
                 Ok(s) => rslt += s.replace("\u{0}\u{0}", " ").replace('\u{0}', "\n").trim(),
                 Err(e) => {
@@ -208,7 +207,21 @@ impl<'a> DAF<'a> {
             let length = DBL_SIZE * self.nd + INT_SIZE * self.ni;
             for i in (0..nsummaries * length).step_by(length) {
                 let j = 3 * DBL_SIZE + i;
-                let name = core::str::from_utf8(&name_record[i..i + length]).unwrap();
+                let name = if name_record.is_empty() {
+                    warn!("name record is empty! Using `UNNAMED SPACECRAFT` instead");
+                    "UNNAMED SPACECRAFT"
+                } else {
+                    match core::str::from_utf8(&name_record[i..i + length]) {
+                        Ok(name) => name,
+                        Err(e) => {
+                            warn!(
+                                "malformed name record: `{e}` from {:?}! Using `UNNAMED SPACECRAFT` instead",
+                                &name_record[i..i + length]
+                            );
+                            "UNNAMED SPACECRAFT"
+                        }
+                    }
+                };
                 if name.starts_with(' ') {
                     println!("WARNING: Parsing might be wrong because the first character of the name summary is a space: `{}`", name);
                     println!(
