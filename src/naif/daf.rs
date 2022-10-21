@@ -8,17 +8,13 @@
  * Documentation: https://nyxspace.com/
  */
 
+pub(crate) use super::Endian;
 use crate::{parse_bytes_as, prelude::AniseError, DBL_SIZE};
 use core::convert::TryInto;
+use log::{debug, error, info};
 
 pub(crate) const RCRD_LEN: usize = 1024;
 pub(crate) const INT_SIZE: usize = 4;
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Endianness {
-    Little,
-    Big,
-}
 
 #[derive(Debug)]
 pub struct DAF<'a> {
@@ -33,47 +29,67 @@ pub struct DAF<'a> {
     /// The record number of the final summary record in the file.
     pub bwrd: usize,
     pub freeaddr: usize,
-    pub endianness: Endianness,
+    pub endianness: Endian,
     pub bytes: &'a [u8],
 }
 
 impl<'a> DAF<'a> {
     /// From https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/daf.html#Structure
     pub fn parse(bytes: &'a [u8]) -> Result<Self, AniseError> {
-        let locidw = std::str::from_utf8(&bytes[0..8]).map_err(|_| {
-            AniseError::NAIFParseError("Could not parse header (first 8 bytes)".to_owned())
-        })?;
+        let locidw = core::str::from_utf8(bytes.get(0..8).ok_or(AniseError::MalformedData(8))?)
+            .map_err(|_| {
+                AniseError::DAFParserError("Could not parse header (first 8 bytes)".to_owned())
+            })?;
 
-        let daftype: Vec<&str> = locidw.split('/').collect();
-        if daftype.len() != 2 {
-            return Err(AniseError::NAIFParseError(format!(
-                "Malformed header string: `{}`",
-                locidw
-            )));
-        } else if daftype[1].trim() == "PCK" {
-            println!("Good luck on the PCK debugging");
-        } else if daftype[1].trim() != "SPK" {
-            return Err(AniseError::NAIFParseError(format!(
-                "Cannot parse a NAIF DAF of type: `{}`",
-                locidw
-            )));
-        } else if daftype[0].trim() != "DAF" {
-            return Err(AniseError::NAIFParseError(format!(
-                "Cannot parse file whose identifier is not DAF: `{}`",
+        if !locidw.contains('/') {
+            return Err(AniseError::DAFParserError(format!(
+                "Cannot parse file whose identifier is: `{}`",
                 locidw
             )));
         }
 
+        let daftype_it = locidw.split('/');
+        for (idx, content) in daftype_it.enumerate() {
+            if idx == 0 && content != "DAF" {
+                return Err(AniseError::DAFParserError(format!(
+                    "Cannot parse file whose identifier is not DAF: `{}`",
+                    locidw
+                )));
+            } else if idx == 1 {
+                match content.trim() {
+                    "SPK" => {
+                        debug!("Parsing DAF as SPK");
+                    }
+                    "PCK" => {
+                        info!("Parsing DAF as PCF (good luck)");
+                    }
+                    _ => {
+                        error!("DAF of type {content} is not yet supported");
+                        return Err(AniseError::DAFParserError(format!(
+                            "Cannot parse SPICE data of type `{}`",
+                            locidw
+                        )));
+                    }
+                }
+            } else if idx > 1 {
+                return Err(AniseError::DAFParserError(format!(
+                    "Malformed header string: `{}`",
+                    locidw
+                )));
+            }
+        }
+
         // We need to figure out if this file is big or little endian before we can convert some byte arrays into integer
-        let str_endianness = std::str::from_utf8(&bytes[88..96])
-            .map_err(|_| AniseError::NAIFParseError("Could not parse endianness".to_owned()))?;
+        let str_endianness =
+            core::str::from_utf8(bytes.get(88..96).ok_or(AniseError::MalformedData(96))?)
+                .map_err(|_| AniseError::DAFParserError("Could not parse endianness".to_owned()))?;
 
         let endianness = if str_endianness == "LTL-IEEE" {
-            Endianness::Little
+            Endian::Little
         } else if str_endianness == "BIG-IEEE" {
-            Endianness::Big
+            Endian::Big
         } else {
-            return Err(AniseError::NAIFParseError(format!(
+            return Err(AniseError::DAFParserError(format!(
                 "Could not understand endianness: `{}`",
                 str_endianness
             )));
@@ -81,14 +97,44 @@ impl<'a> DAF<'a> {
 
         // Note that we parse as u32 to make sure that it's a 32-bit integer. The docs don't specify if it's signed or not,
         // but it works in either case (I guess that the sign bit is still present but set to zero?)
-        let nd = parse_bytes_as!(u32, &bytes[8..8 + INT_SIZE], endianness) as usize;
-        let ni = parse_bytes_as!(u32, &bytes[12..12 + INT_SIZE], endianness) as usize;
-        let fwrd = parse_bytes_as!(u32, &bytes[76..76 + INT_SIZE], endianness) as usize;
-        let bwrd = parse_bytes_as!(u32, &bytes[80..80 + INT_SIZE], endianness) as usize;
-        let freeaddr = parse_bytes_as!(u32, &bytes[84..84 + INT_SIZE], endianness) as usize;
+        let nd = parse_bytes_as!(
+            u32,
+            bytes
+                .get(8..8 + INT_SIZE)
+                .ok_or(AniseError::MalformedData(8 + INT_SIZE))?,
+            endianness
+        ) as usize;
+        let ni = parse_bytes_as!(
+            u32,
+            bytes
+                .get(12..12 + INT_SIZE)
+                .ok_or(AniseError::MalformedData(12 + INT_SIZE))?,
+            endianness
+        ) as usize;
+        let fwrd = parse_bytes_as!(
+            u32,
+            bytes
+                .get(76..76 + INT_SIZE)
+                .ok_or(AniseError::MalformedData(76 + INT_SIZE))?,
+            endianness
+        ) as usize;
+        let bwrd = parse_bytes_as!(
+            u32,
+            bytes
+                .get(80..80 + INT_SIZE)
+                .ok_or(AniseError::MalformedData(80 + INT_SIZE))?,
+            endianness
+        ) as usize;
+        let freeaddr = parse_bytes_as!(
+            u32,
+            bytes
+                .get(84..84 + INT_SIZE)
+                .ok_or(AniseError::MalformedData(84 + INT_SIZE))?,
+            endianness
+        ) as usize;
 
-        let locifn = std::str::from_utf8(&bytes[16..76])
-            .map_err(|_| AniseError::NAIFParseError("Could not parse locifn".to_owned()))?;
+        let locifn = core::str::from_utf8(bytes.get(16..76).ok_or(AniseError::MalformedData(79))?)
+            .map_err(|_| AniseError::DAFParserError("Could not parse locifn".to_owned()))?;
 
         Ok(Self {
             idword: locidw.trim(),
@@ -103,14 +149,19 @@ impl<'a> DAF<'a> {
         })
     }
 
-    pub fn comments(&self) -> String {
+    pub fn comments(&self) -> Result<String, AniseError> {
         let mut rslt = String::new();
         // FWRD has the initial record of the summary. So we assume that all records between the second record and that one are comments
         for rid in 1..self.fwrd {
-            match std::str::from_utf8(&self.bytes[rid * RCRD_LEN..(rid + 1) * RCRD_LEN]) {
+            // match core::str::from_utf8(&self.bytes[rid * RCRD_LEN..(rid + 1) * RCRD_LEN]) {
+            match core::str::from_utf8(
+                self.bytes
+                    .get(rid * RCRD_LEN..(rid + 1) * RCRD_LEN)
+                    .ok_or(AniseError::MalformedData(0))?,
+            ) {
                 Ok(s) => rslt += s.replace("\u{0}\u{0}", " ").replace('\u{0}', "\n").trim(),
                 Err(e) => {
-                    let valid_s = std::str::from_utf8(
+                    let valid_s = core::str::from_utf8(
                         &self.bytes[rid * RCRD_LEN..(rid * RCRD_LEN + e.valid_up_to())],
                     )
                     .unwrap();
@@ -122,11 +173,11 @@ impl<'a> DAF<'a> {
             }
         }
 
-        rslt
+        Ok(rslt)
     }
 
     /// The summaries are needed to decode the rest of the file
-    pub fn summaries(&self) -> Vec<(&'a str, Vec<f64>, Vec<i32>)> {
+    pub fn summaries(&self) -> Result<Vec<(&'a str, Vec<f64>, Vec<i32>)>, AniseError> {
         // Each summary need to be read in bytes of 8*nd then 4*self.ni
         let mut record_num = self.fwrd;
         let mut rtn = Vec::new();
@@ -134,25 +185,35 @@ impl<'a> DAF<'a> {
             if record_num == 0 {
                 break;
             }
-            let record = self.record(record_num);
+            let record = self.record(record_num)?;
             // Note that the segment control data are stored as f64 but need to be converted to usize
-            let next_record = parse_bytes_as!(f64, &record[0..DBL_SIZE], self.endianness) as usize;
-            // let prev_record =
-            //     parse_bytes_as!(f64, &record[8..8 + DBL_SIZE], self.endianness) as usize;
-            let nsummaries =
-                parse_bytes_as!(f64, &record[16..16 + DBL_SIZE], self.endianness) as usize;
+            let next_record = parse_bytes_as!(
+                f64,
+                record
+                    .get(0..DBL_SIZE)
+                    .ok_or(AniseError::MalformedData(DBL_SIZE))?,
+                self.endianness
+            ) as usize;
+
+            let nsummaries = parse_bytes_as!(
+                f64,
+                record
+                    .get(16..16 + DBL_SIZE)
+                    .ok_or(AniseError::MalformedData(16 + DBL_SIZE))?,
+                self.endianness
+            ) as usize;
 
             // Parse the data of the summary.
-            let name_record = self.record(record_num + 1);
+            let name_record = self.record(record_num + 1)?;
             let length = DBL_SIZE * self.nd + INT_SIZE * self.ni;
             for i in (0..nsummaries * length).step_by(length) {
                 let j = 3 * DBL_SIZE + i;
-                let name = std::str::from_utf8(&name_record[i..i + length]).unwrap();
+                let name = core::str::from_utf8(&name_record[i..i + length]).unwrap();
                 if name.starts_with(' ') {
                     println!("WARNING: Parsing might be wrong because the first character of the name summary is a space: `{}`", name);
                     println!(
                         "Full name data: `{}`",
-                        std::str::from_utf8(&name_record[..1000]).unwrap()
+                        core::str::from_utf8(&name_record[..1000]).unwrap()
                     );
                 }
                 let summary_data = &record[j..j + length];
@@ -173,13 +234,15 @@ impl<'a> DAF<'a> {
             record_num = next_record;
         }
 
-        rtn
+        Ok(rtn)
     }
 
     /// Records are indexed from one!!
-    fn record(&self, num: usize) -> &'a [u8] {
+    fn record(&self, num: usize) -> Result<&'a [u8], AniseError> {
         let start_idx = num * RCRD_LEN - RCRD_LEN;
-        &self.bytes[start_idx..start_idx + RCRD_LEN]
+        self.bytes
+            .get(start_idx..start_idx + RCRD_LEN)
+            .ok_or(AniseError::MalformedData(start_idx + RCRD_LEN))
     }
 
     /// Returns the 64-bit float at the provided address

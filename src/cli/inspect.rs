@@ -69,7 +69,8 @@ impl<'a> Display for AniseContext<'a> {
                 interpolation_kind: orientation.interpolation_kind,
             });
         }
-        let tbl = Table::new(rows).with(Style::rounded());
+        let mut tbl = Table::new(rows);
+        tbl.with(Style::rounded());
         write!(f, "{}", tbl)
     }
 }

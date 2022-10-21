@@ -45,7 +45,7 @@ impl LookUpTable {
                     None => {
                         error!("lookup table contain {hash:x} ({hash}) but it does not have an entry for it");
                         // TODO: Change to integrity error
-                        Err(AniseError::IndexingError)
+                        Err(AniseError::MalformedData(idx))
                     }
                 };
             }

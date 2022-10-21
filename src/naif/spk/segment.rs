@@ -60,7 +60,7 @@ impl<'a> Segment<'a> {
                 7 => Ok("Uranus"),
                 8 => Ok("Neptune"),
                 9 => Ok("Pluto"),
-                _ => Err(AniseError::NAIFParseError(format!(
+                _ => Err(AniseError::DAFParserError(format!(
                     "Human name unknown for {id}"
                 ))),
             }
@@ -80,7 +80,7 @@ impl<'a> Segment<'a> {
                 8 => Ok("Neptune Barycenter"),
                 9 => Ok("Pluto Barycenter"),
                 10 => Ok("Sun"),
-                _ => Err(AniseError::NAIFParseError(format!(
+                _ => Err(AniseError::DAFParserError(format!(
                     "Human name unknown for barycenter {id}"
                 ))),
             }
@@ -170,9 +170,9 @@ impl<'a> fmt::Display for Segment<'a> {
             self.frame_id,
             self.data_type,
             self.start_epoch,
-            self.start_epoch.as_et_duration().in_seconds(),
+            self.start_epoch.to_et_duration().to_seconds(),
             self.end_epoch,
-            self.end_epoch.as_et_duration().in_seconds(),
+            self.end_epoch.to_et_duration().to_seconds(),
             self.start_idx,
             self.end_idx
         )

@@ -268,3 +268,154 @@ fn de438s_translation_verif_emb2luna() {
         vel_expct_km_s + vel
     );
 }
+
+#[test]
+#[ignore]
+#[cfg(feature = "std")]
+fn exhaustive_de438s_translation() {
+    use anise::frame::Frame;
+    use hifitime::{TimeSeries, TimeUnits};
+    use log::info;
+    use rstats::{Median, Stats};
+
+    const FAIL_POS_KM: f64 = 1e4;
+    const FAIL_VEL_KM_S: f64 = 1e1;
+
+    if pretty_env_logger::try_init().is_err() {
+        println!("could not init env_logger");
+    }
+
+    // This test will load the BSP both in rust-spice and ANISE and make sure that we get the same data all the time.
+    use spice;
+    spice::furnsh("data/de438s.bsp");
+
+    let path = "./data/de438s.anise";
+    let buf = file_mmap!(path).unwrap();
+    let ctx = AniseContext::from_bytes(&buf);
+
+    for (idx1, ephem1) in ctx.ephemeris_data.iter().enumerate() {
+        let j2000_ephem1 = Frame::from_ephem_j2000(*ctx.ephemeris_lut.hashes.get(idx1).unwrap());
+
+        for (idx2, ephem2) in ctx.ephemeris_data.iter().enumerate() {
+            if ephem1 == ephem2 {
+                continue;
+            }
+
+            let j2000_ephem2 =
+                Frame::from_ephem_j2000(*ctx.ephemeris_lut.hashes.get(idx2).unwrap());
+
+            // Query the ephemeris data for a bunch of different times.
+            let start_epoch = if ephem1.start_epoch() < ephem2.start_epoch() {
+                ephem2.start_epoch()
+            } else {
+                ephem1.start_epoch()
+            };
+
+            let end_epoch = if ephem1.end_epoch() < ephem2.end_epoch() {
+                ephem1.end_epoch()
+            } else {
+                ephem2.end_epoch()
+            };
+
+            // Query at ten thousand items
+            let time_step = ((end_epoch - start_epoch).to_seconds() / 1_000.0).seconds();
+
+            let time_it = TimeSeries::exclusive(start_epoch, end_epoch - time_step, time_step);
+            info!("Query {} -> {} with {time_it}", j2000_ephem1, j2000_ephem2);
+
+            let mut pos_err = [
+                Vec::<f64>::with_capacity(1_000),
+                Vec::<f64>::with_capacity(1_000),
+                Vec::<f64>::with_capacity(1_000),
+            ];
+            let mut vel_err = [
+                Vec::<f64>::with_capacity(1_000),
+                Vec::<f64>::with_capacity(1_000),
+                Vec::<f64>::with_capacity(1_000),
+            ];
+
+            for epoch in time_it {
+                match ctx.translate_from_to_km_s_geometric(j2000_ephem1, j2000_ephem2, epoch) {
+                    Ok((pos, vel, _)) => {
+                        // Perform the same query in SPICE
+                        let (state, _) = spice::spkezr(
+                            match ephem1.name {
+                                "Luna" => "Moon",
+                                _ => ephem1.name,
+                            },
+                            epoch.to_et_seconds(),
+                            "J2000",
+                            "NONE",
+                            match ephem2.name {
+                                "Luna" => "Moon",
+                                _ => ephem2.name,
+                            },
+                        );
+
+                        // Check component by component instead of rebuilding a Vector3 from the SPICE data
+                        for i in 0..6 {
+                            if i < 3 {
+                                let err = (pos[i] - state[i]).abs();
+                                pos_err[i].push(err);
+
+                                assert!(
+                                    relative_eq!(pos[i], state[i], epsilon = FAIL_POS_KM),
+                                    "{epoch:E}\npos[{i}] = {}\nexp = {}\nerr = {:e}",
+                                    pos[i],
+                                    state[i],
+                                    err
+                                );
+                            } else {
+                                let err = (vel[i - 3] - state[i]).abs();
+                                vel_err[i - 3].push(err);
+
+                                assert!(
+                                    relative_eq!(vel[i - 3], state[i], epsilon = FAIL_VEL_KM_S),
+                                    "{epoch:E}vel[{i}] = {}\nexp = {}\nerr = {:e}",
+                                    vel[i - 3],
+                                    state[i],
+                                    err
+                                );
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        panic!("At epoch {epoch:E}: {e}");
+                    }
+                };
+            }
+
+            for i in 0..6 {
+                let meanstd = if i < 3 {
+                    pos_err[i].ameanstd().unwrap()
+                } else {
+                    vel_err[i - 3].ameanstd().unwrap()
+                };
+
+                let med = if i < 3 {
+                    pos_err[i].medinfo()
+                } else {
+                    vel_err[i - 3].medinfo()
+                };
+
+                info!(
+                    "Error on {}: mean = {:e}\tdev = {:e}\tlow q = {:e}\tmed = {:e}\tup q = {:e}",
+                    match i {
+                        0 => "X",
+                        1 => "Y",
+                        2 => "Z",
+                        3 => "VX",
+                        4 => "VY",
+                        5 => "VZ",
+                        _ => unreachable!(),
+                    },
+                    meanstd.centre,
+                    meanstd.dispersion,
+                    med.lq,
+                    med.median,
+                    med.uq
+                );
+            }
+        }
+    }
+}

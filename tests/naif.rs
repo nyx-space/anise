@@ -14,10 +14,7 @@ use anise::{
     asn1::context::AniseContext,
     asn1::spline::{Evenness, Field, StateKind},
     file_mmap,
-    naif::{
-        daf::{Endianness, DAF},
-        spk::SPK,
-    },
+    naif::{daf::DAF, spk::SPK, Endian},
     prelude::*,
 };
 
@@ -40,8 +37,8 @@ fn test_spk_load() {
     assert_eq!(de421.internal_filename, "NIO2SPK");
     assert_eq!(de421.fwrd, 4);
     assert_eq!(de421.bwrd, 4);
-    assert_eq!(de421.endianness, Endianness::Little);
-    assert_eq!(de421.comments().len(), 1379);
+    assert_eq!(de421.endianness, Endian::Little);
+    assert_eq!(de421.comments().unwrap().len(), 1379);
     // Convert to SPK
     let spk: SPK = (&de421).try_into().unwrap();
     println!("{}", spk);
@@ -114,7 +111,7 @@ fn test_spk_load() {
         match splines.metadata.evenness {
             Evenness::Even { duration_ns } => {
                 assert_eq!(
-                    (duration_ns as i64).nanoseconds().in_seconds(),
+                    (duration_ns as i64).nanoseconds().to_seconds(),
                     meta.interval_length_s,
                     "incorrect interval duration"
                 );
@@ -145,7 +142,6 @@ fn test_spk_load() {
     }
 }
 
-#[ignore]
 #[test]
 fn test_binary_pck_load() {
     if pretty_env_logger::try_init().is_err() {
@@ -153,10 +149,10 @@ fn test_binary_pck_load() {
     }
 
     // Using the DE421 as demo because the correct data is in the DAF documentation
-    let filename = "data/earth_old_high_prec.bpc";
+    let filename = "data/earth_latest_high_prec.bpc";
     let bytes = file_mmap!(filename).unwrap();
 
     let high_prec = DAF::parse(&bytes).unwrap();
-    println!("{}", high_prec.comments());
-    high_prec.summaries();
+    println!("{}", high_prec.comments().unwrap());
+    high_prec.summaries().unwrap();
 }

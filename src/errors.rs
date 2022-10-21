@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use hifitime::{Epoch, TimeSystem};
+use hifitime::Epoch;
 
 use crate::asn1::semver::Semver;
 use crate::der::Error as Asn1Error;
@@ -22,16 +22,16 @@ use std::io::ErrorKind as IOErrorKind;
 pub enum AniseError {
     /// Raised for an error in reading or writing the file(s)
     IOError(IOErrorKind),
-    /// Raised if an IO error occured but its representation is not simple (and therefore not an std::io::ErrorKind).
+    /// Raised if an IO error occurred but its representation is not simple (and therefore not an std::io::ErrorKind).
     IOUnknownError,
     /// Raise if a division by zero was to occur
     DivisionByZero,
     /// Raised when requesting the value of a parameter but it does not have any representation (typically the coefficients are an empty array)
     ParameterNotSpecified,
-    /// For some reason weird reason (malformed file?), data that was expected to be in an array wasn't.
-    IndexingError,
+    /// The byte stream is missing data that is required to parse.
+    MalformedData(usize),
     /// If the NAIF file cannot be read or isn't supported
-    NAIFParseError(String),
+    DAFParserError(String),
     InvalidTimeSystem,
     /// Raised if the checksum of the encoded data does not match the stored data.
     IntegrityError(IntegrityErrorKind),
@@ -111,8 +111,8 @@ impl fmt::Display for AniseError {
             Self::IOUnknownError => write!(f, "ANISE error: IOUnknownError"),
             Self::DivisionByZero => write!(f, "ANISE error: DivisionByZero"),
             Self::ParameterNotSpecified => write!(f, "ANISE error: ParameterNotSpecified"),
-            Self::IndexingError => write!(f, "ANISE error: IndexingError"),
-            Self::NAIFParseError(reason) => {
+            Self::MalformedData(byte) => write!(f, "ANISE error: Malformed data: could not read up to byte {byte}."),
+            Self::DAFParserError(reason) => {
                 write!(f, "ANISE error: invalid NAIF DAF file: {}", reason)
             }
             Self::InvalidTimeSystem => write!(f, "ANISE error: invalid time system"),
@@ -150,7 +150,7 @@ impl fmt::Display for AniseError {
             ),
             Self::MissingInterpolationData(e) => write!(
                 f,
-                "ANISE error: No interpolation as epoch {}", e.as_gregorian_str(TimeSystem::ET) 
+                "ANISE error: No interpolation as epoch {e:e}"
             ),
         }
     }

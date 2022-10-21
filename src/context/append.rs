@@ -57,7 +57,7 @@ impl<'a> AniseContext<'a> {
             // Check that we can add one item
             if self.ephemeris_lut.indexes.len() == MAX_TRAJECTORIES {
                 error!("[append] cannnot append ephemeris, look up table is full");
-                return Err(AniseError::IndexingError);
+                return Err(AniseError::MaxTreeDepth);
             }
 
             self.ephemeris_lut
@@ -116,7 +116,7 @@ impl<'a> AniseContext<'a> {
             // Check that we can add one item
             if self.orientation_lut.indexes.len() == MAX_TRAJECTORIES {
                 // We're full!
-                return Err(AniseError::IndexingError);
+                return Err(AniseError::MaxTreeDepth);
             }
 
             self.orientation_lut

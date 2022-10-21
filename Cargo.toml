@@ -11,12 +11,12 @@ keywords = ["attitude","navigation","instrument", "spacecraft", "ephemeris"]
 categories = ["science", "simulation"]
 readme = "README.md"
 license = "MPL-2.0"
+exclude = ["cspice"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# hifitime = {version = "3.4.0", features = ["asn1der"]}
-hifitime = {git = "https://github.com/nyx-space/hifitime", rev= "042599948499086ea4e854727eac885f6cab5d89"} # TODO: Switch to 3.4.1 when published.
+hifitime = {version = "3.5.0", features = ["asn1der"]}
 memmap2 = "0.5.7"
 crc32fast = "1.3.0"
 der = {version = "0.6.0", features = ["derive", "alloc", "real"]}
@@ -24,7 +24,15 @@ clap = {version = "3.1", features = ["derive"]}
 thiserror = "1.0"
 log = "0.4"
 pretty_env_logger = "0.4"
-tabled = "0.8"
+tabled = "0.10"
 const_format = "0.2"
 nalgebra = "0.31"
 approx = "0.5.1"
+
+[dev-dependencies]
+rust-spice = "0.7.3"
+rstats = "1"
+
+[features]
+default = ["std"]
+std = []

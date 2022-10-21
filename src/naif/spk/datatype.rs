@@ -80,7 +80,7 @@ impl TryFrom<i32> for DataType {
             19 => Ok(Self::ESOCPiecewiseInterpolation),
             20 => Ok(Self::ChebyshevVelocityOnly),
             21 => Ok(Self::ExtendedModifiedDifferenceArrays),
-            _ => Err(AniseError::NAIFParseError(format!(
+            _ => Err(AniseError::DAFParserError(format!(
                 "unknown data type {}",
                 data_type
             ))),

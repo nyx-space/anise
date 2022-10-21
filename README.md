@@ -39,3 +39,4 @@ Solar System barycenter
 ## Requirements
 1. `rustc` version `1.64` or higher (required for the 2021 edition): https://rust-lang.org/ (TODO: Set a minimum compatible rust version)
 2. `git`
+1. `rust-spice` is used for exhaustive testing of the SPICE interoperability. It requires the cspice library.

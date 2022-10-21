@@ -13,7 +13,7 @@ extern crate der;
 use self::datatype::DataType;
 use self::segment::{Record, SegMetaData, Segment};
 
-use super::daf::{Endianness, DAF};
+use super::daf::{Endian, DAF};
 use crate::asn1::common::InterpolationKind;
 use crate::asn1::context::AniseContext;
 use crate::asn1::ephemeris::Ephemeris;
@@ -52,7 +52,7 @@ impl<'a> SPK<'a> {
             }
 
             if seg.data_type != DataType::ChebyshevPositionOnly {
-                return Err(AniseError::NAIFParseError(
+                return Err(AniseError::DAFParserError(
                     "Only cheby supported".to_string(),
                 ));
             }
@@ -89,7 +89,7 @@ impl<'a> SPK<'a> {
                 },
             ));
         }
-        Err(AniseError::NAIFParseError(format!(
+        Err(AniseError::DAFParserError(format!(
             "Could not find segment {}",
             seg_target_id
         )))
@@ -110,13 +110,13 @@ impl<'a> SPK<'a> {
             let rcrd_mid_point = parse_bytes_as!(
                 f64,
                 &self.daf.bytes[r_dbl_idx..DBL_SIZE + r_dbl_idx],
-                Endianness::Little
+                Endian::Little
             );
             r_dbl_idx += DBL_SIZE;
             let rcrd_radius_s = parse_bytes_as!(
                 f64,
                 &self.daf.bytes[r_dbl_idx..DBL_SIZE + r_dbl_idx],
-                Endianness::Little
+                Endian::Little
             );
 
             r_dbl_idx += DBL_SIZE;
@@ -128,7 +128,7 @@ impl<'a> SPK<'a> {
                     parse_bytes_as!(
                         f64,
                         raw_x_coeffs[DBL_SIZE * item..DBL_SIZE * (item + 1)],
-                        Endianness::Little
+                        Endian::Little
                     )
                 })
                 .collect::<_>();
@@ -139,7 +139,7 @@ impl<'a> SPK<'a> {
                     parse_bytes_as!(
                         f64,
                         raw_y_coeffs[DBL_SIZE * item..DBL_SIZE * (item + 1)],
-                        Endianness::Little
+                        Endian::Little
                     )
                 })
                 .collect::<_>();
@@ -150,7 +150,7 @@ impl<'a> SPK<'a> {
                     parse_bytes_as!(
                         f64,
                         raw_z_coeffs[DBL_SIZE * item..DBL_SIZE * (item + 1)],
-                        Endianness::Little
+                        Endian::Little
                     )
                 })
                 .collect::<_>();
@@ -431,10 +431,10 @@ impl<'a> TryInto<SPK<'a>> for &'a DAF<'a> {
         };
 
         // Convert the summaries into segments
-        for seg_data in self.summaries() {
+        for seg_data in self.summaries()? {
             let (name, f64_data, int_data) = seg_data;
             if f64_data.len() != 2 {
-                return Err(AniseError::NAIFParseError(format!(
+                return Err(AniseError::DAFParserError(format!(
                     "SPK should have exactly two f64 data, found {}",
                     f64_data.len()
                 )));
@@ -444,7 +444,7 @@ impl<'a> TryInto<SPK<'a>> for &'a DAF<'a> {
             let end_epoch = Epoch::from_et_seconds(f64_data[1]);
 
             if int_data.len() != 6 {
-                return Err(AniseError::NAIFParseError(format!(
+                return Err(AniseError::DAFParserError(format!(
                     "SPK should have exactly five int data, found {}",
                     int_data.len()
                 )));

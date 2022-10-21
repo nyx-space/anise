@@ -17,7 +17,7 @@ use crate::{
         spline::{Field, Splines},
     },
     errors::{AniseError, IntegrityErrorKind, InternalErrorKind},
-    naif::daf::Endianness,
+    naif::daf::Endian,
     parse_bytes_as, DBL_SIZE,
 };
 
@@ -45,13 +45,13 @@ impl<'a> Splines<'a> {
 
         // Safely fetch this coefficient, returning an error if we're out of bounds.
         match self.data.get(offset..offset + DBL_SIZE) {
-            Some(ptr) => Ok(parse_bytes_as!(f64, ptr, Endianness::Big)),
+            Some(ptr) => Ok(parse_bytes_as!(f64, ptr, Endian::Big)),
             None => {
                 error!(
                     "[fetch] could not fetch {}-th {:?} in spline {}",
                     coeff_idx, field, spline_idx
                 );
-                Err(AniseError::IndexingError)
+                Err(AniseError::MalformedData(offset + DBL_SIZE))
             }
         }
     }

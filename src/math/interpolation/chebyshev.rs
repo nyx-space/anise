@@ -33,18 +33,18 @@ pub(crate) fn cheby_eval(
     match splines.metadata.evenness {
         Evenness::Even { duration_ns } => {
             let window_duration_s: f64 =
-                ((duration_ns as f64) * DurationUnit::Nanosecond).in_seconds();
+                ((duration_ns as f64) * DurationUnit::Nanosecond).to_seconds();
 
             let radius_s = window_duration_s / 2.0;
             let ephem_start_delta = eval_epoch - start_epoch;
-            let ephem_start_delta_s = ephem_start_delta.in_seconds();
+            let ephem_start_delta_s = ephem_start_delta.to_seconds();
 
             if ephem_start_delta_s < 0.0 {
                 return Err(AniseError::MissingInterpolationData(eval_epoch));
             }
 
             // In seconds
-            let eval_epoch_et_s = eval_epoch.as_et_seconds();
+            let eval_epoch_et_s = eval_epoch.to_et_seconds();
             let spline_idx_f = (ephem_start_delta_s / window_duration_s).round(); // Round seems to work
 
             let midpoint = splines.fetch(spline_idx_f as usize, 0, Field::MidPoint)?;
