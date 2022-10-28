@@ -273,7 +273,7 @@ fn de438s_translation_verif_emb2luna() {
 #[ignore]
 #[cfg(feature = "std")]
 fn validate_jplde_translation() {
-    use anise::astro::RefFrame;
+    use anise::astro::Frame;
     use arrow::array::{ArrayRef, Float64Array, StringArray, UInt8Array};
     use arrow::datatypes::{DataType, Field, Schema};
     use arrow::record_batch::RecordBatch;
@@ -335,7 +335,7 @@ fn validate_jplde_translation() {
 
         for (idx1, ephem1) in ctx.ephemeris_data.iter().enumerate() {
             let j2000_ephem1 =
-                RefFrame::from_ephem_j2000(*ctx.ephemeris_lut.hashes.get(idx1).unwrap());
+                Frame::from_ephem_j2000(*ctx.ephemeris_lut.hashes.get(idx1).unwrap());
 
             for (idx2, ephem2) in ctx.ephemeris_data.iter().enumerate() {
                 if ephem1 == ephem2 {
@@ -343,7 +343,7 @@ fn validate_jplde_translation() {
                 }
 
                 let j2000_ephem2 =
-                    RefFrame::from_ephem_j2000(*ctx.ephemeris_lut.hashes.get(idx2).unwrap());
+                    Frame::from_ephem_j2000(*ctx.ephemeris_lut.hashes.get(idx2).unwrap());
 
                 // Query the ephemeris data for a bunch of different times.
                 let start_epoch = if ephem1.start_epoch() < ephem2.start_epoch() {

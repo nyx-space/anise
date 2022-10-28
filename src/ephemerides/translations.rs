@@ -14,7 +14,7 @@ use crate::asn1::units::*;
 use crate::astro::Aberration;
 use crate::hifitime::Epoch;
 use crate::math::Vector3;
-use crate::{asn1::context::AniseContext, astro::RefFrame, errors::AniseError};
+use crate::{asn1::context::AniseContext, astro::Frame, errors::AniseError};
 
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
 pub const MAX_TREE_DEPTH: usize = 8;
@@ -27,8 +27,8 @@ impl<'a> AniseContext<'a> {
     /// Note: this function performs a recursion of no more than twice the [MAX_TREE_DEPTH].
     pub fn translate_from_to(
         &self,
-        from_frame: RefFrame,
-        to_frame: RefFrame,
+        from_frame: Frame,
+        to_frame: Frame,
         epoch: Epoch,
         ab_corr: Aberration,
         distance_unit: DistanceUnit,
@@ -104,8 +104,8 @@ impl<'a> AniseContext<'a> {
     /// Returns the position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in km, the velocity in km/s, and the acceleration in km/s^2.
     pub fn translate_from_to_km_s(
         &self,
-        from_frame: RefFrame,
-        to_frame: RefFrame,
+        from_frame: Frame,
+        to_frame: Frame,
         epoch: Epoch,
         ab_corr: Aberration,
     ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
@@ -122,8 +122,8 @@ impl<'a> AniseContext<'a> {
     /// Returns the position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in m, the velocity in m/s, and the acceleration in m/s^2.
     pub fn translate_from_to_m_s(
         &self,
-        from_frame: RefFrame,
-        to_frame: RefFrame,
+        from_frame: Frame,
+        to_frame: Frame,
         epoch: Epoch,
         ab_corr: Aberration,
     ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
@@ -140,8 +140,8 @@ impl<'a> AniseContext<'a> {
     /// Returns the geometric position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in km, the velocity in km/s, and the acceleration in km/s^2.
     pub fn translate_from_to_km_s_geometric(
         &self,
-        from_frame: RefFrame,
-        to_frame: RefFrame,
+        from_frame: Frame,
+        to_frame: Frame,
         epoch: Epoch,
     ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
         self.translate_from_to(
@@ -157,8 +157,8 @@ impl<'a> AniseContext<'a> {
     /// Returns the geometric position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in m, the velocity in m/s, and the acceleration in m/s^2.
     pub fn translate_from_to_m_s_geometric(
         &self,
-        from_frame: RefFrame,
-        to_frame: RefFrame,
+        from_frame: Frame,
+        to_frame: Frame,
         epoch: Epoch,
     ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
         self.translate_from_to(
@@ -174,7 +174,7 @@ impl<'a> AniseContext<'a> {
     /// Try to construct the path from the source frame all the way to the root ephemeris of this context.
     pub fn translate_to_root(
         &self,
-        source: RefFrame,
+        source: Frame,
         epoch: Epoch,
         ab_corr: Aberration,
         distance_unit: DistanceUnit,
@@ -221,8 +221,8 @@ impl<'a> AniseContext<'a> {
         &self,
         position: Vector3,
         velocity: Vector3,
-        from_frame: RefFrame,
-        to_frame: RefFrame,
+        from_frame: Frame,
+        to_frame: Frame,
         epoch: Epoch,
         ab_corr: Aberration,
         distance_unit: DistanceUnit,

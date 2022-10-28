@@ -17,7 +17,7 @@ use crate::astro::Aberration;
 use crate::hifitime::Epoch;
 use crate::math::interpolation::chebyshev::cheby_eval;
 use crate::math::Vector3;
-use crate::{asn1::context::AniseContext, astro::RefFrame, errors::AniseError};
+use crate::{asn1::context::AniseContext, astro::Frame, errors::AniseError};
 
 impl<'a> AniseContext<'a> {
     /// Returns the position vector and velocity vector of the `source` with respect to its parent in the ephemeris at the provided epoch,
@@ -33,12 +33,12 @@ impl<'a> AniseContext<'a> {
     /// **WARNING:** This function only performs the translation and no rotation whatsoever. Use the `transform_to_parent_from` function instead to include rotations.
     pub fn translate_to_parent(
         &self,
-        source: RefFrame,
+        source: Frame,
         epoch: Epoch,
         _ab_corr: Aberration,
         distance_unit: DistanceUnit,
         time_unit: TimeUnit,
-    ) -> Result<(Vector3, Vector3, Vector3, RefFrame), AniseError> {
+    ) -> Result<(Vector3, Vector3, Vector3, Frame), AniseError> {
         // TODO: Create a CartesianState struct which can be "upgraded" to an Orbit if the frame is of the correct type?
         // I guess this is what the `Orbit` struct in Nyx does.
         // First, let's get a reference to the ephemeris given the frame.

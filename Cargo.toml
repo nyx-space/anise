@@ -28,6 +28,7 @@ tabled = "0.10"
 const_format = "0.2"
 nalgebra = "0.31"
 approx = "0.5.1"
+uom = {version = "0.33.0", features = ["autoconvert", "f64", "si"]}
 
 [dev-dependencies]
 rust-spice = "0.7.3"

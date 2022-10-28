@@ -8,20 +8,38 @@
  * Documentation: https://nyxspace.com/
  */
 
-use std::fmt::{Display, Formatter};
+use core::fmt::{Debug, Display, Formatter};
 
 use crate::constants::celestial_objects::hash_celestial_name;
 use crate::constants::orientations::{hash_orientation_name, J2000};
 use crate::HashType;
 
+/// Defines a Frame kind, allows for compile time checking of operations.
+pub trait FrameTrait: Copy + Debug + PartialEq {
+    /// Returns the ephemeris hash of this frame.
+    fn ephemeris_hash(&self) -> HashType;
+    /// Returns the orientation hash of this frame.
+    fn orientation_hash(&self) -> HashType;
+}
+
 /// A Frame uniquely defined by its ephemeris center and orientation. Refer to FrameDetail for frames combined with parameters.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct RefFrame {
+pub struct Frame {
     pub ephemeris_hash: HashType,
     pub orientation_hash: HashType,
 }
 
-impl RefFrame {
+impl FrameTrait for Frame {
+    fn ephemeris_hash(&self) -> HashType {
+        self.ephemeris_hash
+    }
+
+    fn orientation_hash(&self) -> HashType {
+        self.orientation_hash
+    }
+}
+
+impl Frame {
     /// Constructs a new frame given its ephemeris and orientations hashes.
     pub const fn from_ephem_orient(ephemeris_hash: HashType, orientation_hash: HashType) -> Self {
         Self {
@@ -71,7 +89,7 @@ impl RefFrame {
     }
 }
 
-impl Display for RefFrame {
+impl Display for Frame {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         let body_name = match hash_celestial_name(self.ephemeris_hash) {
             Some(name) => name.to_string(),

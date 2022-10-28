@@ -15,7 +15,7 @@ use crate::errors::InternalErrorKind;
 use crate::HashType;
 use crate::{
     asn1::{context::AniseContext, ephemeris::Ephemeris},
-    astro::RefFrame,
+    astro::Frame,
     errors::{AniseError, IntegrityErrorKind},
 };
 
@@ -45,11 +45,8 @@ impl<'a> AniseContext<'a> {
                             error!("at least one ephemeris hierarchy takes root in hash {} but {}'s parent is {}", common_parent_hash, child.name, child.parent_ephemeris_hash);
                             return Err(AniseError::IntegrityError(
                                 IntegrityErrorKind::DisjointRoots {
-                                    from_frame: RefFrame::from_ephem_orient(
-                                        common_parent_hash,
-                                        J2000,
-                                    ),
-                                    to_frame: RefFrame::from_ephem_orient(
+                                    from_frame: Frame::from_ephem_orient(common_parent_hash, J2000),
+                                    to_frame: Frame::from_ephem_orient(
                                         child.parent_ephemeris_hash,
                                         J2000,
                                     ),
@@ -98,7 +95,7 @@ impl<'a> AniseContext<'a> {
     /// Try to construct the path from the source frame all the way to the root ephemeris of this context.
     pub fn ephemeris_path_to_root(
         &self,
-        source: &RefFrame,
+        source: &Frame,
     ) -> Result<(usize, [Option<HashType>; MAX_TREE_DEPTH]), AniseError> {
         // Build a tree, set a fixed depth to avoid allocations
         let mut of_path = [None; MAX_TREE_DEPTH];
@@ -156,8 +153,8 @@ impl<'a> AniseContext<'a> {
     /// the ephemeris up to the root.
     pub fn common_ephemeris_path(
         &self,
-        from_frame: RefFrame,
-        to_frame: RefFrame,
+        from_frame: Frame,
+        to_frame: Frame,
     ) -> Result<(usize, [Option<HashType>; MAX_TREE_DEPTH], HashType), AniseError> {
         // TODO: Consider returning a structure that has explicit fields -- see how I use it first
         if from_frame == to_frame {
