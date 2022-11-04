@@ -24,8 +24,8 @@ pub enum AniseError {
     IOError(IOErrorKind),
     /// Raised if an IO error occurred but its representation is not simple (and therefore not an std::io::ErrorKind).
     IOUnknownError,
-    /// Raise if a division by zero was to occur
-    DivisionByZero,
+    /// Math error
+    MathError(MathErrorKind),
     /// Raised when requesting the value of a parameter but it does not have any representation (typically the coefficients are an empty array)
     ParameterNotSpecified,
     /// The byte stream is missing data that is required to parse.
@@ -59,9 +59,11 @@ pub enum AniseError {
     MaxTreeDepth,
     /// Raised if there is no interpolation data for the requested epoch, i.e. ephemeris/orientation starts after or ends before the requested epoch
     MissingInterpolationData(Epoch),
+    /// Raised if a computation is physically wrong
+    PhysicsError(PhysicsErrorKind),
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum InternalErrorKind {
     /// Appending to the lookup table failed
     LUTAppendFailure,
@@ -72,7 +74,7 @@ pub enum InternalErrorKind {
     Generic,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum IntegrityErrorKind {
     /// Data checksum differs from expected checksum
     ChecksumInvalid { expected: u32, computed: u32 },
@@ -85,6 +87,16 @@ pub enum IntegrityErrorKind {
     /// Raised if a transformation is requested but the frames have no common origin
     DisjointRoots { from_frame: Frame, to_frame: Frame },
 }
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum MathErrorKind {
+    DivisionByZero,
+    StateEpochsDiffer,
+    StateFramesDiffer,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum PhysicsErrorKind {}
 
 impl From<IOErrorKind> for AniseError {
     fn from(e: IOErrorKind) -> Self {
@@ -104,23 +116,28 @@ impl From<DerError> for InternalErrorKind {
     }
 }
 
+impl From<MathErrorKind> for AniseError {
+    fn from(e: MathErrorKind) -> Self {
+        Self::MathError(e)
+    }
+}
+
 impl fmt::Display for AniseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
-            Self::IOError(e) => write!(f, "ANISE error: IOError: {:?}", e),
+            Self::IOError(e) => write!(f, "ANISE error: IOError: {e:?}"),
             Self::IOUnknownError => write!(f, "ANISE error: IOUnknownError"),
-            Self::DivisionByZero => write!(f, "ANISE error: DivisionByZero"),
+            Self::MathError(e) => write!(f, "ANISE error: MathError: {e:?}"),
             Self::ParameterNotSpecified => write!(f, "ANISE error: ParameterNotSpecified"),
             Self::MalformedData(byte) => write!(f, "ANISE error: Malformed data: could not read up to byte {byte}."),
             Self::DAFParserError(reason) => {
                 write!(f, "ANISE error: invalid NAIF DAF file: {}", reason)
             }
             Self::InvalidTimeSystem => write!(f, "ANISE error: invalid time system"),
-            Self::IntegrityError(e) => write!(f, "ANISE error: data integrity error: {:?}", e),
+            Self::IntegrityError(e) => write!(f, "ANISE error: data integrity error: {e:?}"),
             Self::DecodingError(err) => write!(
                 f,
-                "ANISE error: bytes could not be decoded into a valid ANISE file - {}",
-                err
+                "ANISE error: bytes could not be decoded into a valid ANISE file - {err}"
             ),
             Self::ItemNotFound => write!(f, "ANISE error: requested item not found in context"),
             Self::IncompatibleVersion { got, exp } => write!(
@@ -129,7 +146,7 @@ impl fmt::Display for AniseError {
                 got.major, got.minor, got.patch, exp.major, exp.minor, exp.patch
             ),
             Self::InternalError(e) => {
-                write!(f, "ANISE internal error: {:?} -- please report a bug", e)
+                write!(f, "ANISE internal error: {e:?} -- please report a bug")
             }
             Self::NoInterpolationData => write!(
                 f,
@@ -152,6 +169,7 @@ impl fmt::Display for AniseError {
                 f,
                 "ANISE error: No interpolation as epoch {e:e}"
             ),
+            Self::PhysicsError(e) => write!(f, "ANISE error: Physics error: {e:?}")
         }
     }
 }

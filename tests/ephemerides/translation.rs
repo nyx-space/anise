@@ -45,7 +45,7 @@ fn de438s_translation_verif_venus2emb() {
         .common_ephemeris_path(VENUS_J2000, EARTH_MOON_BARYCENTER_J2000)
         .unwrap());
 
-    let (pos, vel, _) = ctx
+    let state = ctx
         .translate_from_to(
             VENUS_J2000,
             EARTH_MOON_BARYCENTER_J2000,
@@ -70,33 +70,37 @@ fn de438s_translation_verif_venus2emb() {
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        relative_eq!(pos, pos_expct_km, epsilon = EPSILON),
-        "pos = {pos}\nexp = {pos_expct_km}\nerr = {:e}",
-        pos_expct_km - pos
+        relative_eq!(state.radius_km, pos_expct_km, epsilon = EPSILON),
+        "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
+        state.radius_km,
+        pos_expct_km - state.radius_km
     );
 
     assert!(
-        relative_eq!(vel, vel_expct_km_s, epsilon = EPSILON),
-        "vel = {vel}\nexp = {vel_expct_km_s}\nerr = {:e}",
-        vel_expct_km_s - vel
+        relative_eq!(state.velocity_km_s, vel_expct_km_s, epsilon = EPSILON),
+        "vel = {}\nexp = {vel_expct_km_s}\nerr = {:e}",
+        state.velocity_km_s,
+        vel_expct_km_s - state.velocity_km_s
     );
 
     // Test the opposite translation
-    let (pos, vel, _) = ctx
+    let state = ctx
         .translate_from_to_km_s_geometric(EARTH_MOON_BARYCENTER_J2000, VENUS_J2000, epoch)
         .unwrap();
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        relative_eq!(pos, -pos_expct_km, epsilon = EPSILON),
-        "pos = {pos}\nexp = {pos_expct_km}\nerr = {:e}",
-        pos_expct_km + pos
+        relative_eq!(state.radius_km, -pos_expct_km, epsilon = EPSILON),
+        "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
+        state.radius_km,
+        pos_expct_km + state.radius_km
     );
 
     assert!(
-        relative_eq!(vel, -vel_expct_km_s, epsilon = EPSILON),
-        "vel = {vel}\nexp = {vel_expct_km_s}\nerr = {:e}",
-        vel_expct_km_s + vel
+        relative_eq!(state.velocity_km_s, -vel_expct_km_s, epsilon = EPSILON),
+        "vel = {}\nexp = {vel_expct_km_s}\nerr = {:e}",
+        state.velocity_km_s,
+        vel_expct_km_s + state.velocity_km_s
     );
 }
 
@@ -127,7 +131,7 @@ fn de438s_translation_verif_venus2luna() {
     ['8.1576591043659311e+04', '3.4547568914467981e+05', '1.4439185901453768e+05', '-9.6071184439665624e-01', '2.0358322542331578e-01', '1.8380551745802590e-01']
     */
 
-    let (pos, vel, _) = ctx
+    let state = ctx
         .translate_from_to(
             VENUS_J2000,
             LUNA_J2000,
@@ -152,33 +156,45 @@ fn de438s_translation_verif_venus2luna() {
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        relative_eq!(pos, pos_expct_km, epsilon = EPSILON),
-        "pos = {pos}\nexp = {pos_expct_km}\nerr = {:e}",
-        pos_expct_km - pos
+        relative_eq!(state.radius_km, pos_expct_km, epsilon = EPSILON),
+        "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
+        state.radius_km,
+        pos_expct_km - state.radius_km
     );
 
     assert!(
-        relative_eq!(vel, vel_expct_km_s, epsilon = VELOCITY_EPSILON_KM_S),
-        "vel = {vel}\nexp = {vel_expct_km_s}\nerr = {:e}",
-        vel_expct_km_s - vel
+        relative_eq!(
+            state.velocity_km_s,
+            vel_expct_km_s,
+            epsilon = VELOCITY_EPSILON_KM_S
+        ),
+        "vel = {}\nexp = {vel_expct_km_s}\nerr = {:e}",
+        state.velocity_km_s,
+        vel_expct_km_s - state.velocity_km_s
     );
 
     // Test the opposite translation
-    let (pos, vel, _) = ctx
+    let state = ctx
         .translate_from_to_km_s_geometric(LUNA_J2000, VENUS_J2000, epoch)
         .unwrap();
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        relative_eq!(pos, -pos_expct_km, epsilon = EPSILON),
-        "pos = {pos}\nexp = {pos_expct_km}\nerr = {:e}",
-        pos_expct_km + pos
+        relative_eq!(state.radius_km, -pos_expct_km, epsilon = EPSILON),
+        "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
+        state.radius_km,
+        pos_expct_km + state.radius_km
     );
 
     assert!(
-        relative_eq!(vel, -vel_expct_km_s, epsilon = VELOCITY_EPSILON_KM_S),
-        "vel = {vel}\nexp = {vel_expct_km_s}\nerr = {:e}",
-        vel_expct_km_s + vel
+        relative_eq!(
+            state.velocity_km_s,
+            -vel_expct_km_s,
+            epsilon = VELOCITY_EPSILON_KM_S
+        ),
+        "vel = {}\nexp = {vel_expct_km_s}\nerr = {:e}",
+        state.velocity_km_s,
+        vel_expct_km_s + state.velocity_km_s
     );
 }
 
@@ -207,7 +223,7 @@ fn de438s_translation_verif_emb2luna() {
     ['8.1576591043659311e+04', '3.4547568914467981e+05', '1.4439185901453768e+05', '-9.6071184439665624e-01', '2.0358322542331578e-01', '1.8380551745802590e-01']
     */
 
-    let (pos, vel, _) = ctx
+    let state = ctx
         .translate_from_to(
             EARTH_MOON_BARYCENTER_J2000,
             LUNA_J2000,
@@ -232,19 +248,25 @@ fn de438s_translation_verif_emb2luna() {
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        relative_eq!(pos, pos_expct_km, epsilon = EPSILON),
-        "pos = {pos}\nexp = {pos_expct_km}\nerr = {:e}",
-        pos_expct_km - pos
+        relative_eq!(state.radius_km, pos_expct_km, epsilon = EPSILON),
+        "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
+        state.radius_km,
+        pos_expct_km - state.radius_km
     );
 
     assert!(
-        relative_eq!(vel, vel_expct_km_s, epsilon = VELOCITY_EPSILON_KM_S),
-        "vel = {vel}\nexp = {vel_expct_km_s}\nerr = {:e}",
-        vel_expct_km_s - vel
+        relative_eq!(
+            state.velocity_km_s,
+            vel_expct_km_s,
+            epsilon = VELOCITY_EPSILON_KM_S
+        ),
+        "vel = {}\nexp = {vel_expct_km_s}\nerr = {:e}",
+        state.velocity_km_s,
+        vel_expct_km_s - state.velocity_km_s
     );
 
     // Try the opposite
-    let (pos, vel, _) = ctx
+    let state = ctx
         .translate_from_to(
             LUNA_J2000,
             EARTH_MOON_BARYCENTER_J2000,
@@ -257,15 +279,21 @@ fn de438s_translation_verif_emb2luna() {
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        relative_eq!(pos, -pos_expct_km, epsilon = EPSILON),
-        "pos = {pos}\nexp = {pos_expct_km}\nerr = {:e}",
-        pos_expct_km + pos
+        relative_eq!(state.radius_km, -pos_expct_km, epsilon = EPSILON),
+        "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
+        state.radius_km,
+        pos_expct_km + state.radius_km
     );
 
     assert!(
-        relative_eq!(vel, -vel_expct_km_s, epsilon = VELOCITY_EPSILON_KM_S),
-        "vel = {vel}\nexp = {vel_expct_km_s}\nerr = {:e}",
-        vel_expct_km_s + vel
+        relative_eq!(
+            state.velocity_km_s,
+            -vel_expct_km_s,
+            epsilon = VELOCITY_EPSILON_KM_S
+        ),
+        "vel = {}\nexp = {vel_expct_km_s}\nerr = {:e}",
+        state.velocity_km_s,
+        vel_expct_km_s + state.velocity_km_s
     );
 }
 
@@ -421,9 +449,9 @@ fn validate_jplde_translation() {
 
                 for epoch in time_it {
                     match ctx.translate_from_to_km_s_geometric(j2000_ephem1, j2000_ephem2, epoch) {
-                        Ok((pos, vel, _)) => {
+                        Ok(state) => {
                             // Perform the same query in SPICE
-                            let (state, _) = spice::spkezr(
+                            let (spice_state, _) = spice::spkezr(
                                 match ephem1.name {
                                     "Luna" => "Moon",
                                     _ => ephem1.name,
@@ -440,21 +468,21 @@ fn validate_jplde_translation() {
                             // Check component by component instead of rebuilding a Vector3 from the SPICE data
                             for i in 0..6 {
                                 let (anise_value, max_err) = if i < 3 {
-                                    (pos[i], FAIL_POS_KM)
+                                    (state.radius_km[i], FAIL_POS_KM)
                                 } else {
-                                    (vel[i - 3], FAIL_VEL_KM_S)
+                                    (state.velocity_km_s[i - 3], FAIL_VEL_KM_S)
                                 };
 
                                 // We don't look at the absolute error here, that's for the stats to show any skewness
-                                let err = anise_value - state[i];
+                                let err = anise_value - spice_state[i];
 
-                                if !relative_eq!(anise_value, state[i], epsilon = max_err) {
+                                if !relative_eq!(anise_value, spice_state[i], epsilon = max_err) {
                                     // Always save the parquet file
                                     writer.close().unwrap();
 
                                     panic!(
                                         "{epoch:E}\t{}got = {:.16}\texp = {:.16}\terr = {:.16}",
-                                        component[i], anise_value, state[i], err
+                                        component[i], anise_value, spice_state[i], err
                                     );
                                 }
 

@@ -8,89 +8,71 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::{celestial_frame::GravityParam, CelestialFrameTrait, FrameTrait};
+use super::{celestial_frame::CelestialFrame, CelestialFrameTrait, FrameTrait};
 use crate::astro::Frame;
 use crate::HashType;
 use core::fmt::{Display, Formatter};
-use uom::si::{f64::*, length::kilometer, volume_rate::cubic_kilometer_per_second};
 
 /// Defines a Celestial Frame kind, which is a Frame that also defines a standard gravitational parameter
-trait GeodeticFrameTrait: CelestialFrameTrait {
+pub trait GeodeticFrameTrait: CelestialFrameTrait {
     /// Equatorial radius in kilometers
-    fn equatorial_radius(&self) -> Length;
+    fn equatorial_radius_km(&self) -> f64;
     /// Semi major radius in kilometers
-    fn semi_major_radius(&self) -> Length;
+    fn semi_major_radius_km(&self) -> f64;
     /// Flattening coefficient (unit less)
     fn flattening(&self) -> f64;
+    /// Returns true if this is a body fixed frame
+    fn is_body_fixed(&self) -> bool;
 }
 
-/// A Frame uniquely defined by its ephemeris center and orientation.
-///
-/// # Notes
-/// 1. If a frame defines a gravity parameter μ (mu), then it it considered a celestial object.
-/// 2. If a frame defines an equatorial radius, a semi major radius, and a flattening ratio, then
-/// is considered a geoid.
+/// A GeodeticFrame is a Celestial Frame whose equatorial and semi major radii are defined.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct GeodeticFrame {
-    pub frame: Frame,
-    pub mu_km3s: f64,
+    pub celestial_frame: CelestialFrame,
     pub equatorial_radius_km: f64,
     pub semi_major_radius_km: f64,
     pub flattening: f64,
-}
-
-impl GeodeticFrame {
-    pub const fn ephem_origin_hash_match(&self, other_hash: HashType) -> bool {
-        self.frame.ephem_origin_hash_match(other_hash)
-    }
-
-    pub const fn orient_origin_hash_match(&self, other_hash: HashType) -> bool {
-        self.frame.orient_origin_hash_match(other_hash)
-    }
-
-    pub const fn ephem_origin_match(&self, other: Self) -> bool {
-        self.frame.ephem_origin_match(other.frame)
-    }
-
-    pub const fn orient_origin_match(&self, other: Self) -> bool {
-        self.frame.orient_origin_match(other.frame)
-    }
+    pub is_body_fixed: bool,
 }
 
 impl FrameTrait for GeodeticFrame {
     fn ephemeris_hash(&self) -> HashType {
-        self.frame.ephemeris_hash
+        self.celestial_frame.ephemeris_hash()
     }
 
     fn orientation_hash(&self) -> HashType {
-        self.frame.orientation_hash
+        self.celestial_frame.orientation_hash()
     }
 }
 
 impl CelestialFrameTrait for GeodeticFrame {
-    fn mu(&self) -> GravityParam {
-        GravityParam::new::<cubic_kilometer_per_second>(self.mu_km3s)
+    fn mu_km3_s2(&self) -> f64 {
+        self.celestial_frame.mu_km3_s2()
     }
 }
 
 impl GeodeticFrameTrait for GeodeticFrame {
-    fn equatorial_radius(&self) -> Length {
-        Length::new::<kilometer>(self.equatorial_radius_km)
+    fn equatorial_radius_km(&self) -> f64 {
+        self.equatorial_radius_km
     }
 
-    fn semi_major_radius(&self) -> Length {
-        Length::new::<kilometer>(self.semi_major_radius_km)
+    fn semi_major_radius_km(&self) -> f64 {
+        self.semi_major_radius_km
     }
 
     fn flattening(&self) -> f64 {
-        todo!()
+        self.flattening
+    }
+
+    fn is_body_fixed(&self) -> bool {
+        self.is_body_fixed
     }
 }
 
 impl Display for GeodeticFrame {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(f, "{}", self.frame)?;
-        write!(f, " (μ = {} km3/s", self.mu_km3s)?;
+        write!(f, "{}", self.celestial_frame.frame)?;
+        write!(f, " (μ = {} km3/s", self.mu_km3_s2())?;
 
         write!(
             f,
@@ -108,6 +90,6 @@ impl Into<Frame> for GeodeticFrame {
     ///
     /// This will cause the LOSS of the constants stored in the frame detail.
     fn into(self) -> Frame {
-        self.frame
+        self.celestial_frame.frame
     }
 }

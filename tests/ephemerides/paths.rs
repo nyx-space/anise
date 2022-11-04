@@ -57,7 +57,7 @@ fn zero_translations() {
 
             // Check that in these cases, the translation returns a zero vector in position and in velocity.
 
-            let (delta_pos, delta_vel, delta_accel) = ctx
+            let delta_state = ctx
                 .translate_from_to_km_s(
                     this_frame_j2k,
                     this_frame_j2k,
@@ -65,9 +65,9 @@ fn zero_translations() {
                     Aberration::None,
                 )
                 .unwrap();
-            assert!(delta_pos.norm() < EPSILON);
-            assert!(delta_vel.norm() < EPSILON);
-            assert!(delta_accel.norm() < EPSILON);
+            assert!(delta_state.rmag_km() < EPSILON);
+            assert!(delta_state.vmag_km_s() < EPSILON);
+            assert!(delta_state.acceleration_km_s2.unwrap().norm() < EPSILON);
         }
     }
 

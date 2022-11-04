@@ -20,6 +20,22 @@ pub trait FrameTrait: Copy + Debug + PartialEq {
     fn ephemeris_hash(&self) -> HashType;
     /// Returns the orientation hash of this frame.
     fn orientation_hash(&self) -> HashType;
+    /// Returns true if the ephemeris origin is equal to the provided hash
+    fn ephem_origin_hash_match(&self, other_hash: HashType) -> bool {
+        self.ephemeris_hash() == other_hash
+    }
+    /// Returns true if the orientation origin is equal to the provided hash
+    fn orient_origin_hash_match(&self, other_hash: HashType) -> bool {
+        self.orientation_hash() == other_hash
+    }
+    /// Returns true if the ephemeris origin is equal to the provided frame
+    fn ephem_origin_match(&self, other: Self) -> bool {
+        self.ephem_origin_hash_match(other.ephemeris_hash())
+    }
+    /// Returns true if the orientation origin is equal to the provided frame
+    fn orient_origin_match(&self, other: Self) -> bool {
+        self.orient_origin_hash_match(other.orientation_hash())
+    }
 }
 
 /// A Frame uniquely defined by its ephemeris center and orientation. Refer to FrameDetail for frames combined with parameters.
@@ -50,26 +66,6 @@ impl Frame {
 
     pub const fn from_ephem_j2000(ephemeris_hash: HashType) -> Self {
         Self::from_ephem_orient(ephemeris_hash, J2000)
-    }
-
-    /// Returns true if the ephemeris origin is equal to the provided hash
-    pub const fn ephem_origin_hash_match(&self, other_hash: HashType) -> bool {
-        self.ephemeris_hash == other_hash
-    }
-
-    /// Returns true if the orientation origin is equal to the provided hash
-    pub const fn orient_origin_hash_match(&self, other_hash: HashType) -> bool {
-        self.orientation_hash == other_hash
-    }
-
-    /// Returns true if the ephemeris origin is equal to the provided frame
-    pub const fn ephem_origin_match(&self, other: Self) -> bool {
-        self.ephemeris_hash == other.ephemeris_hash
-    }
-
-    /// Returns true if the orientation origin is equal to the provided frame
-    pub const fn orient_origin_match(&self, other: Self) -> bool {
-        self.orientation_hash == other.orientation_hash
     }
 
     /// Returns a copy of this Frame whose ephemeris hash is set to the provided hash

@@ -13,8 +13,13 @@ use log::error;
 use crate::asn1::units::*;
 use crate::astro::Aberration;
 use crate::hifitime::Epoch;
+use crate::math::cartesian::CartesianState;
 use crate::math::Vector3;
-use crate::{asn1::context::AniseContext, astro::Frame, errors::AniseError};
+use crate::{
+    asn1::context::AniseContext,
+    astro::{Frame, FrameTrait},
+    errors::AniseError,
+};
 
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
 pub const MAX_TREE_DEPTH: usize = 8;
@@ -33,10 +38,10 @@ impl<'a> AniseContext<'a> {
         ab_corr: Aberration,
         distance_unit: DistanceUnit,
         time_unit: TimeUnit,
-    ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
+    ) -> Result<CartesianState, AniseError> {
         if from_frame == to_frame {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
-            return Ok((Vector3::zeros(), Vector3::zeros(), Vector3::zeros()));
+            return Ok(CartesianState::zero(from_frame));
         }
 
         let (node_count, path, common_node) = self.common_ephemeris_path(to_frame, from_frame)?;
@@ -94,11 +99,13 @@ impl<'a> AniseContext<'a> {
             }
         }
 
-        Ok((
-            pos_fwrd - pos_bwrd,
-            vel_fwrd - vel_bwrd,
-            acc_fwrd - acc_bwrd,
-        ))
+        Ok(CartesianState {
+            radius_km: pos_fwrd - pos_bwrd,
+            velocity_km_s: vel_fwrd - vel_bwrd,
+            acceleration_km_s2: Some(acc_fwrd - acc_bwrd),
+            epoch,
+            frame: to_frame,
+        })
     }
 
     /// Returns the position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in km, the velocity in km/s, and the acceleration in km/s^2.
@@ -108,7 +115,7 @@ impl<'a> AniseContext<'a> {
         to_frame: Frame,
         epoch: Epoch,
         ab_corr: Aberration,
-    ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
+    ) -> Result<CartesianState, AniseError> {
         self.translate_from_to(
             from_frame,
             to_frame,
@@ -126,7 +133,7 @@ impl<'a> AniseContext<'a> {
         to_frame: Frame,
         epoch: Epoch,
         ab_corr: Aberration,
-    ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
+    ) -> Result<CartesianState, AniseError> {
         self.translate_from_to(
             from_frame,
             to_frame,
@@ -143,7 +150,7 @@ impl<'a> AniseContext<'a> {
         from_frame: Frame,
         to_frame: Frame,
         epoch: Epoch,
-    ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
+    ) -> Result<CartesianState, AniseError> {
         self.translate_from_to(
             from_frame,
             to_frame,
@@ -160,7 +167,7 @@ impl<'a> AniseContext<'a> {
         from_frame: Frame,
         to_frame: Frame,
         epoch: Epoch,
-    ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
+    ) -> Result<CartesianState, AniseError> {
         self.translate_from_to(
             from_frame,
             to_frame,
@@ -227,9 +234,9 @@ impl<'a> AniseContext<'a> {
         ab_corr: Aberration,
         distance_unit: DistanceUnit,
         time_unit: TimeUnit,
-    ) -> Result<(Vector3, Vector3), AniseError> {
+    ) -> Result<CartesianState, AniseError> {
         // Compute the frame translation
-        let (frame_pos, frame_vel, _) = self.translate_from_to(
+        let frame_state = self.translate_from_to(
             from_frame,
             to_frame,
             epoch,
@@ -238,6 +245,17 @@ impl<'a> AniseContext<'a> {
             time_unit,
         )?;
 
-        Ok((position + frame_pos, velocity + frame_vel))
+        let dist_unit_factor = DistanceUnit::Kilometer.from_meters() * distance_unit.to_meters();
+        let time_unit_factor = time_unit.in_seconds();
+
+        let input_state = CartesianState {
+            radius_km: position * dist_unit_factor,
+            velocity_km_s: velocity * dist_unit_factor / time_unit_factor,
+            acceleration_km_s2: None,
+            epoch,
+            frame: from_frame,
+        };
+
+        input_state + frame_state
     }
 }
