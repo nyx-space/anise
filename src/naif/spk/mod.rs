@@ -14,12 +14,12 @@ use self::datatype::DataType;
 use self::segment::{Record, SegMetaData, Segment};
 
 use super::daf::{Endian, DAF};
-use crate::asn1::common::InterpolationKind;
-use crate::asn1::context::AniseContext;
-use crate::asn1::ephemeris::Ephemeris;
-use crate::asn1::metadata::Metadata;
-use crate::asn1::spline::{Evenness, Field, SplineMeta, Splines, StateKind};
-use crate::asn1::units::{DistanceUnit, TimeUnit};
+use crate::repr::common::InterpolationKind;
+use crate::repr::context::AniseContext;
+use crate::repr::ephemeris::Ephemeris;
+use crate::repr::metadata::Metadata;
+use crate::repr::spline::{Evenness, Field, SplineMeta, Splines, StateKind};
+use crate::repr::units::{DistanceUnit, TimeUnit};
 use crate::constants::orientations::J2000;
 use crate::errors::InternalErrorKind;
 use crate::prelude::AniseError;

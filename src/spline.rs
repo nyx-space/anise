@@ -12,7 +12,7 @@ use crc32fast::hash;
 use log::error;
 
 use crate::{
-    asn1::{
+    repr::{
         common::InterpolationKind,
         spline::{Field, Splines},
     },

@@ -33,7 +33,7 @@ fn zero_translations() {
     ] {
         // "Load" the file via a memory map (avoids allocations)
         let buf = file_mmap!(path).unwrap();
-        let ctx: AniseContext = (&buf).try_into().unwrap();
+        let ctx = AniseContext::try_from_bytes(&buf).unwrap();
 
         // We know that these ephemerides files has exactly 14 ephemerides.
         assert_eq!(
@@ -90,7 +90,7 @@ fn common_root_verif() {
         "./data/de440.anise",
     ] {
         let buf = file_mmap!(path).unwrap();
-        let ctx: AniseContext = (&buf).try_into().unwrap();
+        let ctx = AniseContext::try_from_bytes(&buf).unwrap();
 
         // The root of all these files should be the SSB
         assert_eq!(

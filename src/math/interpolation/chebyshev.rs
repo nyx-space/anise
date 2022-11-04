@@ -11,7 +11,7 @@
 use hifitime::{Epoch, Unit as DurationUnit};
 
 use crate::{
-    asn1::{
+    repr::{
         spline::Evenness,
         spline::{Field, Splines},
     },

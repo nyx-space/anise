@@ -27,7 +27,7 @@ fn de438s_translation_verif_venus2emb() {
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de438s.anise";
     let buf = file_mmap!(path).unwrap();
-    let ctx: AniseContext = (&buf).try_into().unwrap();
+    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
@@ -113,7 +113,7 @@ fn de438s_translation_verif_venus2luna() {
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de438s.anise";
     let buf = file_mmap!(path).unwrap();
-    let ctx: AniseContext = (&buf).try_into().unwrap();
+    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
@@ -207,7 +207,7 @@ fn de438s_translation_verif_emb2luna() {
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de438s.anise";
     let buf = file_mmap!(path).unwrap();
-    let ctx: AniseContext = (&buf).try_into().unwrap();
+    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 

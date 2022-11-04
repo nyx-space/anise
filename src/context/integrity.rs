@@ -11,7 +11,7 @@
 use log::error;
 
 use crate::{
-    asn1::context::AniseContext,
+    repr::context::AniseContext,
     errors::{AniseError, IntegrityErrorKind},
 };
 

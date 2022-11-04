@@ -3,7 +3,7 @@ use std::fmt::{Display, Error as FmtError, Formatter};
 use tabled::{Style, Table, Tabled};
 
 use crate::HashType;
-use crate::{asn1::common::InterpolationKind, prelude::AniseContext};
+use crate::{repr::common::InterpolationKind, prelude::AniseContext};
 
 /// A row is used only to display a context
 #[derive(Tabled)]

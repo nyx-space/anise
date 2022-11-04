@@ -9,7 +9,10 @@
  */
 use der::{asn1::SequenceOf, Decode, Encode, Reader, Writer};
 
-use super::{ephemeris::Ephemeris, lookuptable::LookUpTable, metadata::Metadata, MAX_TRAJECTORIES};
+use super::{
+    ephemeris::Ephemeris, lookuptable::LookUpTable, metadata::Metadata,
+    spacecraft_constants::SpacecraftConstants, MAX_TRAJECTORIES,
+};
 
 /// A Context is the core structure which stores all of the ANISE data.
 /// All of the data stored in the context can be written to disk and read in the exact same way regardless of the endianness
@@ -30,10 +33,14 @@ pub struct AniseContext<'a> {
     pub ephemeris_lut: LookUpTable,
     /// Orientation LookUpTable (LUT) stores the mapping between a given orientation's hash and its index in the ephemeris list.
     pub orientation_lut: LookUpTable,
+    /// Spacecraft constants LookUpTable (LUT) stores the mapping between a given orientation's hash and its index in the ephemeris list.
+    pub spacecraft_constant_lut: LookUpTable,
     /// List of ephemerides in this file, whose index is stored in the LUT.
     pub ephemeris_data: SequenceOf<Ephemeris<'a>, MAX_TRAJECTORIES>,
     // TODO: Add orientation data
     pub orientation_data: SequenceOf<Ephemeris<'a>, MAX_TRAJECTORIES>,
+    /// List of spacecraft constants in this file, whose index is stored in the LUT.
+    pub spacecraft_constant_data: SequenceOf<SpacecraftConstants<'a>, MAX_TRAJECTORIES>,
 }
 
 impl<'a> Encode for AniseContext<'a> {

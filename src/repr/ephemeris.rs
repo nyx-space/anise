@@ -63,11 +63,10 @@ impl<'a> Encode for Ephemeris<'a> {
 impl<'a> Decode<'a> for Ephemeris<'a> {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         let name: Utf8StringRef = decoder.decode()?;
-        let ref_epoch: Epoch = decoder.decode()?;
 
         Ok(Self {
             name: name.as_str(),
-            ref_epoch,
+            ref_epoch: decoder.decode()?,
             backward: decoder.decode()?,
             parent_ephemeris_hash: decoder.decode()?,
             orientation_hash: decoder.decode()?,

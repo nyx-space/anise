@@ -11,8 +11,8 @@
 use core::convert::TryInto;
 
 use anise::{
-    asn1::context::AniseContext,
-    asn1::spline::{Evenness, Field, StateKind},
+    repr::context::AniseContext,
+    repr::spline::{Evenness, Field, StateKind},
     file_mmap,
     naif::{daf::DAF, spk::SPK, Endian},
     prelude::*,

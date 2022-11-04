@@ -10,7 +10,7 @@
 
 use hifitime::{Epoch, TimeUnits};
 
-use crate::asn1::{ephemeris::Ephemeris, spline::Evenness};
+use crate::repr::{ephemeris::Ephemeris, spline::Evenness};
 
 pub mod paths;
 pub mod translations;

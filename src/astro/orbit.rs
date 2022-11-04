@@ -27,15 +27,15 @@ pub const ECC_EPSILON: f64 = 1e-11;
 pub type Orbit = Cartesian<CelestialFrame>;
 
 impl<F: CelestialFrameTrait> Cartesian<F> {
-    /// Creates a new Orbit around the provided Celestial or Geoid frame from the Keplerian orbital elements.
+    /// Attempts to create a new Orbit around the provided Celestial or Geoid frame from the Keplerian orbital elements.
     ///
     /// **Units:** km, none, degrees, degrees, degrees, degrees
     ///
-    /// WARNING: This function will panic if the singularities in the conversion are expected.
+    /// WARNING: This function will return an error if the singularities in the conversion are encountered.
     /// NOTE: The state is defined in Cartesian coordinates as they are non-singular. This causes rounding
     /// errors when creating a state from its Keplerian orbital elements (cf. the state tests).
     /// One should expect these errors to be on the order of 1e-12.
-    pub fn keplerian(
+    pub fn try_keplerian(
         sma: f64,
         ecc: f64,
         inc: f64,
@@ -71,20 +71,23 @@ impl<F: CelestialFrameTrait> Cartesian<F> {
             // GMAT errors below one meter. Let's warn for below that, but not panic, might be useful for landing scenarios?
             warn!("radius of periapsis is less than one meter");
         }
-        if (1.0 - ecc).abs() < EPSILON {
-            panic!("parabolic orbits have ill-defined Keplerian orbital elements");
+        if (1.0 - ecc).abs() < ECC_EPSILON {
+            error!("parabolic orbits have ill-defined Keplerian orbital elements");
+            return Err(PhysicsErrorKind::ParabolicOrbit);
         }
         if ecc > 1.0 {
             let ta = between_0_360(ta);
             if ta > (PI - (1.0 / ecc).acos()).to_degrees() {
-                panic!(
+                error!(
                     "true anomaly value ({}) physically impossible for a hyperbolic orbit",
                     ta
                 );
+                return Err(PhysicsErrorKind::InvalidHyperbolicTrueAnomaly(ta));
             }
         }
         if (1.0 + ecc * ta.to_radians().cos()).is_infinite() {
-            panic!("radius of orbit is infinite");
+            error!("radius of orbit is infinite");
+            return Err(PhysicsErrorKind::InfiniteValue);
         }
         // Done with all the warnings and errors supported by GMAT
         // The conversion algorithm itself comes from GMAT's StateConversionUtil::ComputeKeplToCart
@@ -97,8 +100,8 @@ impl<F: CelestialFrameTrait> Cartesian<F> {
         let p = sma * (1.0 - ecc.powi(2));
 
         if p.abs() < EPSILON {
-            // TODO: Switch this to an error
-            panic!("Semilatus rectum ~= 0.0: parabolic orbit");
+            error!("Semilatus rectum ~= 0.0: parabolic orbit");
+            return Err(PhysicsErrorKind::ParabolicOrbit);
         }
 
         // NOTE: At this point GMAT computes 1+ecc**2 and checks whether it's very small.
@@ -131,8 +134,8 @@ impl<F: CelestialFrameTrait> Cartesian<F> {
         })
     }
 
-    /// Creates a new Orbit from the provided radii of apoapsis and periapsis, in kilometers
-    pub fn keplerian_apsis_radii(
+    /// Attempts to create a new Orbit from the provided radii of apoapsis and periapsis, in kilometers
+    pub fn try_keplerian_apsis_radii(
         r_a: f64,
         r_p: f64,
         inc: f64,
@@ -144,21 +147,64 @@ impl<F: CelestialFrameTrait> Cartesian<F> {
     ) -> Result<Self, PhysicsErrorKind> {
         let sma = (r_a + r_p) / 2.0;
         let ecc = r_a / sma - 1.0;
-        Self::keplerian(sma, ecc, inc, raan, aop, ta, dt, frame)
+        Self::try_keplerian(sma, ecc, inc, raan, aop, ta, dt, frame)
+    }
+
+    /// Attempts to create a new Orbit around the provided frame from the borrowed state vector
+    ///
+    /// The state vector **must** be sma, ecc, inc, raan, aop, ta. This function is a shortcut to `cartesian`
+    /// and as such it has the same unit requirements.
+    pub fn try_keplerian_vec(
+        state: &Vector6,
+        epoch: Epoch,
+        frame: F,
+    ) -> Result<Self, PhysicsErrorKind> {
+        Self::try_keplerian(
+            state[0], state[1], state[2], state[3], state[4], state[5], epoch, frame,
+        )
+    }
+
+    /// Creates (without error checking) a new Orbit around the provided Celestial or Geoid frame from the Keplerian orbital elements.
+    ///
+    /// **Units:** km, none, degrees, degrees, degrees, degrees
+    ///
+    /// WARNING: This function will panic if the singularities in the conversion are expected.
+    /// NOTE: The state is defined in Cartesian coordinates as they are non-singular. This causes rounding
+    /// errors when creating a state from its Keplerian orbital elements (cf. the state tests).
+    /// One should expect these errors to be on the order of 1e-12.
+    pub fn keplerian(
+        sma: f64,
+        ecc: f64,
+        inc: f64,
+        raan: f64,
+        aop: f64,
+        ta: f64,
+        epoch: Epoch,
+        frame: F,
+    ) -> Self {
+        Self::try_keplerian(sma, ecc, inc, raan, aop, ta, epoch, frame).unwrap()
+    }
+
+    /// Creates a new Orbit from the provided radii of apoapsis and periapsis, in kilometers
+    pub fn keplerian_apsis_radii(
+        r_a: f64,
+        r_p: f64,
+        inc: f64,
+        raan: f64,
+        aop: f64,
+        ta: f64,
+        dt: Epoch,
+        frame: F,
+    ) -> Self {
+        Self::try_keplerian_apsis_radii(r_a, r_p, inc, raan, aop, ta, dt, frame).unwrap()
     }
 
     /// Creates a new Orbit around the provided frame from the borrowed state vector
     ///
     /// The state vector **must** be sma, ecc, inc, raan, aop, ta. This function is a shortcut to `cartesian`
     /// and as such it has the same unit requirements.
-    pub fn keplerian_vec(
-        state: &Vector6,
-        epoch: Epoch,
-        frame: F,
-    ) -> Result<Self, PhysicsErrorKind> {
-        Self::keplerian(
-            state[0], state[1], state[2], state[3], state[4], state[5], epoch, frame,
-        )
+    pub fn keplerian_vec(state: &Vector6, epoch: Epoch, frame: F) -> Self {
+        Self::try_keplerian_vec(state, epoch, frame).unwrap()
     }
 
     /// Returns this state as a Keplerian Vector6 in [km, none, degrees, degrees, degrees, degrees]
@@ -201,13 +247,13 @@ impl<F: CelestialFrameTrait> Cartesian<F> {
     }
 
     /// Returns the specific mechanical energy in km^2/s^2
-    pub fn energy(&self) -> f64 {
+    pub fn energy_km2_s2(&self) -> f64 {
         self.vmag_km_s().powi(2) / 2.0 - self.frame.mu_km3_s2() / self.rmag_km()
     }
 
     /// Returns the semi-major axis in km
     pub fn sma_km(&self) -> f64 {
-        -self.frame.mu_km3_s2() / (2.0 * self.energy())
+        -self.frame.mu_km3_s2() / (2.0 * self.energy_km2_s2())
     }
 
     /// Mutates this orbit to change the SMA
@@ -223,7 +269,7 @@ impl<F: CelestialFrameTrait> Cartesian<F> {
             self.frame,
         );
 
-        *self = me.unwrap();
+        *self = me;
     }
 
     /// Returns a copy of the state with a new SMA
@@ -274,7 +320,7 @@ impl<F: CelestialFrameTrait> Cartesian<F> {
             self.frame,
         );
 
-        *self = me.unwrap();
+        *self = me;
     }
 
     /// Returns a copy of the state with a new ECC
@@ -309,7 +355,7 @@ impl<F: CelestialFrameTrait> Cartesian<F> {
             self.frame,
         );
 
-        *self = me.unwrap();
+        *self = me;
     }
 
     /// Returns a copy of the state with a new INC
@@ -357,7 +403,7 @@ impl<F: CelestialFrameTrait> Cartesian<F> {
             self.frame,
         );
 
-        *self = me.unwrap();
+        *self = me;
     }
 
     /// Returns a copy of the state with a new AOP
@@ -405,7 +451,7 @@ impl<F: CelestialFrameTrait> Cartesian<F> {
             self.frame,
         );
 
-        *self = me.unwrap();
+        *self = me;
     }
 
     /// Returns a copy of the state with a new RAAN
@@ -466,7 +512,7 @@ impl<F: CelestialFrameTrait> Cartesian<F> {
             self.frame,
         );
 
-        *self = me.unwrap();
+        *self = me;
     }
 
     /// Returns a copy of the state with a new TA
@@ -489,7 +535,7 @@ impl<F: CelestialFrameTrait> Cartesian<F> {
         new_ra_km: f64,
         new_rp_km: f64,
     ) -> Result<Self, PhysicsErrorKind> {
-        Self::keplerian_apsis_radii(
+        Self::try_keplerian_apsis_radii(
             new_ra_km,
             new_rp_km,
             self.inc_deg(),
@@ -507,7 +553,7 @@ impl<F: CelestialFrameTrait> Cartesian<F> {
         delta_ra_km: f64,
         delta_rp_km: f64,
     ) -> Result<Self, PhysicsErrorKind> {
-        Self::keplerian_apsis_radii(
+        Self::try_keplerian_apsis_radii(
             self.apoapsis_km() + delta_ra_km,
             self.periapsis_km() + delta_rp_km,
             self.inc_deg(),

@@ -171,6 +171,18 @@ impl<F: FrameTrait> Cartesian<F> {
     pub fn v_hat(&self) -> Vector3 {
         perpv(&self.velocity_km_s, &self.r_hat()) / self.rmag_km()
     }
+
+    /// Returns whether this orbit and another are equal within the specified radial and velocity absolute tolerances
+    pub fn eq_within(&self, other: &Self, radial_tol_km: f64, velocity_tol_km_s: f64) -> bool {
+        self.epoch == other.epoch
+            && (self.radius_km.x - other.radius_km.x).abs() < radial_tol_km
+            && (self.radius_km.y - other.radius_km.y).abs() < radial_tol_km
+            && (self.radius_km.z - other.radius_km.z).abs() < radial_tol_km
+            && (self.velocity_km_s.x - other.velocity_km_s.x).abs() < velocity_tol_km_s
+            && (self.velocity_km_s.y - other.velocity_km_s.y).abs() < velocity_tol_km_s
+            && (self.velocity_km_s.z - other.velocity_km_s.z).abs() < velocity_tol_km_s
+            && self.frame == other.frame
+    }
 }
 
 impl<F: FrameTrait> Add for Cartesian<F> {
@@ -205,5 +217,14 @@ impl<F: FrameTrait> Add for Cartesian<F> {
             epoch: self.epoch,
             frame: self.frame,
         })
+    }
+}
+
+impl<F: FrameTrait> PartialEq for Cartesian<F> {
+    /// Two states are equal if their position are equal within one centimeter and their velocities within one centimeter per second.
+    fn eq(&self, other: &Self) -> bool {
+        let radial_tol = 1e-5; // centimeter
+        let velocity_tol = 1e-5; // centimeter per second
+        self.eq_within(other, radial_tol, velocity_tol)
     }
 }

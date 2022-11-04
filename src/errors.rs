@@ -10,7 +10,7 @@
 
 use hifitime::Epoch;
 
-use crate::asn1::semver::Semver;
+use crate::repr::semver::Semver;
 use crate::astro::Frame;
 use crate::der::Error as Asn1Error;
 use crate::der::Error as DerError;
@@ -18,7 +18,7 @@ use core::convert::From;
 use core::fmt;
 use std::io::ErrorKind as IOErrorKind;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum AniseError {
     /// Raised for an error in reading or writing the file(s)
     IOError(IOErrorKind),
@@ -95,8 +95,15 @@ pub enum MathErrorKind {
     StateFramesDiffer,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum PhysicsErrorKind {}
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum PhysicsErrorKind {
+    /// ANISE does not support parabolic orbits because these are not physically real.
+    ParabolicOrbit,
+    /// True anomaly of the provided hyperbolic orbit is physically impossible
+    InvalidHyperbolicTrueAnomaly(f64),
+    /// Some computation led to a value being infinite, check the error logs
+    InfiniteValue,
+}
 
 impl From<IOErrorKind> for AniseError {
     fn from(e: IOErrorKind) -> Self {

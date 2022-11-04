@@ -8,20 +8,23 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::GeodeticFrameTrait;
+use super::{GeodeticFrame, GeodeticFrameTrait};
 use crate::{
     errors::PhysicsErrorKind,
     math::{
         angles::{between_0_360, between_pm_180},
         cartesian::Cartesian,
+        Vector3,
     },
 };
 use hifitime::Epoch;
 use log::{error, warn};
 
+pub type GeodeticOrbit = Cartesian<GeodeticFrame>;
+
 impl<F: GeodeticFrameTrait> Cartesian<F> {
     /// Creates a new Orbit from the provided semi-major axis altitude in kilometers
-    pub fn keplerian_altitude(
+    pub fn try_keplerian_altitude(
         sma_altitude: f64,
         ecc: f64,
         inc: f64,
@@ -31,7 +34,7 @@ impl<F: GeodeticFrameTrait> Cartesian<F> {
         dt: Epoch,
         frame: F,
     ) -> Result<Self, PhysicsErrorKind> {
-        Self::keplerian(
+        Self::try_keplerian(
             sma_altitude + frame.equatorial_radius_km(),
             ecc,
             inc,
@@ -44,7 +47,7 @@ impl<F: GeodeticFrameTrait> Cartesian<F> {
     }
 
     /// Creates a new Orbit from the provided altitudes of apoapsis and periapsis, in kilometers
-    pub fn keplerian_apsis_altitude(
+    pub fn try_keplerian_apsis_altitude(
         a_a: f64,
         a_p: f64,
         inc: f64,
@@ -54,13 +57,67 @@ impl<F: GeodeticFrameTrait> Cartesian<F> {
         dt: Epoch,
         frame: F,
     ) -> Result<Self, PhysicsErrorKind> {
-        Self::keplerian_apsis_radii(
+        Self::try_keplerian_apsis_radii(
             a_a + frame.equatorial_radius_km(),
             a_p + frame.equatorial_radius_km(),
             inc,
             raan,
             aop,
             ta,
+            dt,
+            frame,
+        )
+    }
+
+    /// Creates a new Orbit from the geodetic latitude (φ), longitude (λ) and height with respect to the ellipsoid of the frame.
+    ///
+    /// **Units:** degrees, degrees, km
+    /// NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
+    /// Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016
+    /// **WARNING:** This uses the rotational rates known to Nyx. For other objects, use `from_altlatlong` for other celestial bodies.
+    pub fn from_geodesic(latitude: f64, longitude: f64, height: f64, dt: Epoch, frame: F) -> Self {
+        Self::from_altlatlong(
+            latitude,
+            longitude,
+            height,
+            frame.angular_velocity_deg(),
+            dt,
+            frame,
+        )
+    }
+
+    /// Creates a new Orbit from the latitude (φ), longitude (λ) and height with respect to the frame's ellipsoid.
+    ///
+    /// **Units:** degrees, degrees, km, rad/s
+    /// NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
+    /// Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016
+    pub fn from_altlatlong(
+        latitude_deg: f64,
+        longitude_deg: f64,
+        height_km: f64,
+        angular_velocity: f64,
+        dt: Epoch,
+        frame: F,
+    ) -> Self {
+        let e2 = 2.0 * frame.flattening() - frame.flattening().powi(2);
+        let (sin_long, cos_long) = longitude_deg.to_radians().sin_cos();
+        let (sin_lat, cos_lat) = latitude_deg.to_radians().sin_cos();
+        // page 144
+        let c_body = frame.semi_major_radius_km() / ((1.0 - e2 * sin_lat.powi(2)).sqrt());
+        let s_body = (frame.semi_major_radius_km() * (1.0 - frame.flattening()).powi(2))
+            / ((1.0 - e2 * sin_lat.powi(2)).sqrt());
+        let ri = (c_body + height_km) * cos_lat * cos_long;
+        let rj = (c_body + height_km) * cos_lat * sin_long;
+        let rk = (s_body + height_km) * sin_lat;
+        let radius = Vector3::new(ri, rj, rk);
+        let velocity = Vector3::new(0.0, 0.0, angular_velocity).cross(&radius);
+        Self::cartesian(
+            radius[0],
+            radius[1],
+            radius[2],
+            velocity[0],
+            velocity[1],
+            velocity[2],
             dt,
             frame,
         )

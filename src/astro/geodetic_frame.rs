@@ -23,6 +23,8 @@ pub trait GeodeticFrameTrait: CelestialFrameTrait {
     fn flattening(&self) -> f64;
     /// Returns true if this is a body fixed frame
     fn is_body_fixed(&self) -> bool;
+    /// Returns the average angular velocity of this frame
+    fn angular_velocity_deg(&self) -> f64;
 }
 
 /// A GeodeticFrame is a Celestial Frame whose equatorial and semi major radii are defined.
@@ -33,6 +35,7 @@ pub struct GeodeticFrame {
     pub semi_major_radius_km: f64,
     pub flattening: f64,
     pub is_body_fixed: bool,
+    pub angular_velocity_deg: f64,
 }
 
 impl FrameTrait for GeodeticFrame {
@@ -66,6 +69,10 @@ impl GeodeticFrameTrait for GeodeticFrame {
 
     fn is_body_fixed(&self) -> bool {
         self.is_body_fixed
+    }
+
+    fn angular_velocity_deg(&self) -> f64 {
+        self.angular_velocity_deg
     }
 }
 

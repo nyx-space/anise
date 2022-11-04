@@ -8,13 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 
-use memmap2::Mmap;
-
 use crate::der::Decode;
 use crate::log::{error, trace};
 use crate::{
-    asn1::{context::AniseContext, semver::Semver, ANISE_VERSION},
     errors::AniseError,
+    repr::{context::AniseContext, semver::Semver, ANISE_VERSION},
 };
 
 impl<'a> AniseContext<'a> {
@@ -29,23 +27,29 @@ impl<'a> AniseContext<'a> {
             }
             Err(e) => {
                 // If we can't load the file, let's try to load the version only to be helpful
-                match Semver::from_der(&bytes[0..5]) {
-                    Ok(file_version) => {
-                        if file_version == ANISE_VERSION {
-                            error!("[try_from_bytes] context bytes corrupted but ANISE library version match");
-                            Err(AniseError::DecodingError(e))
-                        } else {
-                            error!(
-                                "[try_from_bytes] context bytes and ANISE library version mismatch"
-                            );
-                            Err(AniseError::IncompatibleVersion {
-                                got: file_version,
-                                exp: ANISE_VERSION,
-                            })
+                match bytes.get(0..5) {
+                    Some(semver_bytes) => match Semver::from_der(&semver_bytes) {
+                        Ok(file_version) => {
+                            if file_version == ANISE_VERSION {
+                                error!("[try_from_bytes] context bytes corrupted but ANISE library version match");
+                                Err(AniseError::DecodingError(e))
+                            } else {
+                                error!(
+                                    "[try_from_bytes] context bytes and ANISE library version mismatch"
+                                );
+                                Err(AniseError::IncompatibleVersion {
+                                    got: file_version,
+                                    exp: ANISE_VERSION,
+                                })
+                            }
                         }
-                    }
-                    Err(_) => {
-                        error!("[try_from_bytes] context bytes not in ANISE format");
+                        Err(e) => {
+                            error!("[try_from_bytes] context bytes not in ANISE format");
+                            Err(AniseError::DecodingError(e))
+                        }
+                    },
+                    None => {
+                        error!("[try_from_bytes] context bytes way too short (less than 5 bytes)");
                         Err(AniseError::DecodingError(e))
                     }
                 }
@@ -57,13 +61,5 @@ impl<'a> AniseContext<'a> {
     /// **Panics** if the bytes cannot be interpreted as an Anise file.
     pub fn from_bytes(buf: &'a [u8]) -> Self {
         Self::try_from_bytes(buf).unwrap()
-    }
-}
-
-impl<'a> TryFrom<&'a Mmap> for AniseContext<'a> {
-    type Error = AniseError;
-
-    fn try_from(buf: &'a Mmap) -> Result<Self, Self::Error> {
-        Self::try_from_bytes(buf)
     }
 }
