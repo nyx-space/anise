@@ -7,7 +7,7 @@
  *
  * Documentation: https://nyxspace.com/
  */
-use super::CelestialFrameTrait;
+use super::{celestial_frame::CelestialFrame, CelestialFrameTrait};
 use crate::{
     errors::PhysicsErrorKind,
     math::{
@@ -23,6 +23,8 @@ use log::{error, info, warn};
 
 /// If an orbit has an eccentricity below the following value, it is considered circular (only affects warning messages)
 pub const ECC_EPSILON: f64 = 1e-11;
+
+pub type Orbit = Cartesian<CelestialFrame>;
 
 impl<F: CelestialFrameTrait> Cartesian<F> {
     /// Creates a new Orbit around the provided Celestial or Geoid frame from the Keplerian orbital elements.

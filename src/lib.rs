@@ -13,8 +13,6 @@ extern crate der;
 extern crate hifitime;
 extern crate log;
 
-pub use hifitime::Epoch;
-
 pub mod constants;
 pub mod context;
 pub mod ephemerides;
@@ -22,12 +20,17 @@ pub mod errors;
 pub mod math;
 pub mod spline;
 
+/// Re-export of hifitime
+pub mod time {
+    pub use hifitime::*;
+}
+
 pub mod prelude {
     pub use crate::asn1::context::AniseContext;
     pub use crate::asn1::units::*;
     pub use crate::astro::Aberration;
     pub use crate::errors::AniseError;
-    pub use hifitime::{Epoch, TimeScale, TimeUnits};
+    pub use crate::time::*;
     pub use std::fs::File;
 }
 
