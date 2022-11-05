@@ -9,7 +9,7 @@
  */
 use der::{asn1::Utf8StringRef, Decode, Encode, Reader, Writer};
 
-use super::triaxialellipsoid::TriaxialEllipsoid;
+use super::ellipsoid::Ellipsoid;
 
 /// Planetary constants can store the same data as the SPICE textual PCK files
 #[derive(Clone, Debug, PartialEq)]
@@ -18,25 +18,25 @@ pub struct PlanetaryConstants<'a> {
     pub name: &'a str,
     /// Generic comments field
     pub comments: &'a str,
-    /// The shape is always a tri axial ellipsoid
-    pub shape: TriaxialEllipsoid,
     /// Gravitational parameter (μ) of this planetary object.
     pub mu_km3_s2: f64,
+    /// The shape is always a tri axial ellipsoid
+    pub shape: Option<Ellipsoid>,
 }
 
 impl<'a> Encode for PlanetaryConstants<'a> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         Utf8StringRef::new(self.name)?.encoded_len()?
             + Utf8StringRef::new(self.comments)?.encoded_len()?
-            + self.shape.encoded_len()?
             + self.mu_km3_s2.encoded_len()?
+            + self.shape.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
         Utf8StringRef::new(self.name)?.encode(encoder)?;
         Utf8StringRef::new(self.comments)?.encode(encoder)?;
-        self.shape.encode(encoder)?;
-        self.mu_km3_s2.encode(encoder)
+        self.mu_km3_s2.encode(encoder)?;
+        self.shape.encode(encoder)
     }
 }
 
@@ -48,8 +48,8 @@ impl<'a> Decode<'a> for PlanetaryConstants<'a> {
         Ok(Self {
             name: name.as_str(),
             comments: comments.as_str(),
-            shape: decoder.decode()?,
             mu_km3_s2: decoder.decode()?,
+            shape: Some(decoder.decode()?),
         })
     }
 }

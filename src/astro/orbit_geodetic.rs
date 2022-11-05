@@ -18,7 +18,7 @@ use crate::{
     prelude::{GeodeticFrame, GeodeticFrameTrait},
 };
 use hifitime::Epoch;
-use log::{error, warn};
+use log::error;
 
 pub type GeodeticOrbit = Cartesian<GeodeticFrame>;
 
@@ -35,7 +35,7 @@ impl<F: GeodeticFrameTrait> Cartesian<F> {
         frame: F,
     ) -> Result<Self, PhysicsErrorKind> {
         Self::try_keplerian(
-            sma_altitude + frame.equatorial_radius_km(),
+            sma_altitude + frame.mean_equatorial_radius_km(),
             ecc,
             inc,
             raan,
@@ -58,8 +58,8 @@ impl<F: GeodeticFrameTrait> Cartesian<F> {
         frame: F,
     ) -> Result<Self, PhysicsErrorKind> {
         Self::try_keplerian_apsis_radii(
-            a_a + frame.equatorial_radius_km(),
-            a_p + frame.equatorial_radius_km(),
+            a_a + frame.mean_equatorial_radius_km(),
+            a_p + frame.mean_equatorial_radius_km(),
             inc,
             raan,
             aop,
@@ -69,24 +69,7 @@ impl<F: GeodeticFrameTrait> Cartesian<F> {
         )
     }
 
-    /// Creates a new Orbit from the geodetic latitude (φ), longitude (λ) and height with respect to the ellipsoid of the frame.
-    ///
-    /// **Units:** degrees, degrees, km
-    /// NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
-    /// Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016
-    /// **WARNING:** This uses the rotational rates known to Nyx. For other objects, use `from_altlatlong` for other celestial bodies.
-    pub fn from_geodesic(latitude: f64, longitude: f64, height: f64, dt: Epoch, frame: F) -> Self {
-        Self::from_altlatlong(
-            latitude,
-            longitude,
-            height,
-            frame.angular_velocity_deg(),
-            dt,
-            frame,
-        )
-    }
-
-    /// Creates a new Orbit from the latitude (φ), longitude (λ) and height with respect to the frame's ellipsoid.
+    /// Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid given the angular velocity.
     ///
     /// **Units:** degrees, degrees, km, rad/s
     /// NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
@@ -125,17 +108,17 @@ impl<F: GeodeticFrameTrait> Cartesian<F> {
 
     /// Returns the SMA altitude in km
     pub fn sma_altitude(&self) -> f64 {
-        self.sma_km() - self.frame.equatorial_radius_km()
+        self.sma_km() - self.frame.mean_equatorial_radius_km()
     }
 
     /// Returns the altitude of periapsis (or perigee around Earth), in kilometers.
     pub fn periapsis_altitude(&self) -> f64 {
-        self.periapsis_km() - self.frame.equatorial_radius_km()
+        self.periapsis_km() - self.frame.mean_equatorial_radius_km()
     }
 
     /// Returns the altitude of apoapsis (or apogee around Earth), in kilometers.
     pub fn apoapsis_altitude(&self) -> f64 {
-        self.apoapsis_km() - self.frame.equatorial_radius_km()
+        self.apoapsis_km() - self.frame.mean_equatorial_radius_km()
     }
 
     /// Returns the geodetic longitude (λ) in degrees. Value is between 0 and 360 degrees.
@@ -150,9 +133,6 @@ impl<F: GeodeticFrameTrait> Cartesian<F> {
     ///
     /// Reference: Vallado, 4th Ed., Algorithm 12 page 172.
     pub fn geodetic_latitude(&self) -> f64 {
-        if !self.frame.is_body_fixed() {
-            warn!("computation of geodetic latitude must be done in a body fixed frame and {:?} is not one!", self.frame);
-        }
         let eps = 1e-12;
         let max_attempts = 20;
         let mut attempt_no = 0;
@@ -181,9 +161,6 @@ impl<F: GeodeticFrameTrait> Cartesian<F> {
     ///
     /// Reference: Vallado, 4th Ed., Algorithm 12 page 172.
     pub fn geodetic_height(&self) -> f64 {
-        if !self.frame.is_body_fixed() {
-            warn!("Computation of geodetic height must be done in a body fixed frame and {:?} is not one!", self.frame);
-        }
         let e2 = self.frame.flattening() * (2.0 - self.frame.flattening());
         let latitude = self.geodetic_latitude().to_radians();
         let sin_lat = latitude.sin();

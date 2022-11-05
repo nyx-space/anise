@@ -10,6 +10,8 @@
 
 use core::fmt::{Debug, Display, Formatter};
 
+use crc32fast::hash;
+
 use crate::constants::celestial_objects::hash_celestial_name;
 use crate::constants::orientations::{hash_orientation_name, J2000};
 use crate::HashType;
@@ -61,6 +63,16 @@ impl Frame {
         Self {
             ephemeris_hash,
             orientation_hash,
+        }
+    }
+
+    pub fn from_ephemeris_orientation_names<'a>(
+        ephemeris_name: &'a str,
+        orientation_name: &'a str,
+    ) -> Self {
+        Self {
+            ephemeris_hash: hash(ephemeris_name.as_bytes()),
+            orientation_hash: hash(orientation_name.as_bytes()),
         }
     }
 

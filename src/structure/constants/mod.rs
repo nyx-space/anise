@@ -10,7 +10,7 @@
 
 pub mod planetary;
 pub mod spacecraft;
-pub mod triaxialellipsoid;
+pub mod ellipsoid;
 
 pub use planetary::*;
 pub use spacecraft::*;

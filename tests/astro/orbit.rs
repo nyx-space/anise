@@ -24,7 +24,7 @@ fn state_def_circ_inc() {
     let buf = file_mmap!(path).unwrap();
     let ctx = AniseContext::try_from_bytes(&buf).unwrap();
 
-    let eme2k = cosm.frame("EME2000");
+    let eme2k = ctx.celestial_frame("Earth", "J2000").unwrap();
 
     let epoch = Epoch::from_mjd_tai(21_545.0);
     let cart = Orbit::cartesian(
@@ -128,8 +128,11 @@ fn state_def_circ_inc() {
 
 #[test]
 fn state_def_elliptical() {
-    let cosm = Cosm::de438_gmat();
-    let eme2k = cosm.frame("EME2000");
+    let path = "./data/de438s.anise";
+    let buf = file_mmap!(path).unwrap();
+    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
+
+    let eme2k = ctx.celestial_frame("Earth", "J2000").unwrap();
 
     let epoch = Epoch::from_mjd_tai(21_545.0);
     let cart = Orbit::cartesian(
@@ -215,8 +218,11 @@ fn state_def_elliptical() {
 
 #[test]
 fn state_def_circ_eq() {
-    let cosm = Cosm::de438_gmat();
-    let eme2k = cosm.frame("EME2000");
+    let path = "./data/de438s.anise";
+    let buf = file_mmap!(path).unwrap();
+    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
+
+    let eme2k = ctx.celestial_frame("Earth", "J2000").unwrap();
 
     let epoch = Epoch::from_mjd_tai(21_545.0);
     let cart = Orbit::cartesian(
@@ -300,8 +306,11 @@ fn state_def_circ_eq() {
 
 #[test]
 fn state_def_equatorial() {
-    let cosm = Cosm::de438_gmat();
-    let eme2k = cosm.frame("EME2000");
+    let path = "./data/de438s.anise";
+    let buf = file_mmap!(path).unwrap();
+    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
+
+    let eme2k = ctx.celestial_frame("Earth", "J2000").unwrap();
 
     let epoch = Epoch::from_mjd_tai(21_545.0);
     let cart = Orbit::cartesian(
@@ -325,8 +334,11 @@ fn state_def_equatorial() {
 
 #[test]
 fn state_def_reciprocity() {
-    let cosm = Cosm::de438_gmat();
-    let eme2k = cosm.frame("EME2000");
+    let path = "./data/de438s.anise";
+    let buf = file_mmap!(path).unwrap();
+    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
+
+    let eme2k = ctx.celestial_frame("Earth", "J2000").unwrap();
 
     let epoch = Epoch::from_mjd_tai(21_545.0);
 
@@ -396,10 +408,12 @@ fn state_def_reciprocity() {
 
 #[test]
 fn geodetic_vallado() {
-    let cosm = Cosm::de438_gmat();
-    let eme2k = cosm.frame("EME2000");
+    let path = "./data/de438s.anise";
+    let buf = file_mmap!(path).unwrap();
+    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
 
-    dbg!(eme2k.semi_major_radius());
+    let eme2k = ctx.geodetic_frame("Earth", "J2000").unwrap();
+
     let epoch = Epoch::from_mjd_tai(51_545.0);
     // Test case from Vallado, 4th Ed., page 173, Example 3-3
     let ri = 6524.834;
@@ -414,7 +428,15 @@ fn geodetic_vallado() {
     f64_eq!(r.geodetic_latitude(), lat, "latitude (φ)");
     f64_eq!(r.geodetic_longitude(), long, "longitude (λ)");
     f64_eq!(r.geodetic_height(), height, "height");
-    let r = GeodeticOrbit::from_geodesic(lat, long, height, epoch, eme2k);
+    let mean_earth_angular_velocity_deg_s = 0.004178079012116429;
+    let r = GeodeticOrbit::from_altlatlong(
+        lat,
+        long,
+        height,
+        mean_earth_angular_velocity_deg_s,
+        epoch,
+        eme2k,
+    );
     f64_eq!(r.radius_km.x, ri_val, "r_i");
     f64_eq!(r.radius_km.y, rj_val, "r_j");
     f64_eq!(r.radius_km.z, rk, "r_k");
@@ -428,7 +450,14 @@ fn geodetic_vallado() {
     let ri = 6_119.399_587_411_616;
     let rj = -1_571.479_380_333_195;
     let rk = -871.561_161_926_003_9;
-    let r = GeodeticOrbit::from_geodesic(lat, long, height, epoch, eme2k);
+    let r = GeodeticOrbit::from_altlatlong(
+        lat,
+        long,
+        height,
+        mean_earth_angular_velocity_deg_s,
+        epoch,
+        eme2k,
+    );
     f64_eq!(r.radius_km.x, ri, "r_i");
     f64_eq!(r.radius_km.y, rj, "r_j");
     f64_eq!(r.radius_km.z, rk, "r_k");
@@ -440,8 +469,12 @@ fn geodetic_vallado() {
 
 #[test]
 fn with_init() {
-    let cosm = Cosm::de438_gmat();
-    let eme2k = cosm.frame("EME2000");
+    let path = "./data/de438s.anise";
+    let buf = file_mmap!(path).unwrap();
+    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
+
+    let eme2k = ctx.celestial_frame("Earth", "J2000").unwrap();
+
     let epoch = Epoch::from_gregorian_tai_at_midnight(2021, 3, 4);
     let kep = Orbit::keplerian(
         8_191.93, 0.024_5, 12.85, 306.614, 314.19, 99.887_7, epoch, eme2k,
