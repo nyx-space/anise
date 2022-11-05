@@ -10,14 +10,14 @@
 
 use log::trace;
 
-use crate::repr::common::InterpolationKind;
-use crate::repr::spline::Field;
-use crate::repr::units::*;
+use crate::structure::common::InterpolationKind;
+use crate::structure::spline::Field;
+use crate::structure::units::*;
 use crate::astro::Aberration;
 use crate::hifitime::Epoch;
 use crate::math::interpolation::chebyshev::cheby_eval;
 use crate::math::Vector3;
-use crate::{repr::context::AniseContext, astro::Frame, errors::AniseError};
+use crate::{structure::context::AniseContext, astro::Frame, errors::AniseError};
 
 impl<'a> AniseContext<'a> {
     /// Returns the position vector and velocity vector of the `source` with respect to its parent in the ephemeris at the provided epoch,

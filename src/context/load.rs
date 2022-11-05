@@ -12,7 +12,7 @@ use crate::der::Decode;
 use crate::log::{error, trace};
 use crate::{
     errors::AniseError,
-    repr::{context::AniseContext, semver::Semver, ANISE_VERSION},
+    structure::{context::AniseContext, semver::Semver, ANISE_VERSION},
 };
 
 impl<'a> AniseContext<'a> {

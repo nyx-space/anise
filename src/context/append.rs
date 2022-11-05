@@ -11,7 +11,7 @@
 use crate::errors::IntegrityErrorKind;
 use crate::log::{error, trace};
 use crate::{
-    repr::{context::AniseContext, ephemeris::Ephemeris, MAX_TRAJECTORIES},
+    structure::{context::AniseContext, ephemeris::Ephemeris, MAX_TRAJECTORIES},
     errors::{AniseError, InternalErrorKind},
 };
 use crc32fast::hash;

@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::{repr::spline::StateKind, prelude::AniseError};
+use crate::{structure::spline::StateKind, prelude::AniseError};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DataType {

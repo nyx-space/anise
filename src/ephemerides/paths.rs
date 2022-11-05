@@ -14,7 +14,7 @@ use crate::constants::orientations::J2000;
 use crate::errors::InternalErrorKind;
 use crate::HashType;
 use crate::{
-    repr::{context::AniseContext, ephemeris::Ephemeris},
+    structure::{context::AniseContext, ephemeris::Ephemeris},
     astro::Frame,
     errors::{AniseError, IntegrityErrorKind},
 };

@@ -28,8 +28,8 @@ pub mod time {
 pub mod prelude {
     pub use crate::astro::Aberration;
     pub use crate::errors::AniseError;
-    pub use crate::repr::context::AniseContext;
-    pub use crate::repr::units::*;
+    pub use crate::structure::context::AniseContext;
+    pub use crate::structure::units::*;
     pub use crate::time::*;
     pub use std::fs::File;
 }
@@ -37,7 +37,7 @@ pub mod prelude {
 pub mod astro;
 pub mod cli;
 pub mod naif;
-pub mod repr;
+pub mod structure;
 
 /// Defines the number of bytes in a double (prevents magic numbers)
 pub(crate) const DBL_SIZE: usize = 8;

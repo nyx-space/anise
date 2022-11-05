@@ -10,7 +10,7 @@
 
 use hifitime::Epoch;
 
-use crate::repr::semver::Semver;
+use crate::structure::semver::Semver;
 use crate::astro::Frame;
 use crate::der::Error as Asn1Error;
 use crate::der::Error as DerError;

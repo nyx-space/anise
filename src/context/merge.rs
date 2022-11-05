@@ -9,7 +9,7 @@
  */
 
 use crate::log::{info, trace};
-use crate::{repr::context::AniseContext, errors::AniseError};
+use crate::{structure::context::AniseContext, errors::AniseError};
 
 impl<'a> AniseContext<'a> {
     /// Clones this context and merges it with the other.

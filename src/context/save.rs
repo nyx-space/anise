@@ -9,7 +9,7 @@
  */
 
 use crate::{
-    repr::context::AniseContext,
+    structure::context::AniseContext,
     errors::{AniseError, InternalErrorKind},
 };
 use der::Encode;

@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::repr::context::AniseContext;
+use crate::structure::context::AniseContext;
 
 impl<'a> AniseContext<'a> {
     pub fn rename_ephemeris_traj_mut(&mut self) {
