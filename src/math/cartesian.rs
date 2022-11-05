@@ -11,10 +11,7 @@
 use core::ops::Add;
 
 use super::{perpv, Vector3};
-use crate::{
-    astro::{Frame, FrameTrait},
-    prelude::AniseError,
-};
+use crate::prelude::{AniseError, Frame, FrameTrait};
 use hifitime::Epoch;
 use nalgebra::Vector6;
 

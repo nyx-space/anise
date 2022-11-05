@@ -7,7 +7,7 @@
  *
  * Documentation: https://nyxspace.com/
  */
-use super::{celestial_frame::CelestialFrame, CelestialFrameTrait};
+
 use crate::{
     errors::PhysicsErrorKind,
     math::{
@@ -15,6 +15,7 @@ use crate::{
         cartesian::Cartesian,
         Vector3, Vector6,
     },
+    prelude::{CelestialFrame, CelestialFrameTrait},
 };
 use core::f64::consts::PI;
 use core::f64::EPSILON;

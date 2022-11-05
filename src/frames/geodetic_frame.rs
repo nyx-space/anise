@@ -8,8 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::{celestial_frame::CelestialFrame, CelestialFrameTrait, FrameTrait};
-use crate::astro::Frame;
+use super::{celestial_frame::CelestialFrame, CelestialFrameTrait, Frame, FrameTrait};
 use crate::HashType;
 use core::fmt::{Display, Formatter};
 

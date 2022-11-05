@@ -15,12 +15,5 @@ pub enum Aberration {
     None,
 }
 
-pub mod celestial_frame;
-pub mod frame;
-pub mod geodetic_frame;
 pub mod orbit;
 pub mod orbit_geodetic;
-
-pub use celestial_frame::CelestialFrameTrait;
-pub use frame::{Frame, FrameTrait};
-pub use geodetic_frame::{GeodeticFrame, GeodeticFrameTrait};

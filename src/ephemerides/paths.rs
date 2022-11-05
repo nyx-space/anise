@@ -15,8 +15,8 @@ use crate::errors::InternalErrorKind;
 use crate::structure::orientation::Orientation;
 use crate::HashType;
 use crate::{
-    astro::Frame,
     errors::{AniseError, IntegrityErrorKind},
+    frames::Frame,
     structure::{context::AniseContext, ephemeris::Ephemeris},
 };
 

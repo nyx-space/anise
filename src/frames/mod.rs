@@ -8,9 +8,10 @@
  * Documentation: https://nyxspace.com/
  */
 
-pub mod planetary;
-pub mod spacecraft;
-pub mod triaxialellipsoid;
+pub mod celestial_frame;
+pub mod frame;
+pub mod geodetic_frame;
 
-pub use planetary::*;
-pub use spacecraft::*;
+pub use celestial_frame::{CelestialFrame, CelestialFrameTrait};
+pub use frame::{Frame, FrameTrait};
+pub use geodetic_frame::{GeodeticFrame, GeodeticFrameTrait};

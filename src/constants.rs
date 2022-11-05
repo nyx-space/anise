@@ -11,7 +11,7 @@
 pub mod celestial_objects {
     use crate::HashType;
 
-    /// Source bytes: `Solar System barycenter`
+    /// Source bytes: `Solar System Barycenter`
     pub const SOLAR_SYSTEM_BARYCENTER: HashType = 3135540444;
     /// Source bytes: `Mercury`
     pub const MERCURY: HashType = 753059387;
@@ -72,7 +72,7 @@ pub mod orientations {
 }
 
 pub mod frames {
-    use crate::astro::Frame;
+    use crate::prelude::Frame;
 
     use super::{celestial_objects::*, orientations::J2000};
 

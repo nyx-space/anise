@@ -10,10 +10,10 @@
 
 use hifitime::Epoch;
 
-use crate::structure::semver::Semver;
-use crate::astro::Frame;
 use crate::der::Error as Asn1Error;
 use crate::der::Error as DerError;
+use crate::prelude::Frame;
+use crate::structure::semver::Semver;
 use core::convert::From;
 use core::fmt;
 use std::io::ErrorKind as IOErrorKind;

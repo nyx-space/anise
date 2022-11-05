@@ -16,8 +16,8 @@ use crate::math::cartesian::CartesianState;
 use crate::math::Vector3;
 use crate::structure::units::*;
 use crate::{
-    astro::{Frame, FrameTrait},
     errors::AniseError,
+    prelude::{Frame, FrameTrait},
     structure::context::AniseContext,
 };
 

@@ -10,10 +10,10 @@
 
 use core::f64::EPSILON;
 
-use anise::astro::Frame;
 use anise::constants::celestial_objects::{EARTH_MOON_BARYCENTER, SOLAR_SYSTEM_BARYCENTER};
 use anise::constants::frames::*;
 use anise::constants::orientations::J2000;
+use anise::prelude::Frame;
 use anise::prelude::*;
 use anise::{file_mmap, prelude::AniseContext};
 

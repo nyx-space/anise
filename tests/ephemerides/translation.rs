@@ -301,7 +301,7 @@ fn de438s_translation_verif_emb2luna() {
 #[ignore]
 #[cfg(feature = "std")]
 fn validate_jplde_translation() {
-    use anise::astro::Frame;
+    use anise::prelude::Frame;
     use arrow::array::{ArrayRef, Float64Array, StringArray, UInt8Array};
     use arrow::datatypes::{DataType, Field, Schema};
     use arrow::record_batch::RecordBatch;

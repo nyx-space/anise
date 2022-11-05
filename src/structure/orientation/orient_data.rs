@@ -13,11 +13,8 @@ use hifitime::Epoch;
 
 pub const MAX_NUT_PREC_ANGLES: usize = 16;
 
-use crate::structure::{
-    common::InterpolationKind,
-    constants::{phaseangle::PhaseAngle, trigangle::TrigAngle},
-    spline::Splines,
-};
+use super::{phaseangle::PhaseAngle, trigangle::TrigAngle};
+use crate::structure::{common::InterpolationKind, spline::Splines};
 
 /// ANISE supports two different kinds of orientation data. High precision, with spline based interpolations, and constants right ascension, declination, and prime meridian, typically used for planetary constant data.
 #[derive(Clone, Debug, PartialEq)]

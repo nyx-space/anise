@@ -13,12 +13,18 @@ extern crate der;
 extern crate hifitime;
 extern crate log;
 
+pub mod astro;
+pub mod cli;
 pub mod constants;
 pub mod context;
 pub mod ephemerides;
 pub mod errors;
+pub mod frames;
 pub mod math;
+pub mod naif;
+pub mod orientations;
 pub mod spline;
+pub mod structure;
 
 /// Re-export of hifitime
 pub mod time {
@@ -28,17 +34,12 @@ pub mod time {
 pub mod prelude {
     pub use crate::astro::Aberration;
     pub use crate::errors::AniseError;
+    pub use crate::frames::*;
     pub use crate::structure::context::AniseContext;
     pub use crate::structure::units::*;
     pub use crate::time::*;
     pub use std::fs::File;
 }
-
-pub mod astro;
-pub mod cli;
-pub mod naif;
-pub mod orientation;
-pub mod structure;
 
 /// Defines the number of bytes in a double (prevents magic numbers)
 pub(crate) const DBL_SIZE: usize = 8;

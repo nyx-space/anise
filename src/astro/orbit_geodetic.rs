@@ -8,7 +8,6 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::{GeodeticFrame, GeodeticFrameTrait};
 use crate::{
     errors::PhysicsErrorKind,
     math::{
@@ -16,6 +15,7 @@ use crate::{
         cartesian::Cartesian,
         Vector3,
     },
+    prelude::{GeodeticFrame, GeodeticFrameTrait},
 };
 use hifitime::Epoch;
 use log::{error, warn};

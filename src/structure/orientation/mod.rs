@@ -15,6 +15,8 @@ pub const MAX_NUT_PREC_ANGLES: usize = 16;
 use self::orient_data::OrientationData;
 
 pub mod orient_data;
+pub mod phaseangle;
+pub mod trigangle;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Orientation<'a> {
