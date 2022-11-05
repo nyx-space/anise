@@ -10,8 +10,8 @@
 use der::{asn1::SequenceOf, Decode, Encode, Reader, Writer};
 
 use super::{
-    ephemeris::Ephemeris, lookuptable::LookUpTable, metadata::Metadata,
-    spacecraft_constants::SpacecraftConstants, MAX_TRAJECTORIES,
+    constants::SpacecraftConstants, ephemeris::Ephemeris, lookuptable::LookUpTable,
+    metadata::Metadata, MAX_TRAJECTORIES,
 };
 
 /// A Context is the core structure which stores all of the ANISE data.

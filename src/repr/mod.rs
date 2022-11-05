@@ -22,7 +22,7 @@ pub mod metadata;
 pub mod semver;
 pub mod spline;
 // pub mod splinecoeffs;
-pub mod spacecraft_constants;
+pub mod constants;
 pub mod units;
 
 use self::semver::Semver;
