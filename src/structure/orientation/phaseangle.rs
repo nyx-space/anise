@@ -11,14 +11,14 @@ use der::{Decode, Encode, Reader, Writer};
 
 /// Angle data is represented as a polynomial of an angle, exactly like in SPICE PCK.
 /// In fact, the following documentation is basically copied from [the required PCK reading](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/pck.html).
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct PhaseAngle {
     /// The fixed offset of the angular data
-    pub offset_deg: Option<f64>,
+    pub offset_deg: f64,
     /// The rate of change of this angle per T, where T represents then number of centuries since J2000 TDB for right ascension and declination, and days since J2000 TDB for the axis twist.
-    pub rate_deg: Option<f64>,
+    pub rate_deg: f64,
     /// The acceleration of this angle per T (same definition as above).
-    pub accel_deg: Option<f64>,
+    pub accel_deg: f64,
 }
 
 impl Encode for PhaseAngle {

@@ -56,14 +56,14 @@ use super::phaseangle::PhaseAngle;
 ///     i    i        i
 ///
 /// are specific to each satellite.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct TrigAngle {
     /// Right ascension angle factor for this trig polynomial
-    pub right_ascension_deg: Option<f64>,
+    pub right_ascension_deg: f64,
     /// Declination angle factor for this trig polynomial
-    pub declination_deg: Option<f64>,
+    pub declination_deg: f64,
     /// Prime meridian angle factor for this trig polynomial
-    pub prime_meridian_deg: Option<f64>,
+    pub prime_meridian_deg: f64,
     /// Nutation and precession phase angle data of each trigonometric polynomial, e.g. J1-J10 and Ja-Je for Jupiter data.
     pub nut_prec_angle: PhaseAngle,
 }

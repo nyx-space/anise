@@ -18,19 +18,13 @@ pub struct SpacecraftConstants<'a> {
     pub name: &'a str,
     /// Generic comments field
     pub comments: &'a str,
-    /// Structural mass of the spacecraft in kg
-    pub dry_mass_kg: Option<f64>,
-    /// Total fuel mass of the spacecraft in kg
-    pub fuel_mass_kg: Option<f64>,
-    /// Solar radiation pressure area in m^2
-    pub srp_area_m2: Option<f64>,
-    /// Solar radiation pressure coefficient of reflectivity (C_r)
-    pub srp_coeff_reflectivity: Option<f64>,
-    /// Atmospheric drag area in m^2
-    pub drag_area_m2: Option<f64>,
-    /// Drag coefficient (C_d)
-    pub drag_coeff: Option<f64>,
-    /// Inertia tensor
+    /// Mass of the spacecraft in kg
+    pub mass_kg: Option<Mass>,
+    /// Solar radiation pressure data
+    pub srp_data: Option<SRPData>,
+    /// Atmospheric drag data
+    pub drag_data: Option<DragData>,
+    // Inertia tensor
     pub inertia_tensor: Option<InertiaTensor>,
 }
 
@@ -38,24 +32,18 @@ impl<'a> Encode for SpacecraftConstants<'a> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         Utf8StringRef::new(self.name)?.encoded_len()?
             + Utf8StringRef::new(self.comments)?.encoded_len()?
-            + self.dry_mass_kg.encoded_len()?
-            + self.fuel_mass_kg.encoded_len()?
-            + self.srp_area_m2.encoded_len()?
-            + self.srp_coeff_reflectivity.encoded_len()?
-            + self.drag_area_m2.encoded_len()?
-            + self.drag_coeff.encoded_len()?
+            + self.mass_kg.encoded_len()?
+            + self.srp_data.encoded_len()?
+            + self.drag_data.encoded_len()?
             + self.inertia_tensor.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
         Utf8StringRef::new(self.name)?.encode(encoder)?;
         Utf8StringRef::new(self.comments)?.encode(encoder)?;
-        self.dry_mass_kg.encode(encoder)?;
-        self.fuel_mass_kg.encode(encoder)?;
-        self.srp_area_m2.encode(encoder)?;
-        self.srp_coeff_reflectivity.encode(encoder)?;
-        self.drag_area_m2.encode(encoder)?;
-        self.drag_coeff.encode(encoder)?;
+        self.mass_kg.encode(encoder)?;
+        self.srp_data.encode(encoder)?;
+        self.drag_data.encode(encoder)?;
         self.inertia_tensor.encode(encoder)
     }
 }
@@ -68,13 +56,95 @@ impl<'a> Decode<'a> for SpacecraftConstants<'a> {
         Ok(Self {
             name: name.as_str(),
             comments: comments.as_str(),
+            mass_kg: Some(decoder.decode()?),
+            srp_data: Some(decoder.decode()?),
+            drag_data: Some(decoder.decode()?),
+            inertia_tensor: Some(decoder.decode()?),
+        })
+    }
+}
+
+/// Defines a spacecraft mass a the sum of the dry (structural) mass and the fuel mass, both in kilogram
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Mass {
+    /// Structural mass of the spacecraft in kg
+    pub dry_mass_kg: f64,
+    /// Total fuel mass of the spacecraft in kg
+    pub fuel_mass_kg: f64,
+}
+
+impl Encode for Mass {
+    fn encoded_len(&self) -> der::Result<der::Length> {
+        self.dry_mass_kg.encoded_len()? + self.fuel_mass_kg.encoded_len()?
+    }
+
+    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+        self.dry_mass_kg.encode(encoder)?;
+        self.fuel_mass_kg.encode(encoder)
+    }
+}
+
+impl<'a> Decode<'a> for Mass {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
+        Ok(Self {
             dry_mass_kg: decoder.decode()?,
             fuel_mass_kg: decoder.decode()?,
-            srp_area_m2: decoder.decode()?,
-            srp_coeff_reflectivity: decoder.decode()?,
-            drag_area_m2: decoder.decode()?,
-            drag_coeff: decoder.decode()?,
-            inertia_tensor: Some(decoder.decode()?),
+        })
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct SRPData {
+    /// Solar radiation pressure area in m^2
+    pub area_m2: f64,
+    /// Solar radiation pressure coefficient of reflectivity (C_r)
+    pub coeff_reflectivity: f64,
+}
+
+impl<'a> Encode for SRPData {
+    fn encoded_len(&self) -> der::Result<der::Length> {
+        self.area_m2.encoded_len()? + self.coeff_reflectivity.encoded_len()?
+    }
+
+    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+        self.area_m2.encode(encoder)?;
+        self.coeff_reflectivity.encode(encoder)
+    }
+}
+
+impl<'a> Decode<'a> for SRPData {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
+        Ok(Self {
+            area_m2: decoder.decode()?,
+            coeff_reflectivity: decoder.decode()?,
+        })
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct DragData {
+    /// Atmospheric drag area in m^2
+    pub area_m2: Option<f64>,
+    /// Drag coefficient (C_d)
+    pub coeff_drag: Option<f64>,
+}
+
+impl<'a> Encode for DragData {
+    fn encoded_len(&self) -> der::Result<der::Length> {
+        self.area_m2.encoded_len()? + self.coeff_drag.encoded_len()?
+    }
+
+    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+        self.area_m2.encode(encoder)?;
+        self.coeff_drag.encode(encoder)
+    }
+}
+
+impl<'a> Decode<'a> for DragData {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
+        Ok(Self {
+            area_m2: decoder.decode()?,
+            coeff_drag: decoder.decode()?,
         })
     }
 }
