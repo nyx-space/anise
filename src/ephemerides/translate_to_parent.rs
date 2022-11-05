@@ -10,14 +10,14 @@
 
 use log::trace;
 
-use crate::structure::common::InterpolationKind;
-use crate::structure::spline::Field;
-use crate::structure::units::*;
 use crate::astro::Aberration;
 use crate::hifitime::Epoch;
 use crate::math::interpolation::chebyshev::cheby_eval;
 use crate::math::Vector3;
-use crate::{structure::context::AniseContext, astro::Frame, errors::AniseError};
+use crate::structure::common::InterpolationKind;
+use crate::structure::spline::Field;
+use crate::structure::units::*;
+use crate::{astro::Frame, errors::AniseError, structure::context::AniseContext};
 
 impl<'a> AniseContext<'a> {
     /// Returns the position vector and velocity vector of the `source` with respect to its parent in the ephemeris at the provided epoch,
@@ -36,7 +36,7 @@ impl<'a> AniseContext<'a> {
         source: Frame,
         epoch: Epoch,
         _ab_corr: Aberration,
-        distance_unit: DistanceUnit,
+        distance_unit: LengthUnit,
         time_unit: TimeUnit,
     ) -> Result<(Vector3, Vector3, Vector3, Frame), AniseError> {
         // TODO: Create a CartesianState struct which can be "upgraded" to an Orbit if the frame is of the correct type?
@@ -104,7 +104,7 @@ impl<'a> AniseContext<'a> {
         }
 
         // Convert the units based on the storage units.
-        let dist_unit_factor = ephem.distance_unit.from_meters() * distance_unit.to_meters();
+        let dist_unit_factor = ephem.length_unit.from_meters() * distance_unit.to_meters();
         let time_unit_factor = ephem.time_unit.from_seconds() * time_unit.in_seconds();
 
         Ok((

@@ -15,14 +15,14 @@
 extern crate der;
 extern crate hifitime;
 pub mod common;
+pub mod constants;
 pub mod context;
 pub mod ephemeris;
 pub mod lookuptable;
 pub mod metadata;
+pub mod orientation;
 pub mod semver;
 pub mod spline;
-// pub mod splinecoeffs;
-pub mod constants;
 pub mod units;
 
 use self::semver::Semver;

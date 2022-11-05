@@ -45,7 +45,7 @@ fn de438s_parent_translation_verif() {
             VENUS_J2000,
             epoch,
             Aberration::None,
-            DistanceUnit::Kilometer,
+            LengthUnit::Kilometer,
             TimeUnit::Second,
         )
         .unwrap();
@@ -73,7 +73,7 @@ fn de438s_parent_translation_verif() {
             VENUS_J2000,
             epoch,
             Aberration::None,
-            DistanceUnit::Megameter,
+            LengthUnit::Megameter,
             TimeUnit::Millisecond,
         )
         .unwrap();

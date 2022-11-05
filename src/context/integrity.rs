@@ -11,8 +11,8 @@
 use log::error;
 
 use crate::{
-    structure::context::AniseContext,
     errors::{AniseError, IntegrityErrorKind},
+    structure::context::AniseContext,
 };
 
 impl<'a> AniseContext<'a> {
@@ -60,7 +60,7 @@ impl<'a> AniseContext<'a> {
                 AniseError::IntegrityError(IntegrityErrorKind::DataMissing)
             })?;
             // Check that the data is valid
-            data.splines.check_integrity()?;
+            data.check_integrity()?;
             // Check that the hashed name is in the LUT and corresponds to this index
             let lut_idx = self.orientation_lut.index_for_key(data.name).map_err(|_| {
                 error!("[integrity] {} not in orientation lookup table", data.name);

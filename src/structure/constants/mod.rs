@@ -8,11 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 
-mod phaseangle;
-mod planetary;
-mod spacecraft;
-mod triaxialellipsoid;
-mod trigangle;
+pub mod phaseangle;
+pub mod planetary;
+pub mod spacecraft;
+pub mod triaxialellipsoid;
+pub mod trigangle;
 
 pub use planetary::*;
 pub use spacecraft::*;

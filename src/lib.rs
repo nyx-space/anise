@@ -37,6 +37,7 @@ pub mod prelude {
 pub mod astro;
 pub mod cli;
 pub mod naif;
+pub mod orientation;
 pub mod structure;
 
 /// Defines the number of bytes in a double (prevents magic numbers)

@@ -2,8 +2,9 @@ use crc32fast::hash;
 use std::fmt::{Display, Error as FmtError, Formatter};
 use tabled::{Style, Table, Tabled};
 
+use crate::prelude::AniseContext;
+use crate::structure::orientation::orient_data::OrientationData;
 use crate::HashType;
-use crate::{structure::common::InterpolationKind, prelude::AniseContext};
 
 /// A row is used only to display a context
 #[derive(Tabled)]
@@ -13,7 +14,7 @@ struct Row<'a> {
     hash: HashType,
     start_epoch: String,
     end_epoch: String,
-    interpolation_kind: InterpolationKind,
+    interpolation_kind: String,
 }
 
 impl<'a> Display for AniseContext<'a> {
@@ -54,7 +55,7 @@ impl<'a> Display for AniseContext<'a> {
                 hash: hash(ephem.name.as_bytes()),
                 start_epoch: format!("{:?}", ephem.start_epoch()),
                 end_epoch: format!("{:?}", ephem.end_epoch()),
-                interpolation_kind: ephem.interpolation_kind,
+                interpolation_kind: format!("{}", ephem.interpolation_kind),
             });
         }
         // Add the orientation data
@@ -65,7 +66,17 @@ impl<'a> Display for AniseContext<'a> {
                 hash: hash(orientation.name.as_bytes()),
                 start_epoch: format!("{:?}", orientation.start_epoch()),
                 end_epoch: format!("{:?}", orientation.end_epoch()),
-                interpolation_kind: orientation.interpolation_kind,
+                interpolation_kind: match orientation.orientation_data {
+                    OrientationData::PlanetaryConstant { .. } => {
+                        "N/A (planetary constant)".to_string()
+                    }
+                    OrientationData::HighPrecision {
+                        ref_epoch: _,
+                        backward: _,
+                        interpolation_kind,
+                        splines: _,
+                    } => format!("{interpolation_kind}"),
+                },
             });
         }
         let mut tbl = Table::new(rows);

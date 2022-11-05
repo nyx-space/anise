@@ -10,9 +10,10 @@
 
 use crate::errors::IntegrityErrorKind;
 use crate::log::{error, trace};
+use crate::structure::orientation::Orientation;
 use crate::{
-    structure::{context::AniseContext, ephemeris::Ephemeris, MAX_TRAJECTORIES},
     errors::{AniseError, InternalErrorKind},
+    structure::{context::AniseContext, ephemeris::Ephemeris, MAX_TRAJECTORIES},
 };
 use crc32fast::hash;
 
@@ -93,7 +94,10 @@ impl<'a> AniseContext<'a> {
     /// + If this ephemeris should have been added but there are already too many items compared to what the library supports,
     /// then this returns an Indexing Error.
     /// TODO: Change this from ephemeris to Orientation and update visibility
-    pub(crate) fn append_orientation_mut(&mut self, o: Ephemeris<'a>) -> Result<bool, AniseError> {
+    pub(crate) fn append_orientation_mut(
+        &mut self,
+        o: Orientation<'a>,
+    ) -> Result<bool, AniseError> {
         let new_hash = hash(o.name.as_bytes());
         if let Ok(self_idx) = self.orientation_lut.index_for_hash(&new_hash) {
             if self

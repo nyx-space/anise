@@ -12,11 +12,12 @@ use log::{error, trace};
 
 use crate::constants::orientations::J2000;
 use crate::errors::InternalErrorKind;
+use crate::structure::orientation::Orientation;
 use crate::HashType;
 use crate::{
-    structure::{context::AniseContext, ephemeris::Ephemeris},
     astro::Frame,
     errors::{AniseError, IntegrityErrorKind},
+    structure::{context::AniseContext, ephemeris::Ephemeris},
 };
 
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
@@ -86,7 +87,7 @@ impl<'a> AniseContext<'a> {
     }
 
     /// Try to return the orientation for the provided index, or returns an error.
-    pub fn try_orientation_data(&self, idx: usize) -> Result<&'a Ephemeris, AniseError> {
+    pub fn try_orientation_data(&self, idx: usize) -> Result<&'a Orientation, AniseError> {
         self.orientation_data
             .get(idx)
             .ok_or(AniseError::IntegrityError(IntegrityErrorKind::LookupTable))

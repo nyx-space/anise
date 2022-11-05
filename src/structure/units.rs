@@ -15,7 +15,7 @@ pub use hifitime::Unit as TimeUnit;
 
 /// Defines the distance units supported by ANISE. This notably allows storing interpolation information from instruments to comets.
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
-pub enum DistanceUnit {
+pub enum LengthUnit {
     Micrometer,
     Millimeter,
     Meter,
@@ -23,7 +23,7 @@ pub enum DistanceUnit {
     Megameter,
 }
 
-impl DistanceUnit {
+impl LengthUnit {
     /// Returns the conversion factor of this distance unit to meters.
     /// E.g. To convert Self::Kilometers into Self::Meters, multiply by 1e-3.
     #[must_use]
@@ -51,7 +51,7 @@ impl DistanceUnit {
     }
 }
 
-impl Display for DistanceUnit {
+impl Display for LengthUnit {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Micrometer => write!(f, "um"),
@@ -63,7 +63,7 @@ impl Display for DistanceUnit {
     }
 }
 
-impl Default for DistanceUnit {
+impl Default for LengthUnit {
     fn default() -> Self {
         Self::Kilometer
     }
@@ -71,41 +71,41 @@ impl Default for DistanceUnit {
 
 /// Allows conversion of a Distance into a u8 with the following mapping.
 /// Mapping: Micrometer: 0; Millimeter: 1; Meter: 2; Kilometer: 3; Megameter: 4.
-impl From<DistanceUnit> for u8 {
-    fn from(dist: DistanceUnit) -> Self {
+impl From<LengthUnit> for u8 {
+    fn from(dist: LengthUnit) -> Self {
         match dist {
-            DistanceUnit::Micrometer => 0,
-            DistanceUnit::Millimeter => 1,
-            DistanceUnit::Meter => 2,
-            DistanceUnit::Kilometer => 3,
-            DistanceUnit::Megameter => 4,
+            LengthUnit::Micrometer => 0,
+            LengthUnit::Millimeter => 1,
+            LengthUnit::Meter => 2,
+            LengthUnit::Kilometer => 3,
+            LengthUnit::Megameter => 4,
         }
     }
 }
 
 /// Allows conversion of a Distance into a u8 with the following mapping.
 /// Mapping: Micrometer: 0; Millimeter: 1; Meter: 2; Kilometer: 3; Megameter: 4.
-impl From<&DistanceUnit> for u8 {
-    fn from(dist: &DistanceUnit) -> Self {
+impl From<&LengthUnit> for u8 {
+    fn from(dist: &LengthUnit) -> Self {
         u8::from(*dist)
     }
 }
 
 /// Allows conversion of a u8 into a Distance.
 /// Mapping: 0: Micrometer; 1: Millimeter; 2: Meter; 4: Megameter; 3 or any other value is considered kilometer
-impl From<u8> for DistanceUnit {
+impl From<u8> for LengthUnit {
     fn from(val: u8) -> Self {
         match val {
-            0 => DistanceUnit::Micrometer,
-            1 => DistanceUnit::Millimeter,
-            2 => DistanceUnit::Meter,
-            4 => DistanceUnit::Megameter,
-            _ => DistanceUnit::Kilometer,
+            0 => LengthUnit::Micrometer,
+            1 => LengthUnit::Millimeter,
+            2 => LengthUnit::Meter,
+            4 => LengthUnit::Megameter,
+            _ => LengthUnit::Kilometer,
         }
     }
 }
 
-impl Encode for DistanceUnit {
+impl Encode for LengthUnit {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let converted: u8 = self.into();
         converted.encoded_len()
@@ -117,7 +117,7 @@ impl Encode for DistanceUnit {
     }
 }
 
-impl<'a> Decode<'a> for DistanceUnit {
+impl<'a> Decode<'a> for LengthUnit {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         let converted: u8 = decoder.decode()?;
         Ok(Self::from(converted))

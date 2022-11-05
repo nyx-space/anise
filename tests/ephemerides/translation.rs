@@ -51,7 +51,7 @@ fn de438s_translation_verif_venus2emb() {
             EARTH_MOON_BARYCENTER_J2000,
             epoch,
             Aberration::None,
-            DistanceUnit::Kilometer,
+            LengthUnit::Kilometer,
             TimeUnit::Second,
         )
         .unwrap();
@@ -137,7 +137,7 @@ fn de438s_translation_verif_venus2luna() {
             LUNA_J2000,
             epoch,
             Aberration::None,
-            DistanceUnit::Kilometer,
+            LengthUnit::Kilometer,
             TimeUnit::Second,
         )
         .unwrap();
@@ -229,7 +229,7 @@ fn de438s_translation_verif_emb2luna() {
             LUNA_J2000,
             epoch,
             Aberration::None,
-            DistanceUnit::Kilometer,
+            LengthUnit::Kilometer,
             TimeUnit::Second,
         )
         .unwrap();
@@ -272,7 +272,7 @@ fn de438s_translation_verif_emb2luna() {
             EARTH_MOON_BARYCENTER_J2000,
             epoch,
             Aberration::None,
-            DistanceUnit::Kilometer,
+            LengthUnit::Kilometer,
             TimeUnit::Second,
         )
         .unwrap();

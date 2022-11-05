@@ -10,15 +10,15 @@
 
 use log::error;
 
-use crate::structure::units::*;
 use crate::astro::Aberration;
 use crate::hifitime::Epoch;
 use crate::math::cartesian::CartesianState;
 use crate::math::Vector3;
+use crate::structure::units::*;
 use crate::{
-    structure::context::AniseContext,
     astro::{Frame, FrameTrait},
     errors::AniseError,
+    structure::context::AniseContext,
 };
 
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
@@ -36,7 +36,7 @@ impl<'a> AniseContext<'a> {
         to_frame: Frame,
         epoch: Epoch,
         ab_corr: Aberration,
-        distance_unit: DistanceUnit,
+        distance_unit: LengthUnit,
         time_unit: TimeUnit,
     ) -> Result<CartesianState, AniseError> {
         if from_frame == to_frame {
@@ -121,7 +121,7 @@ impl<'a> AniseContext<'a> {
             to_frame,
             epoch,
             ab_corr,
-            DistanceUnit::Kilometer,
+            LengthUnit::Kilometer,
             TimeUnit::Second,
         )
     }
@@ -139,7 +139,7 @@ impl<'a> AniseContext<'a> {
             to_frame,
             epoch,
             ab_corr,
-            DistanceUnit::Meter,
+            LengthUnit::Meter,
             TimeUnit::Second,
         )
     }
@@ -156,7 +156,7 @@ impl<'a> AniseContext<'a> {
             to_frame,
             epoch,
             Aberration::None,
-            DistanceUnit::Kilometer,
+            LengthUnit::Kilometer,
             TimeUnit::Second,
         )
     }
@@ -173,7 +173,7 @@ impl<'a> AniseContext<'a> {
             to_frame,
             epoch,
             Aberration::None,
-            DistanceUnit::Meter,
+            LengthUnit::Meter,
             TimeUnit::Second,
         )
     }
@@ -184,7 +184,7 @@ impl<'a> AniseContext<'a> {
         source: Frame,
         epoch: Epoch,
         ab_corr: Aberration,
-        distance_unit: DistanceUnit,
+        distance_unit: LengthUnit,
         time_unit: TimeUnit,
     ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
         // Build a tree, set a fixed depth to avoid allocations
@@ -232,7 +232,7 @@ impl<'a> AniseContext<'a> {
         to_frame: Frame,
         epoch: Epoch,
         ab_corr: Aberration,
-        distance_unit: DistanceUnit,
+        distance_unit: LengthUnit,
         time_unit: TimeUnit,
     ) -> Result<CartesianState, AniseError> {
         // Compute the frame translation
@@ -245,7 +245,7 @@ impl<'a> AniseContext<'a> {
             time_unit,
         )?;
 
-        let dist_unit_factor = DistanceUnit::Kilometer.from_meters() * distance_unit.to_meters();
+        let dist_unit_factor = LengthUnit::Kilometer.from_meters() * distance_unit.to_meters();
         let time_unit_factor = time_unit.in_seconds();
 
         let input_state = CartesianState {

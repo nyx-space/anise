@@ -7,14 +7,9 @@
  *
  * Documentation: https://nyxspace.com/
  */
-use der::{
-    asn1::{SequenceOf, Utf8StringRef},
-    Decode, Encode, Reader, Writer,
-};
+use der::{asn1::Utf8StringRef, Decode, Encode, Reader, Writer};
 
-use super::{phaseangle::PhaseAngle, triaxialellipsoid::TriaxialEllipsoid, trigangle::TrigAngle};
-
-pub const MAX_NUT_PREC_ANGLES: usize = 16;
+use super::triaxialellipsoid::TriaxialEllipsoid;
 
 /// Planetary constants can store the same data as the SPICE textual PCK files
 #[derive(Clone, Debug, PartialEq)]
@@ -25,10 +20,8 @@ pub struct PlanetaryConstants<'a> {
     pub comments: &'a str,
     /// The shape is always a tri axial ellipsoid
     pub shape: TriaxialEllipsoid,
-    pub pole_right_ascension: PhaseAngle,
-    pub pole_declination: PhaseAngle,
-    pub prime_meridian: PhaseAngle,
-    pub nut_prec_angles: SequenceOf<TrigAngle, MAX_NUT_PREC_ANGLES>,
+    /// Gravitational parameter (μ) of this planetary object.
+    pub mu_km3_s2: f64,
 }
 
 impl<'a> Encode for PlanetaryConstants<'a> {
@@ -36,20 +29,14 @@ impl<'a> Encode for PlanetaryConstants<'a> {
         Utf8StringRef::new(self.name)?.encoded_len()?
             + Utf8StringRef::new(self.comments)?.encoded_len()?
             + self.shape.encoded_len()?
-            + self.pole_right_ascension.encoded_len()?
-            + self.pole_declination.encoded_len()?
-            + self.prime_meridian.encoded_len()?
-            + self.nut_prec_angles.encoded_len()?
+            + self.mu_km3_s2.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
         Utf8StringRef::new(self.name)?.encode(encoder)?;
         Utf8StringRef::new(self.comments)?.encode(encoder)?;
         self.shape.encode(encoder)?;
-        self.pole_right_ascension.encode(encoder)?;
-        self.pole_declination.encode(encoder)?;
-        self.prime_meridian.encode(encoder)?;
-        self.nut_prec_angles.encode(encoder)
+        self.mu_km3_s2.encode(encoder)
     }
 }
 
@@ -62,10 +49,7 @@ impl<'a> Decode<'a> for PlanetaryConstants<'a> {
             name: name.as_str(),
             comments: comments.as_str(),
             shape: decoder.decode()?,
-            pole_right_ascension: decoder.decode()?,
-            pole_declination: decoder.decode()?,
-            prime_meridian: decoder.decode()?,
-            nut_prec_angles: decoder.decode()?,
+            mu_km3_s2: decoder.decode()?,
         })
     }
 }

@@ -9,7 +9,7 @@
  */
 
 use crate::log::{info, trace};
-use crate::{structure::context::AniseContext, errors::AniseError};
+use crate::{errors::AniseError, structure::context::AniseContext};
 
 impl<'a> AniseContext<'a> {
     /// Clones this context and merges it with the other.
@@ -66,7 +66,7 @@ impl<'a> AniseContext<'a> {
             let data_idx = other.orientation_lut.index_for_hash(new_hash)?.into();
             trace!("[merge] fetching orientation idx={data_idx} for hash {new_hash}");
             let other_o = other.try_orientation_data(data_idx)?;
-            if self.append_orientation_mut(*other_o)? {
+            if self.append_orientation_mut(other_o.clone())? {
                 num_orientation_added += 1;
             }
         }

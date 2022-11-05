@@ -10,8 +10,12 @@
 use der::{asn1::SequenceOf, Decode, Encode, Reader, Writer};
 
 use super::{
-    constants::SpacecraftConstants, ephemeris::Ephemeris, lookuptable::LookUpTable,
-    metadata::Metadata, MAX_TRAJECTORIES,
+    constants::{PlanetaryConstants, SpacecraftConstants},
+    ephemeris::Ephemeris,
+    lookuptable::LookUpTable,
+    metadata::Metadata,
+    orientation::Orientation,
+    MAX_TRAJECTORIES,
 };
 
 /// A Context is the core structure which stores all of the ANISE data.
@@ -33,14 +37,18 @@ pub struct AniseContext<'a> {
     pub ephemeris_lut: LookUpTable,
     /// Orientation LookUpTable (LUT) stores the mapping between a given orientation's hash and its index in the ephemeris list.
     pub orientation_lut: LookUpTable,
-    /// Spacecraft constants LookUpTable (LUT) stores the mapping between a given orientation's hash and its index in the ephemeris list.
+    /// Spacecraft constants LookUpTable (LUT) stores the mapping between a given spacecraft's hash and its index in the ephemeris list.
     pub spacecraft_constant_lut: LookUpTable,
+    /// Planetary constants LookUpTable (LUT) stores the mapping between a given planetary data's hash and its index in the ephemeris list.
+    pub planetary_constant_lut: LookUpTable,
     /// List of ephemerides in this file, whose index is stored in the LUT.
     pub ephemeris_data: SequenceOf<Ephemeris<'a>, MAX_TRAJECTORIES>,
-    // TODO: Add orientation data
-    pub orientation_data: SequenceOf<Ephemeris<'a>, MAX_TRAJECTORIES>,
+    // Orientation data, both for planetary constant data and high precision orientation data
+    pub orientation_data: SequenceOf<Orientation<'a>, MAX_TRAJECTORIES>,
     /// List of spacecraft constants in this file, whose index is stored in the LUT.
     pub spacecraft_constant_data: SequenceOf<SpacecraftConstants<'a>, MAX_TRAJECTORIES>,
+    /// List of spacecraft constants in this file, whose index is stored in the LUT.
+    pub planetary_constant_data: SequenceOf<PlanetaryConstants<'a>, MAX_TRAJECTORIES>,
 }
 
 impl<'a> Encode for AniseContext<'a> {

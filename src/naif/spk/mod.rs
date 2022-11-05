@@ -14,15 +14,15 @@ use self::datatype::DataType;
 use self::segment::{Record, SegMetaData, Segment};
 
 use super::daf::{Endian, DAF};
+use crate::constants::orientations::J2000;
+use crate::errors::InternalErrorKind;
+use crate::prelude::AniseError;
 use crate::structure::common::InterpolationKind;
 use crate::structure::context::AniseContext;
 use crate::structure::ephemeris::Ephemeris;
 use crate::structure::metadata::Metadata;
 use crate::structure::spline::{Evenness, Field, SplineMeta, Splines, StateKind};
-use crate::structure::units::{DistanceUnit, TimeUnit};
-use crate::constants::orientations::J2000;
-use crate::errors::InternalErrorKind;
-use crate::prelude::AniseError;
+use crate::structure::units::{LengthUnit, TimeUnit};
 use crate::{file_mmap, parse_bytes_as, DBL_SIZE};
 use crc32fast::hash;
 use der::{Decode, Encode};
@@ -292,7 +292,7 @@ impl<'a> SPK<'a> {
                 interpolation_kind: InterpolationKind::ChebyshevSeries,
                 parent_ephemeris_hash,
                 orientation_hash: J2000,
-                distance_unit: DistanceUnit::Kilometer,
+                length_unit: LengthUnit::Kilometer,
                 time_unit: TimeUnit::Second,
                 splines,
             };
