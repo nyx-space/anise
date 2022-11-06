@@ -13,7 +13,7 @@ use super::meta::SplineMeta;
 
 // #[derive(Enumerated)]
 // #[repr(u8)]
-// pub enum TrunctationStrategy {
+// pub enum TruncationStrategy {
 //     None = 0,
 //     TruncateLow = 1,
 //     TruncateHigh = 2,
@@ -27,8 +27,9 @@ use super::meta::SplineMeta;
 pub struct Splines<'a> {
     /// Metadata of the spline
     pub metadata: SplineMeta,
+    // use AsBytes / FromBytes from "zerocopy" crate to load the data ?
     /// Stores the CRC32 checksum of the data octet string.
-    pub data_checksum: u32,
+    pub data_checksum: u32, // TODO: move the checksum into a CRC32DataArray to check integrity on load
     /// The data as a packed struct of octets
     pub data: &'a [u8],
 }

@@ -32,7 +32,7 @@ impl<'a> AniseContext<'a> {
     /// # Potential errors
     /// + The resulting file would have too many trajectories compared to the maximum number of trajectories
     /// + Two trajectories have the same name but different contents
-    /// + Incomatible versions: the versions of self and other must match
+    /// + Incompatible versions: the versions of self and other must match
     pub fn merge_mut(&mut self, other: &'a Self) -> Result<(usize, usize), AniseError> {
         // Check the versions match (eventually, we need to make sure that the versions are compatible)
         if self.metadata.anise_version != other.metadata.anise_version {
