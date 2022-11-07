@@ -28,6 +28,7 @@ tabled = "0.10"
 const_format = "0.2"
 nalgebra = "0.31"
 approx = "0.5.1"
+zerocopy = "0.6.1"
 
 [dev-dependencies]
 rust-spice = "0.7.3"

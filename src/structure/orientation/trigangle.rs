@@ -7,9 +7,10 @@
  *
  * Documentation: https://nyxspace.com/
  */
-use der::{Decode, Encode, Reader, Writer};
+use der::{asn1::OctetStringRef, Decode, Encode, Reader, Writer};
 
 use super::phaseangle::PhaseAngle;
+use zerocopy::{AsBytes, FromBytes};
 
 /// Trigonometric angle polynomials are used almost exclusively for satellites.
 /// This structure enables the PCK level support for this information while also enforcing the correct length.
@@ -56,7 +57,8 @@ use super::phaseangle::PhaseAngle;
 ///     i    i        i
 ///
 /// are specific to each satellite.
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, AsBytes, FromBytes)]
+#[repr(packed)]
 pub struct TrigAngle {
     /// Right ascension angle factor for this trig polynomial
     pub right_ascension_deg: f64,
@@ -70,17 +72,22 @@ pub struct TrigAngle {
 
 impl Encode for TrigAngle {
     fn encoded_len(&self) -> der::Result<der::Length> {
-        self.right_ascension_deg.encoded_len()?
-            + self.declination_deg.encoded_len()?
-            + self.prime_meridian_deg.encoded_len()?
-            + self.nut_prec_angle.encoded_len()?
+        OctetStringRef::new(self.as_bytes()).unwrap().encoded_len()
+
+        // self.right_ascension_deg.encoded_len()?
+        //     + self.declination_deg.encoded_len()?
+        //     + self.prime_meridian_deg.encoded_len()?
+        //     + self.nut_prec_angle.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
-        self.right_ascension_deg.encode(encoder)?;
-        self.declination_deg.encode(encoder)?;
-        self.prime_meridian_deg.encode(encoder)?;
-        self.nut_prec_angle.encode(encoder)
+        OctetStringRef::new(self.as_bytes())
+            .unwrap()
+            .encode(encoder)
+        // self.right_ascension_deg.encode(encoder)?;
+        // self.declination_deg.encode(encoder)?;
+        // self.prime_meridian_deg.encode(encoder)?;
+        // self.nut_prec_angle.encode(encoder)
     }
 }
 

@@ -14,6 +14,7 @@
  */
 extern crate der;
 extern crate hifitime;
+pub mod array;
 pub mod common;
 pub mod constants;
 pub mod context;
