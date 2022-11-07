@@ -11,11 +11,11 @@
 use core::convert::TryInto;
 
 use anise::{
-    structure::context::AniseContext,
-    structure::spline::{Evenness, Field, StateKind},
     file_mmap,
     naif::{daf::DAF, spk::SPK, Endian},
     prelude::*,
+    structure::context::AniseContext,
+    structure::spline::{Evenness, Field, StateKind},
 };
 
 // Ignore this test by default because it's very slow. It's also tested in the conversion of JPL SPKs.
@@ -73,12 +73,12 @@ fn test_spk_load() {
     let ctx = AniseContext::from_bytes(&bytes);
     // Ignore the three empty ones
     assert_eq!(
-        ctx.ephemeris_lut.hashes.len(),
+        ctx.ephemeris_lut.hashes.data.len(),
         spk.segments.len() - 3,
         "Incorrect number of ephem in map"
     );
     assert_eq!(
-        ctx.ephemeris_lut.indexes.len(),
+        ctx.ephemeris_lut.indexes.data.len(),
         spk.segments.len() - 3,
         "Incorrect number of ephem in map"
     );

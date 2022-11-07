@@ -18,20 +18,20 @@ use crate::{
 impl<'a> AniseContext<'a> {
     pub fn check_integrity(&self) -> Result<(), AniseError> {
         // Ensure that the lookup tables and arrays have the same number of items
-        if self.ephemeris_lut.hashes.len() != self.ephemeris_lut.indexes.len()
-            || self.ephemeris_lut.hashes.len() != self.ephemeris_data.len()
+        if self.ephemeris_lut.hashes.data.len() != self.ephemeris_lut.indexes.data.len()
+            || self.ephemeris_lut.hashes.data.len() != self.ephemeris_data.len()
         {
-            error!("[integrity] ephemeris lookup table lengths mistmatch");
+            error!("[integrity] ephemeris lookup table lengths mismatch");
             return Err(AniseError::IntegrityError(IntegrityErrorKind::LookupTable));
         }
-        if self.orientation_lut.hashes.len() != self.orientation_lut.indexes.len()
-            || self.orientation_lut.hashes.len() != self.orientation_data.len()
+        if self.orientation_lut.hashes.data.len() != self.orientation_lut.indexes.data.len()
+            || self.orientation_lut.hashes.data.len() != self.orientation_data.len()
         {
             error!("[integrity] orientation lookup table lengths mistmatch");
             return Err(AniseError::IntegrityError(IntegrityErrorKind::LookupTable));
         }
         // Check ephemeris integrity
-        for index in self.ephemeris_lut.indexes.iter() {
+        for index in self.ephemeris_lut.indexes.data.iter() {
             // Check that we can access each item from the LUT
             let data = self.ephemeris_data.get(*index as usize).ok_or_else(|| {
                 error!("[integrity] {} not in ephemeris data list", index);
@@ -53,7 +53,7 @@ impl<'a> AniseContext<'a> {
             }
         }
         // Check ephemeris integrity
-        for index in self.orientation_lut.indexes.iter() {
+        for index in self.orientation_lut.indexes.data.iter() {
             // Check that we can access each item from the LUT
             let data = self.orientation_data.get(*index as usize).ok_or_else(|| {
                 error!("[integrity] {} not in orientation data list", index);

@@ -15,7 +15,7 @@ pub type Vector6 = nalgebra::Vector6<f64>;
 pub mod angles;
 pub mod cartesian;
 pub mod interpolation;
-pub mod rotation;
+// pub mod rotation;
 
 /// Returns the projection of a onto b
 pub fn projv(a: &Vector3, b: &Vector3) -> Vector3 {

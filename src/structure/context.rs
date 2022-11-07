@@ -34,13 +34,13 @@ use super::{
 pub struct AniseContext<'a> {
     pub metadata: Metadata<'a>,
     /// Ephemeris LookUpTable (LUT) stores the mapping between a given ephemeris' hash and its index in the ephemeris list.
-    pub ephemeris_lut: LookUpTable,
+    pub ephemeris_lut: LookUpTable<'a>,
     /// Orientation LookUpTable (LUT) stores the mapping between a given orientation's hash and its index in the ephemeris list.
-    pub orientation_lut: LookUpTable,
+    pub orientation_lut: LookUpTable<'a>,
     /// Spacecraft constants LookUpTable (LUT) stores the mapping between a given spacecraft's hash and its index in the ephemeris list.
-    pub spacecraft_constant_lut: LookUpTable,
+    pub spacecraft_constant_lut: LookUpTable<'a>,
     /// Planetary constants LookUpTable (LUT) stores the mapping between a given planetary data's hash and its index in the ephemeris list.
-    pub planetary_constant_lut: LookUpTable,
+    pub planetary_constant_lut: LookUpTable<'a>,
     /// List of ephemerides in this file, whose index is stored in the LUT.
     pub ephemeris_data: SequenceOf<Ephemeris<'a>, MAX_TRAJECTORIES>,
     // Orientation data, both for planetary constant data and high precision orientation data

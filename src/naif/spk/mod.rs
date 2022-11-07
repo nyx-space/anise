@@ -323,13 +323,17 @@ impl<'a> SPK<'a> {
             let bytes = file_mmap!(fname).unwrap();
             all_bufs.push(bytes);
         }
+
+        let mut lut_hashes = Vec::new();
+        let mut lut_indexes = Vec::new();
+
         // Unwrap all of the possibly failing calls because we just created these files so we assume they're valid
         for buf in &all_bufs {
             let ephem: Ephemeris = match Ephemeris::from_der(buf) {
                 Ok(it) => it,
                 Err(err) => return Err(AniseError::DecodingError(err)),
             };
-            ctx.append_ephemeris_mut(ephem)?;
+            ctx.append_ephemeris_mut(&mut lut_hashes, &mut lut_indexes, ephem)?;
         }
 
         ctx.save_as(filename, true)?;
@@ -344,15 +348,15 @@ impl<'a> SPK<'a> {
             // Load this ANIS file and make sure that it matches the original data.
             let bytes = file_mmap!(filename).unwrap();
             let ctx = AniseContext::from_bytes(&bytes);
-            // If we skiped empty ephems, we can't check thet exact length, so skip that
+            // If we skipped empty ephemerides, we can't check the exact length, so skip that
             if !skip_empty {
                 assert_eq!(
-                    ctx.ephemeris_lut.hashes.len(),
+                    ctx.ephemeris_lut.hashes.data.len(),
                     self.segments.len(),
                     "Incorrect number of ephem in map"
                 );
                 assert_eq!(
-                    ctx.ephemeris_lut.indexes.len(),
+                    ctx.ephemeris_lut.indexes.data.len(),
                     self.segments.len(),
                     "Incorrect number of ephem in map"
                 );

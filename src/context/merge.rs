@@ -51,18 +51,20 @@ impl<'a> AniseContext<'a> {
         }
         // Append the Ephemeris data tables
         let mut num_ephem_added = 0;
-        for new_hash in other.ephemeris_lut.hashes.iter() {
+        let mut lut_hashes = Vec::new();
+        let mut lut_indexes = Vec::new();
+        for new_hash in other.ephemeris_lut.hashes.data.iter() {
             let data_idx = other.ephemeris_lut.index_for_hash(new_hash)?.into();
             trace!("[merge] fetching ephemeris idx={data_idx} for hash {new_hash}");
             let other_e = other.try_ephemeris_data(data_idx)?;
-            if self.append_ephemeris_mut(*other_e)? {
+            if self.append_ephemeris_mut(&mut lut_hashes, &mut lut_indexes, *other_e)? {
                 num_ephem_added += 1;
             }
         }
 
         // Append the Orientation data tables
         let mut num_orientation_added = 0;
-        for new_hash in other.orientation_lut.hashes.iter() {
+        for new_hash in other.orientation_lut.hashes.data.iter() {
             let data_idx = other.orientation_lut.index_for_hash(new_hash)?.into();
             trace!("[merge] fetching orientation idx={data_idx} for hash {new_hash}");
             let other_o = other.try_orientation_data(data_idx)?;
@@ -70,6 +72,10 @@ impl<'a> AniseContext<'a> {
                 num_orientation_added += 1;
             }
         }
+
+        // And set the lookup data.
+        // self.ephemeris_lut.hashes.set_data(&mut lut_hashes);
+
         Ok((num_ephem_added, num_orientation_added))
     }
 }

@@ -13,7 +13,7 @@ use log::error;
 
 use crate::{prelude::AniseError, HashType};
 
-use super::MAX_TRAJECTORIES;
+use super::{array::DataArray, MAX_TRAJECTORIES};
 
 /// A LookUpTable allows looking up the data given the hash.
 ///
@@ -22,14 +22,16 @@ use super::MAX_TRAJECTORIES;
 /// Eventually, the specification will require the hashes will be ordered for a binary search on the index,
 /// thereby greatly reducing the search time for each data, from O(N) to O(log N).
 #[derive(Clone, Default, PartialEq, Eq)]
-pub struct LookUpTable {
+pub struct LookUpTable<'a> {
     /// Hashes of the general hashing algorithm
-    pub hashes: SequenceOf<HashType, MAX_TRAJECTORIES>,
+    // pub hashes: SequenceOf<HashType, MAX_TRAJECTORIES>,
+    pub hashes: DataArray<'a, HashType>,
     /// Corresponding index for each hash
-    pub indexes: SequenceOf<u16, MAX_TRAJECTORIES>,
+    // pub indexes: SequenceOf<u16, MAX_TRAJECTORIES>,
+    pub indexes: DataArray<'a, u16>,
 }
 
-impl LookUpTable {
+impl<'a> LookUpTable<'a> {
     /// Searches the lookup table for the requested hash
     /// Returns Ok with the index for the requested hash
     /// Returns Err with an ItemNotFound if the item isn't found
@@ -38,9 +40,9 @@ impl LookUpTable {
     /// NOTE: Until https://github.com/anise-toolkit/anise.rs/issues/18 is addressed
     /// this function has a time complexity of O(N)
     pub fn index_for_hash(&self, hash: &HashType) -> Result<u16, AniseError> {
-        for (idx, item) in self.hashes.iter().enumerate() {
+        for (idx, item) in self.hashes.data.iter().enumerate() {
             if item == hash {
-                return match self.indexes.get(idx) {
+                return match self.indexes.data.get(idx) {
                     Some(item_index) => Ok(*item_index),
                     None => {
                         error!("lookup table contain {hash:x} ({hash}) but it does not have an entry for it");
@@ -65,7 +67,7 @@ impl LookUpTable {
     }
 }
 
-impl Encode for LookUpTable {
+impl<'a> Encode for LookUpTable<'a> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         self.hashes.encoded_len()? + self.indexes.encoded_len()?
     }
@@ -76,7 +78,7 @@ impl Encode for LookUpTable {
     }
 }
 
-impl<'a> Decode<'a> for LookUpTable {
+impl<'a> Decode<'a> for LookUpTable<'a> {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         Ok(Self {
             hashes: decoder.decode()?,

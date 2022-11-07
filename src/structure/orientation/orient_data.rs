@@ -8,13 +8,13 @@
  * Documentation: https://nyxspace.com/
  */
 
-use der::{asn1::SequenceOf, Decode, Encode, Reader, Writer};
+use der::{Decode, Encode, Reader, Writer};
 use hifitime::Epoch;
 
 pub const MAX_NUT_PREC_ANGLES: usize = 16;
 
 use super::{phaseangle::PhaseAngle, trigangle::TrigAngle};
-use crate::structure::{array::Array, common::InterpolationKind, spline::Splines};
+use crate::structure::{array::DataArray, common::InterpolationKind, spline::Splines};
 
 /// ANISE supports two different kinds of orientation data. High precision, with spline based interpolations, and constants right ascension, declination, and prime meridian, typically used for planetary constant data.
 #[derive(Clone, Debug, PartialEq)]
@@ -23,8 +23,7 @@ pub enum OrientationData<'a> {
         pole_right_ascension: PhaseAngle,
         pole_declination: PhaseAngle,
         prime_meridian: PhaseAngle,
-        // nut_prec_angles: SequenceOf<TrigAngle, MAX_NUT_PREC_ANGLES>,
-        nut_prec_angles: Array<'a, TrigAngle>,
+        nut_prec_angles: DataArray<'a, TrigAngle>,
     },
     HighPrecision {
         ref_epoch: Epoch,

@@ -8,8 +8,9 @@
  * Documentation: https://nyxspace.com/
  */
 
-use anise::structure::orientation::{
-    orient_data::OrientationData, phaseangle::PhaseAngle, trigangle::TrigAngle,
+use anise::structure::{
+    array::DataArray,
+    orientation::{orient_data::OrientationData, phaseangle::PhaseAngle, trigangle::TrigAngle},
 };
 use der::asn1::SequenceOf;
 
@@ -27,9 +28,25 @@ fn size_test() {
     let path = "./data/de438s.anise";
     let buf = file_mmap!(path).unwrap();
     let ctx = AniseContext::try_from_bytes(&buf).unwrap();
+    // let ctx = AniseContext::default();
 
     use std::mem::size_of_val;
     println!("{}", size_of_val(&ctx));
     println!("{}", size_of_val(&ctx.ephemeris_data));
     println!("{}", size_of_val(&ctx.orientation_data));
+    let pa = PhaseAngle {
+        offset_deg: 0.0,
+        rate_deg: 0.0,
+        accel_deg: 0.0,
+    };
+    println!("pa = {}", size_of_val(&pa));
+
+    let ta = TrigAngle {
+        right_ascension_deg: 0.0,
+        declination_deg: 0.0,
+        prime_meridian_deg: 0.0,
+        nut_prec_angle: pa,
+    };
+
+    println!("ta = {}", size_of_val(&ta));
 }

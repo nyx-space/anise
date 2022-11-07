@@ -37,13 +37,13 @@ fn zero_translations() {
 
         // We know that these ephemerides files has exactly 14 ephemerides.
         assert_eq!(
-            ctx.ephemeris_lut.hashes.len(),
+            ctx.ephemeris_lut.hashes.data.len(),
             12,
             "DE438s should have 12 ephemerides"
         );
 
         // For all of the frames in this context, let's make sure that the translation between the same frames is always zero.
-        for ephemeris_hash in ctx.ephemeris_lut.hashes.iter() {
+        for ephemeris_hash in ctx.ephemeris_lut.hashes.data.iter() {
             // Build a J2000 oriented frame with this ephemeris center
             let this_frame_j2k = Frame::from_ephem_orient(*ephemeris_hash, J2000);
 
