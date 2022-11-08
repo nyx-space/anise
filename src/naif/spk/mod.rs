@@ -36,6 +36,7 @@ use std::io::Write;
 
 pub mod datatype;
 pub mod segment;
+pub mod summary;
 
 #[derive(Debug)]
 pub struct SPK<'a> {

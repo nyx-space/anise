@@ -25,28 +25,33 @@ fn size_test() {
     use anise::file_mmap;
     use anise::prelude::*;
 
-    let path = "./data/de438s.anise";
-    let buf = file_mmap!(path).unwrap();
-    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
-    // let ctx = AniseContext::default();
+    // let path = "./data/de438s.anise";
+    // let buf = file_mmap!(path).unwrap();
+    // let ctx = AniseContext::try_from_bytes(&buf).unwrap();
+    let ctx = AniseContext::default();
 
     use std::mem::size_of_val;
-    println!("{}", size_of_val(&ctx));
-    println!("{}", size_of_val(&ctx.ephemeris_data));
-    println!("{}", size_of_val(&ctx.orientation_data));
-    let pa = PhaseAngle {
-        offset_deg: 0.0,
-        rate_deg: 0.0,
-        accel_deg: 0.0,
-    };
-    println!("pa = {}", size_of_val(&pa));
+    let s: u32 = 45;
+    println!("str = {}", size_of_val(&s));
+    println!("tot = {}", size_of_val(&ctx));
+    println!("lut = {}", size_of_val(&ctx.ephemeris_lut));
+    println!("ephem = {}", size_of_val(&ctx.ephemeris_data));
+    println!("orient = {}", size_of_val(&ctx.orientation_data));
+    println!("sc = {}", size_of_val(&ctx.spacecraft_constant_data));
+    println!("pl = {}", size_of_val(&ctx.planetary_constant_data));
+    // let pa = PhaseAngle {
+    //     offset_deg: 0.0,
+    //     rate_deg: 0.0,
+    //     accel_deg: 0.0,
+    // };
+    // println!("pa = {}", size_of_val(&pa));
 
-    let ta = TrigAngle {
-        right_ascension_deg: 0.0,
-        declination_deg: 0.0,
-        prime_meridian_deg: 0.0,
-        nut_prec_angle: pa,
-    };
+    // let ta = TrigAngle {
+    //     right_ascension_deg: 0.0,
+    //     declination_deg: 0.0,
+    //     prime_meridian_deg: 0.0,
+    //     nut_prec_angle: pa,
+    // };
 
-    println!("ta = {}", size_of_val(&ta));
+    // println!("ta = {}", size_of_val(&ta));
 }
