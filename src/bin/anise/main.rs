@@ -5,7 +5,7 @@ use std::fs::rename;
 use anise::cli::args::{Actions, Args};
 use anise::cli::CliErrors;
 use anise::file_mmap;
-use anise::naif::daf::DAF;
+use anise::naif::dafold::DAF;
 use anise::naif::spk::SPK;
 use anise::prelude::*;
 use clap::Parser;

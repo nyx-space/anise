@@ -20,6 +20,7 @@ use std::io::ErrorKind as IOErrorKind;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum AniseError {
+    
     /// Raised for an error in reading or writing the file(s)
     IOError(IOErrorKind),
     /// Raised if an IO error occurred but its representation is not simple (and therefore not an std::io::ErrorKind).

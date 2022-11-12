@@ -13,7 +13,7 @@ extern crate der;
 use self::datatype::DataType;
 use self::segment::{Record, SegMetaData, Segment};
 
-use super::daf::{Endian, DAF};
+use super::dafold::{Endian, DAF};
 use crate::constants::orientations::J2000;
 use crate::errors::InternalErrorKind;
 use crate::prelude::AniseError;
@@ -35,6 +35,7 @@ use std::fs::{remove_file, File};
 use std::io::Write;
 
 pub mod datatype;
+pub mod recordtypes;
 pub mod segment;
 pub mod summary;
 

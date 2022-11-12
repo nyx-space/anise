@@ -3,7 +3,7 @@ use anise::{
     file_mmap,
     prelude::*,
 };
-use hifitime::prelude::*;
+
 use iai::black_box;
 use spice;
 

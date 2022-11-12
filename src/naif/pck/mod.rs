@@ -8,42 +8,25 @@
  * Documentation: https://nyxspace.com/
  */
 
-use hifitime::Epoch;
 use zerocopy::FromBytes;
 
 use crate::naif::daf::{NAIFRecord, NAIFSummaryRecord};
 
-#[derive(Clone, Copy, Debug, Default, FromBytes)]
+#[derive(Copy, Clone, Debug, Default, FromBytes)]
 #[repr(C)]
-pub struct SPKSummaryRecord {
+pub struct BPCSummaryRecord {
     pub start_epoch_et_s: f64,
     pub end_epoch_et_s: f64,
-    pub target_id: i32,
-    pub center_id: i32,
     pub frame_id: i32,
+    pub inertial_frame_id: i32,
     pub data_type_i: i32,
     pub start_idx: i32,
     pub end_idx: i32,
 }
 
-impl SPKSummaryRecord {
-    pub fn start_epoch(&self) -> Epoch {
-        Epoch::from_et_seconds(self.start_epoch_et_s)
-    }
-    pub fn end_epoch(&self) -> Epoch {
-        Epoch::from_et_seconds(self.end_epoch_et_s)
-    }
-    pub fn start_index(&self) -> usize {
-        self.start_idx as usize
-    }
-    pub fn end_index(&self) -> usize {
-        self.end_idx as usize
-    }
-}
+impl NAIFRecord for BPCSummaryRecord {}
 
-impl NAIFRecord for SPKSummaryRecord {}
-
-impl NAIFSummaryRecord for SPKSummaryRecord {
+impl NAIFSummaryRecord for BPCSummaryRecord {
     fn start_idx(&self) -> usize {
         self.start_idx as usize
     }

@@ -8,16 +8,12 @@
  * Documentation: https://nyxspace.com/
  */
 
-use hifitime::Epoch;
 use zerocopy::FromBytes;
 
-use super::{daf::RCRD_LEN, Endian};
-use crate::{prelude::AniseError, DBL_SIZE};
+use crate::{naif::Endian, prelude::AniseError, DBL_SIZE};
 use log::{error, warn};
 
-pub trait NAIFRecord: FromBytes + Sized + Default {
-    const SIZE: usize = core::mem::size_of::<Self>();
-}
+use super::{NAIFRecord, RCRD_LEN};
 
 #[derive(Debug, FromBytes)]
 #[repr(C)]
@@ -89,7 +85,7 @@ impl DAFFileRecord {
         } else {
             match str_locidw[4..].trim() {
                 "SPK" => Ok("SPK"),
-                "PCK" => Ok("pCK"),
+                "PCK" => Ok("PCK"),
                 _ => {
                     error!("DAF of type `{}` is not yet supported", &str_locidw[4..]);
                     return Err(AniseError::DAFParserError(format!(
@@ -169,18 +165,22 @@ impl Default for NameRecord {
 impl NAIFRecord for NameRecord {}
 
 impl NameRecord {
-    pub fn nth_name(&self, n: usize, ni: usize, nd: usize) -> &str {
-        let summary_size = nd + (ni + 1) / 2;
+    /// Returns the number of names in this record
+    pub fn num_entries(&self, summary_size: usize) -> usize {
+        self.raw_names.len() / summary_size * DBL_SIZE
+    }
+
+    pub fn nth_name(&self, n: usize, summary_size: usize) -> &str {
         let this_name =
             &self.raw_names[n * summary_size * DBL_SIZE..(n + 1) * summary_size * DBL_SIZE];
         match core::str::from_utf8(&this_name) {
             Ok(name) => name,
             Err(e) => {
                 warn!(
-                    "malformed name record: `{e}` from {:?}! Using `UNNAMED SPACECRAFT` instead",
+                    "malformed name record: `{e}` from {:?}! Using `UNNAMED OBJECT` instead",
                     this_name
                 );
-                "UNNAMED SPACECRAFT"
+                "UNNAMED OBJECT"
             }
         }
     }

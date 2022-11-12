@@ -9,17 +9,15 @@
  */
 
 use core::convert::TryInto;
-use std::mem::size_of_val;
 
 use anise::{
     file_mmap,
     naif::{
-        daf::DAF,
-        spk::{
-            summary::{DAFBytes, PCKSummaryRecord, SPKSummaryRecord},
-            SPK,
-        },
-        Endian,
+        daf::DAFBytes,
+        dafold::DAF,
+        pck::BPCSummaryRecord,
+        spk::{recordtypes::ChebyshevSetType2Type3, summary::SPKSummaryRecord, SPK},
+        Endian, SpiceContext,
     },
     prelude::*,
     structure::context::AniseContext,
@@ -162,11 +160,7 @@ fn test_binary_pck_load() {
     let filename = "data/earth_latest_high_prec.bpc";
     let bytes = file_mmap!(filename).unwrap();
 
-    // let high_prec = DAF::parse(&bytes).unwrap();
-    // println!("{}", high_prec.comments().unwrap());
-    // high_prec.summaries().unwrap();
-
-    let high_prec = DAFBytes::<PCKSummaryRecord>::parse(&bytes).unwrap();
+    let high_prec = DAFBytes::<BPCSummaryRecord>::parse(&bytes).unwrap();
     for n in 0..high_prec.daf_summary.num_summaries() {
         let (name, data) = high_prec.nth_summary(n).unwrap();
         println!("{} -> {:?}", name, data);
@@ -180,8 +174,7 @@ fn test_spk_load_bytes() {
     }
 
     // Using the DE421 as demo because the correct data is in the DAF documentation
-    let bsp_path = "data/de421.bsp";
-    let bytes = file_mmap!(bsp_path).unwrap();
+    let bytes = file_mmap!("data/de421.bsp").unwrap();
 
     let de421 = DAFBytes::<SPKSummaryRecord>::parse(&bytes).unwrap();
     assert_eq!(de421.file_record.nd, 2);
@@ -200,7 +193,34 @@ fn test_spk_load_bytes() {
         println!("{} -> {:?}", name, data);
     }
 
-    // println!("stack size = {}", size_of_val(&de421));
+    // Try to grab some data here!
+    let data_set = de421.nth_data::<ChebyshevSetType2Type3>(3).unwrap();
+    println!("{data_set}");
+
+    // Put this in a context
+    let mut spice = SpiceContext::default();
+    spice.furnsh_spk("de421", &de421).unwrap();
+
+    println!("{:?}", spice.spk_lut);
+
+    // Now load another DE file
+    // WARNING: Rust won't allow us to load this other file in a scope and then unload it!
+
+    let bytes = file_mmap!("data/de440.bsp").unwrap();
+    let de440 = DAFBytes::<SPKSummaryRecord>::parse(&bytes).unwrap();
+    spice.furnsh_spk("de440", &de440).unwrap();
+
+    // And another
+    let bytes = file_mmap!("data/de438s.bsp").unwrap();
+    let de440 = DAFBytes::<SPKSummaryRecord>::parse(&bytes).unwrap();
+    spice.furnsh_spk("de438s", &de440).unwrap();
+
+    println!("{:?}", spice.spk_lut);
+
+    spice.unfurnsh_spk("de440").unwrap();
+
+    println!("{:?}", spice.spk_lut);
+
     // assert_eq!(de421.comments().unwrap().len(), 1379);
     // // Convert to SPK
     // let spk: SPK = (&de421).try_into().unwrap();

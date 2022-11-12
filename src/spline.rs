@@ -17,7 +17,7 @@ use crate::{
         spline::{Field, Splines},
     },
     errors::{AniseError, IntegrityErrorKind, InternalErrorKind},
-    naif::daf::Endian,
+    naif::dafold::Endian,
     parse_bytes_as, DBL_SIZE,
 };
 

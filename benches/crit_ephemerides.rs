@@ -4,7 +4,7 @@ use anise::{
     prelude::*,
 };
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use hifitime::prelude::*;
+
 use spice;
 
 const NUM_QUERIES_PER_PAIR: f64 = 100.0;

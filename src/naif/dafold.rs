@@ -8,9 +8,14 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::recordtypes::DAFFileRecord;
+use super::daf::recordtypes::DAFSummaryRecord;
 pub(crate) use super::Endian;
-use crate::{parse_bytes_as, prelude::AniseError, DBL_SIZE};
+use crate::{
+    naif::daf::{recordtypes::DAFFileRecord, NAIFRecord},
+    parse_bytes_as,
+    prelude::AniseError,
+    DBL_SIZE,
+};
 use core::convert::TryInto;
 use log::{debug, error, info, warn};
 use zerocopy::FromBytes;
@@ -18,8 +23,8 @@ use zerocopy::FromBytes;
 pub(crate) const RCRD_LEN: usize = 1024;
 pub(crate) const INT_SIZE: usize = 4;
 
-#[derive(Debug, FromBytes)]
-pub struct DAFBytes<'a> {
+#[derive(Debug)]
+pub struct DAF<'a> {
     pub idword: &'a str,
     pub internal_filename: &'a str,
     /// The number of integer components in each array summary.
@@ -32,13 +37,16 @@ pub struct DAFBytes<'a> {
     pub bwrd: usize,
     pub freeaddr: usize,
     pub endianness: Endian,
-    // pub bytes: &'a [u8],
+    pub bytes: &'a [u8],
 }
 
-impl<'a> DAFBytes<'a> {
+impl<'a> DAF<'a> {
     /// From https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/daf.html#Structure
     pub fn parse(bytes: &'a [u8]) -> Result<Self, AniseError> {
-        let daf_file_record = DAFFileRecord::read_from(bytes[0..DAFFileRecord::SIZE]).unwrap();
+        let daf_file_record = DAFFileRecord::read_from(&bytes[0..DAFFileRecord::SIZE]).unwrap();
+
+        println!("{}", daf_file_record.identification().unwrap());
+        println!("ni = {}\tnd = {}", daf_file_record.ni, daf_file_record.nd);
 
         let locidw = core::str::from_utf8(bytes.get(0..8).ok_or(AniseError::MalformedData(8))?)
             .map_err(|_| {
@@ -188,52 +196,40 @@ impl<'a> DAFBytes<'a> {
             if record_num == 0 {
                 break;
             }
-            let record = self.record(record_num)?;
-            // Note that the segment control data are stored as f64 but need to be converted to usize
-            let next_record = parse_bytes_as!(
-                f64,
-                record
-                    .get(0..DBL_SIZE)
-                    .ok_or(AniseError::MalformedData(DBL_SIZE))?,
-                self.endianness
-            ) as usize;
+            let summary_record_bytes = self.record_bytes(record_num)?;
 
-            let nsummaries = parse_bytes_as!(
-                f64,
-                record
-                    .get(16..16 + DBL_SIZE)
-                    .ok_or(AniseError::MalformedData(16 + DBL_SIZE))?,
-                self.endianness
-            ) as usize;
+            let record =
+                DAFSummaryRecord::read_from(&summary_record_bytes[0..3 * DBL_SIZE]).unwrap();
 
             // Parse the data of the summary.
-            let name_record = self.record(record_num + 1)?;
+            let name_record_bytes = self.record_bytes(record_num + 1)?;
             let length = DBL_SIZE * self.nd + INT_SIZE * self.ni;
-            for i in (0..nsummaries * length).step_by(length) {
+            for i in (0..record.num_summaries() * length).step_by(length) {
                 let j = 3 * DBL_SIZE + i;
-                let name = if name_record.is_empty() {
+                let name = if name_record_bytes.is_empty() {
                     warn!("name record is empty! Using `UNNAMED SPACECRAFT` instead");
                     "UNNAMED SPACECRAFT"
                 } else {
-                    match core::str::from_utf8(&name_record[i..i + length]) {
+                    match core::str::from_utf8(&name_record_bytes[i..i + length]) {
                         Ok(name) => name,
                         Err(e) => {
                             warn!(
                                 "malformed name record: `{e}` from {:?}! Using `UNNAMED SPACECRAFT` instead",
-                                &name_record[i..i + length]
+                                &name_record_bytes[i..i + length]
                             );
                             "UNNAMED SPACECRAFT"
                         }
                     }
                 };
+
                 if name.starts_with(' ') {
                     println!("WARNING: Parsing might be wrong because the first character of the name summary is a space: `{}`", name);
                     println!(
                         "Full name data: `{}`",
-                        core::str::from_utf8(&name_record[..1000]).unwrap()
+                        core::str::from_utf8(&name_record_bytes[..1000]).unwrap()
                     );
                 }
-                let summary_data = &record[j..j + length];
+                let summary_data = &summary_record_bytes[j..j + length];
                 let mut f64_summary = Vec::with_capacity(self.nd);
                 for double_data in summary_data[0..DBL_SIZE * self.nd].chunks(DBL_SIZE) {
                     f64_summary.push(parse_bytes_as!(f64, double_data, self.endianness));
@@ -248,14 +244,13 @@ impl<'a> DAFBytes<'a> {
                 // Add this data to the return vec
                 rtn.push((name, f64_summary, int_summary));
             }
-            record_num = next_record;
+            record_num = record.next_record();
         }
 
         Ok(rtn)
     }
 
-    /// Records are indexed from one!!
-    fn record(&self, num: usize) -> Result<&'a [u8], AniseError> {
+    fn record_bytes(&self, num: usize) -> Result<&'a [u8], AniseError> {
         let start_idx = num * RCRD_LEN - RCRD_LEN;
         self.bytes
             .get(start_idx..start_idx + RCRD_LEN)

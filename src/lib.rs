@@ -50,7 +50,7 @@ pub(crate) type HashType = u32;
 /// file_mmap allows reading a file without memory allocation
 #[macro_export]
 macro_rules! file_mmap {
-    ($filename:ident) => {
+    ($filename:tt) => {
         match File::open($filename) {
             Err(e) => Err(AniseError::IOError(e.kind())),
             Ok(file) => unsafe {
