@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+use core::fmt;
 use hifitime::Epoch;
 use zerocopy::FromBytes;
 
@@ -50,5 +51,19 @@ impl NAIFSummaryRecord for SPKSummaryRecord {
 
     fn end_idx(&self) -> usize {
         self.end_idx as usize
+    }
+}
+
+impl fmt::Display for SPKSummaryRecord {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "SPK Summary for TGT={} CTR={} FRM={} from {:E} to {:E}",
+            self.target_id,
+            self.center_id,
+            self.frame_id,
+            self.start_epoch(),
+            self.end_epoch()
+        )
     }
 }

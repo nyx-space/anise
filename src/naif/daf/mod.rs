@@ -39,7 +39,7 @@ pub trait NAIFDataRecord<'a> {
 }
 
 #[derive(Default, Debug)]
-pub struct DAFBytes<'a, R: NAIFSummaryRecord> {
+pub struct DAF<'a, R: NAIFSummaryRecord> {
     pub file_record: DAFFileRecord,
     pub daf_summary: DAFSummaryRecord,
     pub name_record: NameRecord,
@@ -48,7 +48,7 @@ pub struct DAFBytes<'a, R: NAIFSummaryRecord> {
     pub bytes: &'a [u8],
 }
 
-impl<'a, R: NAIFSummaryRecord> DAFBytes<'a, R> {
+impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
     pub fn parse(bytes: &'a [u8]) -> Result<Self, AniseError> {
         let file_record = DAFFileRecord::read_from(&bytes[..DAFFileRecord::SIZE]).unwrap();
 
@@ -92,7 +92,7 @@ impl<'a, R: NAIFSummaryRecord> DAFBytes<'a, R> {
 
         let summary = &self.data_summaries[n];
 
-        Ok((name, summary))
+        Ok((name.trim(), summary))
     }
 
     /// Provided a name that is in the summary, return its full data, if name is available.

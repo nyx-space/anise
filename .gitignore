@@ -6,3 +6,4 @@ cspice
 *.svg
 perf.data*
 analysis/.venv
+cspice.tar.Z
