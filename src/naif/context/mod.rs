@@ -17,7 +17,7 @@ use crate::errors::AniseError;
 /// # Limitations
 /// You may only load up to 32 SPICE files of each kind.
 /// The stack space does _not_ depend on how much data is loaded at any given time.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct SpiceContext<'a> {
     pub spk_lut: [Option<&'a str>; 32],
     pub bpc_lut: [Option<&'a str>; 32],
@@ -25,12 +25,16 @@ pub struct SpiceContext<'a> {
     pub bpc_data: [Option<&'a DAFBytes<'a, BPCSummaryRecord>>; 32],
 }
 
-impl<'a> SpiceContext<'a> {
+impl<'a: 'b, 'b> SpiceContext<'a> {
+    /// Loads a new SPK file into a new context.
+    /// This new context is needed to satisfy the unloading of files. In fact, to unload a file, simply let the newly loaded context drop out of scope and Rust will clean it up.
     pub fn furnsh_spk(
-        &mut self,
-        name: &'a str,
-        spk: &'a DAFBytes<'a, SPKSummaryRecord>,
-    ) -> Result<(), AniseError> {
+        &self,
+        name: &'b str,
+        spk: &'b DAFBytes<'b, SPKSummaryRecord>,
+    ) -> Result<SpiceContext<'b>, AniseError> {
+        // This is just a bunch of pointers so it doesn't use much memory.
+        let mut me = self.clone();
         // Parse as SPK and place into the SPK list if there is room
         let mut data_idx = 32;
         for (idx, item) in self.spk_data.iter().enumerate() {
@@ -42,16 +46,18 @@ impl<'a> SpiceContext<'a> {
         if data_idx == 32 {
             return Err(AniseError::MaxTreeDepth);
         }
-        self.spk_lut[data_idx] = Some(name);
-        self.spk_data[data_idx] = Some(spk);
-        Ok(())
+        me.spk_lut[data_idx] = Some(name);
+        me.spk_data[data_idx] = Some(spk);
+        Ok(me)
     }
 
     pub fn furnsh_bpc(
-        &mut self,
-        name: &'a str,
-        bpc: &'a DAFBytes<'a, BPCSummaryRecord>,
-    ) -> Result<(), AniseError> {
+        &self,
+        name: &'b str,
+        bpc: &'b DAFBytes<'b, BPCSummaryRecord>,
+    ) -> Result<SpiceContext<'b>, AniseError> {
+        // This is just a bunch of pointers so it doesn't use much memory.
+        let mut me = self.clone();
         // Parse as SPK and place into the SPK list if there is room
         let mut data_idx = 32;
         for (idx, item) in self.bpc_data.iter().enumerate() {
@@ -63,96 +69,8 @@ impl<'a> SpiceContext<'a> {
         if data_idx == 32 {
             return Err(AniseError::MaxTreeDepth);
         }
-        self.bpc_lut[data_idx] = Some(name);
-        self.bpc_data[data_idx] = Some(bpc);
-        Ok(())
-    }
-
-    pub fn unfurnsh_spk(&mut self, name: &'a str) -> Result<(), AniseError> {
-        // Iterate through the LUT to find that name.
-        let mut pos_idx = 0;
-        for (idx, item) in self.spk_lut.iter().enumerate() {
-            match item {
-                None => return Err(AniseError::ItemNotFound), // Data is contiguous, so this mean we're found nothing
-                Some(obj_name) => {
-                    if &name == obj_name {
-                        self.spk_lut[idx] = None;
-                        self.spk_data[idx] = None;
-                        pos_idx = idx;
-                        break;
-                    }
-                }
-            }
-        }
-
-        // Now move everything up.
-        if pos_idx > 0 {
-            // Find the first non-null
-            let mut final_idx = 0;
-            for (rev_idx, item) in self.spk_lut.iter().rev().enumerate() {
-                if item.is_some() {
-                    final_idx = rev_idx;
-                    break;
-                }
-            }
-            if final_idx > pos_idx {
-                // Move everything up.
-                for mov_idx in pos_idx..final_idx {
-                    self.spk_lut[mov_idx] = self.spk_lut[mov_idx + 1];
-                    self.spk_data[mov_idx] = self.spk_data[mov_idx + 1];
-                }
-            }
-        }
-        return Ok(());
-    }
-
-    pub fn unfurnsh_bpc(&mut self, name: &'a str) -> Result<(), AniseError> {
-        // Ugh, I couldn't make it generic
-        /*
-                error[E0508]: cannot move out of type `[Option<DAFBytes<'_, R>>]`, a non-copy slice
-           --> src/naif/context/mod.rs:168:33
-            |
-        168 |                 data[mov_idx] = data[mov_idx + 1];
-            |                                 ^^^^^^^^^^^^^^^^^
-            |                                 |
-            |                                 cannot move out of here
-            |                                 move occurs because `data[_]` has type `Option<DAFBytes<'_, R>>`, which does not implement the `Copy` trait
-
-                */
-        // Iterate through the LUT to find that name.
-        let mut pos_idx = 0;
-        for (idx, item) in self.bpc_lut.iter().enumerate() {
-            match item {
-                None => return Err(AniseError::ItemNotFound), // Data is contiguous, so this mean we're found nothing
-                Some(obj_name) => {
-                    if &name == obj_name {
-                        self.bpc_lut[idx] = None;
-                        self.bpc_data[idx] = None;
-                        pos_idx = idx;
-                        break;
-                    }
-                }
-            }
-        }
-
-        // Now move everything up.
-        if pos_idx > 0 {
-            // Find the first non-null
-            let mut final_idx = 0;
-            for (rev_idx, item) in self.bpc_lut.iter().rev().enumerate() {
-                if item.is_some() {
-                    final_idx = rev_idx;
-                    break;
-                }
-            }
-            if final_idx > pos_idx {
-                // Move everything up.
-                for mov_idx in pos_idx..final_idx {
-                    self.bpc_lut[mov_idx] = self.bpc_lut[mov_idx + 1];
-                    self.bpc_data[mov_idx] = self.bpc_data[mov_idx + 1];
-                }
-            }
-        }
-        return Ok(());
+        me.bpc_lut[data_idx] = Some(name);
+        me.bpc_data[data_idx] = Some(bpc);
+        Ok(me)
     }
 }

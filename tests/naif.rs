@@ -198,26 +198,27 @@ fn test_spk_load_bytes() {
     println!("{data_set}");
 
     // Put this in a context
-    let mut spice = SpiceContext::default();
-    spice.furnsh_spk("de421", &de421).unwrap();
+    let spice = SpiceContext::default();
+    let spice = spice.furnsh_spk("de421", &de421).unwrap();
 
     println!("{:?}", spice.spk_lut);
 
     // Now load another DE file
     // WARNING: Rust won't allow us to load this other file in a scope and then unload it!
+    {
+        let bytes = file_mmap!("data/de440.bsp").unwrap();
+        let de440 = DAFBytes::<SPKSummaryRecord>::parse(&bytes).unwrap();
+        let spice = spice.furnsh_spk("de440", &de440).unwrap();
 
-    let bytes = file_mmap!("data/de440.bsp").unwrap();
-    let de440 = DAFBytes::<SPKSummaryRecord>::parse(&bytes).unwrap();
-    spice.furnsh_spk("de440", &de440).unwrap();
+        // And another
+        let bytes = file_mmap!("data/de438s.bsp").unwrap();
+        let de440 = DAFBytes::<SPKSummaryRecord>::parse(&bytes).unwrap();
+        let spice = spice.furnsh_spk("de438s", &de440).unwrap();
 
-    // And another
-    let bytes = file_mmap!("data/de438s.bsp").unwrap();
-    let de440 = DAFBytes::<SPKSummaryRecord>::parse(&bytes).unwrap();
-    spice.furnsh_spk("de438s", &de440).unwrap();
+        println!("{:?}", spice.spk_lut);
+    }
 
-    println!("{:?}", spice.spk_lut);
-
-    spice.unfurnsh_spk("de440").unwrap();
+    // spice.unfurnsh_spk("de440").unwrap();
 
     println!("{:?}", spice.spk_lut);
 
