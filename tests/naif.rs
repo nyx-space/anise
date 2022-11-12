@@ -9,6 +9,7 @@
  */
 
 use core::convert::TryInto;
+use std::mem::size_of_val;
 
 use anise::{
     file_mmap,
@@ -216,11 +217,12 @@ fn test_spk_load_bytes() {
         let spice = spice.furnsh_spk("de438s", &de440).unwrap();
 
         println!("{:?}", spice.spk_lut);
+
+        println!("{}", size_of_val(&spice));
     }
 
-    // spice.unfurnsh_spk("de440").unwrap();
-
     println!("{:?}", spice.spk_lut);
+    println!("{}", size_of_val(&spice));
 
     // assert_eq!(de421.comments().unwrap().len(), 1379);
     // // Convert to SPK

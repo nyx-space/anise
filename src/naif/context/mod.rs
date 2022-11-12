@@ -44,7 +44,7 @@ impl<'a: 'b, 'b> SpiceContext<'a> {
             }
         }
         if data_idx == 32 {
-            return Err(AniseError::MaxTreeDepth);
+            return Err(AniseError::StructureIsFull);
         }
         me.spk_lut[data_idx] = Some(name);
         me.spk_data[data_idx] = Some(spk);
@@ -67,7 +67,7 @@ impl<'a: 'b, 'b> SpiceContext<'a> {
             }
         }
         if data_idx == 32 {
-            return Err(AniseError::MaxTreeDepth);
+            return Err(AniseError::StructureIsFull);
         }
         me.bpc_lut[data_idx] = Some(name);
         me.bpc_data[data_idx] = Some(bpc);

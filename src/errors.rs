@@ -20,7 +20,7 @@ use std::io::ErrorKind as IOErrorKind;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum AniseError {
-    
+    StructureIsFull,
     /// Raised for an error in reading or writing the file(s)
     IOError(IOErrorKind),
     /// Raised if an IO error occurred but its representation is not simple (and therefore not an std::io::ErrorKind).
@@ -133,6 +133,7 @@ impl From<MathErrorKind> for AniseError {
 impl fmt::Display for AniseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
+            Self::StructureIsFull => write!(f, "ANISE error: attempted to load more data but no more room was available"),
             Self::IOError(e) => write!(f, "ANISE error: IOError: {e:?}"),
             Self::IOUnknownError => write!(f, "ANISE error: IOUnknownError"),
             Self::MathError(e) => write!(f, "ANISE error: MathError: {e:?}"),
