@@ -8,13 +8,14 @@
  * Documentation: https://nyxspace.com/
  */
 
-pub mod context;
 pub mod daf;
-pub mod dafold;
 pub mod pck;
 pub mod spk;
 
-pub use context::*;
+use self::{daf::DAF, pck::BPCSummaryRecord, spk::summary::SPKSummaryRecord};
+
+pub type SPK<'a> = DAF<'a, SPKSummaryRecord>;
+pub type BPC<'a> = DAF<'a, BPCSummaryRecord>;
 
 #[macro_export]
 macro_rules! parse_bytes_as {
@@ -32,4 +33,27 @@ macro_rules! parse_bytes_as {
 pub enum Endian {
     Little,
     Big,
+}
+
+impl Endian {
+    /// Returns the endianness of the platform we're running on for an f64.
+    /// This isn't const because f64 comparisons cannot be const yet
+    fn f64_native() -> Self {
+        let truth: f64 = 0.12345678;
+        if (f64::from_ne_bytes(truth.to_be_bytes()) - truth).abs() < f64::EPSILON {
+            Self::Big
+        } else {
+            Self::Little
+        }
+    }
+
+    /// Returns the endianness of the platform we're running on for an f64.
+    const fn u64_native() -> Self {
+        let truth: u32 = 0x12345678;
+        if u32::from_ne_bytes(truth.to_be_bytes()) == truth {
+            Self::Big
+        } else {
+            Self::Little
+        }
+    }
 }

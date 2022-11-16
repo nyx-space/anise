@@ -8,43 +8,26 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::{
-    errors::IntegrityErrorKind,
-    prelude::{AniseContext, AniseError},
-    structure::constants::PlanetaryConstants,
-};
-
 pub mod celestial_objects {
-    use crate::HashType;
+    use crate::NaifId;
 
-    /// Source bytes: `Solar System Barycenter`
-    pub const SOLAR_SYSTEM_BARYCENTER: HashType = 3135540444;
-    /// Source bytes: `Mercury`
-    pub const MERCURY: HashType = 753059387;
-    /// Source bytes: `Venus`
-    pub const VENUS: HashType = 2760147288;
-    /// Source bytes: `Earth-Moon Barycenter`
-    pub const EARTH_MOON_BARYCENTER: HashType = 46073813;
-    /// Source bytes: `Mars Barycenter`
-    pub const MARS_BARYCENTER: HashType = 1223981629;
-    /// Source bytes: `Jupyter Barycenter`
-    pub const JUPITER_BARYCENTER: HashType = 2905700239;
-    /// Source bytes: `Saturn Barycenter`
-    pub const SATURN_BARYCENTER: HashType = 2400246439;
-    /// Source bytes: `Uranus Barycenter`
-    pub const URANUS_BARYCENTER: HashType = 1449143244;
-    /// Source bytes: `Neptune Barycenter`
-    pub const NEPTUNE_BARYCENTER: HashType = 199396881;
-    /// Source bytes: `Pluto Barycenter`
-    pub const PLUTO_BARYCENTER: HashType = 1544737610;
-    /// Source bytes: `Sun`
-    pub const SUN: HashType = 1777960983;
-    /// Source bytes: `Luna`
-    pub const LUNA: HashType = 1668777413;
-    /// Source bytes: `Earth`
-    pub const EARTH: HashType = 2330221028;
+    // TODO: Merge with id_to_human_name
 
-    pub const fn hash_celestial_name<'a>(hash: HashType) -> Option<&'a str> {
+    pub const SOLAR_SYSTEM_BARYCENTER: NaifId = 0;
+    pub const MERCURY: NaifId = 1;
+    pub const VENUS: NaifId = 2;
+    pub const EARTH_MOON_BARYCENTER: NaifId = 3;
+    pub const MARS_BARYCENTER: NaifId = 4;
+    pub const JUPITER_BARYCENTER: NaifId = 5;
+    pub const SATURN_BARYCENTER: NaifId = 6;
+    pub const URANUS_BARYCENTER: NaifId = 7;
+    pub const NEPTUNE_BARYCENTER: NaifId = 8;
+    pub const PLUTO_BARYCENTER: NaifId = 9;
+    pub const SUN: NaifId = 10;
+    pub const LUNA: NaifId = 301;
+    pub const EARTH: NaifId = 399;
+
+    pub const fn hash_celestial_name<'a>(hash: NaifId) -> Option<&'a str> {
         match hash {
             SOLAR_SYSTEM_BARYCENTER => Some("Solar System Barycenter"),
             MERCURY => Some("Mercury"),
@@ -65,11 +48,10 @@ pub mod celestial_objects {
 }
 
 pub mod orientations {
-    use crate::HashType;
-    /// Source bytes: `J2000`
-    pub const J2000: HashType = 1404527632;
+    use crate::NaifId;
+    pub const J2000: NaifId = 0;
 
-    pub const fn hash_orientation_name<'a>(hash: HashType) -> Option<&'a str> {
+    pub const fn hash_orientation_name<'a>(hash: NaifId) -> Option<&'a str> {
         match hash {
             J2000 => Some("J2000"),
             _ => None,
@@ -96,17 +78,4 @@ pub mod frames {
     pub const SUN_J2000: Frame = Frame::from_ephem_orient(SUN, J2000);
     pub const LUNA_J2000: Frame = Frame::from_ephem_orient(LUNA, J2000);
     pub const EARTH_J2000: Frame = Frame::from_ephem_orient(EARTH, J2000);
-}
-
-impl<'a> AniseContext<'a> {
-    pub fn planetary_constants_from_name(
-        &self,
-        name: &'a str,
-    ) -> Result<&PlanetaryConstants<'a>, AniseError> {
-        let idx = self.planetary_constant_lut.index_for_key(name)?;
-        match self.planetary_constant_data.get(idx.into()) {
-            Some(plnt) => Ok(plnt),
-            None => Err(AniseError::IntegrityError(IntegrityErrorKind::DataMissing)),
-        }
-    }
 }

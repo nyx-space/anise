@@ -39,7 +39,7 @@ fn benchmark_single_hop_anise() {
 
     let path = "./data/de438s.anise";
     let buf = file_mmap!(path).unwrap();
-    let ctx = AniseContext::from_bytes(&buf);
+    let ctx = DataSet::from_bytes(&buf);
 
     for epoch in time_it {
         black_box(

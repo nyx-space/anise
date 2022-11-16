@@ -8,22 +8,20 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::{
-    structure::context::AniseContext,
-    errors::{AniseError, InternalErrorKind},
-};
-use der::Encode;
+use crate::errors::{AniseError, InternalErrorKind};
+use der::{Decode, Encode};
 use log::warn;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-impl<'a> AniseContext<'a> {
+/// A trait to encode / decode ANISE specific data.
+pub trait Asn1Serde<'a>: Encode + Decode<'a> {
     /// Saves this context in the providef filename.
     /// If overwrite is set to false, and the filename already exists, this function will return an error.
     ///
     /// TODO: This function should only be available with the alloc feature gate.
-    pub fn save_as(&self, filename: &'a str, overwrite: bool) -> Result<(), AniseError> {
+    fn save_as(&self, filename: &'a str, overwrite: bool) -> Result<(), AniseError> {
         match self.encoded_len() {
             Err(e) => Err(AniseError::InternalError(e.into())),
             Ok(length) => {
@@ -37,7 +35,7 @@ impl<'a> AniseContext<'a> {
 
     /// Saves this context in the providef filename.
     /// If overwrite is set to false, and the filename already exists, this function will return an error.
-    pub fn save_as_via_buffer(
+    fn save_as_via_buffer(
         &self,
         filename: &'a str,
         overwrite: bool,
@@ -63,6 +61,14 @@ impl<'a> AniseContext<'a> {
                 }
             }
             Err(e) => Err(e.kind().into()),
+        }
+    }
+
+    /// Attempts to load this data from its bytes
+    fn try_from_bytes(bytes: &'a [u8]) -> Result<Self, AniseError> {
+        match Self::from_der(bytes) {
+            Ok(yay) => Ok(yay),
+            Err(e) => Err(AniseError::DecodingError(e)),
         }
     }
 }

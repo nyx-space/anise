@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+use hifitime::Epoch;
 use zerocopy::FromBytes;
 
 use crate::naif::daf::{NAIFRecord, NAIFSummaryRecord};
@@ -27,11 +28,23 @@ pub struct BPCSummaryRecord {
 impl NAIFRecord for BPCSummaryRecord {}
 
 impl NAIFSummaryRecord for BPCSummaryRecord {
-    fn start_idx(&self) -> usize {
+    fn start_index(&self) -> usize {
         self.start_idx as usize
     }
 
-    fn end_idx(&self) -> usize {
+    fn end_index(&self) -> usize {
         self.end_idx as usize
+    }
+
+    fn start_epoch(&self) -> Epoch {
+        Epoch::from_et_seconds(self.start_epoch_et_s)
+    }
+
+    fn end_epoch(&self) -> Epoch {
+        Epoch::from_et_seconds(self.end_epoch_et_s)
+    }
+
+    fn id(&self) -> i32 {
+        self.frame_id
     }
 }

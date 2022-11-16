@@ -7,8 +7,8 @@
  *
  * Documentation: https://nyxspace.com/
  */
+use core::fmt;
 use der::{asn1::Utf8StringRef, Decode, Encode, Reader, Writer};
-
 use hifitime::Epoch;
 
 use super::{semver::Semver, ANISE_VERSION};
@@ -60,5 +60,30 @@ impl<'a> Decode<'a> for Metadata<'a> {
             originator: decoder.decode::<Utf8StringRef<'a>>()?.as_str(),
             metadata_uri: decoder.decode::<Utf8StringRef<'a>>()?.as_str(),
         })
+    }
+}
+
+impl<'a> fmt::Display for Metadata<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "ANISE version {}", self.anise_version)?;
+        writeln!(
+            f,
+            "Originator: {}",
+            if self.originator.is_empty() {
+                "(not set)"
+            } else {
+                self.originator
+            }
+        )?;
+        writeln!(f, "Creation date: {}", self.creation_date)?;
+        writeln!(
+            f,
+            "Metadata URI: {}",
+            if self.metadata_uri.is_empty() {
+                "(not set)"
+            } else {
+                self.metadata_uri
+            }
+        )
     }
 }

@@ -69,8 +69,9 @@ impl DAFFileRecord {
     }
 
     pub fn identification(&self) -> Result<&str, AniseError> {
-        let str_locidw = core::str::from_utf8(&self.locidw)
-            .map_err(|_| AniseError::DAFParserError("Could not parse endianness".to_owned()))?;
+        let str_locidw = core::str::from_utf8(&self.locidw).map_err(|_| {
+            AniseError::DAFParserError("Could not parse identification string".to_owned())
+        })?;
 
         if &str_locidw[0..3] != "DAF" {
             Err(AniseError::DAFParserError(format!(
@@ -101,15 +102,22 @@ impl DAFFileRecord {
         let str_endianness = core::str::from_utf8(&self.locfmt)
             .map_err(|_| AniseError::DAFParserError("Could not parse endianness".to_owned()))?;
 
-        if str_endianness == "LTL-IEEE" {
-            Ok(Endian::Little)
+        let file_endian = if str_endianness == "LTL-IEEE" {
+            Endian::Little
         } else if str_endianness == "BIG-IEEE" {
-            Ok(Endian::Big)
+            Endian::Big
         } else {
-            Err(AniseError::DAFParserError(format!(
+            return Err(AniseError::DAFParserError(format!(
                 "Could not understand endianness: `{}`",
                 str_endianness
+            )));
+        };
+        if file_endian != Endian::f64_native() || file_endian != Endian::u64_native() {
+            Err(AniseError::DAFParserError(format!(
+                "Input file has different endian-ness than the platform and cannot be decoded"
             )))
+        } else {
+            Ok(file_endian)
         }
     }
 
@@ -174,7 +182,7 @@ impl NameRecord {
         let this_name =
             &self.raw_names[n * summary_size * DBL_SIZE..(n + 1) * summary_size * DBL_SIZE];
         match core::str::from_utf8(&this_name) {
-            Ok(name) => name,
+            Ok(name) => name.trim(),
             Err(e) => {
                 warn!(
                     "malformed name record: `{e}` from {:?}! Using `UNNAMED OBJECT` instead",
@@ -183,5 +191,17 @@ impl NameRecord {
                 "UNNAMED OBJECT"
             }
         }
+    }
+
+    /// Searches the name record for the provided name.
+    ///
+    /// **Warning:** this performs an O(N) search!
+    pub fn index_from_name(&self, name: &str, summary_size: usize) -> Result<usize, AniseError> {
+        for i in 0..self.num_entries(summary_size) {
+            if self.nth_name(i, summary_size) == name {
+                return Ok(i);
+            }
+        }
+        Err(AniseError::ItemNotFound)
     }
 }

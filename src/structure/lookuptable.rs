@@ -8,12 +8,12 @@
  * Documentation: https://nyxspace.com/
  */
 use crc32fast::hash;
-use der::{asn1::SequenceOf, Decode, Encode, Reader, Writer};
+use der::{Decode, Encode, Reader, Writer};
 use log::error;
 
-use crate::{prelude::AniseError, HashType};
+use crate::{prelude::AniseError, NaifId};
 
-use super::{array::DataArray, MAX_TRAJECTORIES};
+use super::array::DataArray;
 
 /// A LookUpTable allows looking up the data given the hash.
 ///
@@ -24,14 +24,15 @@ use super::{array::DataArray, MAX_TRAJECTORIES};
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct LookUpTable<'a> {
     /// Hashes of the general hashing algorithm
-    // pub hashes: SequenceOf<HashType, MAX_TRAJECTORIES>,
-    pub hashes: DataArray<'a, HashType>,
+    pub hashes: DataArray<'a, NaifId>,
     /// Corresponding index for each hash
-    // pub indexes: SequenceOf<u16, MAX_TRAJECTORIES>,
     pub indexes: DataArray<'a, u16>,
 }
 
 impl<'a> LookUpTable<'a> {
+    pub const fn len(&self) -> usize {
+        self.indexes.len()
+    }
     /// Searches the lookup table for the requested hash
     /// Returns Ok with the index for the requested hash
     /// Returns Err with an ItemNotFound if the item isn't found
@@ -39,7 +40,7 @@ impl<'a> LookUpTable<'a> {
     ///
     /// NOTE: Until https://github.com/anise-toolkit/anise.rs/issues/18 is addressed
     /// this function has a time complexity of O(N)
-    pub fn index_for_hash(&self, hash: &HashType) -> Result<u16, AniseError> {
+    pub fn index_for_hash(&self, hash: &NaifId) -> Result<u16, AniseError> {
         for (idx, item) in self.hashes.data.iter().enumerate() {
             if item == hash {
                 return match self.indexes.data.get(idx) {
@@ -63,7 +64,8 @@ impl<'a> LookUpTable<'a> {
     /// NOTE: Until https://github.com/anise-toolkit/anise.rs/issues/18 is addressed
     /// this function has a time complexity of O(N)
     pub fn index_for_key(&self, key: &str) -> Result<u16, AniseError> {
-        self.index_for_hash(&hash(key.as_bytes()))
+        // self.index_for_hash(&hash(key.as_bytes()))
+        todo!()
     }
 }
 

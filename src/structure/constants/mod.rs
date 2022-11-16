@@ -8,9 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-pub mod planetary;
-pub mod spacecraft;
 pub mod ellipsoid;
+pub mod planetary;
 
 pub use planetary::*;
-pub use spacecraft::*;

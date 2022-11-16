@@ -22,7 +22,7 @@ macro_rules! f64_eq {
 fn state_def_circ_inc() {
     let path = "./data/de438s.anise";
     let buf = file_mmap!(path).unwrap();
-    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
+    let ctx = DataSet::try_from_bytes(&buf).unwrap();
 
     let eme2k = ctx.celestial_frame("Earth", "J2000").unwrap();
 
@@ -130,7 +130,7 @@ fn state_def_circ_inc() {
 fn state_def_elliptical() {
     let path = "./data/de438s.anise";
     let buf = file_mmap!(path).unwrap();
-    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
+    let ctx = DataSet::try_from_bytes(&buf).unwrap();
 
     let eme2k = ctx.celestial_frame("Earth", "J2000").unwrap();
 
@@ -220,7 +220,7 @@ fn state_def_elliptical() {
 fn state_def_circ_eq() {
     let path = "./data/de438s.anise";
     let buf = file_mmap!(path).unwrap();
-    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
+    let ctx = DataSet::try_from_bytes(&buf).unwrap();
 
     let eme2k = ctx.celestial_frame("Earth", "J2000").unwrap();
 
@@ -308,7 +308,7 @@ fn state_def_circ_eq() {
 fn state_def_equatorial() {
     let path = "./data/de438s.anise";
     let buf = file_mmap!(path).unwrap();
-    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
+    let ctx = DataSet::try_from_bytes(&buf).unwrap();
 
     let eme2k = ctx.celestial_frame("Earth", "J2000").unwrap();
 
@@ -336,7 +336,7 @@ fn state_def_equatorial() {
 fn state_def_reciprocity() {
     let path = "./data/de438s.anise";
     let buf = file_mmap!(path).unwrap();
-    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
+    let ctx = DataSet::try_from_bytes(&buf).unwrap();
 
     let eme2k = ctx.celestial_frame("Earth", "J2000").unwrap();
 
@@ -410,7 +410,7 @@ fn state_def_reciprocity() {
 fn geodetic_vallado() {
     let path = "./data/de438s.anise";
     let buf = file_mmap!(path).unwrap();
-    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
+    let ctx = DataSet::try_from_bytes(&buf).unwrap();
 
     let eme2k = ctx.geodetic_frame("Earth", "J2000").unwrap();
 
@@ -471,7 +471,7 @@ fn geodetic_vallado() {
 fn with_init() {
     let path = "./data/de438s.anise";
     let buf = file_mmap!(path).unwrap();
-    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
+    let ctx = DataSet::try_from_bytes(&buf).unwrap();
 
     let eme2k = ctx.celestial_frame("Earth", "J2000").unwrap();
 

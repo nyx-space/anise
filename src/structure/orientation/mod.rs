@@ -9,7 +9,7 @@
  */
 use der::{asn1::Utf8StringRef, Decode, Encode, Reader, Writer};
 
-use crate::HashType;
+use crate::NaifId;
 pub const MAX_NUT_PREC_ANGLES: usize = 16;
 
 use self::orient_data::OrientationData;
@@ -21,7 +21,7 @@ pub mod trigangle;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Orientation<'a> {
     pub name: &'a str,
-    pub parent_orientation_hash: HashType,
+    pub parent_orientation_hash: NaifId,
     pub orientation_data: OrientationData<'a>,
 }
 

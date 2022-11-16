@@ -8,13 +8,15 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::structure::context::AniseContext;
+use log::error;
+
+use crate::{
+    errors::{AniseError, IntegrityErrorKind},
+    structure::dataset::AniseContext,
+};
 
 impl<'a> AniseContext<'a> {
-    pub fn rename_ephemeris_traj_mut(&mut self) {
-        todo!()
-    }
-    pub fn rename_orientation_traj_mut(&mut self) {
-        todo!()
+    pub fn check_integrity(&self) -> Result<(), AniseError> {
+        Ok(())
     }
 }

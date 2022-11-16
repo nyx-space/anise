@@ -8,119 +8,103 @@
  * Documentation: https://nyxspace.com/
  */
 
-use log::{error, trace};
+use hifitime::Epoch;
+use log::error;
 
-use crate::constants::orientations::J2000;
+use crate::context::Context;
 use crate::errors::InternalErrorKind;
 use crate::structure::orientation::Orientation;
-use crate::HashType;
+use crate::NaifId;
 use crate::{
     errors::{AniseError, IntegrityErrorKind},
     frames::Frame,
-    structure::{context::AniseContext, ephemeris::Ephemeris},
+    structure::ephemeris::Ephemeris,
 };
 
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
 pub const MAX_TREE_DEPTH: usize = 8;
 
-impl<'a> AniseContext<'a> {
-    /// Goes through each ephemeris data and make sure that the root of each is the same.
-    /// A context is only valid if the data is a tree with a single top level root.
-    pub fn try_find_context_root(&self) -> Result<HashType, AniseError> {
-        let mut common_parent_hash = 0;
-        for e in self.ephemeris_data.iter() {
-            let mut child = e;
-            if common_parent_hash == 0 {
-                common_parent_hash = child.parent_ephemeris_hash;
-            }
+impl<'a> Context<'a> {
+    /// Returns the center of all of the loaded ephemerides, typically this should be the Solar System Barycenter.
+    ///
+    /// # Algorithm
+    ///
+    /// 1. For each loaded SPK, iterated in reverse order (to mimic SPICE behavior)
+    /// 2. For each summary record in each SPK, follow the ephemeris branch all the way up until the end of this SPK or until the SSB.
+    pub fn try_find_context_center(&self) -> Result<NaifId, AniseError> {
+        if self.num_loaded_spk() == 0 {
+            // TODO: Change to another error
+            return Err(AniseError::NoInterpolationData);
+        }
+        // The common center is the absolute minimum of all centers due to the NAIF numbering.
+        let mut common_center = i32::MAX;
 
-            for _ in 0..MAX_TREE_DEPTH {
-                match self.try_find_parent(child) {
-                    Ok(e) => child = e,
-                    Err(AniseError::ItemNotFound) => {
-                        // We've found the end of this branch, so let's store the parent of the child as the top root if the top root is not set
-                        if common_parent_hash == 0 {
-                            common_parent_hash = child.parent_ephemeris_hash;
-                        } else if common_parent_hash != child.parent_ephemeris_hash {
-                            // Integrity error!
-                            error!("at least one ephemeris hierarchy takes root in hash {} but {}'s parent is {}", common_parent_hash, child.name, child.parent_ephemeris_hash);
-                            return Err(AniseError::IntegrityError(
-                                IntegrityErrorKind::DisjointRoots {
-                                    from_frame: Frame::from_ephem_orient(common_parent_hash, J2000),
-                                    to_frame: Frame::from_ephem_orient(
-                                        child.parent_ephemeris_hash,
-                                        J2000,
-                                    ),
-                                },
-                            ));
-                        } else {
-                            // We're found the root and it matches the previous one, so we can stop searching.
-                            return Ok(common_parent_hash);
-                            // break;
-                        }
+        for maybe_spk in self.spk_data.iter().rev().take(self.num_loaded_spk()) {
+            let spk = maybe_spk.unwrap();
+
+            for summary in spk.data_summaries {
+                // This summary exists, so we need to follow the branch of centers up the tree.
+                let mut this_common_center = i32::MAX;
+                if summary.target_id.abs() < common_center.abs() {
+                    common_center = summary.target_id;
+                    if common_center == 0 {
+                        // We're at the SSB, there is nothing higher up
+                        return Ok(common_center);
                     }
-                    Err(err) => {
-                        error!("{err} occurred when it should not have");
-                        return Err(AniseError::InternalError(InternalErrorKind::Generic));
-                    }
-                };
+                }
             }
         }
-        Err(AniseError::MaxTreeDepth)
-    }
-
-    /// Try to find the parent ephemeris data of the provided ephemeris.
-    ///
-    /// Will return an [AniseError] if the parent does not have ephemeris data in this context.
-    pub fn try_find_parent(&self, child: &'a Ephemeris) -> Result<&'a Ephemeris, AniseError> {
-        let idx = self
-            .ephemeris_lut
-            .index_for_hash(&child.parent_ephemeris_hash)?;
-        self.try_ephemeris_data(idx.into())
+        Ok(common_center)
     }
 
     /// Try to return the ephemeris for the provided index, or returns an error.
     pub fn try_ephemeris_data(&self, idx: usize) -> Result<&'a Ephemeris, AniseError> {
-        self.ephemeris_data
-            .get(idx)
-            .ok_or(AniseError::IntegrityError(IntegrityErrorKind::LookupTable))
+        todo!()
     }
 
     /// Try to return the orientation for the provided index, or returns an error.
     pub fn try_orientation_data(&self, idx: usize) -> Result<&'a Orientation, AniseError> {
-        self.orientation_data
-            .get(idx)
-            .ok_or(AniseError::IntegrityError(IntegrityErrorKind::LookupTable))
+        todo!()
     }
 
     /// Try to construct the path from the source frame all the way to the root ephemeris of this context.
     pub fn ephemeris_path_to_root(
         &self,
         source: &Frame,
-    ) -> Result<(usize, [Option<HashType>; MAX_TREE_DEPTH]), AniseError> {
+        epoch: Epoch,
+    ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH]), AniseError> {
         // Build a tree, set a fixed depth to avoid allocations
         let mut of_path = [None; MAX_TREE_DEPTH];
         let mut of_path_len = 0;
-        let mut prev_ephem_hash = source.ephemeris_hash;
+        let mut prev_ephem_hash = source.ephemeris_id;
 
-        for _ in 0..MAX_TREE_DEPTH {
-            let idx = self.ephemeris_lut.index_for_hash(&prev_ephem_hash)?;
-            let parent_ephem = self.try_ephemeris_data(idx.into())?;
-            let parent_hash = parent_ephem.parent_ephemeris_hash;
-            of_path[of_path_len] = Some(parent_hash);
-            of_path_len += 1;
+        let common_center = self.try_find_context_center()?;
 
-            if parent_hash == self.try_find_context_root()? {
-                return Ok((of_path_len, of_path));
-            } else if let Err(e) = self.ephemeris_lut.index_for_hash(&parent_hash) {
-                if e == AniseError::ItemNotFound {
-                    // We have reached the root of this ephemeris and it has no parent.
-                    trace!("{parent_hash} has no parent in this context");
-                    return Ok((of_path_len, of_path));
+        let summary = self
+            .spk_summary_from_id_at_epoch(source.ephemeris_id, epoch)?
+            .0;
+
+        let mut target_id = summary.target_id;
+        for idx in 0..MAX_TREE_DEPTH {
+            match self.spk_summary_from_id_at_epoch(target_id, epoch) {
+                Ok((summary, _, _)) => {
+                    target_id = summary.target_id;
+                    if target_id == common_center {
+                        // We're found the path!
+
+                        return Ok((of_path_len, of_path));
+                    } else {
+                        of_path[of_path_len] = Some(target_id);
+                        of_path_len += 1;
+                    }
+                }
+                Err(e) => {
+                    error!("I don't think this should happen: {e}");
+                    return Err(AniseError::InternalError(InternalErrorKind::Generic));
                 }
             }
-            prev_ephem_hash = parent_hash;
         }
+
         Err(AniseError::MaxTreeDepth)
     }
 
@@ -156,16 +140,17 @@ impl<'a> AniseContext<'a> {
         &self,
         from_frame: Frame,
         to_frame: Frame,
-    ) -> Result<(usize, [Option<HashType>; MAX_TREE_DEPTH], HashType), AniseError> {
+        epoch: Epoch,
+    ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH], NaifId), AniseError> {
         // TODO: Consider returning a structure that has explicit fields -- see how I use it first
         if from_frame == to_frame {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
-            return Ok((0, [None; MAX_TREE_DEPTH], from_frame.ephemeris_hash));
+            return Ok((0, [None; MAX_TREE_DEPTH], from_frame.ephemeris_id));
         }
 
         // Grab the paths
-        let (from_len, from_path) = self.ephemeris_path_to_root(&from_frame)?;
-        let (to_len, to_path) = self.ephemeris_path_to_root(&to_frame)?;
+        let (from_len, from_path) = self.ephemeris_path_to_root(&from_frame, epoch)?;
+        let (to_len, to_path) = self.ephemeris_path_to_root(&to_frame, epoch)?;
 
         // Now that we have the paths, we can find the matching origin.
 
@@ -180,10 +165,10 @@ impl<'a> AniseContext<'a> {
             ))
         } else if from_len != 0 && to_len == 0 {
             // One has an empty path but not the other, so the root is at the empty path
-            Ok((from_len, from_path, to_frame.ephemeris_hash))
+            Ok((from_len, from_path, to_frame.ephemeris_id))
         } else if to_len != 0 && from_len == 0 {
             // One has an empty path but not the other, so the root is at the empty path
-            Ok((to_len, to_path, from_frame.ephemeris_hash))
+            Ok((to_len, to_path, from_frame.ephemeris_id))
         } else {
             // Either are at the ephemeris root, so we'll step through the paths until we find the common root.
             let mut common_path = [None; MAX_TREE_DEPTH];
@@ -191,18 +176,18 @@ impl<'a> AniseContext<'a> {
 
             for to_obj in to_path.iter().take(to_len) {
                 // Check the trivial case of the common node being one of the input frames
-                if to_obj.unwrap() == from_frame.ephemeris_hash {
-                    common_path[0] = Some(from_frame.ephemeris_hash);
+                if to_obj.unwrap() == from_frame.ephemeris_id {
+                    common_path[0] = Some(from_frame.ephemeris_id);
                     items = 1;
-                    return Ok((items, common_path, from_frame.ephemeris_hash));
+                    return Ok((items, common_path, from_frame.ephemeris_id));
                 }
 
                 for from_obj in from_path.iter().take(from_len) {
                     // Check the trivial case of the common node being one of the input frames
-                    if items == 0 && from_obj.unwrap() == to_frame.ephemeris_hash {
-                        common_path[0] = Some(to_frame.ephemeris_hash);
+                    if items == 0 && from_obj.unwrap() == to_frame.ephemeris_id {
+                        common_path[0] = Some(to_frame.ephemeris_id);
                         items = 1;
-                        return Ok((items, common_path, to_frame.ephemeris_hash));
+                        return Ok((items, common_path, to_frame.ephemeris_id));
                     }
 
                     if from_obj == to_obj {

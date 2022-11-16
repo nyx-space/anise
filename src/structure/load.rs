@@ -12,10 +12,10 @@ use crate::der::Decode;
 use crate::log::{error, trace};
 use crate::{
     errors::AniseError,
-    structure::{context::AniseContext, semver::Semver, ANISE_VERSION},
+    structure::{dataset::DataSet, semver::Semver, ANISE_VERSION},
 };
 
-impl<'a> AniseContext<'a> {
+impl<'a> DataSet<'a> {
     /// Try to load an Anise file from a pointer of bytes
     pub fn try_from_bytes(bytes: &'a [u8]) -> Result<Self, AniseError> {
         match Self::from_der(bytes) {

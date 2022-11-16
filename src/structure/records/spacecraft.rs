@@ -9,10 +9,10 @@
  */
 use der::{asn1::Utf8StringRef, Decode, Encode, Reader, Writer};
 
-use crate::HashType;
+use crate::NaifId;
 
 /// Spacecraft constants can store the same spacecraft constant data as the CCSDS Orbit Parameter Message (OPM) and CCSDS Attitude Parameter Messages (APM)
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct SpacecraftConstants<'a> {
     /// Name is used as the input for the hashing function
     pub name: &'a str,
@@ -153,7 +153,7 @@ impl<'a> Decode<'a> for DragData {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct InertiaTensor {
     /// Inertia tensor reference frame hash
-    pub orientation_hash: HashType,
+    pub orientation_hash: NaifId,
     /// Moment of inertia about the 1-axis
     pub i_11_kgm2: f64,
     /// Moment of inertia about the 2-axis

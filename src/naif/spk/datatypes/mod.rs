@@ -8,8 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 
-#[macro_use]
-extern crate approx;
-mod astro;
-mod ephemerides;
-mod frames;
+pub mod chebyshev;
+pub mod hermite;
+pub mod lagrange;
+pub mod posvel;
+
+pub use chebyshev::*;
+pub use hermite::*;
+pub use lagrange::*;

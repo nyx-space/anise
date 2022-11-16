@@ -10,7 +10,7 @@
 use der::{asn1::Utf8StringRef, Decode, Encode, Reader, Writer};
 use hifitime::Epoch;
 
-use crate::HashType;
+use crate::NaifId;
 
 use super::{
     common::InterpolationKind,
@@ -23,8 +23,8 @@ pub struct Ephemeris<'a> {
     pub name: &'a str,
     pub ref_epoch: Epoch,
     pub backward: bool,
-    pub parent_ephemeris_hash: HashType,
-    pub orientation_hash: HashType,
+    pub parent_ephemeris_hash: NaifId,
+    pub orientation_hash: NaifId,
     pub interpolation_kind: InterpolationKind,
     /// Answer the question: What distance unit is the output of the interpolation data for distances? E.g. kilometer (default)
     pub length_unit: LengthUnit,

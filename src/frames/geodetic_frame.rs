@@ -10,9 +10,10 @@
 
 use super::{celestial_frame::CelestialFrame, CelestialFrameTrait, Frame, FrameTrait};
 use crate::{
-    prelude::{AniseContext, AniseError},
+    context::Context,
+    prelude::{AniseError, DataSet},
     structure::constants::ellipsoid::Ellipsoid,
-    HashType,
+    NaifId,
 };
 use core::fmt::{Display, Formatter};
 use log::error;
@@ -38,11 +39,11 @@ pub struct GeodeticFrame {
 }
 
 impl FrameTrait for GeodeticFrame {
-    fn ephemeris_hash(&self) -> HashType {
+    fn ephemeris_hash(&self) -> NaifId {
         self.celestial_frame.ephemeris_hash()
     }
 
-    fn orientation_hash(&self) -> HashType {
+    fn orientation_hash(&self) -> NaifId {
         self.celestial_frame.orientation_hash()
     }
 }
@@ -88,7 +89,7 @@ impl Into<Frame> for GeodeticFrame {
     }
 }
 
-impl<'a> AniseContext<'a> {
+impl<'a> Context<'a> {
     /// Tries to find the geodetic frame data given the ephemeris center name and the orientation name.
     /// # Note
     /// The ephemeris name MUST match the name of the planetary constant.
@@ -108,21 +109,22 @@ impl<'a> AniseContext<'a> {
         orientation_name: &'a str,
         planetary_constants_name: &'a str,
     ) -> Result<GeodeticFrame, AniseError> {
-        let constants = self.planetary_constants_from_name(planetary_constants_name)?;
+        todo!()
+        // let constants = self.planetary_constants_from_name(planetary_constants_name)?;
 
-        if constants.shape.is_none() {
-            error!("no shape data associated with {planetary_constants_name}");
-            return Err(AniseError::ParameterNotSpecified);
-        }
+        // if constants.shape.is_none() {
+        //     error!("no shape data associated with {planetary_constants_name}");
+        //     return Err(AniseError::ParameterNotSpecified);
+        // }
 
-        // TODO: Figure out how to specify / where to find the angular velocity. And maybe it shouldn't exist!
-        Ok(GeodeticFrame {
-            celestial_frame: CelestialFrame {
-                frame: Frame::from_ephemeris_orientation_names(ephemeris_name, orientation_name),
-                mu_km3_s2: constants.mu_km3_s2,
-            },
-            shape: constants.shape.unwrap(),
-            angular_velocity_deg: 0.0,
-        })
+        // // TODO: Figure out how to specify / where to find the angular velocity. And maybe it shouldn't exist!
+        // Ok(GeodeticFrame {
+        //     celestial_frame: CelestialFrame {
+        //         frame: Frame::from_ephemeris_orientation_names(ephemeris_name, orientation_name),
+        //         mu_km3_s2: constants.mu_km3_s2,
+        //     },
+        //     shape: constants.shape.unwrap(),
+        //     angular_velocity_deg: 0.0,
+        // })
     }
 }

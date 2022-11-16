@@ -14,11 +14,11 @@ use crate::structure::orientation::Orientation;
 use crate::HashType;
 use crate::{
     errors::{AniseError, InternalErrorKind},
-    structure::{context::AniseContext, ephemeris::Ephemeris, MAX_TRAJECTORIES},
+    structure::{dataset::DataSet, ephemeris::Ephemeris, MAX_TRAJECTORIES},
 };
 use crc32fast::hash;
 
-impl<'a> AniseContext<'a> {
+impl<'a> DataSet<'a> {
     /// Appends the provided ephemeris to this context
     ///
     /// # Implementation details
@@ -35,7 +35,7 @@ impl<'a> AniseContext<'a> {
         e: Ephemeris<'a>,
     ) -> Result<bool, AniseError> {
         let new_hash = hash(e.name.as_bytes());
-        if let Ok(self_idx) = self.ephemeris_lut.index_for_hash(&new_hash) {
+        if let Ok(self_idx) = self.lut.index_for_hash(&new_hash) {
             if self
                 .ephemeris_data
                 .get(self_idx.into())
@@ -69,7 +69,7 @@ impl<'a> AniseContext<'a> {
 
             lut_hashes.push(new_hash);
             // Push the index too
-            lut_indexes.push((self.ephemeris_lut.indexes.len()).try_into().unwrap());
+            lut_indexes.push((self.lut.indexes.len()).try_into().unwrap());
             // Add the ephemeris data
             self.ephemeris_data
                 .add(e)

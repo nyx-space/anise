@@ -8,13 +8,13 @@
  * Documentation: https://nyxspace.com/
  */
 
-use hifitime::{Epoch, TimeUnits};
+use hifitime::Epoch;
 
 use crate::structure::{ephemeris::Ephemeris, spline::Evenness};
 
 pub mod paths;
-pub mod translations;
 pub mod translate_to_parent;
+pub mod translations;
 
 impl<'a> Ephemeris<'a> {
     /// Returns the first epoch in the data, which will be the chronological "end" epoch if the ephemeris is generated backward
@@ -27,7 +27,8 @@ impl<'a> Ephemeris<'a> {
         match self.splines.metadata.evenness {
             Evenness::Even { duration_ns } => {
                 // Grab the number of splines
-                self.ref_epoch + ((self.splines.len() as f64) * (duration_ns as i64).nanoseconds())
+                // self.ref_epoch + ((self.splines.len() as f64) * (duration_ns as i64).nanoseconds())
+                todo!()
             }
             Evenness::Uneven { indexes: _ } => {
                 todo!()

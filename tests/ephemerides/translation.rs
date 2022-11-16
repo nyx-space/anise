@@ -27,7 +27,8 @@ fn de438s_translation_verif_venus2emb() {
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de438s.anise";
     let buf = file_mmap!(path).unwrap();
-    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
+    let spk = SPK::parse(&buf).unwrap();
+    let ctx = Context::from_spk(&spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
@@ -42,7 +43,7 @@ fn de438s_translation_verif_venus2emb() {
     */
 
     dbg!(ctx
-        .common_ephemeris_path(VENUS_J2000, EARTH_MOON_BARYCENTER_J2000)
+        .common_ephemeris_path(VENUS_J2000, EARTH_MOON_BARYCENTER_J2000, epoch)
         .unwrap());
 
     let state = ctx
@@ -113,7 +114,8 @@ fn de438s_translation_verif_venus2luna() {
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de438s.anise";
     let buf = file_mmap!(path).unwrap();
-    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
+    let spk = SPK::parse(&buf).unwrap();
+    let ctx = Context::from_spk(&spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
@@ -207,7 +209,8 @@ fn de438s_translation_verif_emb2luna() {
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de438s.anise";
     let buf = file_mmap!(path).unwrap();
-    let ctx = AniseContext::try_from_bytes(&buf).unwrap();
+    let spk = SPK::parse(&buf).unwrap();
+    let ctx = Context::from_spk(&spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
@@ -301,6 +304,7 @@ fn de438s_translation_verif_emb2luna() {
 #[ignore]
 #[cfg(feature = "std")]
 fn validate_jplde_translation() {
+    use anise::naif::daf::NAIFSummaryRecord;
     use anise::prelude::Frame;
     use arrow::array::{ArrayRef, Float64Array, StringArray, UInt8Array};
     use arrow::datatypes::{DataType, Field, Schema};
@@ -353,25 +357,27 @@ fn validate_jplde_translation() {
     let mut writer = ArrowWriter::try_new(file, Arc::new(schema), Some(props)).unwrap();
 
     for de_name in &["de438s", "de440"] {
+        let path = format!("data/{de_name}.bsp");
         // SPICE load
-        spice::furnsh(&format!("data/{de_name}.bsp"));
+        spice::furnsh(&path);
 
         // ANISE load
-        let path = format!("./data/{de_name}.anise");
         let buf = file_mmap!(path).unwrap();
-        let ctx = AniseContext::from_bytes(&buf);
+        let spk = SPK::parse(&buf).unwrap();
+        let ctx = Context::from_spk(&spk).unwrap();
 
-        for (idx1, ephem1) in ctx.ephemeris_data.iter().enumerate() {
-            let j2000_ephem1 =
-                Frame::from_ephem_j2000(*ctx.ephemeris_lut.hashes.data.get(idx1).unwrap());
+        // We only have one SPK loaded, so we know what summary to go through
+        let first_spk = ctx.spk_data[0].unwrap();
 
-            for (idx2, ephem2) in ctx.ephemeris_data.iter().enumerate() {
-                if ephem1 == ephem2 {
+        for ephem1 in first_spk.data_summaries {
+            let j2000_ephem1 = Frame::from_ephem_j2000(ephem1.target_id);
+
+            for ephem2 in first_spk.data_summaries {
+                if ephem1.target_id == ephem2.target_id {
                     continue;
                 }
 
-                let j2000_ephem2 =
-                    Frame::from_ephem_j2000(*ctx.ephemeris_lut.hashes.data.get(idx2).unwrap());
+                let j2000_ephem2 = Frame::from_ephem_j2000(ephem2.target_id);
 
                 // Query the ephemeris data for a bunch of different times.
                 let start_epoch = if ephem1.start_epoch() < ephem2.start_epoch() {
@@ -452,17 +458,11 @@ fn validate_jplde_translation() {
                         Ok(state) => {
                             // Perform the same query in SPICE
                             let (spice_state, _) = spice::spkezr(
-                                match ephem1.name {
-                                    "Luna" => "Moon",
-                                    _ => ephem1.name,
-                                },
+                                ephem1.spice_name().unwrap(),
                                 epoch.to_et_seconds(),
                                 "J2000",
                                 "NONE",
-                                match ephem2.name {
-                                    "Luna" => "Moon",
-                                    _ => ephem2.name,
-                                },
+                                ephem2.spice_name().unwrap(),
                             );
 
                             // Check component by component instead of rebuilding a Vector3 from the SPICE data
@@ -520,11 +520,7 @@ fn validate_jplde_translation() {
                     batch_src_frm.push(j2000_ephem1.to_string());
                     batch_dest_frm.push(j2000_ephem2.to_string());
                     batch_comp.push(component[i]);
-                    batch_hops.push(
-                        ctx.common_ephemeris_path(j2000_ephem1, j2000_ephem2)
-                            .unwrap()
-                            .0 as u8,
-                    );
+                    batch_hops.push(0); // TODO: Fix this
                     batch_mean.push(means[i].get());
                     batch_min.push(mins[i].get());
                     batch_max.push(maxes[i].get());

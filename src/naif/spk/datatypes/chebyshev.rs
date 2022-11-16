@@ -11,9 +11,13 @@
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits};
 
-use crate::naif::daf::{NAIFDataRecord, NAIFDataSet};
+use crate::{
+    math::{interpolation::chebyshev::cheby_eval, Vector3},
+    naif::daf::{NAIFDataRecord, NAIFDataSet},
+    prelude::AniseError,
+};
 
-pub struct ChebyshevSetType2Type3<'a> {
+pub struct Type2ChebyshevSet<'a> {
     pub init_epoch: Epoch,
     pub interval_length: Duration,
     pub rsize: usize,
@@ -21,7 +25,13 @@ pub struct ChebyshevSetType2Type3<'a> {
     pub record_data: &'a [f64],
 }
 
-impl<'a> fmt::Display for ChebyshevSetType2Type3<'a> {
+impl<'a> Type2ChebyshevSet<'a> {
+    pub fn degree(&self) -> usize {
+        (self.rsize - 2) / 3 - 1
+    }
+}
+
+impl<'a> fmt::Display for Type2ChebyshevSet<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -35,7 +45,9 @@ impl<'a> fmt::Display for ChebyshevSetType2Type3<'a> {
     }
 }
 
-impl<'a> NAIFDataSet<'a> for ChebyshevSetType2Type3<'a> {
+impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
+    // At this stage, we don't know the frame of what we're interpolating!
+    type StateKind = (Vector3, Vector3);
     type RecordKind = Type2ChebyshevRecord<'a>;
 
     fn from_slice_f64(slice: &'a [f64]) -> Self {
@@ -57,6 +69,40 @@ impl<'a> NAIFDataSet<'a> for ChebyshevSetType2Type3<'a> {
     fn nth_record(&self, n: usize) -> Self::RecordKind {
         let rcrd_len = self.record_data.len() / self.num_records;
         Self::RecordKind::from_slice_f64(&self.record_data[n * rcrd_len..(n + 1) * rcrd_len])
+    }
+
+    fn evaluate(&self, epoch: Epoch) -> Result<(Vector3, Vector3), AniseError> {
+        let window_duration_s = self.interval_length.to_seconds();
+
+        let radius_s = window_duration_s / 2.0;
+        let ephem_start_delta = epoch - self.init_epoch;
+        let ephem_start_delta_s = ephem_start_delta.to_seconds();
+
+        if ephem_start_delta_s < 0.0 {
+            return Err(AniseError::MissingInterpolationData(epoch));
+        }
+
+        // In seconds
+        let spline_idx = (ephem_start_delta_s / window_duration_s).round() as usize;
+
+        // Now, build the X, Y, Z data from the record data.
+        let record = self.nth_record(spline_idx);
+
+        let normalized_t = (epoch.to_et_seconds() - record.midpoint.to_et_seconds()) / radius_s;
+
+        let mut pos = Vector3::zeros();
+        let mut vel = Vector3::zeros();
+
+        for (cno, coeffs) in [record.x_coeffs, record.y_coeffs, record.z_coeffs]
+            .iter()
+            .enumerate()
+        {
+            let (val, deriv) = cheby_eval(normalized_t, &coeffs, radius_s, epoch, self.degree())?;
+            pos[cno] = val;
+            vel[cno] = deriv;
+        }
+
+        Ok((pos, vel))
     }
 }
 
@@ -135,35 +181,6 @@ impl<'a> NAIFDataRecord<'a> for Type3ChebyshevRecord<'a> {
             vx_coeffs: &slice[2 + num_coeffs * 3..num_coeffs * 4],
             vy_coeffs: &slice[2 + num_coeffs * 4..num_coeffs * 5],
             vz_coeffs: &slice[2 + num_coeffs * 5..],
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct PositionVelocityRecord {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
-    pub vx: f64,
-    pub vy: f64,
-    pub vz: f64,
-}
-
-impl fmt::Display for PositionVelocityRecord {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-
-impl<'a> NAIFDataRecord<'a> for PositionVelocityRecord {
-    fn from_slice_f64(slice: &'a [f64]) -> Self {
-        Self {
-            x: slice[0],
-            y: slice[1],
-            z: slice[2],
-            vx: slice[3],
-            vy: slice[4],
-            vz: slice[5],
         }
     }
 }

@@ -8,10 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::{
-    prelude::{AniseContext, AniseError},
-    HashType,
-};
+use crate::{context::Context, prelude::AniseError, NaifId};
 
 use super::{Frame, FrameTrait};
 use core::fmt::{Display, Formatter};
@@ -30,11 +27,11 @@ pub struct CelestialFrame {
 }
 
 impl FrameTrait for CelestialFrame {
-    fn ephemeris_hash(&self) -> HashType {
+    fn ephemeris_hash(&self) -> NaifId {
         self.frame.ephemeris_hash()
     }
 
-    fn orientation_hash(&self) -> HashType {
+    fn orientation_hash(&self) -> NaifId {
         self.frame.orientation_hash()
     }
 }
@@ -51,7 +48,7 @@ impl Display for CelestialFrame {
     }
 }
 
-impl<'a> AniseContext<'a> {
+impl<'a> Context<'a> {
     /// Tries to find the celestial frame data given the ephemeris center name and the orientation name.
     /// # Note
     /// The ephemeris name MUST match the name of the planetary constant.
@@ -71,11 +68,12 @@ impl<'a> AniseContext<'a> {
         orientation_name: &'a str,
         planetary_constants_name: &'a str,
     ) -> Result<CelestialFrame, AniseError> {
-        let constants = self.planetary_constants_from_name(planetary_constants_name)?;
+        todo!()
+        // let constants = self.planetary_constants_from_name(planetary_constants_name)?;
 
-        Ok(CelestialFrame {
-            frame: Frame::from_ephemeris_orientation_names(ephemeris_name, orientation_name),
-            mu_km3_s2: constants.mu_km3_s2,
-        })
+        // Ok(CelestialFrame {
+        //     frame: Frame::from_ephemeris_orientation_names(ephemeris_name, orientation_name),
+        //     mu_km3_s2: constants.mu_km3_s2,
+        // })
     }
 }

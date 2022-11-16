@@ -8,9 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 
-use log::error;
-
 use crate::astro::Aberration;
+use crate::context::Context;
 use crate::hifitime::Epoch;
 use crate::math::cartesian::CartesianState;
 use crate::math::Vector3;
@@ -18,13 +17,12 @@ use crate::structure::units::*;
 use crate::{
     errors::AniseError,
     prelude::{Frame, FrameTrait},
-    structure::context::AniseContext,
 };
 
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
 pub const MAX_TREE_DEPTH: usize = 8;
 
-impl<'a> AniseContext<'a> {
+impl<'a> Context<'a> {
     /// Returns the position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`.
     ///
     /// **WARNING:** This function only performs the translation and no rotation whatsoever. Use the `transform_from_to` function instead to include rotations.
@@ -44,7 +42,8 @@ impl<'a> AniseContext<'a> {
             return Ok(CartesianState::zero(from_frame));
         }
 
-        let (node_count, path, common_node) = self.common_ephemeris_path(to_frame, from_frame)?;
+        let (node_count, path, common_node) =
+            self.common_ephemeris_path(from_frame, to_frame, epoch)?;
 
         // The fwrd variables are the states from the `from frame` to the common node
         let (mut pos_fwrd, mut vel_fwrd, mut acc_fwrd, mut frame_fwrd) =
@@ -176,48 +175,6 @@ impl<'a> AniseContext<'a> {
             LengthUnit::Meter,
             TimeUnit::Second,
         )
-    }
-
-    /// Try to construct the path from the source frame all the way to the root ephemeris of this context.
-    pub fn translate_to_root(
-        &self,
-        source: Frame,
-        epoch: Epoch,
-        ab_corr: Aberration,
-        distance_unit: LengthUnit,
-        time_unit: TimeUnit,
-    ) -> Result<(Vector3, Vector3, Vector3), AniseError> {
-        // Build a tree, set a fixed depth to avoid allocations
-        let mut prev_ephem_hash = source.ephemeris_hash;
-
-        let mut pos = Vector3::zeros();
-        let mut vel = Vector3::zeros();
-        let mut acc = Vector3::zeros();
-
-        for _ in 0..MAX_TREE_DEPTH {
-            let idx = self.ephemeris_lut.index_for_hash(&prev_ephem_hash)?;
-            let parent_ephem = self.try_ephemeris_data(idx.into())?;
-            let parent_hash = parent_ephem.parent_ephemeris_hash;
-
-            let (this_pos, this_vel, this_accel, _) =
-                self.translate_to_parent(source, epoch, ab_corr, distance_unit, time_unit)?;
-
-            pos += this_pos;
-            vel += this_vel;
-            acc += this_accel;
-
-            if parent_hash == self.try_find_context_root()? {
-                return Ok((pos, vel, acc));
-            } else if let Err(e) = self.ephemeris_lut.index_for_hash(&parent_hash) {
-                if e == AniseError::ItemNotFound {
-                    // We have reached the root of this ephemeris and it has no parent.
-                    error!("{parent_hash} has no parent in this context");
-                    return Ok((pos, vel, acc));
-                }
-            }
-            prev_ephem_hash = parent_hash;
-        }
-        Err(AniseError::MaxTreeDepth)
     }
 
     /// Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame

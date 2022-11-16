@@ -22,8 +22,6 @@ pub mod errors;
 pub mod frames;
 pub mod math;
 pub mod naif;
-pub mod orientations;
-pub mod spline;
 pub mod structure;
 
 /// Re-export of hifitime
@@ -33,9 +31,11 @@ pub mod time {
 
 pub mod prelude {
     pub use crate::astro::Aberration;
+    pub use crate::context::Context;
     pub use crate::errors::AniseError;
     pub use crate::frames::*;
-    pub use crate::structure::context::AniseContext;
+    pub use crate::naif::{BPC, SPK};
+    pub use crate::structure::dataset::DataSet;
     pub use crate::structure::units::*;
     pub use crate::time::*;
     pub use std::fs::File;
@@ -45,7 +45,7 @@ pub mod prelude {
 pub(crate) const DBL_SIZE: usize = 8;
 
 /// Defines the hash used to identify parents.
-pub(crate) type HashType = u32;
+pub(crate) type NaifId = i32;
 
 /// file_mmap allows reading a file without memory allocation
 #[macro_export]

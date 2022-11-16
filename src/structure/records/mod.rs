@@ -7,9 +7,15 @@
  *
  * Documentation: https://nyxspace.com/
  */
+use der::{Decode, Encode};
 
-#[macro_use]
-extern crate approx;
-mod astro;
-mod ephemerides;
-mod frames;
+use crate::prelude::AniseError;
+
+pub trait Record<'a>: Encode + Decode<'a> {
+    /// Returns whether or not the integrity of the data is correct.
+    fn check_integrity(&self) -> Result<(), AniseError> {
+        Ok(())
+    }
+}
+
+pub mod spacecraft;

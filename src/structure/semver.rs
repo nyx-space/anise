@@ -7,6 +7,7 @@
  *
  * Documentation: https://nyxspace.com/
  */
+use core::fmt;
 use der::{asn1::OctetStringRef, Decode, Encode, Error, ErrorKind, Length, Reader, Writer};
 
 /// Semantic versioning is used throughout ANISE
@@ -50,5 +51,15 @@ impl<'a> Decode<'a> for Semver {
             minor: data.as_bytes()[1],
             patch: data.as_bytes()[2],
         })
+    }
+}
+
+impl fmt::Display for Semver {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(
+            f,
+            "ANISE version {}.{}.{}",
+            self.major, self.minor, self.patch
+        )
     }
 }

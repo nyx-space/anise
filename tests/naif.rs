@@ -8,7 +8,6 @@
  * Documentation: https://nyxspace.com/
  */
 
-use core::convert::TryInto;
 use std::mem::size_of_val;
 
 use anise::{
@@ -16,16 +15,10 @@ use anise::{
     naif::{
         daf::DAF,
         pck::BPCSummaryRecord,
-        spk::{
-            recordtypes::{ChebyshevSetType2Type3, Type2ChebyshevRecord},
-            summary::SPKSummaryRecord,
-            SPK,
-        },
-        Endian, SpiceContext,
+        spk::{datatypes::Type2ChebyshevSet, summary::SPKSummaryRecord},
+        Endian,
     },
     prelude::*,
-    structure::context::AniseContext,
-    structure::spline::{Evenness, Field, StateKind},
 };
 
 #[test]
@@ -66,6 +59,8 @@ fn test_spk_load_bytes() {
     assert_eq!(de421.daf_summary.next_record(), 0);
     assert_eq!(de421.daf_summary.prev_record(), 0);
 
+    println!("{}", de421.comments().unwrap());
+
     // From Python jplephem, an inspection of the coefficients of the DE421 file shows the number of segments we should have.
     // // So let's add it here as a test.
     // // >>> from jplephem.spk import SPK
@@ -79,7 +74,7 @@ fn test_spk_load_bytes() {
         let (name, summary) = de421.nth_summary(n).unwrap();
         println!("{} -> {}", name, summary);
         // We know that the DE421 data is all in Type 2
-        let data_set = de421.nth_data::<ChebyshevSetType2Type3>(n).unwrap();
+        let data_set = de421.nth_data::<Type2ChebyshevSet>(n).unwrap();
         assert_eq!(data_set.num_records, seg_len[n]);
         if summary.target_id == 301 {
             assert_eq!(
@@ -105,11 +100,11 @@ fn test_spk_load_bytes() {
     }
 
     // Try to grab some data here!
-    let data_set = de421.nth_data::<ChebyshevSetType2Type3>(3).unwrap();
+    let data_set = de421.nth_data::<Type2ChebyshevSet>(3).unwrap();
     println!("{data_set}");
 
     // Put this in a context
-    let spice = SpiceContext::default();
+    let spice = Context::default();
     let spice = spice.load_spk(&de421).unwrap();
 
     // Now load another DE file
@@ -130,4 +125,6 @@ fn test_spk_load_bytes() {
 
     // NOTE: Because everything is a pointer, the size on the stack remains constant at 521 bytes.
     println!("{}", size_of_val(&spice));
+
+    // TODO: Generate a BSP from GMAT
 }
