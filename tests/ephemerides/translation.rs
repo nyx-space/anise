@@ -25,7 +25,7 @@ fn de438s_translation_verif_venus2emb() {
     }
 
     // "Load" the file via a memory map (avoids allocations)
-    let path = "./data/de438s.anise";
+    let path = "./data/de438s.bsp";
     let buf = file_mmap!(path).unwrap();
     let spk = SPK::parse(&buf).unwrap();
     let ctx = Context::from_spk(&spk).unwrap();
@@ -112,7 +112,7 @@ fn de438s_translation_verif_venus2luna() {
     }
 
     // "Load" the file via a memory map (avoids allocations)
-    let path = "./data/de438s.anise";
+    let path = "./data/de438s.bsp";
     let buf = file_mmap!(path).unwrap();
     let spk = SPK::parse(&buf).unwrap();
     let ctx = Context::from_spk(&spk).unwrap();
@@ -207,7 +207,7 @@ fn de438s_translation_verif_emb2luna() {
     }
 
     // "Load" the file via a memory map (avoids allocations)
-    let path = "./data/de438s.anise";
+    let path = "./data/de438s.bsp";
     let buf = file_mmap!(path).unwrap();
     let spk = SPK::parse(&buf).unwrap();
     let ctx = Context::from_spk(&spk).unwrap();

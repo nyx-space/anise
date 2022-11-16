@@ -96,9 +96,9 @@ impl<'a: 'b, 'b> Context<'a> {
         for (spkno, maybe_spk) in self
             .spk_data
             .iter()
+            .take(self.num_loaded_spk())
             .rev()
             .enumerate()
-            .take(self.num_loaded_spk())
         {
             let spk = maybe_spk.unwrap();
             if let Ok((summary, idx_in_spk)) = spk.summary_from_name_at_epoch(name, epoch) {
@@ -120,9 +120,9 @@ impl<'a: 'b, 'b> Context<'a> {
         for (spkno, maybe_spk) in self
             .spk_data
             .iter()
+            .take(self.num_loaded_spk())
             .rev()
             .enumerate()
-            .take(self.num_loaded_spk())
         {
             let spk = maybe_spk.unwrap();
             if let Ok((summary, idx_in_spk)) = spk.summary_from_id_at_epoch(id, epoch) {

@@ -39,12 +39,11 @@ impl<'a> Context<'a> {
         // The common center is the absolute minimum of all centers due to the NAIF numbering.
         let mut common_center = i32::MAX;
 
-        for maybe_spk in self.spk_data.iter().rev().take(self.num_loaded_spk()) {
+        for maybe_spk in self.spk_data.iter().take(self.num_loaded_spk()).rev() {
             let spk = maybe_spk.unwrap();
 
             for summary in spk.data_summaries {
                 // This summary exists, so we need to follow the branch of centers up the tree.
-                let mut this_common_center = i32::MAX;
                 if summary.target_id.abs() < common_center.abs() {
                     common_center = summary.target_id;
                     if common_center == 0 {
@@ -76,7 +75,6 @@ impl<'a> Context<'a> {
         // Build a tree, set a fixed depth to avoid allocations
         let mut of_path = [None; MAX_TREE_DEPTH];
         let mut of_path_len = 0;
-        let mut prev_ephem_hash = source.ephemeris_id;
 
         let common_center = self.try_find_context_center()?;
 
@@ -84,18 +82,22 @@ impl<'a> Context<'a> {
             .spk_summary_from_id_at_epoch(source.ephemeris_id, epoch)?
             .0;
 
-        let mut target_id = summary.target_id;
-        for idx in 0..MAX_TREE_DEPTH {
-            match self.spk_summary_from_id_at_epoch(target_id, epoch) {
-                Ok((summary, _, _)) => {
-                    target_id = summary.target_id;
-                    if target_id == common_center {
-                        // We're found the path!
+        let mut center_id = summary.center_id;
 
+        if summary.center_id == common_center {
+            // Well that was quick!
+            return Ok((of_path_len, of_path));
+        }
+
+        for _ in 0..MAX_TREE_DEPTH {
+            match self.spk_summary_from_id_at_epoch(center_id, epoch) {
+                Ok((summary, _, _)) => {
+                    center_id = summary.center_id;
+                    of_path[of_path_len] = Some(center_id);
+                    of_path_len += 1;
+                    if center_id == common_center {
+                        // We're found the path!
                         return Ok((of_path_len, of_path));
-                    } else {
-                        of_path[of_path_len] = Some(target_id);
-                        of_path_len += 1;
                     }
                 }
                 Err(e) => {
