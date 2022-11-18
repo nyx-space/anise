@@ -14,6 +14,7 @@ use anise::constants::frames::{EARTH_MOON_BARYCENTER_J2000, LUNA_J2000, VENUS_J2
 use anise::file_mmap;
 use anise::math::Vector3;
 use anise::prelude::*;
+use log::error;
 
 // For the Earth Moon Barycenter to Luna, there velocity error is up to 3e-14 km/s, or 3e-11 m/s, or 13 picometers per second.
 const VELOCITY_EPSILON_KM_S: f64 = 1e-13;
@@ -237,6 +238,9 @@ fn de438s_translation_verif_emb2luna() {
         )
         .unwrap();
 
+    // Check that we correctly set the output frame
+    assert_eq!(state.frame, LUNA_J2000);
+
     let pos_expct_km = Vector3::new(
         8.1576591043659311e+04,
         3.4547568914467981e+05,
@@ -304,6 +308,7 @@ fn de438s_translation_verif_emb2luna() {
 #[ignore]
 #[cfg(feature = "std")]
 fn validate_jplde_translation() {
+    use anise::math::utils::{abs_diff, rel_diff};
     use anise::naif::daf::NAIFSummaryRecord;
     use anise::prelude::Frame;
     use arrow::array::{ArrayRef, Float64Array, StringArray, UInt8Array};
@@ -311,11 +316,6 @@ fn validate_jplde_translation() {
     use arrow::record_batch::RecordBatch;
     use hifitime::{TimeSeries, TimeUnits};
     use log::info;
-    use online_statistics::maximum::Max;
-    use online_statistics::mean::Mean;
-    use online_statistics::minimum::Min;
-    use online_statistics::quantile::Quantile;
-    use online_statistics::stats::Univariate;
     use parquet::arrow::arrow_writer::ArrowWriter;
     use parquet::file::properties::WriterProperties;
     use spice;
@@ -327,6 +327,7 @@ fn validate_jplde_translation() {
     const FAIL_VEL_KM_S: f64 = 1e-1;
     // Number of queries we should do per pair of ephemerides
     const NUM_QUERIES_PER_PAIR: f64 = 1_000.0;
+    const BATCH_SIZE: usize = 10_000;
 
     if pretty_env_logger::try_init().is_err() {
         println!("could not init env_logger");
@@ -341,12 +342,9 @@ fn validate_jplde_translation() {
         Field::new("destination frame", DataType::Utf8, false),
         Field::new("# hops", DataType::UInt8, false),
         Field::new("component", DataType::Utf8, false),
-        Field::new("mean err", DataType::Float64, false),
-        Field::new("min err", DataType::Float64, false),
-        Field::new("q25 err", DataType::Float64, false),
-        Field::new("q50 err", DataType::Float64, false),
-        Field::new("q75 err", DataType::Float64, false),
-        Field::new("max err", DataType::Float64, false),
+        Field::new("Epoch UTC", DataType::Utf8, false),
+        Field::new("absolute error", DataType::Float64, false),
+        Field::new("relative error", DataType::Float64, false),
     ]);
 
     let file = File::create("target/validation-test-results.parquet").unwrap();
@@ -369,6 +367,8 @@ fn validate_jplde_translation() {
         // We only have one SPK loaded, so we know what summary to go through
         let first_spk = ctx.spk_data[0].unwrap();
 
+        let mut pairs = Vec::new();
+
         for ephem1 in first_spk.data_summaries {
             let j2000_ephem1 = Frame::from_ephem_j2000(ephem1.target_id);
 
@@ -376,6 +376,18 @@ fn validate_jplde_translation() {
                 if ephem1.target_id == ephem2.target_id {
                     continue;
                 }
+
+                let key = if ephem1.target_id < ephem2.target_id {
+                    (ephem1.target_id, ephem2.target_id)
+                } else {
+                    (ephem2.target_id, ephem1.target_id)
+                };
+
+                if pairs.contains(&key) {
+                    // We're already handled that pair
+                    continue;
+                }
+                pairs.push(key);
 
                 let j2000_ephem2 = Frame::from_ephem_j2000(ephem2.target_id);
 
@@ -397,63 +409,23 @@ fn validate_jplde_translation() {
 
                 let time_it = TimeSeries::exclusive(start_epoch, end_epoch - time_step, time_step);
 
-                let mut maxes = [
-                    Max::new(),
-                    Max::new(),
-                    Max::new(),
-                    Max::new(),
-                    Max::new(),
-                    Max::new(),
-                ];
-
-                let mut mins = [
-                    Min::new(),
-                    Min::new(),
-                    Min::new(),
-                    Min::new(),
-                    Min::new(),
-                    Min::new(),
-                ];
-
-                let mut means = [
-                    Mean::new(),
-                    Mean::new(),
-                    Mean::new(),
-                    Mean::new(),
-                    Mean::new(),
-                    Mean::new(),
-                ];
-
-                let mut meds = [
-                    Quantile::default(),
-                    Quantile::default(),
-                    Quantile::default(),
-                    Quantile::default(),
-                    Quantile::default(),
-                    Quantile::default(),
-                ];
-
-                let mut q25s = [
-                    Quantile::new(0.25).unwrap(),
-                    Quantile::new(0.25).unwrap(),
-                    Quantile::new(0.25).unwrap(),
-                    Quantile::new(0.25).unwrap(),
-                    Quantile::new(0.25).unwrap(),
-                    Quantile::new(0.25).unwrap(),
-                ];
-
-                let mut q75s = [
-                    Quantile::new(0.75).unwrap(),
-                    Quantile::new(0.75).unwrap(),
-                    Quantile::new(0.75).unwrap(),
-                    Quantile::new(0.75).unwrap(),
-                    Quantile::new(0.75).unwrap(),
-                    Quantile::new(0.75).unwrap(),
-                ];
-
                 let component = ["X", "Y", "Z", "VX", "VY", "VZ"];
 
-                for epoch in time_it {
+                let mut batch_de_name = Vec::with_capacity(BATCH_SIZE);
+                let mut batch_src_frm = Vec::with_capacity(BATCH_SIZE);
+                let mut batch_dest_frm = Vec::with_capacity(BATCH_SIZE);
+                let mut batch_comp = Vec::with_capacity(BATCH_SIZE);
+                let mut batch_epoch = Vec::with_capacity(BATCH_SIZE);
+                let mut batch_hops = Vec::with_capacity(BATCH_SIZE);
+                let mut batch_abs = Vec::with_capacity(BATCH_SIZE);
+                let mut batch_rel = Vec::with_capacity(BATCH_SIZE);
+
+                for (i, epoch) in time_it.enumerate() {
+                    let hops = ctx
+                        .common_ephemeris_path(j2000_ephem1, j2000_ephem2, epoch)
+                        .unwrap()
+                        .0 as u8;
+
                     match ctx.translate_from_to_km_s_geometric(j2000_ephem1, j2000_ephem2, epoch) {
                         Ok(state) => {
                             // Perform the same query in SPICE
@@ -474,7 +446,8 @@ fn validate_jplde_translation() {
                                 };
 
                                 // We don't look at the absolute error here, that's for the stats to show any skewness
-                                let err = anise_value - spice_state[i];
+                                let abs_err = abs_diff(anise_value, spice_state[i]);
+                                let rel_err = rel_diff(anise_value, spice_state[i], EPSILON);
 
                                 if !relative_eq!(anise_value, spice_state[i], epsilon = max_err) {
                                     // Always save the parquet file
@@ -482,51 +455,88 @@ fn validate_jplde_translation() {
 
                                     panic!(
                                         "{epoch:E}\t{}got = {:.16}\texp = {:.16}\terr = {:.16}",
-                                        component[i], anise_value, spice_state[i], err
+                                        component[i], anise_value, spice_state[i], rel_err
                                     );
                                 }
 
-                                // Update statistics
-                                mins[i].update(err);
-                                maxes[i].update(err);
-                                q25s[i].update(err);
-                                q75s[i].update(err);
-                                meds[i].update(err);
-                                means[i].update(err);
+                                // Update data
+
+                                batch_de_name.push(de_name.clone());
+                                batch_src_frm.push(j2000_ephem1.to_string());
+                                batch_dest_frm.push(j2000_ephem2.to_string());
+                                batch_hops.push(hops);
+                                batch_comp.push(component[i]);
+                                batch_epoch.push("".to_string());
+                                batch_abs.push(abs_err);
+                                batch_rel.push(rel_err);
+                            }
+
+                            // Consider writing the batch
+                            if i % BATCH_SIZE == 0 {
+                                writer
+                                    .write(
+                                        &RecordBatch::try_from_iter(vec![
+                                            (
+                                                "DE file",
+                                                Arc::new(StringArray::from(batch_de_name.clone()))
+                                                    as ArrayRef,
+                                            ),
+                                            (
+                                                "source frame",
+                                                Arc::new(StringArray::from(batch_src_frm.clone()))
+                                                    as ArrayRef,
+                                            ),
+                                            (
+                                                "destination frame",
+                                                Arc::new(StringArray::from(batch_dest_frm.clone()))
+                                                    as ArrayRef,
+                                            ),
+                                            (
+                                                "# hops",
+                                                Arc::new(UInt8Array::from(batch_hops.clone()))
+                                                    as ArrayRef,
+                                            ),
+                                            (
+                                                "component",
+                                                Arc::new(StringArray::from(batch_comp.clone()))
+                                                    as ArrayRef,
+                                            ),
+                                            (
+                                                "Epoch UTC",
+                                                Arc::new(StringArray::from(batch_epoch.clone()))
+                                                    as ArrayRef,
+                                            ),
+                                            (
+                                                "absolute error",
+                                                Arc::new(Float64Array::from(batch_abs.clone()))
+                                                    as ArrayRef,
+                                            ),
+                                            (
+                                                "relative error",
+                                                Arc::new(Float64Array::from(batch_rel.clone()))
+                                                    as ArrayRef,
+                                            ),
+                                        ])
+                                        .unwrap(),
+                                    )
+                                    .unwrap();
+                                // Re-init all of the vectors
+                                batch_de_name = Vec::with_capacity(BATCH_SIZE);
+                                batch_src_frm = Vec::with_capacity(BATCH_SIZE);
+                                batch_dest_frm = Vec::with_capacity(BATCH_SIZE);
+                                batch_comp = Vec::with_capacity(BATCH_SIZE);
+                                batch_epoch = Vec::with_capacity(BATCH_SIZE);
+                                batch_hops = Vec::with_capacity(BATCH_SIZE);
+                                batch_abs = Vec::with_capacity(BATCH_SIZE);
+                                batch_rel = Vec::with_capacity(BATCH_SIZE);
                             }
                         }
                         Err(e) => {
                             // Always save the parquet file
-                            writer.close().unwrap();
-                            panic!("At epoch {epoch:E}: {e}");
+                            // writer.close().unwrap();
+                            error!("At epoch {epoch:E}: {e}");
                         }
                     };
-                }
-
-                let mut batch_de_name = Vec::with_capacity(6);
-                let mut batch_src_frm = Vec::with_capacity(6);
-                let mut batch_dest_frm = Vec::with_capacity(6);
-                let mut batch_comp = Vec::with_capacity(6);
-                let mut batch_hops = Vec::with_capacity(6);
-                let mut batch_mean = Vec::with_capacity(6);
-                let mut batch_min = Vec::with_capacity(6);
-                let mut batch_max = Vec::with_capacity(6);
-                let mut batch_q25 = Vec::with_capacity(6);
-                let mut batch_q50 = Vec::with_capacity(6);
-                let mut batch_q75 = Vec::with_capacity(6);
-
-                for i in 0..6 {
-                    batch_de_name.push(de_name.clone());
-                    batch_src_frm.push(j2000_ephem1.to_string());
-                    batch_dest_frm.push(j2000_ephem2.to_string());
-                    batch_comp.push(component[i]);
-                    batch_hops.push(0); // TODO: Fix this
-                    batch_mean.push(means[i].get());
-                    batch_min.push(mins[i].get());
-                    batch_max.push(maxes[i].get());
-                    batch_q50.push(meds[i].get());
-                    batch_q25.push(q25s[i].get());
-                    batch_q75.push(q75s[i].get());
                 }
 
                 writer
@@ -550,28 +560,16 @@ fn validate_jplde_translation() {
                                 Arc::new(StringArray::from(batch_comp)) as ArrayRef,
                             ),
                             (
-                                "mean err",
-                                Arc::new(Float64Array::from(batch_mean)) as ArrayRef,
+                                "Epoch UTC",
+                                Arc::new(StringArray::from(batch_epoch)) as ArrayRef,
                             ),
                             (
-                                "min err",
-                                Arc::new(Float64Array::from(batch_min)) as ArrayRef,
+                                "absolute error",
+                                Arc::new(Float64Array::from(batch_abs)) as ArrayRef,
                             ),
                             (
-                                "q25 err",
-                                Arc::new(Float64Array::from(batch_q25)) as ArrayRef,
-                            ),
-                            (
-                                "q50 err",
-                                Arc::new(Float64Array::from(batch_q50)) as ArrayRef,
-                            ),
-                            (
-                                "q75 err",
-                                Arc::new(Float64Array::from(batch_q75)) as ArrayRef,
-                            ),
-                            (
-                                "max err",
-                                Arc::new(Float64Array::from(batch_max)) as ArrayRef,
+                                "relative error",
+                                Arc::new(Float64Array::from(batch_rel)) as ArrayRef,
                             ),
                         ])
                         .unwrap(),
@@ -582,7 +580,7 @@ fn validate_jplde_translation() {
                 writer.flush().unwrap();
             }
 
-            info!("[{de_name}] done with {} ", j2000_ephem1);
+            info!("[{de_name}] done with {}", j2000_ephem1);
         }
         // Unload SPICE (note that this is not needed for ANISE because it falls out of scope)
         spice::unload(&format!("data/{de_name}.bsp"));

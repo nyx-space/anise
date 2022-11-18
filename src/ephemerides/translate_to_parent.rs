@@ -15,7 +15,7 @@ use crate::context::Context;
 use crate::errors::IntegrityErrorKind;
 use crate::hifitime::Epoch;
 use crate::math::Vector3;
-use crate::naif::daf::NAIFDataSet;
+use crate::naif::daf::{NAIFDataSet, NAIFSummaryRecord};
 use crate::naif::spk::datatypes::{HermiteSetType13, LagrangeSetType9, Type2ChebyshevSet};
 use crate::structure::units::*;
 use crate::{errors::AniseError, prelude::Frame};
@@ -55,24 +55,24 @@ impl<'a> Context<'a> {
             .ok_or(AniseError::IntegrityError(IntegrityErrorKind::DataMissing))?;
 
         // Perform a translation with position and velocity;
-        let mut acc = Vector3::zeros();
+        let acc = Vector3::zeros();
 
         // Now let's simply evaluate the data
-        let (mut pos_km, mut vel_km_s) = match summary.data_type_i {
+        let (pos_km, vel_km_s) = match summary.data_type_i {
             2 => {
                 // Type 2 Chebyshev
                 let data = spk_data.nth_data::<Type2ChebyshevSet>(idx_in_spk)?;
-                data.evaluate(epoch)?
+                data.evaluate(epoch, summary.start_epoch())?
             }
             9 => {
                 // Type 9: Lagrange Interpolation --- Unequal Time Steps
                 let data = spk_data.nth_data::<LagrangeSetType9>(idx_in_spk)?;
-                data.evaluate(epoch)?
+                data.evaluate(epoch, summary.start_epoch())?
             }
             13 => {
                 // Type 13: Hermite Interpolation --- Unequal Time Steps
                 let data = spk_data.nth_data::<HermiteSetType13>(idx_in_spk)?;
-                data.evaluate(epoch)?
+                data.evaluate(epoch, summary.start_epoch())?
             }
             _ => todo!("{} is not yet supported", summary.data_type_i),
         };

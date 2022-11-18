@@ -23,7 +23,7 @@ fn common_root_verif() {
     }
 
     // SLS Launch epoch!!! IT'S LIIIIVEE!!
-    let epoch = Epoch::from_str("2022-11-15T23:47:36 +06:00").unwrap();
+    let epoch = Epoch::from_str("2022-11-15T23:47:36+06:00").unwrap();
 
     // Load the context
     // Check that this test works for DE430, DE438s (short), and DE440

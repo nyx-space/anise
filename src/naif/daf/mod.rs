@@ -44,9 +44,9 @@ pub trait NAIFDataSet<'a>: Display {
     // TODO: Return a result here.
     fn from_slice_f64(slice: &'a [f64]) -> Self;
 
-    fn nth_record(&self, n: usize) -> Self::RecordKind;
+    fn nth_record(&self, n: usize) -> Result<Self::RecordKind, AniseError>;
 
-    fn evaluate(&self, epoch: Epoch) -> Result<Self::StateKind, AniseError>;
+    fn evaluate(&self, epoch: Epoch, start_epoch: Epoch) -> Result<Self::StateKind, AniseError>;
 }
 
 pub trait NAIFDataRecord<'a>: Display {

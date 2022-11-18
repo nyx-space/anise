@@ -72,18 +72,21 @@ impl<'a> Context<'a> {
         source: &Frame,
         epoch: Epoch,
     ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH]), AniseError> {
-        // Build a tree, set a fixed depth to avoid allocations
-        let mut of_path = [None; MAX_TREE_DEPTH];
-        let mut of_path_len = 0;
-
-        let common_center = self.try_find_context_center()?;
-
+        // Grab the summary data, which we use to find the paths
         let summary = self
             .spk_summary_from_id_at_epoch(source.ephemeris_id, epoch)?
             .0;
 
         let mut center_id = summary.center_id;
 
+        // Build a tree, set a fixed depth to avoid allocations
+        let mut of_path = [None; MAX_TREE_DEPTH];
+        let mut of_path_len = 0;
+
+        of_path[of_path_len] = Some(summary.center_id);
+        of_path_len += 1;
+
+        let common_center = self.try_find_context_center()?;
         if summary.center_id == common_center {
             // Well that was quick!
             return Ok((of_path_len, of_path));

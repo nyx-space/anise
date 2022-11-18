@@ -37,9 +37,10 @@ fn benchmark_single_hop_anise() {
     let time_step = ((end_epoch - start_epoch).to_seconds() / NUM_QUERIES_PER_PAIR).seconds();
     let time_it = TimeSeries::exclusive(start_epoch, end_epoch - time_step, time_step);
 
-    let path = "./data/de438s.anise";
+    let path = "./data/de438s.bsp";
     let buf = file_mmap!(path).unwrap();
-    let ctx = DataSet::from_bytes(&buf);
+    let spk = SPK::parse(&buf).unwrap();
+    let ctx = Context::from_spk(&spk).unwrap();
 
     for epoch in time_it {
         black_box(

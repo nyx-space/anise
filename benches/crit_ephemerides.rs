@@ -21,7 +21,7 @@ fn benchmark_single_hop_spice(time_it: TimeSeries) {
     }
 }
 
-fn benchmark_single_hop_anise(ctx: &DataSet, time_it: TimeSeries) {
+fn benchmark_single_hop_anise(ctx: &Context, time_it: TimeSeries) {
     for epoch in time_it {
         black_box(
             ctx.translate_from_to_km_s_geometric(EARTH_J2000, LUNA_J2000, epoch)
@@ -37,9 +37,10 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let time_it = TimeSeries::exclusive(start_epoch, end_epoch - time_step, time_step);
 
     // Load ANISE data
-    let path = "./data/de438s.anise";
+    let path = "./data/de438s.bsp";
     let buf = file_mmap!(path).unwrap();
-    let ctx = DataSet::from_bytes(&buf);
+    let spk = SPK::parse(&buf).unwrap();
+    let ctx = Context::from_spk(&spk).unwrap();
 
     // Load SPICE data
     spice::furnsh("data/de438s.bsp");

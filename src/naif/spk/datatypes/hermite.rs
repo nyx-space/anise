@@ -14,6 +14,7 @@ use hifitime::{Duration, Epoch, TimeUnits};
 use crate::{
     math::{cartesian::CartesianState, Vector3},
     naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord},
+    prelude::AniseError,
     DBL_SIZE,
 };
 
@@ -61,12 +62,21 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
         }
     }
 
-    fn nth_record(&self, n: usize) -> Self::RecordKind {
+    fn nth_record(&self, n: usize) -> Result<Self::RecordKind, AniseError> {
         let rcrd_len = self.record_data.len() / self.num_records;
-        Self::RecordKind::from_slice_f64(&self.record_data[n * rcrd_len..(n + 1) * rcrd_len])
+        Ok(Self::RecordKind::from_slice_f64(
+            &self
+                .record_data
+                .get(n * rcrd_len..(n + 1) * rcrd_len)
+                .ok_or(AniseError::MalformedData((n + 1) * rcrd_len))?,
+        ))
     }
 
-    fn evaluate(&self, epoch: Epoch) -> Result<CartesianState, crate::prelude::AniseError> {
+    fn evaluate(
+        &self,
+        epoch: Epoch,
+        start_epoch: Epoch,
+    ) -> Result<CartesianState, crate::prelude::AniseError> {
         todo!()
     }
 }
@@ -124,12 +134,21 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
         }
     }
 
-    fn nth_record(&self, n: usize) -> Self::RecordKind {
+    fn nth_record(&self, n: usize) -> Result<Self::RecordKind, AniseError> {
         let rcrd_len = self.state_data.len() / self.num_records;
-        Self::RecordKind::from_slice_f64(&self.state_data[n * rcrd_len..(n + 1) * rcrd_len])
+        Ok(Self::RecordKind::from_slice_f64(
+            &self
+                .state_data
+                .get(n * rcrd_len..(n + 1) * rcrd_len)
+                .ok_or(AniseError::MalformedData((n + 1) * rcrd_len))?,
+        ))
     }
 
-    fn evaluate(&self, epoch: Epoch) -> Result<Self::StateKind, crate::prelude::AniseError> {
+    fn evaluate(
+        &self,
+        epoch: Epoch,
+        start_epoch: Epoch,
+    ) -> Result<Self::StateKind, crate::prelude::AniseError> {
         todo!()
     }
 }
