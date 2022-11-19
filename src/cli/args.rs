@@ -11,33 +11,18 @@ pub struct Args {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Subcommand)]
 pub enum Actions {
-    /// Convert a supported SPICE file into an ANISE file
-    Convert {
-        /// Set to true to include empty ephemerides in the ANISE file (default: false)
-        #[clap(long)]
-        allow_empty: bool,
-        /// Load the ANISE file and check that it was correctly converted
-        #[clap(long)]
-        check: bool,
-        /// Path to SPICE file
-        #[clap(parse(from_os_str))]
-        file: PathBuf,
-    },
     /// Checks the integrity of the file
     Check {
         /// Path to ANISE file
         #[clap(parse(from_os_str))]
         file: PathBuf,
+        /// CRC32 checksum
+        crc32_checksum: u32,
     },
     /// Inspects what's in an ANISE file (and also checks the integrity)
     Inspect {
         /// Path to ANISE file
         #[clap(parse(from_os_str))]
         file: PathBuf,
-    },
-    /// Merge several ANISE files together
-    Merge {
-        /// Input files are all of the files but the last one
-        files: Vec<PathBuf>,
     },
 }

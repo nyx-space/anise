@@ -8,14 +8,14 @@
  * Documentation: https://nyxspace.com/
  */
 
-use zerocopy::FromBytes;
+use zerocopy::{AsBytes, FromBytes};
 
 use crate::{naif::Endian, prelude::AniseError, DBL_SIZE};
 use log::{error, warn};
 
 use super::{NAIFRecord, RCRD_LEN};
 
-#[derive(Debug, FromBytes)]
+#[derive(Debug, FromBytes, AsBytes)]
 #[repr(C)]
 pub struct DAFFileRecord {
     pub locidw: [u8; 8],
@@ -129,7 +129,7 @@ impl DAFFileRecord {
     }
 }
 
-#[derive(Debug, Default, FromBytes)]
+#[derive(AsBytes, Debug, Default, FromBytes)]
 #[repr(C)]
 pub struct DAFSummaryRecord {
     next_record: f64,
@@ -157,7 +157,8 @@ impl DAFSummaryRecord {
     }
 }
 
-#[derive(Debug, FromBytes)]
+#[derive(AsBytes, Debug, FromBytes)]
+#[repr(C)]
 pub struct NameRecord {
     raw_names: [u8; RCRD_LEN],
 }

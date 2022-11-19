@@ -8,12 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 
-use hifitime::Epoch;
-use zerocopy::FromBytes;
-
 use crate::naif::daf::{NAIFRecord, NAIFSummaryRecord};
+use hifitime::Epoch;
+use zerocopy::{AsBytes, FromBytes};
 
-#[derive(Copy, Clone, Debug, Default, FromBytes)]
+#[derive(Clone, Copy, Debug, Default, AsBytes, FromBytes)]
 #[repr(C)]
 pub struct BPCSummaryRecord {
     pub start_epoch_et_s: f64,
@@ -23,6 +22,7 @@ pub struct BPCSummaryRecord {
     pub data_type_i: i32,
     pub start_idx: i32,
     pub end_idx: i32,
+    pub unused: i32,
 }
 
 impl NAIFRecord for BPCSummaryRecord {}

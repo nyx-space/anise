@@ -8,15 +8,14 @@
  * Documentation: https://nyxspace.com/
  */
 
+pub use super::recordtypes::{DAFFileRecord, DAFSummaryRecord, NameRecord};
+use super::{NAIFDataSet, NAIFRecord, NAIFSummaryRecord};
+use crate::{errors::IntegrityErrorKind, prelude::AniseError, DBL_SIZE};
+use core::hash::Hash;
 use hifitime::Epoch;
 use zerocopy::{FromBytes, LayoutVerified};
 
 pub(crate) const RCRD_LEN: usize = 1024;
-
-pub use super::recordtypes::{DAFFileRecord, DAFSummaryRecord, NameRecord};
-use super::{NAIFDataSet, NAIFRecord, NAIFSummaryRecord};
-use crate::{prelude::AniseError, DBL_SIZE};
-
 #[derive(Default, Debug)]
 pub struct DAF<'a, R: NAIFSummaryRecord> {
     pub file_record: DAFFileRecord,
@@ -25,10 +24,48 @@ pub struct DAF<'a, R: NAIFSummaryRecord> {
     pub data_summaries: &'a [R],
     /// All of the underlying bytes including what has already been parsed (helps for indexing the data)
     pub bytes: &'a [u8],
+    pub crc32_checksum: u32,
 }
 
 impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
+    /// Compute the CRC32 of the underlying bytes
+    pub fn crc32(&self) -> u32 {
+        crc32fast::hash(self.bytes)
+    }
+
+    /// Scrubs the data by computing the CRC32 of the bytes and making sure that it still matches the previously known hash
+    pub fn scrub(&self) -> Result<(), AniseError> {
+        if self.crc32() == self.crc32_checksum {
+            Ok(())
+        } else {
+            // Compiler will optimize the double computation away
+            Err(AniseError::IntegrityError(
+                IntegrityErrorKind::ChecksumInvalid {
+                    expected: self.crc32_checksum,
+                    computed: self.crc32(),
+                },
+            ))
+        }
+    }
+
+    /// Parse the DAF onl if the CRC32 checksum of the data is valid
+    pub fn check_then_parse(bytes: &'a [u8], expected_crc32: u32) -> Result<Self, AniseError> {
+        let computed_crc32 = crc32fast::hash(bytes);
+        if computed_crc32 == expected_crc32 {
+            Self::parse(bytes)
+        } else {
+            Err(AniseError::IntegrityError(
+                IntegrityErrorKind::ChecksumInvalid {
+                    expected: expected_crc32,
+                    computed: computed_crc32,
+                },
+            ))
+        }
+    }
+
+    /// Parse the provided bytes as a SPICE Double Array File
     pub fn parse(bytes: &'a [u8]) -> Result<Self, AniseError> {
+        let crc32_checksum = crc32fast::hash(bytes);
         let file_record = DAFFileRecord::read_from(&bytes[..DAFFileRecord::SIZE]).unwrap();
 
         // Move onto the next record, DAF indexes start at 1 ... =(
@@ -41,7 +78,7 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
         let daf_summary =
             DAFSummaryRecord::read_from(&rcrd_bytes[..DAFSummaryRecord::SIZE]).unwrap();
 
-        // The SPK summaries are defined in this same record, so let's read them now.
+        // The summaries are defined in this same record, so let's read them now.
         let data_summaries = match LayoutVerified::new_slice(&rcrd_bytes[DAFSummaryRecord::SIZE..])
         {
             Some(data) => data.into_slice(),
@@ -61,6 +98,7 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
             name_record,
             data_summaries,
             bytes,
+            crc32_checksum,
         })
     }
 
@@ -184,5 +222,12 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
         }
 
         Ok(rslt)
+    }
+}
+
+impl<'a, R: NAIFSummaryRecord> Hash for DAF<'a, R> {
+    /// Hash will only hash the bytes, nothing else (since these are derived from the bytes anyway).
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.bytes.hash(state);
     }
 }

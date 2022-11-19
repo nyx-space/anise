@@ -32,6 +32,10 @@ fn test_binary_pck_load() {
     let bytes = file_mmap!(filename).unwrap();
 
     let high_prec = DAF::<BPCSummaryRecord>::parse(&bytes).unwrap();
+
+    assert_eq!(high_prec.crc32(), 0x97bca34c);
+    assert!(high_prec.scrub().is_ok());
+
     for n in 0..high_prec.daf_summary.num_summaries() {
         let (name, data) = high_prec.nth_summary(n).unwrap();
         println!("{} -> {:?}", name, data);
@@ -48,6 +52,10 @@ fn test_spk_load_bytes() {
     let bytes = file_mmap!("data/de421.bsp").unwrap();
 
     let de421 = DAF::<SPKSummaryRecord>::parse(&bytes).unwrap();
+
+    assert_eq!(de421.crc32(), 0x5c78bc13);
+    assert!(de421.scrub().is_ok());
+
     assert_eq!(de421.file_record.nd, 2);
     assert_eq!(de421.file_record.ni, 6);
     assert_eq!(de421.file_record.identification().unwrap(), "SPK");

@@ -8,7 +8,5 @@
  * Documentation: https://nyxspace.com/
  */
 
-mod parent_translation_verif;
-mod paths;
-mod translation;
-mod validation;
+mod hermite_type13;
+mod jplde_cheby_type2;

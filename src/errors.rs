@@ -89,11 +89,13 @@ pub enum IntegrityErrorKind {
     DisjointRoots { from_frame: Frame, to_frame: Frame },
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum MathErrorKind {
     DivisionByZero,
     StateEpochsDiffer,
     StateFramesDiffer,
+    InvalidInterpolationData(String),
+    PolynomialOrderError(usize),
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]

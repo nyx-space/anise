@@ -11,6 +11,7 @@
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits};
 
+use crate::math::polyfit::{LargestPolynomial, MAX_SAMPLES};
 use crate::{
     math::{cartesian::CartesianState, Vector3},
     naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord},
@@ -82,16 +83,21 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
 }
 
 pub struct HermiteSetType13<'a> {
-    pub window_size: usize,
+    /// Number of samples to use to build the interpolation
+    pub samples: usize,
+    /// Total number of records stored in this data
     pub num_records: usize,
+    /// State date used for the interpolation
     pub state_data: &'a [f64],
+    /// Epochs of each of the state data, must be of the same length as state_data. ANISE expects this to be ordered chronologically!
     pub epoch_data: &'a [f64],
+    /// Epoch registry to reduce the search space in epoch data.
     pub epoch_registry: &'a [f64],
 }
 
 impl<'a> HermiteSetType13<'a> {
     pub fn degree(&self) -> usize {
-        2 * self.window_size - 1
+        2 * self.samples - 1
     }
 }
 
@@ -116,7 +122,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
     fn from_slice_f64(slice: &'a [f64]) -> Self {
         // For this kind of record, the metadata is stored at the very end of the dataset
         let num_records = slice[slice.len() - 1] as usize;
-        let window_size = slice[slice.len() - 2] as usize;
+        let samples = slice[slice.len() - 2] as usize;
         // NOTE: The ::SIZE returns the C representation memory size of this, but we only want the number of doubles.
         let state_data_end_idx = PositionVelocityRecord::SIZE / DBL_SIZE * num_records;
         let state_data = slice.get(0..state_data_end_idx).unwrap();
@@ -126,7 +132,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
         let epoch_registry = slice.get(epoch_data_end_idx..slice.len() - 2).unwrap();
 
         Self {
-            window_size,
+            samples,
             num_records,
             state_data,
             epoch_data,
@@ -149,6 +155,73 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
         epoch: Epoch,
         start_epoch: Epoch,
     ) -> Result<Self::StateKind, crate::prelude::AniseError> {
-        todo!()
+        // Start by doing a binary search on the epoch registry to limit the search space in the total number of epochs.
+        // TODO: use the epoch registry to reduce the search space
+        // Check that we even have interpolation data for that time
+        if epoch.to_et_seconds() < self.epoch_data[0]
+            || epoch.to_et_seconds() > *self.epoch_data.last().unwrap()
+        {
+            return Err(AniseError::MissingInterpolationData(epoch));
+        }
+        // Now, perform a binary search on the epochs themselves.
+        match self.epoch_data.binary_search_by(|epoch_et| {
+            epoch_et.partial_cmp(&epoch.to_et_seconds()).expect(
+                "ANISE internal error: epochs in Hermite data or provided is NaN or Infinite",
+            )
+        }) {
+            Ok(idx) => {
+                // Oh wow, this state actually exists, no interpolation needed!
+                Ok(self.nth_record(idx)?.to_pos_vel())
+            }
+            Err(idx) => {
+                // We didn't find it, so let's build an interpolation here.
+
+                // Check that we won't be fetching out of the window.
+                let (first_idx, last_idx) = if idx < self.samples / 2 {
+                    // Uh oh, we don't have enough states, so let's bound it to the valid state data
+                    (0, self.samples)
+                } else if (self.samples % 2 == 0 && idx + self.samples / 2 + 1 > self.num_records)
+                    || (self.samples % 2 == 1 && idx + self.samples / 2 > self.num_records)
+                {
+                    (self.num_records - self.samples - 1, self.samples - 1)
+                } else if self.samples % 2 == 0 {
+                    (idx - self.samples / 2, idx + self.samples / 2 + 1)
+                } else {
+                    (idx - self.samples / 2, idx + self.samples / 2)
+                };
+
+                // Statically allocated arrays of the maximum number of samples
+                let mut epochs = [0.0; MAX_SAMPLES];
+                let mut xs = [0.0; MAX_SAMPLES];
+                let mut ys = [0.0; MAX_SAMPLES];
+                let mut zs = [0.0; MAX_SAMPLES];
+                let mut vxs = [0.0; MAX_SAMPLES];
+                let mut vys = [0.0; MAX_SAMPLES];
+                let mut vzs = [0.0; MAX_SAMPLES];
+                for (cno, idx) in (first_idx..last_idx).enumerate() {
+                    let record = self.nth_record(idx)?;
+                    xs[cno] = record.x_km;
+                    ys[cno] = record.y_km;
+                    zs[cno] = record.z_km;
+                    vxs[cno] = record.vx_km_s;
+                    vys[cno] = record.vy_km_s;
+                    vzs[cno] = record.vz_km_s;
+                    epochs[cno] = self.epoch_data[idx];
+                }
+
+                // Build the interpolation
+                let (x_km, vx_km_s) = LargestPolynomial::hermite(&epochs, &xs, &vxs)?
+                    .eval_n_deriv(epoch.to_et_seconds());
+                let (y_km, vy_km_s) = LargestPolynomial::hermite(&epochs, &ys, &vys)?
+                    .eval_n_deriv(epoch.to_et_seconds());
+                let (z_km, vz_km_s) = LargestPolynomial::hermite(&epochs, &zs, &vzs)?
+                    .eval_n_deriv(epoch.to_et_seconds());
+                // And interpolate
+                let pos_km = Vector3::new(x_km, y_km, z_km);
+                let vel_km_s = Vector3::new(vx_km_s, vy_km_s, vz_km_s);
+
+                Ok((pos_km, vel_km_s))
+            }
+        }
     }
 }

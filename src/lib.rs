@@ -34,8 +34,8 @@ pub mod prelude {
     pub use crate::context::Context;
     pub use crate::errors::AniseError;
     pub use crate::frames::*;
+    pub use crate::naif::daf::NAIFSummaryRecord;
     pub use crate::naif::{BPC, SPK};
-    pub use crate::structure::dataset::DataSet;
     pub use crate::structure::units::*;
     pub use crate::time::*;
     pub use std::fs::File;

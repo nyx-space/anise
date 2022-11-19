@@ -15,6 +15,7 @@ pub type Vector6 = nalgebra::Vector6<f64>;
 pub mod angles;
 pub mod cartesian;
 pub mod interpolation;
+pub mod polyfit;
 pub mod utils;
 // pub mod rotation;
 

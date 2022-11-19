@@ -10,10 +10,7 @@
 
 use super::{celestial_frame::CelestialFrame, CelestialFrameTrait, Frame, FrameTrait};
 use crate::{
-    context::Context,
-    prelude::{AniseError, DataSet},
-    structure::constants::ellipsoid::Ellipsoid,
-    NaifId,
+    context::Context, prelude::AniseError, structure::constants::ellipsoid::Ellipsoid, NaifId,
 };
 use core::fmt::{Display, Formatter};
 use log::error;

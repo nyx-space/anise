@@ -10,7 +10,7 @@
 
 use core::fmt::Display;
 use hifitime::Epoch;
-use zerocopy::FromBytes;
+use zerocopy::{AsBytes, FromBytes};
 
 pub(crate) const RCRD_LEN: usize = 1024;
 pub mod daf;
@@ -21,7 +21,7 @@ pub use daf::DAF;
 use crate::prelude::AniseError;
 pub use recordtypes::{DAFFileRecord, DAFSummaryRecord, NameRecord};
 
-pub trait NAIFRecord: FromBytes + Sized + Default {
+pub trait NAIFRecord: AsBytes + FromBytes + Sized + Default {
     const SIZE: usize = core::mem::size_of::<Self>();
 }
 
@@ -32,6 +32,9 @@ pub trait NAIFSummaryRecord: NAIFRecord + Copy {
     fn end_epoch(&self) -> Epoch;
     /// Returns whatever is the ID of this summary record.
     fn id(&self) -> i32;
+    fn is_empty(&self) -> bool {
+        self.start_index() == self.end_index()
+    }
 }
 
 pub trait NAIFDataSet<'a>: Display {

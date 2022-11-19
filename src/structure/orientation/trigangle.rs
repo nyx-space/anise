@@ -20,24 +20,25 @@ use zerocopy::{AsBytes, FromBytes};
 ///
 /// Expressions for the right ascension and declination of the north pole and the location of the prime meridian for any satellite of a given planet are as follows:
 ///
+/// ```text
 ///                                 2      ____
-///                            RA2*t       \
-///    RA  = RA0  + RA1*t/T  + ------   +  /     a  * sin * theta
+///                            RA2*t       \\
+///    RA  = RA0  + RA1*t/T  + ------   +  //     a  * sin * theta
 ///                               2        ----   i              i
 ///                              T           i
 ///  
 ///                                  2     ____
-///                            DEC2*t      \
-///    DEC = DEC0 + DEC1*t/T + -------  +  /    d  * cos * theta
+///                            DEC2*t      \\
+///    DEC = DEC0 + DEC1*t/T + -------  +  //    d  * cos * theta
 ///                                2       ----  i              i
 ///                               T          i
 ///  
 ///                                2       ____
-///                            W2*t        \
-///    W   = W0   + W1*t/d   + -----    +  /     w  * sin * theta
+///                            W2*t        \\
+///    W   = W0   + W1*t/d   + -----    +  //     w  * sin * theta
 ///                               2        ----   i              i
 ///                              d           i
-///
+/// ```
 /// where
 ///
 ///    d = seconds/day

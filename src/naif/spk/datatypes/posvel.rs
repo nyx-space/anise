@@ -9,11 +9,15 @@
  */
 
 use core::fmt;
-use zerocopy::FromBytes;
+use zerocopy::{AsBytes, FromBytes};
 
-use crate::naif::daf::{NAIFDataRecord, NAIFRecord};
+use crate::{
+    math::Vector3,
+    naif::daf::{NAIFDataRecord, NAIFRecord},
+};
 
-#[derive(Copy, Clone, Default, FromBytes, Debug)]
+#[derive(Copy, Clone, Default, AsBytes, FromBytes, Debug)]
+#[repr(C)]
 pub struct PositionVelocityRecord {
     pub x_km: f64,
     pub y_km: f64,
@@ -21,6 +25,15 @@ pub struct PositionVelocityRecord {
     pub vx_km_s: f64,
     pub vy_km_s: f64,
     pub vz_km_s: f64,
+}
+
+impl PositionVelocityRecord {
+    pub fn to_pos_vel(&self) -> (Vector3, Vector3) {
+        (
+            Vector3::new(self.x_km, self.y_km, self.z_km),
+            Vector3::new(self.vx_km_s, self.vy_km_s, self.vz_km_s),
+        )
+    }
 }
 
 impl fmt::Display for PositionVelocityRecord {
