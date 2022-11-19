@@ -306,6 +306,10 @@ fn de438s_translation_verif_emb2luna() {
 
 #[test]
 fn spk_hermite_type31_verif() {
+    if pretty_env_logger::try_init().is_err() {
+        println!("could not init env_logger");
+    }
+
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de438s.bsp";
     let buf = file_mmap!(path).unwrap();

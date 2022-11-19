@@ -18,8 +18,7 @@ pub use polynomial::{LargestPolynomial, Polynomial};
 /// Defines the maximum degree for an interpolation.
 /// Until https://github.com/rust-lang/rust/issues/60551 , we cannot do operations on const generic, so we need some hack around it.
 pub(crate) const MAX_DEGREE: usize = 31;
-pub(crate) const MAX_SAMPLES: usize = (MAX_DEGREE + 1) / 2;
-const MAX_SAMPLES_TIME_TWO: usize = 2 * MAX_SAMPLES;
+pub(crate) const MAX_SAMPLES: usize = (MAX_DEGREE - 1) / 2;
 
 use core::ops::{Index, IndexMut};
 

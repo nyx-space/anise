@@ -10,10 +10,10 @@
 
 use hifitime::Epoch;
 
+use crate::errors::AniseError;
 use crate::naif::spk::summary::SPKSummaryRecord;
 use crate::naif::{BPC, SPK};
-
-use crate::errors::AniseError;
+use log::error;
 
 pub const MAX_LOADED_FILES: usize = 32;
 
@@ -107,6 +107,7 @@ impl<'a: 'b, 'b> Context<'a> {
         }
 
         // If we're reached this point, there is no relevant summary at this epoch.
+        error!("Context: No summary {name} valid at epoch {epoch}");
         Err(AniseError::MissingInterpolationData(epoch))
     }
 
@@ -127,9 +128,12 @@ impl<'a: 'b, 'b> Context<'a> {
             let spk = maybe_spk.unwrap();
             if let Ok((summary, idx_in_spk)) = spk.summary_from_id_at_epoch(id, epoch) {
                 return Ok((summary, spkno, idx_in_spk));
+            } else {
+                error!("Nothing in {spkno}");
             }
         }
 
+        error!("Context: No summary {id} valid at epoch {epoch}");
         // If we're reached this point, there is no relevant summary at this epoch.
         Err(AniseError::MissingInterpolationData(epoch))
     }

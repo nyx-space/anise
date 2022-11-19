@@ -23,12 +23,14 @@
  */
 
 use crate::errors::MathErrorKind;
-use crate::math::polyfit::{FixedArray, MAX_SAMPLES, MAX_SAMPLES_TIME_TWO};
+use crate::math::polyfit::{FixedArray, MAX_SAMPLES};
 use crate::{
     math::polyfit::polynomial::{multiply, Polynomial},
     prelude::AniseError,
 };
 use log::warn;
+
+const Q_LENGTH: usize = MAX_SAMPLES * MAX_SAMPLES;
 
 impl<const DEGREE: usize> Polynomial<DEGREE> {
     pub fn hermite(xs: &[f64], ys: &[f64], derivs: &[f64]) -> Result<Self, AniseError> {
@@ -48,44 +50,44 @@ impl<const DEGREE: usize> Polynomial<DEGREE> {
 
         // We need to define the number of samples here because when parsing the data from DAF files, we actually do not know the length.
         // Therefore, we can't specify in the parameters that length (compiler complains that `&[f64]` is different from `&[f64; N]`).
-        const SAMPLES: usize = MAX_SAMPLES;
+        let num_samples = xs.len();
 
         if DEGREE < 2 * xs.len() - 1 {
             warn!(
                 "Building Hermite interpolation of degree {} with {} samples, {} degree recommended",
                 DEGREE,
-                SAMPLES,
-                2 * SAMPLES - 1
+                num_samples,
+                2 * num_samples - 1
             );
         }
 
-        let mut zs = FixedArray::<2, SAMPLES>::zeros();
-        let mut qs = FixedArray::<4, MAX_SAMPLES_TIME_TWO>::zeros();
+        let mut zs = FixedArray::<2, MAX_SAMPLES>::zeros();
+        let mut qs = FixedArray::<4, Q_LENGTH>::zeros();
 
-        for i in 0..SAMPLES {
+        for i in 0..xs.len() {
             zs[2 * i] = xs[i];
             zs[2 * i + 1] = xs[i];
             qs[2 * i] = ys[i];
             qs[2 * i + 1] = ys[i];
-            qs[2 * i + 1 + (2 * SAMPLES)] = derivs[i];
+            qs[2 * i + 1 + (2 * xs.len())] = derivs[i];
 
             if i != 0 {
-                qs[2 * i + (2 * SAMPLES)] =
+                qs[2 * i + (2 * xs.len())] =
                     (qs[2 * i] - qs[2 * i - 1]) / (zs[2 * i] - zs[2 * i - 1]);
             }
         }
 
-        for i in 2..2 * SAMPLES {
+        for i in 2..2 * xs.len() {
             for j in 2..=i {
-                qs[i + j * (2 * SAMPLES)] = (qs[i + (j - 1) * (2 * SAMPLES)]
-                    - qs[i - 1 + (j - 1) * (2 * SAMPLES)])
+                qs[i + j * (2 * xs.len())] = (qs[i + (j - 1) * (2 * xs.len())]
+                    - qs[i - 1 + (j - 1) * (2 * xs.len())])
                     / (zs[i] - zs[i - j]);
             }
         }
 
         let mut hermite = Polynomial::<DEGREE>::zeros();
-        for i in (1..2 * SAMPLES).rev() {
-            hermite += qs[i + i * (2 * SAMPLES)];
+        for i in (1..2 * num_samples).rev() {
+            hermite += qs[i + i * (2 * num_samples)];
             let new_poly = Polynomial::<2>::from_most_significant([1.0, -xs[(i - 1) / 2]]);
             hermite = multiply::<DEGREE, 2, DEGREE>(hermite, new_poly);
         }
@@ -176,13 +178,13 @@ fn hermite_sine_test() {
 
 #[test]
 fn hermite_constant_test() {
-    use super::MAX_DEGREE;
+    use crate::math::polyfit::LargestPolynomial;
     let xs: Vec<_> = (0..8).map(|i| i as f64).collect();
     let ys: Vec<_> = xs.iter().map(|_| 2.0159).collect();
     let derivs: Vec<_> = xs.iter().map(|_| 0.0).collect();
 
     let tol = 1e-10;
-    let poly = Polynomial::<MAX_DEGREE>::hermite(&xs, &ys, &derivs).unwrap();
+    let poly = LargestPolynomial::hermite(&xs, &ys, &derivs).unwrap();
 
     println!("{:x}", poly);
 
@@ -348,10 +350,7 @@ fn hermite_spice_docs_example() {
     let tol_deriv = 3e-6;
     let poly = Polynomial::<MAX_DEGREE>::hermite(&ts, &values, &values_dt).unwrap();
 
-    let poly2 = Polynomial::<MAX_DEGREE>::hermite(&ts, &values, &values_dt).unwrap();
-
     println!("{:x}", poly);
-    println!("{:x}", poly2);
 
     let mut max_eval_err: f64 = 0.0;
     let mut max_deriv_err: f64 = 0.0;

@@ -13,6 +13,7 @@ use super::{NAIFDataSet, NAIFRecord, NAIFSummaryRecord};
 use crate::{errors::IntegrityErrorKind, prelude::AniseError, DBL_SIZE};
 use core::hash::Hash;
 use hifitime::Epoch;
+use log::error;
 use zerocopy::{FromBytes, LayoutVerified};
 
 pub(crate) const RCRD_LEN: usize = 1024;
@@ -132,6 +133,7 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
         if epoch >= summary.start_epoch() && epoch <= summary.end_epoch() {
             Ok((summary, idx))
         } else {
+            error!("No summary {name} valid at epoch {epoch}");
             Err(AniseError::MissingInterpolationData(epoch))
         }
     }
@@ -158,6 +160,7 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
         if epoch >= summary.start_epoch() && epoch <= summary.end_epoch() {
             Ok((summary, idx))
         } else {
+            error!("No summary {id} valid at epoch {epoch}");
             Err(AniseError::MissingInterpolationData(epoch))
         }
     }
