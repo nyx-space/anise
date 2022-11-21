@@ -399,3 +399,60 @@ fn hermite_spice_data() {
         .unwrap();
     println!("{poly}");
 }
+
+#[test]
+fn hermite_ephem_spline_test2() {
+    use super::MAX_DEGREE;
+    let ts = [
+        -1.0,
+        -0.7634946036849767,
+        -0.4060679398102479,
+        -0.049378384563548705,
+        0.3056319823730729,
+        0.6573470399832468,
+        1.0,
+    ];
+    let values = [
+        1595.7391028288412,
+        1627.6374306789112,
+        1667.0328863669654,
+        1695.5516916887393,
+        1713.0436920553127,
+        1719.5460130738645,
+        1715.4771765557455,
+    ];
+    let values_dt = [
+        0.5697350947868345,
+        0.49328949592701216,
+        0.37515578866379,
+        0.25482143289805564,
+        0.13340456519744062,
+        0.012265145643249981,
+        -0.10583033767077979,
+    ];
+
+    let tol = 2e-7;
+    let tol_deriv = 3e-6;
+    let poly = Polynomial::<MAX_DEGREE>::hermite(&ts, &values, &values_dt).unwrap();
+
+    println!("{:x}", poly);
+
+    let mut max_eval_err: f64 = 0.0;
+    let mut max_deriv_err: f64 = 0.0;
+
+    for (i, t) in ts.iter().enumerate() {
+        let (eval, deriv) = poly.eval_n_deriv(*t);
+        let eval_err = (eval - values[i]).abs();
+        assert!(dbg!(eval_err) < tol);
+        max_eval_err = max_eval_err.max(eval_err);
+
+        let deriv_err = (deriv - values_dt[i]).abs();
+        assert!(dbg!(deriv_err) < tol_deriv);
+        max_deriv_err = max_deriv_err.max(deriv_err);
+    }
+
+    println!(
+        "Max eval error: {:.e}\tMax deriv error: {:.e}\t",
+        max_eval_err, max_deriv_err
+    );
+}

@@ -328,7 +328,41 @@ fn spk_hermite_type31_verif() {
     let my_sc_j2k = Frame::from_ephem_orient(-111229882, J2000);
 
     let state = ctx
-        .translate_from_to_km_s_geometric(my_sc_j2k, EARTH_J2000, epoch)
+        .translate_from_to_km_s_geometric(my_sc_j2k, LUNA_J2000, epoch)
         .unwrap();
     println!("{state:?}");
+
+    // Check that we correctly set the output frame
+    assert_eq!(state.frame, LUNA_J2000);
+
+    let pos_expct_km = Vector3::new(
+        8.9871033515359500e+02,
+        -5.4154398990756522e+02,
+        1.5101519596160608e+03,
+    );
+
+    let vel_expct_km_s = Vector3::new(
+        -1.2836208430532707e+00,
+        -9.0227334520037439e-01,
+        4.4829903632467799e-01,
+    );
+
+    // We expect exactly the same output as SPICE to machine precision.
+    assert!(
+        relative_eq!(state.radius_km, pos_expct_km, epsilon = EPSILON),
+        "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
+        state.radius_km,
+        pos_expct_km - state.radius_km
+    );
+
+    assert!(
+        relative_eq!(
+            state.velocity_km_s,
+            vel_expct_km_s,
+            epsilon = VELOCITY_EPSILON_KM_S
+        ),
+        "vel = {}\nexp = {vel_expct_km_s}\nerr = {:e}",
+        state.velocity_km_s,
+        vel_expct_km_s - state.velocity_km_s
+    );
 }

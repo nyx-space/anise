@@ -45,3 +45,13 @@ pub fn rel_diff(a: f64, b: f64, max_relative: f64) -> f64 {
     // Use a relative difference comparison
     largest * max_relative
 }
+
+// Normalize between -1.0 and 1.0
+pub fn normalize(x: f64, min_x: f64, max_x: f64) -> f64 {
+    2.0 * (x - min_x) / (max_x - min_x) - 1.0
+}
+
+// Denormalize between -1.0 and 1.0
+pub fn denormalize(xp: f64, min_x: f64, max_x: f64) -> f64 {
+    (max_x - min_x) * (xp + 1.0) / 2.0 + min_x
+}

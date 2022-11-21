@@ -13,7 +13,7 @@ use super::{NAIFDataSet, NAIFRecord, NAIFSummaryRecord};
 use crate::{errors::IntegrityErrorKind, prelude::AniseError, DBL_SIZE};
 use core::hash::Hash;
 use hifitime::Epoch;
-use log::error;
+use log::{error, trace, warn};
 use zerocopy::{FromBytes, LayoutVerified};
 
 pub(crate) const RCRD_LEN: usize = 1024;
@@ -155,14 +155,23 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
         id: i32,
         epoch: Epoch,
     ) -> Result<(&R, usize), AniseError> {
-        let (summary, idx) = self.summary_from_id(id)?;
-
-        if epoch >= summary.start_epoch() && epoch <= summary.end_epoch() {
-            Ok((summary, idx))
-        } else {
-            error!("No summary {id} valid at epoch {epoch}");
-            Err(AniseError::MissingInterpolationData(epoch))
+        // NOTE: We iterate through the whole summary because a specific NAIF ID may be repeated in the summary for different valid epochs
+        // so we can't just call `summary_from_id`.
+        for (idx, summary) in self.data_summaries.iter().enumerate() {
+            if summary.id() == id {
+                if epoch >= summary.start_epoch() && epoch <= summary.end_epoch() {
+                    trace!("Found {id} in position {idx}: {summary:?}");
+                    return Ok((summary, idx));
+                } else {
+                    warn!(
+                        "Summary {id} found but only valid from {} to {} (requested {epoch})",
+                        summary.start_epoch(),
+                        summary.end_epoch()
+                    );
+                }
+            }
         }
+        Err(AniseError::MissingInterpolationData(epoch))
     }
 
     /// Provided a name that is in the summary, return its full data, if name is available.
@@ -187,6 +196,12 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
     pub fn nth_data<S: NAIFDataSet<'a>>(&self, idx: usize) -> Result<S, AniseError> {
         let (_, this_summary) = self.nth_summary(idx)?;
         // Grab the data in native endianness (TODO: How to support both big and little endian?)
+        trace!("{idx} -> {this_summary:?}");
+        if this_summary.is_empty() {
+            return Err(AniseError::InternalError(
+                crate::errors::InternalErrorKind::Generic,
+            ));
+        }
         let data: &'a [f64] = LayoutVerified::new_slice(
             self.bytes
                 .get(

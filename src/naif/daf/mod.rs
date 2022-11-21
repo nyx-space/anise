@@ -19,9 +19,10 @@ pub mod recordtypes;
 pub use daf::DAF;
 
 use crate::prelude::AniseError;
+use core::fmt::Debug;
 pub use recordtypes::{DAFFileRecord, DAFSummaryRecord, NameRecord};
 
-pub trait NAIFRecord: AsBytes + FromBytes + Sized + Default {
+pub trait NAIFRecord: AsBytes + FromBytes + Sized + Default + Debug {
     const SIZE: usize = core::mem::size_of::<Self>();
 }
 
