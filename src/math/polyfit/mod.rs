@@ -12,6 +12,8 @@ mod common;
 pub mod hermite;
 mod polynomial;
 
+pub mod hrmint;
+
 pub use common::CommonPolynomial;
 pub use polynomial::{LargestPolynomial, Polynomial};
 
@@ -25,9 +27,9 @@ use core::ops::{Index, IndexMut};
 /// A FixedArray is a a way around allocating vectors when we don't know the exact size at compile time.
 /// This will be made obsolete when https://github.com/rust-lang/rust/issues/60551 is merged into rust stable.
 #[derive(Copy, Clone, Debug)]
-struct FixedArray<const N: usize, const S: usize>([[f64; N]; S]);
+struct F64TupleArray<const N: usize, const S: usize>([[f64; N]; S]);
 
-impl<const N: usize, const S: usize> FixedArray<N, S> {
+impl<const N: usize, const S: usize> F64TupleArray<N, S> {
     fn zeros() -> Self {
         Self([[0.0; N]; S])
     }
@@ -37,7 +39,7 @@ impl<const N: usize, const S: usize> FixedArray<N, S> {
     }
 }
 
-impl<const N: usize, const S: usize> Index<usize> for FixedArray<N, S> {
+impl<const N: usize, const S: usize> Index<usize> for F64TupleArray<N, S> {
     type Output = f64;
 
     fn index(&self, index: usize) -> &Self::Output {
@@ -46,7 +48,7 @@ impl<const N: usize, const S: usize> Index<usize> for FixedArray<N, S> {
     }
 }
 
-impl<const N: usize, const S: usize> IndexMut<usize> for FixedArray<N, S> {
+impl<const N: usize, const S: usize> IndexMut<usize> for F64TupleArray<N, S> {
     fn index_mut(&mut self, index: usize) -> &mut f64 {
         let (one, two) = self.indexes(index);
         &mut self.0[one][two]

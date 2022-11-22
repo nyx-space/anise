@@ -23,7 +23,9 @@
  */
 
 use crate::errors::MathErrorKind;
-use crate::math::polyfit::{FixedArray, MAX_SAMPLES};
+use crate::math::polyfit::hrmint::hrmint_;
+use crate::math::polyfit::{F64TupleArray, MAX_SAMPLES};
+use crate::math::utils::normalize;
 use crate::{
     math::polyfit::polynomial::{multiply, Polynomial},
     prelude::AniseError,
@@ -50,19 +52,18 @@ impl<const DEGREE: usize> Polynomial<DEGREE> {
 
         // We need to define the number of samples here because when parsing the data from DAF files, we actually do not know the length.
         // Therefore, we can't specify in the parameters that length (compiler complains that `&[f64]` is different from `&[f64; N]`).
-        let num_samples = xs.len();
 
         if DEGREE < 2 * xs.len() - 1 {
             warn!(
                 "Building Hermite interpolation of degree {} with {} samples, {} degree recommended",
                 DEGREE,
-                num_samples,
-                2 * num_samples - 1
+                xs.len(),
+                2 * xs.len()- 1
             );
         }
 
-        let mut zs = FixedArray::<2, MAX_SAMPLES>::zeros();
-        let mut qs = FixedArray::<4, Q_LENGTH>::zeros();
+        let mut zs = F64TupleArray::<2, MAX_SAMPLES>::zeros();
+        let mut qs = F64TupleArray::<4, Q_LENGTH>::zeros();
 
         for i in 0..xs.len() {
             zs[2 * i] = xs[i];
@@ -86,15 +87,14 @@ impl<const DEGREE: usize> Polynomial<DEGREE> {
         }
 
         let mut hermite = Polynomial::<DEGREE>::zeros();
-        for i in (1..2 * num_samples).rev() {
-            hermite += qs[i + i * (2 * num_samples)];
+        for i in (1..2 * xs.len()).rev() {
+            hermite += qs[i + i * (2 * xs.len())];
             let new_poly = Polynomial::<2>::from_most_significant([1.0, -xs[(i - 1) / 2]]);
             hermite = multiply::<DEGREE, 2, DEGREE>(hermite, new_poly);
         }
         hermite += qs[0];
 
         if hermite.is_nan() {
-            dbg!(xs, ys, derivs);
             return Err(AniseError::MathError(
                 MathErrorKind::InvalidInterpolationData(format!(
                     "Invalid interpolation {:x}",
@@ -403,51 +403,83 @@ fn hermite_spice_data() {
 #[test]
 fn hermite_ephem_spline_test2() {
     use super::MAX_DEGREE;
-    let ts = [
-        -1.0,
-        -0.7634946036849767,
-        -0.4060679398102479,
-        -0.049378384563548705,
-        0.3056319823730729,
-        0.6573470399832468,
-        1.0,
+    let epoch_et = 773064069.1841084;
+    let epochs = [
+        773063753.0320327,
+        773063842.6860328,
+        773063932.1790327,
+        773064021.5950327,
+        773064111.0160326,
+        773064200.4970326,
+        773064290.0490326,
+        773064379.5660326,
+        773064467.8020325,
     ];
+    let mut ts = [0.0; 9];
     let values = [
-        1595.7391028288412,
-        1627.6374306789112,
-        1667.0328863669654,
-        1695.5516916887393,
-        1713.0436920553127,
-        1719.5460130738645,
-        1715.4771765557455,
+        1264.0276092333008,
+        1169.380111723055,
+        1067.501355281949,
+        958.9770086109238,
+        844.4072328473662,
+        724.4430188794065,
+        599.8186349004518,
+        471.46623936222625,
+        342.04349989730264,
     ];
     let values_dt = [
-        0.5697350947868345,
-        0.49328949592701216,
-        0.37515578866379,
-        0.25482143289805564,
-        0.13340456519744062,
-        0.012265145643249981,
-        -0.10583033767077979,
+        -1.0119972729331588,
+        -1.0982621220038147,
+        -1.1773202325269372,
+        -1.248793644639029,
+        -1.3123304769876323,
+        -1.3675873394086253,
+        -1.414230273831576,
+        -1.4519274117465721,
+        -1.4801351852184736,
     ];
 
-    let tol = 2e-7;
-    let tol_deriv = 3e-6;
-    let poly = Polynomial::<MAX_DEGREE>::hermite(&ts, &values, &values_dt).unwrap();
+    // Normalize the epochs between -1.0 and 1.0
+    let samples = 7;
+    let central_idx = 4;
+    let start_idx = central_idx - (samples - 1) / 2 - 1;
+    let end_idx = central_idx + (samples - 1) / 2 + 1;
+
+    let first_sample_epoch_et_s = epochs[start_idx];
+    let last_sample_epoch_et_s = epochs[end_idx];
+
+    let min_x = dbg!(first_sample_epoch_et_s);
+    let max_x = dbg!(last_sample_epoch_et_s);
+
+    for idx in 0..epochs.len() {
+        ts[idx] = normalize(epochs[idx], min_x, max_x);
+    }
+
+    dbg!(&ts);
+
+    let tol = 1e-9;
+    let tol_deriv = 1e-9;
+    let poly = Polynomial::<MAX_DEGREE>::hermite(
+        dbg!(&epochs[start_idx..end_idx + 1]),
+        dbg!(&values[start_idx..end_idx + 1]),
+        dbg!(&values_dt[start_idx..end_idx + 1]),
+    )
+    .unwrap();
 
     println!("{:x}", poly);
 
     let mut max_eval_err: f64 = 0.0;
     let mut max_deriv_err: f64 = 0.0;
 
-    for (i, t) in ts.iter().enumerate() {
-        let (eval, deriv) = poly.eval_n_deriv(*t);
+    for i in start_idx..end_idx + 1 {
+        let t = epochs[i];
+        let (eval, deriv) = poly.eval_n_deriv(t);
         let eval_err = (eval - values[i]).abs();
-        assert!(dbg!(eval_err) < tol);
+        // assert!(dbg!(eval_err) < tol);
         max_eval_err = max_eval_err.max(eval_err);
 
         let deriv_err = (deriv - values_dt[i]).abs();
-        assert!(dbg!(deriv_err) < tol_deriv);
+        // assert!(dbg!(deriv_err) < tol_deriv);
         max_deriv_err = max_deriv_err.max(deriv_err);
     }
 
@@ -455,4 +487,13 @@ fn hermite_ephem_spline_test2() {
         "Max eval error: {:.e}\tMax deriv error: {:.e}\t",
         max_eval_err, max_deriv_err
     );
+
+    let (x, vx) = poly.eval_n_deriv(epoch_et);
+
+    let want_x = 8.9871033515359500e+02;
+    let want_vx = -1.2836208430532707e+00;
+
+    dbg!(x, vx);
+
+    println!("{}\t{}", x - want_x, vx - want_vx);
 }

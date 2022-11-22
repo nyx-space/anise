@@ -186,7 +186,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 {
                     (self.num_records - self.samples - 1, self.samples - 1)
                 } else {
-                    (idx - self.samples / 2, idx + self.samples / 2 + 1)
+                    dbg!(idx - (self.samples - 1) / 2, idx + (self.samples - 1) / 2)
                 };
 
                 // Statically allocated arrays of the maximum number of samples
@@ -197,7 +197,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 let mut vxs = [0.0; MAX_SAMPLES];
                 let mut vys = [0.0; MAX_SAMPLES];
                 let mut vzs = [0.0; MAX_SAMPLES];
-                for (cno, idx) in (first_idx..last_idx).enumerate() {
+                for (cno, idx) in (first_idx..=last_idx).enumerate() {
                     let record = self.nth_record(idx)?;
                     xs[cno] = record.x_km;
                     ys[cno] = record.y_km;
@@ -208,32 +208,39 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                     epochs[cno] = self.epoch_data[idx];
                 }
 
+                dbg!(
+                    &epochs[..=self.samples],
+                    &xs[..=self.samples],
+                    &vxs[..=self.samples]
+                );
+
                 // Normalize the epochs between -1.0 and 1.0
-                let first_sample_epoch_et_s = epochs[0];
-                let last_sample_epoch_et_s = epochs[self.samples - 1];
-                // XXX: Is there any different for back prop segments?
-                let window_duration_s = last_sample_epoch_et_s - first_sample_epoch_et_s;
+                let first_sample_epoch_et_s = dbg!(self.epoch_data[first_idx]);
+                let last_sample_epoch_et_s = dbg!(self.epoch_data[last_idx]);
+                // XXX: Is there any difference for back prop segments?
+                // let window_duration_s = last_sample_epoch_et_s - first_sample_epoch_et_s;
                 for idx in 0..self.samples {
-                    epochs[idx] = normalize(
-                        epochs[idx] - first_sample_epoch_et_s,
-                        0.0,
-                        window_duration_s,
-                    );
+                    epochs[idx] =
+                        normalize(epochs[idx], first_sample_epoch_et_s, last_sample_epoch_et_s);
                 }
 
                 let normalized_epoch = normalize(
-                    epoch.to_et_seconds() - first_sample_epoch_et_s,
-                    0.0,
-                    window_duration_s,
+                    epoch.to_et_seconds(),
+                    first_sample_epoch_et_s,
+                    last_sample_epoch_et_s,
                 );
+
+                dbg!(normalized_epoch);
 
                 // Build the interpolation polynomials making sure to limit the slices to exactly the number of items we actually used
                 // The other ones are zeros, which would cause the interpolation function to fail.
                 let x_vx_poly = LargestPolynomial::hermite(
-                    &epochs[..self.samples],
-                    &xs[..self.samples],
-                    &vxs[..self.samples],
+                    dbg!(&epochs[..self.samples]),
+                    dbg!(&xs[..self.samples]),
+                    dbg!(&vxs[..self.samples]),
                 )?;
+
+                println!("{x_vx_poly:x}");
 
                 let y_vy_poly = LargestPolynomial::hermite(
                     &epochs[..self.samples],
