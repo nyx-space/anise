@@ -64,7 +64,6 @@ impl<const DEGREE: usize> Polynomial<DEGREE> {
 
         let mut zs = F64TupleArray::<2, MAX_SAMPLES>::zeros();
         let mut qs = F64TupleArray::<4, Q_LENGTH>::zeros();
-
         for i in 0..xs.len() {
             zs[2 * i] = xs[i];
             zs[2 * i + 1] = xs[i];
@@ -88,7 +87,7 @@ impl<const DEGREE: usize> Polynomial<DEGREE> {
 
         let mut hermite = Polynomial::<DEGREE>::zeros();
         for i in (1..2 * xs.len()).rev() {
-            hermite += qs[i + i * (2 * xs.len())];
+            hermite += qs[dbg!(i + i * (2 * xs.len()))];
             let new_poly = Polynomial::<2>::from_most_significant([1.0, -xs[(i - 1) / 2]]);
             hermite = multiply::<DEGREE, 2, DEGREE>(hermite, new_poly);
         }
@@ -372,6 +371,13 @@ fn hermite_spice_docs_example() {
     );
 
     println!("{:?}", poly.eval_n_deriv(2.0));
+
+    let yvals = [6.0, 3.0, 5.0, 0.0, 2210.0, 5115.0, 78180.0, 109395.0];
+    let (x, vx) = hrmint_(&ts, &yvals, 2.0);
+    println!("{x:e}\t{vx:e}");
+    use core::f64::EPSILON;
+    assert!((x - 141.0).abs() < EPSILON, "X error");
+    assert!((vx - 456.0).abs() < EPSILON, "VX error");
 }
 
 #[test]
@@ -402,7 +408,6 @@ fn hermite_spice_data() {
 
 #[test]
 fn hermite_ephem_spline_test2() {
-    use super::MAX_DEGREE;
     let epoch_et = 773064069.1841084;
     let epochs = [
         773063753.0320327,
@@ -448,52 +453,35 @@ fn hermite_ephem_spline_test2() {
     let first_sample_epoch_et_s = epochs[start_idx];
     let last_sample_epoch_et_s = epochs[end_idx];
 
-    let min_x = dbg!(first_sample_epoch_et_s);
-    let max_x = dbg!(last_sample_epoch_et_s);
-
-    for idx in 0..epochs.len() {
-        ts[idx] = normalize(epochs[idx], min_x, max_x);
-    }
-
-    dbg!(&ts);
-
-    let tol = 1e-9;
-    let tol_deriv = 1e-9;
-    let poly = Polynomial::<MAX_DEGREE>::hermite(
-        dbg!(&epochs[start_idx..end_idx + 1]),
-        dbg!(&values[start_idx..end_idx + 1]),
-        dbg!(&values_dt[start_idx..end_idx + 1]),
-    )
-    .unwrap();
-
-    println!("{:x}", poly);
-
-    let mut max_eval_err: f64 = 0.0;
-    let mut max_deriv_err: f64 = 0.0;
-
-    for i in start_idx..end_idx + 1 {
-        let t = epochs[i];
-        let (eval, deriv) = poly.eval_n_deriv(t);
-        let eval_err = (eval - values[i]).abs();
-        // assert!(dbg!(eval_err) < tol);
-        max_eval_err = max_eval_err.max(eval_err);
-
-        let deriv_err = (deriv - values_dt[i]).abs();
-        // assert!(dbg!(deriv_err) < tol_deriv);
-        max_deriv_err = max_deriv_err.max(deriv_err);
-    }
-
-    println!(
-        "Max eval error: {:.e}\tMax deriv error: {:.e}\t",
-        max_eval_err, max_deriv_err
-    );
-
-    let (x, vx) = poly.eval_n_deriv(epoch_et);
+    let yvals = [
+        1264.0276092333008,
+        -1.0119972729331588,
+        1169.380111723055,
+        -1.0982621220038147,
+        1067.501355281949,
+        -1.1773202325269372,
+        958.9770086109238,
+        -1.248793644639029,
+        844.4072328473662,
+        -1.3123304769876323,
+        724.4430188794065,
+        -1.3675873394086253,
+        599.8186349004518,
+        -1.414230273831576,
+        471.46623936222625,
+        -1.4519274117465721,
+        342.04349989730264,
+        -1.4801351852184736,
+    ];
+    let (x, vx) = hrmint_(&epochs[start_idx..end_idx + 1], &yvals, epoch_et);
 
     let want_x = 8.9871033515359500e+02;
     let want_vx = -1.2836208430532707e+00;
 
     dbg!(x, vx);
 
-    println!("{}\t{}", x - want_x, vx - want_vx);
+    println!("{:e} km\t{:e} km/s", x - want_x, vx - want_vx);
+
+    assert!((x - want_x).abs() < 1e-8, "Error in X");
+    assert!((vx - want_vx).abs() < 1e-10, "Error in VX");
 }
