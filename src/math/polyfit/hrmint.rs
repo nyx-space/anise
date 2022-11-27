@@ -9,28 +9,14 @@ pub fn hrmint_(xvals: &[f64], yvals: &[f64], x: f64) -> (f64, f64) {
     let work: &mut [f64] = &mut [0.0; 256];
     let n: usize = xvals.len();
 
-    /* System generated locals */
-    let work_dim1: usize;
-    let work_offset: usize;
-
-    /* Local variables */
-    let mut temp: f64;
-    let mut this__: usize;
-    let mut prev: usize;
-    let mut next: usize;
-
-    /* Parameter adjustments */
-    work_dim1 = n * 2;
-    work_offset = work_dim1 + 1;
-
     assert!(n > 1);
 
     /*     Copy the input array into WORK.  After this, the first column */
     /*     of WORK represents the first column of our triangular */
     /*     interpolation table. */
 
-    for i__ in 1..=n * 2 {
-        work[i__ + work_dim1 - work_offset] = yvals[i__ - 1];
+    for i in 0..n * 2 {
+        work[i] = yvals[i];
     }
 
     /*     Compute the second column of the interpolation table: this */
@@ -43,10 +29,10 @@ pub fn hrmint_(xvals: &[f64], yvals: &[f64], x: f64) -> (f64, f64) {
     /*     overwrites the previous column of interpolated function values, */
     /*     we must evaluate the derivatives first. */
 
-    for i__ in 1..=n - 1 {
-        let c1 = xvals[i__] - x;
-        let c2 = x - xvals[i__ - 1];
-        let denom = xvals[i__] - xvals[i__ - 1];
+    for i in 1..=n - 1 {
+        let c1 = xvals[i] - x;
+        let c2 = x - xvals[i - 1];
+        let denom = xvals[i] - xvals[i - 1];
 
         /*        The second column of WORK contains interpolated derivative */
         /*        values. */
@@ -54,37 +40,31 @@ pub fn hrmint_(xvals: &[f64], yvals: &[f64], x: f64) -> (f64, f64) {
         /*        The odd-indexed interpolated derivatives are simply the input */
         /*        derivatives. */
 
-        prev = (i__ * 2) - 1;
-        this__ = prev + 1;
-        next = this__ + 1;
-        work[prev + (work_dim1 * 2) - work_offset] = work[this__ + work_dim1 - work_offset];
+        let prev = 2 * i - 1;
+        let curr = 2 * i;
+        let next = 2 * i + 1;
+        work[prev + 2 * n - 1] = work[curr - 1];
 
         /*        The even-indexed interpolated derivatives are the slopes of */
         /*        the linear interpolating polynomials for adjacent input */
         /*        abscissa/ordinate pairs. */
 
-        work[this__ + (work_dim1 * 2) - work_offset] =
-            (work[next + work_dim1 - work_offset] - work[prev + work_dim1 - work_offset]) / denom;
+        work[curr + 2 * n - 1] = (work[next - 1] - work[prev - 1]) / denom;
 
         /*        The first column of WORK contains interpolated function values. */
         /*        The odd-indexed entries are the linear Taylor polynomials, */
         /*        for each input abscissa value, evaluated at X. */
 
-        temp = work[this__ + work_dim1 - work_offset] * (x - xvals[i__ - 1])
-            + work[prev + work_dim1 - work_offset];
-        work[this__ + work_dim1 - work_offset] = (c1 * work[prev + work_dim1 - work_offset]
-            + c2 * work[next + work_dim1 - work_offset])
-            / denom;
-        work[prev + work_dim1 - work_offset] = temp;
+        let temp = work[curr - 1] * (x - xvals[i - 1]) + work[prev - 1];
+        work[curr - 1] = (c1 * work[prev - 1] + c2 * work[next - 1]) / denom;
+        work[prev - 1] = temp;
     }
 
     /*     The last column entries were not computed by the preceding loop; */
     /*     compute them now. */
 
-    work[(n * 2) - 1 + (work_dim1 * 2) - work_offset] = work[(n * 2) + work_dim1 - work_offset];
-    work[(n * 2) - 1 + work_dim1 - work_offset] = work[(n * 2) + work_dim1 - work_offset]
-        * (x - xvals[n - 1])
-        + work[(n * 2) - 1 + work_dim1 - work_offset];
+    work[(n * 2) - 1 + 2 * n - 1] = work[(n * 2) - 1];
+    work[(n * 2) - 1 - 1] = work[(n * 2) - 1] * (x - xvals[n - 1]) + work[(n * 2) - 1 - 1];
 
     /*     Compute columns 3 through 2*N of the table. */
 
@@ -119,25 +99,22 @@ pub fn hrmint_(xvals: &[f64], yvals: &[f64], x: f64) -> (f64, f64) {
             /*           The derivative expression here corresponds to equation */
             /*           2.35 on page 64 in reference [2]. */
 
-            work[i + (work_dim1 * 2) - work_offset] = (c1
-                * work[i + (work_dim1 * 2) - work_offset]
-                + c2 * work[i + 1 + (work_dim1 * 2) - work_offset]
-                + (work[i + 1 + work_dim1 - work_offset] - work[i + work_dim1 - work_offset]))
+            work[i + 2 * n - 1] = (c1 * work[i + 2 * n - 1]
+                + c2 * work[i + 1 + 2 * n - 1]
+                + (work[i + 1 - 1] - work[i - 1]))
                 / denom;
 
             /*           Compute the interpolated function value at X for the Ith */
             /*           interpolant. */
 
-            work[i + work_dim1 - work_offset] = (c1 * work[i + work_dim1 - work_offset]
-                + c2 * work[i + 1 + work_dim1 - work_offset])
-                / denom;
+            work[i - 1] = (c1 * work[i - 1] + c2 * work[i + 1 - 1]) / denom;
         }
     }
 
     /*     Our interpolated function value is sitting in WORK(1,1) at this */
     /*     point.  The interpolated derivative is located in WORK(1,2). */
 
-    let f = work[work_dim1 + 1 - work_offset];
-    let df = work[(work_dim1 * 2) + 1 - work_offset];
+    let f = work[0];
+    let df = work[2 * n];
     (f, df)
 } /* hrmint_ */
