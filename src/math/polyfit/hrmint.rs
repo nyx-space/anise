@@ -5,7 +5,7 @@
 
 /* $Procedure HRMINT ( Hermite polynomial interpolation  ) */
 /* Subroutine */
-pub fn hrmint_(xvals: &[f64], yvals: &[f64], x: f64) -> (f64, f64) {
+pub fn hrmint_(xvals: &[f64], yvals: &[f64], ydotvals: &[f64], x: f64) -> (f64, f64) {
     let work: &mut [f64] = &mut [0.0; 256];
     let n: usize = xvals.len();
 
@@ -15,8 +15,9 @@ pub fn hrmint_(xvals: &[f64], yvals: &[f64], x: f64) -> (f64, f64) {
     /*     of WORK represents the first column of our triangular */
     /*     interpolation table. */
 
-    for i in 0..n * 2 {
-        work[i] = yvals[i];
+    for i in 0..n {
+        work[2 * i] = yvals[i];
+        work[2 * i + 1] = ydotvals[i];
     }
 
     /*     Compute the second column of the interpolation table: this */
@@ -107,7 +108,7 @@ pub fn hrmint_(xvals: &[f64], yvals: &[f64], x: f64) -> (f64, f64) {
             /*           Compute the interpolated function value at X for the Ith */
             /*           interpolant. */
 
-            work[i - 1] = (c1 * work[i - 1] + c2 * work[i + 1 - 1]) / denom;
+            work[i - 1] = (c1 * work[i - 1] + c2 * work[i]) / denom;
         }
     }
 
