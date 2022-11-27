@@ -94,7 +94,7 @@ pub enum MathErrorKind {
     DivisionByZero,
     StateEpochsDiffer,
     StateFramesDiffer,
-    InvalidInterpolationData(String),
+    InvalidInterpolationData,
     PolynomialOrderError(usize),
 }
 

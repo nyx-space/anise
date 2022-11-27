@@ -61,12 +61,6 @@ jobs:
       - name: Test (no default features and release)
         run: cargo test --no-default-features --release
 
-      - name: Create DE ANISE artifacts # At this stage, all of the tests have passed, so let's store these artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: anise-jpl-development-ephemerides
-          path: data/*.anise
-
   lints:
     name: Lints
     runs-on: ubuntu-latest

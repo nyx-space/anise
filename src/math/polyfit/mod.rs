@@ -8,19 +8,13 @@
  * Documentation: https://nyxspace.com/
  */
 
-mod common;
-pub mod hermite;
-mod polynomial;
+mod hermite;
 
-pub mod hrmint;
-
-pub use common::CommonPolynomial;
-pub use polynomial::{LargestPolynomial, Polynomial};
+pub use hermite::hermite;
 
 /// Defines the maximum degree for an interpolation.
 /// Until https://github.com/rust-lang/rust/issues/60551 , we cannot do operations on const generic, so we need some hack around it.
-pub(crate) const MAX_DEGREE: usize = 31;
-pub(crate) const MAX_SAMPLES: usize = (MAX_DEGREE - 1) / 2;
+pub(crate) const MAX_SAMPLES: usize = 32;
 
 use core::ops::{Index, IndexMut};
 

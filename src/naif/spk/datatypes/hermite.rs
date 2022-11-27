@@ -11,8 +11,7 @@
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits};
 
-use crate::math::polyfit::{LargestPolynomial, MAX_SAMPLES};
-use crate::math::utils::normalize;
+use crate::math::polyfit::{hermite, MAX_SAMPLES};
 use crate::{
     math::{cartesian::CartesianState, Vector3},
     naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord},
@@ -208,56 +207,32 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                     epochs[cno] = self.epoch_data[idx];
                 }
 
-                dbg!(
-                    &epochs[..=self.samples],
-                    &xs[..=self.samples],
-                    &vxs[..=self.samples]
-                );
-
-                // Normalize the epochs between -1.0 and 1.0
-                let first_sample_epoch_et_s = dbg!(self.epoch_data[first_idx]);
-                let last_sample_epoch_et_s = dbg!(self.epoch_data[last_idx]);
-                // XXX: Is there any difference for back prop segments?
-                // let window_duration_s = last_sample_epoch_et_s - first_sample_epoch_et_s;
-                for idx in 0..self.samples {
-                    epochs[idx] =
-                        normalize(epochs[idx], first_sample_epoch_et_s, last_sample_epoch_et_s);
-                }
-
-                let normalized_epoch = normalize(
-                    epoch.to_et_seconds(),
-                    first_sample_epoch_et_s,
-                    last_sample_epoch_et_s,
-                );
-
-                dbg!(normalized_epoch);
+                // TODO: Build a container that uses the underlying data and provides an index into it.
 
                 // Build the interpolation polynomials making sure to limit the slices to exactly the number of items we actually used
                 // The other ones are zeros, which would cause the interpolation function to fail.
-                let x_vx_poly = LargestPolynomial::hermite(
+                let (x_km, vx_km_s) = hermite(
                     dbg!(&epochs[..self.samples]),
                     dbg!(&xs[..self.samples]),
                     dbg!(&vxs[..self.samples]),
+                    epoch.to_et_seconds(),
                 )?;
 
-                println!("{x_vx_poly:x}");
-
-                let y_vy_poly = LargestPolynomial::hermite(
+                let (y_km, vy_km_s) = hermite(
                     &epochs[..self.samples],
                     &ys[..self.samples],
                     &vys[..self.samples],
+                    epoch.to_et_seconds(),
                 )?;
 
-                let z_vz_poly = LargestPolynomial::hermite(
+                let (z_km, vz_km_s) = hermite(
                     &epochs[..self.samples],
                     &zs[..self.samples],
                     &vzs[..self.samples],
+                    epoch.to_et_seconds(),
                 )?;
 
-                let (x_km, vx_km_s) = x_vx_poly.eval_n_deriv(normalized_epoch);
-                let (y_km, vy_km_s) = y_vy_poly.eval_n_deriv(normalized_epoch);
-                let (z_km, vz_km_s) = z_vz_poly.eval_n_deriv(normalized_epoch);
-                // And interpolate
+                // And build the result
                 let pos_km = Vector3::new(x_km, y_km, z_km);
                 let vel_km_s = Vector3::new(vx_km_s, vy_km_s, vz_km_s);
 

@@ -10,14 +10,16 @@
 
 use core::f64::EPSILON;
 
-use anise::constants::frames::{EARTH_J2000, EARTH_MOON_BARYCENTER_J2000, LUNA_J2000, VENUS_J2000};
+use anise::constants::frames::{EARTH_MOON_BARYCENTER_J2000, LUNA_J2000, VENUS_J2000};
 use anise::constants::orientations::J2000;
 use anise::file_mmap;
 use anise::math::Vector3;
 use anise::prelude::*;
 
-// For the Earth Moon Barycenter to Luna, there velocity error is up to 3e-14 km/s, or 3e-11 m/s, or 13 picometers per second.
-const VELOCITY_EPSILON_KM_S: f64 = 1e-13;
+// Corresponds to an error of 1e-5 meters, or 1e-2 millimeters, or 10 micrometers
+const POSITION_EPSILON_KM: f64 = 1e-8;
+// Corresponds to an error of 1e-7 meters per second, or 1e-1 micrometers per second, or 100 nanometers per second
+const VELOCITY_EPSILON_KM_S: f64 = 1e-10;
 
 #[test]
 fn de438s_translation_verif_venus2emb() {
@@ -349,7 +351,7 @@ fn spk_hermite_type31_verif() {
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        relative_eq!(state.radius_km, pos_expct_km, epsilon = EPSILON),
+        relative_eq!(state.radius_km, pos_expct_km, epsilon = POSITION_EPSILON_KM),
         "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
         state.radius_km,
         pos_expct_km - state.radius_km
