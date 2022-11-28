@@ -9,7 +9,7 @@ use spice;
 
 const NUM_QUERIES_PER_PAIR: f64 = 100.0;
 
-fn benchmark_single_hop_spice(time_it: TimeSeries) {
+fn benchmark_spice_single_hop_type2_cheby(time_it: TimeSeries) {
     for epoch in time_it {
         black_box(spice::spkezr(
             "EARTH",
@@ -21,7 +21,7 @@ fn benchmark_single_hop_spice(time_it: TimeSeries) {
     }
 }
 
-fn benchmark_single_hop_anise(ctx: &Context, time_it: TimeSeries) {
+fn benchmark_anise_single_hop_type2_cheby(ctx: &Context, time_it: TimeSeries) {
     for epoch in time_it {
         black_box(
             ctx.translate_from_to_km_s_geometric(EARTH_J2000, LUNA_J2000, epoch)
@@ -46,13 +46,13 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     spice::furnsh("data/de438s.bsp");
 
     c.bench_function("ANISE ephemerides single hop", |b| {
-        b.iter(|| benchmark_single_hop_anise(&ctx, time_it.clone()))
+        b.iter(|| benchmark_anise_single_hop_type2_cheby(&ctx, time_it.clone()))
     });
 
     c.bench_function("SPICE ephemerides single hop", |b| {
-        b.iter(|| benchmark_single_hop_spice(time_it.clone()))
+        b.iter(|| benchmark_spice_single_hop_type2_cheby(time_it.clone()))
     });
 }
 
-criterion_group!(benches, criterion_benchmark);
-criterion_main!(benches);
+criterion_group!(de438s, criterion_benchmark);
+criterion_main!(de438s);

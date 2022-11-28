@@ -9,7 +9,7 @@ use spice;
 
 const NUM_QUERIES_PER_PAIR: f64 = 100.0;
 
-fn benchmark_single_hop_spice() {
+fn benchmark_spice_single_hop_type2_cheby() {
     let start_epoch = Epoch::from_gregorian_at_noon(1900, 1, 1, TimeScale::ET);
     let end_epoch = Epoch::from_gregorian_at_noon(2099, 1, 1, TimeScale::ET);
     let time_step = ((end_epoch - start_epoch).to_seconds() / NUM_QUERIES_PER_PAIR).seconds();
@@ -31,7 +31,7 @@ fn benchmark_single_hop_spice() {
     spice::unload("data/de438s.bsp");
 }
 
-fn benchmark_single_hop_anise() {
+fn benchmark_anise_single_hop_type2_cheby() {
     let start_epoch = Epoch::from_gregorian_at_noon(1900, 1, 1, TimeScale::ET);
     let end_epoch = Epoch::from_gregorian_at_noon(2099, 1, 1, TimeScale::ET);
     let time_step = ((end_epoch - start_epoch).to_seconds() / NUM_QUERIES_PER_PAIR).seconds();
@@ -50,4 +50,7 @@ fn benchmark_single_hop_anise() {
     }
 }
 
-iai::main!(benchmark_single_hop_spice, benchmark_single_hop_anise);
+iai::main!(
+    benchmark_spice_single_hop_type2_cheby,
+    benchmark_anise_single_hop_type2_cheby
+);

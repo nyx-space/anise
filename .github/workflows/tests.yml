@@ -50,7 +50,7 @@ jobs:
           override: true
 
       - name: Install CSPICE
-        run: sh dev-env-setup.sh
+        run: sh dev-env-setup.sh && cd .. # Return to root
 
       - name: Test debug (default features) # This has overflow checks etc.
         run: cargo test
@@ -63,6 +63,9 @@ jobs:
 
       - name: Test (no default features and release)
         run: cargo test --no-default-features --release
+
+      - name: CLI SPK
+        run: cargo run -- inspect data/gmat-hermite.bsp && cargo run -- inspect data/de440.bsp
 
       - name: Rust-SPICE JPL DE validation
         run: RUST_BACKTRACE=full RUST_LOG=debug cargo test validate_jplde_translation --features validation --release -- --nocapture
