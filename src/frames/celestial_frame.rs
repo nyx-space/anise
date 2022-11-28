@@ -64,9 +64,9 @@ impl<'a> Context<'a> {
     /// Tries to find the celestial frame data given the ephemeris center name, the orientation name, and the name of the planetary constants
     pub fn celestial_frame_from(
         &self,
-        ephemeris_name: &'a str,
-        orientation_name: &'a str,
-        planetary_constants_name: &'a str,
+        _ephemeris_name: &'a str,
+        _orientation_name: &'a str,
+        _planetary_constants_name: &'a str,
     ) -> Result<CelestialFrame, AniseError> {
         todo!()
         // let constants = self.planetary_constants_from_name(planetary_constants_name)?;

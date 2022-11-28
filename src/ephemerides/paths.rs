@@ -13,12 +13,10 @@ use log::error;
 
 use crate::context::Context;
 use crate::errors::InternalErrorKind;
-use crate::structure::orientation::Orientation;
 use crate::NaifId;
 use crate::{
     errors::{AniseError, IntegrityErrorKind},
     frames::Frame,
-    structure::ephemeris::Ephemeris,
 };
 
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
@@ -54,16 +52,6 @@ impl<'a> Context<'a> {
             }
         }
         Ok(common_center)
-    }
-
-    /// Try to return the ephemeris for the provided index, or returns an error.
-    pub fn try_ephemeris_data(&self, idx: usize) -> Result<&'a Ephemeris, AniseError> {
-        todo!()
-    }
-
-    /// Try to return the orientation for the provided index, or returns an error.
-    pub fn try_orientation_data(&self, idx: usize) -> Result<&'a Orientation, AniseError> {
-        todo!()
     }
 
     /// Try to construct the path from the source frame all the way to the root ephemeris of this context.

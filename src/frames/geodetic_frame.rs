@@ -9,11 +9,8 @@
  */
 
 use super::{celestial_frame::CelestialFrame, CelestialFrameTrait, Frame, FrameTrait};
-use crate::{
-    context::Context, prelude::AniseError, structure::constants::ellipsoid::Ellipsoid, NaifId,
-};
+use crate::{context::Context, prelude::AniseError, shapes::ellipsoid::Ellipsoid, NaifId};
 use core::fmt::{Display, Formatter};
-use log::error;
 
 /// Defines a Celestial Frame kind, which is a Frame that also defines a standard gravitational parameter
 pub trait GeodeticFrameTrait: CelestialFrameTrait {
@@ -102,9 +99,9 @@ impl<'a> Context<'a> {
     /// Tries to find the geodetic frame data given the ephemeris center name, the orientation name, and the name of the planetary constants
     pub fn geodetic_frame_from(
         &self,
-        ephemeris_name: &'a str,
-        orientation_name: &'a str,
-        planetary_constants_name: &'a str,
+        _ephemeris_name: &'a str,
+        _orientation_name: &'a str,
+        _planetary_constants_name: &'a str,
     ) -> Result<GeodeticFrame, AniseError> {
         todo!()
         // let constants = self.planetary_constants_from_name(planetary_constants_name)?;

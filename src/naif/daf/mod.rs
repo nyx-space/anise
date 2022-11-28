@@ -13,6 +13,7 @@ use hifitime::Epoch;
 use zerocopy::{AsBytes, FromBytes};
 
 pub(crate) const RCRD_LEN: usize = 1024;
+#[allow(clippy::module_inception)]
 pub mod daf;
 pub mod recordtypes;
 

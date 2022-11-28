@@ -12,8 +12,8 @@ use crate::astro::Aberration;
 use crate::context::Context;
 use crate::hifitime::Epoch;
 use crate::math::cartesian::CartesianState;
+use crate::math::units::*;
 use crate::math::Vector3;
-use crate::structure::units::*;
 use crate::{
     errors::AniseError,
     prelude::{Frame, FrameTrait},

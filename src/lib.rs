@@ -22,7 +22,7 @@ pub mod errors;
 pub mod frames;
 pub mod math;
 pub mod naif;
-pub mod structure;
+pub mod shapes;
 
 /// Re-export of hifitime
 pub mod time {
@@ -34,9 +34,9 @@ pub mod prelude {
     pub use crate::context::Context;
     pub use crate::errors::AniseError;
     pub use crate::frames::*;
+    pub use crate::math::units::*;
     pub use crate::naif::daf::NAIFSummaryRecord;
     pub use crate::naif::{BPC, SPK};
-    pub use crate::structure::units::*;
     pub use crate::time::*;
     pub use std::fs::File;
 }

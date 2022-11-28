@@ -62,7 +62,8 @@ impl<F: FrameTrait> Cartesian<F> {
     /// Creates a new Cartesian state in the provided frame at the provided Epoch, and does not set its acceleration.
     ///
     /// **Units:** km, km, km, km/s, km/s, km/s
-    pub fn cartesian(
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
         x_km: f64,
         y_km: f64,
         z_km: f64,
@@ -85,7 +86,7 @@ impl<F: FrameTrait> Cartesian<F> {
     ///
     /// **Units:** km, km, km
     pub fn from_position(x_km: f64, y_km: f64, z_km: f64, epoch: Epoch, frame: F) -> Self {
-        Self::cartesian(x_km, y_km, z_km, 0.0, 0.0, 0.0, epoch, frame)
+        Self::new(x_km, y_km, z_km, 0.0, 0.0, 0.0, epoch, frame)
     }
 
     /// Creates a new Cartesian around in the provided frame from the borrowed state vector
@@ -95,7 +96,7 @@ impl<F: FrameTrait> Cartesian<F> {
     ///
     /// **Units:** position data must be in kilometers, velocity data must be in kilometers per second.
     pub fn from_cartesian_pos_vel(pos_vel: Vector6<f64>, epoch: Epoch, frame: F) -> Self {
-        Self::cartesian(
+        Self::new(
             pos_vel[0], pos_vel[1], pos_vel[2], pos_vel[3], pos_vel[4], pos_vel[5], epoch, frame,
         )
     }
@@ -112,10 +113,7 @@ impl<F: FrameTrait> Cartesian<F> {
 
     /// Returns the magnitude of the acceleration vector in km/s^2
     pub fn amag_km_s2(&self) -> Option<f64> {
-        match self.acceleration_km_s2 {
-            Some(accel) => Some(accel.norm()),
-            None => None,
-        }
+        self.acceleration_km_s2.map(|accel| accel.norm())
     }
 
     /// Returns a copy of the state with a new radius

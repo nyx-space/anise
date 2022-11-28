@@ -39,7 +39,7 @@ impl<'a> DataSet<'a> {
             if self
                 .ephemeris_data
                 .get(self_idx.into())
-                .ok_or(AniseError::IntegrityError(IntegrityErrorKind::DataMissing))?
+                .ok_or_else(|| AniseError::IntegrityError(IntegrityErrorKind::DataMissing))?
                 != &e
             {
                 error!(
@@ -103,7 +103,7 @@ impl<'a> DataSet<'a> {
             if self
                 .orientation_data
                 .get(self_idx.into())
-                .ok_or(AniseError::IntegrityError(IntegrityErrorKind::DataMissing))?
+                .ok_or_else(|| AniseError::IntegrityError(IntegrityErrorKind::DataMissing))?
                 != &o
             {
                 // The ephemeris data differ but the name is the same

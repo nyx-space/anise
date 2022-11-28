@@ -66,8 +66,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, AniseError> {
         let rcrd_len = self.record_data.len() / self.num_records;
         Ok(Self::RecordKind::from_slice_f64(
-            &self
-                .record_data
+            self.record_data
                 .get(n * rcrd_len..(n + 1) * rcrd_len)
                 .ok_or(AniseError::MalformedData((n + 1) * rcrd_len))?,
         ))
@@ -75,10 +74,10 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
 
     fn evaluate(
         &self,
-        epoch: Epoch,
-        start_epoch: Epoch,
+        _epoch: Epoch,
+        _start_epoch: Epoch,
     ) -> Result<CartesianState, crate::prelude::AniseError> {
-        todo!()
+        todo!("https://github.com/anise-toolkit/anise.rs/issues/14")
     }
 }
 
@@ -143,8 +142,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, AniseError> {
         let rcrd_len = self.state_data.len() / self.num_records;
         Ok(Self::RecordKind::from_slice_f64(
-            &self
-                .state_data
+            self.state_data
                 .get(n * rcrd_len..(n + 1) * rcrd_len)
                 .ok_or(AniseError::MalformedData((n + 1) * rcrd_len))?,
         ))

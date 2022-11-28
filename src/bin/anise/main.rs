@@ -37,7 +37,7 @@ fn main() -> Result<(), CliErrors> {
                         DAFFileRecord::read_from(&bytes[..DAFFileRecord::SIZE]).unwrap();
                     match file_record
                         .identification()
-                        .or_else(|e| Err(CliErrors::AniseError(e)))?
+                        .map_err(CliErrors::AniseError)?
                     {
                         "PCK" => {
                             info!("Loading {path_str:?} as DAF/PCK");
@@ -83,7 +83,7 @@ fn main() -> Result<(), CliErrors> {
 
                     match file_record
                         .identification()
-                        .or_else(|e| Err(CliErrors::AniseError(e)))?
+                        .map_err(CliErrors::AniseError)?
                     {
                         "PCK" => {
                             info!("Loading {path_str:?} as DAF/PCK");

@@ -73,12 +73,7 @@ impl DAFFileRecord {
             AniseError::DAFParserError("Could not parse identification string".to_owned())
         })?;
 
-        if &str_locidw[0..3] != "DAF" {
-            Err(AniseError::DAFParserError(format!(
-                "Cannot parse file whose identifier is not DAF: `{}`",
-                str_locidw,
-            )))
-        } else if str_locidw.chars().nth(3) != Some('/') {
+        if &str_locidw[0..3] != "DAF" || str_locidw.chars().nth(3) != Some('/') {
             Err(AniseError::DAFParserError(format!(
                 "Cannot parse file whose identifier is not DAF: `{}`",
                 str_locidw,
@@ -89,10 +84,10 @@ impl DAFFileRecord {
                 "PCK" => Ok("PCK"),
                 _ => {
                     error!("DAF of type `{}` is not yet supported", &str_locidw[4..]);
-                    return Err(AniseError::DAFParserError(format!(
+                    Err(AniseError::DAFParserError(format!(
                         "Cannot parse SPICE data of type `{}`",
                         str_locidw
-                    )));
+                    )))
                 }
             }
         }
@@ -113,9 +108,10 @@ impl DAFFileRecord {
             )));
         };
         if file_endian != Endian::f64_native() || file_endian != Endian::u64_native() {
-            Err(AniseError::DAFParserError(format!(
+            Err(AniseError::DAFParserError(
                 "Input file has different endian-ness than the platform and cannot be decoded"
-            )))
+                    .to_string(),
+            ))
         } else {
             Ok(file_endian)
         }
@@ -182,7 +178,7 @@ impl NameRecord {
     pub fn nth_name(&self, n: usize, summary_size: usize) -> &str {
         let this_name =
             &self.raw_names[n * summary_size * DBL_SIZE..(n + 1) * summary_size * DBL_SIZE];
-        match core::str::from_utf8(&this_name) {
+        match core::str::from_utf8(this_name) {
             Ok(name) => name.trim(),
             Err(e) => {
                 warn!(

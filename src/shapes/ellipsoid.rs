@@ -10,7 +10,6 @@
 
 use core::f64::EPSILON;
 use core::fmt::{Display, Formatter};
-use der::{Decode, Encode, Reader, Writer};
 /// Only the tri-axial Ellipsoid shape model is currently supported by ANISE.
 /// This is directly inspired from SPICE PCK.
 /// > For each body, three radii are listed: The first number is
@@ -90,29 +89,5 @@ impl Display for Ellipsoid {
                 self.flattening()
             )
         }
-    }
-}
-
-impl Encode for Ellipsoid {
-    fn encoded_len(&self) -> der::Result<der::Length> {
-        self.semi_major_equatorial_radius_km.encoded_len()?
-            + self.semi_minor_equatorial_radius_km.encoded_len()?
-            + self.polar_radius_km.encoded_len()?
-    }
-
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
-        self.semi_major_equatorial_radius_km.encode(encoder)?;
-        self.semi_minor_equatorial_radius_km.encode(encoder)?;
-        self.polar_radius_km.encode(encoder)
-    }
-}
-
-impl<'a> Decode<'a> for Ellipsoid {
-    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
-        Ok(Self {
-            semi_major_equatorial_radius_km: decoder.decode()?,
-            semi_minor_equatorial_radius_km: decoder.decode()?,
-            polar_radius_km: decoder.decode()?,
-        })
     }
 }

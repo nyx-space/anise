@@ -36,6 +36,7 @@ impl<F: CelestialFrameTrait> Cartesian<F> {
     /// NOTE: The state is defined in Cartesian coordinates as they are non-singular. This causes rounding
     /// errors when creating a state from its Keplerian orbital elements (cf. the state tests).
     /// One should expect these errors to be on the order of 1e-12.
+    #[allow(clippy::too_many_arguments)]
     pub fn try_keplerian(
         sma: f64,
         ecc: f64,
@@ -136,6 +137,7 @@ impl<F: CelestialFrameTrait> Cartesian<F> {
     }
 
     /// Attempts to create a new Orbit from the provided radii of apoapsis and periapsis, in kilometers
+    #[allow(clippy::too_many_arguments)]
     pub fn try_keplerian_apsis_radii(
         r_a: f64,
         r_p: f64,
@@ -173,6 +175,7 @@ impl<F: CelestialFrameTrait> Cartesian<F> {
     /// NOTE: The state is defined in Cartesian coordinates as they are non-singular. This causes rounding
     /// errors when creating a state from its Keplerian orbital elements (cf. the state tests).
     /// One should expect these errors to be on the order of 1e-12.
+    #[allow(clippy::too_many_arguments)]
     pub fn keplerian(
         sma: f64,
         ecc: f64,
@@ -187,6 +190,7 @@ impl<F: CelestialFrameTrait> Cartesian<F> {
     }
 
     /// Creates a new Orbit from the provided radii of apoapsis and periapsis, in kilometers
+    #[allow(clippy::too_many_arguments)]
     pub fn keplerian_apsis_radii(
         r_a: f64,
         r_p: f64,

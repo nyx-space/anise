@@ -16,7 +16,6 @@ extern crate der;
 extern crate hifitime;
 pub mod array;
 pub mod common;
-pub mod constants;
 pub mod dataset;
 pub mod ephemeris;
 pub mod lookuptable;
@@ -25,7 +24,6 @@ pub mod orientation;
 pub mod records;
 pub mod semver;
 pub mod spline;
-pub mod units;
 
 use self::semver::Semver;
 /// The current version of ANISE

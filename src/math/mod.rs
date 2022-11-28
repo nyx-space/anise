@@ -16,6 +16,7 @@ pub mod angles;
 pub mod cartesian;
 pub mod interpolation;
 pub mod polyfit;
+pub mod units;
 pub mod utils;
 // pub mod rotation;
 

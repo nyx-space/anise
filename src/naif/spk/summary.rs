@@ -35,6 +35,7 @@ impl<'a> SPKSummaryRecord {
     pub fn spice_name(&self) -> Result<&'a str, AniseError> {
         Self::id_to_human_name(self.target_id)
     }
+
     /// Converts the provided ID to its human name.
     /// Only works for the common celestial bodies
     pub fn id_to_human_name(id: i32) -> Result<&'a str, AniseError> {
@@ -118,7 +119,7 @@ impl<'a> SPKSummaryRecord {
     /// 0. In BSP files, the name is stored as a comment and is unstructured. So it's hard to copy those. (Help needed)
     /// 1. One limitation of this approach is that given file may only contain one "Earth"
     /// 2. Another limitation is that this code does not know all of the possible moons in the whole solar system.
-    pub(crate) fn human_name(&self) -> &'a str {
+    pub fn human_name(&self) -> &'a str {
         match Self::id_to_human_name(self.target_id) {
             Ok(name) => name,
             Err(e) => {

@@ -73,7 +73,7 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
         let rcrd_idx = (file_record.fwrd_idx() - 1) * RCRD_LEN;
         let rcrd_bytes = bytes
             .get(rcrd_idx..rcrd_idx + RCRD_LEN)
-            .ok_or(AniseError::MalformedData(file_record.fwrd_idx() + RCRD_LEN))?;
+            .ok_or_else(|| AniseError::MalformedData(file_record.fwrd_idx() + RCRD_LEN))?;
 
         // TODO: Use the endianness flag
         let daf_summary =
@@ -90,7 +90,7 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
         let rcrd_idx = file_record.fwrd_idx() * RCRD_LEN;
         let rcrd_bytes = bytes
             .get(rcrd_idx..rcrd_idx + RCRD_LEN)
-            .ok_or(AniseError::MalformedData(file_record.fwrd_idx() + RCRD_LEN))?;
+            .ok_or_else(|| AniseError::MalformedData(file_record.fwrd_idx() + RCRD_LEN))?;
         let name_record = NameRecord::read_from(rcrd_bytes).unwrap();
 
         Ok(Self {
@@ -208,14 +208,12 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
                     (this_summary.start_index() - 1) * DBL_SIZE
                         ..this_summary.end_index() * DBL_SIZE,
                 )
-                .ok_or(AniseError::MalformedData(
-                    this_summary.end_index() + RCRD_LEN,
-                ))?,
+                .ok_or_else(|| AniseError::MalformedData(this_summary.end_index() + RCRD_LEN))?,
         )
         .unwrap()
         .into_slice();
         // Convert it
-        return Ok(S::from_slice_f64(data));
+        Ok(S::from_slice_f64(data))
     }
 
     pub fn comments(&self) -> Result<String, AniseError> {

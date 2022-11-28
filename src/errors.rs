@@ -13,7 +13,6 @@ use hifitime::Epoch;
 use crate::der::Error as Asn1Error;
 use crate::der::Error as DerError;
 use crate::prelude::Frame;
-use crate::structure::semver::Semver;
 use core::convert::From;
 use core::fmt;
 use std::io::ErrorKind as IOErrorKind;
@@ -38,11 +37,6 @@ pub enum AniseError {
     IntegrityError(IntegrityErrorKind),
     /// Raised if the file could not be decoded correctly
     DecodingError(Asn1Error),
-    /// Raised if the ANISE version of the file is incompatible with the library.
-    IncompatibleVersion {
-        got: Semver,
-        exp: Semver,
-    },
     /// Raised if the item sought after is not found in the context
     ItemNotFound,
     /// Raised when requesting the interpolation for data that is not available in this spline.
@@ -151,11 +145,6 @@ impl fmt::Display for AniseError {
                 "ANISE error: bytes could not be decoded into a valid ANISE file - {err}"
             ),
             Self::ItemNotFound => write!(f, "ANISE error: requested item not found in context"),
-            Self::IncompatibleVersion { got, exp } => write!(
-                f,
-                "ANISE error: Incompatible version: got {}.{}.{} - expected {}.{}.{}",
-                got.major, got.minor, got.patch, exp.major, exp.minor, exp.patch
-            ),
             Self::InternalError(e) => {
                 write!(f, "ANISE internal error: {e:?} -- please report a bug")
             }

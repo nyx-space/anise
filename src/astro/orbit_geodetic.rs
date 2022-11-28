@@ -24,6 +24,7 @@ pub type GeodeticOrbit = Cartesian<GeodeticFrame>;
 
 impl<F: GeodeticFrameTrait> Cartesian<F> {
     /// Creates a new Orbit from the provided semi-major axis altitude in kilometers
+    #[allow(clippy::too_many_arguments)]
     pub fn try_keplerian_altitude(
         sma_altitude: f64,
         ecc: f64,
@@ -47,6 +48,7 @@ impl<F: GeodeticFrameTrait> Cartesian<F> {
     }
 
     /// Creates a new Orbit from the provided altitudes of apoapsis and periapsis, in kilometers
+    #[allow(clippy::too_many_arguments)]
     pub fn try_keplerian_apsis_altitude(
         a_a: f64,
         a_p: f64,
@@ -94,7 +96,7 @@ impl<F: GeodeticFrameTrait> Cartesian<F> {
         let rk = (s_body + height_km) * sin_lat;
         let radius = Vector3::new(ri, rj, rk);
         let velocity = Vector3::new(0.0, 0.0, angular_velocity).cross(&radius);
-        Self::cartesian(
+        Self::new(
             radius[0],
             radius[1],
             radius[2],

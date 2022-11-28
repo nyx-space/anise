@@ -65,8 +65,8 @@ impl Frame {
     }
 
     pub fn from_ephemeris_orientation_names<'a>(
-        ephemeris_name: &'a str,
-        orientation_name: &'a str,
+        _ephemeris_name: &'a str,
+        _orientation_name: &'a str,
     ) -> Self {
         todo!()
         // Self {

@@ -68,8 +68,7 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
 
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, AniseError> {
         Ok(Self::RecordKind::from_slice_f64(
-            &self
-                .record_data
+            self.record_data
                 .get(n * self.rsize..(n + 1) * self.rsize)
                 .ok_or(AniseError::MalformedData((n + 1) * self.rsize))?,
         ))

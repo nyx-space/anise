@@ -14,10 +14,10 @@ use crate::astro::Aberration;
 use crate::context::Context;
 use crate::errors::IntegrityErrorKind;
 use crate::hifitime::Epoch;
+use crate::math::units::*;
 use crate::math::Vector3;
 use crate::naif::daf::{NAIFDataSet, NAIFSummaryRecord};
 use crate::naif::spk::datatypes::{HermiteSetType13, LagrangeSetType9, Type2ChebyshevSet};
-use crate::structure::units::*;
 use crate::{errors::AniseError, prelude::Frame};
 
 impl<'a> Context<'a> {
