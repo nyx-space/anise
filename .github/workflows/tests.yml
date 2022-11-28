@@ -61,6 +61,12 @@ jobs:
       - name: Test (no default features and release)
         run: cargo test --no-default-features --release
 
+      - name: Rust-SPICE JPL DE validation
+        run: RUST_BACKTRACE=full RUST_LOG=debug cargo test validate_jplde_translation --features validation --release -- --nocapture
+
+      - name: Rust-SPICE hermite validation
+        run: RUST_BACKTRACE=full RUST_LOG=debug cargo test validate_hermite_translation --features validation --release -- --nocapture
+
   lints:
     name: Lints
     runs-on: ubuntu-latest

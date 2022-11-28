@@ -11,7 +11,7 @@
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits};
 
-use crate::math::polyfit::{hermite, MAX_SAMPLES};
+use crate::math::interpolation::{hermite_eval, MAX_SAMPLES};
 use crate::{
     math::{cartesian::CartesianState, Vector3},
     naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord},
@@ -209,21 +209,21 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
 
                 // Build the interpolation polynomials making sure to limit the slices to exactly the number of items we actually used
                 // The other ones are zeros, which would cause the interpolation function to fail.
-                let (x_km, vx_km_s) = hermite(
-                    dbg!(&epochs[..self.samples]),
-                    dbg!(&xs[..self.samples]),
-                    dbg!(&vxs[..self.samples]),
+                let (x_km, vx_km_s) = hermite_eval(
+                    &epochs[..self.samples],
+                    &xs[..self.samples],
+                    &vxs[..self.samples],
                     epoch.to_et_seconds(),
                 )?;
 
-                let (y_km, vy_km_s) = hermite(
+                let (y_km, vy_km_s) = hermite_eval(
                     &epochs[..self.samples],
                     &ys[..self.samples],
                     &vys[..self.samples],
                     epoch.to_et_seconds(),
                 )?;
 
-                let (z_km, vz_km_s) = hermite(
+                let (z_km, vz_km_s) = hermite_eval(
                     &epochs[..self.samples],
                     &zs[..self.samples],
                     &vzs[..self.samples],

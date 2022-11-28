@@ -13,7 +13,6 @@
 /// WARNING: This is an O(N*log(N)*K) test, where N is the number of items in each SPK file and K is the number of queries per pair, so it's ignored by default.
 /// On my computer, in release mode, this test runs in 5.15 seconds.
 #[test]
-#[ignore]
 #[cfg(feature = "std")]
 fn validate_jplde_translation() {
     // ANISE imports

@@ -13,6 +13,7 @@ use hifitime::Epoch;
 use crate::errors::AniseError;
 use crate::naif::spk::summary::SPKSummaryRecord;
 use crate::naif::{BPC, SPK};
+use core::fmt;
 use log::error;
 
 pub const MAX_LOADED_FILES: usize = 32;
@@ -24,7 +25,6 @@ pub const MAX_LOADED_FILES: usize = 32;
 /// The stack space does _not_ depend on how much data is loaded at any given time.
 #[derive(Clone, Default)]
 pub struct Context<'a> {
-    // TODO: Add ANISE context here too.
     pub spk_data: [Option<&'a SPK<'a>>; MAX_LOADED_FILES],
     pub bpc_data: [Option<&'a BPC<'a>>; MAX_LOADED_FILES],
 }
@@ -137,5 +137,11 @@ impl<'a: 'b, 'b> Context<'a> {
         error!("Context: No summary {id} valid at epoch {epoch}");
         // If we're reached this point, there is no relevant summary at this epoch.
         Err(AniseError::MissingInterpolationData(epoch))
+    }
+}
+
+impl<'a> fmt::Display for Context<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "Context: #SPK = {}", self.num_loaded_spk())
     }
 }

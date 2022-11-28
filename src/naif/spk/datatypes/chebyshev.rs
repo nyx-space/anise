@@ -12,7 +12,7 @@ use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits};
 
 use crate::{
-    math::{interpolation::chebyshev::cheby_eval, Vector3},
+    math::{interpolation::chebyshev_eval, Vector3},
     naif::daf::{NAIFDataRecord, NAIFDataSet},
     prelude::AniseError,
 };
@@ -100,7 +100,8 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
             .iter()
             .enumerate()
         {
-            let (val, deriv) = cheby_eval(normalized_time, coeffs, radius_s, epoch, self.degree())?;
+            let (val, deriv) =
+                chebyshev_eval(normalized_time, coeffs, radius_s, epoch, self.degree())?;
             pos[cno] = val;
             vel[cno] = deriv;
         }

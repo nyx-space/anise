@@ -8,6 +8,12 @@
  * Documentation: https://nyxspace.com/
  */
 
-// TODO: Consider making a trait for all interpolation schemes.
+mod chebyshev;
+mod hermite;
 
-pub mod chebyshev;
+pub(crate) use chebyshev::chebyshev_eval;
+pub(crate) use hermite::hermite_eval;
+
+/// Defines the maximum degree for an interpolation.
+/// Until https://github.com/rust-lang/rust/issues/60551 , we cannot do operations on const generic, so we need some hack around it.
+pub(crate) const MAX_SAMPLES: usize = 32;

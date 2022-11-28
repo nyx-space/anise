@@ -103,6 +103,7 @@ fn main() -> Result<(), CliErrors> {
                                             name,
                                             start_epoch: format!("{:E}", summary.start_epoch()),
                                             end_epoch: format!("{:E}", summary.end_epoch()),
+                                            duration: summary.end_epoch() - summary.start_epoch(),
                                             interpolation_kind: format!("{}", summary.data_type_i),
                                             frame: format!("{}", summary.frame_id),
                                             inertial_frame: format!(
@@ -127,22 +128,24 @@ fn main() -> Result<(), CliErrors> {
                         "SPK" => {
                             info!("Loading {path_str:?} as DAF/SPK");
                             match SPK::parse(&bytes) {
-                                Ok(pck) => {
+                                Ok(spk) => {
                                     // Build the rows of the table
                                     let mut rows = Vec::new();
 
-                                    for (sno, summary) in pck.data_summaries.iter().enumerate() {
-                                        let name = pck
+                                    for (sno, summary) in spk.data_summaries.iter().enumerate() {
+                                        let name = spk
                                             .name_record
-                                            .nth_name(sno, pck.file_record.summary_size());
+                                            .nth_name(sno, spk.file_record.summary_size());
                                         if summary.is_empty() {
                                             continue;
                                         }
 
                                         rows.push(SpkRow {
                                             name,
+                                            center: summary.center_id,
                                             start_epoch: format!("{:E}", summary.start_epoch()),
                                             end_epoch: format!("{:E}", summary.end_epoch()),
+                                            duration: summary.end_epoch() - summary.start_epoch(),
                                             interpolation_kind: format!("{}", summary.data_type_i),
                                             frame: format!("{}", summary.frame_id),
                                             target: format!("{}", summary.target_id),

@@ -70,7 +70,7 @@ use super::MAX_SAMPLES;
 /// 1. Ensure that all provided arrays are of the same size.
 /// 2. Ensure that there are no more than 32 items to interpolate.
 /// 3. Ensure no division by zero errors (zero is set to core::f64::EPSILON, which is about 2e-16).
-pub fn hermite(
+pub fn hermite_eval(
     xs: &[f64],
     ys: &[f64],
     ydots: &[f64],
@@ -145,7 +145,7 @@ pub fn hermite(
     /*     compute them now. */
 
     work[4 * n - 2] = work[(2 * n) - 1];
-    work[2 * (n - 1)] = work[(2 * n) - 1] * (x_eval - xs[n - 1]) + work[2 * (n - 1)];
+    work[2 * (n - 1)] += work[(2 * n) - 1] * (x_eval - xs[n - 1]);
 
     /*     Compute columns 3 through 2*N of the table. */
 
@@ -207,7 +207,7 @@ fn hermite_spice_docs_example() {
 
     // Check that we can interpolate the values exactly.
     for (i, t) in ts.iter().enumerate() {
-        let (eval, deriv) = hermite(&ts, &yvals, &ydotvals, *t).unwrap();
+        let (eval, deriv) = hermite_eval(&ts, &yvals, &ydotvals, *t).unwrap();
         let eval_err = (eval - yvals[i]).abs();
         assert!(eval_err < EPSILON, "f(x) error is {eval_err:e}");
 
@@ -216,14 +216,14 @@ fn hermite_spice_docs_example() {
     }
 
     // Check the interpolation from the SPICE documentation
-    let (x, vx) = hermite(&ts, &yvals, &ydotvals, 2.0).unwrap();
+    let (x, vx) = hermite_eval(&ts, &yvals, &ydotvals, 2.0).unwrap();
 
     assert!((x - 141.0).abs() < EPSILON, "X error");
     assert!((vx - 456.0).abs() < EPSILON, "VX error");
 }
 
 #[test]
-fn hermite_ephem_spline_test2() {
+fn hermite_ephem_spline_test() {
     let epoch_et = 773064069.1841084;
     let epochs = [
         773063753.0320327,
@@ -265,7 +265,7 @@ fn hermite_ephem_spline_test2() {
     let start_idx = central_idx - (samples - 1) / 2 - 1;
     let end_idx = central_idx + (samples - 1) / 2 + 1;
 
-    let (x, vx) = hermite(
+    let (x, vx) = hermite_eval(
         &epochs[start_idx..end_idx + 1],
         &values[start_idx..end_idx + 1],
         &values_dt[start_idx..end_idx + 1],

@@ -16,7 +16,7 @@ use crate::prelude::AniseError;
 ///
 /// # Notes
 /// 1. At this point, the splines are expected to be in Chebyshev format and no verification is done.
-pub(crate) fn cheby_eval(
+pub(crate) fn chebyshev_eval(
     normalized_time: f64,
     spline_coeffs: &[f64],
     spline_radius_s: f64,

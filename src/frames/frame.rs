@@ -8,7 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 
-use core::fmt::{Debug, Display, Formatter};
+use core::fmt;
+use core::fmt::Debug;
 
 use crate::constants::celestial_objects::hash_celestial_name;
 use crate::constants::orientations::{hash_orientation_name, J2000};
@@ -96,8 +97,8 @@ impl Frame {
     }
 }
 
-impl Display for Frame {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+impl fmt::Display for Frame {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         let body_name = match hash_celestial_name(self.ephemeris_id) {
             Some(name) => name.to_string(),
             None => format!("body {}", self.ephemeris_id),

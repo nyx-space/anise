@@ -11,7 +11,7 @@
 use crate::{context::Context, prelude::AniseError, NaifId};
 
 use super::{Frame, FrameTrait};
-use core::fmt::{Display, Formatter};
+use core::fmt;
 
 /// Defines a Celestial Frame kind, which is a Frame that also defines a standard gravitational parameter
 pub trait CelestialFrameTrait: FrameTrait {
@@ -42,8 +42,8 @@ impl CelestialFrameTrait for CelestialFrame {
     }
 }
 
-impl Display for CelestialFrame {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+impl fmt::Display for CelestialFrame {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(f, "{} (μ = {} km3/s)", self.frame, self.mu_km3_s2())
     }
 }

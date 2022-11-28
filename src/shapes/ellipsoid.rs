@@ -9,7 +9,7 @@
  */
 
 use core::f64::EPSILON;
-use core::fmt::{Display, Formatter};
+use core::fmt;
 /// Only the tri-axial Ellipsoid shape model is currently supported by ANISE.
 /// This is directly inspired from SPICE PCK.
 /// > For each body, three radii are listed: The first number is
@@ -67,8 +67,8 @@ impl Ellipsoid {
     }
 }
 
-impl Display for Ellipsoid {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+impl fmt::Display for Ellipsoid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         if self.is_sphere() {
             write!(f, "radius = {} km", self.semi_major_equatorial_radius_km)
         } else if self.is_spheroid() {
