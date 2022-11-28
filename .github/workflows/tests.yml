@@ -49,6 +49,9 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: Install CSPICE
+        run: sh dev-env-setup.sh
+
       - name: Test debug (default features) # This has overflow checks etc.
         run: cargo test
 
