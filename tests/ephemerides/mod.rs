@@ -11,5 +11,5 @@
 mod parent_translation_verif;
 mod paths;
 mod translation;
-// #[cfg(feature = "validation")]
+#[cfg(feature = "validation")]
 mod validation;

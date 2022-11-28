@@ -11,6 +11,7 @@
 #[test]
 #[cfg(feature = "std")]
 fn validate_hermite_translation() {
+    use anise::constants::frames::EARTH_J2000;
     // ANISE imports
     use anise::file_mmap;
     use anise::math::utils::{abs_diff, rel_diff};
@@ -81,213 +82,180 @@ fn validate_hermite_translation() {
         .unwrap();
     println!("{ctx}");
 
-    let first_spk = ctx.spk_data[0].unwrap();
-    let second_spk = ctx.spk_data[1].unwrap();
+    let sc_naif_id = -10000001;
 
-    let mut pairs = Vec::new();
+    // We loaded the spacecraft second, so we're just grabbing that directly, but really, users should not be doing that.
+    let sc_spk = ctx.spk_data[1]
+        .unwrap()
+        .summary_from_id(sc_naif_id)
+        .unwrap()
+        .0;
 
-    for ephem1 in first_spk.data_summaries {
-        let j2000_ephem1 = Frame::from_ephem_j2000(ephem1.target_id);
+    let j2000_spacecraft = Frame::from_ephem_j2000(sc_naif_id); // From GMAT setup
 
-        for ephem2 in second_spk.data_summaries {
-            if ephem1.target_id == ephem2.target_id {
-                continue;
-            }
+    let j2000_ephem2 = EARTH_J2000;
 
-            let key = if ephem1.target_id < ephem2.target_id {
-                (ephem1.target_id, ephem2.target_id)
-            } else {
-                (ephem2.target_id, ephem1.target_id)
-            };
+    // Query the ephemeris data for a bunch of different times.
+    let start_epoch = sc_spk.start_epoch();
 
-            if pairs.contains(&key) {
-                // We're already handled that pair
-                panic!();
-            }
-            pairs.push(key);
+    let end_epoch = sc_spk.end_epoch();
 
-            let j2000_ephem2 = Frame::from_ephem_j2000(ephem2.target_id);
+    let time_step = ((end_epoch - start_epoch).to_seconds() / NUM_QUERIES_PER_PAIR).seconds();
 
-            // Query the ephemeris data for a bunch of different times.
-            let start_epoch = if ephem1.start_epoch() < ephem2.start_epoch() {
-                ephem2.start_epoch()
-            } else {
-                ephem1.start_epoch()
-            };
+    let time_it = TimeSeries::exclusive(start_epoch, end_epoch - time_step, time_step);
 
-            let end_epoch = if ephem1.end_epoch() < ephem2.end_epoch() {
-                ephem1.end_epoch()
-            } else {
-                ephem2.end_epoch()
-            };
+    let component = ["X", "Y", "Z", "VX", "VY", "VZ"];
 
-            let time_step =
-                ((end_epoch - start_epoch).to_seconds() / NUM_QUERIES_PER_PAIR).seconds();
+    let mut batch_src_frm = Vec::with_capacity(BATCH_SIZE);
+    let mut batch_dest_frm = Vec::with_capacity(BATCH_SIZE);
+    let mut batch_comp = Vec::with_capacity(BATCH_SIZE);
+    let mut batch_epoch = Vec::with_capacity(BATCH_SIZE);
+    let mut batch_hops = Vec::with_capacity(BATCH_SIZE);
+    let mut batch_abs = Vec::with_capacity(BATCH_SIZE);
+    let mut batch_rel = Vec::with_capacity(BATCH_SIZE);
 
-            let time_it = TimeSeries::exclusive(start_epoch, end_epoch - time_step, time_step);
+    for (i, epoch) in time_it.enumerate() {
+        let hops = ctx
+            .common_ephemeris_path(j2000_ephem2, j2000_spacecraft, epoch)
+            .unwrap()
+            .0 as u8;
 
-            let component = ["X", "Y", "Z", "VX", "VY", "VZ"];
+        match ctx.translate_from_to_km_s_geometric(j2000_ephem2, j2000_spacecraft, epoch) {
+            Ok(state) => {
+                num_comparisons += 1;
+                // Perform the same query in SPICE
+                let (spice_state, _) = spice::spkezr(
+                    "EARTH",
+                    epoch.to_et_seconds(),
+                    "J2000",
+                    "NONE",
+                    &format!("{}", sc_naif_id),
+                );
 
-            let mut batch_src_frm = Vec::with_capacity(BATCH_SIZE);
-            let mut batch_dest_frm = Vec::with_capacity(BATCH_SIZE);
-            let mut batch_comp = Vec::with_capacity(BATCH_SIZE);
-            let mut batch_epoch = Vec::with_capacity(BATCH_SIZE);
-            let mut batch_hops = Vec::with_capacity(BATCH_SIZE);
-            let mut batch_abs = Vec::with_capacity(BATCH_SIZE);
-            let mut batch_rel = Vec::with_capacity(BATCH_SIZE);
+                // Check component by component instead of rebuilding a Vector3 from the SPICE data
+                for i in 0..6 {
+                    let (anise_value, max_err) = if i < 3 {
+                        (state.radius_km[i], FAIL_POS_KM)
+                    } else {
+                        (state.velocity_km_s[i - 3], FAIL_VEL_KM_S)
+                    };
 
-            for (i, epoch) in time_it.enumerate() {
-                let hops = ctx
-                    .common_ephemeris_path(j2000_ephem1, j2000_ephem2, epoch)
-                    .unwrap()
-                    .0 as u8;
+                    // We don't look at the absolute error here, that's for the stats to show any skewness
+                    let abs_err = abs_diff(anise_value, spice_state[i]);
+                    let rel_err = rel_diff(anise_value, spice_state[i], EPSILON);
 
-                match ctx.translate_from_to_km_s_geometric(j2000_ephem1, j2000_ephem2, epoch) {
-                    Ok(state) => {
-                        num_comparisons += 1;
-                        // Perform the same query in SPICE
-                        let (spice_state, _) = spice::spkezr(
-                            ephem1.spice_name().unwrap(),
-                            epoch.to_et_seconds(),
-                            "J2000",
-                            "NONE",
-                            &format!("{}", ephem2.target_id),
-                        );
-
-                        // Check component by component instead of rebuilding a Vector3 from the SPICE data
-                        for i in 0..6 {
-                            let (anise_value, max_err) = if i < 3 {
-                                (state.radius_km[i], FAIL_POS_KM)
-                            } else {
-                                (state.velocity_km_s[i - 3], FAIL_VEL_KM_S)
-                            };
-
-                            // We don't look at the absolute error here, that's for the stats to show any skewness
-                            let abs_err = abs_diff(anise_value, spice_state[i]);
-                            let rel_err = rel_diff(anise_value, spice_state[i], EPSILON);
-
-                            if !relative_eq!(anise_value, spice_state[i], epsilon = max_err) {
-                                // Always save the parquet file
-                                // writer.close().unwrap();
-
-                                println!(
-                                    "{epoch:E}\t{}got = {:.16}\texp = {:.16}\terr = {:.16}",
-                                    component[i], anise_value, spice_state[i], rel_err
-                                );
-                            }
-
-                            // Update data
-
-                            batch_src_frm.push(j2000_ephem1.to_string());
-                            batch_dest_frm.push(j2000_ephem2.to_string());
-                            batch_hops.push(hops);
-                            batch_comp.push(component[i]);
-                            batch_epoch.push((epoch - start_epoch).to_seconds());
-                            batch_abs.push(abs_err);
-                            batch_rel.push(rel_err);
-                        }
-
-                        // Consider writing the batch
-                        if i % BATCH_SIZE == 0 {
-                            writer
-                                .write(
-                                    &RecordBatch::try_from_iter(vec![
-                                        (
-                                            "source frame",
-                                            Arc::new(StringArray::from(batch_src_frm.clone()))
-                                                as ArrayRef,
-                                        ),
-                                        (
-                                            "destination frame",
-                                            Arc::new(StringArray::from(batch_dest_frm.clone()))
-                                                as ArrayRef,
-                                        ),
-                                        (
-                                            "# hops",
-                                            Arc::new(UInt8Array::from(batch_hops.clone()))
-                                                as ArrayRef,
-                                        ),
-                                        (
-                                            "component",
-                                            Arc::new(StringArray::from(batch_comp.clone()))
-                                                as ArrayRef,
-                                        ),
-                                        (
-                                            "File delta T (s)",
-                                            Arc::new(Float64Array::from(batch_epoch.clone()))
-                                                as ArrayRef,
-                                        ),
-                                        (
-                                            "absolute error (km)",
-                                            Arc::new(Float64Array::from(batch_abs.clone()))
-                                                as ArrayRef,
-                                        ),
-                                        (
-                                            "relative error (km)",
-                                            Arc::new(Float64Array::from(batch_rel.clone()))
-                                                as ArrayRef,
-                                        ),
-                                    ])
-                                    .unwrap(),
-                                )
-                                .unwrap();
-                            // Re-init all of the vectors
-                            batch_src_frm = Vec::with_capacity(BATCH_SIZE);
-                            batch_dest_frm = Vec::with_capacity(BATCH_SIZE);
-                            batch_comp = Vec::with_capacity(BATCH_SIZE);
-                            batch_epoch = Vec::with_capacity(BATCH_SIZE);
-                            batch_hops = Vec::with_capacity(BATCH_SIZE);
-                            batch_abs = Vec::with_capacity(BATCH_SIZE);
-                            batch_rel = Vec::with_capacity(BATCH_SIZE);
-                        }
-                    }
-                    Err(e) => {
+                    if !relative_eq!(anise_value, spice_state[i], epsilon = max_err) {
                         // Always save the parquet file
                         // writer.close().unwrap();
-                        error!("At epoch {epoch:E}: {e}");
+
+                        println!(
+                            "{epoch:E}\t{}got = {:.16}\texp = {:.16}\terr = {:.16}",
+                            component[i], anise_value, spice_state[i], rel_err
+                        );
                     }
-                };
+
+                    // Update data
+
+                    batch_src_frm.push(j2000_spacecraft.to_string());
+                    batch_dest_frm.push(j2000_ephem2.to_string());
+                    batch_hops.push(hops);
+                    batch_comp.push(component[i]);
+                    batch_epoch.push((epoch - start_epoch).to_seconds());
+                    batch_abs.push(abs_err);
+                    batch_rel.push(rel_err);
+                }
+
+                // Consider writing the batch
+                if i % BATCH_SIZE == 0 {
+                    writer
+                        .write(
+                            &RecordBatch::try_from_iter(vec![
+                                (
+                                    "source frame",
+                                    Arc::new(StringArray::from(batch_src_frm.clone())) as ArrayRef,
+                                ),
+                                (
+                                    "destination frame",
+                                    Arc::new(StringArray::from(batch_dest_frm.clone())) as ArrayRef,
+                                ),
+                                (
+                                    "# hops",
+                                    Arc::new(UInt8Array::from(batch_hops.clone())) as ArrayRef,
+                                ),
+                                (
+                                    "component",
+                                    Arc::new(StringArray::from(batch_comp.clone())) as ArrayRef,
+                                ),
+                                (
+                                    "File delta T (s)",
+                                    Arc::new(Float64Array::from(batch_epoch.clone())) as ArrayRef,
+                                ),
+                                (
+                                    "absolute error (km)",
+                                    Arc::new(Float64Array::from(batch_abs.clone())) as ArrayRef,
+                                ),
+                                (
+                                    "relative error (km)",
+                                    Arc::new(Float64Array::from(batch_rel.clone())) as ArrayRef,
+                                ),
+                            ])
+                            .unwrap(),
+                        )
+                        .unwrap();
+                    // Re-init all of the vectors
+                    batch_src_frm = Vec::with_capacity(BATCH_SIZE);
+                    batch_dest_frm = Vec::with_capacity(BATCH_SIZE);
+                    batch_comp = Vec::with_capacity(BATCH_SIZE);
+                    batch_epoch = Vec::with_capacity(BATCH_SIZE);
+                    batch_hops = Vec::with_capacity(BATCH_SIZE);
+                    batch_abs = Vec::with_capacity(BATCH_SIZE);
+                    batch_rel = Vec::with_capacity(BATCH_SIZE);
+                }
             }
-
-            writer
-                .write(
-                    &RecordBatch::try_from_iter(vec![
-                        (
-                            "source frame",
-                            Arc::new(StringArray::from(batch_src_frm)) as ArrayRef,
-                        ),
-                        (
-                            "destination frame",
-                            Arc::new(StringArray::from(batch_dest_frm)) as ArrayRef,
-                        ),
-                        ("# hops", Arc::new(UInt8Array::from(batch_hops)) as ArrayRef),
-                        (
-                            "component",
-                            Arc::new(StringArray::from(batch_comp)) as ArrayRef,
-                        ),
-                        (
-                            "File delta T (s)",
-                            Arc::new(Float64Array::from(batch_epoch)) as ArrayRef,
-                        ),
-                        (
-                            "absolute error (km)",
-                            Arc::new(Float64Array::from(batch_abs)) as ArrayRef,
-                        ),
-                        (
-                            "relative error (km)",
-                            Arc::new(Float64Array::from(batch_rel)) as ArrayRef,
-                        ),
-                    ])
-                    .unwrap(),
-                )
-                .unwrap();
-
-            // Regularly flush to not lose data
-            writer.flush().unwrap();
-        }
-
-        info!("done with {}", j2000_ephem1);
+            Err(e) => {
+                // Always save the parquet file
+                // writer.close().unwrap();
+                error!("At epoch {epoch:E}: {e}");
+            }
+        };
     }
+
+    writer
+        .write(
+            &RecordBatch::try_from_iter(vec![
+                (
+                    "source frame",
+                    Arc::new(StringArray::from(batch_src_frm)) as ArrayRef,
+                ),
+                (
+                    "destination frame",
+                    Arc::new(StringArray::from(batch_dest_frm)) as ArrayRef,
+                ),
+                ("# hops", Arc::new(UInt8Array::from(batch_hops)) as ArrayRef),
+                (
+                    "component",
+                    Arc::new(StringArray::from(batch_comp)) as ArrayRef,
+                ),
+                (
+                    "File delta T (s)",
+                    Arc::new(Float64Array::from(batch_epoch)) as ArrayRef,
+                ),
+                (
+                    "absolute error (km)",
+                    Arc::new(Float64Array::from(batch_abs)) as ArrayRef,
+                ),
+                (
+                    "relative error (km)",
+                    Arc::new(Float64Array::from(batch_rel)) as ArrayRef,
+                ),
+            ])
+            .unwrap(),
+        )
+        .unwrap();
+
+    // Regularly flush to not lose data
+    writer.flush().unwrap();
+
     // Unload SPICE (note that this is not needed for ANISE because it falls out of scope)
     // spice::unload(&format!("data/{hermite_path}.bsp"));
     spice::unload(&de_path);
@@ -300,8 +268,11 @@ fn validate_hermite_translation() {
 
     // And now, analyze the parquet file!
 
-    let df = LazyFrame::scan_parquet("target/validation-test-results.parquet", Default::default())
-        .unwrap();
+    let df = LazyFrame::scan_parquet(
+        "target/type13-validation-test-results.parquet",
+        Default::default(),
+    )
+    .unwrap();
 
     const TYPICAL_REL_ERR_KM: f64 = 1e-7; // Allow up to 100 micrometers of error.
     const MAX_REL_ERR_KM: f64 = 1e-5; // Allow up to 1 centimeter of error.
@@ -407,7 +378,6 @@ fn validate_hermite_translation() {
             col("absolute error (km)"),
             col("relative error (km)"),
             col("File delta T (s)"),
-            col("DE file"),
             col("source frame"),
             col("destination frame"),
             max("component"),
@@ -416,7 +386,7 @@ fn validate_hermite_translation() {
         .unwrap();
     println!("{}", outliers);
 
-    let outfile = "target/validation-outliers.parquet";
+    let outfile = "target/type13-validation-outliers.parquet";
     let mut file = std::fs::File::create(outfile).unwrap();
     ParquetWriter::new(&mut file).finish(&mut outliers).unwrap();
 

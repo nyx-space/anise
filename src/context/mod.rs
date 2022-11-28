@@ -129,8 +129,6 @@ impl<'a: 'b, 'b> Context<'a> {
             if let Ok((summary, idx_in_spk)) = spk.summary_from_id_at_epoch(id, epoch) {
                 // NOTE: We're iterating backward, so the correct SPK number is "total loaded" minus "current iteration".
                 return Ok((summary, self.num_loaded_spk() - spkno - 1, idx_in_spk));
-            } else {
-                error!("Nothing in {spkno}");
             }
         }
 

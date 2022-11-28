@@ -183,7 +183,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 {
                     (self.num_records - self.samples - 1, self.samples - 1)
                 } else {
-                    dbg!(idx - (self.samples - 1) / 2, idx + (self.samples - 1) / 2)
+                    (idx - (self.samples - 1) / 2, idx + (self.samples - 1) / 2)
                 };
 
                 // Statically allocated arrays of the maximum number of samples
@@ -233,8 +233,6 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 // And build the result
                 let pos_km = Vector3::new(x_km, y_km, z_km);
                 let vel_km_s = Vector3::new(vx_km_s, vy_km_s, vz_km_s);
-
-                dbg!(pos_km, vel_km_s);
 
                 Ok((pos_km, vel_km_s))
             }
