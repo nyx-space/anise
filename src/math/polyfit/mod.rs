@@ -8,17 +8,15 @@
  * Documentation: https://nyxspace.com/
  */
 
-
-
 use core::ops::{Index, IndexMut};
 
 /// A FixedArray is a a way around allocating vectors when we don't know the exact size at compile time.
 /// This will be made obsolete when https://github.com/rust-lang/rust/issues/60551 is merged into rust stable.
 #[derive(Copy, Clone, Debug)]
-struct F64TupleArray<const N: usize, const S: usize>([[f64; N]; S]);
+pub struct F64TupleArray<const N: usize, const S: usize>([[f64; N]; S]);
 
 impl<const N: usize, const S: usize> F64TupleArray<N, S> {
-    fn zeros() -> Self {
+    pub fn zeros() -> Self {
         Self([[0.0; N]; S])
     }
 
