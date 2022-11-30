@@ -140,6 +140,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          lfs: true
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -158,8 +160,8 @@ jobs:
       - name: Generate coverage report
         run: |
           cargo llvm-cov clean --workspace
-          cargo llvm-cov test --no-report --features=std,asn1der -- --test-threads=1
-          cargo llvm-cov test --no-report --tests --features=std,asn1der -- compile_fail
+          cargo llvm-cov test --no-report --features=std -- --test-threads=1
+          cargo llvm-cov test --no-report --tests --features=std -- compile_fail
           cargo llvm-cov report --lcov > lcov.txt
         env:
           RUSTFLAGS: --cfg __ui_tests
