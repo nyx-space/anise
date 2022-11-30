@@ -132,3 +132,41 @@ jobs:
         with:
           name: validation-artifacts
           path: target/*.html
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+
+      - name: Install CSPICE
+        run: sh dev-env-setup.sh && cd .. # Return to root
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Generate coverage report
+        run: |
+          cargo llvm-cov clean --workspace
+          cargo llvm-cov test --no-report --features=std,asn1der -- --test-threads=1
+          cargo llvm-cov test --no-report --tests --features=std,asn1der -- compile_fail
+          cargo llvm-cov report --lcov > lcov.txt
+        env:
+          RUSTFLAGS: --cfg __ui_tests
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v3
+        env:
+          TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          files: ./lcov.txt
