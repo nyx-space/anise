@@ -23,6 +23,9 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: Install CSPICE
+        run: sh dev-env-setup.sh && cd .. # Return to root
+
       - name: Bench
         run: cargo bench --bench "*_jpl_ephemerides"
 
@@ -33,7 +36,7 @@ jobs:
           path: target/criterion/**/report/*
 
   type13_hermite:
-    name: Benchmark epoch
+    name: Hermite Benchmark
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -44,6 +47,9 @@ jobs:
         with:
           toolchain: stable
           override: true
+
+      - name: Install CSPICE
+        run: sh dev-env-setup.sh && cd .. # Return to root
 
       - name: Bench
         run: cargo bench --bench "*_spacecraft"

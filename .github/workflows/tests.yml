@@ -33,8 +33,8 @@ jobs:
         with:
           command: check
 
-  run-tests:
-    name: Converts SPICE BSP files into ANISE files and runs the tests
+  test:
+    name: Run tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -69,12 +69,6 @@ jobs:
           cargo run -- inspect data/gmat-hermite.bsp
           cargo run -- inspect data/de440.bsp
 
-      - name: Rust-SPICE JPL DE validation
-        run: RUST_BACKTRACE=full RUST_LOG=debug cargo test validate_jplde_translation --features validation --release -- --nocapture
-
-      - name: Rust-SPICE hermite validation
-        run: RUST_BACKTRACE=full RUST_LOG=debug cargo test validate_hermite_translation --features validation --release -- --nocapture
-
   lints:
     name: Lints
     runs-on: ubuntu-latest
@@ -101,3 +95,40 @@ jobs:
         with:
           command: clippy
           args: -- -D warnings
+
+  validation:
+    name: Validation
+    runs-on: ubuntu-latest
+    needs: [check, test, lints]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+        with:
+          lfs: true
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Install CSPICE
+        run: sh dev-env-setup.sh && cd .. # Return to root
+
+      - name: CLI SPK
+        run: |
+          cargo run -- inspect data/gmat-hermite.bsp
+          cargo run -- inspect data/de440.bsp
+
+      - name: Rust-SPICE JPL DE validation
+        run: RUST_BACKTRACE=full RUST_LOG=debug cargo test validate_jplde_translation --features validation --release -- --nocapture
+
+      - name: Rust-SPICE hermite validation
+        run: RUST_BACKTRACE=full RUST_LOG=debug cargo test validate_hermite_translation --features validation --release -- --nocapture
+
+      - name: Save validation artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: validation-artifacts
+          path: target/*.html

@@ -89,6 +89,7 @@ fn main() -> Result<(), CliErrors> {
                             info!("Loading {path_str:?} as DAF/PCK");
                             match BPC::parse(&bytes) {
                                 Ok(pck) => {
+                                    info!("CRC32 checksum: 0x{:X}", pck.crc32());
                                     // Build the rows of the table
                                     let mut rows = Vec::new();
 
@@ -129,6 +130,7 @@ fn main() -> Result<(), CliErrors> {
                             info!("Loading {path_str:?} as DAF/SPK");
                             match SPK::parse(&bytes) {
                                 Ok(spk) => {
+                                    info!("CRC32 checksum: 0x{:X}", spk.crc32());
                                     // Build the rows of the table
                                     let mut rows = Vec::new();
 
