@@ -65,7 +65,9 @@ jobs:
         run: cargo test --no-default-features --release
 
       - name: CLI SPK
-        run: cargo run -- inspect data/gmat-hermite.bsp && cargo run -- inspect data/de440.bsp
+        run: |
+          cargo run -- inspect data/gmat-hermite.bsp
+          cargo run -- inspect data/de440.bsp
 
       - name: Rust-SPICE JPL DE validation
         run: RUST_BACKTRACE=full RUST_LOG=debug cargo test validate_jplde_translation --features validation --release -- --nocapture

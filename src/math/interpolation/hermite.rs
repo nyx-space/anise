@@ -59,6 +59,8 @@
 
 /* -    SPICELIB Version 1.0.0, 01-MAR-2000 (NJB) */
 
+use core::f64::EPSILON;
+
 use crate::errors::MathErrorKind;
 use log::error;
 
@@ -115,6 +117,9 @@ pub fn hermite_eval(
         let c1 = xs[i] - x_eval;
         let c2 = x_eval - xs[i - 1];
         let denom = xs[i] - xs[i - 1];
+        if denom.abs() < EPSILON {
+            return Err(MathErrorKind::DivisionByZero);
+        }
 
         /*        The second column of WORK contains interpolated derivative */
         /*        values. */
@@ -167,6 +172,9 @@ pub fn hermite_eval(
             let c1 = xs[xij - 1] - x_eval;
             let c2 = x_eval - xs[xi - 1];
             let denom = xs[xij - 1] - xs[xi - 1];
+            if denom.abs() < EPSILON {
+                return Err(MathErrorKind::DivisionByZero);
+            }
 
             /*           Compute the interpolated derivative at X for the Ith */
             /*           interpolant. This is the derivative with respect to X of */

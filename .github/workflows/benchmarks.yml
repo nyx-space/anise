@@ -1,0 +1,55 @@
+name: Benchmarks
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "*"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  type2_chebyshev:
+    name: JPL DE Benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Bench
+        run: cargo bench --bench "*_jpl_ephemerides"
+
+      - name: Save benchmark artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: jpl-development-ephemerides-benchmark
+          path: target/criterion/**/report/*
+
+  type13_hermite:
+    name: Benchmark epoch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Bench
+        run: cargo bench --bench "*_spacecraft"
+
+      - name: Save benchmark artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: spacecraft-ephemeris-benchmark
+          path: target/criterion/**/report/*

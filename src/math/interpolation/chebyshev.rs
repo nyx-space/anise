@@ -8,9 +8,9 @@
  * Documentation: https://nyxspace.com/
  */
 
+use crate::{errors::MathErrorKind, prelude::AniseError};
+use core::f64::EPSILON;
 use hifitime::Epoch;
-
-use crate::prelude::AniseError;
 
 /// Attempts to evaluate a Chebyshev polynomial given the coefficients, returning the value and its derivative
 ///
@@ -23,6 +23,9 @@ pub(crate) fn chebyshev_eval(
     eval_epoch: Epoch,
     degree: usize,
 ) -> Result<(f64, f64), AniseError> {
+    if spline_radius_s.abs() < EPSILON {
+        return Err(AniseError::MathError(MathErrorKind::DivisionByZero));
+    }
     // Workspace arrays
     let mut w = [0.0_f64; 3];
     let mut dw = [0.0_f64; 3];

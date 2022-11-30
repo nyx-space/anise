@@ -10,6 +10,7 @@
 
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits};
+use log::error;
 
 use crate::{
     math::{interpolation::chebyshev_eval, Vector3},
@@ -50,20 +51,27 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
     type StateKind = (Vector3, Vector3);
     type RecordKind = Type2ChebyshevRecord<'a>;
 
-    fn from_slice_f64(slice: &'a [f64]) -> Self {
+    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, AniseError> {
+        if slice.len() < 5 {
+            error!(
+                "Cannot build a Type 2 Chebyshev set from only {} items",
+                slice.len()
+            );
+            return Err(AniseError::MalformedData(5));
+        }
         // For this kind of record, the data is stored at the very end of the dataset
         let start_epoch = Epoch::from_et_seconds(slice[slice.len() - 4]);
         let interval_length = slice[slice.len() - 3].seconds();
         let rsize = slice[slice.len() - 2] as usize;
         let num_records = slice[slice.len() - 1] as usize;
 
-        Self {
+        Ok(Self {
             init_epoch: start_epoch,
             interval_length,
             rsize,
             num_records,
             record_data: &slice[0..slice.len() - 4],
-        }
+        })
     }
 
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, AniseError> {

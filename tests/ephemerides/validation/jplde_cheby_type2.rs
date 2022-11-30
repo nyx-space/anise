@@ -33,6 +33,8 @@ fn validate_jplde_translation() {
     use spice;
     use std::sync::Arc;
 
+    use crate::ephemerides::consts::{MAX_REL_POS_ERR_KM, TYPICAL_REL_POS_ERR_KM};
+
     // If the error is larger than this, we should fail immediately.
     const FAIL_POS_KM: f64 = 1e2;
     const FAIL_VEL_KM_S: f64 = 1e-1;
@@ -54,8 +56,8 @@ fn validate_jplde_translation() {
         Field::new("# hops", DataType::UInt8, false),
         Field::new("component", DataType::Utf8, false),
         Field::new("File delta T (s)", DataType::Float64, false),
-        Field::new("absolute error (km)", DataType::Float64, false),
-        Field::new("relative error (km)", DataType::Float64, false),
+        Field::new("absolute error", DataType::Float64, false),
+        Field::new("relative error", DataType::Float64, false),
     ]);
 
     let file = File::create("target/validation-test-results.parquet").unwrap();
@@ -174,7 +176,6 @@ fn validate_jplde_translation() {
                                 }
 
                                 // Update data
-
                                 batch_de_name.push(de_name.clone());
                                 batch_src_frm.push(j2000_ephem1.to_string());
                                 batch_dest_frm.push(j2000_ephem2.to_string());
@@ -221,12 +222,12 @@ fn validate_jplde_translation() {
                                                     as ArrayRef,
                                             ),
                                             (
-                                                "absolute error (km)",
+                                                "absolute error",
                                                 Arc::new(Float64Array::from(batch_abs.clone()))
                                                     as ArrayRef,
                                             ),
                                             (
-                                                "relative error (km)",
+                                                "relative error",
                                                 Arc::new(Float64Array::from(batch_rel.clone()))
                                                     as ArrayRef,
                                             ),
@@ -246,8 +247,6 @@ fn validate_jplde_translation() {
                             }
                         }
                         Err(e) => {
-                            // Always save the parquet file
-                            // writer.close().unwrap();
                             error!("At epoch {epoch:E}: {e}");
                         }
                     };
@@ -278,11 +277,11 @@ fn validate_jplde_translation() {
                                 Arc::new(Float64Array::from(batch_epoch)) as ArrayRef,
                             ),
                             (
-                                "absolute error (km)",
+                                "absolute error",
                                 Arc::new(Float64Array::from(batch_abs)) as ArrayRef,
                             ),
                             (
-                                "relative error (km)",
+                                "relative error",
                                 Arc::new(Float64Array::from(batch_rel)) as ArrayRef,
                             ),
                         ])
@@ -309,29 +308,22 @@ fn validate_jplde_translation() {
     let df = LazyFrame::scan_parquet("target/validation-test-results.parquet", Default::default())
         .unwrap();
 
-    const TYPICAL_REL_ERR_KM: f64 = 1e-7; // Allow up to 100 micrometers of error.
-    const MAX_REL_ERR_KM: f64 = 1e-5; // Allow up to 1 centimeter of error.
-
     let rel_errors = df
         .clone()
         .select([
-            min("relative error (km)").alias("min rel err (km) OK"),
-            col("relative error (km)")
+            min("relative error").alias("min rel err OK"),
+            col("relative error")
                 .quantile(0.25, QuantileInterpolOptions::Higher)
-                .alias("q25 rel err (km) OK"),
-            col("relative error (km)")
-                .mean()
-                .alias("mean rel err (km) OK"),
-            col("relative error (km)")
-                .median()
-                .alias("median rel err (km) OK"),
-            col("relative error (km)")
+                .alias("q25 rel err OK"),
+            col("relative error").mean().alias("mean rel err OK"),
+            col("relative error").median().alias("median rel err OK"),
+            col("relative error")
                 .quantile(0.75, QuantileInterpolOptions::Higher)
-                .alias("q75 rel err (km) OK"),
-            col("relative error (km)")
+                .alias("q75 rel err OK"),
+            col("relative error")
                 .quantile(0.99, QuantileInterpolOptions::Higher)
-                .alias("q99 rel err (km) OK"),
-            max("relative error (km)").alias("max rel err (km) OK"),
+                .alias("q99 rel err OK"),
+            max("relative error").alias("max rel err OK"),
         ])
         .collect()
         .unwrap();
@@ -340,32 +332,32 @@ fn validate_jplde_translation() {
     let rel_errors_ok = df
         .clone()
         .select([
-            min("relative error (km)")
-                .alias("min rel err (km) OK")
-                .lt(TYPICAL_REL_ERR_KM),
-            col("relative error (km)")
+            min("relative error")
+                .alias("min rel err OK")
+                .lt(TYPICAL_REL_POS_ERR_KM),
+            col("relative error")
                 .quantile(0.25, QuantileInterpolOptions::Higher)
-                .alias("q25 rel err (km) OK")
-                .lt(TYPICAL_REL_ERR_KM),
-            col("relative error (km)")
+                .alias("q25 rel err OK")
+                .lt(TYPICAL_REL_POS_ERR_KM),
+            col("relative error")
                 .mean()
-                .alias("mean rel err (km) OK")
-                .lt(TYPICAL_REL_ERR_KM),
-            col("relative error (km)")
+                .alias("mean rel err OK")
+                .lt(TYPICAL_REL_POS_ERR_KM),
+            col("relative error")
                 .median()
-                .alias("median rel err (km) OK")
-                .lt(TYPICAL_REL_ERR_KM),
-            col("relative error (km)")
+                .alias("median rel err OK")
+                .lt(TYPICAL_REL_POS_ERR_KM),
+            col("relative error")
                 .quantile(0.75, QuantileInterpolOptions::Higher)
-                .alias("q75 rel err (km) OK")
-                .lt(TYPICAL_REL_ERR_KM),
-            col("relative error (km)")
+                .alias("q75 rel err OK")
+                .lt(TYPICAL_REL_POS_ERR_KM),
+            col("relative error")
                 .quantile(0.99, QuantileInterpolOptions::Higher)
-                .alias("q99 rel err (km) OK")
-                .lt(MAX_REL_ERR_KM),
-            max("relative error (km)")
-                .alias("max rel err (km) OK")
-                .lt(MAX_REL_ERR_KM),
+                .alias("q99 rel err OK")
+                .lt(MAX_REL_POS_ERR_KM),
+            max("relative error")
+                .alias("max rel err OK")
+                .lt(MAX_REL_POS_ERR_KM),
         ])
         .collect()
         .unwrap();
@@ -381,21 +373,19 @@ fn validate_jplde_translation() {
         .clone()
         .select([
             // Absolute error
-            min("absolute error (km)").alias("min abs err (km)"),
-            col("absolute error (km)")
+            min("absolute error").alias("min abs err"),
+            col("absolute error")
                 .quantile(0.25, QuantileInterpolOptions::Higher)
-                .alias("q25 abs err (km)"),
-            col("absolute error (km)").mean().alias("mean abs err (km)"),
-            col("absolute error (km)")
-                .median()
-                .alias("median abs err (km)"),
-            col("absolute error (km)")
+                .alias("q25 abs err"),
+            col("absolute error").mean().alias("mean abs err"),
+            col("absolute error").median().alias("median abs err"),
+            col("absolute error")
                 .quantile(0.75, QuantileInterpolOptions::Higher)
-                .alias("q75 abs err (km)"),
-            col("absolute error (km)")
+                .alias("q75 abs err"),
+            col("absolute error")
                 .quantile(0.99, QuantileInterpolOptions::Higher)
-                .alias("q99 abs err (km)"),
-            max("absolute error (km)").alias("max abs err (km)"),
+                .alias("q99 abs err"),
+            max("absolute error").alias("max abs err"),
         ])
         .collect()
         .unwrap();
@@ -408,15 +398,15 @@ fn validate_jplde_translation() {
     };
 
     let mut outliers = df
-        .filter(col("absolute error (km)").gt(lit(q99_abs)))
+        .filter(col("absolute error").gt(lit(q99_abs)))
         .select([
-            col("absolute error (km)"),
-            col("relative error (km)"),
+            col("absolute error"),
+            col("relative error"),
             col("File delta T (s)"),
             col("DE file"),
             col("source frame"),
             col("destination frame"),
-            max("component"),
+            col("component"),
         ])
         .collect()
         .unwrap();

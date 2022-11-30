@@ -48,9 +48,13 @@ validation = [] # Enabling this flag significantly reduces compilation times due
 debug = true
 
 [[bench]]
-name = "iai_ephemerides"
+name = "iai_jpl_ephemerides"
 harness = false
 
 [[bench]]
-name = "crit_ephemerides"
+name = "crit_jpl_ephemerides"
+harness = false
+
+[[bench]]
+name = "iai_spacecraft_ephemeris"
 harness = false

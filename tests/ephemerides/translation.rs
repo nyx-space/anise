@@ -10,16 +10,15 @@
 
 use core::f64::EPSILON;
 
-use anise::constants::frames::{EARTH_MOON_BARYCENTER_J2000, LUNA_J2000, VENUS_J2000};
-use anise::constants::orientations::J2000;
+use anise::constants::frames::{EARTH_J2000, EARTH_MOON_BARYCENTER_J2000, LUNA_J2000, VENUS_J2000};
 use anise::file_mmap;
 use anise::math::Vector3;
 use anise::prelude::*;
 
-// Corresponds to an error of 1e-5 meters, or 1e-2 millimeters, or 10 micrometers
-const POSITION_EPSILON_KM: f64 = 1e-8;
-// Corresponds to an error of 1e-7 meters per second, or 1e-1 micrometers per second, or 100 nanometers per second
-const VELOCITY_EPSILON_KM_S: f64 = 1e-10;
+// Corresponds to an error of 2e-5 meters, or 2e-2 millimeters, or 20 micrometers
+const POSITION_EPSILON_KM: f64 = 2e-8;
+// Corresponds to an error of 5e-6 meters per second, or 5.0 micrometers per second
+const VELOCITY_EPSILON_KM_S: f64 = 5e-9;
 
 #[test]
 fn de438s_translation_verif_venus2emb() {
@@ -307,7 +306,7 @@ fn de438s_translation_verif_emb2luna() {
 }
 
 #[test]
-fn spk_hermite_type31_verif() {
+fn spk_hermite_type13_verif() {
     if pretty_env_logger::try_init().is_err() {
         println!("could not init env_logger");
     }
@@ -317,7 +316,7 @@ fn spk_hermite_type31_verif() {
     let buf = file_mmap!(path).unwrap();
     let spk = SPK::parse(&buf).unwrap();
 
-    let buf = file_mmap!("./target/Hermite.bsp").unwrap();
+    let buf = file_mmap!("data/gmat-hermite.bsp").unwrap();
     let spacecraft = SPK::parse(&buf).unwrap();
 
     let ctx = Context::from_spk(&spk)
@@ -325,31 +324,30 @@ fn spk_hermite_type31_verif() {
         .load_spk(&spacecraft)
         .unwrap();
 
-    let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 7, 1);
+    let epoch = Epoch::from_gregorian_hms(2000, 1, 1, 14, 0, 0, TimeScale::UTC);
 
-    let my_sc_j2k = Frame::from_ephem_orient(-111229882, J2000);
+    let my_sc_j2k = Frame::from_ephem_j2000(-10000001);
 
     let state = ctx
-        .translate_from_to_km_s_geometric(my_sc_j2k, LUNA_J2000, epoch)
+        .translate_from_to_km_s_geometric(my_sc_j2k, EARTH_J2000, epoch)
         .unwrap();
     println!("{state:?}");
 
     // Check that we correctly set the output frame
-    assert_eq!(state.frame, LUNA_J2000);
+    assert_eq!(state.frame, EARTH_J2000);
 
     let pos_expct_km = Vector3::new(
-        8.9871033515359500e+02,
-        -5.4154398990756522e+02,
-        1.5101519596160608e+03,
+        2.5920090775006811e+03,
+        6.7469273862520186e+03,
+        1.3832553421282723e+03,
     );
 
     let vel_expct_km_s = Vector3::new(
-        -1.2836208430532707e+00,
-        -9.0227334520037439e-01,
-        4.4829903632467799e-01,
+        -6.6688457210358747e+00,
+        2.7743470870318045e+00,
+        -8.5832497027451471e-01,
     );
 
-    // We expect exactly the same output as SPICE to machine precision.
     assert!(
         relative_eq!(state.radius_km, pos_expct_km, epsilon = POSITION_EPSILON_KM),
         "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",

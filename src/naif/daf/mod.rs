@@ -39,7 +39,7 @@ pub trait NAIFSummaryRecord: NAIFRecord + Copy {
     }
 }
 
-pub trait NAIFDataSet<'a>: Display {
+pub trait NAIFDataSet<'a>: Sized + Display {
     /// The underlying record representation
     type RecordKind: NAIFDataRecord<'a>;
 
@@ -47,7 +47,7 @@ pub trait NAIFDataSet<'a>: Display {
     type StateKind;
 
     // TODO: Return a result here.
-    fn from_slice_f64(slice: &'a [f64]) -> Self;
+    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, AniseError>;
 
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, AniseError>;
 

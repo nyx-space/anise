@@ -31,9 +31,10 @@ fn validate_hermite_translation() {
     use std::fs::File;
     use std::sync::Arc;
 
-    // If the error is larger than this, we should fail immediately.
-    const FAIL_POS_KM: f64 = 1e2;
-    const FAIL_VEL_KM_S: f64 = 1e-1;
+    use crate::ephemerides::consts::{
+        MAX_ABS_POS_ERR_KM, MAX_ABS_VEL_ERR_KM_S, MAX_REL_POS_ERR_KM, TYPICAL_REL_POS_ERR_KM,
+    };
+
     // Number of queries we should do per pair of ephemerides
     const NUM_QUERIES_PER_PAIR: f64 = 1_000.0;
     const BATCH_SIZE: usize = 10_000;
@@ -51,8 +52,8 @@ fn validate_hermite_translation() {
         Field::new("# hops", DataType::UInt8, false),
         Field::new("component", DataType::Utf8, false),
         Field::new("File delta T (s)", DataType::Float64, false),
-        Field::new("absolute error (km)", DataType::Float64, false),
-        Field::new("relative error (km)", DataType::Float64, false),
+        Field::new("absolute error", DataType::Float64, false),
+        Field::new("relative error", DataType::Float64, false),
     ]);
 
     let file = File::create("target/type13-validation-test-results.parquet").unwrap();
@@ -135,9 +136,9 @@ fn validate_hermite_translation() {
                 // Check component by component instead of rebuilding a Vector3 from the SPICE data
                 for i in 0..6 {
                     let (anise_value, max_err) = if i < 3 {
-                        (state.radius_km[i], FAIL_POS_KM)
+                        (state.radius_km[i], MAX_ABS_POS_ERR_KM)
                     } else {
-                        (state.velocity_km_s[i - 3], FAIL_VEL_KM_S)
+                        (state.velocity_km_s[i - 3], MAX_ABS_VEL_ERR_KM_S)
                     };
 
                     // We don't look at the absolute error here, that's for the stats to show any skewness
@@ -191,11 +192,11 @@ fn validate_hermite_translation() {
                                     Arc::new(Float64Array::from(batch_epoch.clone())) as ArrayRef,
                                 ),
                                 (
-                                    "absolute error (km)",
+                                    "absolute error",
                                     Arc::new(Float64Array::from(batch_abs.clone())) as ArrayRef,
                                 ),
                                 (
-                                    "relative error (km)",
+                                    "relative error",
                                     Arc::new(Float64Array::from(batch_rel.clone())) as ArrayRef,
                                 ),
                             ])
@@ -241,11 +242,11 @@ fn validate_hermite_translation() {
                     Arc::new(Float64Array::from(batch_epoch)) as ArrayRef,
                 ),
                 (
-                    "absolute error (km)",
+                    "absolute error",
                     Arc::new(Float64Array::from(batch_abs)) as ArrayRef,
                 ),
                 (
-                    "relative error (km)",
+                    "relative error",
                     Arc::new(Float64Array::from(batch_rel)) as ArrayRef,
                 ),
             ])
@@ -274,29 +275,24 @@ fn validate_hermite_translation() {
     )
     .unwrap();
 
-    const TYPICAL_REL_ERR_KM: f64 = 1e-7; // Allow up to 100 micrometers of error.
-    const MAX_REL_ERR_KM: f64 = 1e-5; // Allow up to 1 centimeter of error.
-
     let rel_errors = df
         .clone()
         .select([
-            min("relative error (km)").alias("min rel err (km) OK"),
-            col("relative error (km)")
+            min("relative error").alias("min rel err (km) OK"),
+            col("relative error")
                 .quantile(0.25, QuantileInterpolOptions::Higher)
                 .alias("q25 rel err (km) OK"),
-            col("relative error (km)")
-                .mean()
-                .alias("mean rel err (km) OK"),
-            col("relative error (km)")
+            col("relative error").mean().alias("mean rel err (km) OK"),
+            col("relative error")
                 .median()
                 .alias("median rel err (km) OK"),
-            col("relative error (km)")
+            col("relative error")
                 .quantile(0.75, QuantileInterpolOptions::Higher)
                 .alias("q75 rel err (km) OK"),
-            col("relative error (km)")
+            col("relative error")
                 .quantile(0.99, QuantileInterpolOptions::Higher)
                 .alias("q99 rel err (km) OK"),
-            max("relative error (km)").alias("max rel err (km) OK"),
+            max("relative error").alias("max rel err (km) OK"),
         ])
         .collect()
         .unwrap();
@@ -305,32 +301,32 @@ fn validate_hermite_translation() {
     let rel_errors_ok = df
         .clone()
         .select([
-            min("relative error (km)")
+            min("relative error")
                 .alias("min rel err (km) OK")
-                .lt(TYPICAL_REL_ERR_KM),
-            col("relative error (km)")
+                .lt(TYPICAL_REL_POS_ERR_KM),
+            col("relative error")
                 .quantile(0.25, QuantileInterpolOptions::Higher)
                 .alias("q25 rel err (km) OK")
-                .lt(TYPICAL_REL_ERR_KM),
-            col("relative error (km)")
+                .lt(TYPICAL_REL_POS_ERR_KM),
+            col("relative error")
                 .mean()
                 .alias("mean rel err (km) OK")
-                .lt(TYPICAL_REL_ERR_KM),
-            col("relative error (km)")
+                .lt(TYPICAL_REL_POS_ERR_KM),
+            col("relative error")
                 .median()
                 .alias("median rel err (km) OK")
-                .lt(TYPICAL_REL_ERR_KM),
-            col("relative error (km)")
+                .lt(TYPICAL_REL_POS_ERR_KM),
+            col("relative error")
                 .quantile(0.75, QuantileInterpolOptions::Higher)
                 .alias("q75 rel err (km) OK")
-                .lt(TYPICAL_REL_ERR_KM),
-            col("relative error (km)")
+                .lt(TYPICAL_REL_POS_ERR_KM),
+            col("relative error")
                 .quantile(0.99, QuantileInterpolOptions::Higher)
                 .alias("q99 rel err (km) OK")
-                .lt(MAX_REL_ERR_KM),
-            max("relative error (km)")
+                .lt(MAX_REL_POS_ERR_KM),
+            max("relative error")
                 .alias("max rel err (km) OK")
-                .lt(MAX_REL_ERR_KM),
+                .lt(MAX_REL_POS_ERR_KM),
         ])
         .collect()
         .unwrap();
@@ -346,21 +342,19 @@ fn validate_hermite_translation() {
         .clone()
         .select([
             // Absolute error
-            min("absolute error (km)").alias("min abs err (km)"),
-            col("absolute error (km)")
+            min("absolute error").alias("min abs err (km)"),
+            col("absolute error")
                 .quantile(0.25, QuantileInterpolOptions::Higher)
                 .alias("q25 abs err (km)"),
-            col("absolute error (km)").mean().alias("mean abs err (km)"),
-            col("absolute error (km)")
-                .median()
-                .alias("median abs err (km)"),
-            col("absolute error (km)")
+            col("absolute error").mean().alias("mean abs err (km)"),
+            col("absolute error").median().alias("median abs err (km)"),
+            col("absolute error")
                 .quantile(0.75, QuantileInterpolOptions::Higher)
                 .alias("q75 abs err (km)"),
-            col("absolute error (km)")
+            col("absolute error")
                 .quantile(0.99, QuantileInterpolOptions::Higher)
                 .alias("q99 abs err (km)"),
-            max("absolute error (km)").alias("max abs err (km)"),
+            max("absolute error").alias("max abs err (km)"),
         ])
         .collect()
         .unwrap();
@@ -373,10 +367,10 @@ fn validate_hermite_translation() {
     };
 
     let mut outliers = df
-        .filter(col("absolute error (km)").gt(lit(q99_abs)))
+        .filter(col("absolute error").gt(lit(q99_abs)))
         .select([
-            col("absolute error (km)"),
-            col("relative error (km)"),
+            col("absolute error"),
+            col("relative error"),
             col("File delta T (s)"),
             col("source frame"),
             col("destination frame"),

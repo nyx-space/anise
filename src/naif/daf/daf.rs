@@ -213,7 +213,7 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
         .unwrap()
         .into_slice();
         // Convert it
-        Ok(S::from_slice_f64(data))
+        S::from_slice_f64(data)
     }
 
     pub fn comments(&self) -> Result<String, AniseError> {

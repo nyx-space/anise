@@ -10,6 +10,7 @@
 
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits};
+use log::error;
 
 use crate::{
     math::{cartesian::CartesianState, Vector3},
@@ -46,20 +47,27 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
     type StateKind = CartesianState;
     type RecordKind = PositionVelocityRecord;
 
-    fn from_slice_f64(slice: &'a [f64]) -> Self {
+    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, AniseError> {
+        if slice.len() < 5 {
+            error!(
+                "Cannot build a Type 8 Lagrange set from only {} items",
+                slice.len()
+            );
+            return Err(AniseError::MalformedData(5));
+        }
         // For this kind of record, the metadata is stored at the very end of the dataset, so we need to read that first.
         let first_state_epoch = Epoch::from_et_seconds(slice[slice.len() - 4]);
         let step_size = slice[slice.len() - 3].seconds();
         let degree = slice[slice.len() - 2] as usize;
         let num_records = slice[slice.len() - 1] as usize;
 
-        Self {
+        Ok(Self {
             first_state_epoch,
             step_size,
             degree,
             num_records,
             record_data: &slice[0..slice.len() - 4],
-        }
+        })
     }
 
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, AniseError> {
@@ -106,7 +114,14 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
     type StateKind = (Vector3, Vector3);
     type RecordKind = PositionVelocityRecord;
 
-    fn from_slice_f64(slice: &'a [f64]) -> Self {
+    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, AniseError> {
+        if slice.len() < 3 {
+            error!(
+                "Cannot build a Type 9 Lagrange set from only {} items",
+                slice.len()
+            );
+            return Err(AniseError::MalformedData(5));
+        }
         // For this kind of record, the metadata is stored at the very end of the dataset
         let num_records = slice[slice.len() - 1] as usize;
         let degree = slice[slice.len() - 2] as usize;
@@ -118,13 +133,13 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
         // And the epoch directory is whatever remains minus the metadata
         let epoch_registry = slice.get(epoch_data_end_idx..slice.len() - 2).unwrap();
 
-        Self {
+        Ok(Self {
             degree,
             num_records,
             state_data,
             epoch_data,
             epoch_registry,
-        }
+        })
     }
 
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, AniseError> {
