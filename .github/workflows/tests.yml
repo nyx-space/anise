@@ -64,10 +64,6 @@ jobs:
       - name: Test (no default features and release)
         run: cargo test --no-default-features --release
 
-      - name: CLI SPK
-        run: |
-          cargo run -- inspect data/gmat-hermite.bsp
-          cargo run -- inspect data/de440.bsp
 
   lints:
     name: Lints
@@ -126,6 +122,17 @@ jobs:
 
       - name: Rust-SPICE hermite validation
         run: RUST_BACKTRACE=full RUST_LOG=debug cargo test validate_hermite_translation --features validation --release -- --nocapture
+      
+      # Now analyze the results and create pretty plots
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10' 
+      
+      - name: Validation analysis
+        run: |
+          cd analysis
+          pip install -r requirements.txt
+          python de_val_err.py
 
       - name: Save validation artifacts
         uses: actions/upload-artifact@v3

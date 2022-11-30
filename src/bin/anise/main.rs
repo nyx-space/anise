@@ -42,7 +42,10 @@ fn main() -> Result<(), CliErrors> {
                         "PCK" => {
                             info!("Loading {path_str:?} as DAF/PCK");
                             match BPC::check_then_parse(&bytes, crc32_checksum) {
-                                Ok(_) => Ok(()),
+                                Ok(_) => {
+                                    info!("[OK] Checksum matches");
+                                    Ok(())
+                                }
                                 Err(AniseError::IntegrityError(e)) => {
                                     error!("CRC32 checksums differ for {path_str:?}: {e:?}");
                                     Err(CliErrors::AniseError(AniseError::IntegrityError(e)))
@@ -56,7 +59,10 @@ fn main() -> Result<(), CliErrors> {
                         "SPK" => {
                             info!("Loading {path_str:?} as DAF/SPK");
                             match SPK::check_then_parse(&bytes, crc32_checksum) {
-                                Ok(_) => Ok(()),
+                                Ok(_) => {
+                                    info!("[OK] Checksum matches");
+                                    Ok(())
+                                }
                                 Err(AniseError::IntegrityError(e)) => {
                                     error!("CRC32 checksums differ for {path_str:?}: {e:?}");
                                     Err(CliErrors::AniseError(AniseError::IntegrityError(e)))

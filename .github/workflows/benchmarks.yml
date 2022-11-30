@@ -56,7 +56,7 @@ jobs:
         run: sh dev-env-setup.sh && cd .. # Return to root
 
       - name: Bench
-        run: cargo bench --bench "*_spacecraft"
+        run: cargo bench --bench "*_spacecraft_ephemeris"
 
       - name: Save benchmark artifacts
         uses: actions/upload-artifact@v3
