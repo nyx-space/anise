@@ -16,10 +16,10 @@ exclude = ["cspice"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-hifitime = {version = "3.5.0", features = ["asn1der"]}
-memmap2 = "0.5.7"
+hifitime = {version = "3.7.0", features = []}
+memmap2 = "0.5.8"
 crc32fast = "1.3.0"
-der = {version = "0.6.0", features = ["derive", "alloc", "real"]}
+# der = {version = "0.6.0", features = ["derive", "alloc", "real"]} # Disabled until DER is needed again.
 clap = {version = "3.1", features = ["derive"]}
 thiserror = "1.0"
 log = "0.4"
@@ -31,8 +31,7 @@ approx = "0.5.1"
 zerocopy = "0.6.1"
 
 [dev-dependencies]
-rust-spice = "0.7.3"
-online-statistics = "0.2.6"
+rust-spice = "0.7.4"
 parquet = "25.0.0"
 arrow = "25.0.0"
 criterion = "0.3"

@@ -10,8 +10,6 @@
 
 use hifitime::Epoch;
 
-use crate::der::Error as Asn1Error;
-use crate::der::Error as DerError;
 use crate::prelude::Frame;
 use core::convert::From;
 use core::fmt;
@@ -35,8 +33,6 @@ pub enum AniseError {
     InvalidTimeSystem,
     /// Raised if the checksum of the encoded data does not match the stored data.
     IntegrityError(IntegrityErrorKind),
-    /// Raised if the file could not be decoded correctly
-    DecodingError(Asn1Error),
     /// Raised if the item sought after is not found in the context
     ItemNotFound,
     /// Raised when requesting the interpolation for data that is not available in this spline.
@@ -64,7 +60,6 @@ pub enum InternalErrorKind {
     LUTAppendFailure,
     /// May happen if the interpolation scheme is not yet supported
     InterpolationNotSupported,
-    Asn1Error(DerError),
     /// Some generic internal error, check the logs of the program and file a bug report
     Generic,
 }
@@ -114,12 +109,6 @@ impl From<InternalErrorKind> for AniseError {
     }
 }
 
-impl From<DerError> for InternalErrorKind {
-    fn from(e: DerError) -> Self {
-        Self::Asn1Error(e)
-    }
-}
-
 impl From<MathErrorKind> for AniseError {
     fn from(e: MathErrorKind) -> Self {
         Self::MathError(e)
@@ -140,10 +129,6 @@ impl fmt::Display for AniseError {
             }
             Self::InvalidTimeSystem => write!(f, "ANISE error: invalid time system"),
             Self::IntegrityError(e) => write!(f, "ANISE error: data integrity error: {e:?}"),
-            Self::DecodingError(err) => write!(
-                f,
-                "ANISE error: bytes could not be decoded into a valid ANISE file - {err}"
-            ),
             Self::ItemNotFound => write!(f, "ANISE error: requested item not found in context"),
             Self::InternalError(e) => {
                 write!(f, "ANISE internal error: {e:?} -- please report a bug")

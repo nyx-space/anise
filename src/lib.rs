@@ -9,7 +9,6 @@
  */
 
 extern crate const_format;
-extern crate der;
 extern crate hifitime;
 extern crate log;
 
