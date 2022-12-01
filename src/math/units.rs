@@ -8,7 +8,6 @@
  * Documentation: https://nyxspace.com/
  */
 use core::fmt::Display;
-use der::{Decode, Encode, Reader, Writer};
 
 /// Re-export hifitime's units as DurationUnit.
 pub use hifitime::Unit as TimeUnit;
@@ -66,60 +65,5 @@ impl Display for LengthUnit {
 impl Default for LengthUnit {
     fn default() -> Self {
         Self::Kilometer
-    }
-}
-
-/// Allows conversion of a Distance into a u8 with the following mapping.
-/// Mapping: Micrometer: 0; Millimeter: 1; Meter: 2; Kilometer: 3; Megameter: 4.
-impl From<LengthUnit> for u8 {
-    fn from(dist: LengthUnit) -> Self {
-        match dist {
-            LengthUnit::Micrometer => 0,
-            LengthUnit::Millimeter => 1,
-            LengthUnit::Meter => 2,
-            LengthUnit::Kilometer => 3,
-            LengthUnit::Megameter => 4,
-        }
-    }
-}
-
-/// Allows conversion of a Distance into a u8 with the following mapping.
-/// Mapping: Micrometer: 0; Millimeter: 1; Meter: 2; Kilometer: 3; Megameter: 4.
-impl From<&LengthUnit> for u8 {
-    fn from(dist: &LengthUnit) -> Self {
-        u8::from(*dist)
-    }
-}
-
-/// Allows conversion of a u8 into a Distance.
-/// Mapping: 0: Micrometer; 1: Millimeter; 2: Meter; 4: Megameter; 3 or any other value is considered kilometer
-impl From<u8> for LengthUnit {
-    fn from(val: u8) -> Self {
-        match val {
-            0 => LengthUnit::Micrometer,
-            1 => LengthUnit::Millimeter,
-            2 => LengthUnit::Meter,
-            4 => LengthUnit::Megameter,
-            _ => LengthUnit::Kilometer,
-        }
-    }
-}
-
-impl Encode for LengthUnit {
-    fn encoded_len(&self) -> der::Result<der::Length> {
-        let converted: u8 = self.into();
-        converted.encoded_len()
-    }
-
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
-        let converted: u8 = self.into();
-        converted.encode(encoder)
-    }
-}
-
-impl<'a> Decode<'a> for LengthUnit {
-    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
-        let converted: u8 = decoder.decode()?;
-        Ok(Self::from(converted))
     }
 }

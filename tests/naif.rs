@@ -133,6 +133,4 @@ fn test_spk_load_bytes() {
 
     // NOTE: Because everything is a pointer, the size on the stack remains constant at 521 bytes.
     println!("{}", size_of_val(&spice));
-
-    // TODO: Generate a BSP from GMAT
 }

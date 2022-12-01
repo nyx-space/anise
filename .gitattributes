@@ -1,5 +1,5 @@
 data/*.bsp filter=lfs diff=lfs merge=lfs -text
-data/earth_old_high_prec.bpc filter=lfs diff=lfs merge=lfs -text
+data/*.bpc filter=lfs diff=lfs merge=lfs -text
 data/de421.anise filter=lfs diff=lfs merge=lfs -text
 data/de430.anise filter=lfs diff=lfs merge=lfs -text
 data/de438s.anise filter=lfs diff=lfs merge=lfs -text
