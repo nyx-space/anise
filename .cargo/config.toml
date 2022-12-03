@@ -1,0 +1,2 @@
+[env]
+CSPICE_DIR = {value = "./cspice/", relative = true}

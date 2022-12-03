@@ -8,40 +8,31 @@
  * Documentation: https://nyxspace.com/
  */
 
-use hifitime::{Epoch, TimeSystem};
+use hifitime::Epoch;
 
-use crate::asn1::semver::Semver;
-use crate::der::Error as Asn1Error;
-use crate::der::Error as DerError;
-use crate::frame::Frame;
+use crate::prelude::Frame;
 use core::convert::From;
 use core::fmt;
 use std::io::ErrorKind as IOErrorKind;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum AniseError {
+    StructureIsFull,
     /// Raised for an error in reading or writing the file(s)
     IOError(IOErrorKind),
-    /// Raised if an IO error occured but its representation is not simple (and therefore not an std::io::ErrorKind).
+    /// Raised if an IO error occurred but its representation is not simple (and therefore not an std::io::ErrorKind).
     IOUnknownError,
-    /// Raise if a division by zero was to occur
-    DivisionByZero,
+    /// Math error
+    MathError(MathErrorKind),
     /// Raised when requesting the value of a parameter but it does not have any representation (typically the coefficients are an empty array)
     ParameterNotSpecified,
-    /// For some reason weird reason (malformed file?), data that was expected to be in an array wasn't.
-    IndexingError,
+    /// The byte stream is missing data that is required to parse.
+    MalformedData(usize),
     /// If the NAIF file cannot be read or isn't supported
-    NAIFParseError(String),
+    DAFParserError(String),
     InvalidTimeSystem,
     /// Raised if the checksum of the encoded data does not match the stored data.
     IntegrityError(IntegrityErrorKind),
-    /// Raised if the file could not be decoded correctly
-    DecodingError(Asn1Error),
-    /// Raised if the ANISE version of the file is incompatible with the library.
-    IncompatibleVersion {
-        got: Semver,
-        exp: Semver,
-    },
     /// Raised if the item sought after is not found in the context
     ItemNotFound,
     /// Raised when requesting the interpolation for data that is not available in this spline.
@@ -59,20 +50,21 @@ pub enum AniseError {
     MaxTreeDepth,
     /// Raised if there is no interpolation data for the requested epoch, i.e. ephemeris/orientation starts after or ends before the requested epoch
     MissingInterpolationData(Epoch),
+    /// Raised if a computation is physically wrong
+    PhysicsError(PhysicsErrorKind),
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum InternalErrorKind {
     /// Appending to the lookup table failed
     LUTAppendFailure,
     /// May happen if the interpolation scheme is not yet supported
     InterpolationNotSupported,
-    Asn1Error(DerError),
     /// Some generic internal error, check the logs of the program and file a bug report
     Generic,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum IntegrityErrorKind {
     /// Data checksum differs from expected checksum
     ChecksumInvalid { expected: u32, computed: u32 },
@@ -84,6 +76,25 @@ pub enum IntegrityErrorKind {
     LookupTable,
     /// Raised if a transformation is requested but the frames have no common origin
     DisjointRoots { from_frame: Frame, to_frame: Frame },
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum MathErrorKind {
+    DivisionByZero,
+    StateEpochsDiffer,
+    StateFramesDiffer,
+    InvalidInterpolationData,
+    PolynomialOrderError(usize),
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum PhysicsErrorKind {
+    /// ANISE does not support parabolic orbits because these are not physically real.
+    ParabolicOrbit,
+    /// True anomaly of the provided hyperbolic orbit is physically impossible
+    InvalidHyperbolicTrueAnomaly(f64),
+    /// Some computation led to a value being infinite, check the error logs
+    InfiniteValue,
 }
 
 impl From<IOErrorKind> for AniseError {
@@ -98,38 +109,29 @@ impl From<InternalErrorKind> for AniseError {
     }
 }
 
-impl From<DerError> for InternalErrorKind {
-    fn from(e: DerError) -> Self {
-        Self::Asn1Error(e)
+impl From<MathErrorKind> for AniseError {
+    fn from(e: MathErrorKind) -> Self {
+        Self::MathError(e)
     }
 }
 
 impl fmt::Display for AniseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
-            Self::IOError(e) => write!(f, "ANISE error: IOError: {:?}", e),
+            Self::StructureIsFull => write!(f, "ANISE error: attempted to load more data but no more room was available"),
+            Self::IOError(e) => write!(f, "ANISE error: IOError: {e:?}"),
             Self::IOUnknownError => write!(f, "ANISE error: IOUnknownError"),
-            Self::DivisionByZero => write!(f, "ANISE error: DivisionByZero"),
+            Self::MathError(e) => write!(f, "ANISE error: MathError: {e:?}"),
             Self::ParameterNotSpecified => write!(f, "ANISE error: ParameterNotSpecified"),
-            Self::IndexingError => write!(f, "ANISE error: IndexingError"),
-            Self::NAIFParseError(reason) => {
+            Self::MalformedData(byte) => write!(f, "ANISE error: Malformed data: could not read up to byte {byte}."),
+            Self::DAFParserError(reason) => {
                 write!(f, "ANISE error: invalid NAIF DAF file: {}", reason)
             }
             Self::InvalidTimeSystem => write!(f, "ANISE error: invalid time system"),
-            Self::IntegrityError(e) => write!(f, "ANISE error: data integrity error: {:?}", e),
-            Self::DecodingError(err) => write!(
-                f,
-                "ANISE error: bytes could not be decoded into a valid ANISE file - {}",
-                err
-            ),
+            Self::IntegrityError(e) => write!(f, "ANISE error: data integrity error: {e:?}"),
             Self::ItemNotFound => write!(f, "ANISE error: requested item not found in context"),
-            Self::IncompatibleVersion { got, exp } => write!(
-                f,
-                "ANISE error: Incompatible version: got {}.{}.{} - expected {}.{}.{}",
-                got.major, got.minor, got.patch, exp.major, exp.minor, exp.patch
-            ),
             Self::InternalError(e) => {
-                write!(f, "ANISE internal error: {:?} -- please report a bug", e)
+                write!(f, "ANISE internal error: {e:?} -- please report a bug")
             }
             Self::NoInterpolationData => write!(
                 f,
@@ -150,8 +152,9 @@ impl fmt::Display for AniseError {
             ),
             Self::MissingInterpolationData(e) => write!(
                 f,
-                "ANISE error: No interpolation as epoch {}", e.as_gregorian_str(TimeSystem::ET) 
+                "ANISE error: No interpolation as epoch {e:e}"
             ),
+            Self::PhysicsError(e) => write!(f, "ANISE error: Physics error: {e:?}")
         }
     }
 }

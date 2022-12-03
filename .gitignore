@@ -1,3 +1,9 @@
 /target
 Cargo.lock
 *.anis*
+cspice
+*.parquet
+*.svg
+perf.data*
+analysis/.venv
+cspice.tar.Z

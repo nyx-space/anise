@@ -9,7 +9,13 @@
  */
 
 pub mod daf;
+pub mod pck;
 pub mod spk;
+
+use self::{daf::DAF, pck::BPCSummaryRecord, spk::summary::SPKSummaryRecord};
+
+pub type SPK<'a> = DAF<'a, SPKSummaryRecord>;
+pub type BPC<'a> = DAF<'a, BPCSummaryRecord>;
 
 #[macro_export]
 macro_rules! parse_bytes_as {
@@ -17,8 +23,37 @@ macro_rules! parse_bytes_as {
         let (int_bytes, _) = $input.split_at(std::mem::size_of::<$type>());
 
         match $order {
-            Endianness::Little => $type::from_le_bytes(int_bytes.try_into().unwrap()),
-            Endianness::Big => $type::from_be_bytes(int_bytes.try_into().unwrap()),
+            Endian::Little => $type::from_le_bytes(int_bytes.try_into().unwrap()),
+            Endian::Big => $type::from_be_bytes(int_bytes.try_into().unwrap()),
         }
     }};
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Endian {
+    Little,
+    Big,
+}
+
+impl Endian {
+    /// Returns the endianness of the platform we're running on for an f64.
+    /// This isn't const because f64 comparisons cannot be const yet
+    fn f64_native() -> Self {
+        let truth: f64 = 0.12345678;
+        if (f64::from_ne_bytes(truth.to_be_bytes()) - truth).abs() < f64::EPSILON {
+            Self::Big
+        } else {
+            Self::Little
+        }
+    }
+
+    /// Returns the endianness of the platform we're running on for an f64.
+    const fn u64_native() -> Self {
+        let truth: u32 = 0x12345678;
+        if u32::from_ne_bytes(truth.to_be_bytes()) == truth {
+            Self::Big
+        } else {
+            Self::Little
+        }
+    }
 }

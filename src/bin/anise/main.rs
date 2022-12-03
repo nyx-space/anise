@@ -1,14 +1,16 @@
 extern crate pretty_env_logger;
 use std::env::{set_var, var};
-use std::fs::rename;
 
 use anise::cli::args::{Actions, Args};
+use anise::cli::inspect::{BpcRow, SpkRow};
 use anise::cli::CliErrors;
 use anise::file_mmap;
-use anise::naif::daf::DAF;
-use anise::naif::spk::SPK;
+use anise::naif::daf::{DAFFileRecord, NAIFRecord, NAIFSummaryRecord};
 use anise::prelude::*;
 use clap::Parser;
+use log::{error, info};
+use tabled::{Style, Table};
+use zerocopy::FromBytes;
 
 const LOG_VAR: &str = "ANISE_LOG";
 
@@ -23,94 +25,157 @@ fn main() -> Result<(), CliErrors> {
 
     let cli = Args::parse();
     match cli.action {
-        Actions::Convert {
-            allow_empty,
-            check,
+        Actions::Check {
             file,
+            crc32_checksum,
         } => {
-            let file_clone = file.clone();
-            // Memory map the file
-            match file_mmap!(file) {
-                Ok(bytes) => {
-                    let daf_file = DAF::parse(&bytes)?;
-                    // Parse as SPK
-                    let spk: SPK = (&daf_file).try_into()?;
-                    // Convert to ANISE
-                    let spk_filename = file_clone.to_str().unwrap();
-                    let anise_filename = spk_filename.replace(".bsp", ".anise");
-                    spk.to_anise(spk_filename, &anise_filename, !allow_empty, check)?;
-                    Ok(())
-                }
-                Err(e) => Err(e.into()),
-            }
-        }
-        Actions::Check { file } => {
             let path_str = file.clone();
             match file_mmap!(file) {
                 Ok(bytes) => {
-                    let context = AniseContext::try_from_bytes(&bytes)?;
-                    context.check_integrity()?;
-                    println!("[OK] {:?}", path_str);
-                    Ok(())
+                    // Load the header only
+                    let file_record =
+                        DAFFileRecord::read_from(&bytes[..DAFFileRecord::SIZE]).unwrap();
+                    match file_record
+                        .identification()
+                        .map_err(CliErrors::AniseError)?
+                    {
+                        "PCK" => {
+                            info!("Loading {path_str:?} as DAF/PCK");
+                            match BPC::check_then_parse(&bytes, crc32_checksum) {
+                                Ok(_) => {
+                                    info!("[OK] Checksum matches");
+                                    Ok(())
+                                }
+                                Err(AniseError::IntegrityError(e)) => {
+                                    error!("CRC32 checksums differ for {path_str:?}: {e:?}");
+                                    Err(CliErrors::AniseError(AniseError::IntegrityError(e)))
+                                }
+                                Err(e) => {
+                                    error!("Some other error happened when loading {path_str:?}: {e:?}");
+                                    Err(CliErrors::AniseError(e))
+                                }
+                            }
+                        }
+                        "SPK" => {
+                            info!("Loading {path_str:?} as DAF/SPK");
+                            match SPK::check_then_parse(&bytes, crc32_checksum) {
+                                Ok(_) => {
+                                    info!("[OK] Checksum matches");
+                                    Ok(())
+                                }
+                                Err(AniseError::IntegrityError(e)) => {
+                                    error!("CRC32 checksums differ for {path_str:?}: {e:?}");
+                                    Err(CliErrors::AniseError(AniseError::IntegrityError(e)))
+                                }
+                                Err(e) => {
+                                    error!("Some other error happened when loading {path_str:?}: {e:?}");
+                                    Err(CliErrors::AniseError(e))
+                                }
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
                 }
                 Err(e) => Err(e.into()),
             }
         }
         Actions::Inspect { file } => {
-            // Start by checking the integrity
+            let path_str = file.clone();
             match file_mmap!(file) {
                 Ok(bytes) => {
-                    let context = AniseContext::try_from_bytes(&bytes)?;
-                    context.check_integrity()?;
-                    println!("{}", context);
-                    Ok(())
-                }
-                Err(e) => Err(e.into()),
-            }
-        }
-        Actions::Merge { files } => {
-            if files.len() < 2 {
-                Err(CliErrors::ArgumentError(
-                    "Need at least two files to merge together".to_string(),
-                ))
-            } else {
-                // Open the last file in the list
-                let destination = files.last().unwrap().clone();
-                // This is the temporary file.
-                let dest_str = files.last().unwrap().to_str().as_ref().unwrap().to_string();
-                let tmp_dest_str = dest_str.clone() + ".tmp";
-                match file_mmap!(destination) {
-                    Ok(bytes) => {
-                        // We can't borrow some bytes and let them drop out of scope, so we'll open the data to be merged before we open the destination.
-                        // This means we need to re-open the destination every time but at least we don't have leaky pointers =(
-                        for (num, this_file) in files.iter().enumerate().take(files.len() - 1) {
-                            // Try load this file
-                            match file_mmap!(this_file) {
-                                Ok(these_bytes) => {
-                                    let other = AniseContext::try_from_bytes(&these_bytes)?;
-                                    let mut dest_context = AniseContext::try_from_bytes(&bytes)?;
-                                    let (num_ephem_added, num_orientation_added) =
-                                        dest_context.merge_mut(&other)?;
-                                    println!("Added {num_ephem_added} ephemeris and {num_orientation_added} orientations from {:?}", files[num]);
+                    // Load the header only
+                    let file_record =
+                        DAFFileRecord::read_from(&bytes[..DAFFileRecord::SIZE]).unwrap();
 
-                                    // And finally save.
-                                    if let Err(e) = dest_context.save_as(&tmp_dest_str, false) {
-                                        return Err(e.into());
+                    match file_record
+                        .identification()
+                        .map_err(CliErrors::AniseError)?
+                    {
+                        "PCK" => {
+                            info!("Loading {path_str:?} as DAF/PCK");
+                            match BPC::parse(&bytes) {
+                                Ok(pck) => {
+                                    info!("CRC32 checksum: 0x{:X}", pck.crc32());
+                                    // Build the rows of the table
+                                    let mut rows = Vec::new();
+
+                                    for (sno, summary) in pck.data_summaries.iter().enumerate() {
+                                        let name = pck
+                                            .name_record
+                                            .nth_name(sno, pck.file_record.summary_size());
+                                        if summary.is_empty() {
+                                            continue;
+                                        }
+                                        rows.push(BpcRow {
+                                            name,
+                                            start_epoch: format!("{:E}", summary.start_epoch()),
+                                            end_epoch: format!("{:E}", summary.end_epoch()),
+                                            duration: summary.end_epoch() - summary.start_epoch(),
+                                            interpolation_kind: format!("{}", summary.data_type_i),
+                                            frame: format!("{}", summary.frame_id),
+                                            inertial_frame: format!(
+                                                "{}",
+                                                summary.inertial_frame_id
+                                            ),
+                                        });
                                     }
+
+                                    let mut tbl = Table::new(rows);
+                                    tbl.with(Style::rounded());
+                                    println!("{tbl}");
+
+                                    Ok(())
                                 }
-                                Err(e) => return Err(e.into()),
+                                Err(e) => {
+                                    error!("Some other error happened when loading {path_str:?}: {e:?}");
+                                    Err(CliErrors::AniseError(e))
+                                }
                             }
                         }
+                        "SPK" => {
+                            info!("Loading {path_str:?} as DAF/SPK");
+                            match SPK::parse(&bytes) {
+                                Ok(spk) => {
+                                    info!("CRC32 checksum: 0x{:X}", spk.crc32());
+                                    // Build the rows of the table
+                                    let mut rows = Vec::new();
+
+                                    for (sno, summary) in spk.data_summaries.iter().enumerate() {
+                                        let name = spk
+                                            .name_record
+                                            .nth_name(sno, spk.file_record.summary_size());
+                                        if summary.is_empty() {
+                                            continue;
+                                        }
+
+                                        rows.push(SpkRow {
+                                            name,
+                                            center: summary.center_id,
+                                            start_epoch: format!("{:E}", summary.start_epoch()),
+                                            end_epoch: format!("{:E}", summary.end_epoch()),
+                                            duration: summary.end_epoch() - summary.start_epoch(),
+                                            interpolation_kind: format!("{}", summary.data_type_i),
+                                            frame: format!("{}", summary.frame_id),
+                                            target: format!("{}", summary.target_id),
+                                        });
+                                    }
+
+                                    let mut tbl = Table::new(rows);
+                                    tbl.with(Style::rounded());
+                                    println!("{tbl}");
+
+                                    Ok(())
+                                }
+                                Err(e) => {
+                                    error!("Some other error happened when loading {path_str:?}: {e:?}");
+                                    Err(CliErrors::AniseError(e))
+                                }
+                            }
+                        }
+                        _ => unreachable!(),
                     }
-                    Err(e) => return Err(e.into()),
                 }
-                // Now that we have written the data to the temp file
-                // and that the mmap is out of scope, we can move the tmp file into the old file
-                if let Err(e) = rename(tmp_dest_str, dest_str) {
-                    Err(CliErrors::AniseError(AniseError::IOError(e.kind())))
-                } else {
-                    Ok(())
-                }
+                Err(e) => Err(e.into()),
             }
         }
     }

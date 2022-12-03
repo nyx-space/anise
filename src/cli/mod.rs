@@ -10,7 +10,7 @@ use crate::prelude::AniseError;
 
 pub mod args;
 
-mod inspect;
+pub mod inspect;
 
 #[derive(Debug, Error)]
 pub enum CliErrors {

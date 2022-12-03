@@ -9,45 +9,47 @@
  */
 
 extern crate const_format;
-extern crate der;
 extern crate hifitime;
 extern crate log;
 
-pub use hifitime::Epoch;
-
+pub mod astro;
+pub mod cli;
 pub mod constants;
 pub mod context;
-pub mod ephemeris;
+pub mod ephemerides;
 pub mod errors;
-pub mod frame;
-pub mod framedetail;
+pub mod frames;
 pub mod math;
-pub mod spline;
+pub mod naif;
+pub mod shapes;
 
-pub mod prelude {
-    pub use crate::asn1::context::AniseContext;
-    pub use crate::asn1::units::*;
-    pub use crate::errors::AniseError;
-    pub use crate::math::Aberration;
-    pub use hifitime::{Epoch, TimeSystem, TimeUnits};
-    pub use std::fs::File;
+/// Re-export of hifitime
+pub mod time {
+    pub use hifitime::*;
 }
 
-pub mod asn1;
-pub mod naif;
-
-pub mod cli;
+pub mod prelude {
+    pub use crate::astro::Aberration;
+    pub use crate::context::Context;
+    pub use crate::errors::AniseError;
+    pub use crate::frames::*;
+    pub use crate::math::units::*;
+    pub use crate::naif::daf::NAIFSummaryRecord;
+    pub use crate::naif::{BPC, SPK};
+    pub use crate::time::*;
+    pub use std::fs::File;
+}
 
 /// Defines the number of bytes in a double (prevents magic numbers)
 pub(crate) const DBL_SIZE: usize = 8;
 
 /// Defines the hash used to identify parents.
-pub(crate) type HashType = u32;
+pub(crate) type NaifId = i32;
 
 /// file_mmap allows reading a file without memory allocation
 #[macro_export]
 macro_rules! file_mmap {
-    ($filename:ident) => {
+    ($filename:tt) => {
         match File::open($filename) {
             Err(e) => Err(AniseError::IOError(e.kind())),
             Ok(file) => unsafe {

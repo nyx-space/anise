@@ -11,20 +11,49 @@ keywords = ["attitude","navigation","instrument", "spacecraft", "ephemeris"]
 categories = ["science", "simulation"]
 readme = "README.md"
 license = "MPL-2.0"
+exclude = ["cspice"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# hifitime = {version = "3.4.0", features = ["asn1der"]}
-hifitime = {git = "https://github.com/nyx-space/hifitime", rev= "042599948499086ea4e854727eac885f6cab5d89"} # TODO: Switch to 3.4.1 when published.
-memmap2 = "0.5.7"
+hifitime = {version = "3.7.0", features = []}
+memmap2 = "0.5.8"
 crc32fast = "1.3.0"
-der = {version = "0.6.0", features = ["derive", "alloc", "real"]}
+# der = {version = "0.6.0", features = ["derive", "alloc", "real"]} # Disabled until DER is needed again.
 clap = {version = "3.1", features = ["derive"]}
 thiserror = "1.0"
 log = "0.4"
 pretty_env_logger = "0.4"
-tabled = "0.8"
+tabled = "0.10"
 const_format = "0.2"
 nalgebra = "0.31"
 approx = "0.5.1"
+zerocopy = "0.6.1"
+
+[dev-dependencies]
+rust-spice = "0.7.4"
+parquet = "25.0.0"
+arrow = "25.0.0"
+criterion = "0.3"
+iai = "0.1"
+polars = {version = "0.25", features = ["lazy", "parquet"]}
+
+[features]
+default = ["std"]
+std = []
+validation = [] # Enabling this flag significantly reduces compilation times due to Arrow and Polars.
+
+[profile.bench]
+debug = true
+
+[[bench]]
+name = "iai_jpl_ephemerides"
+harness = false
+
+[[bench]]
+name = "crit_jpl_ephemerides"
+harness = false
+
+[[bench]]
+name = "iai_spacecraft_ephemeris"
+harness = false
