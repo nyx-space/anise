@@ -34,7 +34,7 @@ zerocopy = "0.6.1"
 rust-spice = "0.7.4"
 parquet = "25.0.0"
 arrow = "25.0.0"
-criterion = "0.3"
+criterion = "0.4"
 iai = "0.1"
 polars = {version = "0.25", features = ["lazy", "parquet"]}
 
