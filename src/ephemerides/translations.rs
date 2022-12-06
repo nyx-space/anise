@@ -34,7 +34,7 @@ impl<'a> Context<'a> {
         to_frame: Frame,
         epoch: Epoch,
         ab_corr: Aberration,
-        distance_unit: LengthUnit,
+        length_unit: LengthUnit,
         time_unit: TimeUnit,
     ) -> Result<CartesianState, AniseError> {
         if from_frame == to_frame {
@@ -55,7 +55,7 @@ impl<'a> Context<'a> {
                     from_frame,
                 )
             } else {
-                self.translate_to_parent(from_frame, epoch, ab_corr, distance_unit, time_unit)?
+                self.translate_to_parent(from_frame, epoch, ab_corr, length_unit, time_unit)?
             };
 
         // The bwrd variables are the states from the `to frame` back to the common node
@@ -68,13 +68,13 @@ impl<'a> Context<'a> {
                     to_frame,
                 )
             } else {
-                self.translate_to_parent(to_frame, epoch, ab_corr, distance_unit, time_unit)?
+                self.translate_to_parent(to_frame, epoch, ab_corr, length_unit, time_unit)?
             };
 
         for cur_node_hash in path.iter().take(node_count) {
             if !frame_fwrd.ephem_origin_hash_match(common_node) {
                 let (cur_pos_fwrd, cur_vel_fwrd, cur_acc_fwrd, cur_frame_fwrd) =
-                    self.translate_to_parent(frame_fwrd, epoch, ab_corr, distance_unit, time_unit)?;
+                    self.translate_to_parent(frame_fwrd, epoch, ab_corr, length_unit, time_unit)?;
 
                 pos_fwrd += cur_pos_fwrd;
                 vel_fwrd += cur_vel_fwrd;
@@ -84,7 +84,7 @@ impl<'a> Context<'a> {
 
             if !frame_bwrd.ephem_origin_hash_match(common_node) {
                 let (cur_pos_bwrd, cur_vel_bwrd, cur_acc_bwrd, cur_frame_bwrd) =
-                    self.translate_to_parent(frame_bwrd, epoch, ab_corr, distance_unit, time_unit)?;
+                    self.translate_to_parent(frame_bwrd, epoch, ab_corr, length_unit, time_unit)?;
 
                 pos_bwrd += cur_pos_bwrd;
                 vel_bwrd += cur_vel_bwrd;

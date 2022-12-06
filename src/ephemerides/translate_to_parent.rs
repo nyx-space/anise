@@ -59,6 +59,7 @@ impl<'a> Context<'a> {
 
         // Now let's simply evaluate the data
         let (pos_km, vel_km_s) = match summary.data_type_i {
+            // TODO : match against enumeration instead of direct integer match for clarity ?
             2 => {
                 // Type 2 Chebyshev
                 let data = spk_data.nth_data::<Type2ChebyshevSet>(idx_in_spk)?;
