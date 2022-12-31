@@ -9,16 +9,14 @@
  */
 
 use polars::prelude::LazyFrame;
-use std::sync::mpsc::Sender;
 use test_context::TestContext;
 
 /// All validation of ANISE computations compared to SPICE must implement the Validator.
 ///
 /// This allows running the validation, outputting all of the data into a Parquet file for post-analysis, and also validating the input.
-pub trait Validator: TestContext {
+pub trait Validator: TestContext + Iterator<Item = Self::Data> {
     type Data;
     fn output_file_name<'a>(&self) -> &'a str;
-    fn run(&self, channel: Sender<Self::Data>);
     fn validate(&self, df: LazyFrame);
 }
 
