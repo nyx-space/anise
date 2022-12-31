@@ -37,6 +37,7 @@ arrow = "25.0.0"
 criterion = "0.3"
 iai = "0.1"
 polars = {version = "0.25", features = ["lazy", "parquet"]}
+test-context = "0.1.4"
 
 [features]
 default = ["std"]

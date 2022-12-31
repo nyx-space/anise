@@ -136,7 +136,8 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
         }
         // For this kind of record, the metadata is stored at the very end of the dataset
         let num_records = slice[slice.len() - 1] as usize;
-        let samples = slice[slice.len() - 2] as usize;
+        // NOTE: The Type 12 and 13 specify that the windows size minus one is stored!
+        let samples = slice[slice.len() - 2] as usize + 1;
         // NOTE: The ::SIZE returns the C representation memory size of this, but we only want the number of doubles.
         let state_data_end_idx = PositionVelocityRecord::SIZE / DBL_SIZE * num_records;
         let state_data = slice.get(0..state_data_end_idx).unwrap();
@@ -196,9 +197,11 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 } else if (self.samples % 2 == 0 && idx + self.samples / 2 + 1 > self.num_records)
                     || (self.samples % 2 == 1 && idx + self.samples / 2 > self.num_records)
                 {
-                    (self.num_records - self.samples - 1, self.samples - 1)
+                    (self.num_records - self.samples, self.samples)
+                } else if self.samples % 2 == 0 {
+                    (idx - self.samples / 2, idx + self.samples / 2 + 1)
                 } else {
-                    (idx - (self.samples - 1) / 2, idx + (self.samples - 1) / 2)
+                    (idx - self.samples / 2, idx + self.samples / 2)
                 };
 
                 // Statically allocated arrays of the maximum number of samples

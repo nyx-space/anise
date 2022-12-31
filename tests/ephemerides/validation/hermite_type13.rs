@@ -67,6 +67,9 @@ fn validate_hermite_translation() {
 
     let de_path = format!("data/de440.bsp");
     let hermite_path = format!("data/gmat-hermite.bsp");
+    let sc_naif_id = -10000001;
+    // let hermite_path = format!("/home/chris/Downloads/DefaultLEOSatelliteType13Hermite.bsp");
+    // let sc_naif_id = -200000;
     // SPICE load
     spice::furnsh(&hermite_path.clone());
 
@@ -82,8 +85,6 @@ fn validate_hermite_translation() {
         .load_spk(&hermite_spk)
         .unwrap();
     println!("{ctx}");
-
-    let sc_naif_id = -10000001;
 
     // We loaded the spacecraft second, so we're just grabbing that directly, but really, users should not be doing that.
     let sc_spk = ctx.spk_data[1]
