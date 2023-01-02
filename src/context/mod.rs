@@ -136,6 +136,54 @@ impl<'a: 'b, 'b> Context<'a> {
         // If we're reached this point, there is no relevant summary at this epoch.
         Err(AniseError::MissingInterpolationData(epoch))
     }
+
+    /// Returns the summary given the name of the summary record.
+    pub fn spk_summary_from_name(
+        &self,
+        name: &str,
+    ) -> Result<(&SPKSummaryRecord, usize, usize), AniseError> {
+        for (spkno, maybe_spk) in self
+            .spk_data
+            .iter()
+            .take(self.num_loaded_spk())
+            .rev()
+            .enumerate()
+        {
+            let spk = maybe_spk.unwrap();
+            if let Ok((summary, idx_in_spk)) = spk.summary_from_name(name) {
+                return Ok((summary, spkno, idx_in_spk));
+            }
+        }
+
+        // If we're reached this point, there is no relevant summary at this epoch.
+        error!("Context: No summary {name} valid");
+        Err(AniseError::NoInterpolationData)
+    }
+
+    /// Returns the summary given the name of the summary record if that summary has data defined at the requested epoch
+    pub fn spk_summary_from_id(
+        &self,
+        id: i32,
+    ) -> Result<(&SPKSummaryRecord, usize, usize), AniseError> {
+        // TODO: Consider a return type here
+        for (spkno, maybe_spk) in self
+            .spk_data
+            .iter()
+            .take(self.num_loaded_spk())
+            .rev()
+            .enumerate()
+        {
+            let spk = maybe_spk.unwrap();
+            if let Ok((summary, idx_in_spk)) = spk.summary_from_id(id) {
+                // NOTE: We're iterating backward, so the correct SPK number is "total loaded" minus "current iteration".
+                return Ok((summary, self.num_loaded_spk() - spkno - 1, idx_in_spk));
+            }
+        }
+
+        error!("Context: No summary {id} valid");
+        // If we're reached this point, there is no relevant summary
+        Err(AniseError::NoInterpolationData)
+    }
 }
 
 impl<'a> fmt::Display for Context<'a> {

@@ -12,9 +12,6 @@ use anise::constants::frames::EARTH_J2000;
 use anise::prelude::*;
 use hifitime::{TimeSeries, TimeUnits};
 use log::error;
-use std::io::Read;
-use test_context::test_context;
-use test_context::TestContext;
 
 use crate::framework::ephemeris::*;
 use crate::framework::Validator;
@@ -30,42 +27,31 @@ struct HermiteType13<'a> {
     ctx: Context<'a>,
 }
 
-impl<'a> TestContext for HermiteType13<'a> {
-    fn setup() -> Self {
-        let de_path = format!("data/de440.bsp");
-        let hermite_path = format!("data/gmat-hermite.bsp");
+impl<'a> Validator<'a> for HermiteType13<'a> {
+    type Data = EphemValData;
+
+    fn validate(&self, df: polars::prelude::LazyFrame) {
+        assert!(true);
+    }
+
+    fn setup(files: &[String], ctx: Context<'a>) -> Self {
         let sc_naif_id = -10000001;
         // let hermite_path = format!("/home/chris/Downloads/DefaultLEOSatelliteType13Hermite.bsp");
         // let sc_naif_id = -200000;
 
         // SPICE load
-        spice::furnsh(&hermite_path.clone());
-        // Open the DE file
-        let mut file = File::open(de_path).unwrap();
-        let mut de_buf: Vec<u8> = Vec::new();
-        file.read_to_end(&mut de_buf).unwrap();
-        // Open the Hermite file
-        file = File::open(hermite_path).unwrap();
-        let mut hermite_buf: Vec<u8> = Vec::new();
-        file.read_to_end(&mut hermite_buf).unwrap();
-
-        let de_spk = SPK::parse(de_buf.leak()).unwrap();
-        let hermite_spk = SPK::parse(hermite_buf.leak()).unwrap();
+        for file_path in files {
+            spice::furnsh(file_path);
+        }
 
         // Query the ephemeris data for a bunch of different times.
-        let start_epoch = hermite_spk.nth_summary(0).unwrap().1.start_epoch();
-
-        let end_epoch = hermite_spk.nth_summary(0).unwrap().1.end_epoch();
+        let summary = ctx.spk_summary_from_id(sc_naif_id).unwrap().0;
+        let start_epoch = summary.start_epoch();
+        let end_epoch = summary.end_epoch();
 
         let time_step = ((end_epoch - start_epoch).to_seconds() / NUM_QUERIES_PER_PAIR).seconds();
 
         let time_it = TimeSeries::exclusive(start_epoch, end_epoch - time_step, time_step);
-
-        // WARNING: We leak data here!
-        let ctx = Context::from_spk(Box::leak(Box::new(de_spk)))
-            .unwrap()
-            .load_spk(Box::leak(Box::new(hermite_spk)))
-            .unwrap();
 
         Self {
             sc_naif_id,
@@ -139,20 +125,18 @@ impl<'a> Iterator for HermiteType13<'a> {
     }
 }
 
-impl<'a> Validator for HermiteType13<'a> {
-    type Data = EphemValData;
-
-    fn output_file_name<'b>(&self) -> &'b str {
-        "type13-validation-test-results"
-    }
-
-    fn validate(&self, df: polars::prelude::LazyFrame) {
-        assert!(true);
-    }
-}
-
-#[test_context(EphemerisValidator)]
 #[test]
-fn validate_hermite_type13(ctx: &mut EphemerisValidator) {
-    ctx.execute::<HermiteType13>();
+fn validate_hermite_type13_from_gmat() {
+    let mut validator = EphemerisValidator {
+        output_file_name: "type13-validation-test-results".to_string(),
+        input_file_names: vec![
+            "data/de440.bsp".to_string(),
+            "data/gmat-hermite.bsp".to_string(),
+        ],
+        ..Default::default()
+    };
+
+    validator.setup();
+
+    validator.execute::<HermiteType13>();
 }
