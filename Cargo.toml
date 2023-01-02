@@ -40,7 +40,7 @@ polars = {version = "0.25", features = ["lazy", "parquet"]}
 test-context = "0.1.4"
 
 [features]
-default = ["std"]
+default = ["std", "validation"]
 std = []
 validation = [] # Enabling this flag significantly reduces compilation times due to Arrow and Polars.
 

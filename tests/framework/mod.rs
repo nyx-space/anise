@@ -16,7 +16,9 @@ use test_context::TestContext;
 /// This allows running the validation, outputting all of the data into a Parquet file for post-analysis, and also validating the input.
 pub trait Validator: TestContext + Iterator<Item = Self::Data> {
     type Data;
+    /// Must return a file name specific to the test, will be used to store the parquet data
     fn output_file_name<'a>(&self) -> &'a str;
+    /// Process the dataframe and performs all asserts in this function. You may also clone this to store some outlier.
     fn validate(&self, df: LazyFrame);
 }
 

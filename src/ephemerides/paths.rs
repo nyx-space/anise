@@ -129,7 +129,7 @@ impl<'a> Context<'a> {
     /// # Time complexity
     /// This can likely be simplified as this as a time complexity of O(n×m) where n, m are the lengths of the paths from
     /// the ephemeris up to the root.
-    /// This can probably be optimized to avoid rewinding the entire frame path up to the root frame 
+    /// This can probably be optimized to avoid rewinding the entire frame path up to the root frame
     pub fn common_ephemeris_path(
         &self,
         from_frame: Frame,
