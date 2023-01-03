@@ -13,4 +13,3 @@ extern crate approx;
 mod astro;
 mod ephemerides;
 mod frames;
-pub(crate) mod framework;

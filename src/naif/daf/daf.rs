@@ -17,7 +17,7 @@ use log::{error, trace, warn};
 use zerocopy::{FromBytes, LayoutVerified};
 
 pub(crate) const RCRD_LEN: usize = 1024;
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct DAF<'a, R: NAIFSummaryRecord> {
     pub file_record: DAFFileRecord,
     pub daf_summary: DAFSummaryRecord,

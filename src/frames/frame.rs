@@ -11,8 +11,8 @@
 use core::fmt;
 use core::fmt::Debug;
 
-use crate::constants::celestial_objects::hash_celestial_name;
-use crate::constants::orientations::{hash_orientation_name, J2000};
+use crate::constants::celestial_objects::celestial_name_from_id;
+use crate::constants::orientations::{orientation_name_from_id, J2000};
 use crate::NaifId;
 
 /// Defines a Frame kind, allows for compile time checking of operations.
@@ -100,16 +100,39 @@ impl Frame {
 
 impl fmt::Display for Frame {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        let body_name = match hash_celestial_name(self.ephemeris_id) {
+        let body_name = match celestial_name_from_id(self.ephemeris_id) {
             Some(name) => name.to_string(),
             None => format!("body {}", self.ephemeris_id),
         };
 
-        let orientation_name = match hash_orientation_name(self.orientation_id) {
+        let orientation_name = match orientation_name_from_id(self.orientation_id) {
             Some(name) => name.to_string(),
             None => format!("orientation {}", self.orientation_id),
         };
 
         write!(f, "{body_name} {orientation_name}")
+    }
+}
+
+impl fmt::LowerExp for Frame {
+    /// Only prints the ephemeris name
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        let body_name = match celestial_name_from_id(self.ephemeris_id) {
+            Some(name) => name.to_string(),
+            None => format!("{}", self.ephemeris_id),
+        };
+        write!(f, "{body_name}")
+    }
+}
+
+impl fmt::Octal for Frame {
+    /// Only prints the orientation name
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        let orientation_name = match orientation_name_from_id(self.orientation_id) {
+            Some(name) => name.to_string(),
+            None => format!("orientation {}", self.orientation_id),
+        };
+
+        write!(f, "{orientation_name}")
     }
 }

@@ -15,7 +15,7 @@ use log::{error, warn};
 
 use super::{NAIFRecord, RCRD_LEN};
 
-#[derive(Debug, FromBytes, AsBytes)]
+#[derive(Debug, Clone, FromBytes, AsBytes)]
 #[repr(C)]
 pub struct DAFFileRecord {
     pub locidw: [u8; 8],
@@ -125,7 +125,7 @@ impl DAFFileRecord {
     }
 }
 
-#[derive(AsBytes, Debug, Default, FromBytes)]
+#[derive(AsBytes, Clone, Copy, Debug, Default, FromBytes)]
 #[repr(C)]
 pub struct DAFSummaryRecord {
     next_record: f64,
@@ -153,7 +153,7 @@ impl DAFSummaryRecord {
     }
 }
 
-#[derive(AsBytes, Debug, FromBytes)]
+#[derive(AsBytes, Clone, Debug, FromBytes)]
 #[repr(C)]
 pub struct NameRecord {
     raw_names: [u8; RCRD_LEN],

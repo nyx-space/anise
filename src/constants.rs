@@ -27,8 +27,8 @@ pub mod celestial_objects {
     pub const LUNA: NaifId = 301;
     pub const EARTH: NaifId = 399;
 
-    pub const fn hash_celestial_name<'a>(hash: NaifId) -> Option<&'a str> {
-        match hash {
+    pub const fn celestial_name_from_id<'a>(id: NaifId) -> Option<&'a str> {
+        match id {
             SOLAR_SYSTEM_BARYCENTER => Some("Solar System Barycenter"),
             MERCURY => Some("Mercury"),
             VENUS => Some("Venus"),
@@ -51,7 +51,7 @@ pub mod orientations {
     use crate::NaifId;
     pub const J2000: NaifId = 0;
 
-    pub const fn hash_orientation_name<'a>(hash: NaifId) -> Option<&'a str> {
+    pub const fn orientation_name_from_id<'a>(hash: NaifId) -> Option<&'a str> {
         match hash {
             J2000 => Some("J2000"),
             _ => None,

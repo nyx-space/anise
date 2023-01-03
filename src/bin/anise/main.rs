@@ -121,7 +121,7 @@ fn main() -> Result<(), CliErrors> {
                                     }
 
                                     let mut tbl = Table::new(rows);
-                                    tbl.with(Style::rounded());
+                                    tbl.with(Style::markdown());
                                     println!("{tbl}");
 
                                     Ok(())
@@ -161,7 +161,7 @@ fn main() -> Result<(), CliErrors> {
                                     }
 
                                     let mut tbl = Table::new(rows);
-                                    tbl.with(Style::rounded());
+                                    tbl.with(Style::markdown());
                                     println!("{tbl}");
 
                                     Ok(())
