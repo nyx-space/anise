@@ -12,18 +12,41 @@ use super::{compare::*, validate::Validation};
 
 #[test]
 fn validate_hermite_type13_from_gmat() {
+    let output_file_name = "type13-validation-even-seg-size".to_string();
     let comparator = CompareEphem::new(
-        vec![
-            // "data/de440.bsp".to_string(),
-            "data/gmat-hermite.bsp".to_string(),
-        ],
-        "type13-validation-test-results".to_string(),
+        vec!["data/gmat-hermite.bsp".to_string()],
+        output_file_name.clone(),
+        10_000,
     );
 
-    comparator.run();
+    let err_count = comparator.run();
+
+    assert_eq!(err_count, 0, "None of the queries should fail!");
 
     let validator = Validation {
-        file_name: "type13-validation-test-results".to_string(),
+        file_name: output_file_name,
+        ..Default::default()
+    };
+
+    validator.validate();
+}
+
+#[test]
+fn validate_hermite_type13_with_varying_segment_sizes() {
+    let output_file_name = "type13-validation-variable-seg-size".to_string();
+    let comparator = CompareEphem::new(
+        vec!["data/variable-seg-size-hermite.bsp".to_string()],
+        output_file_name.clone(),
+        10_000,
+    );
+
+    let err_count = comparator.run();
+
+    assert_eq!(err_count, 0, "None of the queries should fail!");
+
+    let validator = Validation {
+        file_name: output_file_name,
+        ..Default::default()
     };
 
     validator.validate();

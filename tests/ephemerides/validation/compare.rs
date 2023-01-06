@@ -14,20 +14,20 @@ use arrow::{
     datatypes::{DataType, Field, Schema},
     record_batch::RecordBatch,
 };
-use log::error;
+use log::{error, info};
 use parquet::{arrow::ArrowWriter, file::properties::WriterProperties};
 use std::{collections::HashMap, fs::File, io::Read, sync::Arc};
 
 const COMPONENT: &[&'static str] = &["X", "Y", "Z", "VX", "VY", "VZ"];
 
+// Number of items to keep in memory before flushing to the parquet file
 const BATCH_SIZE: usize = 10_000;
-const NUM_QUERIES_PER_PAIR: f64 = 10_000.0;
 
 #[derive(Default)]
 pub struct EphemValData {
     pub src_frame: String,
     pub dst_frame: String,
-    pub epoch_offset: f64,
+    pub epoch_et_s: f64,
     pub spice_val_x_km: f64,
     pub anise_val_x_km: f64,
     pub spice_val_y_km: f64,
@@ -44,11 +44,11 @@ pub struct EphemValData {
 }
 
 impl EphemValData {
-    pub fn error(src_frame: String, dst_frame: String, epoch_offset: f64) -> Self {
+    pub fn error(src_frame: String, dst_frame: String, epoch_et_s: f64) -> Self {
         Self {
             src_frame,
             dst_frame,
-            epoch_offset,
+            epoch_et_s,
             spice_val_x_km: f64::INFINITY,
             anise_val_x_km: f64::INFINITY,
             spice_val_y_km: f64::INFINITY,
@@ -65,28 +65,40 @@ impl EphemValData {
     }
 }
 
+/// An ephemeris comparison tool that writes the differences between ephemerides to a Parquet file.
 pub struct CompareEphem {
     pub input_file_names: Vec<String>,
     pub output_file_name: String,
+    pub num_queries_per_pair: usize,
     pub writer: ArrowWriter<File>,
     pub batch_src_frame: Vec<String>,
     pub batch_dst_frame: Vec<String>,
     pub batch_component: Vec<String>,
-    pub batch_epoch_offset: Vec<f64>,
+    pub batch_epoch_et_s: Vec<f64>,
     pub batch_spice_val: Vec<f64>,
     pub batch_anise_val: Vec<f64>,
+    pub batch_abs_diff: Vec<f64>,
 }
 
 impl CompareEphem {
-    pub fn new(input_file_names: Vec<String>, output_file_name: String) -> Self {
+    pub fn new(
+        input_file_names: Vec<String>,
+        output_file_name: String,
+        num_queries_per_pair: usize,
+    ) -> Self {
+        if pretty_env_logger::try_init().is_err() {
+            println!("could not init env_logger");
+        }
+
         // Build the schema
         let schema = Schema::new(vec![
             Field::new("source frame", DataType::Utf8, false),
             Field::new("destination frame", DataType::Utf8, false),
             Field::new("component", DataType::Utf8, false),
-            Field::new("File delta T (s)", DataType::Float64, false),
+            Field::new("ET Epoch (s)", DataType::Float64, false),
             Field::new("SPICE value", DataType::Float64, false),
             Field::new("ANISE value", DataType::Float64, false),
+            Field::new("Absolute difference", DataType::Float64, false),
         ]);
 
         let file = File::create(format!("target/{}.parquet", output_file_name)).unwrap();
@@ -98,20 +110,23 @@ impl CompareEphem {
         let me = Self {
             output_file_name,
             input_file_names,
+            num_queries_per_pair,
             writer,
             batch_src_frame: Vec::new(),
             batch_dst_frame: Vec::new(),
             batch_component: Vec::new(),
-            batch_epoch_offset: Vec::new(),
+            batch_epoch_et_s: Vec::new(),
             batch_spice_val: Vec::new(),
             batch_anise_val: Vec::new(),
+            batch_abs_diff: Vec::new(),
         };
 
         me
     }
 
-    /// Executes this ephemeris validation
-    pub fn run(mut self) {
+    /// Executes this ephemeris validation and return the number of querying errors
+    #[must_use]
+    pub fn run(mut self) -> usize {
         // Load the context
 
         let mut ctx = Context::default();
@@ -212,19 +227,21 @@ impl CompareEphem {
             ctx = ctx.load_spk(spk).unwrap();
         }
 
-        dbg!(&pairs);
+        info!("Pairs in comparator: {:?}", &pairs);
 
         let mut i: usize = 0;
+        let mut err_count: usize = 0;
         for (from_frame, to_frame, start_epoch, end_epoch) in pairs.values() {
-            let time_step =
-                ((*end_epoch - *start_epoch).to_seconds() / NUM_QUERIES_PER_PAIR).seconds();
+            let time_step = ((*end_epoch - *start_epoch).to_seconds()
+                / (self.num_queries_per_pair as f64))
+                .seconds();
 
             let mut time_it =
                 TimeSeries::exclusive(*start_epoch, *end_epoch - time_step, time_step);
 
-            while let Some(epoch) = time_it.next() {
-                let epoch_offset = (epoch - *start_epoch).to_seconds();
+            info!("{time_it} for {from_frame} -> {to_frame} ");
 
+            while let Some(epoch) = time_it.next() {
                 let data = match ctx.translate_from_to_km_s_geometric(*from_frame, *to_frame, epoch)
                 {
                     Ok(state) => {
@@ -250,7 +267,7 @@ impl CompareEphem {
                         let data = EphemValData {
                             src_frame: format!("{from_frame:e}"),
                             dst_frame: format!("{to_frame:e}"),
-                            epoch_offset,
+                            epoch_et_s: epoch.to_et_seconds(),
                             spice_val_x_km: spice_state[0],
                             spice_val_y_km: spice_state[1],
                             spice_val_z_km: spice_state[2],
@@ -270,10 +287,11 @@ impl CompareEphem {
 
                     Err(e) => {
                         error!("At epoch {epoch:E}: {e}");
+                        err_count += 1;
                         EphemValData::error(
                             format!("{from_frame:e}"),
                             format!("{to_frame:e}"),
-                            epoch_offset,
+                            epoch.to_et_seconds(),
                         )
                     }
                 };
@@ -282,7 +300,7 @@ impl CompareEphem {
                     self.batch_src_frame.push(data.src_frame.clone());
                     self.batch_dst_frame.push(data.dst_frame.clone());
                     self.batch_component.push(component.to_string());
-                    self.batch_epoch_offset.push(data.epoch_offset);
+                    self.batch_epoch_et_s.push(data.epoch_et_s);
                     let (spice_val, anise_val) = match j {
                         0 => (data.spice_val_x_km, data.anise_val_x_km),
                         1 => (data.spice_val_y_km, data.anise_val_y_km),
@@ -294,6 +312,7 @@ impl CompareEphem {
                     };
                     self.batch_spice_val.push(spice_val);
                     self.batch_anise_val.push(anise_val);
+                    self.batch_abs_diff.push((anise_val - spice_val).abs());
                 }
 
                 // Consider writing the batch
@@ -304,10 +323,10 @@ impl CompareEphem {
             }
         }
 
-        // Test is finished, so let's close the writer, open it as a lazy dataframe, and pass it to the validation
+        // Comparison is finished, let's persist the last batch, close the file, and return the number of querying errors.
         self.persist();
         self.writer.close().unwrap();
-        // self.validate();
+        err_count
     }
 
     fn persist(&mut self) {
@@ -327,8 +346,8 @@ impl CompareEphem {
                         Arc::new(StringArray::from(self.batch_component.clone())) as ArrayRef,
                     ),
                     (
-                        "File delta T (s)",
-                        Arc::new(Float64Array::from(self.batch_epoch_offset.clone())) as ArrayRef,
+                        "ET Epoch (s)",
+                        Arc::new(Float64Array::from(self.batch_epoch_et_s.clone())) as ArrayRef,
                     ),
                     (
                         "SPICE value",
@@ -337,6 +356,10 @@ impl CompareEphem {
                     (
                         "ANISE value",
                         Arc::new(Float64Array::from(self.batch_anise_val.clone())) as ArrayRef,
+                    ),
+                    (
+                        "Absolute difference",
+                        Arc::new(Float64Array::from(self.batch_abs_diff.clone())) as ArrayRef,
                     ),
                 ])
                 .unwrap(),
@@ -350,8 +373,9 @@ impl CompareEphem {
         self.batch_src_frame = Vec::with_capacity(BATCH_SIZE);
         self.batch_dst_frame = Vec::with_capacity(BATCH_SIZE);
         self.batch_component = Vec::with_capacity(BATCH_SIZE);
-        self.batch_epoch_offset = Vec::with_capacity(BATCH_SIZE);
+        self.batch_epoch_et_s = Vec::with_capacity(BATCH_SIZE);
         self.batch_spice_val = Vec::with_capacity(BATCH_SIZE);
         self.batch_anise_val = Vec::with_capacity(BATCH_SIZE);
+        self.batch_abs_diff = Vec::with_capacity(BATCH_SIZE);
     }
 }

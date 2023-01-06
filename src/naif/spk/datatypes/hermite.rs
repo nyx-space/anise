@@ -179,9 +179,9 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
         }
         // Now, perform a binary search on the epochs themselves.
         match self.epoch_data.binary_search_by(|epoch_et| {
-            epoch_et.partial_cmp(&epoch.to_et_seconds()).expect(
-                "ANISE internal error: epochs in Hermite data or provided is NaN or Infinite",
-            )
+            epoch_et
+                .partial_cmp(&epoch.to_et_seconds())
+                .expect("epochs in Hermite data is now NaN or infinite but was not before")
         }) {
             Ok(idx) => {
                 // Oh wow, this state actually exists, no interpolation needed!
@@ -190,19 +190,19 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
             Err(idx) => {
                 // We didn't find it, so let's build an interpolation here.
 
+                let num_neighbors = (self.samples - 1) / 2;
+
                 // Check that we won't be fetching out of the window.
-                let (first_idx, last_idx) = if idx < self.samples / 2 {
+                let first_idx = if idx <= num_neighbors {
                     // Uh oh, we don't have enough states, so let's bound it to the valid state data
-                    (0, self.samples)
-                } else if (self.samples % 2 == 0 && idx + self.samples / 2 + 1 > self.num_records)
-                    || (self.samples % 2 == 1 && idx + self.samples / 2 > self.num_records)
-                {
-                    (self.num_records - self.samples, self.samples)
-                } else if self.samples % 2 == 0 {
-                    (idx - self.samples / 2, idx + self.samples / 2 + 1)
+                    0
+                } else if idx + num_neighbors >= self.num_records {
+                    idx - self.samples + 1
                 } else {
-                    (idx - self.samples / 2, idx + self.samples / 2)
+                    idx - num_neighbors - 1
                 };
+
+                let last_idx = first_idx + self.samples;
 
                 // Statically allocated arrays of the maximum number of samples
                 let mut epochs = [0.0; MAX_SAMPLES];
@@ -212,7 +212,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 let mut vxs = [0.0; MAX_SAMPLES];
                 let mut vys = [0.0; MAX_SAMPLES];
                 let mut vzs = [0.0; MAX_SAMPLES];
-                for (cno, idx) in (first_idx..=last_idx).enumerate() {
+                for (cno, idx) in (first_idx..last_idx).enumerate() {
                     let record = self.nth_record(idx)?;
                     xs[cno] = record.x_km;
                     ys[cno] = record.y_km;
@@ -228,23 +228,23 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 // Build the interpolation polynomials making sure to limit the slices to exactly the number of items we actually used
                 // The other ones are zeros, which would cause the interpolation function to fail.
                 let (x_km, vx_km_s) = hermite_eval(
-                    &epochs[..=self.samples],
-                    &xs[..=self.samples],
-                    &vxs[..=self.samples],
+                    &epochs[..self.samples],
+                    &xs[..self.samples],
+                    &vxs[..self.samples],
                     epoch.to_et_seconds(),
                 )?;
 
                 let (y_km, vy_km_s) = hermite_eval(
-                    &epochs[..=self.samples],
-                    &ys[..=self.samples],
-                    &vys[..=self.samples],
+                    &epochs[..self.samples],
+                    &ys[..self.samples],
+                    &vys[..self.samples],
                     epoch.to_et_seconds(),
                 )?;
 
                 let (z_km, vz_km_s) = hermite_eval(
-                    &epochs[..=self.samples],
-                    &zs[..=self.samples],
-                    &vzs[..=self.samples],
+                    &epochs[..self.samples],
+                    &zs[..self.samples],
+                    &vzs[..self.samples],
                     epoch.to_et_seconds(),
                 )?;
 

@@ -1,24 +1,21 @@
 import pandas as pd
 import plotly.express as px
-from os.path import abspath, join, dirname
+from os.path import abspath, join, dirname, basename
+from glob import glob
 
 if __name__ == '__main__':
 
     target_folder = join(abspath(dirname(__file__)), '..', 'target')
 
-    for name, filename in [("validation", "type13-validation-test-results"),
-                           ("outliers", "type13-validation-outliers")]:
+    for filename in glob(f"{target_folder}/type13-*.parquet"):
 
         # Load the parquet file
-        df = pd.read_parquet(f"{target_folder}/{filename}.parquet")
+        df = pd.read_parquet(filename)
 
-        if name == 'validation':
-            y = 'relative error'
-        else:
-            y = 'absolute error'
+        name = basename(filename)
 
         for kind, columns in [("Position", ["X", "Y", "Z"]),
-                                ("Velocity", ["VX", "VY", "VZ"])]:
+                              ("Velocity", ["VX", "VY", "VZ"])]:
 
             print(f"== {kind} {name} ==")
 
@@ -27,10 +24,20 @@ if __name__ == '__main__':
             print(subset.describe())
 
             plt = px.scatter(subset,
-                                x='File delta T (s)',
-                                y=y,
-                                color='source frame')
+                             x='ET Epoch (s)',
+                             y='Absolute difference',
+                             color='source frame',
+                             title=name)
 
             plt.write_html(
-                f"{target_folder}/{name}-{kind}-validation.html")
+                f"{target_folder}/validation-plot-{kind}-{name}.html")
             plt.show()
+
+        # Plot all components together
+        plt = px.scatter(df,
+                         x='ET Epoch (s)',
+                         y='Absolute difference',
+                         color='component',
+                         title=name)
+        plt.write_html(f"{target_folder}/validation-plot-{name}.html")
+        plt.show()

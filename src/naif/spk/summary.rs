@@ -10,7 +10,7 @@
 
 use core::fmt;
 use hifitime::Epoch;
-use log::error;
+use log::{error, trace};
 use zerocopy::{AsBytes, FromBytes};
 
 use crate::{
@@ -103,8 +103,8 @@ impl<'a> SPKSummaryRecord {
             "Neptune Barycenter" => Ok(8),
             "Pluto Barycenter" => Ok(9),
             _ => {
-                error!("[human_name_to_id] unknown NAIF ID for `{name}`");
-                todo!()
+                trace!("[human_name_to_id] unknown NAIF ID for `{name}`");
+                Err(AniseError::ItemNotFound)
             }
         }
     }

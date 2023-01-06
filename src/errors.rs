@@ -31,7 +31,7 @@ pub enum AniseError {
     /// If the NAIF file cannot be read or isn't supported
     DAFParserError(String),
     InvalidTimeSystem,
-    /// Raised if the checksum of the encoded data does not match the stored data.
+    /// Raised if there is some kind of error with the underlying data, e.g. invalid checksum, or NaN/Inf values when that is not acceptable.
     IntegrityError(IntegrityErrorKind),
     /// Raised if the item sought after is not found in the context
     ItemNotFound,
@@ -76,6 +76,8 @@ pub enum IntegrityErrorKind {
     LookupTable,
     /// Raised if a transformation is requested but the frames have no common origin
     DisjointRoots { from_frame: Frame, to_frame: Frame },
+    /// Raised if some f64 data is NaN, infinity, or negative infinity.
+    SubNormal,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]

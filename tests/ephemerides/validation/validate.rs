@@ -8,15 +8,20 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::ephemerides::consts::*;
-use log::info;
-use polars::prelude::*;
+use std::f64::EPSILON;
 
+use polars::{lazy::dsl::Expr, prelude::*};
+
+#[derive(Debug, Default)]
 pub struct Validation {
     pub file_name: String,
+    pub max_q75_err: f64,
+    pub max_q99_err: f64,
+    pub max_abs_err: f64,
 }
 
 impl Validation {
+    /// Computes the quantiles of the absolute errors in the Parquet file and asserts these are within the bounds of the validation.
     pub fn validate(&self) {
         // Open the parquet file with all the data
         let df = LazyFrame::scan_parquet(
@@ -25,115 +30,73 @@ impl Validation {
         )
         .unwrap();
 
-        let rel_errors = df
-            .clone()
-            .select([
-                min("relative error").alias("min rel err (km) OK"),
-                col("relative error")
-                    .quantile(0.25, QuantileInterpolOptions::Higher)
-                    .alias("q25 rel err (km) OK"),
-                col("relative error").mean().alias("mean rel err (km) OK"),
-                col("relative error")
-                    .median()
-                    .alias("median rel err (km) OK"),
-                col("relative error")
-                    .quantile(0.75, QuantileInterpolOptions::Higher)
-                    .alias("q75 rel err (km) OK"),
-                col("relative error")
-                    .quantile(0.99, QuantileInterpolOptions::Higher)
-                    .alias("q99 rel err (km) OK"),
-                max("relative error").alias("max rel err (km) OK"),
-            ])
-            .collect()
-            .unwrap();
-        println!("{}", rel_errors);
-
-        let rel_errors_ok = df
-            .clone()
-            .select([
-                min("relative error")
-                    .alias("min rel err (km) OK")
-                    .lt(TYPICAL_REL_POS_ERR_KM),
-                col("relative error")
-                    .quantile(0.25, QuantileInterpolOptions::Higher)
-                    .alias("q25 rel err (km) OK")
-                    .lt(TYPICAL_REL_POS_ERR_KM),
-                col("relative error")
-                    .mean()
-                    .alias("mean rel err (km) OK")
-                    .lt(TYPICAL_REL_POS_ERR_KM),
-                col("relative error")
-                    .median()
-                    .alias("median rel err (km) OK")
-                    .lt(TYPICAL_REL_POS_ERR_KM),
-                col("relative error")
-                    .quantile(0.75, QuantileInterpolOptions::Higher)
-                    .alias("q75 rel err (km) OK")
-                    .lt(TYPICAL_REL_POS_ERR_KM),
-                col("relative error")
-                    .quantile(0.99, QuantileInterpolOptions::Higher)
-                    .alias("q99 rel err (km) OK")
-                    .lt(MAX_REL_POS_ERR_KM),
-                max("relative error")
-                    .alias("max rel err (km) OK")
-                    .lt(MAX_REL_POS_ERR_KM),
-            ])
-            .collect()
-            .unwrap();
-
-        for item in rel_errors_ok.get_row(0).0 {
-            match item {
-                AnyValue::Boolean(val) => assert!(val),
-                _ => panic!("expected a boolean in the DataFrame column"),
-            }
-        }
-
         let abs_errors = df
             .clone()
             .select([
-                // Absolute error
-                min("absolute error").alias("min abs err (km)"),
-                col("absolute error")
-                    .quantile(0.25, QuantileInterpolOptions::Higher)
-                    .alias("q25 abs err (km)"),
-                col("absolute error").mean().alias("mean abs err (km)"),
-                col("absolute error").median().alias("median abs err (km)"),
-                col("absolute error")
-                    .quantile(0.75, QuantileInterpolOptions::Higher)
-                    .alias("q75 abs err (km)"),
-                col("absolute error")
-                    .quantile(0.99, QuantileInterpolOptions::Higher)
-                    .alias("q99 abs err (km)"),
-                max("absolute error").alias("max abs err (km)"),
+                // Absolute difference
+                min("Absolute difference").alias("min abs err"),
+                col("Absolute difference")
+                    .quantile(
+                        Expr::Literal(polars::prelude::LiteralValue::Float64(0.25)),
+                        QuantileInterpolOptions::Higher,
+                    )
+                    .alias("q25 abs err"),
+                col("Absolute difference").mean().alias("mean abs err"),
+                col("Absolute difference").median().alias("median abs err"),
+                col("Absolute difference")
+                    .quantile(
+                        Expr::Literal(polars::prelude::LiteralValue::Float64(0.75)),
+                        QuantileInterpolOptions::Higher,
+                    )
+                    .alias("q75 abs err"),
+                col("Absolute difference")
+                    .quantile(
+                        Expr::Literal(polars::prelude::LiteralValue::Float64(0.99)),
+                        QuantileInterpolOptions::Higher,
+                    )
+                    .alias("q99 abs err"),
+                max("Absolute difference").alias("max abs err"),
             ])
             .collect()
             .unwrap();
         println!("{}", abs_errors);
 
-        // For debugging purposes, print all of the q99 errors
-        let q99_abs = match abs_errors.get_row(0).0[5] {
+        // Validate results
+
+        // q75
+        let err = match abs_errors.get_row(0).unwrap().0[4] {
             AnyValue::Float64(val) => val,
             _ => unreachable!(),
         };
 
-        let mut outliers = df
-            .filter(col("absolute error").gt(lit(q99_abs)))
-            .select([
-                col("absolute error"),
-                col("relative error"),
-                col("File delta T (s)"),
-                col("source frame"),
-                col("destination frame"),
-                max("component"),
-            ])
-            .collect()
-            .unwrap();
-        println!("{}", outliers);
+        assert!(
+            (err - self.max_q75_err).abs() < EPSILON,
+            "q75 of absolute error is {err} > {}",
+            self.max_q75_err
+        );
 
-        let outfile = "target/type13-validation-outliers.parquet";
-        let mut file = std::fs::File::create(outfile).unwrap();
-        ParquetWriter::new(&mut file).finish(&mut outliers).unwrap();
+        // q99
+        let err = match abs_errors.get_row(0).unwrap().0[5] {
+            AnyValue::Float64(val) => val,
+            _ => unreachable!(),
+        };
 
-        info!("saved outliers to {outfile}");
+        assert!(
+            (err - self.max_q99_err).abs() < EPSILON,
+            "q99 of absolute error is {err} > {}",
+            self.max_q99_err
+        );
+
+        // max abs err
+        let err = match abs_errors.get_row(0).unwrap().0[6] {
+            AnyValue::Float64(val) => val,
+            _ => unreachable!(),
+        };
+
+        assert!(
+            (err - self.max_abs_err).abs() < EPSILON,
+            "maximum absolute error is {err} > {}",
+            self.max_abs_err
+        );
     }
 }

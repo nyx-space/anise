@@ -13,6 +13,7 @@ use log::error;
 
 use crate::context::Context;
 use crate::errors::InternalErrorKind;
+use crate::naif::daf::NAIFSummaryRecord;
 use crate::NaifId;
 use crate::{
     errors::{AniseError, IntegrityErrorKind},
@@ -42,8 +43,8 @@ impl<'a> Context<'a> {
 
             for summary in spk.data_summaries {
                 // This summary exists, so we need to follow the branch of centers up the tree.
-                if summary.target_id.abs() < common_center.abs() {
-                    common_center = summary.target_id;
+                if !summary.is_empty() && summary.center_id.abs() < common_center.abs() {
+                    common_center = summary.center_id;
                     if common_center == 0 {
                         // We're at the SSB, there is nothing higher up
                         return Ok(common_center);
@@ -60,6 +61,16 @@ impl<'a> Context<'a> {
         source: &Frame,
         epoch: Epoch,
     ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH]), AniseError> {
+        let common_center = self.try_find_context_center()?;
+        // Build a tree, set a fixed depth to avoid allocations
+        let mut of_path = [None; MAX_TREE_DEPTH];
+        let mut of_path_len = 0;
+
+        if common_center == source.ephemeris_id {
+            // We're querying the source, no need to check that this summary even exists.
+            return Ok((of_path_len, of_path));
+        }
+
         // Grab the summary data, which we use to find the paths
         let summary = self
             .spk_summary_from_id_at_epoch(source.ephemeris_id, epoch)?
@@ -67,14 +78,9 @@ impl<'a> Context<'a> {
 
         let mut center_id = summary.center_id;
 
-        // Build a tree, set a fixed depth to avoid allocations
-        let mut of_path = [None; MAX_TREE_DEPTH];
-        let mut of_path_len = 0;
-
         of_path[of_path_len] = Some(summary.center_id);
         of_path_len += 1;
 
-        let common_center = self.try_find_context_center()?;
         if summary.center_id == common_center {
             // Well that was quick!
             return Ok((of_path_len, of_path));
