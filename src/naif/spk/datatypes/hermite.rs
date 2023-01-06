@@ -188,21 +188,38 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 Ok(self.nth_record(idx)?.to_pos_vel())
             }
             Err(idx) => {
+                let epoch_et = epoch.to_et_seconds();
                 // We didn't find it, so let's build an interpolation here.
+                let num_left = self.samples / 2;
 
-                let num_neighbors = (self.samples - 1) / 2;
+                // Ensure that we aren't fetching out of the window
+                // TODO: This fails on the very last window.
+                let first_idx = idx.saturating_sub(num_left);
+                // let first_idx = if idx <= num_left {
+                //     0
+                // } else if idx - num_left >= self.num_records - self.samples {
+                //     self.num_records - num_left
+                // } else {
+                //     idx - num_left
+                // };
+                let last_idx = self.num_records.min(first_idx + self.samples);
 
-                // Check that we won't be fetching out of the window.
-                let first_idx = if idx <= num_neighbors {
-                    // Uh oh, we don't have enough states, so let's bound it to the valid state data
-                    0
-                } else if idx + num_neighbors >= self.num_records {
-                    idx - self.samples + 1
-                } else {
-                    idx - num_neighbors - 1
-                };
+                // // Check that we won't be fetching out of the window.
+                // let first_idx = if idx <= num_left {
+                //     // Uh oh, we don't have enough states, so let's bound it to the valid state data
+                //     0
+                // } else if idx + num_left >= self.num_records {
+                //     idx - self.samples + 1
+                // } else {
+                //     idx - num_left - 1
+                // };
 
-                let last_idx = first_idx + self.samples;
+                // let last_idx = first_idx
+                //     + if self.samples % 2 == 0 {
+                //         self.samples
+                //     } else {
+                //         self.samples + 1
+                //     };
 
                 // Statically allocated arrays of the maximum number of samples
                 let mut epochs = [0.0; MAX_SAMPLES];
