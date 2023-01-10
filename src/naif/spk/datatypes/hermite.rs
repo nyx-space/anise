@@ -12,6 +12,7 @@ use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits};
 use log::error;
 
+use crate::errors::IntegrityErrorKind;
 use crate::math::interpolation::{hermite_eval, MAX_SAMPLES};
 use crate::{
     math::{cartesian::CartesianState, Vector3},
@@ -57,8 +58,16 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
             return Err(AniseError::MalformedData(5));
         }
         // For this kind of record, the metadata is stored at the very end of the dataset, so we need to read that first.
-        let first_state_epoch = Epoch::from_et_seconds(slice[slice.len() - 4]);
-        let step_size = slice[slice.len() - 3].seconds();
+        let seconds_since_j2000 = slice[slice.len() - 4];
+        if !seconds_since_j2000.is_finite() {
+            return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+        }
+        let first_state_epoch = Epoch::from_et_seconds(seconds_since_j2000);
+        let step_size_s = slice[slice.len() - 3];
+        if !step_size_s.is_finite() {
+            return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+        }
+        let step_size = step_size_s.seconds();
         let window_size = slice[slice.len() - 2] as usize;
         let num_records = slice[slice.len() - 1] as usize;
 
@@ -86,6 +95,16 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
         _start_epoch: Epoch,
     ) -> Result<CartesianState, crate::prelude::AniseError> {
         todo!("https://github.com/anise-toolkit/anise.rs/issues/14")
+    }
+
+    fn check_integrity(&self) -> Result<(), AniseError> {
+        for val in self.record_data {
+            if !val.is_finite() {
+                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -188,38 +207,17 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 Ok(self.nth_record(idx)?.to_pos_vel())
             }
             Err(idx) => {
-                let epoch_et = epoch.to_et_seconds();
                 // We didn't find it, so let's build an interpolation here.
                 let num_left = self.samples / 2;
 
                 // Ensure that we aren't fetching out of the window
-                // TODO: This fails on the very last window.
-                let first_idx = idx.saturating_sub(num_left);
-                // let first_idx = if idx <= num_left {
-                //     0
-                // } else if idx - num_left >= self.num_records - self.samples {
-                //     self.num_records - num_left
-                // } else {
-                //     idx - num_left
-                // };
+                let mut first_idx = idx.saturating_sub(num_left);
                 let last_idx = self.num_records.min(first_idx + self.samples);
 
-                // // Check that we won't be fetching out of the window.
-                // let first_idx = if idx <= num_left {
-                //     // Uh oh, we don't have enough states, so let's bound it to the valid state data
-                //     0
-                // } else if idx + num_left >= self.num_records {
-                //     idx - self.samples + 1
-                // } else {
-                //     idx - num_left - 1
-                // };
-
-                // let last_idx = first_idx
-                //     + if self.samples % 2 == 0 {
-                //         self.samples
-                //     } else {
-                //         self.samples + 1
-                //     };
+                // Check that we have enough samples
+                if last_idx == self.num_records {
+                    first_idx = last_idx - 2 * num_left;
+                }
 
                 // Statically allocated arrays of the maximum number of samples
                 let mut epochs = [0.0; MAX_SAMPLES];
@@ -272,5 +270,28 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 Ok((pos_km, vel_km_s))
             }
         }
+    }
+
+    fn check_integrity(&self) -> Result<(), AniseError> {
+        // Verify that none of the data is invalid once when we load it.
+        for val in self.epoch_data {
+            if !val.is_finite() {
+                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+            }
+        }
+
+        for val in self.epoch_registry {
+            if !val.is_finite() {
+                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+            }
+        }
+
+        for val in self.state_data {
+            if !val.is_finite() {
+                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+            }
+        }
+
+        Ok(())
     }
 }

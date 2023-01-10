@@ -13,6 +13,7 @@ use hifitime::{Duration, Epoch, TimeUnits};
 use log::error;
 
 use crate::{
+    errors::IntegrityErrorKind,
     math::{interpolation::chebyshev_eval, Vector3},
     naif::daf::{NAIFDataRecord, NAIFDataSet},
     prelude::AniseError,
@@ -60,8 +61,17 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
             return Err(AniseError::MalformedData(5));
         }
         // For this kind of record, the data is stored at the very end of the dataset
-        let start_epoch = Epoch::from_et_seconds(slice[slice.len() - 4]);
-        let interval_length = slice[slice.len() - 3].seconds();
+        let seconds_since_j2000 = slice[slice.len() - 4];
+        if !seconds_since_j2000.is_finite() {
+            // The Epoch initialization will fail on subnormal data
+            return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+        }
+        let start_epoch = Epoch::from_et_seconds(seconds_since_j2000);
+        let interval_length_s = slice[slice.len() - 3];
+        if !interval_length_s.is_finite() {
+            return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+        }
+        let interval_length = interval_length_s.seconds();
         let rsize = slice[slice.len() - 2] as usize;
         let num_records = slice[slice.len() - 1] as usize;
 
@@ -115,6 +125,17 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         }
 
         Ok((pos, vel))
+    }
+
+    fn check_integrity(&self) -> Result<(), AniseError> {
+        // Verify that none of the data is invalid once when we load it.
+        for val in self.record_data {
+            if !val.is_finite() {
+                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+            }
+        }
+
+        Ok(())
     }
 }
 

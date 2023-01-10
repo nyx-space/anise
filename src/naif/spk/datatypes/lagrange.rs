@@ -13,6 +13,7 @@ use hifitime::{Duration, Epoch, TimeUnits};
 use log::error;
 
 use crate::{
+    errors::IntegrityErrorKind,
     math::{cartesian::CartesianState, Vector3},
     naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord},
     prelude::AniseError,
@@ -56,8 +57,16 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
             return Err(AniseError::MalformedData(5));
         }
         // For this kind of record, the metadata is stored at the very end of the dataset, so we need to read that first.
-        let first_state_epoch = Epoch::from_et_seconds(slice[slice.len() - 4]);
-        let step_size = slice[slice.len() - 3].seconds();
+        let seconds_since_j2000 = slice[slice.len() - 4];
+        if !seconds_since_j2000.is_finite() {
+            return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+        }
+        let first_state_epoch = Epoch::from_et_seconds(seconds_since_j2000);
+        let step_size_s = slice[slice.len() - 3];
+        if !step_size_s.is_finite() {
+            return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+        }
+        let step_size = step_size_s.seconds();
         let degree = slice[slice.len() - 2] as usize;
         let num_records = slice[slice.len() - 1] as usize;
 
@@ -85,6 +94,16 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
         _start_epoch: Epoch,
     ) -> Result<CartesianState, crate::prelude::AniseError> {
         todo!("https://github.com/anise-toolkit/anise.rs/issues/12")
+    }
+
+    fn check_integrity(&self) -> Result<(), AniseError> {
+        for val in self.record_data {
+            if !val.is_finite() {
+                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -157,5 +176,28 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
         _start_epoch: Epoch,
     ) -> Result<Self::StateKind, crate::prelude::AniseError> {
         todo!("https://github.com/anise-toolkit/anise.rs/issues/13")
+    }
+
+    fn check_integrity(&self) -> Result<(), AniseError> {
+        // Verify that none of the data is invalid once when we load it.
+        for val in self.epoch_data {
+            if !val.is_finite() {
+                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+            }
+        }
+
+        for val in self.epoch_registry {
+            if !val.is_finite() {
+                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+            }
+        }
+
+        for val in self.state_data {
+            if !val.is_finite() {
+                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+            }
+        }
+
+        Ok(())
     }
 }

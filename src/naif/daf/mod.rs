@@ -46,12 +46,15 @@ pub trait NAIFDataSet<'a>: Sized + Display {
     /// The state that is returned from an evaluation of this data set
     type StateKind;
 
-    // TODO: Return a result here.
+    /// Builds this dataset given a slice of f64 data
     fn from_slice_f64(slice: &'a [f64]) -> Result<Self, AniseError>;
 
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, AniseError>;
 
     fn evaluate(&self, epoch: Epoch, start_epoch: Epoch) -> Result<Self::StateKind, AniseError>;
+
+    /// Checks the integrity of this data set, returns an error if the data has issues.
+    fn check_integrity(&self) -> Result<(), AniseError>;
 }
 
 pub trait NAIFDataRecord<'a>: Display {

@@ -212,13 +212,7 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
         )
         .unwrap()
         .into_slice();
-        // TODO: Remove this check because it is VERY slow.
-        // Verify that none of the data is invalid once when we load it.
-        for val in data {
-            if !val.is_finite() {
-                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
-            }
-        }
+        
         // Convert it
         S::from_slice_f64(data)
     }
