@@ -104,7 +104,7 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         }
 
         // In seconds
-        let spline_idx = (ephem_start_delta_s / window_duration_s).round() as usize;
+        let spline_idx = (ephem_start_delta_s / window_duration_s).floor() as usize;
 
         // Now, build the X, Y, Z data from the record data.
         let record = self.nth_record(spline_idx)?;

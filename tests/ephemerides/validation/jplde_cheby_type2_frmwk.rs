@@ -7,20 +7,37 @@
  *
  * Documentation: https://nyxspace.com/
  */
-
 use serial_test::serial;
 
 use super::{compare::*, validate::Validation};
 
 #[serial]
 #[test]
-fn validate_hermite_type13_from_gmat() {
-    let file_name = "spk-type13-validation-even-seg-size".to_string();
+fn validate_de438s() {
+    let output_file_name = "spk-type2-validation-de438s".to_string();
     let comparator = CompareEphem::new(
-        vec!["data/gmat-hermite.bsp".to_string()],
-        file_name.clone(),
-        10_000,
+        vec!["data/de438s.bsp".to_string()],
+        output_file_name.clone(),
+        1_000,
     );
+
+    let err_count = comparator.run();
+
+    assert_eq!(err_count, 0, "None of the queries should fail!");
+
+    let validator = Validation {
+        file_name: output_file_name,
+        ..Default::default()
+    };
+
+    validator.validate();
+}
+
+#[test]
+fn validate_de440() {
+    let file_name = "spk-type2-validation-de440".to_string();
+    let comparator =
+        CompareEphem::new(vec!["data/de440.bsp".to_string()], file_name.clone(), 1_000);
 
     let err_count = comparator.run();
 
@@ -29,31 +46,6 @@ fn validate_hermite_type13_from_gmat() {
     let validator = Validation {
         file_name,
         ..Default::default()
-    };
-
-    validator.validate();
-}
-
-#[serial]
-#[test]
-fn validate_hermite_type13_with_varying_segment_sizes() {
-    let file_name = "spk-type13-validation-variable-seg-size".to_string();
-    let comparator = CompareEphem::new(
-        vec!["data/variable-seg-size-hermite.bsp".to_string()],
-        file_name.clone(),
-        10_000,
-    );
-
-    let err_count = comparator.run();
-
-    assert_eq!(err_count, 0, "None of the queries should fail!");
-
-    // BUG: For variable sized Type 13, there is an error at the very end of the file.
-    let validator = Validation {
-        file_name,
-        max_q75_err: 5e-9,
-        max_q99_err: 2e-7,
-        max_abs_err: 0.1,
     };
 
     validator.validate();

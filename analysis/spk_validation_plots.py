@@ -7,7 +7,7 @@ if __name__ == '__main__':
 
     target_folder = join(abspath(dirname(__file__)), '..', 'target')
 
-    for filename in glob(f"{target_folder}/type13-*.parquet"):
+    for filename in glob(f"{target_folder}/spk-type*.parquet"):
 
         # Load the parquet file
         df = pd.read_parquet(filename)
@@ -25,9 +25,9 @@ if __name__ == '__main__':
 
             plt = px.scatter(subset,
                              x='ET Epoch (s)',
-                             y='Absolute difference',
+                             y=f'Absolute difference',
                              color='source frame',
-                             title=name)
+                             title=f"Validation of {name} for {kind}")
 
             plt.write_html(
                 f"{target_folder}/validation-plot-{kind}-{name}.html")
@@ -38,6 +38,6 @@ if __name__ == '__main__':
                          x='ET Epoch (s)',
                          y='Absolute difference',
                          color='component',
-                         title=name)
+                         title=f"Validation of {name} (overall)")
         plt.write_html(f"{target_folder}/validation-plot-{name}.html")
         plt.show()

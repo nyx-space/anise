@@ -70,6 +70,7 @@ pub struct CompareEphem {
     pub input_file_names: Vec<String>,
     pub output_file_name: String,
     pub num_queries_per_pair: usize,
+    pub dry_run: bool,
     pub writer: ArrowWriter<File>,
     pub batch_src_frame: Vec<String>,
     pub batch_dst_frame: Vec<String>,
@@ -112,6 +113,7 @@ impl CompareEphem {
             input_file_names,
             num_queries_per_pair,
             writer,
+            dry_run: false,
             batch_src_frame: Vec::new(),
             batch_dst_frame: Vec::new(),
             batch_component: Vec::new(),
@@ -181,17 +183,9 @@ impl CompareEphem {
                     let to_frame = Frame::from_ephem_j2000(ephem2.target_id);
 
                     // Query the ephemeris data for a bunch of different times.
-                    let start_epoch = if ephem1.start_epoch() < ephem2.start_epoch() {
-                        ephem2.start_epoch()
-                    } else {
-                        ephem1.start_epoch()
-                    };
+                    let start_epoch = ephem1.start_epoch().max(ephem2.start_epoch());
 
-                    let end_epoch = if ephem1.end_epoch() < ephem2.end_epoch() {
-                        ephem1.end_epoch()
-                    } else {
-                        ephem2.end_epoch()
-                    };
+                    let end_epoch = ephem1.end_epoch().min(ephem2.end_epoch());
 
                     pairs.insert(key, (from_frame, to_frame, start_epoch, end_epoch));
                 }
@@ -241,6 +235,10 @@ impl CompareEphem {
 
             info!("{time_it} for {from_frame} -> {to_frame} ");
 
+            if self.dry_run {
+                continue;
+            }
+
             while let Some(epoch) = time_it.next() {
                 let data = match ctx.translate_from_to_km_s_geometric(*from_frame, *to_frame, epoch)
                 {
@@ -257,7 +255,7 @@ impl CompareEphem {
                         let obs = match SPKSummaryRecord::human_name_to_id(&format!("{to_frame:e}"))
                         {
                             Ok(id) => SPKSummaryRecord::id_to_human_name(id).unwrap().to_string(),
-                            Err(_) => format!("{from_frame:e}"),
+                            Err(_) => format!("{to_frame:e}"),
                         };
 
                         // Perform the same query in SPICE
@@ -323,6 +321,8 @@ impl CompareEphem {
             }
         }
 
+        info!("Done with all {i} comparisons");
+
         // Comparison is finished, let's persist the last batch, close the file, and return the number of querying errors.
         self.persist();
         self.writer.close().unwrap();
@@ -330,6 +330,10 @@ impl CompareEphem {
     }
 
     fn persist(&mut self) {
+        if self.dry_run {
+            return;
+        }
+
         self.writer
             .write(
                 &RecordBatch::try_from_iter(vec![

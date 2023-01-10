@@ -164,9 +164,11 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
                     return Ok((summary, idx));
                 } else {
                     warn!(
-                        "Summary {id} found but only valid from {} to {} (requested {epoch})",
+                        "Summary {id} not valid at {epoch:?} (only from {:?} to {:?}, offset of {} - {})",
                         summary.start_epoch(),
-                        summary.end_epoch()
+                        summary.end_epoch(),
+                        epoch - summary.start_epoch(),
+                        summary.end_epoch() - epoch
                     );
                 }
             }
@@ -212,7 +214,7 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
         )
         .unwrap()
         .into_slice();
-        
+
         // Convert it
         S::from_slice_f64(data)
     }

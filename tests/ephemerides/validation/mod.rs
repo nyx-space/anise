@@ -12,6 +12,7 @@
 // mod jplde_cheby_type2;
 
 mod hermite_type13_frmwk;
+mod jplde_cheby_type2_frmwk;
 
 mod compare;
 mod validate;
