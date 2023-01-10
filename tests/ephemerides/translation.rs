@@ -366,3 +366,33 @@ fn spk_hermite_type13_verif() {
         vel_expct_km_s - state.velocity_km_s
     );
 }
+
+#[test]
+fn multithread_query() {
+    use core::str::FromStr;
+    use rayon::prelude::*;
+    // "Load" the file via a memory map (avoids allocations)
+    let path = "./data/de438s.bsp";
+    let buf = file_mmap!(path).unwrap();
+    let spk = SPK::parse(&buf).unwrap();
+    let ctx = Context::from_spk(&spk).unwrap();
+
+    let start_epoch = Epoch::from_str("2000-01-01T00:00:00 ET").unwrap();
+
+    let end_epoch = start_epoch + 105.days();
+
+    let time_it = TimeSeries::exclusive(start_epoch, end_epoch, 2.hours());
+
+    let start = Epoch::now().unwrap();
+
+    let epochs: Vec<Epoch> = time_it.collect();
+    epochs.into_par_iter().for_each(|epoch| {
+        let state = ctx
+            .translate_from_to_km_s_geometric(LUNA_J2000, EARTH_MOON_BARYCENTER_J2000, epoch)
+            .unwrap();
+        println!("{state:?}");
+    });
+
+    let delta_t = Epoch::now().unwrap() - start;
+    println!("Took {delta_t}");
+}

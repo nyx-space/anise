@@ -16,7 +16,7 @@ use crate::constants::orientations::{orientation_name_from_id, J2000};
 use crate::NaifId;
 
 /// Defines a Frame kind, allows for compile time checking of operations.
-pub trait FrameTrait: Copy + Debug + PartialEq {
+pub trait FrameTrait: Copy + Debug + PartialEq + Send + Sync {
     /// Returns the ephemeris hash of this frame.
     /// TODO: Rename away from `hash` these are no longer hashes but NaifIDs
     fn ephemeris_hash(&self) -> NaifId;

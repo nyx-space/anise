@@ -39,6 +39,7 @@ iai = "0.1"
 polars = {version = "0.26", features = ["lazy", "parquet"]}
 test-context = "0.1.4"
 serial_test = "0.10.0"
+rayon = "1.6.1"
 
 [features]
 default = ["std", "validation"]

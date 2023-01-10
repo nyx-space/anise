@@ -130,7 +130,6 @@ impl CompareEphem {
     #[must_use]
     pub fn run(mut self) -> usize {
         // Load the context
-
         let mut ctx = Context::default();
 
         let mut buffers: Vec<Vec<u8>> = vec![Vec::new(); self.input_file_names.len()];
