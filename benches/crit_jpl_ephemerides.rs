@@ -39,7 +39,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     // Load ANISE data
     let path = "./data/de438s.bsp";
     let buf = file_mmap!(path).unwrap();
-    let spk = SPK::parse(&buf).unwrap();
+    let spk = SPK::parse(buf).unwrap();
     let ctx = Context::from_spk(&spk).unwrap();
 
     // Load SPICE data

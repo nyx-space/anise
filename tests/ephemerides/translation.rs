@@ -29,7 +29,7 @@ fn de438s_translation_verif_venus2emb() {
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de438s.bsp";
     let buf = file_mmap!(path).unwrap();
-    let spk = SPK::parse(&buf).unwrap();
+    let spk = SPK::parse(buf).unwrap();
     let ctx = Context::from_spk(&spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
@@ -116,7 +116,7 @@ fn de438s_translation_verif_venus2luna() {
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de438s.bsp";
     let buf = file_mmap!(path).unwrap();
-    let spk = SPK::parse(&buf).unwrap();
+    let spk = SPK::parse(buf).unwrap();
     let ctx = Context::from_spk(&spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
@@ -211,7 +211,7 @@ fn de438s_translation_verif_emb2luna() {
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de438s.bsp";
     let buf = file_mmap!(path).unwrap();
-    let spk = SPK::parse(&buf).unwrap();
+    let spk = SPK::parse(buf).unwrap();
     let ctx = Context::from_spk(&spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
@@ -314,10 +314,10 @@ fn spk_hermite_type13_verif() {
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de438s.bsp";
     let buf = file_mmap!(path).unwrap();
-    let spk = SPK::parse(&buf).unwrap();
+    let spk = SPK::parse(buf).unwrap();
 
     let buf = file_mmap!("data/gmat-hermite.bsp").unwrap();
-    let spacecraft = SPK::parse(&buf).unwrap();
+    let spacecraft = SPK::parse(buf).unwrap();
 
     let ctx = Context::from_spk(&spk)
         .unwrap()
@@ -374,7 +374,7 @@ fn multithread_query() {
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de438s.bsp";
     let buf = file_mmap!(path).unwrap();
-    let spk = SPK::parse(&buf).unwrap();
+    let spk = SPK::parse(buf).unwrap();
     let ctx = Context::from_spk(&spk).unwrap();
 
     let start_epoch = Epoch::from_str("2000-01-01T00:00:00 ET").unwrap();

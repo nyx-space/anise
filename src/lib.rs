@@ -53,10 +53,15 @@ macro_rules! file_mmap {
         match File::open($filename) {
             Err(e) => Err(AniseError::IOError(e.kind())),
             Ok(file) => unsafe {
+                use bytes::Bytes;
                 use memmap2::MmapOptions;
                 match MmapOptions::new().map(&file) {
                     Err(_) => Err(AniseError::IOUnknownError),
-                    Ok(mmap) => Ok(mmap),
+                    Ok(mmap) => {
+                        // XXX: Find a way to make this work.
+                        let bytes: Bytes = (&*mmap).into();
+                        Ok(bytes)
+                    }
                 }
             },
         }

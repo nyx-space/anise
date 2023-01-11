@@ -41,7 +41,7 @@ impl<'a> Context<'a> {
         for maybe_spk in self.spk_data.iter().take(self.num_loaded_spk()).rev() {
             let spk = maybe_spk.unwrap();
 
-            for summary in spk.data_summaries {
+            for summary in spk.data_summaries()? {
                 // This summary exists, so we need to follow the branch of centers up the tree.
                 if !summary.is_empty() && summary.center_id.abs() < common_center.abs() {
                     common_center = summary.center_id;

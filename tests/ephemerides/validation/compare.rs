@@ -139,6 +139,9 @@ impl CompareEphem {
             // Open the SPK file
             let mut file = File::open(path).unwrap();
             file.read_to_end(&mut buffers[i]).unwrap();
+
+            spks.push(SPK::load(path).unwrap());
+
             // Load the SPICE data too
 
             spice::furnsh(path);
@@ -147,10 +150,8 @@ impl CompareEphem {
         // Build the pairs of the SPICE and ANISE queries at the same time as we create those instances.
         let mut pairs: HashMap<(i32, i32), (Frame, Frame, Epoch, Epoch)> = HashMap::new();
 
-        for buf in &buffers {
-            let spk = SPK::parse(buf).unwrap();
-
-            for ephem1 in spk.data_summaries {
+        for spk in &spks {
+            for ephem1 in spk.data_summaries().unwrap() {
                 if ephem1.is_empty() {
                     // We're reached the end of useful summaries.
                     break;
@@ -158,7 +159,7 @@ impl CompareEphem {
 
                 let from_frame = Frame::from_ephem_j2000(ephem1.target_id);
 
-                for ephem2 in spk.data_summaries {
+                for ephem2 in spk.data_summaries().unwrap() {
                     if ephem1.target_id == ephem2.target_id {
                         continue;
                     }
@@ -213,7 +214,6 @@ impl CompareEphem {
                     ),
                 );
             }
-            spks.push(spk);
         }
 
         for spk in &spks {

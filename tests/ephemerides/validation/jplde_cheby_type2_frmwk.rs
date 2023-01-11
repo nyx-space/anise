@@ -7,11 +7,9 @@
  *
  * Documentation: https://nyxspace.com/
  */
-use serial_test::serial;
 
 use super::{compare::*, validate::Validation};
 
-#[serial]
 #[test]
 fn validate_de438s() {
     let output_file_name = "spk-type2-validation-de438s".to_string();

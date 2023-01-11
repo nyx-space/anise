@@ -8,11 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 
-use serial_test::serial;
-
 use super::{compare::*, validate::Validation};
 
-#[serial]
 #[test]
 fn validate_hermite_type13_from_gmat() {
     let file_name = "spk-type13-validation-even-seg-size".to_string();
@@ -34,7 +31,6 @@ fn validate_hermite_type13_from_gmat() {
     validator.validate();
 }
 
-#[serial]
 #[test]
 fn validate_hermite_type13_with_varying_segment_sizes() {
     let file_name = "spk-type13-validation-variable-seg-size".to_string();

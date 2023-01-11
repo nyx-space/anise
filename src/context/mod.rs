@@ -25,19 +25,19 @@ pub const MAX_LOADED_FILES: usize = 32;
 /// The stack space does _not_ depend on how much data is loaded at any given time.
 #[derive(Clone, Default)]
 pub struct Context<'a> {
-    pub spk_data: [Option<&'a SPK<'a>>; MAX_LOADED_FILES],
-    pub bpc_data: [Option<&'a BPC<'a>>; MAX_LOADED_FILES],
+    pub spk_data: [Option<&'a SPK>; MAX_LOADED_FILES],
+    pub bpc_data: [Option<&'a BPC>; MAX_LOADED_FILES],
 }
 
 impl<'a: 'b, 'b> Context<'a> {
-    pub fn from_spk(spk: &'a SPK<'a>) -> Result<Context<'a>, AniseError> {
+    pub fn from_spk(spk: &'a SPK) -> Result<Context<'a>, AniseError> {
         let me = Self::default();
         me.load_spk(spk)
     }
 
     /// Loads a new SPK file into a new context.
     /// This new context is needed to satisfy the unloading of files. In fact, to unload a file, simply let the newly loaded context drop out of scope and Rust will clean it up.
-    pub fn load_spk(&self, spk: &'b SPK<'b>) -> Result<Context<'b>, AniseError> {
+    pub fn load_spk(&self, spk: &'b SPK) -> Result<Context<'b>, AniseError> {
         // This is just a bunch of pointers so it doesn't use much memory.
         let mut me = self.clone();
         // Parse as SPK and place into the SPK list if there is room
@@ -56,7 +56,7 @@ impl<'a: 'b, 'b> Context<'a> {
     }
 
     /// Loads a Binary Planetary Constants kernel.
-    pub fn load_bpc(&self, bpc: &'b BPC<'a>) -> Result<Context<'b>, AniseError> {
+    pub fn load_bpc(&self, bpc: &'b BPC) -> Result<Context<'b>, AniseError> {
         // This is just a bunch of pointers so it doesn't use much memory.
         let mut me = self.clone();
         // Parse as SPK and place into the SPK list if there is room

@@ -22,7 +22,7 @@ fn de438s_parent_translation_verif() {
     }
 
     let bytes = file_mmap!("data/de438s.bsp").unwrap();
-    let de438s = SPK::parse(&bytes).unwrap();
+    let de438s = SPK::parse(bytes).unwrap();
     let ctx = Context::from_spk(&de438s).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);

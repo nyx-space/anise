@@ -29,7 +29,7 @@ fn common_root_verif() {
     // Check that this test works for DE430, DE438s (short), and DE440
     for path in ["./data/de430.bsp", "./data/de438s.bsp", "./data/de440.bsp"] {
         let buf = file_mmap!(path).unwrap();
-        let spk = SPK::parse(&buf).unwrap();
+        let spk = SPK::parse(buf).unwrap();
         let ctx = Context::from_spk(&spk).unwrap();
 
         // The root of all these files should be the SSB

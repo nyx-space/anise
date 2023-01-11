@@ -41,7 +41,7 @@ fn main() -> Result<(), CliErrors> {
                     {
                         "PCK" => {
                             info!("Loading {path_str:?} as DAF/PCK");
-                            match BPC::check_then_parse(&bytes, crc32_checksum) {
+                            match BPC::check_then_parse(bytes, crc32_checksum) {
                                 Ok(_) => {
                                     info!("[OK] Checksum matches");
                                     Ok(())
@@ -58,7 +58,7 @@ fn main() -> Result<(), CliErrors> {
                         }
                         "SPK" => {
                             info!("Loading {path_str:?} as DAF/SPK");
-                            match SPK::check_then_parse(&bytes, crc32_checksum) {
+                            match SPK::check_then_parse(bytes, crc32_checksum) {
                                 Ok(_) => {
                                     info!("[OK] Checksum matches");
                                     Ok(())
@@ -93,13 +93,15 @@ fn main() -> Result<(), CliErrors> {
                     {
                         "PCK" => {
                             info!("Loading {path_str:?} as DAF/PCK");
-                            match BPC::parse(&bytes) {
+                            match BPC::parse(bytes) {
                                 Ok(pck) => {
                                     info!("CRC32 checksum: 0x{:X}", pck.crc32());
                                     // Build the rows of the table
                                     let mut rows = Vec::new();
 
-                                    for (sno, summary) in pck.data_summaries.iter().enumerate() {
+                                    for (sno, summary) in
+                                        pck.data_summaries().unwrap().iter().enumerate()
+                                    {
                                         let name = pck
                                             .name_record
                                             .nth_name(sno, pck.file_record.summary_size());
@@ -134,13 +136,15 @@ fn main() -> Result<(), CliErrors> {
                         }
                         "SPK" => {
                             info!("Loading {path_str:?} as DAF/SPK");
-                            match SPK::parse(&bytes) {
+                            match SPK::parse(bytes) {
                                 Ok(spk) => {
                                     info!("CRC32 checksum: 0x{:X}", spk.crc32());
                                     // Build the rows of the table
                                     let mut rows = Vec::new();
 
-                                    for (sno, summary) in spk.data_summaries.iter().enumerate() {
+                                    for (sno, summary) in
+                                        spk.data_summaries().unwrap().iter().enumerate()
+                                    {
                                         let name = spk
                                             .name_record
                                             .nth_name(sno, spk.file_record.summary_size());
