@@ -46,7 +46,7 @@ pub(crate) const DBL_SIZE: usize = 8;
 /// Defines the hash used to identify parents.
 pub(crate) type NaifId = i32;
 
-/// file_mmap allows reading a file without memory allocation
+/// Memory maps a file and **copies** the data on the heap prior to returning a pointer to this heap data.
 #[macro_export]
 macro_rules! file_mmap {
     ($filename:tt) => {
@@ -58,8 +58,7 @@ macro_rules! file_mmap {
                 match MmapOptions::new().map(&file) {
                     Err(_) => Err(AniseError::IOUnknownError),
                     Ok(mmap) => {
-                        // XXX: Find a way to make this work.
-                        let bytes: Bytes = (&*mmap).into();
+                        let bytes = Bytes::copy_from_slice(&mmap);
                         Ok(bytes)
                     }
                 }

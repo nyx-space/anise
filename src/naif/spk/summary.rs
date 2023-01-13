@@ -152,6 +152,14 @@ impl NAIFSummaryRecord for SPKSummaryRecord {
     fn id(&self) -> i32 {
         self.target_id
     }
+
+    fn start_epoch_et_s(&self) -> f64 {
+        self.start_epoch_et_s
+    }
+
+    fn end_epoch_et_s(&self) -> f64 {
+        self.end_epoch_et_s
+    }
 }
 
 impl fmt::Display for SPKSummaryRecord {

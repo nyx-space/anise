@@ -15,7 +15,10 @@ use log::error;
 use crate::{
     errors::IntegrityErrorKind,
     math::{cartesian::CartesianState, Vector3},
-    naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord},
+    naif::{
+        daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord},
+        spk::summary::SPKSummaryRecord,
+    },
     prelude::AniseError,
     DBL_SIZE,
 };
@@ -45,6 +48,7 @@ impl<'a> fmt::Display for LagrangeSetType8<'a> {
 }
 
 impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
+    type SummaryKind = SPKSummaryRecord;
     type StateKind = CartesianState;
     type RecordKind = PositionVelocityRecord;
 
@@ -91,7 +95,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
     fn evaluate(
         &self,
         _epoch: Epoch,
-        _start_epoch: Epoch,
+        _: &Self::SummaryKind,
     ) -> Result<CartesianState, crate::prelude::AniseError> {
         todo!("https://github.com/anise-toolkit/anise.rs/issues/12")
     }
@@ -130,6 +134,7 @@ impl<'a> fmt::Display for LagrangeSetType9<'a> {
 }
 
 impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
+    type SummaryKind = SPKSummaryRecord;
     type StateKind = (Vector3, Vector3);
     type RecordKind = PositionVelocityRecord;
 
@@ -173,7 +178,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
     fn evaluate(
         &self,
         _epoch: Epoch,
-        _start_epoch: Epoch,
+        _: &Self::SummaryKind,
     ) -> Result<Self::StateKind, crate::prelude::AniseError> {
         todo!("https://github.com/anise-toolkit/anise.rs/issues/13")
     }

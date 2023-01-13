@@ -93,7 +93,7 @@ impl<'a: 'b, 'b> Context<'a> {
         name: &str,
         epoch: Epoch,
     ) -> Result<(&SPKSummaryRecord, usize, usize), AniseError> {
-        for (spkno, maybe_spk) in self
+        for (spk_no, maybe_spk) in self
             .spk_data
             .iter()
             .take(self.num_loaded_spk())
@@ -102,7 +102,7 @@ impl<'a: 'b, 'b> Context<'a> {
         {
             let spk = maybe_spk.unwrap();
             if let Ok((summary, idx_in_spk)) = spk.summary_from_name_at_epoch(name, epoch) {
-                return Ok((summary, spkno, idx_in_spk));
+                return Ok((summary, spk_no, idx_in_spk));
             }
         }
 
@@ -118,7 +118,7 @@ impl<'a: 'b, 'b> Context<'a> {
         epoch: Epoch,
     ) -> Result<(&SPKSummaryRecord, usize, usize), AniseError> {
         // TODO: Consider a return type here
-        for (spkno, maybe_spk) in self
+        for (spk_no, maybe_spk) in self
             .spk_data
             .iter()
             .take(self.num_loaded_spk())
@@ -128,7 +128,7 @@ impl<'a: 'b, 'b> Context<'a> {
             let spk = maybe_spk.unwrap();
             if let Ok((summary, idx_in_spk)) = spk.summary_from_id_at_epoch(id, epoch) {
                 // NOTE: We're iterating backward, so the correct SPK number is "total loaded" minus "current iteration".
-                return Ok((summary, self.num_loaded_spk() - spkno - 1, idx_in_spk));
+                return Ok((summary, self.num_loaded_spk() - spk_no - 1, idx_in_spk));
             }
         }
 
@@ -142,7 +142,7 @@ impl<'a: 'b, 'b> Context<'a> {
         &self,
         name: &str,
     ) -> Result<(&SPKSummaryRecord, usize, usize), AniseError> {
-        for (spkno, maybe_spk) in self
+        for (spk_no, maybe_spk) in self
             .spk_data
             .iter()
             .take(self.num_loaded_spk())
@@ -151,7 +151,7 @@ impl<'a: 'b, 'b> Context<'a> {
         {
             let spk = maybe_spk.unwrap();
             if let Ok((summary, idx_in_spk)) = spk.summary_from_name(name) {
-                return Ok((summary, spkno, idx_in_spk));
+                return Ok((summary, spk_no, idx_in_spk));
             }
         }
 
@@ -166,7 +166,7 @@ impl<'a: 'b, 'b> Context<'a> {
         id: i32,
     ) -> Result<(&SPKSummaryRecord, usize, usize), AniseError> {
         // TODO: Consider a return type here
-        for (spkno, maybe_spk) in self
+        for (spk_no, maybe_spk) in self
             .spk_data
             .iter()
             .take(self.num_loaded_spk())
@@ -176,7 +176,7 @@ impl<'a: 'b, 'b> Context<'a> {
             let spk = maybe_spk.unwrap();
             if let Ok((summary, idx_in_spk)) = spk.summary_from_id(id) {
                 // NOTE: We're iterating backward, so the correct SPK number is "total loaded" minus "current iteration".
-                return Ok((summary, self.num_loaded_spk() - spkno - 1, idx_in_spk));
+                return Ok((summary, self.num_loaded_spk() - spk_no - 1, idx_in_spk));
             }
         }
 

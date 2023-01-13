@@ -10,6 +10,7 @@
 
 use super::{compare::*, validate::Validation};
 
+#[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
 fn validate_de438s() {
     let output_file_name = "spk-type2-validation-de438s".to_string();
@@ -31,6 +32,7 @@ fn validate_de438s() {
     validator.validate();
 }
 
+#[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
 fn validate_de440() {
     let file_name = "spk-type2-validation-de440".to_string();

@@ -16,7 +16,7 @@ use arrow::{
 };
 use log::{error, info};
 use parquet::{arrow::ArrowWriter, file::properties::WriterProperties};
-use std::{collections::HashMap, fs::File, io::Read, sync::Arc};
+use std::{collections::HashMap, fs::File, sync::Arc};
 
 const COMPONENT: &[&'static str] = &["X", "Y", "Z", "VX", "VY", "VZ"];
 
@@ -132,18 +132,13 @@ impl CompareEphem {
         // Load the context
         let mut ctx = Context::default();
 
-        let mut buffers: Vec<Vec<u8>> = vec![Vec::new(); self.input_file_names.len()];
-        let mut spks: Vec<SPK> = vec![SPK::default(); self.input_file_names.len()];
+        let mut spks: Vec<SPK> = Vec::new();
 
-        for (i, path) in self.input_file_names.iter().enumerate() {
-            // Open the SPK file
-            let mut file = File::open(path).unwrap();
-            file.read_to_end(&mut buffers[i]).unwrap();
-
-            spks.push(SPK::load(path).unwrap());
+        for path in &self.input_file_names {
+            let spk = SPK::load(path).unwrap();
+            spks.push(spk);
 
             // Load the SPICE data too
-
             spice::furnsh(path);
         }
 

@@ -15,7 +15,10 @@ use log::error;
 use crate::{
     errors::IntegrityErrorKind,
     math::{interpolation::chebyshev_eval, Vector3},
-    naif::daf::{NAIFDataRecord, NAIFDataSet},
+    naif::{
+        daf::{NAIFDataRecord, NAIFDataSet, NAIFSummaryRecord},
+        spk::summary::SPKSummaryRecord,
+    },
     prelude::AniseError,
 };
 
@@ -48,7 +51,7 @@ impl<'a> fmt::Display for Type2ChebyshevSet<'a> {
 }
 
 impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
-    // At this stage, we don't know the frame of what we're interpolating!
+    type SummaryKind = SPKSummaryRecord;
     type StateKind = (Vector3, Vector3);
     type RecordKind = Type2ChebyshevRecord<'a>;
 
@@ -92,22 +95,26 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         ))
     }
 
-    fn evaluate(&self, epoch: Epoch, start_epoch: Epoch) -> Result<(Vector3, Vector3), AniseError> {
-        let window_duration_s = self.interval_length.to_seconds();
-
-        let radius_s = window_duration_s / 2.0;
-        let ephem_start_delta = epoch - start_epoch;
-        let ephem_start_delta_s = ephem_start_delta.to_seconds();
-
-        if ephem_start_delta_s < 0.0 {
+    fn evaluate(
+        &self,
+        epoch: Epoch,
+        summary: &Self::SummaryKind,
+    ) -> Result<(Vector3, Vector3), AniseError> {
+        if epoch < summary.start_epoch() {
+            // No need to go any further.
             return Err(AniseError::MissingInterpolationData(epoch));
         }
 
-        // In seconds
-        let spline_idx = (ephem_start_delta_s / window_duration_s).floor() as usize;
+        let window_duration_s = self.interval_length.to_seconds();
+
+        let radius_s = window_duration_s / 2.0;
+        let ephem_start_delta_s = epoch.to_et_seconds() - summary.start_epoch_et_s;
+
+        let spline_idx =
+            ((ephem_start_delta_s / window_duration_s) as usize + 1).min(self.num_records);
 
         // Now, build the X, Y, Z data from the record data.
-        let record = self.nth_record(spline_idx)?;
+        let record = self.nth_record(spline_idx - 1)?;
 
         let normalized_time = (epoch.to_et_seconds() - record.midpoint_et_s) / radius_s;
 

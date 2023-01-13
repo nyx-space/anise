@@ -5,7 +5,7 @@ use anise::cli::args::{Actions, Args};
 use anise::cli::inspect::{BpcRow, SpkRow};
 use anise::cli::CliErrors;
 use anise::file_mmap;
-use anise::naif::daf::{DAFFileRecord, NAIFRecord, NAIFSummaryRecord};
+use anise::naif::daf::{FileRecord, NAIFRecord, NAIFSummaryRecord};
 use anise::prelude::*;
 use clap::Parser;
 use log::{error, info};
@@ -33,8 +33,7 @@ fn main() -> Result<(), CliErrors> {
             match file_mmap!(file) {
                 Ok(bytes) => {
                     // Load the header only
-                    let file_record =
-                        DAFFileRecord::read_from(&bytes[..DAFFileRecord::SIZE]).unwrap();
+                    let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
                     match file_record
                         .identification()
                         .map_err(CliErrors::AniseError)?
@@ -84,8 +83,7 @@ fn main() -> Result<(), CliErrors> {
             match file_mmap!(file) {
                 Ok(bytes) => {
                     // Load the header only
-                    let file_record =
-                        DAFFileRecord::read_from(&bytes[..DAFFileRecord::SIZE]).unwrap();
+                    let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
 
                     match file_record
                         .identification()
@@ -96,6 +94,11 @@ fn main() -> Result<(), CliErrors> {
                             match BPC::parse(bytes) {
                                 Ok(pck) => {
                                     info!("CRC32 checksum: 0x{:X}", pck.crc32());
+                                    if let Some(comments) = pck.comments()? {
+                                        println!("== COMMENTS ==\n{}== END ==", comments);
+                                    } else {
+                                        println!("(File has no comments)");
+                                    }
                                     // Build the rows of the table
                                     let mut rows = Vec::new();
 
@@ -123,7 +126,7 @@ fn main() -> Result<(), CliErrors> {
                                     }
 
                                     let mut tbl = Table::new(rows);
-                                    tbl.with(Style::markdown());
+                                    tbl.with(Style::modern());
                                     println!("{tbl}");
 
                                     Ok(())
@@ -139,6 +142,11 @@ fn main() -> Result<(), CliErrors> {
                             match SPK::parse(bytes) {
                                 Ok(spk) => {
                                     info!("CRC32 checksum: 0x{:X}", spk.crc32());
+                                    if let Some(comments) = spk.comments()? {
+                                        println!("== COMMENTS ==\n{}== END ==", comments);
+                                    } else {
+                                        println!("(File has no comments)");
+                                    }
                                     // Build the rows of the table
                                     let mut rows = Vec::new();
 
@@ -165,7 +173,7 @@ fn main() -> Result<(), CliErrors> {
                                     }
 
                                     let mut tbl = Table::new(rows);
-                                    tbl.with(Style::markdown());
+                                    tbl.with(Style::modern());
                                     println!("{tbl}");
 
                                     Ok(())

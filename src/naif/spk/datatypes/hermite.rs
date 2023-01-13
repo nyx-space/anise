@@ -14,6 +14,7 @@ use log::error;
 
 use crate::errors::IntegrityErrorKind;
 use crate::math::interpolation::{hermite_eval, MAX_SAMPLES};
+use crate::naif::spk::summary::SPKSummaryRecord;
 use crate::{
     math::{cartesian::CartesianState, Vector3},
     naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord},
@@ -46,6 +47,7 @@ impl<'a> fmt::Display for HermiteSetType12<'a> {
 }
 
 impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
+    type SummaryKind = SPKSummaryRecord;
     type StateKind = CartesianState;
     type RecordKind = PositionVelocityRecord;
 
@@ -92,7 +94,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
     fn evaluate(
         &self,
         _epoch: Epoch,
-        _start_epoch: Epoch,
+        _: &Self::SummaryKind,
     ) -> Result<CartesianState, crate::prelude::AniseError> {
         todo!("https://github.com/anise-toolkit/anise.rs/issues/14")
     }
@@ -142,6 +144,7 @@ impl<'a> fmt::Display for HermiteSetType13<'a> {
 }
 
 impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
+    type SummaryKind = SPKSummaryRecord;
     type StateKind = (Vector3, Vector3);
     type RecordKind = PositionVelocityRecord;
 
@@ -186,7 +189,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
     fn evaluate(
         &self,
         epoch: Epoch,
-        _start_epoch: Epoch,
+        _: &Self::SummaryKind,
     ) -> Result<Self::StateKind, crate::prelude::AniseError> {
         // Start by doing a binary search on the epoch registry to limit the search space in the total number of epochs.
         // TODO: use the epoch registry to reduce the search space

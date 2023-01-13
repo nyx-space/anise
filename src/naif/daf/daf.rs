@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-pub use super::recordtypes::{DAFFileRecord, DAFSummaryRecord, NameRecord};
+pub use super::{FileRecord, NameRecord, SummaryRecord};
 use super::{NAIFDataSet, NAIFRecord, NAIFSummaryRecord};
 use crate::{errors::IntegrityErrorKind, prelude::AniseError, DBL_SIZE};
 use bytes::Bytes;
@@ -34,7 +34,7 @@ io_imports!();
 pub(crate) const RCRD_LEN: usize = 1024;
 #[derive(Clone, Default, Debug)]
 pub struct DAF<R: NAIFSummaryRecord> {
-    pub file_record: DAFFileRecord,
+    pub file_record: FileRecord,
     pub name_record: NameRecord,
     pub bytes: Bytes,
     pub crc32_checksum: u32,
@@ -80,7 +80,9 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     /// Parse the provided bytes as a SPICE Double Array File
     pub fn parse(bytes: Bytes) -> Result<Self, AniseError> {
         let crc32_checksum = crc32fast::hash(&bytes);
-        let file_record = DAFFileRecord::read_from(&bytes[..DAFFileRecord::SIZE]).unwrap();
+        let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
+        // Check that the endian-ness is compatible with this platform.
+        file_record.endianness()?;
 
         // Move onto the next record.
         let rcrd_idx = file_record.fwrd_idx() * RCRD_LEN;
@@ -98,21 +100,22 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         })
     }
 
-    pub fn daf_summary(&self) -> Result<DAFSummaryRecord, AniseError> {
+    pub fn daf_summary(&self) -> Result<SummaryRecord, AniseError> {
         let rcrd_idx = (self.file_record.fwrd_idx() - 1) * RCRD_LEN;
         let rcrd_bytes = self
             .bytes
             .get(rcrd_idx..rcrd_idx + RCRD_LEN)
             .ok_or_else(|| AniseError::MalformedData(self.file_record.fwrd_idx() + RCRD_LEN))?;
 
-        // TODO: Use the endianness flag
-
-        DAFSummaryRecord::read_from(&rcrd_bytes[..DAFSummaryRecord::SIZE])
-            .ok_or_else(|| AniseError::MalformedData(DAFSummaryRecord::SIZE))
+        SummaryRecord::read_from(&rcrd_bytes[..SummaryRecord::SIZE])
+            .ok_or_else(|| AniseError::MalformedData(SummaryRecord::SIZE))
     }
 
     /// Parses the data summaries on the fly.
     pub fn data_summaries(&self) -> Result<&[R], AniseError> {
+        if self.file_record.is_empty() {
+            return Err(AniseError::MalformedData(0));
+        }
         // Move onto the next record, DAF indexes start at 1 ... =(
         let rcrd_idx = (self.file_record.fwrd_idx() - 1) * RCRD_LEN;
         let rcrd_bytes = self
@@ -120,9 +123,9 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             .get(rcrd_idx..rcrd_idx + RCRD_LEN)
             .ok_or_else(|| AniseError::MalformedData(self.file_record.fwrd_idx() + RCRD_LEN))?;
 
-        // The summaries are defined in this same record, so let's read them now.
+        // The summaries are defined in the same record as the DAF summary
         Ok(
-            match LayoutVerified::new_slice(&rcrd_bytes[DAFSummaryRecord::SIZE..]) {
+            match LayoutVerified::new_slice(&rcrd_bytes[SummaryRecord::SIZE..]) {
                 Some(data) => data.into_slice(),
                 None => &[R::default(); 0],
             },
@@ -245,7 +248,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         S::from_slice_f64(data)
     }
 
-    pub fn comments(&self) -> Result<String, AniseError> {
+    pub fn comments(&self) -> Result<Option<String>, AniseError> {
         // TODO: This can be cleaned up to avoid allocating a string. In my initial tests there were a bunch of additional spaces, so I canceled those changes.
         let mut rslt = String::new();
         // FWRD has the initial record of the summary. So we assume that all records between the second record and that one are comments
@@ -266,7 +269,11 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             }
         }
 
-        Ok(rslt)
+        if rslt.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(rslt))
+        }
     }
 
     /// Writes the contents of this DAF file to a new location.

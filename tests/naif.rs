@@ -67,7 +67,7 @@ fn test_spk_load_bytes() {
     assert_eq!(de421.daf_summary().unwrap().next_record(), 0);
     assert_eq!(de421.daf_summary().unwrap().prev_record(), 0);
 
-    println!("{}", de421.comments().unwrap());
+    println!("{}", de421.comments().unwrap().unwrap());
 
     // From Python jplephem, an inspection of the coefficients of the DE421 file shows the number of segments we should have.
     // // So let's add it here as a test.
