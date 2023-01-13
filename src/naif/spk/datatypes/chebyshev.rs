@@ -110,6 +110,30 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         let radius_s = window_duration_s / 2.0;
         let ephem_start_delta_s = epoch.to_et_seconds() - summary.start_epoch_et_s;
 
+        /*
+                CSPICE CODE
+                https://github.com/ChristopherRabotin/cspice/blob/26c72936fb7ff6f366803a1419b7cc3c61e0b6e5/src/cspice/spkr02.c#L272
+
+            i__1 = end - 3;
+            dafgda_(handle, &i__1, &end, record);
+            init = record[0];
+            intlen = record[1];
+            recsiz = (integer) record[2];
+            nrec = (integer) record[3];
+            recno = (integer) ((*et - init) / intlen) + 1;
+            recno = min(recno,nrec);
+
+        /*     Compute the address of the desired record. */
+
+            recadr = (recno - 1) * recsiz + begin;
+
+        /*     Along with the record, return the size of the record. */
+
+            record[0] = record[2];
+            i__1 = recadr + recsiz - 1;
+            dafgda_(handle, &recadr, &i__1, &record[1]);
+                */
+
         let spline_idx =
             ((ephem_start_delta_s / window_duration_s) as usize + 1).min(self.num_records);
 
