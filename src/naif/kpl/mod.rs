@@ -7,3 +7,19 @@
  *
  * Documentation: https://nyxspace.com/
  */
+
+use std::{collections::HashMap, hash::Hash};
+
+use self::parser::Assignment;
+
+#[cfg(feature = "std")]
+pub mod parser;
+pub mod tpc;
+
+pub trait KPLItem: Default {
+    type Parameter: Eq + Hash;
+    /// The key used for fetching
+    fn extract_key(keyword: &str) -> i32;
+    fn data(&self) -> &HashMap<Self::Parameter, Vec<f64>>;
+    fn parse(&mut self, data: Assignment);
+}
