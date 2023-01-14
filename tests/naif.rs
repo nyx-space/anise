@@ -123,7 +123,7 @@ fn test_spk_load_bytes() {
         let spice = spice.load_spk(&de440).unwrap();
 
         // And another
-        let bytes = file_mmap!("data/de438s.bsp").unwrap();
+        let bytes = file_mmap!("data/de440s.bsp").unwrap();
         let de440 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
         let spice = spice.load_spk(&de440).unwrap();
 

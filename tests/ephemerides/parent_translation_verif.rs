@@ -21,7 +21,7 @@ fn de438s_parent_translation_verif() {
         println!("could not init env_logger");
     }
 
-    let bytes = file_mmap!("data/de438s.bsp").unwrap();
+    let bytes = file_mmap!("data/de440s.bsp").unwrap();
     let de438s = SPK::parse(bytes).unwrap();
     let ctx = Context::from_spk(&de438s).unwrap();
 
@@ -30,13 +30,13 @@ fn de438s_parent_translation_verif() {
     /*
     Python code:
     >>> import spiceypy as sp
-    >>> sp.furnsh('data/de438s.bsp')
+    >>> sp.furnsh('data/de440s.bsp')
     >>> sp.furnsh('../../hifitime/naif0012.txt')
     >>> et = sp.utc2et('2002 FEB 07 00:00:00')
     >>> et
     66312064.18493876
     >>> ['{:.16e}'.format(x) for x in sp.spkez(2, et, "J2000", "NONE", 0)[0]]
-    ['9.5205638574810922e+07', '-4.6160711641080864e+07', '-2.6779481328088202e+07', '1.6612048965376893e+01', '2.8272067093357247e+01', '1.1668575733195270e+01']
+    ['9.5205530594596043e+07', '-4.6160758818180226e+07', '-2.6779476581501361e+07', '1.6612048969243794e+01', '2.8272067093941200e+01', '1.1668575714409423e+01']
     */
 
     let (pos, vel, acc, _) = ctx
@@ -50,15 +50,15 @@ fn de438s_parent_translation_verif() {
         .unwrap();
 
     let pos_expct_km = Vector3::new(
-        9.5205638574810922e+07,
-        -4.6160711641080864e+07,
-        -2.6779481328088202e+07,
+        9.5205530594596043e+07,
+        -4.6160758818180226e+07,
+        -2.6779476581501361e+07,
     );
 
     let vel_expct_km_s = Vector3::new(
-        1.6612048965376893e+01,
-        2.8272067093357247e+01,
-        1.1668575733195270e+01,
+        1.6612048969243794e+01,
+        2.8272067093941200e+01,
+        1.1668575714409423e+01,
     );
 
     // We expect exactly the same output as SPICE to machine precision.
