@@ -26,7 +26,7 @@ log = "0.4"
 pretty_env_logger = "0.4"
 tabled = "0.10"
 const_format = "0.2"
-nalgebra = "0.31"
+nalgebra = "0.32"
 approx = "0.5.1"
 zerocopy = "0.6.1"
 
