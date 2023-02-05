@@ -10,6 +10,8 @@
 
 use std::{collections::HashMap, str::FromStr};
 
+use log::warn;
+
 use crate::prelude::AniseError;
 
 use super::{parser::Assignment, KPLItem};
@@ -82,12 +84,15 @@ impl KPLItem for TPCItem {
             if let Some((body_info, param)) = data.keyword.split_once('_') {
                 let body_id = body_info[4..].parse::<i32>().ok();
                 if self.body_id.is_some() && self.body_id != body_id {
-                    println!("Got body {body_id:?} but expected {:?}", self.body_id);
+                    warn!("Got body {body_id:?} but expected {:?}", self.body_id);
                 } else {
                     self.body_id = body_id;
                 }
-                let param = Parameter::from_str(param).unwrap();
-                self.data.insert(param, data.value_to_vec_f64());
+                if let Ok(param) = Parameter::from_str(param) {
+                    self.data.insert(param, data.value_to_vec_f64());
+                } else {
+                    warn!("Unknown parameter `{param}` -- ignoring");
+                }
             }
         }
     }
@@ -97,12 +102,74 @@ impl KPLItem for TPCItem {
 fn test_parse_pck() {
     use crate::naif::kpl::parser::parse_file;
     let assignments = parse_file::<_, TPCItem>("data/pck00008.tpc", false).unwrap();
-    dbg!(assignments);
+
+    // Tests that we can parse single and multi-line data for Earth related info
+    let expt_nutprec = [
+        125.045,
+        -1935.5364525,
+        250.089,
+        -3871.072905,
+        260.008,
+        475263.3328725,
+        176.625,
+        487269.629985,
+        357.529,
+        35999.0509575,
+        311.589,
+        964468.49931,
+        134.963,
+        477198.869325,
+        276.617,
+        12006.300765,
+        34.226,
+        63863.5132425,
+        15.134,
+        -5806.6093575,
+        119.743,
+        131.84064,
+        239.961,
+        6003.1503825,
+        25.053,
+        473327.79642,
+    ];
+
+    assert_eq!(
+        assignments[&3].data[&Parameter::NutPrecAngles],
+        expt_nutprec
+    );
+    let expt_pole_ra = [0.0, -0.641, 0.0];
+    assert_eq!(assignments[&399].data[&Parameter::PoleRa], expt_pole_ra);
+
+    // Check the same for Jupiter, especially since it has a plus sign in front of the f64
+    let expt_pole_pm = [284.95, 870.5366420, 0.0];
+    assert_eq!(
+        assignments[&599].data[&Parameter::PolarMotion],
+        expt_pole_pm
+    );
+
+    let expt_nutprec = [
+        73.32, 91472.9, 24.62, 45137.2, 283.90, 4850.7, 355.80, 1191.3, 119.90, 262.1, 229.80,
+        64.3, 352.35, 2382.6, 113.35, 6070.0, 146.64, 182945.8, 49.24, 90274.4,
+    ];
+    assert_eq!(
+        assignments[&5].data[&Parameter::NutPrecAngles],
+        expt_nutprec
+    );
 }
 
 #[test]
 fn test_parse_gm() {
     use crate::naif::kpl::parser::parse_file;
     let assignments = parse_file::<_, TPCItem>("data/gm_de431.tpc", false).unwrap();
-    dbg!(assignments);
+
+    // Basic values testing
+    assert_eq!(
+        assignments[&1].data[&Parameter::GravitationalParameter],
+        vec![2.2031780000000021E+04]
+    );
+
+    assert_eq!(
+        assignments[&399].data[&Parameter::GravitationalParameter],
+        vec![3.9860043543609598E+05]
+    );
 }

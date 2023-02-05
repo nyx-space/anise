@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+use std::fmt::Debug;
 use std::{collections::HashMap, hash::Hash};
 
 use self::parser::Assignment;
@@ -16,7 +17,7 @@ use self::parser::Assignment;
 pub mod parser;
 pub mod tpc;
 
-pub trait KPLItem: Default {
+pub trait KPLItem: Debug + Default {
     type Parameter: Eq + Hash;
     /// The key used for fetching
     fn extract_key(keyword: &str) -> i32;

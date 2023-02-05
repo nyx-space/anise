@@ -55,19 +55,19 @@ pub fn parse_file<P: AsRef<Path>, I: KPLItem>(
 
     for line in reader.lines() {
         let line = line.expect("Failed to read line");
-        let line = line.trim();
+        let tline = line.trim();
 
-        if line.starts_with("\\begintext") {
+        if tline.starts_with("\\begintext") {
             block_type = BlockType::Comment;
             continue;
-        } else if line.starts_with("\\begindata") {
+        } else if tline.starts_with("\\begindata") {
             block_type = BlockType::Data;
             continue;
         }
 
         if block_type == BlockType::Comment && show_comments {
             println!("{line}");
-        } else {
+        } else if block_type == BlockType::Data {
             let parts: Vec<&str> = line.split('=').map(|s| s.trim()).collect();
             if parts.len() == 2 {
                 let keyword = parts[0];
@@ -79,8 +79,8 @@ pub fn parse_file<P: AsRef<Path>, I: KPLItem>(
                 assignments.push(assignment);
             } else if let Some(mut assignment) = assignments.pop() {
                 // This is a continuation of the previous line, so let's grab the data and append the value we're reding now.
-                // let mut assignment = assignments.pop().unwrap();
-                assignment.value += line;
+                // We're adding the full line with all of the extra spaces because the parsing needs those delimiters to not bunch together all of the floats.
+                assignment.value += &line;
                 assignments.push(assignment);
             }
         }
@@ -89,7 +89,7 @@ pub fn parse_file<P: AsRef<Path>, I: KPLItem>(
     let mut map = HashMap::new();
     for item in assignments {
         let key = I::extract_key(&item.keyword);
-        if key == 0 {
+        if key == -1 {
             // This is metadata
             continue;
         }
