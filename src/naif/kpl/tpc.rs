@@ -12,7 +12,10 @@ use std::{collections::HashMap, str::FromStr};
 
 use log::warn;
 
-use crate::prelude::AniseError;
+use crate::{
+    prelude::AniseError,
+    structure::planetocentric::{phaseangle::PhaseAngle, planetary_constant::PlanetaryConstant},
+};
 
 use super::{parser::Assignment, KPLItem};
 
@@ -26,7 +29,7 @@ pub enum Parameter {
     PoleRa,
     PoleDec,
     Radii,
-    PolarMotion,
+    PrimeMeridian,
     GeoMagNorthPoleCenterDipoleLatitude,
     GeoMagNorthPoleCenterDipoleLongitude,
     GravitationalParameter,
@@ -44,7 +47,7 @@ impl FromStr for Parameter {
             "POLE_DEC" => Ok(Self::PoleDec),
             "POLE_RA" => Ok(Self::PoleRa),
             "RADII" => Ok(Self::Radii),
-            "PM" => Ok(Self::PolarMotion),
+            "PM" => Ok(Self::PrimeMeridian),
             "NUT_PREC_ANGLES" => Ok(Self::NutPrecAngles),
             "N_GEOMAG_CTR_DIPOLE_LAT" => Ok(Self::GeoMagNorthPoleCenterDipoleLatitude),
             "N_GEOMAG_CTR_DIPOLE_LON" => Ok(Self::GeoMagNorthPoleCenterDipoleLongitude),
@@ -143,7 +146,7 @@ fn test_parse_pck() {
     // Check the same for Jupiter, especially since it has a plus sign in front of the f64
     let expt_pole_pm = [284.95, 870.5366420, 0.0];
     assert_eq!(
-        assignments[&599].data[&Parameter::PolarMotion],
+        assignments[&599].data[&Parameter::PrimeMeridian],
         expt_pole_pm
     );
 
@@ -172,4 +175,57 @@ fn test_parse_gm() {
         assignments[&399].data[&Parameter::GravitationalParameter],
         vec![3.9860043543609598E+05]
     );
+}
+
+#[test]
+fn test_anise_conversion() {
+    use crate::naif::kpl::parser::parse_file;
+    let gravity_data = parse_file::<_, TPCItem>("data/gm_de431.tpc", false).unwrap();
+    let mut planetary_data = parse_file::<_, TPCItem>("data/pck00008.tpc", false).unwrap();
+
+    for (key, value) in gravity_data {
+        match planetary_data.get_mut(&key) {
+            Some(planet_data) => {
+                for (gk, gv) in value.data {
+                    planet_data.data.insert(gk, gv);
+                }
+            }
+            None => {}
+        }
+    }
+
+    // Now that planetary_data has everything, we'll create a vector of the planetary data in the ANISE ASN1 format.
+
+    let mut anise_data = vec![];
+    for (body_id, planetary_data) in planetary_data {
+        dbg!(body_id);
+        let radii_km = &planetary_data.data[&Parameter::Radii];
+
+        let pola_ra = &planetary_data.data[&Parameter::PoleRa];
+        let pola_dec = &planetary_data.data[&Parameter::PoleDec];
+        let prime_mer = &planetary_data.data[&Parameter::PrimeMeridian];
+
+        let constants = PlanetaryConstant {
+            semi_major_radii_km: radii_km[0],
+            semi_minor_radii_km: radii_km[1],
+            polar_radii_km: radii_km[2],
+            pole_right_ascension: PhaseAngle {
+                offset_deg: *(pola_ra.get(0).or(Some(&0.0)).unwrap()),
+                rate_deg: *(pola_ra.get(1).or(Some(&0.0)).unwrap()),
+                accel_deg: *(pola_ra.get(2).or(Some(&0.0)).unwrap()),
+            },
+            pole_declination: PhaseAngle {
+                offset_deg: *(pola_dec.get(0).or(Some(&0.0)).unwrap()),
+                rate_deg: *(pola_dec.get(1).or(Some(&0.0)).unwrap()),
+                accel_deg: *(pola_dec.get(2).or(Some(&0.0)).unwrap()),
+            },
+            prime_meridian: PhaseAngle {
+                offset_deg: *(prime_mer.get(0).or(Some(&0.0)).unwrap()),
+                rate_deg: *(prime_mer.get(1).or(Some(&0.0)).unwrap()),
+                accel_deg: *(prime_mer.get(2).or(Some(&0.0)).unwrap()),
+            },
+            nut_prec_angles: Default::default(),
+        };
+        anise_data.push(constants);
+    }
 }

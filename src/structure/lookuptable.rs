@@ -7,7 +7,6 @@
  *
  * Documentation: https://nyxspace.com/
  */
-use crc32fast::hash;
 use der::{Decode, Encode, Reader, Writer};
 use log::error;
 
@@ -23,7 +22,7 @@ use super::array::DataArray;
 /// thereby greatly reducing the search time for each data, from O(N) to O(log N).
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct LookUpTable<'a> {
-    /// Hashes of the general hashing algorithm
+    /// Unique IDs of each item in the 
     pub hashes: DataArray<'a, NaifId>,
     /// Corresponding index for each hash
     pub indexes: DataArray<'a, u16>,
