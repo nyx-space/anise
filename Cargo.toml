@@ -24,7 +24,7 @@ clap = {version = "3.1", features = ["derive"]}
 thiserror = "1.0"
 log = "0.4"
 pretty_env_logger = "0.4"
-tabled = "0.10"
+tabled = "0.12"
 const_format = "0.2"
 nalgebra = "0.32"
 approx = "0.5.1"
