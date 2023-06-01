@@ -15,7 +15,6 @@
 extern crate der;
 extern crate hifitime;
 pub mod array;
-// pub mod common;
 pub mod dataset;
 // pub mod ephemeris;
 pub mod lookuptable;
@@ -35,7 +34,3 @@ pub const ANISE_VERSION: Semver = Semver {
 
 /// The maximum number of trajectories that can be loaded in a single context
 pub const MAX_TRAJECTORIES: usize = 31;
-
-// The maximum degree supported by ANISE.
-// Remove this once https://github.com/anise-toolkit/anise.rs/issues/19 is implemented.
-// pub const MAX_DEGREE: usize = 128;

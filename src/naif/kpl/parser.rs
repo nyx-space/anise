@@ -17,7 +17,7 @@ use std::path::Path;
 
 use crate::prelude::AniseError;
 
-use super::KPLItem;
+use super::{KPLItem, KPLValue};
 
 #[derive(Debug, PartialEq, Eq)]
 enum BlockType {
@@ -32,14 +32,40 @@ pub struct Assignment {
 }
 
 impl Assignment {
-    pub fn value_to_vec_f64(&self) -> Vec<f64> {
+    pub fn to_value(&self) -> KPLValue {
         let value = &self.value;
-        let value = value.replace("(", "").replace(")", "");
+        // Sanitize the input
+        let value = value
+            // Remove parentheses
+            .replace("(", "")
+            .replace(")", "")
+            // Convert remove the extra single quotes
+            .replace("'", "")
+            // there usually aren't commas, only sometimes
+            .replace(",", " ");
 
         let vec: Vec<&str> = value.split_whitespace().filter(|s| !s.is_empty()).collect();
-        vec.iter()
-            .map(|s| s.parse::<f64>().unwrap_or(0.0))
-            .collect()
+        // If there are multiple items, we assume this is a vector
+        if vec.len() > 1 {
+            KPLValue::Matrix(
+                vec.iter()
+                    .map(|s| s.parse::<f64>().unwrap_or(0.0))
+                    .collect(),
+            )
+        } else if vec.is_empty() {
+            // Return the original value as a string
+            KPLValue::String(self.value.clone())
+        } else {
+            // We have exactly one item, let's try to convert it as an integer first
+            if let Ok(as_int) = vec[0].parse::<i32>() {
+                KPLValue::Integer(as_int)
+            } else if let Ok(as_f64) = vec[0].parse::<f64>() {
+                KPLValue::Float(as_f64)
+            } else {
+                // Darn, let's default to string
+                KPLValue::String(value.clone())
+            }
+        }
     }
 }
 
@@ -88,7 +114,7 @@ pub fn parse_file<P: AsRef<Path>, I: KPLItem>(
     // Now let's parse all of the assignments and put it into a pretty hash map.
     let mut map = HashMap::new();
     for item in assignments {
-        let key = I::extract_key(&item.keyword);
+        let key = I::extract_key(&item);
         if key == -1 {
             // This is metadata
             continue;

@@ -25,7 +25,9 @@ pub const MAX_LOADED_FILES: usize = 32;
 /// The stack space does _not_ depend on how much data is loaded at any given time.
 #[derive(Clone, Default)]
 pub struct Context<'a> {
+    /// NAIF SPK is kept unchanged
     pub spk_data: [Option<&'a SPK>; MAX_LOADED_FILES],
+    /// NAIF BPC is kept unchanged
     pub bpc_data: [Option<&'a BPC>; MAX_LOADED_FILES],
 }
 

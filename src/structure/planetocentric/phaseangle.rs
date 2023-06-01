@@ -23,6 +23,20 @@ pub struct PhaseAngle {
     pub accel_deg: f64,
 }
 
+impl PhaseAngle {
+    pub fn maybe_new(data: &[f64]) -> Option<Self> {
+        if data.len() != 3 {
+            None
+        } else {
+            Some(Self {
+                offset_deg: data[0],
+                rate_deg: data[1],
+                accel_deg: data[2],
+            })
+        }
+    }
+}
+
 impl Encode for PhaseAngle {
     fn encoded_len(&self) -> der::Result<der::Length> {
         self.offset_deg.encoded_len()?

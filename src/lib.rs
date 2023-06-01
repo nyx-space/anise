@@ -21,7 +21,6 @@ pub mod errors;
 pub mod frames;
 pub mod math;
 pub mod naif;
-pub mod shapes;
 pub mod structure;
 
 /// Re-export of hifitime

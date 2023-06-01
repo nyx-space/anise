@@ -12,73 +12,27 @@ use std::{collections::HashMap, str::FromStr};
 
 use log::warn;
 
-use crate::{
-    prelude::AniseError,
-    structure::planetocentric::{phaseangle::PhaseAngle, planetary_constant::PlanetaryConstant},
-};
-
-use super::{parser::Assignment, KPLItem};
-
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub enum Parameter {
-    NutPrecRa,
-    NutPrecDec,
-    NutPrecPm,
-    NutPrecAngles,
-    LongAxis,
-    PoleRa,
-    PoleDec,
-    Radii,
-    PrimeMeridian,
-    GeoMagNorthPoleCenterDipoleLatitude,
-    GeoMagNorthPoleCenterDipoleLongitude,
-    GravitationalParameter,
-}
-
-impl FromStr for Parameter {
-    type Err = AniseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "NUT_PREC_RA" => Ok(Self::NutPrecRa),
-            "NUT_PREC_DEC" => Ok(Self::NutPrecDec),
-            "NUT_PREC_PM" => Ok(Self::NutPrecPm),
-            "LONG_AXIS" => Ok(Self::LongAxis),
-            "POLE_DEC" => Ok(Self::PoleDec),
-            "POLE_RA" => Ok(Self::PoleRa),
-            "RADII" => Ok(Self::Radii),
-            "PM" => Ok(Self::PrimeMeridian),
-            "NUT_PREC_ANGLES" => Ok(Self::NutPrecAngles),
-            "N_GEOMAG_CTR_DIPOLE_LAT" => Ok(Self::GeoMagNorthPoleCenterDipoleLatitude),
-            "N_GEOMAG_CTR_DIPOLE_LON" => Ok(Self::GeoMagNorthPoleCenterDipoleLongitude),
-            "GM" => Ok(Self::GravitationalParameter),
-            _ => {
-                println!("WHAT? `{s}`");
-                Err(AniseError::ParameterNotSpecified)
-            }
-        }
-    }
-}
+use super::{parser::Assignment, KPLItem, KPLValue, Parameter};
 
 #[derive(Debug, Default)]
 pub struct TPCItem {
     pub body_id: Option<i32>,
-    pub data: HashMap<Parameter, Vec<f64>>,
+    pub data: HashMap<Parameter, KPLValue>,
 }
 
 impl KPLItem for TPCItem {
     type Parameter = Parameter;
 
-    fn extract_key(keyword: &str) -> i32 {
-        if keyword.starts_with("BODY") {
-            let parts: Vec<&str> = keyword.split('_').collect();
+    fn extract_key(data: &Assignment) -> i32 {
+        if data.keyword.starts_with("BODY") {
+            let parts: Vec<&str> = data.keyword.split('_').collect();
             parts[0][4..].parse::<i32>().unwrap()
         } else {
             -1
         }
     }
 
-    fn data(&self) -> &HashMap<Self::Parameter, Vec<f64>> {
+    fn data(&self) -> &HashMap<Self::Parameter, KPLValue> {
         &self.data
     }
 
@@ -92,7 +46,7 @@ impl KPLItem for TPCItem {
                     self.body_id = body_id;
                 }
                 if let Ok(param) = Parameter::from_str(param) {
-                    self.data.insert(param, data.value_to_vec_f64());
+                    self.data.insert(param, data.to_value());
                 } else {
                     warn!("Unknown parameter `{param}` -- ignoring");
                 }
@@ -138,16 +92,19 @@ fn test_parse_pck() {
 
     assert_eq!(
         assignments[&3].data[&Parameter::NutPrecAngles],
-        expt_nutprec
+        KPLValue::Matrix(expt_nutprec.into())
     );
     let expt_pole_ra = [0.0, -0.641, 0.0];
-    assert_eq!(assignments[&399].data[&Parameter::PoleRa], expt_pole_ra);
+    assert_eq!(
+        assignments[&399].data[&Parameter::PoleRa],
+        KPLValue::Matrix(expt_pole_ra.into())
+    );
 
     // Check the same for Jupiter, especially since it has a plus sign in front of the f64
     let expt_pole_pm = [284.95, 870.5366420, 0.0];
     assert_eq!(
         assignments[&599].data[&Parameter::PrimeMeridian],
-        expt_pole_pm
+        KPLValue::Matrix(expt_pole_pm.into())
     );
 
     let expt_nutprec = [
@@ -156,7 +113,7 @@ fn test_parse_pck() {
     ];
     assert_eq!(
         assignments[&5].data[&Parameter::NutPrecAngles],
-        expt_nutprec
+        KPLValue::Matrix(expt_nutprec.into())
     );
 }
 
@@ -168,18 +125,22 @@ fn test_parse_gm() {
     // Basic values testing
     assert_eq!(
         assignments[&1].data[&Parameter::GravitationalParameter],
-        vec![2.2031780000000021E+04]
+        KPLValue::Float(2.2031780000000021E+04)
     );
 
     assert_eq!(
         assignments[&399].data[&Parameter::GravitationalParameter],
-        vec![3.9860043543609598E+05]
+        KPLValue::Float(3.9860043543609598E+05)
     );
 }
 
 #[test]
 fn test_anise_conversion() {
     use crate::naif::kpl::parser::parse_file;
+    use crate::structure::planetocentric::{
+        ellipsoid::Ellipsoid, phaseangle::PhaseAngle, planetary_constant::PlanetaryConstant,
+    };
+
     let gravity_data = parse_file::<_, TPCItem>("data/gm_de431.tpc", false).unwrap();
     let mut planetary_data = parse_file::<_, TPCItem>("data/pck00008.tpc", false).unwrap();
 
@@ -197,35 +158,83 @@ fn test_anise_conversion() {
     // Now that planetary_data has everything, we'll create a vector of the planetary data in the ANISE ASN1 format.
 
     let mut anise_data = vec![];
-    for (body_id, planetary_data) in planetary_data {
-        dbg!(body_id);
-        let radii_km = &planetary_data.data[&Parameter::Radii];
+    for (object_id, planetary_data) in planetary_data {
+        match planetary_data.data.get(&Parameter::GravitationalParameter) {
+            Some(mu_km3_s2_value) => {
+                match mu_km3_s2_value {
+                    KPLValue::Float(mu_km3_s2) => {
+                        // Build the ellipsoid
+                        let ellipsoid = match planetary_data.data.get(&Parameter::Radii) {
+                            Some(radii_km) => match radii_km {
+                                KPLValue::Float(radius_km) => {
+                                    Some(Ellipsoid::from_sphere(*radius_km))
+                                }
+                                KPLValue::Matrix(radii_km) => match radii_km.len() {
+                                    2 => Some(Ellipsoid::from_spheroid(radii_km[0], radii_km[1])),
+                                    3 => Some(Ellipsoid {
+                                        semi_major_equatorial_radius_km: radii_km[0],
+                                        semi_minor_equatorial_radius_km: radii_km[1],
+                                        polar_radius_km: radii_km[2],
+                                    }),
+                                    _ => unreachable!(),
+                                },
+                                _ => todo!(),
+                            },
+                            None => None,
+                        };
 
-        let pola_ra = &planetary_data.data[&Parameter::PoleRa];
-        let pola_dec = &planetary_data.data[&Parameter::PoleDec];
-        let prime_mer = &planetary_data.data[&Parameter::PrimeMeridian];
+                        let constant = match planetary_data.data.get(&Parameter::PoleRa) {
+                            Some(data) => match data {
+                                KPLValue::Matrix(pole_ra_data) => {
+                                    let pola_ra = PhaseAngle::maybe_new(&pole_ra_data);
+                                    let pola_dec_data: Vec<f64> = planetary_data.data
+                                        [&Parameter::PoleDec]
+                                        .to_vec_f64()
+                                        .unwrap();
+                                    let pola_dec = PhaseAngle::maybe_new(&pola_dec_data);
 
-        let constants = PlanetaryConstant {
-            semi_major_radii_km: radii_km[0],
-            semi_minor_radii_km: radii_km[1],
-            polar_radii_km: radii_km[2],
-            pole_right_ascension: PhaseAngle {
-                offset_deg: *(pola_ra.get(0).or(Some(&0.0)).unwrap()),
-                rate_deg: *(pola_ra.get(1).or(Some(&0.0)).unwrap()),
-                accel_deg: *(pola_ra.get(2).or(Some(&0.0)).unwrap()),
-            },
-            pole_declination: PhaseAngle {
-                offset_deg: *(pola_dec.get(0).or(Some(&0.0)).unwrap()),
-                rate_deg: *(pola_dec.get(1).or(Some(&0.0)).unwrap()),
-                accel_deg: *(pola_dec.get(2).or(Some(&0.0)).unwrap()),
-            },
-            prime_meridian: PhaseAngle {
-                offset_deg: *(prime_mer.get(0).or(Some(&0.0)).unwrap()),
-                rate_deg: *(prime_mer.get(1).or(Some(&0.0)).unwrap()),
-                accel_deg: *(prime_mer.get(2).or(Some(&0.0)).unwrap()),
-            },
-            nut_prec_angles: Default::default(),
-        };
-        anise_data.push(constants);
+                                    let prime_mer_data: Vec<f64> = planetary_data.data
+                                        [&Parameter::PoleDec]
+                                        .to_vec_f64()
+                                        .unwrap();
+                                    let prime_mer = PhaseAngle::maybe_new(&prime_mer_data);
+
+                                    PlanetaryConstant {
+                                        object_id,
+                                        mu_km3_s2: *mu_km3_s2,
+                                        shape: ellipsoid,
+                                        pole_right_ascension: pola_ra,
+                                        pole_declination: pola_dec,
+                                        prime_meridian: prime_mer,
+                                        nut_prec_angles: Default::default(),
+                                    }
+                                }
+                                _ => unreachable!(),
+                            },
+                            None => {
+                                // Assume not rotation data available
+                                PlanetaryConstant {
+                                    object_id,
+                                    mu_km3_s2: *mu_km3_s2,
+                                    shape: ellipsoid,
+                                    ..Default::default()
+                                }
+                            }
+                        };
+
+                        anise_data.push(constant);
+                    }
+                    _ => panic!("{mu_km3_s2_value:?}"),
+                }
+            }
+            None => {
+                println!(
+                    "{object_id} => No gravity data in {:?}",
+                    planetary_data.data
+                )
+            }
+        }
     }
+
+    println!("Added {} items", anise_data.len());
 }
