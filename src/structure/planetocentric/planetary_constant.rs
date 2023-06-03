@@ -18,7 +18,7 @@ use crate::structure::array::DataArray;
 use crate::NaifId;
 
 /// ANISE supports two different kinds of orientation data. High precision, with spline based interpolations, and constants right ascension, declination, and prime meridian, typically used for planetary constant data.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct PlanetaryConstant<'a> {
     /// The NAIF ID of this object
     pub object_id: NaifId,
@@ -57,6 +57,7 @@ impl<'a> Encode for PlanetaryConstant<'a> {
 
 impl<'a> Decode<'a> for PlanetaryConstant<'a> {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
+        // TODO: Might need to define a custom tag here?
         let object_id: NaifId = decoder.decode()?;
         let mu_km3_s2: f64 = decoder.decode()?;
         // TODO: I don't think this works because the data may be empty
@@ -70,4 +71,21 @@ impl<'a> Decode<'a> for PlanetaryConstant<'a> {
             nut_prec_angles: Some(decoder.decode()?),
         })
     }
+}
+
+#[test]
+fn encdec_min_repr() {
+    // A minimal representation of a planetary constant.
+    let min_repr = PlanetaryConstant {
+        object_id: 1234,
+        mu_km3_s2: 12345.6789,
+        ..Default::default()
+    };
+
+    let mut buf = vec![];
+    min_repr.encode_to_vec(&mut buf).unwrap();
+
+    let min_repr_dec = PlanetaryConstant::from_der(&buf).unwrap();
+
+    assert_eq!(min_repr, min_repr_dec);
 }
