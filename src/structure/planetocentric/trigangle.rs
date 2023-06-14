@@ -74,21 +74,12 @@ pub struct TrigAngle {
 impl Encode for TrigAngle {
     fn encoded_len(&self) -> der::Result<der::Length> {
         OctetStringRef::new(self.as_bytes()).unwrap().encoded_len()
-
-        // self.right_ascension_deg.encoded_len()?
-        //     + self.declination_deg.encoded_len()?
-        //     + self.prime_meridian_deg.encoded_len()?
-        //     + self.nut_prec_angle.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
         OctetStringRef::new(self.as_bytes())
             .unwrap()
             .encode(encoder)
-        // self.right_ascension_deg.encode(encoder)?;
-        // self.declination_deg.encode(encoder)?;
-        // self.prime_meridian_deg.encode(encoder)?;
-        // self.nut_prec_angle.encode(encoder)
     }
 }
 
@@ -101,4 +92,10 @@ impl<'a> Decode<'a> for TrigAngle {
             nut_prec_angle: decoder.decode()?,
         })
     }
+}
+
+#[cfg(test)]
+mod trigangle_ut {
+    #[test]
+    fn tri_encdec_min_repr() {}
 }

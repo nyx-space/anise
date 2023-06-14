@@ -23,6 +23,20 @@ pub struct PhaseAngle {
     pub accel_deg: f64,
 }
 
+// TODO: These are not offset, rate, accel!
+
+/*
+Based on the provided information, these quantities seem to be related to time and rates of time change, not acceleration. Let's break them down:
+
+    d = seconds/day: This is a rate, specifically the rate of time passage per day. It is equivalent to the number of seconds in one day.
+
+    T = seconds/Julian century: This is also a rate, indicating the number of seconds in a Julian century. It is used to describe a long span of time that is often used in astronomical calculations.
+
+    t = ephemeris time, expressed as seconds past a reference epoch: This is not a rate, but a specific point in time. It is the measure of elapsed time from a certain reference point, known as an epoch.
+
+None of these measures are related to acceleration, which is a measure of change in velocity over time (typically measured in units such as meters per second squared, m/s²). They all deal with time or the passage of time in different contexts, especially as related to astronomy.
+ */
+
 impl PhaseAngle {
     pub fn maybe_new(data: &[f64]) -> Option<Self> {
         if data.len() != 3 {
