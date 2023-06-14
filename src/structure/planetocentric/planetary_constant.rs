@@ -10,16 +10,14 @@
 
 use der::{Decode, Encode, Reader, Writer};
 
-pub const MAX_NUT_PREC_ANGLES: usize = 16;
-
 use super::ellipsoid::Ellipsoid;
-use super::{phaseangle::PhaseAngle, trigangle::TrigAngle};
+use super::{phaseangle::PhaseAngle, trigangle::TrigAngle, MAX_NUT_PREC_ANGLES};
 use crate::structure::array::DataArray;
 use crate::NaifId;
 
 /// ANISE supports two different kinds of orientation data. High precision, with spline based interpolations, and constants right ascension, declination, and prime meridian, typically used for planetary constant data.
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
-pub struct PlanetaryConstant<'a> {
+pub struct PlanetaryConstant {
     /// The NAIF ID of this object
     pub object_id: NaifId,
     /// Gravitational parameter (μ) of this planetary object.
@@ -30,7 +28,9 @@ pub struct PlanetaryConstant<'a> {
     pub pole_right_ascension: Option<PhaseAngle>,
     pub pole_declination: Option<PhaseAngle>,
     pub prime_meridian: Option<PhaseAngle>,
-    pub nut_prec_angles: Option<DataArray<'a, TrigAngle>>,
+    /// These are the nutation precession angles as a list of tuples to rebuild them.
+    /// E.g. For `E1 = 125.045 -  0.052992 d`, this would be stored as a single entry `(125.045, -0.052992)`.
+    pub nut_prec_angles: [(f64, f64); MAX_NUT_PREC_ANGLES],
 }
 
 /*
@@ -83,7 +83,7 @@ impl PhaseAngle {
 
  */
 
-impl<'a> PlanetaryConstant<'a> {
+impl PlanetaryConstant {
     /// Specifies what data is available in this structure.
     ///
     /// Returns:
@@ -115,7 +115,7 @@ impl<'a> PlanetaryConstant<'a> {
     }
 }
 
-impl<'a> Encode for PlanetaryConstant<'a> {
+impl Encode for PlanetaryConstant {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let available_flags = self.available_data();
         self.object_id.encoded_len()?
@@ -140,7 +140,7 @@ impl<'a> Encode for PlanetaryConstant<'a> {
     }
 }
 
-impl<'a> Decode<'a> for PlanetaryConstant<'a> {
+impl<'a> Decode<'a> for PlanetaryConstant {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         let object_id: NaifId = decoder.decode()?;
         let mu_km3_s2: f64 = decoder.decode()?;

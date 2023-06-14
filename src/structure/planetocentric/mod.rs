@@ -16,13 +16,15 @@ pub mod phaseangle;
 pub mod planetary_constant;
 pub mod trigangle;
 
+pub const MAX_NUT_PREC_ANGLES: usize = 16;
+
 // TODO: Create a summary field that has the name, ID of the items, and the starting/ending byte of the representation
 // This is akin to the SPICE format, but without the records.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PlanetaryData<'a> {
     pub name: &'a str,
     pub parent_orientation_id: NaifId,
-    pub constants: PlanetaryConstant<'a>,
+    pub constants: PlanetaryConstant,
 }
 
 impl<'a> Encode for PlanetaryData<'a> {
