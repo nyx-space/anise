@@ -13,7 +13,7 @@ use hifitime::Epoch;
 
 use super::{semver::Semver, ANISE_VERSION};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Metadata<'a> {
     /// The ANISE version number. Can be used for partial decoding to determine whether a file is compatible with a library.
     pub anise_version: Semver,

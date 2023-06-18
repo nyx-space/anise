@@ -29,6 +29,12 @@ pub struct Entry {
     pub end_idx: u32,
 }
 
+impl Entry {
+    pub(crate) fn as_range(&self) -> core::ops::Range<usize> {
+        self.start_idx as usize..self.end_idx as usize
+    }
+}
+
 impl Encode for Entry {
     fn encoded_len(&self) -> der::Result<der::Length> {
         self.start_idx.encoded_len()? + self.end_idx.encoded_len()?
@@ -170,10 +176,10 @@ impl<'a> Decode<'a> for LookUpTable<'a> {
                 .insert(core::str::from_utf8(name.as_bytes()).unwrap(), *entry)
                 .unwrap();
         }
-        if lut.by_name.len() != lut.by_id.len() && !lut.by_id.is_empty() && !lut.by_name.is_empty()
-        {
+        if !lut.check_integrity() {
+            // TODO: Change this to print the error but don't prevent loading the data.
             warn!(
-                "decoded lookup table inconsistent: {} names but {} ids",
+                "decoded lookup table is not integral: {} names but {} ids",
                 lut.by_name.len(),
                 lut.by_id.len()
             );
