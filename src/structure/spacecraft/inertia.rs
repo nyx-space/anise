@@ -8,14 +8,15 @@
  * Documentation: https://nyxspace.com/
  */
 use der::{Decode, Encode, Reader, Writer};
+use nalgebra::Matrix3;
 
 use crate::NaifId;
 
 /// Inertial tensor definition
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct InertiaTensor {
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+pub struct Inertia {
     /// Inertia tensor reference frame hash
-    pub orientation_hash: NaifId,
+    pub orientation_id: NaifId,
     /// Moment of inertia about the 1-axis
     pub i_11_kgm2: f64,
     /// Moment of inertia about the 2-axis
@@ -30,9 +31,25 @@ pub struct InertiaTensor {
     pub i_23_kgm2: f64,
 }
 
-impl<'a> Encode for InertiaTensor {
+impl Inertia {
+    pub fn tensor_kgm2(&self) -> Matrix3<f64> {
+        Matrix3::new(
+            self.i_11_kgm2,
+            self.i_12_kgm2,
+            self.i_13_kgm2,
+            self.i_12_kgm2,
+            self.i_22_kgm2,
+            self.i_23_kgm2,
+            self.i_13_kgm2,
+            self.i_23_kgm2,
+            self.i_33_kgm2,
+        )
+    }
+}
+
+impl<'a> Encode for Inertia {
     fn encoded_len(&self) -> der::Result<der::Length> {
-        self.orientation_hash.encoded_len()?
+        self.orientation_id.encoded_len()?
             + self.i_11_kgm2.encoded_len()?
             + self.i_22_kgm2.encoded_len()?
             + self.i_33_kgm2.encoded_len()?
@@ -42,7 +59,7 @@ impl<'a> Encode for InertiaTensor {
     }
 
     fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
-        self.orientation_hash.encode(encoder)?;
+        self.orientation_id.encode(encoder)?;
         self.i_11_kgm2.encode(encoder)?;
         self.i_22_kgm2.encode(encoder)?;
         self.i_33_kgm2.encode(encoder)?;
@@ -52,10 +69,10 @@ impl<'a> Encode for InertiaTensor {
     }
 }
 
-impl<'a> Decode<'a> for InertiaTensor {
+impl<'a> Decode<'a> for Inertia {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         Ok(Self {
-            orientation_hash: decoder.decode()?,
+            orientation_id: decoder.decode()?,
             i_11_kgm2: decoder.decode()?,
             i_22_kgm2: decoder.decode()?,
             i_33_kgm2: decoder.decode()?,
@@ -63,5 +80,45 @@ impl<'a> Decode<'a> for InertiaTensor {
             i_13_kgm2: decoder.decode()?,
             i_23_kgm2: decoder.decode()?,
         })
+    }
+}
+
+#[cfg(test)]
+mod inertia_ut {
+    use super::{Decode, Encode, Inertia, Matrix3};
+    #[test]
+    fn example_repr() {
+        let repr = Inertia {
+            // Spacecraft IDs are typically negative
+            orientation_id: -20,
+            i_11_kgm2: 120.0,
+            i_22_kgm2: 180.0,
+            i_33_kgm2: 220.0,
+            i_12_kgm2: 20.0,
+            i_13_kgm2: -15.0,
+            i_23_kgm2: 30.0,
+        };
+
+        let mut buf = vec![];
+        repr.encode_to_vec(&mut buf).unwrap();
+
+        let repr_dec = Inertia::from_der(&buf).unwrap();
+
+        assert_eq!(repr, repr_dec);
+
+        let tensor = Matrix3::new(120.0, 20.0, -15.0, 20.0, 180.0, 30.0, -15.0, 30.0, 220.0);
+        assert_eq!(tensor, repr.tensor_kgm2());
+    }
+
+    #[test]
+    fn default_repr() {
+        let repr = Inertia::default();
+
+        let mut buf = vec![];
+        repr.encode_to_vec(&mut buf).unwrap();
+
+        let repr_dec = Inertia::from_der(&buf).unwrap();
+
+        assert_eq!(repr, repr_dec);
     }
 }

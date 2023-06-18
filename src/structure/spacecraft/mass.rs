@@ -10,7 +10,7 @@
 use der::{Decode, Encode, Reader, Writer};
 
 /// Defines a spacecraft mass a the sum of the dry (structural) mass and the fuel mass, both in kilogram
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct Mass {
     /// Structural mass of the spacecraft in kg
     pub dry_mass_kg: f64,
@@ -18,6 +18,13 @@ pub struct Mass {
     pub usable_fuel_mass_kg: f64,
     /// Unusable fuel mass of the spacecraft in kg
     pub unusable_fuel_mass_kg: f64,
+}
+
+impl Mass {
+    /// Returns the total mass in kg
+    pub fn total_mass_kg(&self) -> f64 {
+        self.dry_mass_kg + self.usable_fuel_mass_kg + self.unusable_fuel_mass_kg
+    }
 }
 
 impl Encode for Mass {
@@ -41,5 +48,39 @@ impl<'a> Decode<'a> for Mass {
             usable_fuel_mass_kg: decoder.decode()?,
             unusable_fuel_mass_kg: decoder.decode()?,
         })
+    }
+}
+
+#[cfg(test)]
+mod mass_ut {
+    use super::{Decode, Encode, Mass};
+    #[test]
+    fn zero_repr() {
+        let repr = Mass::default();
+
+        let mut buf = vec![];
+        repr.encode_to_vec(&mut buf).unwrap();
+
+        let repr_dec = Mass::from_der(&buf).unwrap();
+
+        assert_eq!(repr, repr_dec);
+    }
+
+    #[test]
+    fn example_repr() {
+        let repr = Mass {
+            dry_mass_kg: 50.0,
+            usable_fuel_mass_kg: 15.7,
+            unusable_fuel_mass_kg: 0.3,
+        };
+
+        let mut buf = vec![];
+        repr.encode_to_vec(&mut buf).unwrap();
+
+        let repr_dec = Mass::from_der(&buf).unwrap();
+
+        assert_eq!(repr, repr_dec);
+
+        assert_eq!(repr_dec.total_mass_kg(), 66.0);
     }
 }

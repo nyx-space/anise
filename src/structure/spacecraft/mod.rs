@@ -15,7 +15,7 @@ mod mass;
 mod srp;
 
 pub use drag::DragData;
-pub use inertia::InertiaTensor;
+pub use inertia::Inertia;
 pub use mass::Mass;
 pub use srp::SRPData;
 
@@ -33,7 +33,7 @@ pub struct SpacecraftConstants<'a> {
     /// Atmospheric drag data
     pub drag_data: Option<DragData>,
     // Inertia tensor
-    pub inertia_tensor: Option<InertiaTensor>,
+    pub inertia_tensor: Option<Inertia>,
 }
 
 impl<'a> Encode for SpacecraftConstants<'a> {

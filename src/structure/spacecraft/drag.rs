@@ -12,9 +12,18 @@ use der::{Decode, Encode, Reader, Writer};
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct DragData {
     /// Atmospheric drag area in m^2
-    pub area_m2: Option<f64>,
+    pub area_m2: f64,
     /// Drag coefficient (C_d)
-    pub coeff_drag: Option<f64>,
+    pub coeff_drag: f64,
+}
+
+impl Default for DragData {
+    fn default() -> Self {
+        Self {
+            area_m2: 0.0,
+            coeff_drag: 2.2,
+        }
+    }
 }
 
 impl Encode for DragData {
@@ -34,5 +43,36 @@ impl<'a> Decode<'a> for DragData {
             area_m2: decoder.decode()?,
             coeff_drag: decoder.decode()?,
         })
+    }
+}
+
+#[cfg(test)]
+mod drag_ut {
+    use super::{Decode, DragData, Encode};
+    #[test]
+    fn zero_repr() {
+        let repr = DragData {
+            area_m2: Default::default(),
+            coeff_drag: Default::default(),
+        };
+
+        let mut buf = vec![];
+        repr.encode_to_vec(&mut buf).unwrap();
+
+        let repr_dec = DragData::from_der(&buf).unwrap();
+
+        assert_eq!(repr, repr_dec);
+    }
+
+    #[test]
+    fn default_repr() {
+        let repr = DragData::default();
+
+        let mut buf = vec![];
+        repr.encode_to_vec(&mut buf).unwrap();
+
+        let repr_dec = DragData::from_der(&buf).unwrap();
+
+        assert_eq!(repr, repr_dec);
     }
 }
