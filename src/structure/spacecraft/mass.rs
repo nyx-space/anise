@@ -21,6 +21,14 @@ pub struct Mass {
 }
 
 impl Mass {
+    /// Creates a new spacecraft constant structure where all mass is considered usable.
+    pub fn from_dry_and_fuel_masses(dry_mass_kg: f64, fuel_mass_kg: f64) -> Self {
+        Self {
+            dry_mass_kg,
+            usable_fuel_mass_kg: fuel_mass_kg,
+            unusable_fuel_mass_kg: 0.0,
+        }
+    }
     /// Returns the total mass in kg
     pub fn total_mass_kg(&self) -> f64 {
         self.dry_mass_kg + self.usable_fuel_mass_kg + self.unusable_fuel_mass_kg
