@@ -23,7 +23,7 @@ pub const MAX_LUT_ENTRIES: usize = 32;
 /// # Implementation note
 /// This data is stored as a u32 to ensure that the same binary representation works on all platforms.
 /// In fact, the size of the usize type varies based on whether this is a 32 or 64 bit platform.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Entry {
     pub start_idx: u32,
     pub end_idx: u32,
@@ -84,6 +84,26 @@ impl<'a> LookUpTable<'a> {
             .insert(name, entry)
             .map_err(|_| AniseError::StructureIsFull)?;
         Ok(())
+    }
+
+    pub(crate) fn check_integrity(&self) -> bool {
+        if self.by_id.is_empty() || self.by_name.is_empty() {
+            // If either map is empty, the LUT is integral because there cannot be
+            // any inconsistencies between both maps
+            true
+        } else if self.by_id.len() != self.by_name.len() {
+            // Mismatched lengths, integrity check failed
+            false
+        } else {
+            // Iterate through each item in by_id
+            for entry in self.by_id.values() {
+                // Check if the entry exists in by_name
+                if !self.by_name.values().any(|name_entry| name_entry == entry) {
+                    return false;
+                }
+            }
+            true
+        }
     }
 
     /// Builds the DER encoding of this look up table
@@ -202,5 +222,54 @@ mod lut_ut {
         let repr_dec = LookUpTable::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
+    }
+
+    #[test]
+    fn repr_names_only() {
+        // Create a vector to store the strings and declare it before repr for borrow checker
+        let mut names = Vec::new();
+        let mut repr = LookUpTable::default();
+
+        let num_bytes = 363;
+
+        for i in 0..(MAX_LUT_ENTRIES as usize) {
+            names.push(format!("Name{}", i));
+        }
+
+        for i in 0..(MAX_LUT_ENTRIES as usize) {
+            repr.append_name(
+                &names[i],
+                Entry {
+                    start_idx: (i * num_bytes) as u32,
+                    end_idx: ((i + 1) * num_bytes) as u32,
+                },
+            )
+            .unwrap();
+        }
+
+        let mut buf = vec![];
+        repr.encode_to_vec(&mut buf).unwrap();
+
+        let repr_dec = LookUpTable::from_der(&buf).unwrap();
+
+        assert_eq!(repr, repr_dec);
+    }
+
+    #[test]
+    fn test_integrity_checker() {
+        let mut lut = LookUpTable::default();
+        assert!(lut.check_integrity()); // Empty, passes
+
+        lut.append(1, "a", Entry::default()).unwrap();
+        assert!(lut.check_integrity()); // ID only, passes
+
+        lut.append_name("a", Entry::default()).unwrap();
+        assert!(lut.check_integrity()); // Name added, passes
+
+        lut.append(2, "b", Entry::default()).unwrap();
+        assert!(lut.check_integrity()); // Second ID, name missing, fails
+
+        lut.append_name("b", Entry::default()).unwrap();
+        assert!(lut.check_integrity()); // Name added, passes
     }
 }
