@@ -35,12 +35,12 @@ lexical-core = "0.8.5"
 
 [dev-dependencies]
 rust-spice = "0.7.4"
-parquet = "30.0.1"
-arrow = "30.0.1"
+parquet = "41.0.0"
+arrow = "41.0.0"
 criterion = "0.5"
 iai = "0.1"
 polars = {version = "0.26.1", features = ["lazy", "parquet"]}
-rayon = "1.6.1"
+rayon = "1.7"
 
 [features]
 default = ["std", "validation"]

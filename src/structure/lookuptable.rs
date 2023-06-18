@@ -22,7 +22,7 @@ use super::array::DataArray;
 /// thereby greatly reducing the search time for each data, from O(N) to O(log N).
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct LookUpTable<'a> {
-    /// Unique IDs of each item in the 
+    /// Unique IDs of each item in the
     pub hashes: DataArray<'a, NaifId>,
     /// Corresponding index for each hash
     pub indexes: DataArray<'a, u16>,
@@ -62,7 +62,7 @@ impl<'a> LookUpTable<'a> {
     ///
     /// NOTE: Until https://github.com/anise-toolkit/anise.rs/issues/18 is addressed
     /// this function has a time complexity of O(N)
-    pub fn index_for_key(&self, key: &str) -> Result<u16, AniseError> {
+    pub fn index_for_key(&self, _key: &str) -> Result<u16, AniseError> {
         // self.index_for_hash(&hash(key.as_bytes()))
         todo!()
     }

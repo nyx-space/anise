@@ -22,6 +22,7 @@ pub mod metadata;
 pub mod planetocentric;
 pub mod records;
 pub mod semver;
+pub mod spacecraft;
 // pub mod spline;
 
 use self::semver::Semver;
