@@ -7,7 +7,10 @@
  *
  * Documentation: https://nyxspace.com/
  */
-use super::{lookuptable::LookUpTable, metadata::Metadata};
+use super::{
+    lookuptable::{Entry, LookUpTable},
+    metadata::Metadata,
+};
 use crate::{errors::IntegrityErrorKind, prelude::AniseError, NaifId};
 use der::{asn1::OctetStringRef, Decode, Encode, Reader, Writer};
 use log::error;
@@ -21,6 +24,56 @@ pub struct DataSet<'a> {
     pub data_checksum: u32,
     /// The actual data from the dataset
     pub bytes: &'a [u8],
+}
+
+/// Dataset builder allows building a dataset. It requires allocations.
+#[derive(Clone, Default, Debug)]
+pub struct DataSetBuilder<'a> {
+    pub dataset: DataSet<'a>,
+    buf: Vec<u8>,
+}
+
+impl<'a> DataSetBuilder<'a> {
+    pub fn push<T: Encode>(
+        &mut self,
+        id: Option<NaifId>,
+        name: Option<&'a str>,
+        data: T,
+    ) -> Result<(), AniseError> {
+        let mut this_buf = vec![];
+        data.encode_to_vec(&mut this_buf).unwrap();
+        // Build this entry data.
+        let entry = Entry {
+            start_idx: self.buf.len() as u32,
+            end_idx: (self.buf.len() + this_buf.len()) as u32,
+        };
+
+        if id.is_some() && name.is_some() {
+            self.dataset.lut.append(id.unwrap(), name.unwrap(), entry)?;
+        } else if id.is_some() {
+            self.dataset.lut.append_id(id.unwrap(), entry)?;
+        } else if name.is_some() {
+            self.dataset.lut.append_name(name.unwrap(), entry)?;
+        } else {
+            return Err(AniseError::ItemNotFound);
+        }
+
+        Ok(())
+    }
+
+    pub fn encode(mut self) -> Result<DataSet<'a>, AniseError> {
+        self.dataset.bytes = self.buf.as_slice();
+        self.dataset.set_crc32();
+        // let mut buf = vec![];
+        // match self.dataset.encode_to_vec(&mut buf) {
+        //     Ok(_) => Ok(buf),
+        //     Err(e) => {
+        //         error!("{e}");
+        //         Err(AniseError::IOUnknownError)
+        //     }
+        // }
+        Ok(self.dataset)
+    }
 }
 
 impl<'a> DataSet<'a> {
@@ -134,6 +187,7 @@ impl<'a> Decode<'a> for DataSet<'a> {
 #[cfg(test)]
 mod dataset_ut {
     use crate::structure::{
+        dataset::DataSetBuilder,
         lookuptable::Entry,
         spacecraft::{DragData, Inertia, Mass, SRPData, SpacecraftConstants},
     };
@@ -184,6 +238,7 @@ mod dataset_ut {
             srp_data: Some(SRPData::default()),
             ..Default::default()
         };
+
         // Pack the data into the vector (encoding will likely always require allocation).
         let mut packed_buf = [0; 1000];
 
