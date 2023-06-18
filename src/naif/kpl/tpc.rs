@@ -206,7 +206,7 @@ fn test_anise_conversion() {
                                         pole_right_ascension: pola_ra,
                                         pole_declination: pola_dec,
                                         prime_meridian: prime_mer,
-                                        nut_prec_angles: Default::default(),
+                                        ..Default::default()
                                     }
                                 }
                                 _ => unreachable!(),

@@ -12,9 +12,9 @@ use der::{asn1::Utf8StringRef, Decode, Encode, Reader, Writer};
 use self::planetary_constant::PlanetaryConstant;
 use crate::NaifId;
 pub mod ellipsoid;
+pub mod nutprec;
 pub mod phaseangle;
 pub mod planetary_constant;
-pub mod trigangle;
 
 pub const MAX_NUT_PREC_ANGLES: usize = 16;
 

@@ -17,7 +17,6 @@ use crate::{errors::IntegrityErrorKind, prelude::AniseError};
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
 pub struct DataArray<'a, T: Default + FromBytes + AsBytes> {
-    // use AsBytes / FromBytes from "zerocopy" crate to load the data ?
     /// Stores the CRC32 checksum of the data octet string.
     pub data_checksum: u32, // TODO: move the checksum into a CRC32DataArray to check integrity on load
     /// The data as an array of type T
