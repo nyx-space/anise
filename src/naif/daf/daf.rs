@@ -16,7 +16,9 @@ use core::hash::Hash;
 use hifitime::Epoch;
 use log::{error, trace, warn};
 use std::marker::PhantomData;
-use zerocopy::{AsBytes, FromBytes, LayoutVerified};
+#[cfg(feature = "std")]
+use zerocopy::AsBytes;
+use zerocopy::{FromBytes, LayoutVerified};
 
 // Thanks ChatGPT for the idea !
 #[cfg(feature = "std")]
@@ -29,6 +31,7 @@ macro_rules! io_imports {
     };
 }
 
+#[cfg(feature = "std")]
 io_imports!();
 
 pub(crate) const RCRD_LEN: usize = 1024;

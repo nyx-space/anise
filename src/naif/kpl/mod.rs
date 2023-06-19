@@ -17,7 +17,7 @@ use crate::prelude::AniseError;
 use self::parser::Assignment;
 
 pub mod fk;
-#[cfg(feature = "std")]
+
 pub mod parser;
 pub mod tpc;
 

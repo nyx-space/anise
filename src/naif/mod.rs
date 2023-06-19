@@ -9,6 +9,7 @@
  */
 
 pub mod daf;
+#[cfg(feature = "std")]
 pub mod kpl;
 pub mod pck;
 pub mod spk;
