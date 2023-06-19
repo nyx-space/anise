@@ -108,7 +108,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             .ok_or_else(|| AniseError::MalformedData(self.file_record.fwrd_idx() + RCRD_LEN))?;
 
         SummaryRecord::read_from(&rcrd_bytes[..SummaryRecord::SIZE])
-            .ok_or_else(|| AniseError::MalformedData(SummaryRecord::SIZE))
+            .ok_or(AniseError::MalformedData(SummaryRecord::SIZE))
     }
 
     /// Parses the data summaries on the fly.

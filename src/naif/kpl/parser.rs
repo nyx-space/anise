@@ -35,14 +35,11 @@ impl Assignment {
     pub fn to_value(&self) -> KPLValue {
         let value = &self.value;
         // Sanitize the input
-        let value = value
+        let value = value.
             // Remove parentheses
-            .replace("(", "")
-            .replace(")", "")
             // Convert remove the extra single quotes
-            .replace("'", "")
             // there usually aren't commas, only sometimes
-            .replace(",", " ");
+            replace(['(', ')', '\''], "");
 
         let vec: Vec<&str> = value.split_whitespace().filter(|s| !s.is_empty()).collect();
         // If there are multiple items, we assume this is a vector

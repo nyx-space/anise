@@ -47,7 +47,7 @@ impl Inertia {
     }
 }
 
-impl<'a> Encode for Inertia {
+impl Encode for Inertia {
     fn encoded_len(&self) -> der::Result<der::Length> {
         self.orientation_id.encoded_len()?
             + self.i_11_kgm2.encoded_len()?

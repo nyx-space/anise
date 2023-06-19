@@ -26,7 +26,7 @@ impl Default for SRPData {
     }
 }
 
-impl<'a> Encode for SRPData {
+impl Encode for SRPData {
     fn encoded_len(&self) -> der::Result<der::Length> {
         self.area_m2.encoded_len()? + self.coeff_reflectivity.encoded_len()?
     }

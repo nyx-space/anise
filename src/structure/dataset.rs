@@ -30,22 +30,22 @@ pub struct DataSet<'a> {
 #[derive(Clone, Default, Debug)]
 pub struct DataSetBuilder<'a> {
     pub dataset: DataSet<'a>,
-    buf: Vec<u8>,
 }
 
 impl<'a> DataSetBuilder<'a> {
-    pub fn push<T: Encode>(
+    pub fn push_into<T: Encode>(
         &mut self,
+        buf: &mut Vec<u8>,
+        data: T,
         id: Option<NaifId>,
         name: Option<&'a str>,
-        data: T,
     ) -> Result<(), AniseError> {
         let mut this_buf = vec![];
         data.encode_to_vec(&mut this_buf).unwrap();
         // Build this entry data.
         let entry = Entry {
-            start_idx: self.buf.len() as u32,
-            end_idx: (self.buf.len() + this_buf.len()) as u32,
+            start_idx: buf.len() as u32,
+            end_idx: (buf.len() + this_buf.len()) as u32,
         };
 
         if id.is_some() && name.is_some() {
@@ -57,21 +57,14 @@ impl<'a> DataSetBuilder<'a> {
         } else {
             return Err(AniseError::ItemNotFound);
         }
+        buf.extend_from_slice(&this_buf);
 
         Ok(())
     }
 
-    pub fn encode(mut self) -> Result<DataSet<'a>, AniseError> {
-        self.dataset.bytes = self.buf.as_slice();
+    pub fn finalize(mut self, buf: &'a [u8]) -> Result<DataSet<'a>, AniseError> {
+        self.dataset.bytes = buf;
         self.dataset.set_crc32();
-        // let mut buf = vec![];
-        // match self.dataset.encode_to_vec(&mut buf) {
-        //     Ok(_) => Ok(buf),
-        //     Err(e) => {
-        //         error!("{e}");
-        //         Err(AniseError::IOUnknownError)
-        //     }
-        // }
         Ok(self.dataset)
     }
 }
@@ -79,7 +72,7 @@ impl<'a> DataSetBuilder<'a> {
 impl<'a> DataSet<'a> {
     /// Compute the CRC32 of the underlying bytes
     pub fn crc32(&self) -> u32 {
-        crc32fast::hash(&self.bytes)
+        crc32fast::hash(self.bytes)
     }
 
     /// Sets the checksum of this data.
@@ -153,7 +146,7 @@ impl<'a> DataSet<'a> {
 
 impl<'a> Encode for DataSet<'a> {
     fn encoded_len(&self) -> der::Result<der::Length> {
-        let as_byte_ref = OctetStringRef::new(&self.bytes)?;
+        let as_byte_ref = OctetStringRef::new(self.bytes)?;
         self.metadata.encoded_len()?
             + self.lut.encoded_len()?
             + self.data_checksum.encoded_len()?
@@ -161,7 +154,7 @@ impl<'a> Encode for DataSet<'a> {
     }
 
     fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
-        let as_byte_ref = OctetStringRef::new(&self.bytes)?;
+        let as_byte_ref = OctetStringRef::new(self.bytes)?;
         self.metadata.encode(encoder)?;
         self.lut.encode(encoder)?;
         self.data_checksum.encode(encoder)?;
@@ -290,6 +283,73 @@ mod dataset_ut {
         dbg!(buf.len());
 
         let repr_dec = DataSet::from_der(&buf).unwrap();
+
+        assert_eq!(dataset, repr_dec);
+
+        assert!(repr_dec.check_integrity().is_ok());
+
+        // Now that the data is valid, let's fetch the data back
+
+        let full_sc_repr = repr_dec.get_by_id::<SpacecraftConstants>(-50).unwrap();
+        assert_eq!(full_sc_repr, full_sc);
+
+        let srp_repr = repr_dec.get_by_id::<SpacecraftConstants>(-20).unwrap();
+        assert_eq!(srp_repr, srp_sc);
+
+        // And check that we get an error if the data is wrong.
+        assert!(repr_dec.get_by_id::<SpacecraftConstants>(0).is_err())
+    }
+
+    #[test]
+    fn spacecraft_constants_lookup_builder() {
+        // Build some data first.
+        let full_sc = SpacecraftConstants {
+            name: "full spacecraft",
+            comments: "this is an example of encoding spacecraft data",
+            srp_data: Some(SRPData {
+                area_m2: 2.0,
+                coeff_reflectivity: 1.8,
+            }),
+            inertia: Some(Inertia {
+                orientation_id: -20,
+                i_11_kgm2: 120.0,
+                i_22_kgm2: 180.0,
+                i_33_kgm2: 220.0,
+                i_12_kgm2: 20.0,
+                i_13_kgm2: -15.0,
+                i_23_kgm2: 30.0,
+            }),
+            mass_kg: Some(Mass::from_dry_and_fuel_masses(150.0, 50.6)),
+            drag_data: Some(DragData::default()),
+        };
+        let srp_sc = SpacecraftConstants {
+            name: "SRP only spacecraft",
+            comments: "this is an example of encoding spacecraft data",
+            srp_data: Some(SRPData::default()),
+            ..Default::default()
+        };
+
+        // Initialize the overall buffer for building the data
+        let mut buf = vec![];
+        let mut builder = DataSetBuilder::default();
+        builder
+            .push_into(&mut buf, srp_sc, Some(-20), Some("SRP spacecraft"))
+            .unwrap();
+
+        builder
+            .push_into(&mut buf, full_sc, Some(-50), Some("Full spacecraft"))
+            .unwrap();
+
+        let dataset = builder.finalize(&buf).unwrap();
+
+        // And encode it.
+
+        let mut ebuf = vec![];
+        dataset.encode_to_vec(&mut ebuf).unwrap();
+
+        dbg!(ebuf.len());
+
+        let repr_dec = DataSet::from_der(&ebuf).unwrap();
 
         assert_eq!(dataset, repr_dec);
 
