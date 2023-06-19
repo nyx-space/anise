@@ -112,25 +112,27 @@ impl<'a> LookUpTable<'a> {
         }
     }
 
-    /// Builds the DER encoding of this look up table
+    /// Builds the DER encoding of this look up table.
+    ///
+    /// # Note
+    /// The list of entries might be duplicated if all items have both a name and an ID.
     fn der_encoding(
         &self,
     ) -> (
         SequenceOf<i32, MAX_LUT_ENTRIES>,
         SequenceOf<OctetStringRef, MAX_LUT_ENTRIES>,
         SequenceOf<Entry, MAX_LUT_ENTRIES>,
+        SequenceOf<Entry, MAX_LUT_ENTRIES>,
     ) {
-        // Decide whether to encode the entries from the ID iterator or the names iterator based on which has the most.
-        let use_id = self.by_id.len() >= self.by_name.len();
         // Build the list of entries
-        let mut entries = SequenceOf::<Entry, MAX_LUT_ENTRIES>::new();
+        let mut id_entries = SequenceOf::<Entry, MAX_LUT_ENTRIES>::new();
+        let mut name_entries = SequenceOf::<Entry, MAX_LUT_ENTRIES>::new();
+
         // Build the list of keys
         let mut ids = SequenceOf::<i32, MAX_LUT_ENTRIES>::new();
         for (id, entry) in &self.by_id {
             ids.add(*id).unwrap();
-            if use_id {
-                entries.add(*entry).unwrap();
-            }
+            id_entries.add(*entry).unwrap();
         }
         // Build the list of names
         let mut names = SequenceOf::<OctetStringRef, MAX_LUT_ENTRIES>::new();
@@ -138,26 +140,29 @@ impl<'a> LookUpTable<'a> {
             names
                 .add(OctetStringRef::new(name.as_bytes()).unwrap())
                 .unwrap();
-            if !use_id {
-                entries.add(*entry).unwrap();
-            }
+
+            name_entries.add(*entry).unwrap();
         }
 
-        (ids, names, entries)
+        (ids, names, id_entries, name_entries)
     }
 }
 
 impl<'a> Encode for LookUpTable<'a> {
     fn encoded_len(&self) -> der::Result<der::Length> {
-        let (ids, names, entries) = self.der_encoding();
-        ids.encoded_len()? + names.encoded_len()? + entries.encoded_len()?
+        let (ids, names, id_entries, name_entries) = self.der_encoding();
+        ids.encoded_len()?
+            + names.encoded_len()?
+            + id_entries.encoded_len()?
+            + name_entries.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
-        let (ids, names, entries) = self.der_encoding();
+        let (ids, names, id_entries, name_entries) = self.der_encoding();
         ids.encode(encoder)?;
         names.encode(encoder)?;
-        entries.encode(encoder)
+        id_entries.encode(encoder)?;
+        name_entries.encode(encoder)
     }
 }
 
@@ -167,15 +172,19 @@ impl<'a> Decode<'a> for LookUpTable<'a> {
         let mut lut = Self::default();
         let ids: SequenceOf<i32, MAX_LUT_ENTRIES> = decoder.decode()?;
         let names: SequenceOf<OctetStringRef, MAX_LUT_ENTRIES> = decoder.decode()?;
-        let entries: SequenceOf<Entry, MAX_LUT_ENTRIES> = decoder.decode()?;
-        for (id, entry) in ids.iter().zip(entries.iter()) {
+        let id_entries: SequenceOf<Entry, MAX_LUT_ENTRIES> = decoder.decode()?;
+        let name_entries: SequenceOf<Entry, MAX_LUT_ENTRIES> = decoder.decode()?;
+
+        for (id, entry) in ids.iter().zip(id_entries.iter()) {
             lut.by_id.insert(*id, *entry).unwrap();
         }
-        for (name, entry) in names.iter().zip(entries.iter()) {
+
+        for (name, entry) in names.iter().zip(name_entries.iter()) {
             lut.by_name
                 .insert(core::str::from_utf8(name.as_bytes()).unwrap(), *entry)
                 .unwrap();
         }
+
         if !lut.check_integrity() {
             // TODO: Change this to print the error but don't prevent loading the data.
             warn!(
