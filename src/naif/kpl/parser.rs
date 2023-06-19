@@ -39,7 +39,7 @@ impl Assignment {
             // Remove parentheses
             // Convert remove the extra single quotes
             // there usually aren't commas, only sometimes
-            replace(['(', ')', '\''], "");
+            replace(['(', ')', ',', '\''], "");
 
         let vec: Vec<&str> = value.split_whitespace().filter(|s| !s.is_empty()).collect();
         // If there are multiple items, we assume this is a vector

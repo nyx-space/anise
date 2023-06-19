@@ -4,7 +4,7 @@ on:
     branches:
       - master
 
-name: ANISE Ephemeris Workflow
+name: ANISE Rust Workflow
 
 env:
   RUST_BACKTRACE: 1

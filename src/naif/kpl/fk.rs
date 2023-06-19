@@ -75,112 +75,117 @@ impl KPLItem for FKItem {
     }
 }
 
-#[test]
-fn test_parse_fk() {
-    /*
-    Frames Specified by this Kernel
-    =====================================================================
+#[cfg(test)]
+mod fk_ut {
+    use super::{FKItem, KPLValue, Parameter};
 
-    Frame Name       Relative to        Type   Frame ID
-    --------------   -----------------  -----  --------
-    MOON_PA          MOON_PA_DE421      FIXED  31000
-    MOON_ME          MOON_ME_DE421      FIXED  31001
-    MOON_PA_DE421    ICRF/J2000         PCK    31006
-    MOON_ME_DE421    MOON_PA_DE421      FIXED  31007
+    #[test]
+    fn test_parse_fk() {
+        /*
+        Frames Specified by this Kernel
+        =====================================================================
 
-    In other words, if the class is 2 then it's a PCK based frame, else it's a TPC frame.
-      */
-    use crate::naif::kpl::parser::parse_file;
-    let assignments = parse_file::<_, FKItem>("data/moon_080317.txt", false).unwrap();
+        Frame Name       Relative to        Type   Frame ID
+        --------------   -----------------  -----  --------
+        MOON_PA          MOON_PA_DE421      FIXED  31000
+        MOON_ME          MOON_ME_DE421      FIXED  31001
+        MOON_PA_DE421    ICRF/J2000         PCK    31006
+        MOON_ME_DE421    MOON_PA_DE421      FIXED  31007
 
-    // One of the `begindata` sections has two entries
-    assert_eq!(assignments.len(), 5);
+        In other words, if the class is 2 then it's a PCK based frame, else it's a TPC frame.
+          */
+        use crate::naif::kpl::parser::parse_file;
+        let assignments = parse_file::<_, FKItem>("data/moon_080317.txt", false).unwrap();
 
-    // Check all of the data from this FK file
-    assert_eq!(assignments[&31000].name, Some("MOON_PA".to_string()));
-    assert_eq!(assignments[&31000].body_id, Some(31000));
-    assert_eq!(
-        assignments[&31000].data[&Parameter::Class],
-        KPLValue::Integer(4)
-    );
-    assert_eq!(
-        assignments[&31000].data[&Parameter::ClassId],
-        KPLValue::Integer(31000)
-    );
-    assert_eq!(
-        assignments[&31000].data[&Parameter::Center],
-        KPLValue::Integer(301)
-    );
-    assert_eq!(
-        assignments[&31000].data[&Parameter::Matrix],
-        KPLValue::Matrix(vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
-    );
-    assert_eq!(
-        assignments[&31000].data[&Parameter::Relative],
-        KPLValue::String("MOON_PA_DE421".to_string())
-    );
+        // One of the `begindata` sections has two entries
+        assert_eq!(assignments.len(), 5);
 
-    assert_eq!(assignments[&31000].data.len(), 5);
+        // Check all of the data from this FK file
+        assert_eq!(assignments[&31000].name, Some("MOON_PA".to_string()));
+        assert_eq!(assignments[&31000].body_id, Some(31000));
+        assert_eq!(
+            assignments[&31000].data[&Parameter::Class],
+            KPLValue::Integer(4)
+        );
+        assert_eq!(
+            assignments[&31000].data[&Parameter::ClassId],
+            KPLValue::Integer(31000)
+        );
+        assert_eq!(
+            assignments[&31000].data[&Parameter::Center],
+            KPLValue::Integer(301)
+        );
+        assert_eq!(
+            assignments[&31000].data[&Parameter::Matrix],
+            KPLValue::Matrix(vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+        );
+        assert_eq!(
+            assignments[&31000].data[&Parameter::Relative],
+            KPLValue::String("MOON_PA_DE421".to_string())
+        );
 
-    assert_eq!(assignments[&31001].name, Some("MOON_ME".to_string()));
-    assert_eq!(assignments[&31001].body_id, Some(31001));
-    assert_eq!(
-        assignments[&31001].data[&Parameter::Class],
-        KPLValue::Integer(4)
-    );
-    assert_eq!(
-        assignments[&31001].data[&Parameter::ClassId],
-        KPLValue::Integer(31001)
-    );
-    assert_eq!(
-        assignments[&31001].data[&Parameter::Center],
-        KPLValue::Integer(301)
-    );
-    assert_eq!(
-        assignments[&31001].data[&Parameter::Matrix],
-        KPLValue::Matrix(vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
-    );
-    assert_eq!(
-        assignments[&31001].data[&Parameter::Relative],
-        KPLValue::String("MOON_ME_DE421".to_string())
-    );
+        assert_eq!(assignments[&31000].data.len(), 5);
 
-    assert_eq!(assignments[&31001].data.len(), 5);
+        assert_eq!(assignments[&31001].name, Some("MOON_ME".to_string()));
+        assert_eq!(assignments[&31001].body_id, Some(31001));
+        assert_eq!(
+            assignments[&31001].data[&Parameter::Class],
+            KPLValue::Integer(4)
+        );
+        assert_eq!(
+            assignments[&31001].data[&Parameter::ClassId],
+            KPLValue::Integer(31001)
+        );
+        assert_eq!(
+            assignments[&31001].data[&Parameter::Center],
+            KPLValue::Integer(301)
+        );
+        assert_eq!(
+            assignments[&31001].data[&Parameter::Matrix],
+            KPLValue::Matrix(vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+        );
+        assert_eq!(
+            assignments[&31001].data[&Parameter::Relative],
+            KPLValue::String("MOON_ME_DE421".to_string())
+        );
 
-    assert_eq!(assignments[&31006].name, Some("MOON_PA_DE421".to_string()));
-    assert_eq!(assignments[&31006].body_id, Some(31006));
-    assert_eq!(assignments[&31006].data[&Parameter::Class], 2.into());
-    assert_eq!(assignments[&31006].data[&Parameter::ClassId], 31006.into());
-    assert_eq!(assignments[&31006].data[&Parameter::Center], 301.into());
-    assert_eq!(assignments[&31006].data.len(), 3);
+        assert_eq!(assignments[&31001].data.len(), 5);
 
-    assert_eq!(assignments[&31002].name, Some("MOON_PA_DE403".to_string()));
-    assert_eq!(assignments[&31002].body_id, Some(31002));
-    assert_eq!(assignments[&31002].data[&Parameter::Class], 2.into());
-    assert_eq!(assignments[&31002].data[&Parameter::ClassId], 31002.into());
-    assert_eq!(assignments[&31002].data[&Parameter::Center], 301.into());
-    assert_eq!(assignments[&31002].data.len(), 3);
+        assert_eq!(assignments[&31006].name, Some("MOON_PA_DE421".to_string()));
+        assert_eq!(assignments[&31006].body_id, Some(31006));
+        assert_eq!(assignments[&31006].data[&Parameter::Class], 2.into());
+        assert_eq!(assignments[&31006].data[&Parameter::ClassId], 31006.into());
+        assert_eq!(assignments[&31006].data[&Parameter::Center], 301.into());
+        assert_eq!(assignments[&31006].data.len(), 3);
 
-    assert_eq!(assignments[&31007].name, Some("MOON_ME_DE421".to_string()));
-    assert_eq!(assignments[&31007].body_id, Some(31007));
-    assert_eq!(assignments[&31007].data[&Parameter::Class], 4.into());
-    assert_eq!(assignments[&31007].data[&Parameter::ClassId], 31007.into());
-    assert_eq!(assignments[&31007].data[&Parameter::Center], 301.into());
-    assert_eq!(
-        assignments[&31007].data[&Parameter::Units],
-        KPLValue::String("ARCSECONDS".to_string())
-    );
-    assert_eq!(
-        assignments[&31007].data[&Parameter::Relative],
-        KPLValue::String("MOON_PA_DE421".to_string())
-    );
-    assert_eq!(
-        assignments[&31007].data[&Parameter::Angles],
-        KPLValue::Matrix(vec![67.92, 78.56, 0.30])
-    );
-    assert_eq!(
-        assignments[&31007].data[&Parameter::Axes],
-        KPLValue::Matrix(vec![3.0, 2.0, 1.0])
-    );
-    assert_eq!(assignments[&31007].data.len(), 7);
+        assert_eq!(assignments[&31002].name, Some("MOON_PA_DE403".to_string()));
+        assert_eq!(assignments[&31002].body_id, Some(31002));
+        assert_eq!(assignments[&31002].data[&Parameter::Class], 2.into());
+        assert_eq!(assignments[&31002].data[&Parameter::ClassId], 31002.into());
+        assert_eq!(assignments[&31002].data[&Parameter::Center], 301.into());
+        assert_eq!(assignments[&31002].data.len(), 3);
+
+        assert_eq!(assignments[&31007].name, Some("MOON_ME_DE421".to_string()));
+        assert_eq!(assignments[&31007].body_id, Some(31007));
+        assert_eq!(assignments[&31007].data[&Parameter::Class], 4.into());
+        assert_eq!(assignments[&31007].data[&Parameter::ClassId], 31007.into());
+        assert_eq!(assignments[&31007].data[&Parameter::Center], 301.into());
+        assert_eq!(
+            assignments[&31007].data[&Parameter::Units],
+            KPLValue::String("ARCSECONDS".to_string())
+        );
+        assert_eq!(
+            assignments[&31007].data[&Parameter::Relative],
+            KPLValue::String("MOON_PA_DE421".to_string())
+        );
+        assert_eq!(
+            assignments[&31007].data[&Parameter::Angles],
+            KPLValue::Matrix(vec![67.92, 78.56, 0.30])
+        );
+        assert_eq!(
+            assignments[&31007].data[&Parameter::Axes],
+            KPLValue::Matrix(vec![3.0, 2.0, 1.0])
+        );
+        assert_eq!(assignments[&31007].data.len(), 7);
+    }
 }
