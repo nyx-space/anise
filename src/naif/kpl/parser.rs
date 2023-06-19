@@ -116,9 +116,7 @@ pub fn parse_file<P: AsRef<Path>, I: KPLItem>(
             // This is metadata
             continue;
         }
-        if !map.contains_key(&key) {
-            map.insert(key, I::default());
-        }
+        map.entry(key).or_insert_with(|| I::default());
         let body_map = map.get_mut(&key).unwrap();
         body_map.parse(item);
     }

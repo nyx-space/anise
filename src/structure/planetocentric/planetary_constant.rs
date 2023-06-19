@@ -147,7 +147,7 @@ impl<'a> Decode<'a> for PlanetaryConstant {
 #[cfg(test)]
 mod planetary_constants_ut {
     use super::{Ellipsoid, PhaseAngle, PlanetaryConstant};
-    use crate::structure::der::{Decode, Encode};
+    use der::{Decode, Encode};
 
     #[test]
     fn pc_encdec_min_repr() {

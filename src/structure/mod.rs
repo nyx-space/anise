@@ -12,18 +12,12 @@
  * This module only contains the serialization and deserialization components of ANISE.
  * All other computations are at a higher level module.
  */
-extern crate der;
-extern crate hifitime;
-pub mod array;
 pub mod dataset;
-// pub mod ephemeris;
 pub mod lookuptable;
 pub mod metadata;
 pub mod planetocentric;
-pub mod records;
 pub mod semver;
 pub mod spacecraft;
-// pub mod spline;
 
 use self::semver::Semver;
 /// The current version of ANISE
