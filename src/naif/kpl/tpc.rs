@@ -138,7 +138,7 @@ fn test_parse_gm() {
 fn test_anise_conversion() {
     use crate::naif::kpl::parser::parse_file;
     use crate::structure::planetocentric::{
-        ellipsoid::Ellipsoid, phaseangle::PhaseAngle, planetary_constant::PlanetaryConstant,
+        ellipsoid::Ellipsoid, phaseangle::PhaseAngle, PlanetaryData,
     };
 
     let gravity_data = parse_file::<_, TPCItem>("data/gm_de431.tpc", false).unwrap();
@@ -199,7 +199,7 @@ fn test_anise_conversion() {
                                         .unwrap();
                                     let prime_mer = PhaseAngle::maybe_new(&prime_mer_data);
 
-                                    PlanetaryConstant {
+                                    PlanetaryData {
                                         object_id,
                                         mu_km3_s2: *mu_km3_s2,
                                         shape: ellipsoid,
@@ -213,7 +213,7 @@ fn test_anise_conversion() {
                             },
                             None => {
                                 // Assume not rotation data available
-                                PlanetaryConstant {
+                                PlanetaryData {
                                     object_id,
                                     mu_km3_s2: *mu_km3_s2,
                                     shape: ellipsoid,

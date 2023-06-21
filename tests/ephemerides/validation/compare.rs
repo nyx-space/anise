@@ -129,10 +129,9 @@ impl CompareEphem {
     /// Executes this ephemeris validation and return the number of querying errors
     #[must_use]
     pub fn run(mut self) -> usize {
+        let mut spks: Vec<SPK> = Vec::new();
         // Load the context
         let mut ctx = Context::default();
-
-        let mut spks: Vec<SPK> = Vec::new();
 
         for path in &self.input_file_names {
             let spk = SPK::load(path).unwrap();

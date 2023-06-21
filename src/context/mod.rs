@@ -13,22 +13,32 @@ use hifitime::Epoch;
 use crate::errors::AniseError;
 use crate::naif::spk::summary::SPKSummaryRecord;
 use crate::naif::{BPC, SPK};
+use crate::structure::dataset::DataSet;
+use crate::structure::planetocentric::PlanetaryData;
+use crate::structure::spacecraft::SpacecraftData;
 use core::fmt;
 use log::error;
 
-pub const MAX_LOADED_FILES: usize = 32;
+// TODO: Switch these to build constants so that it's configurable when building the library.
+pub const MAX_LOADED_SPKS: usize = 32;
+pub const MAX_LOADED_BPCS: usize = 8;
+pub const MAX_SPACECRAFT_DATA: usize = 16;
+pub const MAX_PLANETARY_DATA: usize = 64;
 
 /// A SPICE context contains all of the loaded SPICE data.
 ///
 /// # Limitations
-/// You may only load up to 32 SPICE files of each kind.
-/// The stack space does _not_ depend on how much data is loaded at any given time.
+/// The stack space required depends on the maximum number of each type that can be loaded.
 #[derive(Clone, Default)]
 pub struct Context<'a> {
     /// NAIF SPK is kept unchanged
-    pub spk_data: [Option<&'a SPK>; MAX_LOADED_FILES],
+    pub spk_data: [Option<&'a SPK>; MAX_LOADED_SPKS],
     /// NAIF BPC is kept unchanged
-    pub bpc_data: [Option<&'a BPC>; MAX_LOADED_FILES],
+    pub bpc_data: [Option<&'a BPC>; MAX_LOADED_BPCS],
+    /// Dataset of planetary data
+    pub planetary_data: DataSet<'a, PlanetaryData, MAX_PLANETARY_DATA>,
+    /// Dataset of spacecraft data
+    pub spacecraft_data: DataSet<'a, SpacecraftData<'a>, MAX_SPACECRAFT_DATA>,
 }
 
 impl<'a: 'b, 'b> Context<'a> {
@@ -43,14 +53,14 @@ impl<'a: 'b, 'b> Context<'a> {
         // This is just a bunch of pointers so it doesn't use much memory.
         let mut me = self.clone();
         // Parse as SPK and place into the SPK list if there is room
-        let mut data_idx = MAX_LOADED_FILES;
+        let mut data_idx = MAX_LOADED_SPKS;
         for (idx, item) in self.spk_data.iter().enumerate() {
             if item.is_none() {
                 data_idx = idx;
                 break;
             }
         }
-        if data_idx == MAX_LOADED_FILES {
+        if data_idx == MAX_LOADED_SPKS {
             return Err(AniseError::StructureIsFull);
         }
         me.spk_data[data_idx] = Some(spk);
@@ -62,14 +72,14 @@ impl<'a: 'b, 'b> Context<'a> {
         // This is just a bunch of pointers so it doesn't use much memory.
         let mut me = self.clone();
         // Parse as SPK and place into the SPK list if there is room
-        let mut data_idx = MAX_LOADED_FILES;
+        let mut data_idx = MAX_LOADED_SPKS;
         for (idx, item) in self.bpc_data.iter().enumerate() {
             if item.is_none() {
                 data_idx = idx;
                 break;
             }
         }
-        if data_idx == MAX_LOADED_FILES {
+        if data_idx == MAX_LOADED_SPKS {
             return Err(AniseError::StructureIsFull);
         }
         me.bpc_data[data_idx] = Some(bpc);

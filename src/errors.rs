@@ -11,6 +11,7 @@
 use hifitime::Epoch;
 
 use crate::prelude::Frame;
+use crate::structure::semver::Semver;
 use core::convert::From;
 use core::fmt;
 use std::io::ErrorKind as IOErrorKind;
@@ -52,6 +53,11 @@ pub enum AniseError {
     MissingInterpolationData(Epoch),
     /// Raised if a computation is physically wrong
     PhysicsError(PhysicsErrorKind),
+    IncompatibleVersion {
+        got: Semver,
+        exp: Semver,
+    },
+    DecodingError(der::Error),
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -156,7 +162,8 @@ impl fmt::Display for AniseError {
                 f,
                 "ANISE error: No interpolation as epoch {e:e}"
             ),
-            Self::PhysicsError(e) => write!(f, "ANISE error: Physics error: {e:?}")
+            Self::PhysicsError(e) => write!(f, "ANISE error: Physics error: {e:?}"),
+            _ => write!(f, "ANISE error: {self:?}")
         }
     }
 }

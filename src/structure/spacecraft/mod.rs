@@ -21,7 +21,7 @@ pub use srp::SRPData;
 
 /// Spacecraft constants can store the same spacecraft constant data as the CCSDS Orbit Parameter Message (OPM) and CCSDS Attitude Parameter Messages (APM)
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
-pub struct SpacecraftConstants<'a> {
+pub struct SpacecraftData<'a> {
     /// Name is used as the input for the hashing function
     pub name: &'a str,
     /// Generic comments field
@@ -36,7 +36,7 @@ pub struct SpacecraftConstants<'a> {
     pub inertia: Option<Inertia>,
 }
 
-impl<'a> SpacecraftConstants<'a> {
+impl<'a> SpacecraftData<'a> {
     /// Specifies what data is available in this structure.
     ///
     /// Returns:
@@ -64,7 +64,7 @@ impl<'a> SpacecraftConstants<'a> {
     }
 }
 
-impl<'a> Encode for SpacecraftConstants<'a> {
+impl<'a> Encode for SpacecraftData<'a> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let available_flags = self.available_data();
         Utf8StringRef::new(self.name)?.encoded_len()?
@@ -87,7 +87,7 @@ impl<'a> Encode for SpacecraftConstants<'a> {
     }
 }
 
-impl<'a> Decode<'a> for SpacecraftConstants<'a> {
+impl<'a> Decode<'a> for SpacecraftData<'a> {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         let name: Utf8StringRef = decoder.decode()?;
         let comments: Utf8StringRef = decoder.decode()?;
@@ -131,11 +131,11 @@ impl<'a> Decode<'a> for SpacecraftConstants<'a> {
 
 #[cfg(test)]
 mod spacecraft_constants_ut {
-    use super::{Decode, DragData, Encode, Inertia, Mass, SRPData, SpacecraftConstants};
+    use super::{Decode, DragData, Encode, Inertia, Mass, SRPData, SpacecraftData};
 
     #[test]
     fn sc_min_repr() {
-        let repr = SpacecraftConstants {
+        let repr = SpacecraftData {
             name: "demo spacecraft",
             comments: "this is an example of encoding spacecraft data",
             ..Default::default()
@@ -144,14 +144,14 @@ mod spacecraft_constants_ut {
         let mut buf = vec![];
         repr.encode_to_vec(&mut buf).unwrap();
 
-        let repr_dec = SpacecraftConstants::from_der(&buf).unwrap();
+        let repr_dec = SpacecraftData::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
     }
 
     #[test]
     fn sc_with_srp_only() {
-        let repr = SpacecraftConstants {
+        let repr = SpacecraftData {
             name: "demo spacecraft",
             comments: "this is an example of encoding spacecraft data",
             srp_data: Some(SRPData::default()),
@@ -161,14 +161,14 @@ mod spacecraft_constants_ut {
         let mut buf = vec![];
         repr.encode_to_vec(&mut buf).unwrap();
 
-        let repr_dec = SpacecraftConstants::from_der(&buf).unwrap();
+        let repr_dec = SpacecraftData::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
     }
 
     #[test]
     fn sc_with_drag_only() {
-        let repr = SpacecraftConstants {
+        let repr = SpacecraftData {
             name: "demo spacecraft",
             comments: "this is an example of encoding spacecraft data",
             drag_data: Some(DragData::default()),
@@ -178,14 +178,14 @@ mod spacecraft_constants_ut {
         let mut buf = vec![];
         repr.encode_to_vec(&mut buf).unwrap();
 
-        let repr_dec = SpacecraftConstants::from_der(&buf).unwrap();
+        let repr_dec = SpacecraftData::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
     }
 
     #[test]
     fn sc_with_mass_only() {
-        let repr = SpacecraftConstants {
+        let repr = SpacecraftData {
             name: "demo spacecraft",
             comments: "this is an example of encoding spacecraft data",
             mass_kg: Some(Mass::default()),
@@ -195,14 +195,14 @@ mod spacecraft_constants_ut {
         let mut buf = vec![];
         repr.encode_to_vec(&mut buf).unwrap();
 
-        let repr_dec = SpacecraftConstants::from_der(&buf).unwrap();
+        let repr_dec = SpacecraftData::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
     }
 
     #[test]
     fn sc_with_inertial_only() {
-        let repr = SpacecraftConstants {
+        let repr = SpacecraftData {
             name: "demo spacecraft",
             comments: "this is an example of encoding spacecraft data",
             inertia: Some(Inertia::default()),
@@ -212,14 +212,14 @@ mod spacecraft_constants_ut {
         let mut buf = vec![];
         repr.encode_to_vec(&mut buf).unwrap();
 
-        let repr_dec = SpacecraftConstants::from_der(&buf).unwrap();
+        let repr_dec = SpacecraftData::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
     }
 
     #[test]
     fn sc_with_srp_mass_inertia() {
-        let repr = SpacecraftConstants {
+        let repr = SpacecraftData {
             name: "demo spacecraft",
             comments: "this is an example of encoding spacecraft data",
             srp_data: Some(SRPData {
@@ -242,14 +242,14 @@ mod spacecraft_constants_ut {
         let mut buf = vec![];
         repr.encode_to_vec(&mut buf).unwrap();
 
-        let repr_dec = SpacecraftConstants::from_der(&buf).unwrap();
+        let repr_dec = SpacecraftData::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
     }
 
     #[test]
     fn sc_full() {
-        let repr = SpacecraftConstants {
+        let repr = SpacecraftData {
             name: "demo spacecraft",
             comments: "this is an example of encoding spacecraft data",
             srp_data: Some(SRPData {
@@ -272,7 +272,7 @@ mod spacecraft_constants_ut {
         let mut buf = vec![];
         repr.encode_to_vec(&mut buf).unwrap();
 
-        let repr_dec = SpacecraftConstants::from_der(&buf).unwrap();
+        let repr_dec = SpacecraftData::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
     }

@@ -10,30 +10,34 @@
 use super::{
     lookuptable::{Entry, LookUpTable},
     metadata::Metadata,
+    semver::Semver,
+    ANISE_VERSION,
 };
 use crate::{errors::IntegrityErrorKind, prelude::AniseError, NaifId};
+use core::marker::PhantomData;
 use der::{asn1::OctetStringRef, Decode, Encode, Reader, Writer};
-use log::error;
+use log::{error, trace};
 
 /// A DataSet is the core structure shared by all ANISE binary data.
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
-pub struct DataSet<'a> {
+pub struct DataSet<'a, T: Encode + Decode<'a>, const ENTRIES: usize> {
     pub metadata: Metadata<'a>,
     /// All datasets have LookUpTable (LUT) that stores the mapping between a key and its index in the ephemeris list.
-    pub lut: LookUpTable<'a>,
+    pub lut: LookUpTable<'a, ENTRIES>,
     pub data_checksum: u32,
     /// The actual data from the dataset
     pub bytes: &'a [u8],
+    _daf_type: PhantomData<T>,
 }
 
 /// Dataset builder allows building a dataset. It requires allocations.
 #[derive(Clone, Default, Debug)]
-pub struct DataSetBuilder<'a> {
-    pub dataset: DataSet<'a>,
+pub struct DataSetBuilder<'a, T: Encode + Decode<'a>, const ENTRIES: usize> {
+    pub dataset: DataSet<'a, T, ENTRIES>,
 }
 
-impl<'a> DataSetBuilder<'a> {
-    pub fn push_into<T: Encode>(
+impl<'a, T: Encode + Decode<'a>, const ENTRIES: usize> DataSetBuilder<'a, T, ENTRIES> {
+    pub fn push_into(
         &mut self,
         buf: &mut Vec<u8>,
         data: T,
@@ -62,14 +66,61 @@ impl<'a> DataSetBuilder<'a> {
         Ok(())
     }
 
-    pub fn finalize(mut self, buf: &'a [u8]) -> Result<DataSet<'a>, AniseError> {
+    pub fn finalize(mut self, buf: &'a [u8]) -> Result<DataSet<'a, T, ENTRIES>, AniseError> {
         self.dataset.bytes = buf;
         self.dataset.set_crc32();
         Ok(self.dataset)
     }
 }
 
-impl<'a> DataSet<'a> {
+impl<'a, T: Encode + Decode<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
+    /// Try to load an Anise file from a pointer of bytes
+    pub fn try_from_bytes(bytes: &'a [u8]) -> Result<Self, AniseError> {
+        match Self::from_der(bytes) {
+            Ok(ctx) => {
+                trace!("[try_from_bytes] loaded context successfully");
+                // Check the full integrity on load of the file.
+                ctx.check_integrity()?;
+                Ok(ctx)
+            }
+            Err(e) => {
+                // If we can't load the file, let's try to load the version only to be helpful
+                match bytes.get(0..5) {
+                    Some(semver_bytes) => match Semver::from_der(&semver_bytes) {
+                        Ok(file_version) => {
+                            if file_version == ANISE_VERSION {
+                                error!("[try_from_bytes] context bytes corrupted but ANISE library version match");
+                                Err(AniseError::DecodingError(e))
+                            } else {
+                                error!(
+                                    "[try_from_bytes] context bytes and ANISE library version mismatch"
+                                );
+                                Err(AniseError::IncompatibleVersion {
+                                    got: file_version,
+                                    exp: ANISE_VERSION,
+                                })
+                            }
+                        }
+                        Err(e) => {
+                            error!("[try_from_bytes] context bytes not in ANISE format");
+                            Err(AniseError::DecodingError(e))
+                        }
+                    },
+                    None => {
+                        error!("[try_from_bytes] context bytes way too short (less than 5 bytes)");
+                        Err(AniseError::DecodingError(e))
+                    }
+                }
+            }
+        }
+    }
+
+    /// Forces to load an Anise file from a pointer of bytes.
+    /// **Panics** if the bytes cannot be interpreted as an Anise file.
+    pub fn from_bytes(buf: &'a [u8]) -> Self {
+        Self::try_from_bytes(buf).unwrap()
+    }
+
     /// Compute the CRC32 of the underlying bytes
     pub fn crc32(&self) -> u32 {
         crc32fast::hash(self.bytes)
@@ -114,7 +165,7 @@ impl<'a> DataSet<'a> {
         }
     }
 
-    pub fn get_by_id<T: Decode<'a>>(&self, id: NaifId) -> Result<T, AniseError> {
+    pub fn get_by_id(&self, id: NaifId) -> Result<T, AniseError> {
         if let Some(entry) = self.lut.by_id.get(&id) {
             // Found the ID
             match T::from_der(&self.bytes[entry.as_range()]) {
@@ -130,7 +181,7 @@ impl<'a> DataSet<'a> {
         }
     }
 
-    pub fn get_by_name<T: Decode<'a>>(&self, id: NaifId) -> Result<T, AniseError> {
+    pub fn get_by_name(&self, id: NaifId) -> Result<T, AniseError> {
         if let Some(entry) = self.lut.by_id.get(&id) {
             // Found the ID
             if let Ok(data) = T::from_der(&self.bytes[entry.as_range()]) {
@@ -144,7 +195,7 @@ impl<'a> DataSet<'a> {
     }
 }
 
-impl<'a> Encode for DataSet<'a> {
+impl<'a, T: Encode + Decode<'a>, const ENTRIES: usize> Encode for DataSet<'a, T, ENTRIES> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let as_byte_ref = OctetStringRef::new(self.bytes)?;
         self.metadata.encoded_len()?
@@ -162,7 +213,7 @@ impl<'a> Encode for DataSet<'a> {
     }
 }
 
-impl<'a> Decode<'a> for DataSet<'a> {
+impl<'a, T: Encode + Decode<'a>, const ENTRIES: usize> Decode<'a> for DataSet<'a, T, ENTRIES> {
     fn decode<D: Reader<'a>>(decoder: &mut D) -> der::Result<Self> {
         let metadata = decoder.decode()?;
         let lut = decoder.decode()?;
@@ -173,6 +224,7 @@ impl<'a> Decode<'a> for DataSet<'a> {
             lut,
             data_checksum: crc32_checksum,
             bytes: bytes.as_bytes(),
+            _daf_type: PhantomData::<T>::default(),
         })
     }
 }
@@ -182,14 +234,15 @@ mod dataset_ut {
     use crate::structure::{
         dataset::DataSetBuilder,
         lookuptable::Entry,
-        spacecraft::{DragData, Inertia, Mass, SRPData, SpacecraftConstants},
+        spacecraft::{DragData, Inertia, Mass, SRPData, SpacecraftData},
     };
 
     use super::{DataSet, Decode, Encode, LookUpTable};
 
     #[test]
     fn zero_repr() {
-        let repr = DataSet::default();
+        // For this test, we want a data set with zero entries allowed in the LUT.
+        let repr = DataSet::<SpacecraftData, 2>::default();
 
         let mut buf = vec![];
         repr.encode_to_vec(&mut buf).unwrap();
@@ -200,13 +253,14 @@ mod dataset_ut {
         assert_eq!(repr, repr_dec);
 
         dbg!(repr);
-        dbg!(core::mem::size_of::<DataSet>());
+        dbg!(core::mem::size_of::<DataSet<SpacecraftData, 2>>());
+        dbg!(core::mem::size_of::<DataSet<SpacecraftData, 128>>());
     }
 
     #[test]
     fn spacecraft_constants_lookup() {
         // Build some data first.
-        let full_sc = SpacecraftConstants {
+        let full_sc = SpacecraftData {
             name: "full spacecraft",
             comments: "this is an example of encoding spacecraft data",
             srp_data: Some(SRPData {
@@ -225,7 +279,7 @@ mod dataset_ut {
             mass_kg: Some(Mass::from_dry_and_fuel_masses(150.0, 50.6)),
             drag_data: Some(DragData::default()),
         };
-        let srp_sc = SpacecraftConstants {
+        let srp_sc = SpacecraftData {
             name: "SRP only spacecraft",
             comments: "this is an example of encoding spacecraft data",
             srp_data: Some(SRPData::default()),
@@ -248,8 +302,7 @@ mod dataset_ut {
             packed_buf[i] = *byte;
         }
         // Check that we can decode what we have copied so far
-        let full_sc_dec =
-            SpacecraftConstants::from_der(&packed_buf[full_sc_entry.as_range()]).unwrap();
+        let full_sc_dec = SpacecraftData::from_der(&packed_buf[full_sc_entry.as_range()]).unwrap();
         assert_eq!(full_sc_dec, full_sc);
         // Encode the other entry
         let mut this_buf = vec![];
@@ -263,8 +316,7 @@ mod dataset_ut {
             end_idx: end_idx + this_buf.len() as u32,
         };
         // Check that we can decode the next entry
-        let srp_sc_dec =
-            SpacecraftConstants::from_der(&packed_buf[srp_sc_entry.as_range()]).unwrap();
+        let srp_sc_dec = SpacecraftData::from_der(&packed_buf[srp_sc_entry.as_range()]).unwrap();
         assert_eq!(srp_sc_dec, srp_sc);
         // Build the lookup table
         let mut lut = LookUpTable::default();
@@ -282,7 +334,7 @@ mod dataset_ut {
 
         dbg!(buf.len());
 
-        let repr_dec = DataSet::from_der(&buf).unwrap();
+        let repr_dec = DataSet::<SpacecraftData, 4>::from_der(&buf).unwrap();
 
         assert_eq!(dataset, repr_dec);
 
@@ -290,20 +342,20 @@ mod dataset_ut {
 
         // Now that the data is valid, let's fetch the data back
 
-        let full_sc_repr = repr_dec.get_by_id::<SpacecraftConstants>(-50).unwrap();
+        let full_sc_repr = repr_dec.get_by_id(-50).unwrap();
         assert_eq!(full_sc_repr, full_sc);
 
-        let srp_repr = repr_dec.get_by_id::<SpacecraftConstants>(-20).unwrap();
+        let srp_repr = repr_dec.get_by_id(-20).unwrap();
         assert_eq!(srp_repr, srp_sc);
 
         // And check that we get an error if the data is wrong.
-        assert!(repr_dec.get_by_id::<SpacecraftConstants>(0).is_err())
+        assert!(repr_dec.get_by_id(0).is_err())
     }
 
     #[test]
     fn spacecraft_constants_lookup_builder() {
         // Build some data first.
-        let full_sc = SpacecraftConstants {
+        let full_sc = SpacecraftData {
             name: "full spacecraft",
             comments: "this is an example of encoding spacecraft data",
             srp_data: Some(SRPData {
@@ -322,7 +374,7 @@ mod dataset_ut {
             mass_kg: Some(Mass::from_dry_and_fuel_masses(150.0, 50.6)),
             drag_data: Some(DragData::default()),
         };
-        let srp_sc = SpacecraftConstants {
+        let srp_sc = SpacecraftData {
             name: "SRP only spacecraft",
             comments: "this is an example of encoding spacecraft data",
             srp_data: Some(SRPData::default()),
@@ -349,7 +401,7 @@ mod dataset_ut {
 
         dbg!(ebuf.len());
 
-        let repr_dec = DataSet::from_der(&ebuf).unwrap();
+        let repr_dec = DataSet::<SpacecraftData, 16>::from_bytes(&ebuf);
 
         assert_eq!(dataset, repr_dec);
 
@@ -357,13 +409,13 @@ mod dataset_ut {
 
         // Now that the data is valid, let's fetch the data back
 
-        let full_sc_repr = repr_dec.get_by_id::<SpacecraftConstants>(-50).unwrap();
+        let full_sc_repr = repr_dec.get_by_id(-50).unwrap();
         assert_eq!(full_sc_repr, full_sc);
 
-        let srp_repr = repr_dec.get_by_id::<SpacecraftConstants>(-20).unwrap();
+        let srp_repr = repr_dec.get_by_id(-20).unwrap();
         assert_eq!(srp_repr, srp_sc);
 
         // And check that we get an error if the data is wrong.
-        assert!(repr_dec.get_by_id::<SpacecraftConstants>(0).is_err())
+        assert!(repr_dec.get_by_id(0).is_err())
     }
 }

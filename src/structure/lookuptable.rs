@@ -16,8 +16,6 @@ use log::warn;
 
 use crate::{prelude::AniseError, NaifId};
 
-pub const MAX_LUT_ENTRIES: usize = 32;
-
 /// A lookup table entry contains the start and end indexes in the data array of the data that is sought after.
 ///
 /// # Implementation note
@@ -60,14 +58,14 @@ impl<'a> Decode<'a> for Entry {
 /// # Note
 /// _Both_ the IDs and the name MUST be unique in the look up table.
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
-pub struct LookUpTable<'a> {
+pub struct LookUpTable<'a, const ENTRIES: usize> {
     /// Unique IDs of each item in the
-    pub by_id: FnvIndexMap<NaifId, Entry, MAX_LUT_ENTRIES>,
+    pub by_id: FnvIndexMap<NaifId, Entry, ENTRIES>,
     /// Corresponding index for each hash
-    pub by_name: FnvIndexMap<&'a str, Entry, MAX_LUT_ENTRIES>,
+    pub by_name: FnvIndexMap<&'a str, Entry, ENTRIES>,
 }
 
-impl<'a> LookUpTable<'a> {
+impl<'a, const ENTRIES: usize> LookUpTable<'a, ENTRIES> {
     pub fn append(&mut self, id: i32, name: &'a str, entry: Entry) -> Result<(), AniseError> {
         self.by_id
             .insert(id, entry)
@@ -116,16 +114,16 @@ impl<'a> LookUpTable<'a> {
     fn der_encoding(
         &self,
     ) -> (
-        SequenceOf<i32, MAX_LUT_ENTRIES>,
-        SequenceOf<OctetStringRef, MAX_LUT_ENTRIES>,
-        SequenceOf<Entry, MAX_LUT_ENTRIES>,
+        SequenceOf<i32, ENTRIES>,
+        SequenceOf<OctetStringRef, ENTRIES>,
+        SequenceOf<Entry, ENTRIES>,
     ) {
         // Decide whether to encode the entries from the ID iterator or the names iterator based on which has the most.
         let use_id = self.by_id.len() >= self.by_name.len();
         // Build the list of entries
-        let mut entries = SequenceOf::<Entry, MAX_LUT_ENTRIES>::new();
+        let mut entries = SequenceOf::<Entry, ENTRIES>::new();
         // Build the list of keys
-        let mut ids = SequenceOf::<i32, MAX_LUT_ENTRIES>::new();
+        let mut ids = SequenceOf::<i32, ENTRIES>::new();
         for (id, entry) in &self.by_id {
             ids.add(*id).unwrap();
             if use_id {
@@ -133,7 +131,7 @@ impl<'a> LookUpTable<'a> {
             }
         }
         // Build the list of names
-        let mut names = SequenceOf::<OctetStringRef, MAX_LUT_ENTRIES>::new();
+        let mut names = SequenceOf::<OctetStringRef, ENTRIES>::new();
         for (name, entry) in &self.by_name {
             names
                 .add(OctetStringRef::new(name.as_bytes()).unwrap())
@@ -147,7 +145,7 @@ impl<'a> LookUpTable<'a> {
     }
 }
 
-impl<'a> Encode for LookUpTable<'a> {
+impl<'a, const ENTRIES: usize> Encode for LookUpTable<'a, ENTRIES> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let (ids, names, entries) = self.der_encoding();
         ids.encoded_len()? + names.encoded_len()? + entries.encoded_len()?
@@ -161,13 +159,13 @@ impl<'a> Encode for LookUpTable<'a> {
     }
 }
 
-impl<'a> Decode<'a> for LookUpTable<'a> {
+impl<'a, const ENTRIES: usize> Decode<'a> for LookUpTable<'a, ENTRIES> {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         // Decode as sequences and use that to build the look up table.
         let mut lut = Self::default();
-        let ids: SequenceOf<i32, MAX_LUT_ENTRIES> = decoder.decode()?;
-        let names: SequenceOf<OctetStringRef, MAX_LUT_ENTRIES> = decoder.decode()?;
-        let entries: SequenceOf<Entry, MAX_LUT_ENTRIES> = decoder.decode()?;
+        let ids: SequenceOf<i32, ENTRIES> = decoder.decode()?;
+        let names: SequenceOf<OctetStringRef, ENTRIES> = decoder.decode()?;
+        let entries: SequenceOf<Entry, ENTRIES> = decoder.decode()?;
         for (id, entry) in ids.iter().zip(entries.iter()) {
             lut.by_id.insert(*id, *entry).unwrap();
         }
@@ -190,10 +188,10 @@ impl<'a> Decode<'a> for LookUpTable<'a> {
 
 #[cfg(test)]
 mod lut_ut {
-    use super::{Decode, Encode, Entry, LookUpTable, MAX_LUT_ENTRIES};
+    use super::{Decode, Encode, Entry, LookUpTable};
     #[test]
     fn zero_repr() {
-        let repr = LookUpTable::default();
+        let repr = LookUpTable::<2>::default();
 
         let mut buf = vec![];
         repr.encode_to_vec(&mut buf).unwrap();
@@ -203,14 +201,14 @@ mod lut_ut {
         assert_eq!(repr, repr_dec);
 
         dbg!(repr);
-        dbg!(core::mem::size_of::<LookUpTable>());
+        dbg!(core::mem::size_of::<LookUpTable<64>>());
     }
 
     #[test]
     fn repr_ids_only() {
-        let mut repr = LookUpTable::default();
+        let mut repr = LookUpTable::<32>::default();
         let num_bytes = 363;
-        for i in 0..(MAX_LUT_ENTRIES as u32) {
+        for i in 0..32 {
             let id = -20 - (i as i32);
             repr.append_id(
                 id,
@@ -232,17 +230,18 @@ mod lut_ut {
 
     #[test]
     fn repr_names_only() {
+        const LUT_SIZE: usize = 32;
         // Create a vector to store the strings and declare it before repr for borrow checker
         let mut names = Vec::new();
-        let mut repr = LookUpTable::default();
+        let mut repr = LookUpTable::<LUT_SIZE>::default();
 
         let num_bytes = 363;
 
-        for i in 0..(MAX_LUT_ENTRIES as usize) {
+        for i in 0..LUT_SIZE {
             names.push(format!("Name{}", i));
         }
 
-        for i in 0..(MAX_LUT_ENTRIES as usize) {
+        for i in 0..LUT_SIZE {
             repr.append_name(
                 &names[i],
                 Entry {
@@ -263,7 +262,7 @@ mod lut_ut {
 
     #[test]
     fn test_integrity_checker() {
-        let mut lut = LookUpTable::default();
+        let mut lut = LookUpTable::<8>::default();
         assert!(lut.check_integrity()); // Empty, passes
 
         lut.append(1, "a", Entry::default()).unwrap();
