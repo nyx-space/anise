@@ -17,6 +17,8 @@ use ellipsoid::Ellipsoid;
 use nutprec::NutationPrecessionAngle;
 use phaseangle::PhaseAngle;
 
+use super::dataset::DataSetT;
+
 pub const MAX_NUT_PREC_ANGLES: usize = 16;
 
 /// ANISE supports two different kinds of orientation data. High precision, with spline based interpolations, and constants right ascension, declination, and prime meridian, typically used for planetary constant data.
@@ -40,6 +42,8 @@ pub struct PlanetaryData {
     pub num_nut_prec_angles: u8,
     pub nut_prec_angles: [NutationPrecessionAngle; MAX_NUT_PREC_ANGLES],
 }
+
+impl<'a> DataSetT<'a> for PlanetaryData {}
 
 impl PlanetaryData {
     /// Specifies what data is available in this structure.

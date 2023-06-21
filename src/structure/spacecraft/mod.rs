@@ -19,6 +19,8 @@ pub use inertia::Inertia;
 pub use mass::Mass;
 pub use srp::SRPData;
 
+use super::dataset::DataSetT;
+
 /// Spacecraft constants can store the same spacecraft constant data as the CCSDS Orbit Parameter Message (OPM) and CCSDS Attitude Parameter Messages (APM)
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct SpacecraftData<'a> {
@@ -35,6 +37,8 @@ pub struct SpacecraftData<'a> {
     // Inertia tensor
     pub inertia: Option<Inertia>,
 }
+
+impl<'a> DataSetT<'a> for SpacecraftData<'a> {}
 
 impl<'a> SpacecraftData<'a> {
     /// Specifies what data is available in this structure.

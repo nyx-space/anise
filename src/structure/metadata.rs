@@ -8,8 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 use core::fmt;
+use core::str::FromStr;
 use der::{asn1::Utf8StringRef, Decode, Encode, Reader, Writer};
 use hifitime::Epoch;
+
+use crate::prelude::AniseError;
 
 use super::{dataset::DataSetType, semver::Semver, ANISE_VERSION};
 
@@ -25,6 +28,20 @@ pub struct Metadata<'a> {
     pub originator: &'a str,
     /// Unique resource identifier to the metadata of this file. This is for FAIR compliance.
     pub metadata_uri: &'a str,
+}
+
+impl<'a> Metadata<'a> {
+    /// Only decode the anise version and dataset type
+    pub fn decode_header(bytes: &[u8]) -> Result<Self, AniseError> {
+        let anise_version =
+            Semver::from_der(&bytes[..5]).map_err(|e| AniseError::DecodingError(e))?;
+        let dataset_type =
+            DataSetType::from_der(&bytes[5..8]).map_err(|e| AniseError::DecodingError(e))?;
+        let mut me = Self::default();
+        me.anise_version = anise_version;
+        me.dataset_type = dataset_type;
+        Ok(me)
+    }
 }
 
 impl Default for Metadata<'_> {
@@ -43,7 +60,7 @@ impl<'a> Encode for Metadata<'a> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         self.anise_version.encoded_len()?
             + self.dataset_type.encoded_len()?
-            + self.creation_date.encoded_len()?
+            + Utf8StringRef::new(&format!("{}", self.creation_date))?.encoded_len()?
             + Utf8StringRef::new(self.originator)?.encoded_len()?
             + Utf8StringRef::new(self.metadata_uri)?.encoded_len()?
     }
@@ -51,7 +68,7 @@ impl<'a> Encode for Metadata<'a> {
     fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
         self.anise_version.encode(encoder)?;
         self.dataset_type.encode(encoder)?;
-        self.creation_date.encode(encoder)?;
+        Utf8StringRef::new(&format!("{}", self.creation_date))?.encode(encoder)?;
         Utf8StringRef::new(self.originator)?.encode(encoder)?;
         Utf8StringRef::new(self.metadata_uri)?.encode(encoder)
     }
@@ -62,7 +79,8 @@ impl<'a> Decode<'a> for Metadata<'a> {
         Ok(Self {
             anise_version: decoder.decode()?,
             dataset_type: decoder.decode()?,
-            creation_date: decoder.decode()?,
+            creation_date: Epoch::from_str(decoder.decode::<Utf8StringRef<'a>>()?.as_str())
+                .unwrap(),
             originator: decoder.decode::<Utf8StringRef<'a>>()?.as_str(),
             metadata_uri: decoder.decode::<Utf8StringRef<'a>>()?.as_str(),
         })

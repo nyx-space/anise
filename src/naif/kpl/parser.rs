@@ -18,7 +18,8 @@ use std::path::Path;
 use crate::naif::kpl::tpc::TPCItem;
 use crate::naif::kpl::Parameter;
 use crate::prelude::AniseError;
-use crate::structure::dataset::{DataSet, DataSetBuilder};
+use crate::structure::dataset::{DataSet, DataSetBuilder, DataSetType};
+use crate::structure::metadata::Metadata;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
 use crate::structure::planetocentric::phaseangle::PhaseAngle;
 use crate::structure::planetocentric::PlanetaryData;
@@ -232,5 +233,9 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
 
     println!("Added {} items", dataset_builder.dataset.lut.by_id.len());
 
-    Ok(dataset_builder.dataset)
+    let mut dataset = dataset_builder.dataset;
+    dataset.metadata = Metadata::default();
+    dataset.metadata.dataset_type = DataSetType::PlanetaryData;
+
+    Ok(dataset)
 }
