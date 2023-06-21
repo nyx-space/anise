@@ -392,6 +392,16 @@ mod dataset_ut {
             .push_into(&mut buf, full_sc, Some(-50), Some("Full spacecraft"))
             .unwrap();
 
+        // Pushing without name as ID -51
+        builder
+            .push_into(&mut buf, full_sc, Some(-51), None)
+            .unwrap();
+
+        // Pushing without ID
+        builder
+            .push_into(&mut buf, srp_sc, None, Some("ID less SRP spacecraft"))
+            .unwrap();
+
         let dataset = builder.finalize(&buf).unwrap();
 
         // And encode it.
