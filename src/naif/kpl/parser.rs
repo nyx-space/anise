@@ -15,7 +15,13 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
+use crate::naif::kpl::tpc::TPCItem;
+use crate::naif::kpl::Parameter;
 use crate::prelude::AniseError;
+use crate::structure::dataset::{DataSet, DataSetBuilder};
+use crate::structure::planetocentric::ellipsoid::Ellipsoid;
+use crate::structure::planetocentric::phaseangle::PhaseAngle;
+use crate::structure::planetocentric::PlanetaryData;
 
 use super::{KPLItem, KPLValue};
 
@@ -121,4 +127,110 @@ pub fn parse_file<P: AsRef<Path>, I: KPLItem>(
         body_map.parse(item);
     }
     Ok(map)
+}
+
+pub fn convert_tpc<'a, P: AsRef<Path>>(
+    pck: P,
+    gm: P,
+) -> Result<DataSet<'a, PlanetaryData, 64>, AniseError> {
+    let mut buf = vec![];
+    let mut dataset_builder = DataSetBuilder::default();
+
+    let gravity_data = parse_file::<_, TPCItem>(gm, false)?;
+    let mut planetary_data = parse_file::<_, TPCItem>(pck, false)?;
+
+    for (key, value) in gravity_data {
+        match planetary_data.get_mut(&key) {
+            Some(planet_data) => {
+                for (gk, gv) in value.data {
+                    planet_data.data.insert(gk, gv);
+                }
+            }
+            None => {}
+        }
+    }
+
+    // Now that planetary_data has everything, we'll create a vector of the planetary data in the ANISE ASN1 format.
+
+    for (object_id, planetary_data) in planetary_data {
+        match planetary_data.data.get(&Parameter::GravitationalParameter) {
+            Some(mu_km3_s2_value) => {
+                match mu_km3_s2_value {
+                    KPLValue::Float(mu_km3_s2) => {
+                        // Build the ellipsoid
+                        let ellipsoid = match planetary_data.data.get(&Parameter::Radii) {
+                            Some(radii_km) => match radii_km {
+                                KPLValue::Float(radius_km) => {
+                                    Some(Ellipsoid::from_sphere(*radius_km))
+                                }
+                                KPLValue::Matrix(radii_km) => match radii_km.len() {
+                                    2 => Some(Ellipsoid::from_spheroid(radii_km[0], radii_km[1])),
+                                    3 => Some(Ellipsoid {
+                                        semi_major_equatorial_radius_km: radii_km[0],
+                                        semi_minor_equatorial_radius_km: radii_km[1],
+                                        polar_radius_km: radii_km[2],
+                                    }),
+                                    _ => unreachable!(),
+                                },
+                                _ => todo!(),
+                            },
+                            None => None,
+                        };
+
+                        let constant = match planetary_data.data.get(&Parameter::PoleRa) {
+                            Some(data) => match data {
+                                KPLValue::Matrix(pole_ra_data) => {
+                                    let pola_ra = PhaseAngle::maybe_new(&pole_ra_data);
+                                    let pola_dec_data: Vec<f64> = planetary_data.data
+                                        [&Parameter::PoleDec]
+                                        .to_vec_f64()
+                                        .unwrap();
+                                    let pola_dec = PhaseAngle::maybe_new(&pola_dec_data);
+
+                                    let prime_mer_data: Vec<f64> = planetary_data.data
+                                        [&Parameter::PoleDec]
+                                        .to_vec_f64()
+                                        .unwrap();
+                                    let prime_mer = PhaseAngle::maybe_new(&prime_mer_data);
+
+                                    PlanetaryData {
+                                        object_id,
+                                        mu_km3_s2: *mu_km3_s2,
+                                        shape: ellipsoid,
+                                        pole_right_ascension: pola_ra,
+                                        pole_declination: pola_dec,
+                                        prime_meridian: prime_mer,
+                                        ..Default::default()
+                                    }
+                                }
+                                _ => unreachable!(),
+                            },
+                            None => {
+                                // Assume not rotation data available
+                                PlanetaryData {
+                                    object_id,
+                                    mu_km3_s2: *mu_km3_s2,
+                                    shape: ellipsoid,
+                                    ..Default::default()
+                                }
+                            }
+                        };
+
+                        dataset_builder.push_into(&mut buf, constant, Some(object_id), None)?;
+                    }
+                    _ => panic!("{mu_km3_s2_value:?}"),
+                }
+            }
+            None => {
+                println!(
+                    "{object_id} => No gravity data in {:?}",
+                    planetary_data.data
+                )
+            }
+        }
+    }
+
+    println!("Added {} items", dataset_builder.dataset.lut.by_id.len());
+
+    Ok(dataset_builder.dataset)
 }

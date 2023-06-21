@@ -18,6 +18,62 @@ use core::marker::PhantomData;
 use der::{asn1::OctetStringRef, Decode, Encode, Reader, Writer};
 use log::{error, trace};
 
+#[cfg(feature = "std")]
+macro_rules! io_imports {
+    () => {
+        use std::fs::File;
+        use std::io::Write;
+        use std::path::Path;
+        use std::path::PathBuf;
+    };
+}
+
+#[cfg(feature = "std")]
+io_imports!();
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[repr(u8)]
+pub enum DataSetType {
+    /// Used only if not encoding a dataset but some other structure
+    NotApplicable,
+    SpacecraftData,
+    PlanetaryData,
+}
+
+impl From<u8> for DataSetType {
+    fn from(val: u8) -> Self {
+        match val {
+            0 => DataSetType::NotApplicable,
+            1 => DataSetType::SpacecraftData,
+            2 => DataSetType::PlanetaryData,
+            _ => panic!("Invalid value for DataSetType {val}"),
+        }
+    }
+}
+
+impl Into<u8> for DataSetType {
+    fn into(self) -> u8 {
+        self as u8
+    }
+}
+
+impl Encode for DataSetType {
+    fn encoded_len(&self) -> der::Result<der::Length> {
+        (*self as u8).encoded_len()
+    }
+
+    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+        (*self as u8).encode(encoder)
+    }
+}
+
+impl<'a> Decode<'a> for DataSetType {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
+        let asu8: u8 = decoder.decode()?;
+        Ok(Self::from(asu8))
+    }
+}
+
 /// A DataSet is the core structure shared by all ANISE binary data.
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub struct DataSet<'a, T: Encode + Decode<'a>, const ENTRIES: usize> {
@@ -191,6 +247,38 @@ impl<'a, T: Encode + Decode<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
             }
         } else {
             Err(AniseError::ItemNotFound)
+        }
+    }
+
+    /// Saves this dataset to the provided file
+    /// If overwrite is set to false, and the filename already exists, this function will return an error.
+    #[cfg(feature = "std")]
+    pub fn save_as(&self, filename: PathBuf, overwrite: bool) -> Result<(), AniseError> {
+        use log::{info, warn};
+
+        if Path::new(&filename).exists() {
+            if !overwrite {
+                return Err(AniseError::FileExists);
+            } else {
+                warn!("[save_as] overwriting {}", filename.display());
+            }
+        }
+
+        let mut buf = vec![];
+
+        match File::create(&filename) {
+            Ok(mut file) => {
+                if let Err(e) = self.encode_to_vec(&mut buf) {
+                    return Err(AniseError::DecodingError(e));
+                }
+                if let Err(e) = file.write_all(&buf) {
+                    Err(e.kind().into())
+                } else {
+                    info!("[OK] dataset saved to {}", filename.display());
+                    Ok(())
+                }
+            }
+            Err(e) => Err(e.kind().into()),
         }
     }
 }

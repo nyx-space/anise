@@ -11,12 +11,14 @@ use core::fmt;
 use der::{asn1::Utf8StringRef, Decode, Encode, Reader, Writer};
 use hifitime::Epoch;
 
-use super::{semver::Semver, ANISE_VERSION};
+use super::{dataset::DataSetType, semver::Semver, ANISE_VERSION};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Metadata<'a> {
     /// The ANISE version number. Can be used for partial decoding to determine whether a file is compatible with a library.
     pub anise_version: Semver,
+    /// The type of dataset encoded in the rest of the structure
+    pub dataset_type: DataSetType,
     /// Date time of the creation of this file.
     pub creation_date: Epoch,
     /// Originator of the file, either an organization, a person, a tool, or a combination thereof
@@ -29,6 +31,7 @@ impl Default for Metadata<'_> {
     fn default() -> Self {
         Self {
             anise_version: ANISE_VERSION,
+            dataset_type: DataSetType::NotApplicable,
             creation_date: Epoch::now().unwrap(),
             originator: Default::default(),
             metadata_uri: Default::default(),
@@ -39,6 +42,7 @@ impl Default for Metadata<'_> {
 impl<'a> Encode for Metadata<'a> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         self.anise_version.encoded_len()?
+            + self.dataset_type.encoded_len()?
             + self.creation_date.encoded_len()?
             + Utf8StringRef::new(self.originator)?.encoded_len()?
             + Utf8StringRef::new(self.metadata_uri)?.encoded_len()?
@@ -46,6 +50,7 @@ impl<'a> Encode for Metadata<'a> {
 
     fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
         self.anise_version.encode(encoder)?;
+        self.dataset_type.encode(encoder)?;
         self.creation_date.encode(encoder)?;
         Utf8StringRef::new(self.originator)?.encode(encoder)?;
         Utf8StringRef::new(self.metadata_uri)?.encode(encoder)
@@ -56,6 +61,7 @@ impl<'a> Decode<'a> for Metadata<'a> {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         Ok(Self {
             anise_version: decoder.decode()?,
+            dataset_type: decoder.decode()?,
             creation_date: decoder.decode()?,
             originator: decoder.decode::<Utf8StringRef<'a>>()?.as_str(),
             metadata_uri: decoder.decode::<Utf8StringRef<'a>>()?.as_str(),
