@@ -19,7 +19,6 @@ use core::marker::PhantomData;
 use der::{asn1::OctetStringRef, Decode, Encode, Reader, Writer};
 use log::{error, trace};
 
-#[cfg(feature = "std")]
 macro_rules! io_imports {
     () => {
         use std::fs::File;
@@ -29,7 +28,6 @@ macro_rules! io_imports {
     };
 }
 
-#[cfg(feature = "std")]
 io_imports!();
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -256,7 +254,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
 
     /// Saves this dataset to the provided file
     /// If overwrite is set to false, and the filename already exists, this function will return an error.
-    #[cfg(feature = "std")]
+
     pub fn save_as(&self, filename: PathBuf, overwrite: bool) -> Result<(), AniseError> {
         use log::{info, warn};
 

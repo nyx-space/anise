@@ -16,12 +16,12 @@ use core::hash::Hash;
 use hifitime::Epoch;
 use log::{error, trace, warn};
 use std::marker::PhantomData;
-#[cfg(feature = "std")]
+
 use zerocopy::AsBytes;
 use zerocopy::{FromBytes, LayoutVerified};
 
 // Thanks ChatGPT for the idea !
-#[cfg(feature = "std")]
+
 macro_rules! io_imports {
     () => {
         use std::fs::File;
@@ -31,7 +31,6 @@ macro_rules! io_imports {
     };
 }
 
-#[cfg(feature = "std")]
 io_imports!();
 
 pub(crate) const RCRD_LEN: usize = 1024;
@@ -280,7 +279,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     /// Writes the contents of this DAF file to a new location.
-    #[cfg(feature = "std")]
+
     pub fn persist<P: AsRef<Path>>(&self, path: P) -> IoResult<()> {
         let mut fs = File::create(path)?;
 
@@ -308,7 +307,6 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         fs.write_all(&self.bytes[self.file_record.fwrd_idx() * (2 * RCRD_LEN)..])
     }
 
-    #[cfg(feature = "std")]
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, AniseError> {
         let mut buf = Vec::new();
         let mut file = File::open(path).unwrap();

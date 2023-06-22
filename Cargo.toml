@@ -44,8 +44,7 @@ polars = {version = "0.30", features = ["lazy", "parquet"]}
 rayon = "1.7"
 
 [features]
-default = ["std", "validation"]
-std = []
+default = ["validation"]
 validation = [] # Enabling this flag significantly reduces compilation times due to Arrow and Polars.
 
 [profile.bench]

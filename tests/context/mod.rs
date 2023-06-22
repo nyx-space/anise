@@ -1,4 +1,3 @@
-#[cfg(feature = "std")]
 #[test]
 fn test_load_ctx() {
     // Start bycreating the ANISE planetary data

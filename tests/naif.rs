@@ -136,7 +136,7 @@ fn test_spk_load_bytes() {
 }
 
 // The `load` function copies the bytes, so it's only available with std
-#[cfg(feature = "std")]
+
 #[test]
 fn test_spk_rename_summary() {
     if pretty_env_logger::try_init().is_err() {
