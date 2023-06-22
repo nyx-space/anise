@@ -6,6 +6,7 @@ use anise::cli::inspect::{BpcRow, SpkRow};
 use anise::cli::CliErrors;
 use anise::file_mmap;
 use anise::naif::daf::{FileRecord, NAIFRecord, NAIFSummaryRecord};
+#[cfg(feature = "std")]
 use anise::naif::kpl::parser::convert_tpc;
 use anise::prelude::*;
 use anise::structure::dataset::{DataSet, DataSetType};

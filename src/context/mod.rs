@@ -41,6 +41,18 @@ pub struct Context<'a> {
 
 impl<'a> fmt::Display for Context<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(f, "Context: #SPK = {}", self.num_loaded_spk())
+        write!(
+            f,
+            "Context: #SPK = {}\t#BPC = {}",
+            self.num_loaded_spk(),
+            self.num_loaded_bpc()
+        )?;
+        if !self.planetary_data.lut.by_id.is_empty() {
+            write!(f, "\t{}", self.planetary_data)?;
+        }
+        if !self.spacecraft_data.lut.by_id.is_empty() {
+            write!(f, "\t{}", self.spacecraft_data)?;
+        }
+        Ok(())
     }
 }

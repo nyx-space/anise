@@ -136,9 +136,23 @@ fn test_parse_gm() {
 
 #[test]
 fn test_anise_conversion() {
+    use crate::errors::AniseError;
     use crate::naif::kpl::parser::convert_tpc;
+    use crate::{file_mmap, structure::dataset::DataSet};
+    use std::fs::File;
 
     let dataset = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
 
     assert_eq!(dataset.lut.by_id.len(), 47);
+
+    let path = "target/gm_pck_08.anise";
+
+    // Test saving
+    dataset.save_as(path.into(), true).unwrap();
+
+    // Test reloading
+    let bytes = file_mmap!(path).unwrap();
+    let reloaded = DataSet::from_bytes(&bytes);
+
+    assert_eq!(reloaded, dataset);
 }

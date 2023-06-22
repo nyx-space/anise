@@ -11,5 +11,6 @@
 #[macro_use]
 extern crate approx;
 mod astro;
+mod context;
 mod ephemerides;
 mod frames;
