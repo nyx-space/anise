@@ -15,6 +15,8 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
+use log::{info, warn};
+
 use crate::naif::kpl::tpc::TPCItem;
 use crate::naif::kpl::Parameter;
 use crate::prelude::AniseError;
@@ -218,15 +220,13 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
                         };
 
                         dataset_builder.push_into(&mut buf, constant, Some(object_id), None)?;
+                        info!("Added {object_id}");
                     }
                     _ => panic!("{mu_km3_s2_value:?}"),
                 }
             }
             None => {
-                println!(
-                    "{object_id} => No gravity data in {:?}",
-                    planetary_data.data
-                )
+                warn!("Skipping {object_id}: No gravity data")
             }
         }
     }

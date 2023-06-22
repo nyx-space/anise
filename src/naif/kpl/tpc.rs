@@ -47,7 +47,7 @@ impl KPLItem for TPCItem {
                 }
                 if let Ok(param) = Parameter::from_str(param) {
                     self.data.insert(param, data.to_value());
-                } else {
+                } else if param != "GMLIST" {
                     warn!("Unknown parameter `{param}` -- ignoring");
                 }
             }
@@ -138,7 +138,7 @@ fn test_parse_gm() {
 fn test_anise_conversion() {
     use crate::naif::kpl::parser::convert_tpc;
 
-    let dataset = convert_tpc("data/gm_de431.tpc", "data/pck00008.tpc").unwrap();
+    let dataset = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
 
     assert_eq!(dataset.lut.by_id.len(), 47);
 }
