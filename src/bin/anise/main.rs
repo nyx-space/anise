@@ -6,6 +6,7 @@ use anise::cli::inspect::{BpcRow, SpkRow};
 use anise::cli::CliErrors;
 use anise::file_mmap;
 use anise::naif::daf::{FileRecord, NAIFRecord, NAIFSummaryRecord};
+use anise::naif::kpl::parser::convert_tpc;
 use anise::prelude::*;
 use anise::structure::dataset::{DataSet, DataSetType};
 use anise::structure::metadata::Metadata;
@@ -18,6 +19,7 @@ use zerocopy::FromBytes;
 
 const LOG_VAR: &str = "ANISE_LOG";
 
+#[cfg(feature = "std")]
 fn main() -> Result<(), CliErrors> {
     if var(LOG_VAR).is_err() {
         set_var(LOG_VAR, "INFO");
@@ -223,19 +225,11 @@ fn main() -> Result<(), CliErrors> {
             gmfile,
             outfile,
         } => {
-            if cfg!(feature = "std") {
-                use anise::naif::kpl::parser::convert_tpc;
+            let dataset = convert_tpc(pckfile, gmfile).map_err(CliErrors::AniseError)?;
 
-                let dataset = convert_tpc(pckfile, gmfile).map_err(CliErrors::AniseError)?;
+            dataset.save_as(outfile, false)?;
 
-                dataset.save_as(outfile, false)?;
-
-                Ok(())
-            } else {
-                Err(CliErrors::ArgumentError(
-                    "KPL parsing requires std feature".to_string(),
-                ))
-            }
+            Ok(())
         }
     }
 }

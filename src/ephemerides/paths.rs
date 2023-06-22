@@ -72,9 +72,7 @@ impl<'a> Context<'a> {
         }
 
         // Grab the summary data, which we use to find the paths
-        let summary = self
-            .spk_summary_from_id_at_epoch(source.ephemeris_id, epoch)?
-            .0;
+        let summary = self.spk_summary_at_epoch(source.ephemeris_id, epoch)?.0;
 
         let mut center_id = summary.center_id;
 
@@ -87,7 +85,7 @@ impl<'a> Context<'a> {
         }
 
         for _ in 0..MAX_TREE_DEPTH {
-            match self.spk_summary_from_id_at_epoch(center_id, epoch) {
+            match self.spk_summary_at_epoch(center_id, epoch) {
                 Ok((summary, _, _)) => {
                     center_id = summary.center_id;
                     of_path[of_path_len] = Some(center_id);

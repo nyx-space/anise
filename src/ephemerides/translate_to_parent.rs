@@ -45,7 +45,7 @@ impl<'a> Context<'a> {
 
         // First, let's find the SPK summary for this frame.
         let (summary, spk_no, idx_in_spk) =
-            self.spk_summary_from_id_at_epoch(source.ephemeris_id, epoch)?;
+            self.spk_summary_at_epoch(source.ephemeris_id, epoch)?;
 
         let new_frame = source.with_ephem(summary.center_id);
 
