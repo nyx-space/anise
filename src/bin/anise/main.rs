@@ -224,7 +224,7 @@ fn main() -> Result<(), CliErrors> {
             gmfile,
             outfile,
         } => {
-            let dataset = convert_tpc(pckfile, gmfile).map_err(|e| CliErrors::AniseError(e))?;
+            let dataset = convert_tpc(pckfile, gmfile).map_err(CliErrors::AniseError)?;
 
             dataset.save_as(outfile, false)?;
 

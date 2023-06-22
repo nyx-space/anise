@@ -52,9 +52,9 @@ impl From<u8> for DataSetType {
     }
 }
 
-impl Into<u8> for DataSetType {
-    fn into(self) -> u8 {
-        self as u8
+impl From<DataSetType> for u8 {
+    fn from(val: DataSetType) -> Self {
+        val as u8
     }
 }
 
@@ -146,7 +146,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
             Err(e) => {
                 // If we can't load the file, let's try to load the version only to be helpful
                 match bytes.get(0..5) {
-                    Some(semver_bytes) => match Semver::from_der(&semver_bytes) {
+                    Some(semver_bytes) => match Semver::from_der(semver_bytes) {
                         Ok(file_version) => {
                             if file_version == ANISE_VERSION {
                                 error!("[try_from_bytes] context bytes corrupted but ANISE library version match");

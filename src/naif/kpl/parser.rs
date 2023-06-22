@@ -15,7 +15,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use log::{info, warn};
+use log::{error, info, warn};
 
 use crate::naif::kpl::tpc::TPCItem;
 use crate::naif::kpl::Parameter;
@@ -143,13 +143,10 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
     let mut planetary_data = parse_file::<_, TPCItem>(pck, false)?;
 
     for (key, value) in gravity_data {
-        match planetary_data.get_mut(&key) {
-            Some(planet_data) => {
-                for (gk, gv) in value.data {
-                    planet_data.data.insert(gk, gv);
-                }
+        if let Some(planet_data) = planetary_data.get_mut(&key) {
+            for (gk, gv) in value.data {
+                planet_data.data.insert(gk, gv);
             }
-            None => {}
         }
     }
 
@@ -183,7 +180,7 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
                         let constant = match planetary_data.data.get(&Parameter::PoleRa) {
                             Some(data) => match data {
                                 KPLValue::Matrix(pole_ra_data) => {
-                                    let pola_ra = PhaseAngle::maybe_new(&pole_ra_data);
+                                    let pola_ra = PhaseAngle::maybe_new(pole_ra_data);
                                     let pola_dec_data: Vec<f64> = planetary_data.data
                                         [&Parameter::PoleDec]
                                         .to_vec_f64()
@@ -222,11 +219,13 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
                         dataset_builder.push_into(&mut buf, constant, Some(object_id), None)?;
                         info!("Added {object_id}");
                     }
-                    _ => panic!("{mu_km3_s2_value:?}"),
+                    _ => error!(
+                        "expected gravity parameter to be a float but got {mu_km3_s2_value:?}"
+                    ),
                 }
             }
             None => {
-                warn!("Skipping {object_id}: No gravity data")
+                warn!("Skipping {object_id}: no gravity data")
             }
         }
     }

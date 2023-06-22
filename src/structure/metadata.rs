@@ -33,13 +33,14 @@ pub struct Metadata<'a> {
 impl<'a> Metadata<'a> {
     /// Only decode the anise version and dataset type
     pub fn decode_header(bytes: &[u8]) -> Result<Self, AniseError> {
-        let anise_version =
-            Semver::from_der(&bytes[..5]).map_err(|e| AniseError::DecodingError(e))?;
+        let anise_version = Semver::from_der(&bytes[..5]).map_err(AniseError::DecodingError)?;
         let dataset_type =
-            DataSetType::from_der(&bytes[5..8]).map_err(|e| AniseError::DecodingError(e))?;
-        let mut me = Self::default();
-        me.anise_version = anise_version;
-        me.dataset_type = dataset_type;
+            DataSetType::from_der(&bytes[5..8]).map_err(AniseError::DecodingError)?;
+        let me = Self {
+            anise_version,
+            dataset_type,
+            ..Default::default()
+        };
         Ok(me)
     }
 }

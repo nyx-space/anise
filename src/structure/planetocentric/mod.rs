@@ -32,7 +32,6 @@ pub struct PlanetaryData {
     pub mu_km3_s2: f64,
     /// The shape is always a tri axial ellipsoid
     pub shape: Option<Ellipsoid>,
-    ///     TODO: Create a PoleOrientation structure which is optional. If defined, it includes the stuff below, and none optional (DataArray can be empty).
     pub pole_right_ascension: Option<PhaseAngle>,
     pub pole_declination: Option<PhaseAngle>,
     pub prime_meridian: Option<PhaseAngle>,
