@@ -68,7 +68,7 @@ impl Validation {
         };
 
         assert!(
-            err < self.max_q75_err,
+            err <= self.max_q75_err,
             "q75 of absolute error is {err} > {}",
             self.max_q75_err
         );
@@ -80,7 +80,7 @@ impl Validation {
         };
 
         assert!(
-            err < self.max_q99_err,
+            err <= self.max_q99_err,
             "q99 of absolute error is {err} > {}",
             self.max_q99_err
         );
@@ -92,7 +92,7 @@ impl Validation {
         };
 
         assert!(
-            err < self.max_abs_err,
+            err <= self.max_abs_err,
             "maximum absolute error is {err} > {}",
             self.max_abs_err
         );

@@ -1,7 +1,16 @@
+from glob import glob
+from os import environ
+from os.path import abspath, basename, dirname, join
+
 import pandas as pd
 import plotly.express as px
-from os.path import abspath, join, dirname, basename
-from glob import glob
+
+
+def is_on_github_actions():
+  if "CI" not in environ or not environ["CI"] or "GITHUB_RUN_ID" not in os.environ:
+    return False
+  else:
+    return True
 
 if __name__ == '__main__':
 
@@ -33,7 +42,8 @@ if __name__ == '__main__':
 
             plt.write_html(
                 f"{target_folder}/validation-plot-{kind}-{name}.html")
-            plt.show()
+            if not is_on_github_actions():
+                plt.show()
             plotted_anything = True
 
         # Plot all components together
@@ -43,6 +53,7 @@ if __name__ == '__main__':
                          color='component',
                          title=f"Validation of {name} (overall)")
         plt.write_html(f"{target_folder}/validation-plot-{name}.html")
-        plt.show()
+        if not is_on_github_actions():
+            plt.show()
         plotted_anything = True
     assert plotted_anything, "did not plot anything"
