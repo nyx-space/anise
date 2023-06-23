@@ -36,7 +36,7 @@ heapless = "0.7.16"
 
 [dev-dependencies]
 rust-spice = "0.7.4"
-parquet = "41.0.0"
+parquet = "42.0.0"
 arrow = "41.0.0"
 criterion = "0.5"
 iai = "0.1"
