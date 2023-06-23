@@ -7,6 +7,8 @@ if __name__ == '__main__':
 
     target_folder = join(abspath(dirname(__file__)), '..', 'target')
 
+    plotted_anything = False
+
     for filename in glob(f"{target_folder}/spk-type*.parquet"):
 
         # Load the parquet file
@@ -32,6 +34,7 @@ if __name__ == '__main__':
             plt.write_html(
                 f"{target_folder}/validation-plot-{kind}-{name}.html")
             plt.show()
+            plotted_anything = True
 
         # Plot all components together
         plt = px.scatter(df,
@@ -41,3 +44,5 @@ if __name__ == '__main__':
                          title=f"Validation of {name} (overall)")
         plt.write_html(f"{target_folder}/validation-plot-{name}.html")
         plt.show()
+        plotted_anything = True
+    assert plotted_anything, "did not plot anything"

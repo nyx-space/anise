@@ -8,8 +8,6 @@
  * Documentation: https://nyxspace.com/
  */
 
-use std::f64::EPSILON;
-
 use polars::{lazy::dsl::Expr, prelude::*};
 
 #[derive(Debug, Default)]
@@ -70,7 +68,7 @@ impl Validation {
         };
 
         assert!(
-            (err - self.max_q75_err).abs() < EPSILON,
+            err < self.max_q75_err,
             "q75 of absolute error is {err} > {}",
             self.max_q75_err
         );
@@ -82,7 +80,7 @@ impl Validation {
         };
 
         assert!(
-            (err - self.max_q99_err).abs() < EPSILON,
+            err < self.max_q99_err,
             "q99 of absolute error is {err} > {}",
             self.max_q99_err
         );
@@ -94,7 +92,7 @@ impl Validation {
         };
 
         assert!(
-            (err - self.max_abs_err).abs() < EPSILON,
+            err < self.max_abs_err,
             "maximum absolute error is {err} > {}",
             self.max_abs_err
         );

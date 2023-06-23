@@ -155,5 +155,5 @@ fn test_spk_rename_summary() {
         .name_record
         .nth_name(0, example_data.file_record.summary_size()));
 
-    example_data.persist("data/rename-test.bsp").unwrap();
+    example_data.persist("target/rename-test.bsp").unwrap();
 }

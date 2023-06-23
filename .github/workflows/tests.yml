@@ -117,10 +117,14 @@ jobs:
           cargo run -- inspect data/de440.bsp
 
       - name: Rust-SPICE JPL DE validation
-        run: RUST_BACKTRACE=full RUST_LOG=debug cargo test validate_jplde_translation --features validation --release -- --nocapture
+        run: | 
+          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_jplde_de440s --features validation --release -- --nocapture --ignored
+          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_jplde_de440_full --features validation --release -- --nocapture --ignored
 
       - name: Rust-SPICE hermite validation
-        run: RUST_BACKTRACE=full RUST_LOG=debug cargo test validate_hermite_translation --features validation --release -- --nocapture
+        run: |
+          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_hermite_type13_from_gmat --features validation --release -- --nocapture --ignored
+          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_hermite_type13_with_varying_segment_sizes --features validation --release -- --nocapture --ignored
 
       # Now analyze the results and create pretty plots
       - uses: actions/setup-python@v4

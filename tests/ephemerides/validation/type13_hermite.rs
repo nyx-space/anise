@@ -52,7 +52,7 @@ fn validate_hermite_type13_with_varying_segment_sizes() {
         file_name,
         max_q75_err: 5e-9,
         max_q99_err: 2e-7,
-        max_abs_err: 0.1,
+        max_abs_err: 0.05,
     };
 
     validator.validate();
