@@ -7,7 +7,7 @@ import plotly.express as px
 
 
 def is_on_github_actions():
-  if "CI" not in environ or not environ["CI"] or "GITHUB_RUN_ID" not in os.environ:
+  if "CI" not in environ or not environ["CI"] or "GITHUB_RUN_ID" not in environ:
     return False
   else:
     return True
