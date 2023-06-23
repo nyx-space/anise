@@ -9,13 +9,15 @@
  */
 
 pub mod daf;
+
+pub mod kpl;
 pub mod pck;
 pub mod spk;
 
 use self::{daf::DAF, pck::BPCSummaryRecord, spk::summary::SPKSummaryRecord};
 
-pub type SPK<'a> = DAF<'a, SPKSummaryRecord>;
-pub type BPC<'a> = DAF<'a, BPCSummaryRecord>;
+pub type SPK = DAF<SPKSummaryRecord>;
+pub type BPC = DAF<BPCSummaryRecord>;
 
 #[macro_export]
 macro_rules! parse_bytes_as {

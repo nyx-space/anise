@@ -10,48 +10,48 @@
 
 use zerocopy::{AsBytes, FromBytes};
 
-use crate::{naif::Endian, prelude::AniseError, DBL_SIZE};
-use log::{error, warn};
+use crate::{naif::Endian, prelude::AniseError};
+use log::error;
 
-use super::{NAIFRecord, RCRD_LEN};
+use super::NAIFRecord;
 
-#[derive(Debug, FromBytes, AsBytes)]
+#[derive(Debug, Clone, FromBytes, AsBytes, PartialEq)]
 #[repr(C)]
-pub struct DAFFileRecord {
-    pub locidw: [u8; 8],
+pub struct FileRecord {
+    pub id_str: [u8; 8],
     pub nd: u32,
     pub ni: u32,
-    pub locifn: [u8; 60],
+    pub internal_filename: [u8; 60],
     pub forward: u32,
     pub backward: u32,
     pub free_addr: u32,
-    pub locfmt: [u8; 8],
-    pub prenul: [u8; 603],
-    pub ftpstr: [u8; 28],
-    pub pstnul: [u8; 297],
+    pub endian_str: [u8; 8],
+    pub pre_null: [u8; 603],
+    pub ftp_str: [u8; 28],
+    pub pst_null: [u8; 297],
 }
 
-impl Default for DAFFileRecord {
+impl Default for FileRecord {
     fn default() -> Self {
         Self {
-            locidw: [0; 8],
+            id_str: [0; 8],
             nd: Default::default(),
             ni: Default::default(),
-            locifn: [0; 60],
+            internal_filename: [0; 60],
             forward: Default::default(),
             backward: Default::default(),
             free_addr: Default::default(),
-            locfmt: [0; 8],
-            prenul: [0; 603],
-            ftpstr: [0; 28],
-            pstnul: [0; 297],
+            endian_str: [0; 8],
+            pre_null: [0; 603],
+            ftp_str: [0; 28],
+            pst_null: [0; 297],
         }
     }
 }
 
-impl NAIFRecord for DAFFileRecord {}
+impl NAIFRecord for FileRecord {}
 
-impl DAFFileRecord {
+impl FileRecord {
     pub fn ni(&self) -> usize {
         self.ni as usize
     }
@@ -69,7 +69,7 @@ impl DAFFileRecord {
     }
 
     pub fn identification(&self) -> Result<&str, AniseError> {
-        let str_locidw = core::str::from_utf8(&self.locidw).map_err(|_| {
+        let str_locidw = core::str::from_utf8(&self.id_str).map_err(|_| {
             AniseError::DAFParserError("Could not parse identification string".to_owned())
         })?;
 
@@ -94,7 +94,7 @@ impl DAFFileRecord {
     }
 
     pub fn endianness(&self) -> Result<Endian, AniseError> {
-        let str_endianness = core::str::from_utf8(&self.locfmt)
+        let str_endianness = core::str::from_utf8(&self.endian_str)
             .map_err(|_| AniseError::DAFParserError("Could not parse endianness".to_owned()))?;
 
         let file_endian = if str_endianness == "LTL-IEEE" {
@@ -118,87 +118,14 @@ impl DAFFileRecord {
     }
 
     pub fn internal_filename(&self) -> Result<&str, AniseError> {
-        match core::str::from_utf8(&self.locifn) {
+        match core::str::from_utf8(&self.internal_filename) {
             Ok(filename) => Ok(filename.trim()),
             Err(e) => Err(AniseError::DAFParserError(format!("{e}"))),
         }
     }
-}
 
-#[derive(AsBytes, Debug, Default, FromBytes)]
-#[repr(C)]
-pub struct DAFSummaryRecord {
-    next_record: f64,
-    prev_record: f64,
-    num_summaries: f64,
-}
-
-impl NAIFRecord for DAFSummaryRecord {}
-
-impl DAFSummaryRecord {
-    pub fn next_record(&self) -> usize {
-        self.next_record as usize
-    }
-
-    pub fn prev_record(&self) -> usize {
-        self.prev_record as usize
-    }
-
-    pub fn num_summaries(&self) -> usize {
-        self.num_summaries as usize
-    }
-
-    pub fn is_final_record(&self) -> bool {
-        self.next_record() == 0
-    }
-}
-
-#[derive(AsBytes, Debug, FromBytes)]
-#[repr(C)]
-pub struct NameRecord {
-    raw_names: [u8; RCRD_LEN],
-}
-
-impl Default for NameRecord {
-    fn default() -> Self {
-        Self {
-            raw_names: [0_u8; RCRD_LEN],
-        }
-    }
-}
-
-impl NAIFRecord for NameRecord {}
-
-impl NameRecord {
-    /// Returns the number of names in this record
-    pub fn num_entries(&self, summary_size: usize) -> usize {
-        self.raw_names.len() / summary_size * DBL_SIZE
-    }
-
-    pub fn nth_name(&self, n: usize, summary_size: usize) -> &str {
-        let this_name =
-            &self.raw_names[n * summary_size * DBL_SIZE..(n + 1) * summary_size * DBL_SIZE];
-        match core::str::from_utf8(this_name) {
-            Ok(name) => name.trim(),
-            Err(e) => {
-                warn!(
-                    "malformed name record: `{e}` from {:?}! Using `UNNAMED OBJECT` instead",
-                    this_name
-                );
-                "UNNAMED OBJECT"
-            }
-        }
-    }
-
-    /// Searches the name record for the provided name.
-    ///
-    /// **Warning:** this performs an O(N) search!
-    pub fn index_from_name(&self, name: &str, summary_size: usize) -> Result<usize, AniseError> {
-        for i in 0..self.num_entries(summary_size) {
-            if self.nth_name(i, summary_size) == name {
-                return Ok(i);
-            }
-        }
-        Err(AniseError::ItemNotFound)
+    /// Returns whether this record was just null bytes
+    pub fn is_empty(&self) -> bool {
+        self == &Self::default()
     }
 }

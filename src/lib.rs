@@ -21,7 +21,7 @@ pub mod errors;
 pub mod frames;
 pub mod math;
 pub mod naif;
-pub mod shapes;
+pub mod structure;
 
 /// Re-export of hifitime
 pub mod time {
@@ -46,17 +46,21 @@ pub(crate) const DBL_SIZE: usize = 8;
 /// Defines the hash used to identify parents.
 pub(crate) type NaifId = i32;
 
-/// file_mmap allows reading a file without memory allocation
+/// Memory maps a file and **copies** the data on the heap prior to returning a pointer to this heap data.
 #[macro_export]
 macro_rules! file_mmap {
     ($filename:tt) => {
         match File::open($filename) {
             Err(e) => Err(AniseError::IOError(e.kind())),
             Ok(file) => unsafe {
+                use bytes::Bytes;
                 use memmap2::MmapOptions;
                 match MmapOptions::new().map(&file) {
                     Err(_) => Err(AniseError::IOUnknownError),
-                    Ok(mmap) => Ok(mmap),
+                    Ok(mmap) => {
+                        let bytes = Bytes::copy_from_slice(&mmap);
+                        Ok(bytes)
+                    }
                 }
             },
         }

@@ -17,5 +17,3 @@ pub trait Record<'a>: Encode + Decode<'a> {
         Ok(())
     }
 }
-
-pub mod spacecraft;

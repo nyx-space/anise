@@ -4,7 +4,7 @@ on:
     branches:
       - master
 
-name: ANISE Ephemeris Workflow
+name: ANISE Rust Workflow
 
 env:
   RUST_BACKTRACE: 1
@@ -117,10 +117,14 @@ jobs:
           cargo run -- inspect data/de440.bsp
 
       - name: Rust-SPICE JPL DE validation
-        run: RUST_BACKTRACE=full RUST_LOG=debug cargo test validate_jplde_translation --features validation --release -- --nocapture
+        run: | 
+          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_jplde_de440s --features validation --release -- --nocapture --ignored
+          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_jplde_de440_full --features validation --release -- --nocapture --ignored
 
       - name: Rust-SPICE hermite validation
-        run: RUST_BACKTRACE=full RUST_LOG=debug cargo test validate_hermite_translation --features validation --release -- --nocapture
+        run: |
+          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_hermite_type13_from_gmat --features validation --release -- --nocapture --ignored
+          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_hermite_type13_with_varying_segment_sizes --features validation --release -- --nocapture --ignored
 
       # Now analyze the results and create pretty plots
       - uses: actions/setup-python@v4
@@ -131,8 +135,7 @@ jobs:
         run: |
           cd analysis
           pip install -r requirements.txt
-          python spk_type2_jplde_val_err.py
-          python spk_type13_val_err.py
+          python spk_validation_plots.py
 
       - name: Save validation artifacts
         uses: actions/upload-artifact@v3
@@ -167,8 +170,8 @@ jobs:
       - name: Generate coverage report
         run: |
           cargo llvm-cov clean --workspace
-          cargo llvm-cov test --no-report --features=std -- --test-threads=1
-          cargo llvm-cov test --no-report --tests --features=std -- compile_fail
+          cargo llvm-cov test --no-report -- --test-threads=1
+          cargo llvm-cov test --no-report --tests -- compile_fail
           cargo llvm-cov report --lcov > lcov.txt
         env:
           RUSTFLAGS: --cfg __ui_tests

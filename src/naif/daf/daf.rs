@@ -8,30 +8,45 @@
  * Documentation: https://nyxspace.com/
  */
 
-pub use super::recordtypes::{DAFFileRecord, DAFSummaryRecord, NameRecord};
+pub use super::{FileRecord, NameRecord, SummaryRecord};
 use super::{NAIFDataSet, NAIFRecord, NAIFSummaryRecord};
 use crate::{errors::IntegrityErrorKind, prelude::AniseError, DBL_SIZE};
+use bytes::Bytes;
 use core::hash::Hash;
 use hifitime::Epoch;
 use log::{error, trace, warn};
+use std::marker::PhantomData;
+
+use zerocopy::AsBytes;
 use zerocopy::{FromBytes, LayoutVerified};
 
-pub(crate) const RCRD_LEN: usize = 1024;
-#[derive(Default, Debug)]
-pub struct DAF<'a, R: NAIFSummaryRecord> {
-    pub file_record: DAFFileRecord,
-    pub daf_summary: DAFSummaryRecord,
-    pub name_record: NameRecord,
-    pub data_summaries: &'a [R],
-    /// All of the underlying bytes including what has already been parsed (helps for indexing the data)
-    pub bytes: &'a [u8],
-    pub crc32_checksum: u32,
+// Thanks ChatGPT for the idea !
+
+macro_rules! io_imports {
+    () => {
+        use std::fs::File;
+        use std::io::Result as IoResult;
+        use std::io::{Read, Write};
+        use std::path::Path;
+    };
 }
 
-impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
+io_imports!();
+
+pub(crate) const RCRD_LEN: usize = 1024;
+#[derive(Clone, Default, Debug)]
+pub struct DAF<R: NAIFSummaryRecord> {
+    pub file_record: FileRecord,
+    pub name_record: NameRecord,
+    pub bytes: Bytes,
+    pub crc32_checksum: u32,
+    pub _daf_type: PhantomData<R>,
+}
+
+impl<R: NAIFSummaryRecord> DAF<R> {
     /// Compute the CRC32 of the underlying bytes
     pub fn crc32(&self) -> u32 {
-        crc32fast::hash(self.bytes)
+        crc32fast::hash(&self.bytes)
     }
 
     /// Scrubs the data by computing the CRC32 of the bytes and making sure that it still matches the previously known hash
@@ -49,9 +64,9 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
         }
     }
 
-    /// Parse the DAF onl if the CRC32 checksum of the data is valid
-    pub fn check_then_parse(bytes: &'a [u8], expected_crc32: u32) -> Result<Self, AniseError> {
-        let computed_crc32 = crc32fast::hash(bytes);
+    /// Parse the DAF only if the CRC32 checksum of the data is valid
+    pub fn check_then_parse(bytes: Bytes, expected_crc32: u32) -> Result<Self, AniseError> {
+        let computed_crc32 = crc32fast::hash(&bytes);
         if computed_crc32 == expected_crc32 {
             Self::parse(bytes)
         } else {
@@ -65,26 +80,11 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
     }
 
     /// Parse the provided bytes as a SPICE Double Array File
-    pub fn parse(bytes: &'a [u8]) -> Result<Self, AniseError> {
-        let crc32_checksum = crc32fast::hash(bytes);
-        let file_record = DAFFileRecord::read_from(&bytes[..DAFFileRecord::SIZE]).unwrap();
-
-        // Move onto the next record, DAF indexes start at 1 ... =(
-        let rcrd_idx = (file_record.fwrd_idx() - 1) * RCRD_LEN;
-        let rcrd_bytes = bytes
-            .get(rcrd_idx..rcrd_idx + RCRD_LEN)
-            .ok_or_else(|| AniseError::MalformedData(file_record.fwrd_idx() + RCRD_LEN))?;
-
-        // TODO: Use the endianness flag
-        let daf_summary =
-            DAFSummaryRecord::read_from(&rcrd_bytes[..DAFSummaryRecord::SIZE]).unwrap();
-
-        // The summaries are defined in this same record, so let's read them now.
-        let data_summaries = match LayoutVerified::new_slice(&rcrd_bytes[DAFSummaryRecord::SIZE..])
-        {
-            Some(data) => data.into_slice(),
-            None => &[R::default(); 0],
-        };
+    pub fn parse(bytes: Bytes) -> Result<Self, AniseError> {
+        let crc32_checksum = crc32fast::hash(&bytes);
+        let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
+        // Check that the endian-ness is compatible with this platform.
+        file_record.endianness()?;
 
         // Move onto the next record.
         let rcrd_idx = file_record.fwrd_idx() * RCRD_LEN;
@@ -95,12 +95,43 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
 
         Ok(Self {
             file_record,
-            daf_summary,
             name_record,
-            data_summaries,
             bytes,
             crc32_checksum,
+            _daf_type: PhantomData,
         })
+    }
+
+    pub fn daf_summary(&self) -> Result<SummaryRecord, AniseError> {
+        let rcrd_idx = (self.file_record.fwrd_idx() - 1) * RCRD_LEN;
+        let rcrd_bytes = self
+            .bytes
+            .get(rcrd_idx..rcrd_idx + RCRD_LEN)
+            .ok_or_else(|| AniseError::MalformedData(self.file_record.fwrd_idx() + RCRD_LEN))?;
+
+        SummaryRecord::read_from(&rcrd_bytes[..SummaryRecord::SIZE])
+            .ok_or(AniseError::MalformedData(SummaryRecord::SIZE))
+    }
+
+    /// Parses the data summaries on the fly.
+    pub fn data_summaries(&self) -> Result<&[R], AniseError> {
+        if self.file_record.is_empty() {
+            return Err(AniseError::MalformedData(0));
+        }
+        // Move onto the next record, DAF indexes start at 1 ... =(
+        let rcrd_idx = (self.file_record.fwrd_idx() - 1) * RCRD_LEN;
+        let rcrd_bytes = self
+            .bytes
+            .get(rcrd_idx..rcrd_idx + RCRD_LEN)
+            .ok_or_else(|| AniseError::MalformedData(self.file_record.fwrd_idx() + RCRD_LEN))?;
+
+        // The summaries are defined in the same record as the DAF summary
+        Ok(
+            match LayoutVerified::new_slice(&rcrd_bytes[SummaryRecord::SIZE..]) {
+                Some(data) => data.into_slice(),
+                None => &[R::default(); 0],
+            },
+        )
     }
 
     pub fn nth_summary(&self, n: usize) -> Result<(&str, &R), AniseError> {
@@ -108,7 +139,7 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
             .name_record
             .nth_name(n, self.file_record.summary_size());
 
-        let summary = &self.data_summaries[n];
+        let summary = &self.data_summaries()?[n];
 
         Ok((name.trim(), summary))
     }
@@ -140,7 +171,7 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
 
     /// Returns the summary given the name of the summary record
     pub fn summary_from_id(&self, id: i32) -> Result<(&R, usize), AniseError> {
-        for (idx, summary) in self.data_summaries.iter().enumerate() {
+        for (idx, summary) in self.data_summaries()?.iter().enumerate() {
             if summary.id() == id {
                 return Ok((summary, idx));
             }
@@ -157,16 +188,18 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
     ) -> Result<(&R, usize), AniseError> {
         // NOTE: We iterate through the whole summary because a specific NAIF ID may be repeated in the summary for different valid epochs
         // so we can't just call `summary_from_id`.
-        for (idx, summary) in self.data_summaries.iter().enumerate() {
+        for (idx, summary) in self.data_summaries()?.iter().enumerate() {
             if summary.id() == id {
                 if epoch >= summary.start_epoch() && epoch <= summary.end_epoch() {
                     trace!("Found {id} in position {idx}: {summary:?}");
                     return Ok((summary, idx));
                 } else {
                     warn!(
-                        "Summary {id} found but only valid from {} to {} (requested {epoch})",
+                        "Summary {id} not valid at {epoch:?} (only from {:?} to {:?}, offset of {} - {})",
                         summary.start_epoch(),
-                        summary.end_epoch()
+                        summary.end_epoch(),
+                        epoch - summary.start_epoch(),
+                        summary.end_epoch() - epoch
                     );
                 }
             }
@@ -175,7 +208,7 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
     }
 
     /// Provided a name that is in the summary, return its full data, if name is available.
-    pub fn data_from_name<S: NAIFDataSet<'a>>(&self, name: &str) -> Result<S, AniseError> {
+    pub fn data_from_name<'a, S: NAIFDataSet<'a>>(&'a self, name: &str) -> Result<S, AniseError> {
         // O(N) search through the summaries
         for idx in 0..self
             .name_record
@@ -193,7 +226,7 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
     }
 
     /// Provided a name that is in the summary, return its full data, if name is available.
-    pub fn nth_data<S: NAIFDataSet<'a>>(&self, idx: usize) -> Result<S, AniseError> {
+    pub fn nth_data<'a, S: NAIFDataSet<'a>>(&'a self, idx: usize) -> Result<S, AniseError> {
         let (_, this_summary) = self.nth_summary(idx)?;
         // Grab the data in native endianness (TODO: How to support both big and little endian?)
         trace!("{idx} -> {this_summary:?}");
@@ -202,7 +235,7 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
                 crate::errors::InternalErrorKind::Generic,
             ));
         }
-        let data: &'a [f64] = LayoutVerified::new_slice(
+        let data: &[f64] = LayoutVerified::new_slice(
             self.bytes
                 .get(
                     (this_summary.start_index() - 1) * DBL_SIZE
@@ -212,11 +245,12 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
         )
         .unwrap()
         .into_slice();
+
         // Convert it
         S::from_slice_f64(data)
     }
 
-    pub fn comments(&self) -> Result<String, AniseError> {
+    pub fn comments(&self) -> Result<Option<String>, AniseError> {
         // TODO: This can be cleaned up to avoid allocating a string. In my initial tests there were a bunch of additional spaces, so I canceled those changes.
         let mut rslt = String::new();
         // FWRD has the initial record of the summary. So we assume that all records between the second record and that one are comments
@@ -237,11 +271,53 @@ impl<'a, R: NAIFSummaryRecord> DAF<'a, R> {
             }
         }
 
-        Ok(rslt)
+        if rslt.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(rslt))
+        }
+    }
+
+    /// Writes the contents of this DAF file to a new location.
+
+    pub fn persist<P: AsRef<Path>>(&self, path: P) -> IoResult<()> {
+        let mut fs = File::create(path)?;
+
+        let mut file_rcrd = Vec::from(self.file_record.as_bytes());
+        file_rcrd.extend(vec![
+            0x0;
+            (self.file_record.fwrd_idx() - 1) * RCRD_LEN
+                - file_rcrd.len()
+        ]);
+        fs.write_all(&file_rcrd)?;
+
+        let mut daf_summary = Vec::from(self.daf_summary().unwrap().as_bytes());
+        // Extend with the data summaries
+        for data_summary in self.data_summaries().unwrap() {
+            daf_summary.extend(data_summary.as_bytes());
+        }
+        // And pad with NULL
+        daf_summary.extend(vec![0x0; RCRD_LEN - daf_summary.len()]);
+        fs.write_all(&daf_summary)?;
+
+        let mut name_rcrd = Vec::from(self.name_record.as_bytes());
+        name_rcrd.extend(vec![0x0; RCRD_LEN - name_rcrd.len()]);
+        fs.write_all(&name_rcrd)?;
+
+        fs.write_all(&self.bytes[self.file_record.fwrd_idx() * (2 * RCRD_LEN)..])
+    }
+
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, AniseError> {
+        let mut buf = Vec::new();
+        let mut file = File::open(path).unwrap();
+        file.read_to_end(&mut buf).unwrap();
+
+        let bytes = Bytes::copy_from_slice(&buf);
+        Self::parse(bytes)
     }
 }
 
-impl<'a, R: NAIFSummaryRecord> Hash for DAF<'a, R> {
+impl<R: NAIFSummaryRecord> Hash for DAF<R> {
     /// Hash will only hash the bytes, nothing else (since these are derived from the bytes anyway).
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.bytes.hash(state);

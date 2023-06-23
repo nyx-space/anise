@@ -16,7 +16,7 @@ use crate::errors::IntegrityErrorKind;
 use crate::hifitime::Epoch;
 use crate::math::units::*;
 use crate::math::Vector3;
-use crate::naif::daf::{NAIFDataSet, NAIFSummaryRecord};
+use crate::naif::daf::NAIFDataSet;
 use crate::naif::spk::datatypes::{HermiteSetType13, LagrangeSetType9, Type2ChebyshevSet};
 use crate::{errors::AniseError, prelude::Frame};
 
@@ -44,14 +44,14 @@ impl<'a> Context<'a> {
         // I guess this is what the `Orbit` struct in Nyx does.
 
         // First, let's find the SPK summary for this frame.
-        let (summary, spkno, idx_in_spk) =
-            self.spk_summary_from_id_at_epoch(source.ephemeris_id, epoch)?;
+        let (summary, spk_no, idx_in_spk) =
+            self.spk_summary_at_epoch(source.ephemeris_id, epoch)?;
 
         let new_frame = source.with_ephem(summary.center_id);
 
         trace!("query {source} wrt to {new_frame} @ {epoch:E}");
 
-        let spk_data = self.spk_data[spkno]
+        let spk_data = self.spk_data[spk_no]
             .ok_or(AniseError::IntegrityError(IntegrityErrorKind::DataMissing))?;
 
         // Perform a translation with position and velocity;
@@ -59,20 +59,21 @@ impl<'a> Context<'a> {
 
         // Now let's simply evaluate the data
         let (pos_km, vel_km_s) = match summary.data_type_i {
+            // TODO : match against enumeration instead of direct integer match for clarity ?
             2 => {
                 // Type 2 Chebyshev
                 let data = spk_data.nth_data::<Type2ChebyshevSet>(idx_in_spk)?;
-                data.evaluate(epoch, summary.start_epoch())?
+                data.evaluate(epoch, summary)?
             }
             9 => {
                 // Type 9: Lagrange Interpolation --- Unequal Time Steps
                 let data = spk_data.nth_data::<LagrangeSetType9>(idx_in_spk)?;
-                data.evaluate(epoch, summary.start_epoch())?
+                data.evaluate(epoch, summary)?
             }
             13 => {
                 // Type 13: Hermite Interpolation --- Unequal Time Steps
                 let data = spk_data.nth_data::<HermiteSetType13>(idx_in_spk)?;
-                data.evaluate(epoch, summary.start_epoch())?
+                data.evaluate(epoch, summary)?
             }
             _ => todo!("{} is not yet supported", summary.data_type_i),
         };
