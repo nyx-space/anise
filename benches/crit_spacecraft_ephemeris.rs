@@ -39,12 +39,12 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let time_step = ((end_epoch - start_epoch).to_seconds() / NUM_QUERIES).seconds();
     let time_it = TimeSeries::exclusive(start_epoch, end_epoch - time_step, time_step);
 
-    let path = "./data/de438s.bsp";
+    let path = "./data/de440s.bsp";
     let buf = file_mmap!(path).unwrap();
-    let spk = SPK::parse(&buf).unwrap();
+    let spk = SPK::parse(buf).unwrap();
 
     let buf = file_mmap!("data/gmat-hermite.bsp").unwrap();
-    let spacecraft = SPK::parse(&buf).unwrap();
+    let spacecraft = SPK::parse(buf).unwrap();
 
     let ctx = Context::from_spk(&spk)
         .unwrap()
@@ -52,7 +52,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         .unwrap();
 
     // Load SPICE data
-    spice::furnsh("data/de438s.bsp");
+    spice::furnsh("data/de440s.bsp");
 
     c.bench_function("ANISE hermite", |b| {
         b.iter(|| benchmark_anise_single_hop_type13_hermite(&ctx, time_it.clone()))

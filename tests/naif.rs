@@ -31,12 +31,12 @@ fn test_binary_pck_load() {
     let filename = "data/earth_latest_high_prec.bpc";
     let bytes = file_mmap!(filename).unwrap();
 
-    let high_prec = DAF::<BPCSummaryRecord>::parse(&bytes).unwrap();
+    let high_prec = DAF::<BPCSummaryRecord>::parse(bytes).unwrap();
 
     assert_eq!(high_prec.crc32(), 0x97bca34c);
     assert!(high_prec.scrub().is_ok());
 
-    for n in 0..high_prec.daf_summary.num_summaries() {
+    for n in 0..high_prec.daf_summary().unwrap().num_summaries() {
         let (name, data) = high_prec.nth_summary(n).unwrap();
         println!("{} -> {:?}", name, data);
     }
@@ -51,7 +51,7 @@ fn test_spk_load_bytes() {
     // Using the DE421 as demo because the correct data is in the DAF documentation
     let bytes = file_mmap!("data/de421.bsp").unwrap();
 
-    let de421 = DAF::<SPKSummaryRecord>::parse(&bytes).unwrap();
+    let de421 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
 
     assert_eq!(de421.crc32(), 0x5c78bc13);
     assert!(de421.scrub().is_ok());
@@ -63,11 +63,11 @@ fn test_spk_load_bytes() {
     assert_eq!(de421.file_record.forward, 4);
     assert_eq!(de421.file_record.backward, 4);
     assert_eq!(de421.file_record.endianness().unwrap(), Endian::Little);
-    assert_eq!(de421.daf_summary.num_summaries(), 15);
-    assert_eq!(de421.daf_summary.next_record(), 0);
-    assert_eq!(de421.daf_summary.prev_record(), 0);
+    assert_eq!(de421.daf_summary().unwrap().num_summaries(), 15);
+    assert_eq!(de421.daf_summary().unwrap().next_record(), 0);
+    assert_eq!(de421.daf_summary().unwrap().prev_record(), 0);
 
-    println!("{}", de421.comments().unwrap());
+    println!("{}", de421.comments().unwrap().unwrap());
 
     // From Python jplephem, an inspection of the coefficients of the DE421 file shows the number of segments we should have.
     // // So let's add it here as a test.
@@ -78,7 +78,7 @@ fn test_spk_load_bytes() {
         7040, 3520, 3520, 1760, 1760, 1760, 1760, 1760, 1760, 3520, 14080, 14080, 1, 1, 1,
     ];
 
-    for n in 0..de421.daf_summary.num_summaries() {
+    for n in 0..de421.daf_summary().unwrap().num_summaries() {
         let (name, summary) = de421.nth_summary(n).unwrap();
         println!("{} -> {}", name, summary);
         // We know that the DE421 data is all in Type 2
@@ -119,12 +119,12 @@ fn test_spk_load_bytes() {
     // NOTE: Rust has strict lifetime requirements, and the Spice Context is set up such that loading another dataset will return a new context with that data set loaded in it.
     {
         let bytes = file_mmap!("data/de440.bsp").unwrap();
-        let de440 = DAF::<SPKSummaryRecord>::parse(&bytes).unwrap();
+        let de440 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
         let spice = spice.load_spk(&de440).unwrap();
 
         // And another
-        let bytes = file_mmap!("data/de438s.bsp").unwrap();
-        let de440 = DAF::<SPKSummaryRecord>::parse(&bytes).unwrap();
+        let bytes = file_mmap!("data/de440s.bsp").unwrap();
+        let de440 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
         let spice = spice.load_spk(&de440).unwrap();
 
         // NOTE: Because everything is a pointer, the size on the stack remains constant at 521 bytes.
@@ -133,4 +133,27 @@ fn test_spk_load_bytes() {
 
     // NOTE: Because everything is a pointer, the size on the stack remains constant at 521 bytes.
     println!("{}", size_of_val(&spice));
+}
+
+// The `load` function copies the bytes, so it's only available with std
+
+#[test]
+fn test_spk_rename_summary() {
+    if pretty_env_logger::try_init().is_err() {
+        println!("could not init env_logger");
+    }
+
+    let path = "data/variable-seg-size-hermite.bsp";
+
+    let example_data = SPK::load(path).unwrap();
+
+    example_data
+        .name_record
+        .set_nth_name(0, example_data.file_record.summary_size(), "BLAH BLAH");
+
+    dbg!(example_data
+        .name_record
+        .nth_name(0, example_data.file_record.summary_size()));
+
+    example_data.persist("target/rename-test.bsp").unwrap();
 }

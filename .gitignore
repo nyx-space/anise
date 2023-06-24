@@ -7,3 +7,4 @@ cspice
 perf.data*
 analysis/.venv
 cspice.tar.Z
+.venv

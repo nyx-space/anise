@@ -9,7 +9,9 @@
  */
 
 use super::{celestial_frame::CelestialFrame, CelestialFrameTrait, Frame, FrameTrait};
-use crate::{context::Context, prelude::AniseError, shapes::ellipsoid::Ellipsoid, NaifId};
+use crate::{
+    context::Context, prelude::AniseError, structure::planetocentric::ellipsoid::Ellipsoid, NaifId,
+};
 use core::fmt;
 
 /// Defines a Celestial Frame kind, which is a Frame that also defines a standard gravitational parameter

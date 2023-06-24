@@ -27,9 +27,9 @@ fn de438s_translation_verif_venus2emb() {
     }
 
     // "Load" the file via a memory map (avoids allocations)
-    let path = "./data/de438s.bsp";
+    let path = "./data/de440s.bsp";
     let buf = file_mmap!(path).unwrap();
-    let spk = SPK::parse(&buf).unwrap();
+    let spk = SPK::parse(buf).unwrap();
     let ctx = Context::from_spk(&spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
@@ -37,11 +37,16 @@ fn de438s_translation_verif_venus2emb() {
     /*
     Python code:
     >>> import spiceypy as sp
-    >>> sp.furnsh('data/de438s.bsp')
+    >>> sp.furnsh('data/de440s.bsp')
     >>> sp.furnsh('../../hifitime/naif0012.txt')
     >>> et = sp.utc2et('2002 FEB 07 00:00:00')
     >>> ['{:.16e}'.format(x) for x in sp.spkez(2, et, "J2000", "NONE", 3)[0]]
-    ['2.0504464298094124e+08', '-1.3595802361226091e+08', '-6.5722791535179183e+07', '3.7012086122583923e+01', '4.8685441396743641e+01', '2.0519128283382937e+01']
+    ['2.0504464297378346e+08',
+    '-1.3595802364930704e+08',
+    '-6.5722791478621781e+07',
+    '3.7012086125533884e+01',
+    '4.8685441394651654e+01',
+    '2.0519128282958704e+01']
     */
 
     dbg!(ctx
@@ -60,15 +65,15 @@ fn de438s_translation_verif_venus2emb() {
         .unwrap();
 
     let pos_expct_km = Vector3::new(
-        2.0504464298094124e+08,
-        -1.3595802361226091e+08,
-        -6.5722791535179183e+07,
+        2.0504464297378346e+08,
+        -1.3595802364930704e+08,
+        -6.5722791478621781e+07,
     );
 
     let vel_expct_km_s = Vector3::new(
-        3.7012086122583923e+01,
-        4.8685441396743641e+01,
-        2.0519128283382937e+01,
+        3.7012086125533884e+01,
+        4.8685441394651654e+01,
+        2.0519128282958704e+01,
     );
 
     // We expect exactly the same output as SPICE to machine precision.
@@ -114,9 +119,9 @@ fn de438s_translation_verif_venus2luna() {
     }
 
     // "Load" the file via a memory map (avoids allocations)
-    let path = "./data/de438s.bsp";
+    let path = "./data/de440s.bsp";
     let buf = file_mmap!(path).unwrap();
-    let spk = SPK::parse(&buf).unwrap();
+    let spk = SPK::parse(buf).unwrap();
     let ctx = Context::from_spk(&spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
@@ -126,13 +131,17 @@ fn de438s_translation_verif_venus2luna() {
     /*
     Python code:
     >>> import spiceypy as sp
-    >>> sp.furnsh('data/de438s.bsp')
+    >>> sp.furnsh('data/de440s.bsp')
     >>> sp.furnsh('../../hifitime/naif0012.txt')
     >>> et = sp.utc2et('2002 FEB 07 00:00:00')
-    >>> ['{:.16e}'.format(x) for x in sp.spkez(2, et, "J2000", "NONE", 3)[0]]
-    ['2.0512621957198492e+08', '-1.3561254792311624e+08', '-6.5578399676164642e+07', '3.6051374278187268e+01', '4.8889024622166957e+01', '2.0702933800840963e+01']
-    >>> ['{:.16e}'.format(x) for x in sp.spkez(3, et, "J2000", "NONE", 301)[0]]
-    ['8.1576591043659311e+04', '3.4547568914467981e+05', '1.4439185901453768e+05', '-9.6071184439665624e-01', '2.0358322542331578e-01', '1.8380551745802590e-01']
+    >>> ['{:.16e}'.format(x) for x in sp.spkez(2, et, "J2000", "NONE", 301)[0]]
+    ['2.0512621956428146e+08',
+    '-1.3561254796010864e+08',
+    '-6.5578399619259715e+07',
+    '3.6051374280511325e+01',
+    '4.8889024619544145e+01',
+    '2.0702933797799531e+01']
+
     */
 
     let state = ctx
@@ -147,15 +156,15 @@ fn de438s_translation_verif_venus2luna() {
         .unwrap();
 
     let pos_expct_km = Vector3::new(
-        2.0512621957198492e+08,
-        -1.3561254792311624e+08,
-        -6.5578399676164642e+07,
+        2.0512621956428146e+08,
+        -1.3561254796010864e+08,
+        -6.5578399619259715e+07,
     );
 
     let vel_expct_km_s = Vector3::new(
-        3.6051374278187268e+01,
-        4.8889024622166957e+01,
-        2.0702933800840963e+01,
+        3.6051374280511325e+01,
+        4.8889024619544145e+01,
+        2.0702933797799531e+01,
     );
 
     // We expect exactly the same output as SPICE to machine precision.
@@ -209,9 +218,9 @@ fn de438s_translation_verif_emb2luna() {
     }
 
     // "Load" the file via a memory map (avoids allocations)
-    let path = "./data/de438s.bsp";
+    let path = "./data/de440s.bsp";
     let buf = file_mmap!(path).unwrap();
-    let spk = SPK::parse(&buf).unwrap();
+    let spk = SPK::parse(buf).unwrap();
     let ctx = Context::from_spk(&spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
@@ -221,11 +230,16 @@ fn de438s_translation_verif_emb2luna() {
     /*
     Python code:
     >>> import spiceypy as sp
-    >>> sp.furnsh('data/de438s.bsp')
+    >>> sp.furnsh('data/de440s.bsp')
     >>> sp.furnsh('../../hifitime/naif0012.txt')
     >>> et = sp.utc2et('2002 FEB 07 00:00:00')
     >>> ['{:.16e}'.format(x) for x in sp.spkez(3, et, "J2000", "NONE", 301)[0]] # Target = 3; Obs = 301
-    ['8.1576591043659311e+04', '3.4547568914467981e+05', '1.4439185901453768e+05', '-9.6071184439665624e-01', '2.0358322542331578e-01', '1.8380551745802590e-01']
+    ['8.1576590498004080e+04',
+    '3.4547568919842143e+05',
+    '1.4439185936206434e+05',
+    '-9.6071184502255447e-01',
+    '2.0358322489248903e-01',
+    '1.8380551484083130e-01']
     */
 
     let state = ctx
@@ -243,15 +257,15 @@ fn de438s_translation_verif_emb2luna() {
     assert_eq!(state.frame, LUNA_J2000);
 
     let pos_expct_km = Vector3::new(
-        8.1576591043659311e+04,
-        3.4547568914467981e+05,
-        1.4439185901453768e+05,
+        8.1576590498004080e+04,
+        3.4547568919842143e+05,
+        1.4439185936206434e+05,
     );
 
     let vel_expct_km_s = Vector3::new(
-        -9.6071184439665624e-01,
-        2.0358322542331578e-01,
-        1.8380551745802590e-01,
+        -9.6071184502255447e-01,
+        2.0358322489248903e-01,
+        1.8380551484083130e-01,
     );
 
     // We expect exactly the same output as SPICE to machine precision.
@@ -312,12 +326,12 @@ fn spk_hermite_type13_verif() {
     }
 
     // "Load" the file via a memory map (avoids allocations)
-    let path = "./data/de438s.bsp";
+    let path = "./data/de440s.bsp";
     let buf = file_mmap!(path).unwrap();
-    let spk = SPK::parse(&buf).unwrap();
+    let spk = SPK::parse(buf).unwrap();
 
     let buf = file_mmap!("data/gmat-hermite.bsp").unwrap();
-    let spacecraft = SPK::parse(&buf).unwrap();
+    let spacecraft = SPK::parse(buf).unwrap();
 
     let ctx = Context::from_spk(&spk)
         .unwrap()
@@ -365,4 +379,34 @@ fn spk_hermite_type13_verif() {
         state.velocity_km_s,
         vel_expct_km_s - state.velocity_km_s
     );
+}
+
+#[test]
+fn multithread_query() {
+    use core::str::FromStr;
+    use rayon::prelude::*;
+    // "Load" the file via a memory map (avoids allocations)
+    let path = "./data/de440s.bsp";
+    let buf = file_mmap!(path).unwrap();
+    let spk = SPK::parse(buf).unwrap();
+    let ctx = Context::from_spk(&spk).unwrap();
+
+    let start_epoch = Epoch::from_str("2000-01-01T00:00:00 ET").unwrap();
+
+    let end_epoch = start_epoch + 105.days();
+
+    let time_it = TimeSeries::exclusive(start_epoch, end_epoch, 2.hours());
+
+    let start = Epoch::now().unwrap();
+
+    let epochs: Vec<Epoch> = time_it.collect();
+    epochs.into_par_iter().for_each(|epoch| {
+        let state = ctx
+            .translate_from_to_km_s_geometric(LUNA_J2000, EARTH_MOON_BARYCENTER_J2000, epoch)
+            .unwrap();
+        println!("{state:?}");
+    });
+
+    let delta_t = Epoch::now().unwrap() - start;
+    println!("Took {delta_t}");
 }

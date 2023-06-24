@@ -8,5 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 
-mod hermite_type13;
-mod jplde_cheby_type2;
+mod type02_chebyshev_jpl_de;
+mod type13_hermite;
+
+mod compare;
+mod validate;

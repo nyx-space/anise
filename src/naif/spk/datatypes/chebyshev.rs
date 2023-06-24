@@ -13,8 +13,12 @@ use hifitime::{Duration, Epoch, TimeUnits};
 use log::error;
 
 use crate::{
+    errors::IntegrityErrorKind,
     math::{interpolation::chebyshev_eval, Vector3},
-    naif::daf::{NAIFDataRecord, NAIFDataSet},
+    naif::{
+        daf::{NAIFDataRecord, NAIFDataSet, NAIFSummaryRecord},
+        spk::summary::SPKSummaryRecord,
+    },
     prelude::AniseError,
 };
 
@@ -47,7 +51,7 @@ impl<'a> fmt::Display for Type2ChebyshevSet<'a> {
 }
 
 impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
-    // At this stage, we don't know the frame of what we're interpolating!
+    type SummaryKind = SPKSummaryRecord;
     type StateKind = (Vector3, Vector3);
     type RecordKind = Type2ChebyshevRecord<'a>;
 
@@ -60,8 +64,17 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
             return Err(AniseError::MalformedData(5));
         }
         // For this kind of record, the data is stored at the very end of the dataset
-        let start_epoch = Epoch::from_et_seconds(slice[slice.len() - 4]);
-        let interval_length = slice[slice.len() - 3].seconds();
+        let seconds_since_j2000 = slice[slice.len() - 4];
+        if !seconds_since_j2000.is_finite() {
+            // The Epoch initialization will fail on subnormal data
+            return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+        }
+        let start_epoch = Epoch::from_et_seconds(seconds_since_j2000);
+        let interval_length_s = slice[slice.len() - 3];
+        if !interval_length_s.is_finite() {
+            return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+        }
+        let interval_length = interval_length_s.seconds();
         let rsize = slice[slice.len() - 2] as usize;
         let num_records = slice[slice.len() - 1] as usize;
 
@@ -82,22 +95,50 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         ))
     }
 
-    fn evaluate(&self, epoch: Epoch, start_epoch: Epoch) -> Result<(Vector3, Vector3), AniseError> {
-        let window_duration_s = self.interval_length.to_seconds();
-
-        let radius_s = window_duration_s / 2.0;
-        let ephem_start_delta = epoch - start_epoch;
-        let ephem_start_delta_s = ephem_start_delta.to_seconds();
-
-        if ephem_start_delta_s < 0.0 {
+    fn evaluate(
+        &self,
+        epoch: Epoch,
+        summary: &Self::SummaryKind,
+    ) -> Result<(Vector3, Vector3), AniseError> {
+        if epoch < summary.start_epoch() {
+            // No need to go any further.
             return Err(AniseError::MissingInterpolationData(epoch));
         }
 
-        // In seconds
-        let spline_idx = (ephem_start_delta_s / window_duration_s).round() as usize;
+        let window_duration_s = self.interval_length.to_seconds();
+
+        let radius_s = window_duration_s / 2.0;
+        let ephem_start_delta_s = epoch.to_et_seconds() - summary.start_epoch_et_s;
+
+        /*
+                CSPICE CODE
+                https://github.com/ChristopherRabotin/cspice/blob/26c72936fb7ff6f366803a1419b7cc3c61e0b6e5/src/cspice/spkr02.c#L272
+
+            i__1 = end - 3;
+            dafgda_(handle, &i__1, &end, record);
+            init = record[0];
+            intlen = record[1];
+            recsiz = (integer) record[2];
+            nrec = (integer) record[3];
+            recno = (integer) ((*et - init) / intlen) + 1;
+            recno = min(recno,nrec);
+
+        /*     Compute the address of the desired record. */
+
+            recadr = (recno - 1) * recsiz + begin;
+
+        /*     Along with the record, return the size of the record. */
+
+            record[0] = record[2];
+            i__1 = recadr + recsiz - 1;
+            dafgda_(handle, &recadr, &i__1, &record[1]);
+                */
+
+        let spline_idx =
+            ((ephem_start_delta_s / window_duration_s) as usize + 1).min(self.num_records);
 
         // Now, build the X, Y, Z data from the record data.
-        let record = self.nth_record(spline_idx)?;
+        let record = self.nth_record(spline_idx - 1)?;
 
         let normalized_time = (epoch.to_et_seconds() - record.midpoint_et_s) / radius_s;
 
@@ -115,6 +156,17 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         }
 
         Ok((pos, vel))
+    }
+
+    fn check_integrity(&self) -> Result<(), AniseError> {
+        // Verify that none of the data is invalid once when we load it.
+        for val in self.record_data {
+            if !val.is_finite() {
+                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+            }
+        }
+
+        Ok(())
     }
 }
 

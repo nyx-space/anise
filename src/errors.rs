@@ -11,6 +11,7 @@
 use hifitime::Epoch;
 
 use crate::prelude::Frame;
+use crate::structure::semver::Semver;
 use core::convert::From;
 use core::fmt;
 use std::io::ErrorKind as IOErrorKind;
@@ -31,7 +32,7 @@ pub enum AniseError {
     /// If the NAIF file cannot be read or isn't supported
     DAFParserError(String),
     InvalidTimeSystem,
-    /// Raised if the checksum of the encoded data does not match the stored data.
+    /// Raised if there is some kind of error with the underlying data, e.g. invalid checksum, or NaN/Inf values when that is not acceptable.
     IntegrityError(IntegrityErrorKind),
     /// Raised if the item sought after is not found in the context
     ItemNotFound,
@@ -52,6 +53,11 @@ pub enum AniseError {
     MissingInterpolationData(Epoch),
     /// Raised if a computation is physically wrong
     PhysicsError(PhysicsErrorKind),
+    IncompatibleVersion {
+        got: Semver,
+        exp: Semver,
+    },
+    DecodingError(der::Error),
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -76,6 +82,8 @@ pub enum IntegrityErrorKind {
     LookupTable,
     /// Raised if a transformation is requested but the frames have no common origin
     DisjointRoots { from_frame: Frame, to_frame: Frame },
+    /// Raised if some f64 data is NaN, infinity, or negative infinity.
+    SubNormal,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -154,7 +162,8 @@ impl fmt::Display for AniseError {
                 f,
                 "ANISE error: No interpolation as epoch {e:e}"
             ),
-            Self::PhysicsError(e) => write!(f, "ANISE error: Physics error: {e:?}")
+            Self::PhysicsError(e) => write!(f, "ANISE error: Physics error: {e:?}"),
+            _ => write!(f, "ANISE error: {self:?}")
         }
     }
 }
