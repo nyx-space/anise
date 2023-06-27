@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::{prelude::AniseError, NaifId};
+use crate::{math::Vector3, prelude::AniseError, NaifId};
 use core::f64::EPSILON;
 use core::ops::Mul;
 use nalgebra::Matrix4x3;
@@ -150,6 +150,18 @@ impl EulerParameters {
             self.x, self.w,
         )
     }
+
+    /// Returns the principal rotation vector and the angle in radians
+    pub fn prv_angle(&self) -> (Vector3, f64) {
+        let half_angle_rad = self.w.acos();
+        if half_angle_rad.abs() < EPSILON {
+            (Vector3::zeros(), 2.0 * half_angle_rad)
+        } else {
+            let prv = Vector3::new(self.x, self.y, self.z) / half_angle_rad.sin();
+
+            (prv, 2.0 * half_angle_rad)
+        }
+    }
 }
 
 impl Mul for Quaternion {
@@ -167,13 +179,20 @@ impl Mul for Quaternion {
             let j = self.w * other.y - self.x * other.z + self.y * other.w + self.z * other.x;
             let k = self.w * other.z + self.x * other.y - self.y * other.x + self.z * other.w;
 
+            let (from, to) = if self.to == other.to && self.from == other.from {
+                // Then we don't change the frames
+                (self.from, self.to)
+            } else {
+                (self.from, other.to)
+            };
+
             Ok(Quaternion {
                 w: s,
                 x: i,
                 y: j,
                 z: k,
-                from: self.from,
-                to: other.to,
+                from,
+                to,
             })
         }
     }
@@ -181,7 +200,7 @@ impl Mul for Quaternion {
 
 #[cfg(test)]
 mod ut_quaternion {
-    use super::{Quaternion, PI};
+    use super::{Quaternion, Vector3, PI, TAU};
     #[test]
     fn test_quat_invalid() {
         // Ensure that we cannot compose two rotations when the frames don't match.
@@ -191,5 +210,29 @@ mod ut_quaternion {
         assert!((q1 * q1).is_err());
         assert!((q1 * q1.conjugate()).is_ok());
         assert_eq!((q1 * q1.conjugate()).unwrap(), Quaternion::zero(0, 0));
+    }
+
+    #[test]
+    fn test_quat_start_end_frames() {
+        let q1 = Quaternion::about_x(PI, 0, 1);
+        let q2 = Quaternion::about_x(PI, 1, 2);
+
+        let q1_to_q2 = (q1 * q2).unwrap();
+        assert_eq!(q1_to_q2.from, 0);
+        assert_eq!(q1_to_q2.to, 2);
+
+        let (prv, angle_rad) = q1_to_q2.prv_angle();
+        assert_eq!(angle_rad, TAU);
+        assert_eq!(prv, Vector3::x());
+
+        // Check the conjugate
+
+        let q2_to_q1 = (q2.conjugate() * q1.conjugate()).unwrap();
+        assert_eq!(q2_to_q1.from, 2);
+        assert_eq!(q2_to_q1.to, 0);
+
+        let (prv, angle_rad) = q2_to_q1.prv_angle();
+        assert_eq!(angle_rad, TAU);
+        assert_eq!(prv, -Vector3::x());
     }
 }
