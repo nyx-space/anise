@@ -16,9 +16,9 @@ pub mod angles;
 pub mod cartesian;
 pub mod interpolation;
 pub mod polyfit;
+pub mod rotation;
 pub mod units;
 pub mod utils;
-// pub mod rotation;
 
 /// Returns the projection of a onto b
 pub fn projv(a: &Vector3, b: &Vector3) -> Vector3 {

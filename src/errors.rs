@@ -58,6 +58,10 @@ pub enum AniseError {
         exp: Semver,
     },
     DecodingError(der::Error),
+    IncompatibleRotation {
+        from: i32,
+        to: i32,
+    },
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
