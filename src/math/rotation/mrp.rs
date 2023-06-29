@@ -105,7 +105,7 @@ impl MRP {
     }
 
     /// Returns the 3x3 matrix which relates the body angular velocity vector w to the derivative of this MRP.
-    /// 	dQ/dt = 1/4 [B(Q)] w
+    /// dQ/dt = 1/4 [B(Q)] w
     pub fn b_matrix(&self) -> Matrix3 {
         let mut b = Matrix3::zeros();
         let s2 = self.scalar_norm();
