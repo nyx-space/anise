@@ -15,6 +15,8 @@ use nalgebra::Matrix4x3;
 
 pub use core::f64::consts::{FRAC_PI_2, FRAC_PI_3, FRAC_PI_4, PI, TAU};
 
+use super::EPSILON_RAD;
+
 /// Quaternion will always be a unit quaternion in ANISE, cf. [EulerParameters].
 pub type Quaternion = EulerParameters;
 
@@ -47,7 +49,7 @@ pub type Quaternion = EulerParameters;
 ///
 /// # Usage
 /// Importantly, ANISE prevents the composition of two Euler Parameters if the frames do not match.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug)]
 pub struct EulerParameters {
     pub w: f64,
     pub x: f64,
@@ -58,7 +60,7 @@ pub struct EulerParameters {
 }
 
 impl EulerParameters {
-    pub fn zero(from: NaifId, to: NaifId) -> Self {
+    pub const fn zero(from: NaifId, to: NaifId) -> Self {
         Self {
             w: 1.0,
             x: 0.0,
@@ -142,13 +144,28 @@ impl EulerParameters {
         }
     }
 
-    /// Returns the 4x3 matrix which relates the body angular velocity vector w to the derivative of Euler parameter vector Q.
+    /// Returns the 4x3 matrix which relates the body angular velocity vector w to the derivative of this Euler Parameter.
     /// dQ/dt = 1/2 [B(Q)] w
-    pub fn derivative(&self) -> Matrix4x3<f64> {
+    pub fn b_matrix(&self) -> Matrix4x3<f64> {
         Matrix4x3::new(
             -self.x, -self.y, -self.z, self.w, -self.z, self.y, self.z, self.w, -self.x, -self.y,
             self.x, self.w,
         )
+    }
+
+    /// Returns the euler parameter derivative for this Euler parameter and body angular velocity vector w.
+    /// dQ/dt = 1/2 [B(Q)] w
+    pub fn derivative(&self, w: Vector3) -> Self {
+        let q = 0.25 * self.b_matrix() * w;
+
+        Self {
+            w: q[0],
+            x: q[1],
+            y: q[2],
+            z: q[3],
+            from: self.from,
+            to: self.to,
+        }
     }
 
     /// Returns the principal rotation vector and the angle in radians
@@ -179,7 +196,7 @@ impl Mul for Quaternion {
             let j = self.w * other.y - self.x * other.z + self.y * other.w + self.z * other.x;
             let k = self.w * other.z + self.x * other.y - self.y * other.x + self.z * other.w;
 
-            let (from, to) = if self.to == other.to && self.from == other.from {
+            let (from, to) = if self.to == other.from && self.from == other.to {
                 // Then we don't change the frames
                 (self.from, self.to)
             } else {
@@ -198,9 +215,23 @@ impl Mul for Quaternion {
     }
 }
 
+impl PartialEq for Quaternion {
+    fn eq(&self, other: &Self) -> bool {
+        if self.to == other.to && self.from == other.from {
+            let (self_prv, self_angle) = self.prv_angle();
+            let (other_prv, other_angle) = other.prv_angle();
+
+            (self_angle - other_angle).abs() < EPSILON_RAD
+                && (self_prv - other_prv).norm() <= EPSILON
+        } else {
+            false
+        }
+    }
+}
+
 #[cfg(test)]
 mod ut_quaternion {
-    use super::{Quaternion, Vector3, PI, TAU};
+    use super::{EulerParameters, Quaternion, Vector3, PI, TAU};
     #[test]
     fn test_quat_invalid() {
         // Ensure that we cannot compose two rotations when the frames don't match.
@@ -209,7 +240,7 @@ mod ut_quaternion {
 
         assert!((q1 * q1).is_err());
         assert!((q1 * q1.conjugate()).is_ok());
-        assert_eq!((q1 * q1.conjugate()).unwrap(), Quaternion::zero(0, 0));
+        assert_eq!((q1 * q1.conjugate()).unwrap(), Quaternion::zero(0, 1));
     }
 
     #[test]
@@ -234,5 +265,11 @@ mod ut_quaternion {
         let (prv, angle_rad) = q2_to_q1.prv_angle();
         assert_eq!(angle_rad, TAU);
         assert_eq!(prv, -Vector3::x());
+    }
+
+    #[test]
+    fn test_zero() {
+        let z = EulerParameters::zero(0, 1);
+        assert!(z.is_zero());
     }
 }

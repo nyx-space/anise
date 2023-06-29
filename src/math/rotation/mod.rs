@@ -8,6 +8,9 @@
  * Documentation: https://nyxspace.com/
  */
 
+/// The smallest difference between two radians is set to one milliarcsecond, or about 2.8e-7 degrees.
+pub const EPSILON_RAD: f64 = 4.8e-9;
+
 mod mrp;
 mod quaternion;
 pub use mrp::MRP;

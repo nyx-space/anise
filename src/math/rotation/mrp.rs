@@ -8,10 +8,14 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::{prelude::AniseError, NaifId};
+use crate::{
+    math::{Matrix3, Vector3},
+    prelude::AniseError,
+    NaifId,
+};
 use core::f64::EPSILON;
 
-use super::Quaternion;
+use super::{Quaternion, EPSILON_RAD};
 
 /// Represents the orientation of a rigid body in three-dimensional space using Modified Rodrigues Parameters (MRP).
 ///
@@ -75,6 +79,73 @@ impl MRP {
     pub fn is_singular(&self) -> bool {
         self.scalar_norm() < EPSILON
     }
+
+    /// If the norm of this MRP is greater than max_norm then this MRP is set to its shadow set
+    pub fn normalize(&mut self, max_norm: f64) {
+        if self.scalar_norm() >= max_norm {
+            *self = self.shadow().unwrap();
+        }
+    }
+
+    /// Returns the principal rotation vector and the angle in radians
+    ///
+    /// # Note
+    /// If the MRP is singular, this returns an angle of zero and a vector of zero.
+    pub fn prv_angle(&self) -> (Vector3, f64) {
+        match Quaternion::try_from(*self) {
+            Ok(q) => q.prv_angle(),
+            Err(_) => (Vector3::zeros(), 0.0),
+        }
+    }
+
+    /// Returns the data of this MRP as a vector, simplifies lots of computations
+    /// but at the cost of losing frame information.
+    pub(crate) fn as_vector(&self) -> Vector3 {
+        Vector3::new(self.s0, self.s1, self.s2)
+    }
+
+    /// Returns the 3x3 matrix which relates the body angular velocity vector w to the derivative of this MRP.
+    /// 	dQ/dt = 1/4 [B(Q)] w
+    pub fn b_matrix(&self) -> Matrix3 {
+        let mut b = Matrix3::zeros();
+        let s2 = self.scalar_norm();
+        let q = self.as_vector();
+
+        b[(0, 0)] = 1.0 - s2 + 2.0 * q[0] * q[0];
+        b[(0, 1)] = 2.0 * (q[0] * q[1] - q[2]);
+        b[(0, 2)] = 2.0 * (q[0] * q[2] + q[1]);
+        b[(1, 0)] = 2.0 * (q[1] * q[0] + q[2]);
+        b[(1, 1)] = 1.0 - s2 + 2.0 * q[1] * q[1];
+        b[(1, 2)] = 2.0 * (q[1] * q[2] - q[0]);
+        b[(2, 0)] = 2.0 * (q[2] * q[0] - q[1]);
+        b[(2, 1)] = 2.0 * (q[2] * q[1] + q[0]);
+        b[(2, 2)] = 1.0 - s2 + 2.0 * q[2] * q[2];
+
+        b
+    }
+
+    /// Returns the MRP derivative for this MRP and body angular velocity vector w.
+    /// dQ/dt = 1/4 [B(Q)] w
+    pub fn derivative(&self, w: Vector3) -> MRP {
+        let s = 0.25 * self.b_matrix() * w;
+
+        MRP {
+            s0: s[0],
+            s1: s[1],
+            s2: s[2],
+            from: self.from,
+            to: self.to,
+        }
+    }
+}
+
+impl PartialEq for MRP {
+    fn eq(&self, other: &Self) -> bool {
+        let (self_prv, self_angle) = self.prv_angle();
+        let (other_prv, other_angle) = other.prv_angle();
+        (self_angle - other_angle).abs() < EPSILON_RAD
+            && self_prv.dot(&other_prv).acos() < EPSILON_RAD
+    }
 }
 
 impl TryFrom<Quaternion> for MRP {
@@ -125,7 +196,7 @@ impl TryFrom<MRP> for Quaternion {
 #[cfg(test)]
 mod ut_mrp {
     use super::{Quaternion, MRP};
-    use core::f64::consts::TAU;
+    use core::f64::consts::{PI, TAU};
 
     #[test]
     fn test_singular() {
@@ -148,5 +219,24 @@ mod ut_mrp {
         assert!(s.is_singular());
 
         assert!(s.shadow().is_err());
+    }
+
+    #[test]
+    fn test_shadow_set() {
+        let m = MRP::try_from(Quaternion::about_y(PI, 0, 1)).unwrap();
+        let shadow_m = m.shadow().unwrap();
+        assert_eq!(shadow_m.shadow().unwrap(), m);
+    }
+
+    #[test]
+    fn test_reciprocity() {
+        let q = Quaternion::about_x(PI, 0, 1);
+
+        let m = MRP::try_from(q).unwrap();
+
+        let q_back = Quaternion::try_from(m).unwrap();
+
+        // TODO: Redefine equality to be within a very small angle.
+        assert_eq!(q_back, q);
     }
 }
