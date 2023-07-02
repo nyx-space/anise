@@ -21,7 +21,7 @@ const POSITION_EPSILON_KM: f64 = 2e-8;
 const VELOCITY_EPSILON_KM_S: f64 = 5e-9;
 
 #[test]
-fn de438s_translation_verif_venus2emb() {
+fn de440s_translation_verif_venus2emb() {
     if pretty_env_logger::try_init().is_err() {
         println!("could not init env_logger");
     }

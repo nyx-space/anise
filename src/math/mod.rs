@@ -12,7 +12,7 @@
 pub type Vector3 = nalgebra::Vector3<f64>;
 pub type Vector6 = nalgebra::Vector6<f64>;
 pub type Matrix3 = nalgebra::Matrix3<f64>;
-pub type Matrix6 = nalgebra::Matrix3<f64>;
+pub type Matrix6 = nalgebra::Matrix6<f64>;
 
 pub mod angles;
 pub mod cartesian;

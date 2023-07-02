@@ -175,7 +175,7 @@ impl TryFrom<Quaternion> for MRP {
 impl TryFrom<MRP> for Quaternion {
     type Error = AniseError;
 
-    /// Try to convert a quaternion into its MRP representation
+    /// Try to convert from an MRP into its quaternion representation
     ///
     /// # Failure cases
     /// + A rotation of +/- tau, as the associated MRP is singular
