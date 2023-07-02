@@ -17,7 +17,7 @@ use crate::{
 
 use std::ops::Mul;
 
-use super::{Quaternion, EPSILON_RAD};
+use super::Quaternion;
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct DCM {
@@ -188,17 +188,15 @@ impl Mul<Vector6> for DCM {
     }
 }
 
-impl TryFrom<DCM> for Quaternion {
-    type Error = AniseError;
-
+impl From<DCM> for Quaternion {
     /// Try to convert from a DCM into its quaternion representation
     ///
     /// # Warning
     /// If this DCM has a time derivative, it will be lost in the conversion.
     ///
     /// # Failure cases
-    /// + A rotation of +/- tau, as the associated MRP is singular
-    fn try_from(dcm: DCM) -> Result<Self, Self::Error> {
+    /// This conversion cannot fail.
+    fn from(dcm: DCM) -> Self {
         // From Basilisk's `C2EP` function
         let c = dcm.rot_mat;
         let tr = c.trace();
@@ -257,14 +255,29 @@ impl TryFrom<DCM> for Quaternion {
             _ => unreachable!(),
         };
 
-        Ok(Quaternion {
-            w,
-            x,
-            y,
-            z,
-            from: dcm.from,
-            to: dcm.to,
-        })
+        Quaternion::new(w, x, y, z, dcm.from, dcm.to)
+    }
+}
+
+impl PartialEq for DCM {
+    fn eq(&self, other: &Self) -> bool {
+        if (self.rot_mat_dt.is_none() && other.rot_mat_dt.is_some())
+            || (self.rot_mat_dt.is_some() && other.rot_mat_dt.is_none())
+        {
+            false
+        } else {
+            // Use the quaternion conversions for equality
+            let self_q: Quaternion = (*self).into();
+            let other_q: Quaternion = (*other).into();
+
+            let dt_match = if let Some(self_dt) = self.rot_mat_dt {
+                (self_dt - other.rot_mat_dt.unwrap()).norm() < 1e-9
+            } else {
+                true
+            };
+
+            self.from == other.from && self.to == other.to && self_q == other_q && dt_match
+        }
     }
 }
 

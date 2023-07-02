@@ -71,6 +71,19 @@ impl EulerParameters {
         }
     }
 
+    /// Creates a new Euler Parameter and ensures that it's the short rotation
+    pub fn new(w: f64, x: f64, y: f64, z: f64, from: NaifId, to: NaifId) -> Self {
+        Self {
+            w,
+            x,
+            y,
+            z,
+            from,
+            to,
+        }
+        .normalize()
+    }
+
     /// Returns true if the quaternion represents a rotation of zero radians
     pub fn is_zero(&self) -> bool {
         (1.0 - self.w.abs()) < EPSILON
@@ -121,12 +134,14 @@ impl EulerParameters {
     }
 
     /// Normalize the quaternion.
-    pub fn normalize(&mut self) {
+    pub fn normalize(&self) -> Self {
         let norm = self.scalar_norm();
-        self.w /= norm;
-        self.x /= norm;
-        self.y /= norm;
-        self.z /= norm;
+        let mut me = *self;
+        me.w /= norm;
+        me.x /= norm;
+        me.y /= norm;
+        me.z /= norm;
+        me
     }
 
     /// Compute the conjugate of the quaternion.

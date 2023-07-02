@@ -81,9 +81,11 @@ impl MRP {
     }
 
     /// If the norm of this MRP is greater than max_norm then this MRP is set to its shadow set
-    pub fn normalize(&mut self, max_norm: f64) {
-        if self.scalar_norm() >= max_norm {
-            *self = self.shadow().unwrap();
+    pub fn normalize(&self) -> Self {
+        if self.scalar_norm() > 1.0 {
+            self.shadow().unwrap()
+        } else {
+            *self
         }
     }
 
@@ -167,7 +169,8 @@ impl TryFrom<Quaternion> for MRP {
                 s0: q.x / (1.0 + q.w),
                 s1: q.y / (1.0 + q.w),
                 s2: q.z / (1.0 + q.w),
-            })
+            }
+            .normalize())
         }
     }
 }
