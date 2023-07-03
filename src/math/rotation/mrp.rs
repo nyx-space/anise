@@ -222,6 +222,10 @@ mod ut_mrp {
         assert!(s.is_singular());
 
         assert!(s.shadow().is_err());
+
+        let (uvec, angle) = s.uvec_angle();
+        assert_eq!(uvec.norm(), 0.0);
+        assert_eq!(angle, 0.0);
     }
 
     #[test]

@@ -86,7 +86,7 @@ impl EulerParameters {
 
     /// Returns true if the quaternion represents a rotation of zero radians
     pub fn is_zero(&self) -> bool {
-        (1.0 - self.w.abs()) < EPSILON
+        self.w.abs() < EPSILON || (1.0 - self.w.abs()) < EPSILON
     }
 
     pub fn about_x(angle_rad: f64, from: NaifId, to: NaifId) -> Self {
@@ -247,11 +247,11 @@ impl Mul for &Quaternion {
 impl PartialEq for Quaternion {
     fn eq(&self, other: &Self) -> bool {
         if self.to == other.to && self.from == other.from {
-            let (self_prv, self_angle) = self.uvec_angle();
-            let (other_prv, other_angle) = other.uvec_angle();
+            let (self_uvec, self_angle) = self.uvec_angle();
+            let (other_uvec, other_angle) = other.uvec_angle();
 
             (self_angle - other_angle).abs() < EPSILON_RAD
-                && (self_prv - other_prv).norm() <= EPSILON
+                && (self_uvec - other_uvec).norm() <= EPSILON
         } else {
             false
         }
@@ -264,7 +264,7 @@ mod ut_quaternion {
 
     use super::{EulerParameters, Quaternion, Vector3, PI, TAU};
     #[test]
-    fn test_quat_invalid() {
+    fn test_quat_frames() {
         // Ensure that we cannot compose two rotations when the frames don't match.
         // We are using arbitrary numbers for the frames
         for (i, q) in [
@@ -319,7 +319,14 @@ mod ut_quaternion {
     }
 
     #[test]
-    fn test_derive() {
-        // let q = Quaternion::new()
+    fn test_derivative_zero_angular_velocity() {
+        let euler_params = EulerParameters::zero(0, 1);
+        let w = Vector3::new(0.0, 0.0, 0.0);
+        let derivative = euler_params.derivative(w);
+
+        // With zero angular velocity, the derivative should be zero
+        assert!(derivative.is_zero());
     }
+
+    // TODO: Add useful tests
 }
