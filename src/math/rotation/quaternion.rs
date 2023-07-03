@@ -183,8 +183,8 @@ impl EulerParameters {
         }
     }
 
-    /// Returns the principal rotation vector and the angle in radians
-    pub fn prv_angle(&self) -> (Vector3, f64) {
+    /// Returns the principal line of rotation (a unit vector) and the angle of rotation in radians
+    pub fn uvec_angle(&self) -> (Vector3, f64) {
         let half_angle_rad = self.w.acos();
         if half_angle_rad.abs() < EPSILON {
             (Vector3::zeros(), 2.0 * half_angle_rad)
@@ -193,6 +193,12 @@ impl EulerParameters {
 
             (prv, 2.0 * half_angle_rad)
         }
+    }
+
+    /// Returns the principal rotation vector representation of this Euler Parameter
+    pub fn prv(&self) -> Vector3 {
+        let (uvec, angle) = self.uvec_angle();
+        angle * uvec
     }
 }
 
@@ -230,11 +236,19 @@ impl Mul for Quaternion {
     }
 }
 
+impl Mul for &Quaternion {
+    type Output = Result<Quaternion, AniseError>;
+
+    fn mul(self, other: &Quaternion) -> Result<Quaternion, AniseError> {
+        *self * *other
+    }
+}
+
 impl PartialEq for Quaternion {
     fn eq(&self, other: &Self) -> bool {
         if self.to == other.to && self.from == other.from {
-            let (self_prv, self_angle) = self.prv_angle();
-            let (other_prv, other_angle) = other.prv_angle();
+            let (self_prv, self_angle) = self.uvec_angle();
+            let (other_prv, other_angle) = other.uvec_angle();
 
             (self_angle - other_angle).abs() < EPSILON_RAD
                 && (self_prv - other_prv).norm() <= EPSILON
@@ -246,16 +260,32 @@ impl PartialEq for Quaternion {
 
 #[cfg(test)]
 mod ut_quaternion {
+    use core::f64::EPSILON;
+
     use super::{EulerParameters, Quaternion, Vector3, PI, TAU};
     #[test]
     fn test_quat_invalid() {
         // Ensure that we cannot compose two rotations when the frames don't match.
         // We are using arbitrary numbers for the frames
-        let q1 = Quaternion::about_x(PI, 0, 1);
+        for (i, q) in [
+            Quaternion::about_x(PI, 0, 1),
+            Quaternion::about_y(PI, 0, 1),
+            Quaternion::about_z(PI, 0, 1),
+        ]
+        .iter()
+        .enumerate()
+        {
+            assert!((q * q).is_err());
+            assert!((q * &q.conjugate()).is_ok());
+            assert_eq!((q * &q.conjugate()).unwrap(), Quaternion::zero(0, 1));
+            // Check that the PRV is entirely in the appropriate direction
+            let prv = q.prv();
 
-        assert!((q1 * q1).is_err());
-        assert!((q1 * q1.conjugate()).is_ok());
-        assert_eq!((q1 * q1.conjugate()).unwrap(), Quaternion::zero(0, 1));
+            // The i-th index should be equal to PI
+            assert!((prv[i] - PI).abs() < EPSILON);
+            // The overall norm should be PI, i.e. all other components are zero.
+            assert!((prv.norm() - PI).abs() < EPSILON);
+        }
     }
 
     #[test]
@@ -267,7 +297,7 @@ mod ut_quaternion {
         assert_eq!(q1_to_q2.from, 0);
         assert_eq!(q1_to_q2.to, 2);
 
-        let (prv, angle_rad) = q1_to_q2.prv_angle();
+        let (prv, angle_rad) = q1_to_q2.uvec_angle();
         assert_eq!(angle_rad, TAU);
         assert_eq!(prv, Vector3::x());
 
@@ -277,7 +307,7 @@ mod ut_quaternion {
         assert_eq!(q2_to_q1.from, 2);
         assert_eq!(q2_to_q1.to, 0);
 
-        let (prv, angle_rad) = q2_to_q1.prv_angle();
+        let (prv, angle_rad) = q2_to_q1.uvec_angle();
         assert_eq!(angle_rad, TAU);
         assert_eq!(prv, -Vector3::x());
     }
@@ -286,5 +316,10 @@ mod ut_quaternion {
     fn test_zero() {
         let z = EulerParameters::zero(0, 1);
         assert!(z.is_zero());
+    }
+
+    #[test]
+    fn test_derive() {
+        // let q = Quaternion::new()
     }
 }

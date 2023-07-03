@@ -89,13 +89,13 @@ impl MRP {
         }
     }
 
-    /// Returns the principal rotation vector and the angle in radians
+    /// Returns the principal line of rotation (a unit vector) and the angle of rotation in radians
     ///
     /// # Note
     /// If the MRP is singular, this returns an angle of zero and a vector of zero.
-    pub fn prv_angle(&self) -> (Vector3, f64) {
+    pub fn uvec_angle(&self) -> (Vector3, f64) {
         match Quaternion::try_from(*self) {
-            Ok(q) => q.prv_angle(),
+            Ok(q) => q.uvec_angle(),
             Err(_) => (Vector3::zeros(), 0.0),
         }
     }
@@ -143,8 +143,8 @@ impl MRP {
 
 impl PartialEq for MRP {
     fn eq(&self, other: &Self) -> bool {
-        let (self_prv, self_angle) = self.prv_angle();
-        let (other_prv, other_angle) = other.prv_angle();
+        let (self_prv, self_angle) = self.uvec_angle();
+        let (other_prv, other_angle) = other.uvec_angle();
         (self_angle - other_angle).abs() < EPSILON_RAD
             && self_prv.dot(&other_prv).acos() < EPSILON_RAD
     }
