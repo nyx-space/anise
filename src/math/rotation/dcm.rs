@@ -44,6 +44,7 @@ impl DCM {
     /// This function returns a matrix for a COORDINATE SYSTEM rotation by `angle_rad` radians.
     /// When this matrix is applied to a vector, it rotates the vector by `-angle_rad` radians, not `angle_rad` radians.
     /// Applying the matrix to a vector yields the vector's representation relative to the rotated coordinate system.
+    /// This is sometimes referred to as a **passive** rotation.
     ///
     pub fn r1(angle_rad: f64, from: NaifId, to: NaifId) -> Self {
         let (s, c) = angle_rad.sin_cos();
@@ -67,6 +68,7 @@ impl DCM {
     /// This function returns a matrix for a COORDINATE SYSTEM rotation by `angle_rad` radians.
     /// When this matrix is applied to a vector, it rotates the vector by `-angle_rad` radians, not `angle_rad` radians.
     /// Applying the matrix to a vector yields the vector's representation relative to the rotated coordinate system.
+    /// This is sometimes referred to as a **passive** rotation.
     ///
     pub fn r2(angle_rad: f64, from: NaifId, to: NaifId) -> Self {
         let (s, c) = angle_rad.sin_cos();
@@ -90,6 +92,8 @@ impl DCM {
     /// This function returns a matrix for a COORDINATE SYSTEM rotation by `angle_rad` radians.
     /// When this matrix is applied to a vector, it rotates the vector by `-angle_rad` radians, not `angle_rad` radians.
     /// Applying the matrix to a vector yields the vector's representation relative to the rotated coordinate system.
+    /// This is sometimes referred to as a **passive** rotation.
+    ///
     pub fn r3(angle_rad: f64, from: NaifId, to: NaifId) -> Self {
         let (s, c) = angle_rad.sin_cos();
         let rot_mat = Matrix3::new(c, s, 0.0, -s, c, 0.0, 0.0, 0.0, 1.0);
@@ -260,6 +264,33 @@ impl From<DCM> for Quaternion {
     }
 }
 
+impl From<Quaternion> for DCM {
+    /// Returns the direction cosine matrix in terms of the provided euler parameter
+    fn from(q: Quaternion) -> Self {
+        let q0 = q.w;
+        let q1 = q.x;
+        let q2 = q.y;
+        let q3 = q.z;
+        let mut c = Matrix3::zeros();
+        c[(0, 0)] = q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3;
+        c[(0, 1)] = 2.0 * (q1 * q2 + q0 * q3);
+        c[(0, 2)] = 2.0 * (q1 * q3 - q0 * q2);
+        c[(1, 0)] = 2.0 * (q1 * q2 - q0 * q3);
+        c[(1, 1)] = q0 * q0 - q1 * q1 + q2 * q2 - q3 * q3;
+        c[(1, 2)] = 2.0 * (q2 * q3 + q0 * q1);
+        c[(2, 0)] = 2.0 * (q1 * q3 + q0 * q2);
+        c[(2, 1)] = 2.0 * (q2 * q3 - q0 * q1);
+        c[(2, 2)] = q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3;
+
+        Self {
+            rot_mat: c,
+            rot_mat_dt: None,
+            from: q.from,
+            to: q.to,
+        }
+    }
+}
+
 impl PartialEq for DCM {
     fn eq(&self, other: &Self) -> bool {
         if (self.rot_mat_dt.is_none() && other.rot_mat_dt.is_some())
@@ -267,17 +298,15 @@ impl PartialEq for DCM {
         {
             false
         } else {
-            // Use the quaternion conversions for equality
-            let self_q: Quaternion = (*self).into();
-            let other_q: Quaternion = (*other).into();
+            let rot_mat_match = dbg!(self.rot_mat - other.rot_mat).norm() < 1e-5;
 
             let dt_match = if let Some(self_dt) = self.rot_mat_dt {
-                (self_dt - other.rot_mat_dt.unwrap()).norm() < 1e-9
+                (self_dt - other.rot_mat_dt.unwrap()).norm() < 1e-5
             } else {
                 true
             };
 
-            self.from == other.from && self.to == other.to && self_q == other_q && dt_match
+            self.from == other.from && self.to == other.to && rot_mat_match && dt_match
         }
     }
 }

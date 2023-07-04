@@ -9,7 +9,9 @@
  */
 
 /// The smallest difference between two radians is set to one arcsecond.
-pub const EPSILON_RAD: f64 = 4.8e-6;
+pub(crate) const EPSILON_RAD: f64 = 4.8e-6;
+/// Equality of f64 for rotations
+pub(crate) const EPSILON: f64 = 1e-12;
 
 mod dcm;
 mod mrp;
@@ -19,3 +21,19 @@ pub use mrp::MRP;
 pub use quaternion::Quaternion;
 
 pub trait Rotation: TryInto<Quaternion> {}
+
+/// Generates the angles for the test
+#[cfg(test)]
+pub(crate) fn generate_angles() -> Vec<f64> {
+    use core::f64::consts::TAU;
+    let mut angles = Vec::new();
+    let mut angle = -TAU;
+    loop {
+        angles.push(angle);
+        angle += 0.01 * TAU;
+        if angle > TAU {
+            break;
+        }
+    }
+    angles
+}

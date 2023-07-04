@@ -8,17 +8,19 @@
  * Documentation: https://nyxspace.com/
  */
 
+use crate::math::rotation::EPSILON;
 use crate::{math::Vector3, prelude::AniseError, NaifId};
-use core::f64::EPSILON;
 use core::ops::Mul;
-use nalgebra::Matrix4x3;
+use nalgebra::{Matrix4x3, Vector4};
 
 pub use core::f64::consts::{FRAC_PI_2, FRAC_PI_3, FRAC_PI_4, PI, TAU};
 
 use super::EPSILON_RAD;
 
-/// Quaternion will always be a unit quaternion in ANISE, cf. [EulerParameters].
-pub type Quaternion = EulerParameters;
+/// Quaternion will always be a unit quaternion in ANISE, cf. [EulerParameter].
+///
+/// In ANISE, Quaternions use exclusively the Hamiltonian convenstion.
+pub type Quaternion = EulerParameter;
 
 /// Represents the orientation of a rigid body in three-dimensional space using Euler parameters.
 ///
@@ -50,7 +52,7 @@ pub type Quaternion = EulerParameters;
 /// # Usage
 /// Importantly, ANISE prevents the composition of two Euler Parameters if the frames do not match.
 #[derive(Clone, Copy, Debug)]
-pub struct EulerParameters {
+pub struct EulerParameter {
     pub w: f64,
     pub x: f64,
     pub y: f64,
@@ -59,7 +61,7 @@ pub struct EulerParameters {
     pub to: NaifId,
 }
 
-impl EulerParameters {
+impl EulerParameter {
     pub const fn zero(from: NaifId, to: NaifId) -> Self {
         Self {
             w: 1.0,
@@ -100,6 +102,7 @@ impl EulerParameters {
             from,
             to,
         }
+        .normalize()
     }
 
     pub fn about_y(angle_rad: f64, from: NaifId, to: NaifId) -> Self {
@@ -113,6 +116,7 @@ impl EulerParameters {
             from,
             to,
         }
+        .normalize()
     }
 
     pub fn about_z(angle_rad: f64, from: NaifId, to: NaifId) -> Self {
@@ -126,6 +130,7 @@ impl EulerParameters {
             from,
             to,
         }
+        .normalize()
     }
 
     /// Returns the norm of this Euler Parameter as a scalar.
@@ -187,6 +192,7 @@ impl EulerParameters {
     pub fn uvec_angle(&self) -> (Vector3, f64) {
         let half_angle_rad = self.w.acos();
         if half_angle_rad.abs() < EPSILON {
+            // Prevent divisions by (near) zero
             (Vector3::zeros(), 2.0 * half_angle_rad)
         } else {
             let prv = Vector3::new(self.x, self.y, self.z) / half_angle_rad.sin();
@@ -199,6 +205,12 @@ impl EulerParameters {
     pub fn prv(&self) -> Vector3 {
         let (uvec, angle) = self.uvec_angle();
         angle * uvec
+    }
+
+    /// Returns the data of this Euler Parameter as a vector, simplifies lots of computations
+    /// but at the cost of losing frame information.
+    pub(crate) fn as_vector(&self) -> Vector4<f64> {
+        Vector4::new(self.w, self.x, self.y, self.z)
     }
 }
 
@@ -244,6 +256,20 @@ impl Mul for &Quaternion {
     }
 }
 
+impl Mul<Vector3> for Quaternion {
+    type Output = Vector3;
+
+    fn mul(self, rhs: Vector3) -> Self::Output {
+        let rhs_q = Self::new(0.0, rhs.x, rhs.y, rhs.z, self.from, self.to);
+
+        let q_rot = ((self.conjugate() * rhs_q).unwrap() * self)
+            .unwrap()
+            .as_vector();
+
+        Vector3::new(q_rot[1], q_rot[2], q_rot[3])
+    }
+}
+
 impl PartialEq for Quaternion {
     fn eq(&self, other: &Self) -> bool {
         if self.to == other.to && self.from == other.from {
@@ -253,8 +279,8 @@ impl PartialEq for Quaternion {
                 let (self_uvec, self_angle) = self.uvec_angle();
                 let (other_uvec, other_angle) = other.uvec_angle();
 
-                dbg!(self_angle - other_angle).abs() < EPSILON_RAD
-                    && dbg!((self_uvec - other_uvec).norm()) <= 1e-12
+                (self_angle - other_angle).abs() < EPSILON_RAD
+                    && (self_uvec - other_uvec).norm() <= 1e-12
             }
         } else {
             false
@@ -264,23 +290,11 @@ impl PartialEq for Quaternion {
 
 #[cfg(test)]
 mod ut_quaternion {
-    pub const EPSILON: f64 = 1e-12;
+    use crate::math::rotation::{generate_angles, DCM};
 
-    /// Generates the angles for the test
-    fn generate_angles() -> Vec<f64> {
-        let mut angles = Vec::new();
-        let mut angle = -TAU;
-        loop {
-            angles.push(angle);
-            angle += 0.01 * TAU;
-            if angle > TAU {
-                break;
-            }
-        }
-        angles
-    }
+    use super::{EulerParameter, Quaternion, Vector3, EPSILON, TAU};
+    use core::f64::consts::PI;
 
-    use super::{EulerParameters, Quaternion, Vector3, TAU};
     #[test]
     fn test_quat_frames() {
         // Ensure that we cannot compose two rotations when the frames don't match.
@@ -319,6 +333,9 @@ mod ut_quaternion {
     #[test]
     fn test_quat_start_end_frames() {
         for angle in generate_angles() {
+            if angle < 0.0 {
+                continue;
+            }
             let q1 = Quaternion::about_x(angle, 0, 1);
             let q2 = Quaternion::about_x(angle, 1, 2);
 
@@ -330,15 +347,14 @@ mod ut_quaternion {
             let cmp_angle = if angle < 0.0 {
                 2.0 * (angle + TAU)
             } else {
-                angle
+                2.0 * angle
             };
             assert!(
                 (angle_rad - cmp_angle).abs() < 1e-12,
-                "got: {angle_rad}\twant: {cmp_angle}"
+                "got: {angle_rad}\twant: {cmp_angle} (orig: {angle})"
             );
-            if angle_rad > 0.0 {
-                assert_eq!(uvec, Vector3::x(), "{angle}");
-            }
+
+            assert_eq!(uvec, Vector3::x(), "{angle}");
 
             // Check the conjugate
 
@@ -348,26 +364,45 @@ mod ut_quaternion {
 
             let (uvec, angle_rad) = q2_to_q1.uvec_angle();
             assert!((angle_rad - cmp_angle).abs() < 1e-12, "{angle}");
-            if angle_rad > 0.0 {
-                assert_eq!(uvec, -Vector3::x(), "{angle}");
-            }
+
+            assert_eq!(uvec, -Vector3::x(), "{angle}");
         }
     }
 
     #[test]
     fn test_zero() {
-        let z = EulerParameters::zero(0, 1);
+        let z = EulerParameter::zero(0, 1);
         assert!(z.is_zero());
     }
 
     #[test]
     fn test_derivative_zero_angular_velocity() {
-        let euler_params = EulerParameters::zero(0, 1);
+        let euler_params = EulerParameter::zero(0, 1);
         let w = Vector3::new(0.0, 0.0, 0.0);
         let derivative = euler_params.derivative(w);
 
         // With zero angular velocity, the derivative should be zero
         assert!(derivative.is_zero());
+    }
+
+    #[test]
+    fn test_dcm_recip() {
+        // Test the reciprocity with DCMs
+        for angle in generate_angles() {
+            let c = DCM::r1(angle, 0, 1);
+            let q = Quaternion::from(c);
+            assert_eq!(DCM::from(q), c);
+        }
+    }
+
+    #[test]
+    fn test_single_axis_rotations() {
+        let q_x = Quaternion::about_x(PI, 0, 1);
+        // Check that rotating X by PI about X returns X
+        assert_eq!(q_x * Vector3::x(), Vector3::x());
+        // Check that rotating Y by PI about X returns -Z
+        let d = DCM::from(q_x);
+        assert_eq!(d * Vector3::y(), -Vector3::z());
     }
 
     // TODO: Add useful tests

@@ -79,12 +79,12 @@ impl MRP {
     ///
     /// The shadow MRP as a new instance of `MRP`.
     pub fn shadow(&self) -> Result<Self, AniseError> {
-        let s_squared = self.s0 * self.s0 + self.s1 * self.s1 + self.s2 * self.s2;
-        if s_squared < EPSILON {
+        if self.is_singular() {
             Err(AniseError::MathError(
                 crate::errors::MathErrorKind::DivisionByZero,
             ))
         } else {
+            let s_squared = self.s0 * self.s0 + self.s1 * self.s1 + self.s2 * self.s2;
             Ok(MRP {
                 s0: -self.s0 / s_squared,
                 s1: -self.s1 / s_squared,
@@ -233,14 +233,22 @@ impl TryFrom<Quaternion> for MRP {
                 crate::errors::MathErrorKind::DivisionByZero,
             ))
         } else {
-            Ok(Self {
+            let s = Self {
                 from: q.from,
                 to: q.to,
                 s0: q.x / (1.0 + q.w),
                 s1: q.y / (1.0 + q.w),
                 s2: q.z / (1.0 + q.w),
             }
-            .normalize())
+            .normalize();
+            // We don't ever want to deal with singular MRPs, so check once more
+            if s.is_singular() {
+                Err(AniseError::MathError(
+                    crate::errors::MathErrorKind::DivisionByZero,
+                ))
+            } else {
+                Ok(s)
+            }
         }
     }
 }
@@ -258,23 +266,35 @@ impl From<MRP> for Quaternion {
             from: s.from,
             to: s.to,
         }
+        .normalize()
     }
 }
 
 #[cfg(test)]
 mod ut_mrp {
+    use crate::math::rotation::generate_angles;
+
     use super::{Quaternion, MRP};
-    use core::f64::consts::{PI, TAU};
-    use std::f64::consts::FRAC_PI_2;
+    use core::f64::consts::{FRAC_PI_2, PI, TAU};
 
     #[test]
     fn test_singular() {
         let q = Quaternion::about_x(TAU, 0, 1);
-
         assert!(MRP::try_from(q).is_err());
 
         let q = Quaternion::about_x(-TAU, 0, 1);
+        assert!(MRP::try_from(q).is_err());
 
+        let q = Quaternion::about_y(TAU, 0, 1);
+        assert!(MRP::try_from(q).is_err());
+
+        let q = Quaternion::about_y(-TAU, 0, 1);
+        assert!(MRP::try_from(q).is_err());
+
+        let q = Quaternion::about_z(TAU, 0, 1);
+        assert!(MRP::try_from(q).is_err());
+
+        let q = Quaternion::about_z(-TAU, 0, 1);
         assert!(MRP::try_from(q).is_err());
 
         let s = MRP {
@@ -295,21 +315,49 @@ mod ut_mrp {
     }
 
     #[test]
-    fn test_shadow_set() {
-        let m = MRP::try_from(Quaternion::about_y(PI, 0, 1)).unwrap();
-        let shadow_m = m.shadow().unwrap();
-        assert_eq!(shadow_m.shadow().unwrap(), m);
+    fn test_shadow_set_recip() {
+        for angle in generate_angles() {
+            let q = Quaternion::about_z(angle, 0, 1);
+            if let Ok(m) = MRP::try_from(q) {
+                let shadow_m = m.shadow().unwrap();
+                assert_eq!(shadow_m.shadow().unwrap(), m);
+            }
+
+            let q = Quaternion::about_y(angle, 0, 1);
+            if let Ok(m) = MRP::try_from(q) {
+                let shadow_m = m.shadow().unwrap();
+                assert_eq!(shadow_m.shadow().unwrap(), m);
+            }
+
+            let q = Quaternion::about_x(angle, 0, 1);
+            if let Ok(m) = MRP::try_from(q) {
+                let shadow_m = m.shadow().unwrap();
+                assert_eq!(shadow_m.shadow().unwrap(), m);
+            }
+        }
     }
 
     #[test]
-    fn test_quat_reciprocity() {
-        let q = Quaternion::about_x(PI, 0, 1);
+    fn test_quat_recip() {
+        for angle in generate_angles() {
+            let q = Quaternion::about_x(angle, 0, 1);
+            if let Ok(m) = MRP::try_from(q) {
+                let q_back = Quaternion::from(m);
+                assert_eq!(q_back, q);
+            }
 
-        let m = MRP::try_from(q).unwrap();
+            let q = Quaternion::about_y(angle, 0, 1);
+            if let Ok(m) = MRP::try_from(q) {
+                let q_back = Quaternion::from(m);
+                assert_eq!(q_back, q);
+            }
 
-        let q_back = Quaternion::try_from(m).unwrap();
-
-        assert_eq!(q_back, q);
+            let q = Quaternion::about_z(angle, 0, 1);
+            if let Ok(m) = MRP::try_from(q) {
+                let q_back = Quaternion::from(m);
+                assert_eq!(q_back, q);
+            }
+        }
     }
 
     #[test]
