@@ -1,5 +1,3 @@
-use nalgebra::Vector4;
-
 /*
  * ANISE Toolkit
  * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
@@ -14,10 +12,11 @@ use crate::{
     prelude::AniseError,
     NaifId,
 };
+use nalgebra::Vector4;
 
-use std::ops::Mul;
+use core::ops::Mul;
 
-use super::Quaternion;
+use super::{Quaternion, Rotation};
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct DCM {
@@ -30,6 +29,8 @@ pub struct DCM {
     /// The destination frame
     pub to: NaifId,
 }
+
+impl Rotation for DCM {}
 
 impl DCM {
     /// Returns a rotation matrix for a rotation about the X axis.

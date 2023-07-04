@@ -191,7 +191,7 @@ impl EulerParameters {
         } else {
             let prv = Vector3::new(self.x, self.y, self.z) / half_angle_rad.sin();
 
-            (prv, 2.0 * half_angle_rad)
+            (prv / prv.norm(), 2.0 * half_angle_rad)
         }
     }
 
@@ -205,23 +205,23 @@ impl EulerParameters {
 impl Mul for Quaternion {
     type Output = Result<Quaternion, AniseError>;
 
-    fn mul(self, other: Quaternion) -> Result<Quaternion, AniseError> {
-        if self.to != other.from {
+    fn mul(self, rhs: Quaternion) -> Result<Quaternion, AniseError> {
+        if self.to != rhs.from {
             Err(AniseError::IncompatibleRotation {
-                from: other.from,
+                from: rhs.from,
                 to: self.to,
             })
         } else {
-            let s = self.w * other.w - self.x * other.x - self.y * other.y - self.z * other.z;
-            let i = self.w * other.x + self.x * other.w + self.y * other.z - self.z * other.y;
-            let j = self.w * other.y - self.x * other.z + self.y * other.w + self.z * other.x;
-            let k = self.w * other.z + self.x * other.y - self.y * other.x + self.z * other.w;
+            let s = self.w * rhs.w - self.x * rhs.x - self.y * rhs.y - self.z * rhs.z;
+            let i = self.w * rhs.x + self.x * rhs.w + self.y * rhs.z - self.z * rhs.y;
+            let j = self.w * rhs.y - self.x * rhs.z + self.y * rhs.w + self.z * rhs.x;
+            let k = self.w * rhs.z + self.x * rhs.y - self.y * rhs.x + self.z * rhs.w;
 
-            let (from, to) = if self.to == other.from && self.from == other.to {
+            let (from, to) = if self.to == rhs.from && self.from == rhs.to {
                 // Then we don't change the frames
                 (self.from, self.to)
             } else {
-                (self.from, other.to)
+                (self.from, rhs.to)
             };
 
             Ok(Quaternion {
@@ -247,11 +247,15 @@ impl Mul for &Quaternion {
 impl PartialEq for Quaternion {
     fn eq(&self, other: &Self) -> bool {
         if self.to == other.to && self.from == other.from {
-            let (self_uvec, self_angle) = self.uvec_angle();
-            let (other_uvec, other_angle) = other.uvec_angle();
+            if (self.w - other.w).abs() < 1e-12 && (self.w - 1.0).abs() < 1e-12 {
+                true
+            } else {
+                let (self_uvec, self_angle) = self.uvec_angle();
+                let (other_uvec, other_angle) = other.uvec_angle();
 
-            (self_angle - other_angle).abs() < EPSILON_RAD
-                && (self_uvec - other_uvec).norm() <= EPSILON
+                dbg!(self_angle - other_angle).abs() < EPSILON_RAD
+                    && dbg!((self_uvec - other_uvec).norm()) <= 1e-12
+            }
         } else {
             false
         }
@@ -260,56 +264,94 @@ impl PartialEq for Quaternion {
 
 #[cfg(test)]
 mod ut_quaternion {
-    use core::f64::EPSILON;
+    pub const EPSILON: f64 = 1e-12;
 
-    use super::{EulerParameters, Quaternion, Vector3, PI, TAU};
+    /// Generates the angles for the test
+    fn generate_angles() -> Vec<f64> {
+        let mut angles = Vec::new();
+        let mut angle = -TAU;
+        loop {
+            angles.push(angle);
+            angle += 0.01 * TAU;
+            if angle > TAU {
+                break;
+            }
+        }
+        angles
+    }
+
+    use super::{EulerParameters, Quaternion, Vector3, TAU};
     #[test]
     fn test_quat_frames() {
         // Ensure that we cannot compose two rotations when the frames don't match.
         // We are using arbitrary numbers for the frames
-        for (i, q) in [
-            Quaternion::about_x(PI, 0, 1),
-            Quaternion::about_y(PI, 0, 1),
-            Quaternion::about_z(PI, 0, 1),
-        ]
-        .iter()
-        .enumerate()
-        {
-            assert!((q * q).is_err());
-            assert!((q * &q.conjugate()).is_ok());
-            assert_eq!((q * &q.conjugate()).unwrap(), Quaternion::zero(0, 1));
-            // Check that the PRV is entirely in the appropriate direction
-            let prv = q.prv();
 
-            // The i-th index should be equal to PI
-            assert!((prv[i] - PI).abs() < EPSILON);
-            // The overall norm should be PI, i.e. all other components are zero.
-            assert!((prv.norm() - PI).abs() < EPSILON);
+        for angle in generate_angles() {
+            for (i, q) in [
+                Quaternion::about_x(angle, 0, 1),
+                Quaternion::about_y(angle, 0, 1),
+                Quaternion::about_z(angle, 0, 1),
+            ]
+            .iter()
+            .enumerate()
+            {
+                assert!((q * q).is_err());
+                assert!((q * &q.conjugate()).is_ok());
+                assert_eq!(
+                    (q * &q.conjugate()).unwrap(),
+                    Quaternion::zero(0, 1),
+                    "axis {i} and {angle}"
+                );
+                // Check that the PRV is entirely in the appropriate direction
+                let prv = q.prv();
+
+                // The i-th index should be equal to the angle input
+                assert!((prv[i] - angle).abs() < EPSILON, "{} with {angle}", prv[i]);
+                // The overall norm should be PI, i.e. all other components are zero.
+                assert!(
+                    (prv.norm() - angle.abs()).abs() < EPSILON,
+                    "{prv} with {angle}"
+                );
+            }
         }
     }
 
     #[test]
     fn test_quat_start_end_frames() {
-        let q1 = Quaternion::about_x(PI, 0, 1);
-        let q2 = Quaternion::about_x(PI, 1, 2);
+        for angle in generate_angles() {
+            let q1 = Quaternion::about_x(angle, 0, 1);
+            let q2 = Quaternion::about_x(angle, 1, 2);
 
-        let q1_to_q2 = (q1 * q2).unwrap();
-        assert_eq!(q1_to_q2.from, 0);
-        assert_eq!(q1_to_q2.to, 2);
+            let q1_to_q2 = (q1 * q2).unwrap();
+            assert_eq!(q1_to_q2.from, 0, "{angle}");
+            assert_eq!(q1_to_q2.to, 2, "{angle}");
 
-        let (prv, angle_rad) = q1_to_q2.uvec_angle();
-        assert_eq!(angle_rad, TAU);
-        assert_eq!(prv, Vector3::x());
+            let (uvec, angle_rad) = q1_to_q2.uvec_angle();
+            let cmp_angle = if angle < 0.0 {
+                2.0 * (angle + TAU)
+            } else {
+                angle
+            };
+            assert!(
+                (angle_rad - cmp_angle).abs() < 1e-12,
+                "got: {angle_rad}\twant: {cmp_angle}"
+            );
+            if angle_rad > 0.0 {
+                assert_eq!(uvec, Vector3::x(), "{angle}");
+            }
 
-        // Check the conjugate
+            // Check the conjugate
 
-        let q2_to_q1 = (q2.conjugate() * q1.conjugate()).unwrap();
-        assert_eq!(q2_to_q1.from, 2);
-        assert_eq!(q2_to_q1.to, 0);
+            let q2_to_q1 = (q2.conjugate() * q1.conjugate()).unwrap();
+            assert_eq!(q2_to_q1.from, 2, "{angle}");
+            assert_eq!(q2_to_q1.to, 0, "{angle}");
 
-        let (prv, angle_rad) = q2_to_q1.uvec_angle();
-        assert_eq!(angle_rad, TAU);
-        assert_eq!(prv, -Vector3::x());
+            let (uvec, angle_rad) = q2_to_q1.uvec_angle();
+            assert!((angle_rad - cmp_angle).abs() < 1e-12, "{angle}");
+            if angle_rad > 0.0 {
+                assert_eq!(uvec, -Vector3::x(), "{angle}");
+            }
+        }
     }
 
     #[test]

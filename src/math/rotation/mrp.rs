@@ -14,8 +14,9 @@ use crate::{
     NaifId,
 };
 use core::f64::EPSILON;
+use core::ops::Mul;
 
-use super::{Quaternion, EPSILON_RAD};
+use super::{Quaternion, Rotation};
 
 /// Represents the orientation of a rigid body in three-dimensional space using Modified Rodrigues Parameters (MRP).
 ///
@@ -47,10 +48,29 @@ pub struct MRP {
     pub to: NaifId,
 }
 
+impl Rotation for MRP {}
+
 impl MRP {
-    /// Returns the norm of this Euler Parameter as a scalar.
+    /// Creates a new normalized MRP
+    pub fn new(s0: f64, s1: f64, s2: f64, from: NaifId, to: NaifId) -> Self {
+        Self {
+            s0,
+            s1,
+            s2,
+            from,
+            to,
+        }
+        .normalize()
+    }
+
+    /// Returns the norm of this MRP as a scalar.
     pub(crate) fn scalar_norm(&self) -> f64 {
         (self.s0 * self.s0 + self.s1 * self.s1 + self.s2 * self.s2).sqrt()
+    }
+
+    /// Returns the square of the norm of this MRP as a scalar.
+    pub(crate) fn norm_squared(&self) -> f64 {
+        self.s0 * self.s0 + self.s1 * self.s1 + self.s2 * self.s2
     }
 
     /// Computes the shadow MRP.
@@ -128,7 +148,7 @@ impl MRP {
 
     /// Returns the MRP derivative for this MRP and body angular velocity vector w.
     /// dQ/dt = 1/4 [B(Q)] w
-    pub fn derivative(&self, w: Vector3) -> MRP {
+    pub fn diff_eq(&self, w: Vector3) -> MRP {
         let s = 0.25 * self.b_matrix() * w;
 
         MRP {
@@ -139,14 +159,64 @@ impl MRP {
             to: self.to,
         }
     }
+
+    /// Returns the relative MRP between self and the rhs MRP.
+    pub fn relative_to(&self, rhs: &Self) -> Result<Self, AniseError> {
+        if self.from != rhs.from {
+            Err(AniseError::IncompatibleRotation {
+                from: self.from,
+                to: rhs.to,
+            })
+        } else {
+            // Using the same notation as in Eq. 3.153 in Schaub and Junkins, 3rd edition
+            let s_prime = self;
+            let s_dprime = rhs;
+            let denom = 1.0
+                + s_prime.norm_squared() * s_dprime.norm_squared()
+                + 2.0 * s_prime.as_vector().dot(&s_dprime.as_vector());
+            let num1 = (1.0 - s_prime.norm_squared()) * s_dprime.as_vector();
+            let num2 = -(1.0 - s_dprime.norm_squared()) * s_prime.as_vector();
+            let num3 = 2.0 * s_dprime.as_vector().cross(&s_prime.as_vector());
+
+            let sigma = (num1 + num2 + num3) / denom;
+            Ok(Self::new(sigma[0], sigma[1], sigma[2], rhs.from, self.to))
+        }
+    }
 }
 
 impl PartialEq for MRP {
+    /// Equality between two MRPs is whether the frames match and both representations nearly match, or the shadow set of one nearly matches that of the other.
     fn eq(&self, other: &Self) -> bool {
-        let (self_prv, self_angle) = self.uvec_angle();
-        let (other_prv, other_angle) = other.uvec_angle();
-        (self_angle - other_angle).abs() < EPSILON_RAD
-            && self_prv.dot(&other_prv).acos() < EPSILON_RAD
+        self.from == other.from
+            && self.to == other.to
+            && self.is_singular() == other.is_singular()
+            && ((self.as_vector() - other.as_vector()).norm() < 1e-12
+                || (self.as_vector() - other.shadow().unwrap().as_vector()).norm() < 1e-12)
+    }
+}
+
+impl Mul for MRP {
+    type Output = Result<MRP, AniseError>;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        if self.to != rhs.from {
+            Err(AniseError::IncompatibleRotation {
+                from: rhs.from,
+                to: self.to,
+            })
+        } else {
+            // Using the same notation as in Eq. 3.152 in Schaub and Junkins, 3rd edition
+            let s_prime = self;
+            let s_dprime = rhs;
+            let denom = 1.0 + s_prime.norm_squared() * s_dprime.norm_squared()
+                - 2.0 * s_prime.as_vector().dot(&s_dprime.as_vector());
+            let num1 = (1.0 - s_prime.norm_squared()) * s_dprime.as_vector();
+            let num2 = (1.0 - s_dprime.norm_squared()) * s_prime.as_vector();
+            let num3 = -2.0 * s_dprime.as_vector().cross(&s_prime.as_vector());
+
+            let sigma = (num1 + num2 + num3) / denom;
+            Ok(Self::new(sigma[0], sigma[1], sigma[2], self.from, rhs.to))
+        }
     }
 }
 
@@ -175,24 +245,19 @@ impl TryFrom<Quaternion> for MRP {
     }
 }
 
-impl TryFrom<MRP> for Quaternion {
-    type Error = AniseError;
-
-    /// Try to convert from an MRP into its quaternion representation
-    ///
-    /// # Failure cases
-    /// + A rotation of +/- tau, as the associated MRP is singular
-    fn try_from(s: MRP) -> Result<Self, Self::Error> {
+impl From<MRP> for Quaternion {
+    /// Convert from an MRP into its quaternion representation
+    fn from(s: MRP) -> Self {
         let qm = s.scalar_norm();
         let ps = 1.0 + qm * qm;
-        Ok(Quaternion {
+        Quaternion {
             w: (1.0 - qm * qm) / ps,
             x: 2.0 * s.s0 / ps,
             y: 2.0 * s.s1 / ps,
             z: 2.0 * s.s2 / ps,
             from: s.from,
             to: s.to,
-        })
+        }
     }
 }
 
@@ -200,6 +265,7 @@ impl TryFrom<MRP> for Quaternion {
 mod ut_mrp {
     use super::{Quaternion, MRP};
     use core::f64::consts::{PI, TAU};
+    use std::f64::consts::FRAC_PI_2;
 
     #[test]
     fn test_singular() {
@@ -236,14 +302,30 @@ mod ut_mrp {
     }
 
     #[test]
-    fn test_reciprocity() {
+    fn test_quat_reciprocity() {
         let q = Quaternion::about_x(PI, 0, 1);
 
         let m = MRP::try_from(q).unwrap();
 
         let q_back = Quaternion::try_from(m).unwrap();
 
-        // TODO: Redefine equality to be within a very small angle.
         assert_eq!(q_back, q);
+    }
+
+    #[test]
+    fn test_composition() {
+        let m_x0: MRP = Quaternion::about_x(FRAC_PI_2, 0, 1).try_into().unwrap();
+        let m_x1: MRP = Quaternion::about_x(FRAC_PI_2, 1, 2).try_into().unwrap();
+        let m_x: MRP = Quaternion::about_x(PI, 0, 2).try_into().unwrap();
+
+        assert_eq!((m_x0 * m_x1).unwrap(), m_x);
+        // Check that we can compute the relative rotation
+        let mx_rel_x0 = m_x.relative_to(&m_x0).unwrap();
+        let rel = Quaternion::about_x(-FRAC_PI_2, 0, 2);
+
+        assert_eq!(rel, mx_rel_x0.into());
+        // Also check that if two quaternions are equal, then their MRPs should also be equal
+        let rel_mrp: MRP = rel.try_into().unwrap();
+        assert_eq!(rel_mrp, mx_rel_x0);
     }
 }
