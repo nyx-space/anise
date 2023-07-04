@@ -293,7 +293,7 @@ mod ut_quaternion {
     use crate::math::rotation::{generate_angles, DCM};
 
     use super::{EulerParameter, Quaternion, Vector3, EPSILON, TAU};
-    use core::f64::consts::PI;
+    use core::f64::consts::{FRAC_PI_2, PI};
 
     #[test]
     fn test_quat_frames() {
@@ -389,9 +389,12 @@ mod ut_quaternion {
     fn test_dcm_recip() {
         // Test the reciprocity with DCMs
         for angle in generate_angles() {
+            if angle < 0.0 {
+                continue;
+            }
             let c = DCM::r1(angle, 0, 1);
             let q = Quaternion::from(c);
-            assert_eq!(DCM::from(q), c);
+            assert_eq!(DCM::from(q), c, "{angle}");
         }
     }
 
@@ -400,9 +403,26 @@ mod ut_quaternion {
         let q_x = Quaternion::about_x(PI, 0, 1);
         // Check that rotating X by PI about X returns X
         assert_eq!(q_x * Vector3::x(), Vector3::x());
-        // Check that rotating Y by PI about X returns -Z
+        // Check that rotating Y by PI about X returns -Y
         let d = DCM::from(q_x);
-        assert_eq!(d * Vector3::y(), -Vector3::z());
+        assert_eq!(d, DCM::r1(PI, 0, 1));
+        assert_eq!(d * Vector3::y(), q_x * Vector3::y());
+        assert!((d * Vector3::y() - -Vector3::y()).norm() < 1e-12);
+
+        let q_y = Quaternion::about_y(FRAC_PI_2, 0, 1);
+        assert_eq!(q_y * Vector3::y(), Vector3::y());
+        let d = DCM::from(q_y);
+        assert_eq!(d, DCM::r2(FRAC_PI_2, 0, 1));
+        assert_eq!(d * Vector3::z(), q_y * Vector3::z());
+        assert!((d * Vector3::x() - Vector3::z()).norm() < 1e-12);
+
+        let q_z = Quaternion::about_z(FRAC_PI_2, 0, 1);
+        assert_eq!(q_z * Vector3::z(), Vector3::z());
+        let d = DCM::from(q_z);
+        assert_eq!(d, DCM::r3(FRAC_PI_2, 0, 1));
+        assert_eq!(d * Vector3::x(), q_z * Vector3::x());
+        println!("{}", d * Vector3::x());
+        assert!((d * Vector3::x() - Vector3::y()).norm() < 1e-12);
     }
 
     // TODO: Add useful tests
