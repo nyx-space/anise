@@ -41,14 +41,12 @@ impl DCM {
     ///
     /// # Warning
     ///
-    /// This function returns a matrix for a COORDINATE SYSTEM rotation by `angle_rad` radians.
-    /// When this matrix is applied to a vector, it rotates the vector by `-angle_rad` radians, not `angle_rad` radians.
-    /// Applying the matrix to a vector yields the vector's representation relative to the rotated coordinate system.
-    /// This is sometimes referred to as a **passive** rotation.
+    /// This function returns a matrix for an ACTIVE rotation, where the vector is rotated into the new frame.
+    /// This is the opposite of a PASSIVE rotation, where the coordinate system is rotated by the `angle_rad` radians.
     ///
     pub fn r1(angle_rad: f64, from: NaifId, to: NaifId) -> Self {
         let (s, c) = angle_rad.sin_cos();
-        let rot_mat = Matrix3::new(1.0, 0.0, 0.0, 0.0, c, s, 0.0, -s, c);
+        let rot_mat = Matrix3::new(1.0, 0.0, 0.0, 0.0, c, -s, 0.0, s, c);
         Self {
             rot_mat,
             from,
@@ -65,14 +63,12 @@ impl DCM {
     ///
     /// # Warning
     ///
-    /// This function returns a matrix for a COORDINATE SYSTEM rotation by `angle_rad` radians.
-    /// When this matrix is applied to a vector, it rotates the vector by `-angle_rad` radians, not `angle_rad` radians.
-    /// Applying the matrix to a vector yields the vector's representation relative to the rotated coordinate system.
-    /// This is sometimes referred to as a **passive** rotation.
+    /// This function returns a matrix for an ACTIVE rotation, where the vector is rotated into the new frame.
+    /// This is the opposite of a PASSIVE rotation, where the coordinate system is rotated by the `angle_rad` radians.
     ///
     pub fn r2(angle_rad: f64, from: NaifId, to: NaifId) -> Self {
         let (s, c) = angle_rad.sin_cos();
-        let rot_mat = Matrix3::new(c, 0.0, -s, 0.0, 1.0, 0.0, s, 0.0, c);
+        let rot_mat = Matrix3::new(c, 0.0, s, 0.0, 1.0, 0.0, -s, 0.0, c);
         Self {
             rot_mat,
             from,
@@ -89,14 +85,12 @@ impl DCM {
     ///
     /// # Warning
     ///
-    /// This function returns a matrix for a COORDINATE SYSTEM rotation by `angle_rad` radians.
-    /// When this matrix is applied to a vector, it rotates the vector by `-angle_rad` radians, not `angle_rad` radians.
-    /// Applying the matrix to a vector yields the vector's representation relative to the rotated coordinate system.
-    /// This is sometimes referred to as a **passive** rotation.
+    /// This function returns a matrix for an ACTIVE rotation, where the vector is rotated into the new frame.
+    /// This is the opposite of a PASSIVE rotation, where the coordinate system is rotated by the `angle_rad` radians.
     ///
     pub fn r3(angle_rad: f64, from: NaifId, to: NaifId) -> Self {
         let (s, c) = angle_rad.sin_cos();
-        let rot_mat = Matrix3::new(c, s, 0.0, -s, c, 0.0, 0.0, 0.0, 1.0);
+        let rot_mat = Matrix3::new(c, -s, 0.0, s, c, 0.0, 0.0, 0.0, 1.0);
         Self {
             rot_mat,
             from,
@@ -144,10 +138,10 @@ impl Mul<Vector3> for DCM {
     ///
     /// // Rotation of the X vector about X, yields X
     /// assert_eq!(r1 * Vector3::x(), Vector3::x());
-    /// // Rotation of the Z vector about X by -half pi, yields Y
-    /// assert!((r1 * Vector3::z() - Vector3::y()).norm() < EPSILON);
-    /// // Rotation of the Y vector about X by -half pi, yields -Z
-    /// assert!((r1 * Vector3::y() + Vector3::z()).norm() < EPSILON);
+    /// // Rotation of the Z vector about X by half pi, yields -Y
+    /// assert!((r1 * Vector3::z() + Vector3::y()).norm() < EPSILON);
+    /// // Rotation of the Y vector about X by half pi, yields Z
+    /// assert!((r1 * Vector3::y() - Vector3::z()).norm() < EPSILON);
     /// ```
     ///
     /// # Warnings
@@ -163,31 +157,7 @@ impl Mul<Vector3> for DCM {
 impl Mul<Vector6> for DCM {
     type Output = Result<Vector6, AniseError>;
 
-    /// Applying the matrix to a vector yields the vector's representation relative to the rotated coordinate system.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use anise::math::Vector3;
-    /// use anise::math::rotation::DCM;
-    /// use core::f64::consts::FRAC_PI_2;
-    /// use core::f64::EPSILON;
-    ///
-    /// let r1 = DCM::r1(FRAC_PI_2, 0, 1);
-    ///
-    /// // Rotation of the X vector about X, yields X
-    /// assert_eq!(r1 * Vector3::x(), Vector3::x());
-    /// // Rotation of the Z vector about X by -half pi, yields Y
-    /// assert!((r1 * Vector3::z() - Vector3::y()).norm() < EPSILON);
-    /// // Rotation of the Y vector about X by -half pi, yields -Z
-    /// assert!((r1 * Vector3::y() + Vector3::z()).norm() < EPSILON);
-    /// ```
-    ///
-    /// # Warnings
-    ///
-    /// + No frame checks are done when multiplying by a vector
-    /// + As a Vector3, this is assumed to be only position, and so the transport theorem is not applied.
-    ///
+    /// Applying the matrix to a vector yields the vector's representation in the new coordinate system.
     fn mul(self, rhs: Vector6) -> Self::Output {
         Ok(self.state_dcm()? * rhs)
     }
@@ -324,9 +294,9 @@ mod ut_dcm {
         // Rotation of the X vector about X, yields X
         assert_eq!(r1 * Vector3::x(), Vector3::x());
         // Rotation of the Z vector about X by -half pi, yields Y
-        assert!((r1 * Vector3::z() - Vector3::y()).norm() < EPSILON);
+        assert!((r1 * Vector3::z() + Vector3::y()).norm() < EPSILON);
         // Rotation of the Y vector about X by -half pi, yields -Z
-        assert!((r1 * Vector3::y() + Vector3::z()).norm() < EPSILON);
+        assert!((r1 * Vector3::y() - Vector3::z()).norm() < EPSILON);
     }
 
     #[test]
@@ -336,9 +306,9 @@ mod ut_dcm {
         // Rotation of the Y vector about Y, yields Y
         assert_eq!(r2 * Vector3::y(), Vector3::y());
         // Rotation of the X vector about Y by -half pi, yields Z
-        assert!((r2 * Vector3::x() - Vector3::z()).norm() < EPSILON);
+        assert!((r2 * Vector3::x() + Vector3::z()).norm() < EPSILON);
         // Rotation of the Z vector about Y by -half pi, yields -X
-        assert!((r2 * Vector3::z() + Vector3::x()).norm() < EPSILON);
+        assert!((r2 * Vector3::z() - Vector3::x()).norm() < EPSILON);
 
         // Edge case: Rotation by 0 degrees should yield the original vector
         let r2_zero = DCM::r2(0.0, 0, 1);
@@ -352,9 +322,9 @@ mod ut_dcm {
         // Rotation of the Z vector about Z, yields Z
         assert_eq!(r3 * Vector3::z(), Vector3::z());
         // Rotation of the X vector about Z by -half pi, yields -Y
-        assert!((r3 * Vector3::x() + Vector3::y()).norm() < EPSILON);
+        assert!((r3 * Vector3::x() - Vector3::y()).norm() < EPSILON);
         // Rotation of the Y vector about Z by -half pi, yields X
-        assert!((r3 * Vector3::y() - Vector3::x()).norm() < EPSILON);
+        assert!((r3 * Vector3::y() + Vector3::x()).norm() < EPSILON);
 
         // Edge case: Rotation by 0 degrees should yield the original vector
         let r3_zero = DCM::r3(0.0, 0, 1);

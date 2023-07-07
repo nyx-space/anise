@@ -339,23 +339,24 @@ mod ut_mrp {
 
     #[test]
     fn test_quat_recip() {
+        // NOTE: MRPs are always the short way rotation, so we enforce the short way rotation of the EPs as well.
         for angle in generate_angles() {
-            let q = Quaternion::about_x(angle, 0, 1);
+            let q = Quaternion::about_x(angle, 0, 1).short();
             if let Ok(m) = MRP::try_from(q) {
                 let q_back = Quaternion::from(m);
-                assert_eq!(q_back, q);
+                assert_eq!(q_back, q, "X fail with {angle}");
             }
 
-            let q = Quaternion::about_y(angle, 0, 1);
+            let q = Quaternion::about_y(angle, 0, 1).short();
             if let Ok(m) = MRP::try_from(q) {
                 let q_back = Quaternion::from(m);
-                assert_eq!(q_back, q);
+                assert_eq!(q_back, q, "Y fail with {angle}");
             }
 
-            let q = Quaternion::about_z(angle, 0, 1);
+            let q = Quaternion::about_z(angle, 0, 1).short();
             if let Ok(m) = MRP::try_from(q) {
                 let q_back = Quaternion::from(m);
-                assert_eq!(q_back, q);
+                assert_eq!(q_back, q, "Z fail with {angle}");
             }
         }
     }

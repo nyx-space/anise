@@ -91,6 +91,7 @@ impl EulerParameter {
         self.w.abs() < EPSILON || (1.0 - self.w.abs()) < EPSILON
     }
 
+    /// Creates an Euler Parameter representing the short way rotation around the X (R1) axis.
     pub fn about_x(angle_rad: f64, from: NaifId, to: NaifId) -> Self {
         let (s_theta, c_theta) = (angle_rad / 2.0).sin_cos();
 
@@ -105,6 +106,7 @@ impl EulerParameter {
         .normalize()
     }
 
+    /// Creates an Euler Parameter representing the short way rotation around the Y (R2) axis.
     pub fn about_y(angle_rad: f64, from: NaifId, to: NaifId) -> Self {
         let (s_theta, c_theta) = (angle_rad / 2.0).sin_cos();
 
@@ -119,6 +121,7 @@ impl EulerParameter {
         .normalize()
     }
 
+    /// Creates an Euler Parameter representing the short way rotation around the Z (R3) axis.
     pub fn about_z(angle_rad: f64, from: NaifId, to: NaifId) -> Self {
         let (s_theta, c_theta) = (angle_rad / 2.0).sin_cos();
 
@@ -147,6 +150,18 @@ impl EulerParameter {
         me.y /= norm;
         me.z /= norm;
         me
+    }
+
+    /// Returns the short way rotation of this quaternion
+    pub fn short(&self) -> Self {
+        if self.w < 0.0 {
+            // TODO: Check that this is correct.
+            let mut me = *self;
+            me.w *= -1.0;
+            me
+        } else {
+            *self
+        }
     }
 
     /// Compute the conjugate of the quaternion.
