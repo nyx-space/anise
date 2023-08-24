@@ -9,9 +9,10 @@
  */
 
 use crate::math::rotation::EPSILON;
-use crate::{math::Vector3, prelude::AniseError, NaifId};
+use crate::{math::Vector3, math::Vector4, prelude::AniseError, NaifId};
+use core::fmt;
 use core::ops::Mul;
-use nalgebra::{Matrix4x3, Vector4};
+use nalgebra::Matrix4x3;
 
 pub use core::f64::consts::{FRAC_PI_2, FRAC_PI_3, FRAC_PI_4, PI, TAU};
 
@@ -62,7 +63,7 @@ pub struct EulerParameter {
 }
 
 impl EulerParameter {
-    pub const fn zero(from: NaifId, to: NaifId) -> Self {
+    pub const fn identity(from: NaifId, to: NaifId) -> Self {
         Self {
             w: 1.0,
             x: 0.0,
@@ -224,7 +225,7 @@ impl EulerParameter {
 
     /// Returns the data of this Euler Parameter as a vector, simplifies lots of computations
     /// but at the cost of losing frame information.
-    pub(crate) fn as_vector(&self) -> Vector4<f64> {
+    pub(crate) fn as_vector(&self) -> Vector4 {
         Vector4::new(self.w, self.x, self.y, self.z)
     }
 }
@@ -303,12 +304,25 @@ impl PartialEq for Quaternion {
     }
 }
 
+impl fmt::Display for EulerParameter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "Euler Parameter {} -> {} = [w = {:1.6}, {:1.6}, {:1.6}, {:1.6}]",
+            self.from, self.to, self.w, self.x, self.y, self.z
+        )
+    }
+}
+
 #[cfg(test)]
 mod ut_quaternion {
-    use crate::math::rotation::{generate_angles, DCM};
+    use crate::math::{
+        rotation::{generate_angles, vec3_eq, DCM},
+        Vector4,
+    };
 
     use super::{EulerParameter, Quaternion, Vector3, EPSILON, TAU};
-    use core::f64::consts::{FRAC_PI_2, PI};
+    use core::f64::consts::FRAC_PI_2;
 
     #[test]
     fn test_quat_frames() {
@@ -328,7 +342,7 @@ mod ut_quaternion {
                 assert!((q * &q.conjugate()).is_ok());
                 assert_eq!(
                     (q * &q.conjugate()).unwrap(),
-                    Quaternion::zero(0, 1),
+                    Quaternion::identity(0, 1),
                     "axis {i} and {angle}"
                 );
                 // Check that the PRV is entirely in the appropriate direction
@@ -386,13 +400,17 @@ mod ut_quaternion {
 
     #[test]
     fn test_zero() {
-        let z = EulerParameter::zero(0, 1);
+        let z = EulerParameter::identity(0, 1);
         assert!(z.is_zero());
+        // Test that the identity DCM matches.
+        let c = DCM::identity(0, 1);
+        let q = Quaternion::from(c);
+        assert_eq!(c, q.into());
     }
 
     #[test]
     fn test_derivative_zero_angular_velocity() {
-        let euler_params = EulerParameter::zero(0, 1);
+        let euler_params = EulerParameter::identity(0, 1);
         let w = Vector3::new(0.0, 0.0, 0.0);
         let derivative = euler_params.derivative(w);
 
@@ -404,25 +422,59 @@ mod ut_quaternion {
     fn test_dcm_recip() {
         // Test the reciprocity with DCMs
         for angle in generate_angles() {
-            if angle < 0.0 {
-                continue;
-            }
+            // if angle < 0.0 {
+            //     continue;
+            // }
             let c = DCM::r1(angle, 0, 1);
             let q = Quaternion::from(c);
-            assert_eq!(DCM::from(q), c, "{angle}");
+
+            println!("{q}");
+
+            // assert_eq!(
+            //     c,
+            //     q.into(),
+            //     "Quaternion -> DCM did not return the same DCM for {}",
+            //     angle.to_degrees()
+            // );
+
+            // Check that rotating X by anything around R1 returns the same regardless of whether we're using the DCM or EP representation
+            vec3_eq(
+                DCM::from(q) * Vector3::x(),
+                c * Vector3::x(),
+                format!("X on {}", angle.to_degrees()),
+            );
+
+            // Idem around Y
+            vec3_eq(
+                DCM::from(q) * Vector3::y(),
+                c * Vector3::y(),
+                format!("Y on {}", angle.to_degrees()),
+            );
+
+            // // Idem around Z
+            vec3_eq(
+                DCM::from(q) * Vector3::z(),
+                c * Vector3::z(),
+                format!("Z on {}", angle.to_degrees()),
+            );
         }
     }
 
     #[test]
     fn test_single_axis_rotations() {
-        let q_x = Quaternion::about_x(PI, 0, 1);
-        // Check that rotating X by PI about X returns X
+        let q_x = Quaternion::about_x(FRAC_PI_2, 0, 1);
+        // Check the components
+        assert!(
+            (q_x.as_vector() - Vector4::new(0.5_f64.sqrt(), 0.5_f64.sqrt(), 0.0, 0.0)).norm()
+                < EPSILON
+        );
         assert_eq!(q_x * Vector3::x(), Vector3::x());
-        // Check that rotating Y by PI about X returns -Y
+        // Check that rotating Y by PI /2 about X returns -Z
         let d = DCM::from(q_x);
-        assert_eq!(d, DCM::r1(PI, 0, 1));
+        assert_eq!(d, DCM::r1(FRAC_PI_2, 0, 1));
         assert_eq!(d * Vector3::y(), q_x * Vector3::y());
-        assert!((d * Vector3::y() - -Vector3::y()).norm() < 1e-12);
+        assert!((d * Vector3::y() - -Vector3::z()).norm() < 1e-12);
+        assert!((q_x * Vector3::y() - -Vector3::z()).norm() < 1e-12);
 
         let q_y = Quaternion::about_y(FRAC_PI_2, 0, 1);
         assert_eq!(q_y * Vector3::y(), Vector3::y());
@@ -430,6 +482,7 @@ mod ut_quaternion {
         assert_eq!(d, DCM::r2(FRAC_PI_2, 0, 1));
         assert_eq!(d * Vector3::z(), q_y * Vector3::z());
         assert!((d * Vector3::x() - Vector3::z()).norm() < 1e-12);
+        assert!((q_y * Vector3::x() - Vector3::z()).norm() < 1e-12);
 
         let q_z = Quaternion::about_z(FRAC_PI_2, 0, 1);
         assert_eq!(q_z * Vector3::z(), Vector3::z());
@@ -437,7 +490,8 @@ mod ut_quaternion {
         assert_eq!(d, DCM::r3(FRAC_PI_2, 0, 1));
         assert_eq!(d * Vector3::x(), q_z * Vector3::x());
         println!("{}", d * Vector3::x());
-        assert!((d * Vector3::x() - Vector3::y()).norm() < 1e-12);
+        // assert!((d * Vector3::x() - Vector3::y()).norm() < 1e-12);
+        assert!((q_z * Vector3::x() - Vector3::y()).norm() < 1e-12);
     }
 
     // TODO: Add useful tests

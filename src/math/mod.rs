@@ -10,6 +10,7 @@
 
 // Vector3 is nalgebra's Vector3 with a 64-bit floating point representation.
 pub type Vector3 = nalgebra::Vector3<f64>;
+pub type Vector4 = nalgebra::Vector4<f64>;
 pub type Vector6 = nalgebra::Vector6<f64>;
 pub type Matrix3 = nalgebra::Matrix3<f64>;
 pub type Matrix6 = nalgebra::Matrix6<f64>;

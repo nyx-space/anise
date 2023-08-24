@@ -20,6 +20,8 @@ pub use dcm::DCM;
 pub use mrp::MRP;
 pub use quaternion::Quaternion;
 
+use super::Vector3;
+
 pub trait Rotation: TryInto<Quaternion> {}
 
 /// Generates the angles for the test
@@ -36,4 +38,10 @@ pub(crate) fn generate_angles() -> Vec<f64> {
         }
     }
     angles
+}
+
+/// Returns whether two vectors can be considered equal after a rotation
+pub(crate) fn vec3_eq(a: Vector3, b: Vector3, msg: String) {
+    let rslt = (a - b).norm();
+    assert!(rslt < 1e-3, "{msg}:{rslt:.e}\ta = {a}\tb = {b}")
 }

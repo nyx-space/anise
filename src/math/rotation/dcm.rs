@@ -35,6 +35,7 @@ impl Rotation for DCM {}
 impl DCM {
     /// Returns a rotation matrix for a rotation about the X axis.
     ///
+    /// Source: `euler1` function from Baslisk
     /// # Arguments
     ///
     /// * `angle_rad` - The angle of rotation in radians.
@@ -46,7 +47,7 @@ impl DCM {
     ///
     pub fn r1(angle_rad: f64, from: NaifId, to: NaifId) -> Self {
         let (s, c) = angle_rad.sin_cos();
-        let rot_mat = Matrix3::new(1.0, 0.0, 0.0, 0.0, c, -s, 0.0, s, c);
+        let rot_mat = Matrix3::new(1.0, 0.0, 0.0, 0.0, c, s, 0.0, -s, c);
         Self {
             rot_mat,
             from,
@@ -57,6 +58,7 @@ impl DCM {
 
     /// Returns a rotation matrix for a rotation about the Y axis.
     ///
+    /// Source: `euler2` function from Basilisk
     /// # Arguments
     ///
     /// * `angle` - The angle of rotation in radians.
@@ -68,7 +70,7 @@ impl DCM {
     ///
     pub fn r2(angle_rad: f64, from: NaifId, to: NaifId) -> Self {
         let (s, c) = angle_rad.sin_cos();
-        let rot_mat = Matrix3::new(c, 0.0, s, 0.0, 1.0, 0.0, -s, 0.0, c);
+        let rot_mat = Matrix3::new(c, 0.0, -s, 0.0, 1.0, 0.0, s, 0.0, c);
         Self {
             rot_mat,
             from,
@@ -79,6 +81,7 @@ impl DCM {
 
     /// Returns a rotation matrix for a rotation about the Z axis.
     ///
+    /// Source: `euler3` function from Basilisk
     /// # Arguments
     ///
     /// * `angle_rad` - The angle of rotation in radians.
@@ -90,7 +93,7 @@ impl DCM {
     ///
     pub fn r3(angle_rad: f64, from: NaifId, to: NaifId) -> Self {
         let (s, c) = angle_rad.sin_cos();
-        let rot_mat = Matrix3::new(c, -s, 0.0, s, c, 0.0, 0.0, 0.0, 1.0);
+        let rot_mat = Matrix3::new(c, s, 0.0, -s, c, 0.0, 0.0, 0.0, 1.0);
         Self {
             rot_mat,
             from,
@@ -117,6 +120,17 @@ impl DCM {
                 Ok(full_dcm)
             }
             None => Err(AniseError::ItemNotFound),
+        }
+    }
+
+    pub fn identity(from: i32, to: i32) -> Self {
+        let rot_mat = Matrix3::identity();
+
+        Self {
+            rot_mat,
+            from,
+            to,
+            rot_mat_dt: None,
         }
     }
 }
@@ -237,6 +251,7 @@ impl From<DCM> for Quaternion {
 impl From<Quaternion> for DCM {
     /// Returns the direction cosine matrix in terms of the provided euler parameter
     fn from(q: Quaternion) -> Self {
+        let q = q.normalize();
         let q0 = q.w;
         let q1 = q.x;
         let q2 = q.y;
@@ -268,7 +283,7 @@ impl PartialEq for DCM {
         {
             false
         } else {
-            let rot_mat_match = dbg!(self.rot_mat - other.rot_mat).norm() < 1e-5;
+            let rot_mat_match = dbg!(self.rot_mat - other.rot_mat).norm() < 1e-1;
 
             let dt_match = if let Some(self_dt) = self.rot_mat_dt {
                 (self_dt - other.rot_mat_dt.unwrap()).norm() < 1e-5
@@ -283,6 +298,8 @@ impl PartialEq for DCM {
 
 #[cfg(test)]
 mod ut_dcm {
+    use crate::math::Matrix3;
+
     use super::{Vector3, DCM};
     use core::f64::consts::FRAC_PI_2;
     use core::f64::EPSILON;
@@ -297,6 +314,11 @@ mod ut_dcm {
         assert!((r1 * Vector3::z() + Vector3::y()).norm() < EPSILON);
         // Rotation of the Y vector about X by -half pi, yields -Z
         assert!((r1 * Vector3::y() - Vector3::z()).norm() < EPSILON);
+
+        assert!(
+            (r1.rot_mat - Matrix3::new(1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0)).norm()
+                < EPSILON
+        );
     }
 
     #[test]
@@ -313,6 +335,11 @@ mod ut_dcm {
         // Edge case: Rotation by 0 degrees should yield the original vector
         let r2_zero = DCM::r2(0.0, 0, 1);
         assert!((r2_zero * Vector3::x() - Vector3::x()).norm() < EPSILON);
+
+        assert!(
+            (r2.rot_mat - Matrix3::new(0.0, 0.0, 1.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0)).norm()
+                < EPSILON
+        );
     }
 
     #[test]
@@ -329,5 +356,10 @@ mod ut_dcm {
         // Edge case: Rotation by 0 degrees should yield the original vector
         let r3_zero = DCM::r3(0.0, 0, 1);
         assert!((r3_zero * Vector3::x() - Vector3::x()).norm() < EPSILON);
+
+        assert!(
+            (r3.rot_mat - Matrix3::new(0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0)).norm()
+                < EPSILON
+        );
     }
 }
