@@ -30,7 +30,7 @@ fn benchmark_anise_single_hop_type13_hermite() {
     let buf = file_mmap!("data/gmat-hermite.bsp").unwrap();
     let spacecraft = SPK::parse(buf).unwrap();
 
-    let ctx = Context::from_spk(&spk)
+    let ctx = Almanac::from_spk(&spk)
         .unwrap()
         .load_spk(&spacecraft)
         .unwrap();

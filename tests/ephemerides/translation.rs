@@ -30,7 +30,7 @@ fn de440s_translation_verif_venus2emb() {
     let path = "./data/de440s.bsp";
     let buf = file_mmap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Context::from_spk(&spk).unwrap();
+    let ctx = Almanac::from_spk(&spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
@@ -122,7 +122,7 @@ fn de438s_translation_verif_venus2luna() {
     let path = "./data/de440s.bsp";
     let buf = file_mmap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Context::from_spk(&spk).unwrap();
+    let ctx = Almanac::from_spk(&spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
@@ -221,7 +221,7 @@ fn de438s_translation_verif_emb2luna() {
     let path = "./data/de440s.bsp";
     let buf = file_mmap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Context::from_spk(&spk).unwrap();
+    let ctx = Almanac::from_spk(&spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
@@ -333,7 +333,7 @@ fn spk_hermite_type13_verif() {
     let buf = file_mmap!("data/gmat-hermite.bsp").unwrap();
     let spacecraft = SPK::parse(buf).unwrap();
 
-    let ctx = Context::from_spk(&spk)
+    let ctx = Almanac::from_spk(&spk)
         .unwrap()
         .load_spk(&spacecraft)
         .unwrap();
@@ -389,7 +389,7 @@ fn multithread_query() {
     let path = "./data/de440s.bsp";
     let buf = file_mmap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Context::from_spk(&spk).unwrap();
+    let ctx = Almanac::from_spk(&spk).unwrap();
 
     let start_epoch = Epoch::from_str("2000-01-01T00:00:00 ET").unwrap();
 

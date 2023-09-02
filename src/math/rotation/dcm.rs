@@ -178,7 +178,7 @@ impl Mul<Vector6> for DCM {
 }
 
 impl From<DCM> for Quaternion {
-    /// Try to convert from a DCM into its quaternion representation
+    /// Convert from a DCM into its quaternion representation
     ///
     /// # Warning
     /// If this DCM has a time derivative, it will be lost in the conversion.
@@ -283,7 +283,7 @@ impl PartialEq for DCM {
         {
             false
         } else {
-            let rot_mat_match = dbg!(self.rot_mat - other.rot_mat).norm() < 1e-1;
+            let rot_mat_match = (self.rot_mat - other.rot_mat).norm() < 1e-1;
 
             let dt_match = if let Some(self_dt) = self.rot_mat_dt {
                 (self_dt - other.rot_mat_dt.unwrap()).norm() < 1e-5

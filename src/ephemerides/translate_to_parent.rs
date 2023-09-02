@@ -11,7 +11,7 @@
 use log::trace;
 
 use crate::astro::Aberration;
-use crate::context::Context;
+use crate::context::Almanac;
 use crate::errors::IntegrityErrorKind;
 use crate::hifitime::Epoch;
 use crate::math::units::*;
@@ -20,7 +20,7 @@ use crate::naif::daf::NAIFDataSet;
 use crate::naif::spk::datatypes::{HermiteSetType13, LagrangeSetType9, Type2ChebyshevSet};
 use crate::{errors::AniseError, prelude::Frame};
 
-impl<'a> Context<'a> {
+impl<'a> Almanac<'a> {
     /// Returns the position vector and velocity vector of the `source` with respect to its parent in the ephemeris at the provided epoch,
     /// and in the provided distance and time units.
     ///

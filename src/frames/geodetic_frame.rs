@@ -10,7 +10,7 @@
 
 use super::{celestial_frame::CelestialFrame, CelestialFrameTrait, Frame, FrameTrait};
 use crate::{
-    context::Context, prelude::AniseError, structure::planetocentric::ellipsoid::Ellipsoid, NaifId,
+    context::Almanac, prelude::AniseError, structure::planetocentric::ellipsoid::Ellipsoid, NaifId,
 };
 use core::fmt;
 
@@ -85,7 +85,7 @@ impl Into<Frame> for GeodeticFrame {
     }
 }
 
-impl<'a> Context<'a> {
+impl<'a> Almanac<'a> {
     /// Tries to find the geodetic frame data given the ephemeris center name and the orientation name.
     /// # Note
     /// The ephemeris name MUST match the name of the planetary constant.

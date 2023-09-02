@@ -112,7 +112,7 @@ fn test_spk_load_bytes() {
     println!("{data_set}");
 
     // Put this in a context
-    let spice = Context::default();
+    let spice = Almanac::default();
     let spice = spice.load_spk(&de421).unwrap();
 
     // Now load another DE file

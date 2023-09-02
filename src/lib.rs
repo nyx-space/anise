@@ -30,7 +30,7 @@ pub mod time {
 
 pub mod prelude {
     pub use crate::astro::Aberration;
-    pub use crate::context::Context;
+    pub use crate::context::Almanac;
     pub use crate::errors::AniseError;
     pub use crate::frames::*;
     pub use crate::math::units::*;

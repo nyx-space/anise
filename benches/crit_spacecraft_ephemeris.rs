@@ -23,7 +23,7 @@ fn benchmark_spice_single_hop_type13_hermite(time_it: TimeSeries) {
     spice::unload("data/gmat-hermite.bsp");
 }
 
-fn benchmark_anise_single_hop_type13_hermite(ctx: &Context, time_it: TimeSeries) {
+fn benchmark_anise_single_hop_type13_hermite(ctx: &Almanac, time_it: TimeSeries) {
     let my_sc_j2k = Frame::from_ephem_j2000(-10000001);
     for epoch in time_it {
         black_box(
@@ -46,7 +46,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let buf = file_mmap!("data/gmat-hermite.bsp").unwrap();
     let spacecraft = SPK::parse(buf).unwrap();
 
-    let ctx = Context::from_spk(&spk)
+    let ctx = Almanac::from_spk(&spk)
         .unwrap()
         .load_spk(&spacecraft)
         .unwrap();

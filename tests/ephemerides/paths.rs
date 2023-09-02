@@ -30,7 +30,7 @@ fn common_root_verif() {
     for path in ["./data/de430.bsp", "./data/de440s.bsp", "./data/de440.bsp"] {
         let buf = file_mmap!(path).unwrap();
         let spk = SPK::parse(buf).unwrap();
-        let ctx = Context::from_spk(&spk).unwrap();
+        let ctx = Almanac::from_spk(&spk).unwrap();
 
         // The root of all these files should be the SSB
         assert_eq!(
