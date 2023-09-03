@@ -12,6 +12,8 @@ use std::{collections::HashMap, str::FromStr};
 
 use log::warn;
 
+use crate::file_mmap2;
+
 use super::{parser::Assignment, KPLItem, KPLValue, Parameter};
 
 #[derive(Debug, Default)]
@@ -152,7 +154,18 @@ fn test_anise_conversion() {
 
     // Test reloading
     let bytes = file_mmap!(path).unwrap();
-    let reloaded = DataSet::from_bytes(&bytes);
+    let reloaded = DataSet::from_bytes_2(&bytes);
 
+    assert_eq!(reloaded, dataset);
+
+    // Test loading from file loaded on heap
+    use std::fs;
+    let data = fs::read(path).unwrap();
+    let reloaded = DataSet::from_bytes_2(&data);
+    assert_eq!(reloaded, dataset);
+
+    // Test reloading with real mmap
+    let mmap = file_mmap2!(path).unwrap();
+    let reloaded = DataSet::from_bytes_2(&mmap);
     assert_eq!(reloaded, dataset);
 }
