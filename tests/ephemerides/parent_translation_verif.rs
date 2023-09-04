@@ -15,6 +15,13 @@ use anise::file2heap;
 use anise::math::Vector3;
 use anise::prelude::*;
 
+const ZEROS: &'static [u8] = &[0; 2048];
+/// Test that we can load data from a static pointer to it.
+#[test]
+fn invalid_load_from_static() {
+    assert!(SPK::from_static(&ZEROS).is_err());
+}
+
 #[test]
 fn de438s_parent_translation_verif() {
     if pretty_env_logger::try_init().is_err() {
