@@ -11,7 +11,7 @@
 use log::trace;
 
 use crate::astro::Aberration;
-use crate::context::Almanac;
+use crate::almanac::Almanac;
 use crate::errors::IntegrityErrorKind;
 use crate::hifitime::Epoch;
 use crate::math::units::*;

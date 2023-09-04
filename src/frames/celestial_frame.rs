@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::{context::Almanac, prelude::AniseError, NaifId};
+use crate::{almanac::Almanac, prelude::AniseError, NaifId};
 
 use super::{Frame, FrameTrait};
 use core::fmt;

@@ -12,10 +12,10 @@ extern crate const_format;
 extern crate hifitime;
 extern crate log;
 
+pub mod almanac;
 pub mod astro;
 pub mod cli;
 pub mod constants;
-pub mod context;
 pub mod ephemerides;
 pub mod errors;
 pub mod frames;
@@ -29,8 +29,8 @@ pub mod time {
 }
 
 pub mod prelude {
+    pub use crate::almanac::Almanac;
     pub use crate::astro::Aberration;
-    pub use crate::context::Almanac;
     pub use crate::errors::AniseError;
     pub use crate::frames::*;
     pub use crate::math::units::*;
@@ -48,7 +48,7 @@ pub(crate) type NaifId = i32;
 
 /// Memory maps a file and **copies** the data on the heap prior to returning a pointer to this heap data.
 #[macro_export]
-macro_rules! file_mmap {
+macro_rules! file2heap {
     ($filename:tt) => {
         match File::open($filename) {
             Err(e) => Err(AniseError::IOError(e.kind())),
@@ -69,7 +69,7 @@ macro_rules! file_mmap {
 
 /// Memory maps a file and **copies** the data on the heap prior to returning a pointer to this heap data.
 #[macro_export]
-macro_rules! file_mmap2 {
+macro_rules! file_mmap {
     ($filename:tt) => {
         match File::open($filename) {
             Err(e) => Err(AniseError::IOError(e.kind())),

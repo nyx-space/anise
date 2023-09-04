@@ -11,7 +11,7 @@
 use core::f64::EPSILON;
 
 use anise::constants::frames::{EARTH_J2000, EARTH_MOON_BARYCENTER_J2000, LUNA_J2000, VENUS_J2000};
-use anise::file_mmap;
+use anise::file2heap;
 use anise::math::Vector3;
 use anise::prelude::*;
 
@@ -28,7 +28,7 @@ fn de440s_translation_verif_venus2emb() {
 
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de440s.bsp";
-    let buf = file_mmap!(path).unwrap();
+    let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
     let ctx = Almanac::from_spk(&spk).unwrap();
 
@@ -120,7 +120,7 @@ fn de438s_translation_verif_venus2luna() {
 
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de440s.bsp";
-    let buf = file_mmap!(path).unwrap();
+    let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
     let ctx = Almanac::from_spk(&spk).unwrap();
 
@@ -219,7 +219,7 @@ fn de438s_translation_verif_emb2luna() {
 
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de440s.bsp";
-    let buf = file_mmap!(path).unwrap();
+    let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
     let ctx = Almanac::from_spk(&spk).unwrap();
 
@@ -327,10 +327,10 @@ fn spk_hermite_type13_verif() {
 
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de440s.bsp";
-    let buf = file_mmap!(path).unwrap();
+    let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
 
-    let buf = file_mmap!("data/gmat-hermite.bsp").unwrap();
+    let buf = file2heap!("data/gmat-hermite.bsp").unwrap();
     let spacecraft = SPK::parse(buf).unwrap();
 
     let ctx = Almanac::from_spk(&spk)
@@ -387,7 +387,7 @@ fn multithread_query() {
     use rayon::prelude::*;
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de440s.bsp";
-    let buf = file_mmap!(path).unwrap();
+    let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
     let ctx = Almanac::from_spk(&spk).unwrap();
 

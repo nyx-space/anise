@@ -176,11 +176,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
 
     /// Forces to load an Anise file from a pointer of bytes.
     /// **Panics** if the bytes cannot be interpreted as an Anise file.
-    pub fn from_bytes(buf: &'a [u8]) -> Self {
-        Self::try_from_bytes(buf).unwrap()
-    }
-
-    pub fn from_bytes_2<B: Deref<Target = [u8]>>(buf: &'a B) -> Self {
+    pub fn from_bytes<B: Deref<Target = [u8]>>(buf: &'a B) -> Self {
         Self::try_from_bytes(buf).unwrap()
     }
 

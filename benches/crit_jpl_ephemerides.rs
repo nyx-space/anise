@@ -1,6 +1,6 @@
 use anise::{
     constants::frames::{EARTH_J2000, LUNA_J2000},
-    file_mmap,
+    file2heap,
     prelude::*,
 };
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
@@ -38,7 +38,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
     // Load ANISE data
     let path = "./data/de440s.bsp";
-    let buf = file_mmap!(path).unwrap();
+    let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
     let ctx = Almanac::from_spk(&spk).unwrap();
 

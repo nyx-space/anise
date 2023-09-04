@@ -9,7 +9,7 @@
  */
 
 use crate::astro::Aberration;
-use crate::context::Almanac;
+use crate::almanac::Almanac;
 use crate::hifitime::Epoch;
 use crate::math::cartesian::CartesianState;
 use crate::math::units::*;

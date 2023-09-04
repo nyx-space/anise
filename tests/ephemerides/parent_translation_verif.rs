@@ -11,7 +11,7 @@
 use core::f64::EPSILON;
 
 use anise::constants::frames::VENUS_J2000;
-use anise::file_mmap;
+use anise::file2heap;
 use anise::math::Vector3;
 use anise::prelude::*;
 
@@ -21,7 +21,7 @@ fn de438s_parent_translation_verif() {
         println!("could not init env_logger");
     }
 
-    let bytes = file_mmap!("data/de440s.bsp").unwrap();
+    let bytes = file2heap!("data/de440s.bsp").unwrap();
     let de438s = SPK::parse(bytes).unwrap();
     let ctx = Almanac::from_spk(&de438s).unwrap();
 

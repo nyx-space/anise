@@ -11,7 +11,7 @@
 use hifitime::Epoch;
 use log::error;
 
-use crate::context::Almanac;
+use crate::almanac::Almanac;
 use crate::errors::InternalErrorKind;
 use crate::naif::daf::NAIFSummaryRecord;
 use crate::NaifId;
