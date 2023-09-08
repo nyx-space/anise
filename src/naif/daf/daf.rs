@@ -89,7 +89,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     pub fn from_static<B: Deref<Target = [u8]>>(bytes: &'static B) -> Result<Self, AniseError> {
-        let crc32_checksum = crc32fast::hash(&bytes);
+        let crc32_checksum = crc32fast::hash(bytes);
         let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
         // Check that the endian-ness is compatible with this platform.
         file_record.endianness()?;
@@ -104,7 +104,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         Ok(Self {
             file_record,
             name_record,
-            bytes: Bytes::from_static(&bytes),
+            bytes: Bytes::from_static(bytes),
             crc32_checksum,
             _daf_type: PhantomData,
         })

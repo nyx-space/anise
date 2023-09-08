@@ -315,7 +315,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> Decode<'a> for DataSet<'a, T, EN
             lut,
             data_checksum: crc32_checksum,
             bytes: bytes.as_bytes(),
-            _daf_type: PhantomData::<T>::default(),
+            _daf_type: PhantomData::<T>,
         })
     }
 }
