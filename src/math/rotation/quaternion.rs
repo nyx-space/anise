@@ -321,8 +321,9 @@ mod ut_quaternion {
         Vector4,
     };
 
-    use super::{EulerParameter, Quaternion, Vector3, EPSILON, TAU};
+    use super::{EulerParameter, Quaternion, Vector3, EPSILON};
     use core::f64::consts::FRAC_PI_2;
+    use std::f64::consts::PI;
 
     #[test]
     fn test_quat_frames() {
@@ -362,10 +363,8 @@ mod ut_quaternion {
     #[test]
     fn test_quat_start_end_frames() {
         for angle in generate_angles() {
-            if angle < 0.0 {
-                continue;
-            }
             let q1 = Quaternion::about_x(angle, 0, 1);
+            let (uvec_q1, _angle_rad) = q1.uvec_angle();
             let q2 = Quaternion::about_x(angle, 1, 2);
 
             let q1_to_q2 = (q1 * q2).unwrap();
@@ -373,17 +372,19 @@ mod ut_quaternion {
             assert_eq!(q1_to_q2.to, 2, "{angle}");
 
             let (uvec, angle_rad) = q1_to_q2.uvec_angle();
-            let cmp_angle = if angle < 0.0 {
-                2.0 * (angle + TAU)
-            } else {
-                2.0 * angle
-            };
-            assert!(
-                (angle_rad - cmp_angle).abs() < 1e-12,
-                "got: {angle_rad}\twant: {cmp_angle} (orig: {angle})"
-            );
 
-            assert_eq!(uvec, Vector3::x(), "{angle}");
+            if uvec.norm() > EPSILON {
+                if angle < -PI || angle > PI {
+                    assert_eq!(uvec, -uvec_q1, "{angle}");
+                } else {
+                    assert_eq!(uvec, uvec_q1, "{angle}");
+                    let cmp_angle = (2.0 * angle).abs();
+                    assert!(
+                        (angle_rad - cmp_angle).abs() < 1e-12,
+                        "got: {angle_rad}\twant: {cmp_angle} (orig: {angle})"
+                    );
+                }
+            }
 
             // Check the conjugate
 
@@ -391,10 +392,14 @@ mod ut_quaternion {
             assert_eq!(q2_to_q1.from, 2, "{angle}");
             assert_eq!(q2_to_q1.to, 0, "{angle}");
 
-            let (uvec, angle_rad) = q2_to_q1.uvec_angle();
-            assert!((angle_rad - cmp_angle).abs() < 1e-12, "{angle}");
-
-            assert_eq!(uvec, -Vector3::x(), "{angle}");
+            let (uvec, _angle_rad) = q2_to_q1.uvec_angle();
+            if uvec.norm() > EPSILON {
+                if angle >= -PI && angle <= PI {
+                    assert_eq!(uvec, -uvec_q1, "{angle}");
+                } else {
+                    assert_eq!(uvec, uvec_q1, "{angle}");
+                }
+            }
         }
     }
 

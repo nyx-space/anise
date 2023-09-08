@@ -138,9 +138,9 @@ impl Mul<Vector3> for DCM {
     /// // Rotation of the X vector about X, yields X
     /// assert_eq!(r1 * Vector3::x(), Vector3::x());
     /// // Rotation of the Z vector about X by half pi, yields -Y
-    /// assert!((r1 * Vector3::z() + Vector3::y()).norm() < EPSILON);
+    /// assert!((r1 * Vector3::z() - Vector3::y()).norm() < EPSILON);
     /// // Rotation of the Y vector about X by half pi, yields Z
-    /// assert!((r1 * Vector3::y() - Vector3::z()).norm() < EPSILON);
+    /// assert!((r1 * Vector3::y() + Vector3::z()).norm() < EPSILON);
     /// ```
     ///
     /// # Warnings
