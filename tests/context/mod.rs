@@ -3,13 +3,13 @@ fn test_load_ctx() {
     // Start bycreating the ANISE planetary data
     use anise::{
         naif::kpl::parser::convert_tpc,
-        prelude::{Context, BPC, SPK},
+        prelude::{Almanac, BPC, SPK},
     };
 
     let dataset = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
 
     // Load BSP and BPC
-    let ctx = Context::default();
+    let ctx = Almanac::default();
 
     let spk = SPK::load("data/de440.bsp").unwrap();
     let bpc = BPC::load("data/earth_latest_high_prec.bpc").unwrap();

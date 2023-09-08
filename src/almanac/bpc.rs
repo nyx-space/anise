@@ -15,11 +15,11 @@ use crate::naif::pck::BPCSummaryRecord;
 use crate::naif::BPC;
 use log::error;
 
-use super::{Context, MAX_LOADED_BPCS};
+use super::{Almanac, MAX_LOADED_BPCS};
 
-impl<'a: 'b, 'b> Context<'a> {
+impl<'a: 'b, 'b> Almanac<'a> {
     /// Loads a Binary Planetary Constants kernel.
-    pub fn load_bpc(&self, bpc: &'b BPC) -> Result<Context<'b>, AniseError> {
+    pub fn load_bpc(&self, bpc: &'b BPC) -> Result<Almanac<'b>, AniseError> {
         // This is just a bunch of pointers so it doesn't use much memory.
         let mut me = self.clone();
         let mut data_idx = MAX_LOADED_BPCS;

@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::{context::Context, prelude::AniseError, NaifId};
+use crate::{almanac::Almanac, prelude::AniseError, NaifId};
 
 use super::{Frame, FrameTrait};
 use core::fmt;
@@ -48,7 +48,7 @@ impl fmt::Display for CelestialFrame {
     }
 }
 
-impl<'a> Context<'a> {
+impl<'a> Almanac<'a> {
     /// Tries to find the celestial frame data given the ephemeris center name and the orientation name.
     /// # Note
     /// The ephemeris name MUST match the name of the planetary constant.

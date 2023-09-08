@@ -11,9 +11,16 @@
 use core::f64::EPSILON;
 
 use anise::constants::frames::VENUS_J2000;
-use anise::file_mmap;
+use anise::file2heap;
 use anise::math::Vector3;
 use anise::prelude::*;
+
+const ZEROS: &'static [u8] = &[0; 2048];
+/// Test that we can load data from a static pointer to it.
+#[test]
+fn invalid_load_from_static() {
+    assert!(SPK::from_static(&ZEROS).is_err());
+}
 
 #[test]
 fn de438s_parent_translation_verif() {
@@ -21,9 +28,9 @@ fn de438s_parent_translation_verif() {
         println!("could not init env_logger");
     }
 
-    let bytes = file_mmap!("data/de440s.bsp").unwrap();
+    let bytes = file2heap!("data/de440s.bsp").unwrap();
     let de438s = SPK::parse(bytes).unwrap();
-    let ctx = Context::from_spk(&de438s).unwrap();
+    let ctx = Almanac::from_spk(&de438s).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 

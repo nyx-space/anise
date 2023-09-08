@@ -11,7 +11,7 @@
 use hifitime::Epoch;
 use log::error;
 
-use crate::context::Context;
+use crate::almanac::Almanac;
 use crate::errors::InternalErrorKind;
 use crate::naif::daf::NAIFSummaryRecord;
 use crate::NaifId;
@@ -23,7 +23,7 @@ use crate::{
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
 pub const MAX_TREE_DEPTH: usize = 8;
 
-impl<'a> Context<'a> {
+impl<'a> Almanac<'a> {
     /// Returns the center of all of the loaded ephemerides, typically this should be the Solar System Barycenter.
     ///
     /// # Algorithm
