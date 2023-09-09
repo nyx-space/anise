@@ -12,7 +12,7 @@ use std::str::FromStr;
 
 use anise::constants::celestial_objects::{EARTH_MOON_BARYCENTER, SOLAR_SYSTEM_BARYCENTER};
 use anise::constants::frames::*;
-use anise::file_mmap;
+use anise::file2heap;
 use anise::prelude::*;
 
 /// Tests that direct path computations match what SPICE returned to within good precision.
@@ -28,9 +28,9 @@ fn common_root_verif() {
     // Load the context
     // Check that this test works for DE430, DE438s (short), and DE440
     for path in ["./data/de430.bsp", "./data/de440s.bsp", "./data/de440.bsp"] {
-        let buf = file_mmap!(path).unwrap();
+        let buf = file2heap!(path).unwrap();
         let spk = SPK::parse(buf).unwrap();
-        let ctx = Context::from_spk(&spk).unwrap();
+        let ctx = Almanac::from_spk(&spk).unwrap();
 
         // The root of all these files should be the SSB
         assert_eq!(

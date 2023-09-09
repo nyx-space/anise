@@ -131,7 +131,7 @@ impl CompareEphem {
     pub fn run(mut self) -> usize {
         let mut spks: Vec<SPK> = Vec::new();
         // Load the context
-        let mut ctx = Context::default();
+        let mut ctx = Almanac::default();
 
         for path in &self.input_file_names {
             let spk = SPK::load(path).unwrap();

@@ -1,6 +1,6 @@
 use anise::{
     constants::frames::{EARTH_J2000, LUNA_J2000},
-    file_mmap,
+    file2heap,
     prelude::*,
 };
 
@@ -38,9 +38,9 @@ fn benchmark_anise_single_hop_type2_cheby() {
     let time_it = TimeSeries::exclusive(start_epoch, end_epoch - time_step, time_step);
 
     let path = "./data/de440s.bsp";
-    let buf = file_mmap!(path).unwrap();
+    let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Context::from_spk(&spk).unwrap();
+    let ctx = Almanac::from_spk(&spk).unwrap();
 
     for epoch in time_it {
         black_box(
