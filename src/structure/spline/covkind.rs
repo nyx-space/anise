@@ -174,7 +174,7 @@ impl Encode for CovKind {
         converted.encoded_len()
     }
 
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         let converted: u16 = self.into();
         converted.encode(encoder)
     }

@@ -62,7 +62,7 @@ impl Encode for DataSetType {
         (*self as u8).encoded_len()
     }
 
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         (*self as u8).encode(encoder)
     }
 }
@@ -295,7 +295,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> Encode for DataSet<'a, T, ENTRIE
             + as_byte_ref.encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         let as_byte_ref = OctetStringRef::new(self.bytes)?;
         self.metadata.encode(encoder)?;
         self.lut.encode(encoder)?;

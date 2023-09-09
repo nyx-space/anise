@@ -99,7 +99,7 @@ impl Encode for Ellipsoid {
             + self.polar_radius_km.encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         self.semi_major_equatorial_radius_km.encode(encoder)?;
         self.semi_minor_equatorial_radius_km.encode(encoder)?;
         self.polar_radius_km.encode(encoder)

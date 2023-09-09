@@ -26,7 +26,7 @@ impl Encode for Semver {
         as_octet_string.encoded_len()
     }
 
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         let data: [u8; 3] = [self.major, self.minor, self.patch];
         let as_octet_string = OctetStringRef::new(&data).unwrap();
         as_octet_string.encode(encoder)

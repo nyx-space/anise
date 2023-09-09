@@ -58,7 +58,7 @@ impl Encode for Inertia {
             + self.i_23_kgm2.encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         self.orientation_id.encode(encoder)?;
         self.i_11_kgm2.encode(encoder)?;
         self.i_22_kgm2.encode(encoder)?;

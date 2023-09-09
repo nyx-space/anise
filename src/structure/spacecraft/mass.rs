@@ -42,7 +42,7 @@ impl Encode for Mass {
             + self.unusable_fuel_mass_kg.encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         self.dry_mass_kg.encode(encoder)?;
         self.usable_fuel_mass_kg.encode(encoder)?;
         self.unusable_fuel_mass_kg.encode(encoder)

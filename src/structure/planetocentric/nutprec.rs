@@ -34,7 +34,7 @@ impl Encode for NutationPrecessionAngle {
         self.offset_deg.encoded_len()? + self.rate_deg.encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         self.offset_deg.encode(encoder)?;
         self.rate_deg.encode(encoder)
     }

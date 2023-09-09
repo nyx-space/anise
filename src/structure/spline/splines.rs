@@ -41,7 +41,7 @@ impl<'a> Encode for Splines<'a> {
             + OctetStringRef::new(self.data).unwrap().encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         self.metadata.encode(encoder)?;
         self.data_checksum.encode(encoder)?;
         OctetStringRef::new(self.data).unwrap().encode(encoder)

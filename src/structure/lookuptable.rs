@@ -38,7 +38,7 @@ impl Encode for Entry {
         self.start_idx.encoded_len()? + self.end_idx.encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         self.start_idx.encode(encoder)?;
         self.end_idx.encode(encoder)
     }
@@ -155,7 +155,7 @@ impl<'a, const ENTRIES: usize> Encode for LookUpTable<'a, ENTRIES> {
             + name_entries.encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         let (ids, names, id_entries, name_entries) = self.der_encoding();
         ids.encode(encoder)?;
         names.encode(encoder)?;

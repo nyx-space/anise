@@ -69,7 +69,7 @@ impl Encode for Evenness {
         }
     }
 
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         match self {
             Self::Even { duration_ns } => (*duration_ns).encode(encoder),
             Self::Uneven { indexes: _indexes } => {
