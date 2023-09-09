@@ -14,7 +14,7 @@ use anise::structure::planetocentric::PlanetaryData;
 use anise::structure::spacecraft::SpacecraftData;
 use clap::Parser;
 use log::{error, info};
-use tabled::{Style, Table};
+use tabled::{settings::Style, Table};
 use zerocopy::FromBytes;
 
 const LOG_VAR: &str = "ANISE_LOG";
