@@ -8,11 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 
-use zerocopy::{AsBytes, FromBytes};
+use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 use super::NAIFRecord;
 
-#[derive(AsBytes, Clone, Copy, Debug, Default, FromBytes)]
+#[derive(AsBytes, Clone, Copy, Debug, Default, FromZeroes, FromBytes)]
 #[repr(C)]
 pub struct SummaryRecord {
     next_record: f64,

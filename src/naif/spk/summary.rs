@@ -11,14 +11,14 @@
 use core::fmt;
 use hifitime::Epoch;
 use log::{error, trace};
-use zerocopy::{AsBytes, FromBytes};
+use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 use crate::{
     naif::daf::{NAIFRecord, NAIFSummaryRecord},
     prelude::AniseError,
 };
 
-#[derive(Clone, Copy, Debug, Default, AsBytes, FromBytes)]
+#[derive(Clone, Copy, Debug, Default, AsBytes, FromZeroes, FromBytes)]
 #[repr(C)]
 pub struct SPKSummaryRecord {
     pub start_epoch_et_s: f64,

@@ -10,10 +10,10 @@
 
 use der::{Decode, Encode, Reader, Writer};
 use hifitime::{Epoch, Unit};
-use zerocopy::{AsBytes, FromBytes};
+use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 /// This structure is only used to store the nutation and precession angle data.
-#[derive(Copy, Clone, Debug, Default, PartialEq, AsBytes, FromBytes)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, AsBytes, FromZeroes, FromBytes)]
 #[repr(C)]
 pub struct NutationPrecessionAngle {
     offset_deg: f64,

@@ -8,13 +8,13 @@
  * Documentation: https://nyxspace.com/
  */
 use der::{Decode, Encode, Reader, Writer};
-use zerocopy::{AsBytes, FromBytes};
+use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 use super::MAX_NUT_PREC_ANGLES;
 
 /// Angle data is represented as a polynomial of an angle, exactly like in SPICE PCK.
 /// In fact, the following documentation is basically copied from [the required PCK reading](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/pck.html).
-#[derive(Copy, Clone, Debug, Default, PartialEq, AsBytes, FromBytes)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, AsBytes, FromZeroes, FromBytes)]
 #[repr(C)]
 pub struct PhaseAngle {
     /// The fixed offset of the angular data

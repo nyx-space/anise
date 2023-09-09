@@ -10,9 +10,9 @@
 
 use crate::naif::daf::{NAIFRecord, NAIFSummaryRecord};
 use hifitime::Epoch;
-use zerocopy::{AsBytes, FromBytes};
+use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
-#[derive(Clone, Copy, Debug, Default, AsBytes, FromBytes)]
+#[derive(Clone, Copy, Debug, Default, AsBytes, FromZeroes, FromBytes)]
 #[repr(C)]
 pub struct BPCSummaryRecord {
     pub start_epoch_et_s: f64,
