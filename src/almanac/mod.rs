@@ -23,12 +23,12 @@ pub const MAX_PLANETARY_DATA: usize = 64;
 pub mod bpc;
 pub mod spk;
 
-/// A SPICE context contains all of the loaded SPICE data.
+/// An Almanac contains all of the loaded SPICE and ANISE data.
 ///
 /// # Limitations
 /// The stack space required depends on the maximum number of each type that can be loaded.
 #[derive(Clone, Default)]
-pub struct Context<'a> {
+pub struct Almanac<'a> {
     /// NAIF SPK is kept unchanged
     pub spk_data: [Option<&'a SPK>; MAX_LOADED_SPKS],
     /// NAIF BPC is kept unchanged
@@ -39,7 +39,7 @@ pub struct Context<'a> {
     pub spacecraft_data: DataSet<'a, SpacecraftData<'a>, MAX_SPACECRAFT_DATA>,
 }
 
-impl<'a> fmt::Display for Context<'a> {
+impl<'a> fmt::Display for Almanac<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(
             f,

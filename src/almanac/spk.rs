@@ -16,17 +16,17 @@ use crate::naif::SPK;
 use log::error;
 
 // TODO: Switch these to build constants so that it's configurable when building the library.
-use super::{Context, MAX_LOADED_SPKS};
+use super::{Almanac, MAX_LOADED_SPKS};
 
-impl<'a: 'b, 'b> Context<'a> {
-    pub fn from_spk(spk: &'a SPK) -> Result<Context<'a>, AniseError> {
+impl<'a: 'b, 'b> Almanac<'a> {
+    pub fn from_spk(spk: &'a SPK) -> Result<Almanac<'a>, AniseError> {
         let me = Self::default();
         me.load_spk(spk)
     }
 
     /// Loads a new SPK file into a new context.
     /// This new context is needed to satisfy the unloading of files. In fact, to unload a file, simply let the newly loaded context drop out of scope and Rust will clean it up.
-    pub fn load_spk(&self, spk: &'b SPK) -> Result<Context<'b>, AniseError> {
+    pub fn load_spk(&self, spk: &'b SPK) -> Result<Almanac<'b>, AniseError> {
         // This is just a bunch of pointers so it doesn't use much memory.
         let mut me = self.clone();
         // Parse as SPK and place into the SPK list if there is room

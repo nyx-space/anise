@@ -11,7 +11,7 @@
 use core::f64::EPSILON;
 
 use anise::constants::frames::{EARTH_J2000, EARTH_MOON_BARYCENTER_J2000, LUNA_J2000, VENUS_J2000};
-use anise::file_mmap;
+use anise::file2heap;
 use anise::math::Vector3;
 use anise::prelude::*;
 
@@ -21,16 +21,16 @@ const POSITION_EPSILON_KM: f64 = 2e-8;
 const VELOCITY_EPSILON_KM_S: f64 = 5e-9;
 
 #[test]
-fn de438s_translation_verif_venus2emb() {
+fn de440s_translation_verif_venus2emb() {
     if pretty_env_logger::try_init().is_err() {
         println!("could not init env_logger");
     }
 
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de440s.bsp";
-    let buf = file_mmap!(path).unwrap();
+    let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Context::from_spk(&spk).unwrap();
+    let ctx = Almanac::from_spk(&spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
@@ -120,9 +120,9 @@ fn de438s_translation_verif_venus2luna() {
 
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de440s.bsp";
-    let buf = file_mmap!(path).unwrap();
+    let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Context::from_spk(&spk).unwrap();
+    let ctx = Almanac::from_spk(&spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
@@ -219,9 +219,9 @@ fn de438s_translation_verif_emb2luna() {
 
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de440s.bsp";
-    let buf = file_mmap!(path).unwrap();
+    let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Context::from_spk(&spk).unwrap();
+    let ctx = Almanac::from_spk(&spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
@@ -327,13 +327,13 @@ fn spk_hermite_type13_verif() {
 
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de440s.bsp";
-    let buf = file_mmap!(path).unwrap();
+    let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
 
-    let buf = file_mmap!("data/gmat-hermite.bsp").unwrap();
+    let buf = file2heap!("data/gmat-hermite.bsp").unwrap();
     let spacecraft = SPK::parse(buf).unwrap();
 
-    let ctx = Context::from_spk(&spk)
+    let ctx = Almanac::from_spk(&spk)
         .unwrap()
         .load_spk(&spacecraft)
         .unwrap();
@@ -387,9 +387,9 @@ fn multithread_query() {
     use rayon::prelude::*;
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de440s.bsp";
-    let buf = file_mmap!(path).unwrap();
+    let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Context::from_spk(&spk).unwrap();
+    let ctx = Almanac::from_spk(&spk).unwrap();
 
     let start_epoch = Epoch::from_str("2000-01-01T00:00:00 ET").unwrap();
 

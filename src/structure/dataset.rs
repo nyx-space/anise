@@ -18,6 +18,7 @@ use core::fmt;
 use core::marker::PhantomData;
 use der::{asn1::OctetStringRef, Decode, Encode, Reader, Writer};
 use log::{error, trace};
+use std::ops::Deref;
 
 macro_rules! io_imports {
     () => {
@@ -175,7 +176,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
 
     /// Forces to load an Anise file from a pointer of bytes.
     /// **Panics** if the bytes cannot be interpreted as an Anise file.
-    pub fn from_bytes(buf: &'a [u8]) -> Self {
+    pub fn from_bytes<B: Deref<Target = [u8]>>(buf: &'a B) -> Self {
         Self::try_from_bytes(buf).unwrap()
     }
 
@@ -314,7 +315,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> Decode<'a> for DataSet<'a, T, EN
             lut,
             data_checksum: crc32_checksum,
             bytes: bytes.as_bytes(),
-            _daf_type: PhantomData::<T>::default(),
+            _daf_type: PhantomData::<T>,
         })
     }
 }

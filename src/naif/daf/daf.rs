@@ -10,9 +10,11 @@
 
 pub use super::{FileRecord, NameRecord, SummaryRecord};
 use super::{NAIFDataSet, NAIFRecord, NAIFSummaryRecord};
+use crate::file2heap;
 use crate::{errors::IntegrityErrorKind, prelude::AniseError, DBL_SIZE};
 use bytes::Bytes;
 use core::hash::Hash;
+use core::ops::Deref;
 use hifitime::Epoch;
 use log::{error, trace, warn};
 use std::marker::PhantomData;
@@ -26,7 +28,7 @@ macro_rules! io_imports {
     () => {
         use std::fs::File;
         use std::io::Result as IoResult;
-        use std::io::{Read, Write};
+        use std::io::Write;
         use std::path::Path;
     };
 }
@@ -65,7 +67,10 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     /// Parse the DAF only if the CRC32 checksum of the data is valid
-    pub fn check_then_parse(bytes: Bytes, expected_crc32: u32) -> Result<Self, AniseError> {
+    pub fn check_then_parse<B: Deref<Target = [u8]>>(
+        bytes: B,
+        expected_crc32: u32,
+    ) -> Result<Self, AniseError> {
         let computed_crc32 = crc32fast::hash(&bytes);
         if computed_crc32 == expected_crc32 {
             Self::parse(bytes)
@@ -79,8 +84,34 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         }
     }
 
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, AniseError> {
+        Self::parse(file2heap!(path)?)
+    }
+
+    pub fn from_static<B: Deref<Target = [u8]>>(bytes: &'static B) -> Result<Self, AniseError> {
+        let crc32_checksum = crc32fast::hash(bytes);
+        let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
+        // Check that the endian-ness is compatible with this platform.
+        file_record.endianness()?;
+
+        // Move onto the next record.
+        let rcrd_idx = file_record.fwrd_idx() * RCRD_LEN;
+        let rcrd_bytes = bytes
+            .get(rcrd_idx..rcrd_idx + RCRD_LEN)
+            .ok_or_else(|| AniseError::MalformedData(file_record.fwrd_idx() + RCRD_LEN))?;
+        let name_record = NameRecord::read_from(rcrd_bytes).unwrap();
+
+        Ok(Self {
+            file_record,
+            name_record,
+            bytes: Bytes::from_static(bytes),
+            crc32_checksum,
+            _daf_type: PhantomData,
+        })
+    }
+
     /// Parse the provided bytes as a SPICE Double Array File
-    pub fn parse(bytes: Bytes) -> Result<Self, AniseError> {
+    pub fn parse<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, AniseError> {
         let crc32_checksum = crc32fast::hash(&bytes);
         let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
         // Check that the endian-ness is compatible with this platform.
@@ -96,7 +127,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         Ok(Self {
             file_record,
             name_record,
-            bytes,
+            bytes: Bytes::copy_from_slice(&bytes),
             crc32_checksum,
             _daf_type: PhantomData,
         })
@@ -305,15 +336,6 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         fs.write_all(&name_rcrd)?;
 
         fs.write_all(&self.bytes[self.file_record.fwrd_idx() * (2 * RCRD_LEN)..])
-    }
-
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, AniseError> {
-        let mut buf = Vec::new();
-        let mut file = File::open(path).unwrap();
-        file.read_to_end(&mut buf).unwrap();
-
-        let bytes = Bytes::copy_from_slice(&buf);
-        Self::parse(bytes)
     }
 }
 
