@@ -93,7 +93,7 @@ impl Encode for SplineMeta {
             + self.cov_kind.encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         self.evenness.encode(encoder)?;
         self.state_kind.encode(encoder)?;
         self.cov_kind.encode(encoder)

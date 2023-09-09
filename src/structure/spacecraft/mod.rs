@@ -80,7 +80,7 @@ impl<'a> Encode for SpacecraftData<'a> {
             + self.inertia.encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         Utf8StringRef::new(self.name)?.encode(encoder)?;
         Utf8StringRef::new(self.comments)?.encode(encoder)?;
         self.available_data().encode(encoder)?;

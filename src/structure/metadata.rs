@@ -66,7 +66,7 @@ impl<'a> Encode for Metadata<'a> {
             + Utf8StringRef::new(self.metadata_uri)?.encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         self.anise_version.encode(encoder)?;
         self.dataset_type.encode(encoder)?;
         Utf8StringRef::new(&format!("{}", self.creation_date))?.encode(encoder)?;

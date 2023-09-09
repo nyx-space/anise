@@ -31,7 +31,7 @@ impl Encode for DragData {
         self.area_m2.encoded_len()? + self.coeff_drag.encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         self.area_m2.encode(encoder)?;
         self.coeff_drag.encode(encoder)
     }

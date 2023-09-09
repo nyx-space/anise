@@ -90,7 +90,7 @@ impl Encode for PlanetaryData {
             + self.nut_prec_angles.encoded_len()?
     }
 
-    fn encode(&self, encoder: &mut dyn Writer) -> der::Result<()> {
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         self.object_id.encode(encoder)?;
         self.parent_id.encode(encoder)?;
         self.mu_km3_s2.encode(encoder)?;
