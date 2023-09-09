@@ -8,8 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 
+use crate::almanac::Almanac;
 use crate::astro::Aberration;
-use crate::context::Context;
 use crate::hifitime::Epoch;
 use crate::math::cartesian::CartesianState;
 use crate::math::units::*;
@@ -22,7 +22,7 @@ use crate::{
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
 pub const MAX_TREE_DEPTH: usize = 8;
 
-impl<'a> Context<'a> {
+impl<'a> Almanac<'a> {
     /// Returns the position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`.
     ///
     /// **WARNING:** This function only performs the translation and no rotation whatsoever. Use the `transform_from_to` function instead to include rotations.

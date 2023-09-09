@@ -138,7 +138,7 @@ fn test_parse_gm() {
 fn test_anise_conversion() {
     use crate::errors::AniseError;
     use crate::naif::kpl::parser::convert_tpc;
-    use crate::{file_mmap, structure::dataset::DataSet};
+    use crate::{file2heap, file_mmap, structure::dataset::DataSet};
     use std::fs::File;
 
     let dataset = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
@@ -151,8 +151,19 @@ fn test_anise_conversion() {
     dataset.save_as(path.into(), true).unwrap();
 
     // Test reloading
-    let bytes = file_mmap!(path).unwrap();
+    let bytes = file2heap!(path).unwrap();
     let reloaded = DataSet::from_bytes(&bytes);
 
+    assert_eq!(reloaded, dataset);
+
+    // Test loading from file loaded on heap
+    use std::fs;
+    let data = fs::read(path).unwrap();
+    let reloaded = DataSet::from_bytes(&data);
+    assert_eq!(reloaded, dataset);
+
+    // Test reloading with real mmap
+    let mmap = file_mmap!(path).unwrap();
+    let reloaded = DataSet::from_bytes(&mmap);
     assert_eq!(reloaded, dataset);
 }

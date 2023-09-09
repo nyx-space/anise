@@ -11,7 +11,7 @@
 use std::mem::size_of_val;
 
 use anise::{
-    file_mmap,
+    file2heap,
     naif::{
         daf::DAF,
         pck::BPCSummaryRecord,
@@ -29,7 +29,7 @@ fn test_binary_pck_load() {
 
     // Using the DE421 as demo because the correct data is in the DAF documentation
     let filename = "data/earth_latest_high_prec.bpc";
-    let bytes = file_mmap!(filename).unwrap();
+    let bytes = file2heap!(filename).unwrap();
 
     let high_prec = DAF::<BPCSummaryRecord>::parse(bytes).unwrap();
 
@@ -49,7 +49,7 @@ fn test_spk_load_bytes() {
     }
 
     // Using the DE421 as demo because the correct data is in the DAF documentation
-    let bytes = file_mmap!("data/de421.bsp").unwrap();
+    let bytes = file2heap!("data/de421.bsp").unwrap();
 
     let de421 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
 
@@ -112,18 +112,18 @@ fn test_spk_load_bytes() {
     println!("{data_set}");
 
     // Put this in a context
-    let spice = Context::default();
+    let spice = Almanac::default();
     let spice = spice.load_spk(&de421).unwrap();
 
     // Now load another DE file
     // NOTE: Rust has strict lifetime requirements, and the Spice Context is set up such that loading another dataset will return a new context with that data set loaded in it.
     {
-        let bytes = file_mmap!("data/de440.bsp").unwrap();
+        let bytes = file2heap!("data/de440.bsp").unwrap();
         let de440 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
         let spice = spice.load_spk(&de440).unwrap();
 
         // And another
-        let bytes = file_mmap!("data/de440s.bsp").unwrap();
+        let bytes = file2heap!("data/de440s.bsp").unwrap();
         let de440 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
         let spice = spice.load_spk(&de440).unwrap();
 

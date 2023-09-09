@@ -1,4 +1,4 @@
-use anise::{constants::frames::EARTH_J2000, file_mmap, prelude::*};
+use anise::{constants::frames::EARTH_J2000, file2heap, prelude::*};
 
 use iai::black_box;
 use spice;
@@ -24,13 +24,13 @@ fn benchmark_anise_single_hop_type13_hermite() {
     let epoch = Epoch::from_gregorian_hms(2000, 1, 1, 14, 0, 0, TimeScale::UTC);
 
     let path = "./data/de440s.bsp";
-    let buf = file_mmap!(path).unwrap();
+    let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
 
-    let buf = file_mmap!("data/gmat-hermite.bsp").unwrap();
+    let buf = file2heap!("data/gmat-hermite.bsp").unwrap();
     let spacecraft = SPK::parse(buf).unwrap();
 
-    let ctx = Context::from_spk(&spk)
+    let ctx = Almanac::from_spk(&spk)
         .unwrap()
         .load_spk(&spacecraft)
         .unwrap();

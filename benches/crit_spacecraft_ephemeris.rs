@@ -1,4 +1,4 @@
-use anise::{constants::frames::EARTH_J2000, file_mmap, prelude::*};
+use anise::{constants::frames::EARTH_J2000, file2heap, prelude::*};
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
@@ -23,7 +23,7 @@ fn benchmark_spice_single_hop_type13_hermite(time_it: TimeSeries) {
     spice::unload("data/gmat-hermite.bsp");
 }
 
-fn benchmark_anise_single_hop_type13_hermite(ctx: &Context, time_it: TimeSeries) {
+fn benchmark_anise_single_hop_type13_hermite(ctx: &Almanac, time_it: TimeSeries) {
     let my_sc_j2k = Frame::from_ephem_j2000(-10000001);
     for epoch in time_it {
         black_box(
@@ -40,13 +40,13 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let time_it = TimeSeries::exclusive(start_epoch, end_epoch - time_step, time_step);
 
     let path = "./data/de440s.bsp";
-    let buf = file_mmap!(path).unwrap();
+    let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
 
-    let buf = file_mmap!("data/gmat-hermite.bsp").unwrap();
+    let buf = file2heap!("data/gmat-hermite.bsp").unwrap();
     let spacecraft = SPK::parse(buf).unwrap();
 
-    let ctx = Context::from_spk(&spk)
+    let ctx = Almanac::from_spk(&spk)
         .unwrap()
         .load_spk(&spacecraft)
         .unwrap();

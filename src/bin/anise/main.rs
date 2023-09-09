@@ -4,7 +4,7 @@ use std::env::{set_var, var};
 use anise::cli::args::{Actions, Args};
 use anise::cli::inspect::{BpcRow, SpkRow};
 use anise::cli::CliErrors;
-use anise::file_mmap;
+use anise::file2heap;
 use anise::naif::daf::{FileRecord, NAIFRecord, NAIFSummaryRecord};
 use anise::naif::kpl::parser::convert_tpc;
 use anise::prelude::*;
@@ -35,7 +35,7 @@ fn main() -> Result<(), CliErrors> {
             crc32_checksum,
         } => {
             let path_str = file.clone();
-            match file_mmap!(file) {
+            match file2heap!(file) {
                 Ok(bytes) => {
                     // Try to load this as a dataset by first trying to load the metadata
                     if let Ok(metadata) = Metadata::decode_header(&bytes) {
@@ -107,7 +107,7 @@ fn main() -> Result<(), CliErrors> {
         }
         Actions::Inspect { file } => {
             let path_str = file.clone();
-            match file_mmap!(file) {
+            match file2heap!(file) {
                 Ok(bytes) => {
                     // Load the header only
                     let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
