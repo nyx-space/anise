@@ -20,7 +20,7 @@ use log::{error, trace, warn};
 use std::marker::PhantomData;
 
 use zerocopy::AsBytes;
-use zerocopy::{FromBytes, LayoutVerified};
+use zerocopy::{FromBytes, Ref};
 
 // Thanks ChatGPT for the idea !
 
@@ -157,12 +157,10 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             .ok_or_else(|| AniseError::MalformedData(self.file_record.fwrd_idx() + RCRD_LEN))?;
 
         // The summaries are defined in the same record as the DAF summary
-        Ok(
-            match LayoutVerified::new_slice(&rcrd_bytes[SummaryRecord::SIZE..]) {
-                Some(data) => data.into_slice(),
-                None => &[R::default(); 0],
-            },
-        )
+        Ok(match Ref::new_slice(&rcrd_bytes[SummaryRecord::SIZE..]) {
+            Some(data) => data.into_slice(),
+            None => &[R::default(); 0],
+        })
     }
 
     pub fn nth_summary(&self, n: usize) -> Result<(&str, &R), AniseError> {
@@ -266,7 +264,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 crate::errors::InternalErrorKind::Generic,
             ));
         }
-        let data: &[f64] = LayoutVerified::new_slice(
+        let data: &[f64] = Ref::new_slice(
             self.bytes
                 .get(
                     (this_summary.start_index() - 1) * DBL_SIZE

@@ -8,14 +8,14 @@
  * Documentation: https://nyxspace.com/
  */
 
-use zerocopy::{AsBytes, FromBytes};
+use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 use crate::{prelude::AniseError, DBL_SIZE};
 use log::warn;
 
 use super::{NAIFRecord, RCRD_LEN};
 
-#[derive(AsBytes, Clone, Debug, FromBytes)]
+#[derive(AsBytes, Clone, Debug, FromZeroes, FromBytes)]
 #[repr(C)]
 pub struct NameRecord {
     raw_names: [u8; RCRD_LEN],

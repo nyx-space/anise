@@ -9,14 +9,14 @@
  */
 
 use core::fmt;
-use zerocopy::{AsBytes, FromBytes};
+use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 use crate::{
     math::Vector3,
     naif::daf::{NAIFDataRecord, NAIFRecord},
 };
 
-#[derive(Copy, Clone, Default, AsBytes, FromBytes, Debug)]
+#[derive(Copy, Clone, Default, AsBytes, FromBytes, FromZeroes, Debug)]
 #[repr(C)]
 pub struct PositionVelocityRecord {
     pub x_km: f64,

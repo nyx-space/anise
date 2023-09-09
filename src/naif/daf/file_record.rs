@@ -8,14 +8,14 @@
  * Documentation: https://nyxspace.com/
  */
 
-use zerocopy::{AsBytes, FromBytes};
+use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 use crate::{naif::Endian, prelude::AniseError};
 use log::error;
 
 use super::NAIFRecord;
 
-#[derive(Debug, Clone, FromBytes, AsBytes, PartialEq)]
+#[derive(Debug, Clone, FromBytes, FromZeroes, AsBytes, PartialEq)]
 #[repr(C)]
 pub struct FileRecord {
     pub id_str: [u8; 8],
