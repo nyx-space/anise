@@ -13,7 +13,7 @@ use super::{
     semver::Semver,
     ANISE_VERSION,
 };
-use crate::{errors::IntegrityErrorKind, prelude::AniseError, NaifId};
+use crate::{errors::IntegrityError, prelude::AniseError, NaifId};
 use core::fmt;
 use core::marker::PhantomData;
 use der::{asn1::OctetStringRef, Decode, Encode, Reader, Writer};
@@ -139,7 +139,8 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
             Ok(ctx) => {
                 trace!("[try_from_bytes] loaded context successfully");
                 // Check the full integrity on load of the file.
-                ctx.check_integrity()?;
+                // TODO: Raise this error
+                ctx.check_integrity().unwrap();
                 Ok(ctx)
             }
             Err(e) => {
@@ -190,7 +191,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
         self.data_checksum = self.crc32();
     }
 
-    pub fn check_integrity(&self) -> Result<(), AniseError> {
+    pub fn check_integrity(&self) -> Result<(), IntegrityError> {
         // Ensure that the data is correctly decoded
         let computed_chksum = crc32fast::hash(self.bytes);
         if computed_chksum == self.data_checksum {
@@ -200,27 +201,23 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
                 "[integrity] expected hash {} but computed {}",
                 self.data_checksum, computed_chksum
             );
-            Err(AniseError::IntegrityError(
-                IntegrityErrorKind::ChecksumInvalid {
-                    expected: self.data_checksum,
-                    computed: computed_chksum,
-                },
-            ))
+            Err(IntegrityError::ChecksumInvalid {
+                expected: self.data_checksum,
+                computed: computed_chksum,
+            })
         }
     }
 
     /// Scrubs the data by computing the CRC32 of the bytes and making sure that it still matches the previously known hash
-    pub fn scrub(&self) -> Result<(), AniseError> {
+    pub fn scrub(&self) -> Result<(), IntegrityError> {
         if self.crc32() == self.data_checksum {
             Ok(())
         } else {
             // Compiler will optimize the double computation away
-            Err(AniseError::IntegrityError(
-                IntegrityErrorKind::ChecksumInvalid {
-                    expected: self.data_checksum,
-                    computed: self.crc32(),
-                },
-            ))
+            Err(IntegrityError::ChecksumInvalid {
+                expected: self.data_checksum,
+                computed: self.crc32(),
+            })
         }
     }
 

@@ -10,9 +10,9 @@
 
 use hifitime::Epoch;
 
-use crate::errors::AniseError;
 use crate::naif::spk::summary::SPKSummaryRecord;
 use crate::naif::SPK;
+use crate::{errors::AniseError, naif::daf::DAFError};
 use log::error;
 
 // TODO: Switch these to build constants so that it's configurable when building the library.
@@ -86,7 +86,7 @@ impl<'a: 'b, 'b> Almanac<'a> {
         &self,
         id: i32,
         epoch: Epoch,
-    ) -> Result<(&SPKSummaryRecord, usize, usize), AniseError> {
+    ) -> Result<(&SPKSummaryRecord, usize, usize), DAFError<'a>> {
         // TODO: Consider a return type here
         for (spk_no, maybe_spk) in self
             .spk_data
@@ -104,7 +104,11 @@ impl<'a: 'b, 'b> Almanac<'a> {
 
         error!("Context: No summary {id} valid at epoch {epoch}");
         // If we're reached this point, there is no relevant summary at this epoch.
-        Err(AniseError::MissingInterpolationData(epoch))
+        Err(DAFError::SummaryIdAtEpochError {
+            kind: "SPK",
+            id,
+            epoch,
+        })
     }
 
     /// Returns the summary given the name of the summary record.

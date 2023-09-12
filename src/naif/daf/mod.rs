@@ -8,10 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::NaifId;
+use crate::{errors::IntegrityError, math::interpolation::InterpolationError, NaifId};
 use core::fmt::Display;
 use hifitime::Epoch;
 use snafu::prelude::*;
+use std::io::Error as IOError;
 use zerocopy::{AsBytes, FromBytes};
 
 pub(crate) const RCRD_LEN: usize = 1024;
@@ -23,11 +24,13 @@ pub mod summary_record;
 
 pub use daf::DAF;
 
-use crate::{errors::DecodingError, prelude::AniseError};
+use crate::errors::DecodingError;
 use core::fmt::Debug;
 pub use file_record::FileRecord;
 pub use name_record::NameRecord;
 pub use summary_record::SummaryRecord;
+
+use self::file_record::FileRecordError;
 
 pub trait NAIFRecord: AsBytes + FromBytes + Sized + Default + Debug {
     const SIZE: usize = core::mem::size_of::<Self>();
@@ -63,19 +66,22 @@ pub trait NAIFDataSet<'a>: Sized + Display {
     /// The state that is returned from an evaluation of this data set
     type StateKind;
 
+    /// The name of this data set, used in errors
+    const DATASET_NAME: &'a str;
+
     /// Builds this dataset given a slice of f64 data
     fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError>;
 
-    fn nth_record(&self, n: usize) -> Result<Self::RecordKind, AniseError>;
+    fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError>;
 
     fn evaluate(
         &self,
         epoch: Epoch,
         summary: &Self::SummaryKind,
-    ) -> Result<Self::StateKind, AniseError>;
+    ) -> Result<Self::StateKind, InterpolationError>;
 
     /// Checks the integrity of this data set, returns an error if the data has issues.
-    fn check_integrity(&self) -> Result<(), AniseError>;
+    fn check_integrity(&self) -> Result<(), IntegrityError>;
 }
 
 pub trait NAIFDataRecord<'a>: Display {
@@ -86,14 +92,17 @@ pub trait NAIFDataRecord<'a>: Display {
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub enum DAFError<'a> {
-    /// Somehow you've entered code that should not be reachable, please file a bug.
-    Unreachable,
     #[snafu(display("No DAF/{kind} data have been loaded"))]
-    NoDAFLoaded { kind: &'a str },
+    NoDAFLoaded {
+        kind: &'a str,
+    },
     /// While searching for the root of the loaded ephemeris tree, we're recursed more times than allowed.
     MaxRecursionDepth,
     #[snafu(display("DAF/{kind}: summary {id} not present"))]
-    SummaryIdError { kind: &'a str, id: NaifId },
+    SummaryIdError {
+        kind: &'a str,
+        id: NaifId,
+    },
     #[snafu(display(
         "DAF/{kind}: summary {id} not present or does not cover requested epoch of {epoch}"
     ))]
@@ -103,7 +112,10 @@ pub enum DAFError<'a> {
         epoch: Epoch,
     },
     #[snafu(display("DAF/{kind}: summary `{name}` not present"))]
-    SummaryNameError { kind: &'a str, name: &'a str },
+    SummaryNameError {
+        kind: &'a str,
+        name: &'a str,
+    },
     #[snafu(display(
         "DAF/{kind}: summary `{name}` not present or does not cover requested epoch of {epoch}"
     ))]
@@ -127,15 +139,34 @@ pub enum DAFError<'a> {
     #[snafu(display(
         "DAF/{kind}: file record is empty (ensure file is valid, e.g. do you need to run git-lfs)"
     ))]
-    EmptyFileRecord { kind: &'a str },
+    FileRecord {
+        kind: &'a str,
+        source: FileRecordError<'a>,
+    },
     #[snafu(display(
         "DAF/{kind}: summary contains no data (start and end index both set to {idx})"
     ))]
-    EmptyData { kind: &'a str, idx: usize },
+    EmptySummary {
+        kind: &'a str,
+        idx: usize,
+    },
     #[snafu(display("DAF/{kind}: no data record for `{name}`"))]
-    NameError { kind: &'a str, name: &'a str },
+    NameError {
+        kind: &'a str,
+        name: &'a str,
+    },
     #[snafu(display("DAF/{kind}: summary: {source}"))]
     DecodingSummary {
+        kind: &'a str,
+        source: DecodingError<'a>,
+    },
+    #[snafu(display("DAF/{kind}: comments: {source}"))]
+    DecodingComments {
+        kind: &'a str,
+        source: DecodingError<'a>,
+    },
+    #[snafu(display("DAF/{kind}: name: {source}"))]
+    DecodingName {
         kind: &'a str,
         source: DecodingError<'a>,
     },
@@ -144,5 +175,11 @@ pub enum DAFError<'a> {
         kind: &'a str,
         idx: usize,
         source: DecodingError<'a>,
+    },
+    DAFIntegrity {
+        source: IntegrityError<'a>,
+    },
+    IO {
+        source: IOError,
     },
 }

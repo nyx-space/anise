@@ -8,18 +8,21 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::{DAFError, NAIFDataSet, NAIFRecord, NAIFSummaryRecord};
+use super::file_record::FileRecordError;
+use super::{
+    DAFError, DecodingNameSnafu, FileRecordSnafu, NAIFDataSet, NAIFRecord, NAIFSummaryRecord,
+};
 pub use super::{FileRecord, NameRecord, SummaryRecord};
 use crate::errors::DecodingError;
 use crate::file2heap;
-use crate::naif::daf::{DecodingDataSnafu, EmptyFileRecordSnafu};
-use crate::{errors::IntegrityErrorKind, prelude::AniseError, DBL_SIZE};
+use crate::naif::daf::DecodingDataSnafu;
+use crate::{errors::IntegrityError, prelude::AniseError, DBL_SIZE};
 use bytes::Bytes;
 use core::hash::Hash;
 use core::ops::Deref;
 use hifitime::Epoch;
 use log::{error, trace, warn};
-use snafu::{ensure, ResultExt};
+use snafu::ResultExt;
 use std::marker::PhantomData;
 
 use zerocopy::AsBytes;
@@ -55,53 +58,58 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     /// Scrubs the data by computing the CRC32 of the bytes and making sure that it still matches the previously known hash
-    pub fn scrub(&self) -> Result<(), AniseError> {
+    pub fn scrub(&self) -> Result<(), IntegrityError> {
         if self.crc32() == self.crc32_checksum {
             Ok(())
         } else {
             // Compiler will optimize the double computation away
-            Err(AniseError::IntegrityError(
-                IntegrityErrorKind::ChecksumInvalid {
-                    expected: self.crc32_checksum,
-                    computed: self.crc32(),
-                },
-            ))
+            Err(IntegrityError::ChecksumInvalid {
+                expected: self.crc32_checksum,
+                computed: self.crc32(),
+            })
         }
     }
 
     /// Parse the DAF only if the CRC32 checksum of the data is valid
-    pub fn check_then_parse<B: Deref<Target = [u8]>>(
+    pub fn check_then_parse<'a, B: Deref<Target = [u8]>>(
         bytes: B,
-        expected_crc32: u32,
-    ) -> Result<Self, AniseError> {
-        let computed_crc32 = crc32fast::hash(&bytes);
-        if computed_crc32 == expected_crc32 {
-            Self::parse(bytes)
-        } else {
-            Err(AniseError::IntegrityError(
-                IntegrityErrorKind::ChecksumInvalid {
-                    expected: expected_crc32,
-                    computed: computed_crc32,
-                },
-            ))
+        expected: u32,
+    ) -> Result<Self, DAFError<'a>> {
+        let computed = crc32fast::hash(&bytes);
+        if computed != expected {
+            return Err(DAFError::DAFIntegrity {
+                source: IntegrityError::ChecksumInvalid { expected, computed },
+            });
         }
+
+        Self::parse(bytes)
     }
 
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, AniseError> {
-        Self::parse(file2heap!(path)?)
+    pub fn load<'a, P: AsRef<Path>>(path: P) -> Result<Self, DAFError<'a>> {
+        // TODO: Reenable this
+        Self::parse(file2heap!(path).unwrap())
     }
 
-    pub fn from_static<B: Deref<Target = [u8]>>(bytes: &'static B) -> Result<Self, AniseError> {
+    pub fn from_static<'a, B: Deref<Target = [u8]>>(
+        bytes: &'static B,
+    ) -> Result<Self, DAFError<'a>> {
         let crc32_checksum = crc32fast::hash(bytes);
         let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
         // Check that the endian-ness is compatible with this platform.
-        file_record.endianness()?;
+        file_record
+            .endianness()
+            .with_context(|_| FileRecordSnafu { kind: R::name() })?;
 
         // Move onto the next record.
         let rcrd_idx = file_record.fwrd_idx() * RCRD_LEN;
         let rcrd_bytes = bytes
             .get(rcrd_idx..rcrd_idx + RCRD_LEN)
-            .ok_or_else(|| AniseError::MalformedData(file_record.fwrd_idx() + RCRD_LEN))?;
+            .ok_or_else(|| DecodingError::InaccessibleBytes {
+                start: rcrd_idx,
+                end: rcrd_idx + RCRD_LEN,
+                size: bytes.len(),
+            })
+            .with_context(|_| DecodingNameSnafu { kind: R::name() })?;
         let name_record = NameRecord::read_from(rcrd_bytes).unwrap();
 
         Ok(Self {
@@ -114,17 +122,24 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     /// Parse the provided bytes as a SPICE Double Array File
-    pub fn parse<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, AniseError> {
+    pub fn parse<'a, B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DAFError<'a>> {
         let crc32_checksum = crc32fast::hash(&bytes);
         let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
         // Check that the endian-ness is compatible with this platform.
-        file_record.endianness()?;
+        file_record
+            .endianness()
+            .with_context(|_| FileRecordSnafu { kind: R::name() })?;
 
         // Move onto the next record.
         let rcrd_idx = file_record.fwrd_idx() * RCRD_LEN;
         let rcrd_bytes = bytes
             .get(rcrd_idx..rcrd_idx + RCRD_LEN)
-            .ok_or_else(|| AniseError::MalformedData(file_record.fwrd_idx() + RCRD_LEN))?;
+            .ok_or_else(|| DecodingError::InaccessibleBytes {
+                start: rcrd_idx,
+                end: rcrd_idx + RCRD_LEN,
+                size: bytes.len(),
+            })
+            .with_context(|_| DecodingNameSnafu { kind: R::name() })?;
         let name_record = NameRecord::read_from(rcrd_bytes).unwrap();
 
         Ok(Self {
@@ -149,10 +164,13 @@ impl<R: NAIFSummaryRecord> DAF<R> {
 
     /// Parses the data summaries on the fly.
     pub fn data_summaries(&self) -> Result<&[R], DAFError> {
-        ensure!(
-            !self.file_record.is_empty(),
-            EmptyFileRecordSnafu { kind: R::name() }
-        );
+        if self.file_record.is_empty() {
+            return Err(DAFError::FileRecord {
+                kind: R::name(),
+                source: FileRecordError::EmptyRecord,
+            });
+        }
+
         // Move onto the next record, DAF indexes start at 1 ... =(
         let rcrd_idx = (self.file_record.fwrd_idx() - 1) * RCRD_LEN;
         let rcrd_bytes = match self
@@ -283,10 +301,13 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         let (_, this_summary) = self.nth_summary(idx)?;
         // Grab the data in native endianness (TODO: How to support both big and little endian?)
         trace!("{idx} -> {this_summary:?}");
-        ensure!(
-            !self.file_record.is_empty(),
-            EmptyFileRecordSnafu { kind: R::name() }
-        );
+        if self.file_record.is_empty() {
+            return Err(DAFError::FileRecord {
+                kind: R::name(),
+                source: FileRecordError::EmptyRecord,
+            });
+        }
+
         let start = (this_summary.start_index() - 1) * DBL_SIZE;
         let end = this_summary.end_index() * DBL_SIZE;
         let data: &[f64] = Ref::new_slice(
@@ -319,15 +340,28 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         // S::from_slice_f64(data)
     }
 
-    pub fn comments(&self) -> Result<Option<String>, AniseError> {
+    pub fn comments(&self) -> Result<Option<String>, DAFError> {
         // TODO: This can be cleaned up to avoid allocating a string. In my initial tests there were a bunch of additional spaces, so I canceled those changes.
         let mut rslt = String::new();
         // FWRD has the initial record of the summary. So we assume that all records between the second record and that one are comments
         for rid in 1..self.file_record.fwrd_idx() {
             match core::str::from_utf8(
-                self.bytes
+                match self
+                    .bytes
                     .get(rid * RCRD_LEN..(rid + 1) * RCRD_LEN)
-                    .ok_or(AniseError::MalformedData((rid + 1) * RCRD_LEN))?,
+                    .ok_or_else(|| DecodingError::InaccessibleBytes {
+                        start: rid * RCRD_LEN,
+                        end: (rid + 1) * RCRD_LEN,
+                        size: self.bytes.len(),
+                    }) {
+                    Ok(it) => it,
+                    Err(source) => {
+                        return Err(DAFError::DecodingComments {
+                            kind: R::name(),
+                            source,
+                        })
+                    }
+                },
             ) {
                 Ok(s) => rslt += s.replace('\u{0}', "\n").trim(),
                 Err(e) => {

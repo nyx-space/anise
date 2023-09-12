@@ -23,6 +23,21 @@ pub mod rotation;
 pub mod units;
 pub mod utils;
 
+use hifitime::Epoch;
+use snafu::prelude::*;
+
+use crate::prelude::Frame;
+#[derive(Debug, Snafu)]
+#[snafu(visibility(pub(crate)))]
+pub enum PhysicsError {
+    /// Somehow you've entered code that should not be reachable, please file a bug.
+    Unreachable,
+    #[snafu(display("epochs {epoch1} and {epoch2} do not match"))]
+    EpochMismatch { epoch1: Epoch, epoch2: Epoch },
+    #[snafu(display("frames {frame1} and {frame2} do not match"))]
+    FrameMismatch { frame1: Frame, frame2: Frame },
+}
+
 /// Returns the projection of a onto b
 pub fn projv(a: &Vector3, b: &Vector3) -> Vector3 {
     b * a.dot(b) / b.dot(b)

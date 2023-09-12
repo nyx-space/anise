@@ -9,16 +9,18 @@
  */
 
 use log::trace;
+use snafu::ResultExt;
 
+use super::{EphemerisError, UnderlyingDAFSnafu};
 use crate::almanac::Almanac;
 use crate::astro::Aberration;
-use crate::errors::IntegrityErrorKind;
+use crate::ephemerides::UnderlyingInterpolationSnafu;
 use crate::hifitime::Epoch;
 use crate::math::units::*;
 use crate::math::Vector3;
 use crate::naif::daf::NAIFDataSet;
 use crate::naif::spk::datatypes::{HermiteSetType13, LagrangeSetType9, Type2ChebyshevSet};
-use crate::{errors::AniseError, prelude::Frame};
+use crate::prelude::Frame;
 
 impl<'a> Almanac<'a> {
     /// Returns the position vector and velocity vector of the `source` with respect to its parent in the ephemeris at the provided epoch,
@@ -39,20 +41,23 @@ impl<'a> Almanac<'a> {
         _ab_corr: Aberration,
         distance_unit: LengthUnit,
         time_unit: TimeUnit,
-    ) -> Result<(Vector3, Vector3, Vector3, Frame), AniseError> {
+    ) -> Result<(Vector3, Vector3, Vector3, Frame), EphemerisError<'a>> {
         // TODO: Create a CartesianState struct which can be "upgraded" to an Orbit if the frame is of the correct type?
         // I guess this is what the `Orbit` struct in Nyx does.
 
         // First, let's find the SPK summary for this frame.
-        let (summary, spk_no, idx_in_spk) =
-            self.spk_summary_at_epoch(source.ephemeris_id, epoch)?;
+        let (summary, spk_no, idx_in_spk) = self
+            .spk_summary_at_epoch(source.ephemeris_id, epoch)
+            .with_context(|_| UnderlyingDAFSnafu {
+            action: "fetching SPK summary for source frame",
+        })?;
 
         let new_frame = source.with_ephem(summary.center_id);
 
         trace!("query {source} wrt to {new_frame} @ {epoch:E}");
 
-        let spk_data = self.spk_data[spk_no]
-            .ok_or(AniseError::IntegrityError(IntegrityErrorKind::DataMissing))?;
+        // This should not fail because we've fetched the spk_no from above with the spk_summary_at_epoch call.
+        let spk_data = self.spk_data[spk_no].ok_or(EphemerisError::Unreachable)?;
 
         // Perform a translation with position and velocity;
         let acc = Vector3::zeros();
@@ -62,18 +67,33 @@ impl<'a> Almanac<'a> {
             // TODO : match against enumeration instead of direct integer match for clarity ?
             2 => {
                 // Type 2 Chebyshev
-                let data = spk_data.nth_data::<Type2ChebyshevSet>(idx_in_spk)?;
-                data.evaluate(epoch, summary)?
+                let data = spk_data
+                    .nth_data::<Type2ChebyshevSet>(idx_in_spk)
+                    .with_context(|_| UnderlyingDAFSnafu {
+                        action: "fetching data for interpolation",
+                    })?;
+                data.evaluate(epoch, summary)
+                    .with_context(|_| UnderlyingInterpolationSnafu)?
             }
             9 => {
                 // Type 9: Lagrange Interpolation --- Unequal Time Steps
-                let data = spk_data.nth_data::<LagrangeSetType9>(idx_in_spk)?;
-                data.evaluate(epoch, summary)?
+                let data = spk_data
+                    .nth_data::<LagrangeSetType9>(idx_in_spk)
+                    .with_context(|_| UnderlyingDAFSnafu {
+                        action: "fetching data for interpolation",
+                    })?;
+                data.evaluate(epoch, summary)
+                    .with_context(|_| UnderlyingInterpolationSnafu)?
             }
             13 => {
                 // Type 13: Hermite Interpolation --- Unequal Time Steps
-                let data = spk_data.nth_data::<HermiteSetType13>(idx_in_spk)?;
-                data.evaluate(epoch, summary)?
+                let data = spk_data
+                    .nth_data::<HermiteSetType13>(idx_in_spk)
+                    .with_context(|_| UnderlyingDAFSnafu {
+                        action: "fetching data for interpolation",
+                    })?;
+                data.evaluate(epoch, summary)
+                    .with_context(|_| UnderlyingInterpolationSnafu)?
             }
             _ => todo!("{} is not yet supported", summary.data_type_i),
         };

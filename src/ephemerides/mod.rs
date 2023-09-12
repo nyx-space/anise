@@ -8,6 +8,45 @@
  * Documentation: https://nyxspace.com/
  */
 
+use hifitime::Epoch;
+use snafu::prelude::*;
+
+use crate::{
+    math::{interpolation::InterpolationError, PhysicsError},
+    naif::daf::DAFError,
+    prelude::Frame,
+};
+
 pub mod paths;
 pub mod translate_to_parent;
 pub mod translations;
+
+#[derive(Debug, Snafu)]
+#[snafu(visibility(pub(crate)))]
+pub enum EphemerisError<'a> {
+    /// Somehow you've entered code that should not be reachable, please file a bug.
+    Unreachable,
+    #[snafu(display(
+        "Could not translate from {from} to {to}: no common origin found at epoch {epoch}"
+    ))]
+    TranslationOrigin {
+        from: Frame,
+        to: Frame,
+        epoch: Epoch,
+    },
+    #[snafu(display("no ephemeris data loaded (must call load_spk)"))]
+    NoEphemerisLoaded,
+    #[snafu(display("trying {action} caused {source}"))]
+    UnderlyingDAF {
+        action: &'a str,
+        source: DAFError<'a>,
+    },
+    #[snafu(display("trying {action} caused {source}"))]
+    UnderlyingPhysics {
+        action: &'a str,
+        source: PhysicsError,
+    },
+    UnderlyingInterpolation {
+        source: InterpolationError<'a>,
+    },
+}

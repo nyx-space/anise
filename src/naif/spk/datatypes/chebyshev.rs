@@ -10,16 +10,18 @@
 
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits};
-use snafu::ensure;
+use snafu::{ensure, ResultExt};
 
 use crate::{
-    errors::{DecodingError, IntegrityErrorKind, SubNormalSnafu, TooFewDoublesSnafu},
-    math::{interpolation::chebyshev_eval, Vector3},
+    errors::{DecodingError, IntegrityError, TooFewDoublesSnafu},
+    math::{
+        interpolation::{chebyshev_eval, InterpolationError, UnderlyingDecodingSnafu},
+        Vector3,
+    },
     naif::{
         daf::{NAIFDataRecord, NAIFDataSet, NAIFSummaryRecord},
         spk::summary::SPKSummaryRecord,
     },
-    prelude::AniseError,
 };
 
 pub struct Type2ChebyshevSet<'a> {
@@ -54,36 +56,39 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
     type SummaryKind = SPKSummaryRecord;
     type StateKind = (Vector3, Vector3);
     type RecordKind = Type2ChebyshevRecord<'a>;
+    const DATASET_NAME: &'a str = "Chebyshev Type 2";
 
     fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError> {
         ensure!(
             slice.len() >= 5,
             TooFewDoublesSnafu {
-                dataset: "Chebyshev Type 2",
+                dataset: Self::DATASET_NAME,
                 need: 5_usize,
                 got: slice.len()
             }
         );
         // For this kind of record, the data is stored at the very end of the dataset
         let seconds_since_j2000 = slice[slice.len() - 4];
-        ensure!(
-            !seconds_since_j2000.is_finite(),
-            SubNormalSnafu {
-                dataset: "Chebyshev Type 2",
-                variable: "seconds since J2000 ET"
-            }
-        );
+        if !seconds_since_j2000.is_finite() {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::SubNormal {
+                    dataset: Self::DATASET_NAME,
+                    variable: "seconds since J2000 ET",
+                },
+            });
+        }
 
         let start_epoch = Epoch::from_et_seconds(seconds_since_j2000);
 
         let interval_length_s = slice[slice.len() - 3];
-        ensure!(
-            !interval_length_s.is_finite(),
-            SubNormalSnafu {
-                dataset: "Chebyshev Type 2",
-                variable: "interval length in seconds"
-            }
-        );
+        if !interval_length_s.is_finite() {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::SubNormal {
+                    dataset: Self::DATASET_NAME,
+                    variable: "interval length in seconds",
+                },
+            });
+        }
 
         let interval_length = interval_length_s.seconds();
         let rsize = slice[slice.len() - 2] as usize;
@@ -98,11 +103,15 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         })
     }
 
-    fn nth_record(&self, n: usize) -> Result<Self::RecordKind, AniseError> {
+    fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError> {
         Ok(Self::RecordKind::from_slice_f64(
             self.record_data
                 .get(n * self.rsize..(n + 1) * self.rsize)
-                .ok_or(AniseError::MalformedData((n + 1) * self.rsize))?,
+                .ok_or(DecodingError::InaccessibleBytes {
+                    start: n * self.rsize,
+                    end: (n + 1) * self.rsize,
+                    size: self.record_data.len(),
+                })?,
         ))
     }
 
@@ -110,10 +119,10 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         &self,
         epoch: Epoch,
         summary: &Self::SummaryKind,
-    ) -> Result<(Vector3, Vector3), AniseError> {
-        if epoch < summary.start_epoch() {
+    ) -> Result<(Vector3, Vector3), InterpolationError<'a>> {
+        if epoch < summary.start_epoch() || epoch < summary.end_epoch() {
             // No need to go any further.
-            return Err(AniseError::MissingInterpolationData(epoch));
+            return Err(InterpolationError::NoInterpolationData { epoch });
         }
 
         let window_duration_s = self.interval_length.to_seconds();
@@ -149,7 +158,9 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
             ((ephem_start_delta_s / window_duration_s) as usize + 1).min(self.num_records);
 
         // Now, build the X, Y, Z data from the record data.
-        let record = self.nth_record(spline_idx - 1)?;
+        let record = self
+            .nth_record(spline_idx - 1)
+            .with_context(|_| UnderlyingDecodingSnafu)?;
 
         let normalized_time = (epoch.to_et_seconds() - record.midpoint_et_s) / radius_s;
 
@@ -169,11 +180,14 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         Ok((pos, vel))
     }
 
-    fn check_integrity(&self) -> Result<(), AniseError> {
+    fn check_integrity(&self) -> Result<(), IntegrityError> {
         // Verify that none of the data is invalid once when we load it.
         for val in self.record_data {
             if !val.is_finite() {
-                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+                return Err(IntegrityError::SubNormal {
+                    dataset: Self::DATASET_NAME,
+                    variable: "one of the record data",
+                });
             }
         }
 

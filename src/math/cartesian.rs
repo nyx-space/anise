@@ -10,10 +10,14 @@
 
 use core::ops::Add;
 
-use super::{perpv, Vector3};
-use crate::prelude::{AniseError, Frame, FrameTrait};
+use super::{perpv, PhysicsError, Vector3};
+use crate::{
+    math::EpochMismatchSnafu,
+    prelude::{Frame, FrameTrait},
+};
 use hifitime::Epoch;
 use nalgebra::Vector6;
+use snafu::ensure;
 
 /// Defines a Cartesian state in a given frame at a given epoch in a given time scale.
 ///
@@ -181,19 +185,26 @@ impl<F: FrameTrait> Cartesian<F> {
 }
 
 impl<F: FrameTrait> Add for Cartesian<F> {
-    type Output = Result<Cartesian<F>, AniseError>;
+    type Output = Result<Cartesian<F>, PhysicsError>;
 
     /// Adds one state to another. This will return an error if the epochs or frames are different.
     fn add(self, other: Cartesian<F>) -> Self::Output {
-        if self.epoch != other.epoch {
-            return Err(AniseError::MathError(
-                crate::errors::MathErrorKind::StateEpochsDiffer,
-            ));
-        } else if self.frame != other.frame {
-            return Err(AniseError::MathError(
-                crate::errors::MathErrorKind::StateFramesDiffer,
-            ));
-        }
+        ensure!(
+            self.epoch == other.epoch,
+            EpochMismatchSnafu {
+                epoch1: self.epoch,
+                epoch2: other.epoch
+            }
+        );
+
+        // TODO: Reenable this.
+        // ensure!(
+        //     self.frame == other.frame,
+        //     FrameMismatchSnafu {
+        //         frame1: self.frame,
+        //         frame2: other.frame
+        //     }
+        // );
 
         Ok(Cartesian::<F> {
             radius_km: self.radius_km + other.radius_km,

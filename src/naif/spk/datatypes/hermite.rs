@@ -10,15 +10,16 @@
 
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits};
-use snafu::ensure;
+use snafu::{ensure, ResultExt};
 
-use crate::errors::{DecodingError, IntegrityErrorKind, SubNormalSnafu, TooFewDoublesSnafu};
-use crate::math::interpolation::{hermite_eval, MAX_SAMPLES};
+use crate::errors::{DecodingError, IntegrityError, TooFewDoublesSnafu};
+use crate::math::interpolation::{
+    hermite_eval, InterpolationError, UnderlyingDecodingSnafu, UnderlyingMathSnafu, MAX_SAMPLES,
+};
 use crate::naif::spk::summary::SPKSummaryRecord;
 use crate::{
     math::{cartesian::CartesianState, Vector3},
     naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord},
-    prelude::AniseError,
     DBL_SIZE,
 };
 
@@ -50,35 +51,38 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
     type SummaryKind = SPKSummaryRecord;
     type StateKind = CartesianState;
     type RecordKind = PositionVelocityRecord;
+    const DATASET_NAME: &'a str = "Hermite Type 12";
 
     fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError> {
         ensure!(
             slice.len() >= 5,
             TooFewDoublesSnafu {
-                dataset: "Hermite Type 12",
+                dataset: Self::DATASET_NAME,
                 need: 5_usize,
                 got: slice.len()
             }
         );
         // For this kind of record, the metadata is stored at the very end of the dataset, so we need to read that first.
         let seconds_since_j2000 = slice[slice.len() - 4];
-        ensure!(
-            !seconds_since_j2000.is_finite(),
-            SubNormalSnafu {
-                dataset: "Hermite Type 12",
-                variable: "seconds since J2000 ET"
-            }
-        );
+        if !seconds_since_j2000.is_finite() {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::SubNormal {
+                    dataset: Self::DATASET_NAME,
+                    variable: "seconds since J2000 ET",
+                },
+            });
+        }
 
         let first_state_epoch = Epoch::from_et_seconds(seconds_since_j2000);
         let step_size_s = slice[slice.len() - 3];
-        ensure!(
-            !step_size_s.is_finite(),
-            SubNormalSnafu {
-                dataset: "Hermite Type 12",
-                variable: "step size in seconds"
-            }
-        );
+        if !step_size_s.is_finite() {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::SubNormal {
+                    dataset: Self::DATASET_NAME,
+                    variable: "step size in seconds",
+                },
+            });
+        }
 
         let step_size = step_size_s.seconds();
         let window_size = slice[slice.len() - 2] as usize;
@@ -93,12 +97,16 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
         })
     }
 
-    fn nth_record(&self, n: usize) -> Result<Self::RecordKind, AniseError> {
+    fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError> {
         let rcrd_len = self.record_data.len() / self.num_records;
         Ok(Self::RecordKind::from_slice_f64(
             self.record_data
                 .get(n * rcrd_len..(n + 1) * rcrd_len)
-                .ok_or(AniseError::MalformedData((n + 1) * rcrd_len))?,
+                .ok_or(DecodingError::InaccessibleBytes {
+                    start: n * rcrd_len,
+                    end: (n + 1) * rcrd_len,
+                    size: self.record_data.len(),
+                })?,
         ))
     }
 
@@ -106,14 +114,17 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
         &self,
         _epoch: Epoch,
         _: &Self::SummaryKind,
-    ) -> Result<CartesianState, crate::prelude::AniseError> {
+    ) -> Result<CartesianState, InterpolationError<'a>> {
         todo!("https://github.com/anise-toolkit/anise.rs/issues/14")
     }
 
-    fn check_integrity(&self) -> Result<(), AniseError> {
+    fn check_integrity(&self) -> Result<(), IntegrityError> {
         for val in self.record_data {
             if !val.is_finite() {
-                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+                return Err(IntegrityError::SubNormal {
+                    dataset: Self::DATASET_NAME,
+                    variable: "one of the record data",
+                });
             }
         }
 
@@ -158,12 +169,13 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
     type SummaryKind = SPKSummaryRecord;
     type StateKind = (Vector3, Vector3);
     type RecordKind = PositionVelocityRecord;
+    const DATASET_NAME: &'a str = "Hermite Type 13";
 
     fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError> {
         ensure!(
             slice.len() >= 3,
             TooFewDoublesSnafu {
-                dataset: "Hermite Type 13",
+                dataset: Self::DATASET_NAME,
                 need: 3_usize,
                 got: slice.len()
             }
@@ -190,12 +202,16 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
         })
     }
 
-    fn nth_record(&self, n: usize) -> Result<Self::RecordKind, AniseError> {
+    fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError> {
         let rcrd_len = self.state_data.len() / self.num_records;
         Ok(Self::RecordKind::from_slice_f64(
             self.state_data
                 .get(n * rcrd_len..(n + 1) * rcrd_len)
-                .ok_or(AniseError::MalformedData((n + 1) * rcrd_len))?,
+                .ok_or(DecodingError::InaccessibleBytes {
+                    start: n * rcrd_len,
+                    end: (n + 1) * rcrd_len,
+                    size: self.state_data.len(),
+                })?,
         ))
     }
 
@@ -203,14 +219,14 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
         &self,
         epoch: Epoch,
         _: &Self::SummaryKind,
-    ) -> Result<Self::StateKind, crate::prelude::AniseError> {
+    ) -> Result<Self::StateKind, InterpolationError> {
         // Start by doing a binary search on the epoch registry to limit the search space in the total number of epochs.
         // TODO: use the epoch registry to reduce the search space
         // Check that we even have interpolation data for that time
         if epoch.to_et_seconds() < self.epoch_data[0]
             || epoch.to_et_seconds() > *self.epoch_data.last().unwrap()
         {
-            return Err(AniseError::MissingInterpolationData(epoch));
+            return Err(InterpolationError::NoInterpolationData { epoch });
         }
         // Now, perform a binary search on the epochs themselves.
         match self.epoch_data.binary_search_by(|epoch_et| {
@@ -220,7 +236,10 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
         }) {
             Ok(idx) => {
                 // Oh wow, this state actually exists, no interpolation needed!
-                Ok(self.nth_record(idx)?.to_pos_vel())
+                Ok(self
+                    .nth_record(idx)
+                    .with_context(|_| UnderlyingDecodingSnafu)?
+                    .to_pos_vel())
             }
             Err(idx) => {
                 // We didn't find it, so let's build an interpolation here.
@@ -244,7 +263,9 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 let mut vys = [0.0; MAX_SAMPLES];
                 let mut vzs = [0.0; MAX_SAMPLES];
                 for (cno, idx) in (first_idx..last_idx).enumerate() {
-                    let record = self.nth_record(idx)?;
+                    let record = self
+                        .nth_record(idx)
+                        .with_context(|_| UnderlyingDecodingSnafu)?;
                     xs[cno] = record.x_km;
                     ys[cno] = record.y_km;
                     zs[cno] = record.z_km;
@@ -263,21 +284,24 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                     &xs[..self.samples],
                     &vxs[..self.samples],
                     epoch.to_et_seconds(),
-                )?;
+                )
+                .with_context(|_| UnderlyingMathSnafu)?;
 
                 let (y_km, vy_km_s) = hermite_eval(
                     &epochs[..self.samples],
                     &ys[..self.samples],
                     &vys[..self.samples],
                     epoch.to_et_seconds(),
-                )?;
+                )
+                .with_context(|_| UnderlyingMathSnafu)?;
 
                 let (z_km, vz_km_s) = hermite_eval(
                     &epochs[..self.samples],
                     &zs[..self.samples],
                     &vzs[..self.samples],
                     epoch.to_et_seconds(),
-                )?;
+                )
+                .with_context(|_| UnderlyingMathSnafu)?;
 
                 // And build the result
                 let pos_km = Vector3::new(x_km, y_km, z_km);
@@ -288,23 +312,32 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
         }
     }
 
-    fn check_integrity(&self) -> Result<(), AniseError> {
+    fn check_integrity(&self) -> Result<(), IntegrityError> {
         // Verify that none of the data is invalid once when we load it.
         for val in self.epoch_data {
             if !val.is_finite() {
-                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+                return Err(IntegrityError::SubNormal {
+                    dataset: Self::DATASET_NAME,
+                    variable: "one of the epoch data",
+                });
             }
         }
 
         for val in self.epoch_registry {
             if !val.is_finite() {
-                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+                return Err(IntegrityError::SubNormal {
+                    dataset: Self::DATASET_NAME,
+                    variable: "one of the epoch registry data",
+                });
             }
         }
 
         for val in self.state_data {
             if !val.is_finite() {
-                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+                return Err(IntegrityError::SubNormal {
+                    dataset: Self::DATASET_NAME,
+                    variable: "one of the state data",
+                });
             }
         }
 

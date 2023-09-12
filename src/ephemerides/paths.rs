@@ -9,16 +9,13 @@
  */
 
 use hifitime::Epoch;
-use log::error;
+use snafu::{ensure, ResultExt};
 
+use super::{EphemerisError, NoEphemerisLoadedSnafu, UnderlyingDAFSnafu};
 use crate::almanac::Almanac;
-use crate::errors::InternalErrorKind;
-use crate::naif::daf::NAIFSummaryRecord;
+use crate::frames::Frame;
+use crate::naif::daf::{DAFError, NAIFSummaryRecord};
 use crate::NaifId;
-use crate::{
-    errors::{AniseError, IntegrityErrorKind},
-    frames::Frame,
-};
 
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
 pub const MAX_TREE_DEPTH: usize = 8;
@@ -30,18 +27,18 @@ impl<'a> Almanac<'a> {
     ///
     /// 1. For each loaded SPK, iterated in reverse order (to mimic SPICE behavior)
     /// 2. For each summary record in each SPK, follow the ephemeris branch all the way up until the end of this SPK or until the SSB.
-    pub fn try_find_context_center(&self) -> Result<NaifId, AniseError> {
-        if self.num_loaded_spk() == 0 {
-            // TODO: Change to another error
-            return Err(AniseError::NoInterpolationData);
-        }
+    pub fn try_find_context_center(&self) -> Result<NaifId, EphemerisError<'a>> {
+        ensure!(self.num_loaded_spk() > 0, NoEphemerisLoadedSnafu);
+
         // The common center is the absolute minimum of all centers due to the NAIF numbering.
         let mut common_center = i32::MAX;
 
         for maybe_spk in self.spk_data.iter().take(self.num_loaded_spk()).rev() {
             let spk = maybe_spk.unwrap();
 
-            for summary in spk.data_summaries()? {
+            for summary in spk.data_summaries().with_context(|_| UnderlyingDAFSnafu {
+                action: "finding ephemeris root",
+            })? {
                 // This summary exists, so we need to follow the branch of centers up the tree.
                 if !summary.is_empty() && summary.center_id.abs() < common_center.abs() {
                     common_center = summary.center_id;
@@ -60,7 +57,7 @@ impl<'a> Almanac<'a> {
         &self,
         source: &Frame,
         epoch: Epoch,
-    ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH]), AniseError> {
+    ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH]), EphemerisError<'a>> {
         let common_center = self.try_find_context_center()?;
         // Build a tree, set a fixed depth to avoid allocations
         let mut of_path = [None; MAX_TREE_DEPTH];
@@ -72,7 +69,12 @@ impl<'a> Almanac<'a> {
         }
 
         // Grab the summary data, which we use to find the paths
-        let summary = self.spk_summary_at_epoch(source.ephemeris_id, epoch)?.0;
+        let summary = self
+            .spk_summary_at_epoch(source.ephemeris_id, epoch)
+            .with_context(|_| UnderlyingDAFSnafu {
+                action: "grabbing summary data",
+            })?
+            .0;
 
         let mut center_id = summary.center_id;
 
@@ -85,24 +87,25 @@ impl<'a> Almanac<'a> {
         }
 
         for _ in 0..MAX_TREE_DEPTH {
-            match self.spk_summary_at_epoch(center_id, epoch) {
-                Ok((summary, _, _)) => {
-                    center_id = summary.center_id;
-                    of_path[of_path_len] = Some(center_id);
-                    of_path_len += 1;
-                    if center_id == common_center {
-                        // We're found the path!
-                        return Ok((of_path_len, of_path));
-                    }
-                }
-                Err(e) => {
-                    error!("I don't think this should happen: {e}");
-                    return Err(AniseError::InternalError(InternalErrorKind::Generic));
-                }
+            let summary = self
+                .spk_summary_at_epoch(center_id, epoch)
+                .with_context(|_| UnderlyingDAFSnafu {
+                    action: "grabbing parent summary",
+                })?
+                .0;
+            center_id = summary.center_id;
+            of_path[of_path_len] = Some(center_id);
+            of_path_len += 1;
+            if center_id == common_center {
+                // We're found the path!
+                return Ok((of_path_len, of_path));
             }
         }
 
-        Err(AniseError::MaxTreeDepth)
+        Err(EphemerisError::UnderlyingDAF {
+            action: "computing path to common node",
+            source: DAFError::MaxRecursionDepth,
+        })
     }
 
     /// Returns the ephemeris path between two frames and the common node. This may return a `DisjointRoots` error if the frames do not share a common root, which is considered a file integrity error.
@@ -139,7 +142,7 @@ impl<'a> Almanac<'a> {
         from_frame: Frame,
         to_frame: Frame,
         epoch: Epoch,
-    ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH], NaifId), AniseError> {
+    ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH], NaifId), EphemerisError<'a>> {
         // TODO: Consider returning a structure that has explicit fields -- see how I use it first
         if from_frame == to_frame {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
@@ -155,12 +158,11 @@ impl<'a> Almanac<'a> {
         // If either path is of zero length, that means one of them is at the root of this ANISE file, so the common
         // path is which brings the non zero-length path back to the file root.
         if from_len == 0 && to_len == 0 {
-            Err(AniseError::IntegrityError(
-                IntegrityErrorKind::DisjointRoots {
-                    from_frame,
-                    to_frame,
-                },
-            ))
+            Err(EphemerisError::TranslationOrigin {
+                from: from_frame,
+                to: to_frame,
+                epoch,
+            })
         } else if from_len != 0 && to_len == 0 {
             // One has an empty path but not the other, so the root is at the empty path
             Ok((from_len, from_path, to_frame.ephemeris_id))
@@ -201,7 +203,7 @@ impl<'a> Almanac<'a> {
             }
 
             // This is weird and I don't think it should happen, so let's raise an error.
-            Err(AniseError::IntegrityError(IntegrityErrorKind::DataMissing))
+            Err(EphemerisError::Unreachable)
         }
     }
 }

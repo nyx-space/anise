@@ -8,12 +8,32 @@
  * Documentation: https://nyxspace.com/
  */
 
+use snafu::prelude::*;
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 use crate::{naif::Endian, prelude::AniseError};
 use log::error;
 
 use super::NAIFRecord;
+
+#[derive(Debug, Snafu)]
+#[snafu(visibility(pub(crate)))]
+pub enum FileRecordError<'a> {
+    /// Endian of file does not match the endian order of the machine
+    WrongEndian,
+    /// Could not parse the endian flag
+    ParsingError,
+    /// Endian flag should be either `BIG-IEEE` or `LTL-IEEE`
+    InvalidEndian {
+        read: &'a str,
+    },
+    UnsupportedIdentifier {
+        loci: &'a str,
+    },
+    NotDAF,
+    NoIdentifier,
+    EmptyRecord,
+}
 
 #[derive(Debug, Clone, FromBytes, FromZeroes, AsBytes, PartialEq)]
 #[repr(C)]
@@ -68,50 +88,40 @@ impl FileRecord {
         (self.nd + (self.ni + 1) / 2) as usize
     }
 
-    pub fn identification(&self) -> Result<&str, AniseError> {
-        let str_locidw = core::str::from_utf8(&self.id_str).map_err(|_| {
-            AniseError::DAFParserError("Could not parse identification string".to_owned())
-        })?;
+    pub fn identification(&self) -> Result<&str, FileRecordError> {
+        let str_locidw =
+            core::str::from_utf8(&self.id_str).map_err(|_| FileRecordError::NoIdentifier)?;
 
         if &str_locidw[0..3] != "DAF" || str_locidw.chars().nth(3) != Some('/') {
-            Err(AniseError::DAFParserError(format!(
-                "Cannot parse file whose identifier is not DAF: `{}`",
-                str_locidw,
-            )))
+            Err(FileRecordError::NotDAF)
         } else {
-            match str_locidw[4..].trim() {
+            let loci = str_locidw[4..].trim();
+            match loci {
                 "SPK" => Ok("SPK"),
                 "PCK" => Ok("PCK"),
                 _ => {
                     error!("DAF of type `{}` is not yet supported", &str_locidw[4..]);
-                    Err(AniseError::DAFParserError(format!(
-                        "Cannot parse SPICE data of type `{}`",
-                        str_locidw
-                    )))
+                    Err(FileRecordError::UnsupportedIdentifier { loci })
                 }
             }
         }
     }
 
-    pub fn endianness(&self) -> Result<Endian, AniseError> {
-        let str_endianness = core::str::from_utf8(&self.endian_str)
-            .map_err(|_| AniseError::DAFParserError("Could not parse endianness".to_owned()))?;
+    pub fn endianness<'a>(&self) -> Result<Endian, FileRecordError> {
+        let str_endianness =
+            core::str::from_utf8(&self.endian_str).map_err(|_| FileRecordError::ParsingError)?;
 
         let file_endian = if str_endianness == "LTL-IEEE" {
             Endian::Little
         } else if str_endianness == "BIG-IEEE" {
             Endian::Big
         } else {
-            return Err(AniseError::DAFParserError(format!(
-                "Could not understand endianness: `{}`",
-                str_endianness
-            )));
+            return Err(FileRecordError::InvalidEndian {
+                read: str_endianness,
+            });
         };
         if file_endian != Endian::f64_native() || file_endian != Endian::u64_native() {
-            Err(AniseError::DAFParserError(
-                "Input file has different endian-ness than the platform and cannot be decoded"
-                    .to_string(),
-            ))
+            Err(FileRecordError::WrongEndian)
         } else {
             Ok(file_endian)
         }

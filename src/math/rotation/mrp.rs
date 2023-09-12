@@ -81,7 +81,7 @@ impl MRP {
     pub fn shadow(&self) -> Result<Self, AniseError> {
         if self.is_singular() {
             Err(AniseError::MathError(
-                crate::errors::MathErrorKind::DivisionByZero,
+                crate::errors::MathError::DivisionByZero,
             ))
         } else {
             let s_squared = self.s0 * self.s0 + self.s1 * self.s1 + self.s2 * self.s2;
@@ -230,7 +230,7 @@ impl TryFrom<Quaternion> for MRP {
     fn try_from(q: Quaternion) -> Result<Self, Self::Error> {
         if (1.0 + q.w).abs() < EPSILON {
             Err(AniseError::MathError(
-                crate::errors::MathErrorKind::DivisionByZero,
+                crate::errors::MathError::DivisionByZero,
             ))
         } else {
             let s = Self {
@@ -244,7 +244,7 @@ impl TryFrom<Quaternion> for MRP {
             // We don't ever want to deal with singular MRPs, so check once more
             if s.is_singular() {
                 Err(AniseError::MathError(
-                    crate::errors::MathErrorKind::DivisionByZero,
+                    crate::errors::MathError::DivisionByZero,
                 ))
             } else {
                 Ok(s)

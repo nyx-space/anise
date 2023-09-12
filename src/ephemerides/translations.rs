@@ -8,16 +8,17 @@
  * Documentation: https://nyxspace.com/
  */
 
+use snafu::ResultExt;
+
+use super::EphemerisError;
+use super::UnderlyingPhysicsSnafu;
 use crate::almanac::Almanac;
 use crate::astro::Aberration;
 use crate::hifitime::Epoch;
 use crate::math::cartesian::CartesianState;
 use crate::math::units::*;
 use crate::math::Vector3;
-use crate::{
-    errors::AniseError,
-    prelude::{Frame, FrameTrait},
-};
+use crate::prelude::{Frame, FrameTrait};
 
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
 pub const MAX_TREE_DEPTH: usize = 8;
@@ -36,7 +37,7 @@ impl<'a> Almanac<'a> {
         ab_corr: Aberration,
         length_unit: LengthUnit,
         time_unit: TimeUnit,
-    ) -> Result<CartesianState, AniseError> {
+    ) -> Result<CartesianState, EphemerisError<'a>> {
         if from_frame == to_frame {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
             return Ok(CartesianState::zero(from_frame));
@@ -114,7 +115,7 @@ impl<'a> Almanac<'a> {
         to_frame: Frame,
         epoch: Epoch,
         ab_corr: Aberration,
-    ) -> Result<CartesianState, AniseError> {
+    ) -> Result<CartesianState, EphemerisError<'a>> {
         self.translate_from_to(
             from_frame,
             to_frame,
@@ -132,7 +133,7 @@ impl<'a> Almanac<'a> {
         to_frame: Frame,
         epoch: Epoch,
         ab_corr: Aberration,
-    ) -> Result<CartesianState, AniseError> {
+    ) -> Result<CartesianState, EphemerisError<'a>> {
         self.translate_from_to(
             from_frame,
             to_frame,
@@ -149,7 +150,7 @@ impl<'a> Almanac<'a> {
         from_frame: Frame,
         to_frame: Frame,
         epoch: Epoch,
-    ) -> Result<CartesianState, AniseError> {
+    ) -> Result<CartesianState, EphemerisError<'a>> {
         self.translate_from_to(
             from_frame,
             to_frame,
@@ -166,7 +167,7 @@ impl<'a> Almanac<'a> {
         from_frame: Frame,
         to_frame: Frame,
         epoch: Epoch,
-    ) -> Result<CartesianState, AniseError> {
+    ) -> Result<CartesianState, EphemerisError<'a>> {
         self.translate_from_to(
             from_frame,
             to_frame,
@@ -191,7 +192,7 @@ impl<'a> Almanac<'a> {
         ab_corr: Aberration,
         distance_unit: LengthUnit,
         time_unit: TimeUnit,
-    ) -> Result<CartesianState, AniseError> {
+    ) -> Result<CartesianState, EphemerisError> {
         // Compute the frame translation
         let frame_state = self.translate_from_to(
             from_frame,
@@ -213,6 +214,8 @@ impl<'a> Almanac<'a> {
             frame: from_frame,
         };
 
-        input_state + frame_state
+        (input_state + frame_state).with_context(|_| UnderlyingPhysicsSnafu {
+            action: "manual state translation",
+        })
     }
 }

@@ -25,7 +25,7 @@ pub enum AniseError {
     /// Raised if an IO error occurred but its representation is not simple (and therefore not an std::io::ErrorKind).
     IOUnknownError,
     /// Math error
-    MathError(MathErrorKind),
+    MathError(MathError),
     /// Raised when requesting the value of a parameter but it does not have any representation (typically the coefficients are an empty array)
     ParameterNotSpecified,
     /// The byte stream is missing data that is required to parse.
@@ -33,8 +33,6 @@ pub enum AniseError {
     /// If the NAIF file cannot be read or isn't supported
     DAFParserError(String),
     InvalidTimeSystem,
-    /// Raised if there is some kind of error with the underlying data, e.g. invalid checksum, or NaN/Inf values when that is not acceptable.
-    IntegrityError(IntegrityErrorKind),
     /// Raised if the item sought after is not found in the context
     ItemNotFound,
     /// Raised when requesting the interpolation for data that is not available in this spline.
@@ -66,14 +64,6 @@ pub enum AniseError {
 }
 
 #[derive(Debug, Snafu)]
-pub enum EphemerisError {
-    #[snafu(display(
-        "Could not translate from {from} to {to}: no common origin found at epoch {e}"
-    ))]
-    TranslationOriginError { from: Frame, to: Frame, e: Epoch },
-}
-
-#[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub enum DecodingError<'a> {
     #[snafu(display(
@@ -90,10 +80,9 @@ pub enum DecodingError<'a> {
         end: usize,
         size: usize,
     },
-    #[snafu(display(
-        "data for {variable} in {dataset} decoded as subnormal double (data malformed?)"
-    ))]
-    SubNormal { dataset: &'a str, variable: &'a str },
+    Integrity {
+        source: IntegrityError<'a>,
+    },
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -106,8 +95,9 @@ pub enum InternalErrorKind {
     Generic,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum IntegrityErrorKind {
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Snafu)]
+#[snafu(visibility(pub(crate)))]
+pub enum IntegrityError<'a> {
     /// Data checksum differs from expected checksum
     ChecksumInvalid { expected: u32, computed: u32 },
     /// Data between two ephemerides expected to be identical mismatch (may happen on merger of files)
@@ -118,17 +108,19 @@ pub enum IntegrityErrorKind {
     LookupTable,
     /// Raised if a transformation is requested but the frames have no common origin
     DisjointRoots { from_frame: Frame, to_frame: Frame },
-    /// Raised if some f64 data is NaN, infinity, or negative infinity.
-    SubNormal,
+    #[snafu(display(
+        "data for {variable} in {dataset} decoded as subnormal double (data malformed?)"
+    ))]
+    SubNormal { dataset: &'a str, variable: &'a str },
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub enum MathErrorKind {
+#[derive(Clone, PartialEq, Eq, Debug, Snafu)]
+pub enum MathError {
     DivisionByZero,
     StateEpochsDiffer,
     StateFramesDiffer,
     InvalidInterpolationData,
-    PolynomialOrderError(usize),
+    PolynomialOrderError { order: usize },
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -153,8 +145,8 @@ impl From<InternalErrorKind> for AniseError {
     }
 }
 
-impl From<MathErrorKind> for AniseError {
-    fn from(e: MathErrorKind) -> Self {
+impl From<MathError> for AniseError {
+    fn from(e: MathError) -> Self {
         Self::MathError(e)
     }
 }
@@ -172,7 +164,6 @@ impl fmt::Display for AniseError {
                 write!(f, "ANISE error: invalid NAIF DAF file: {}", reason)
             }
             Self::InvalidTimeSystem => write!(f, "ANISE error: invalid time system"),
-            Self::IntegrityError(e) => write!(f, "ANISE error: data integrity error: {e:?}"),
             Self::ItemNotFound => write!(f, "ANISE error: requested item not found in context"),
             Self::InternalError(e) => {
                 write!(f, "ANISE internal error: {e:?} -- please report a bug")

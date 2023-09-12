@@ -61,7 +61,7 @@
 
 use core::f64::EPSILON;
 
-use crate::errors::MathErrorKind;
+use crate::errors::MathError;
 use log::error;
 
 use super::MAX_SAMPLES;
@@ -77,16 +77,16 @@ pub fn hermite_eval(
     ys: &[f64],
     ydots: &[f64],
     x_eval: f64,
-) -> Result<(f64, f64), MathErrorKind> {
+) -> Result<(f64, f64), MathError> {
     if xs.len() != ys.len() || xs.len() != ydots.len() {
         error!("Abscissas (xs), ordinates (ys), and first derivatives (ydots) must contain the same number of items, but they are of lengths {}, {}, and {}", xs.len(), ys.len(), ydots.len());
-        return Err(MathErrorKind::InvalidInterpolationData);
+        return Err(MathError::InvalidInterpolationData);
     } else if xs.is_empty() {
         error!("No interpolation data provided");
-        return Err(MathErrorKind::InvalidInterpolationData);
+        return Err(MathError::InvalidInterpolationData);
     } else if xs.len() > MAX_SAMPLES {
         error!("More than {MAX_SAMPLES} samples provided, which is the maximum number of items allowed for a Hermite interpolation");
-        return Err(MathErrorKind::InvalidInterpolationData);
+        return Err(MathError::InvalidInterpolationData);
     }
 
     // At this point, we know that the lengths of items is correct, so we can directly address them without worry for overflowing the array.
@@ -118,7 +118,7 @@ pub fn hermite_eval(
         let c2 = x_eval - xs[i - 1];
         let denom = xs[i] - xs[i - 1];
         if denom.abs() < EPSILON {
-            return Err(MathErrorKind::DivisionByZero);
+            return Err(MathError::DivisionByZero);
         }
 
         /*        The second column of WORK contains interpolated derivative */
@@ -173,7 +173,7 @@ pub fn hermite_eval(
             let c2 = x_eval - xs[xi - 1];
             let denom = xs[xij - 1] - xs[xi - 1];
             if denom.abs() < EPSILON {
-                return Err(MathErrorKind::DivisionByZero);
+                return Err(MathError::DivisionByZero);
             }
 
             /*           Compute the interpolated derivative at X for the Ith */
