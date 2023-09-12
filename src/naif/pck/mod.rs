@@ -55,4 +55,8 @@ impl NAIFSummaryRecord for BPCSummaryRecord {
     fn end_epoch_et_s(&self) -> f64 {
         self.end_epoch_et_s
     }
+
+    fn name<'a>() -> &'a str {
+        "BPCSummaryRecord"
+    }
 }

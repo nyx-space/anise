@@ -8,10 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 
+use super::{DAFError, NAIFDataSet, NAIFRecord, NAIFSummaryRecord};
 pub use super::{FileRecord, NameRecord, SummaryRecord};
-use super::{NAIFDataSet, NAIFRecord, NAIFSummaryRecord};
-use crate::errors::DAFError;
+use crate::errors::DecodingError;
 use crate::file2heap;
+use crate::naif::daf::{DecodingDataSnafu, EmptyFileRecordSnafu};
 use crate::{errors::IntegrityErrorKind, prelude::AniseError, DBL_SIZE};
 use bytes::Bytes;
 use core::hash::Hash;
@@ -150,17 +151,26 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     pub fn data_summaries(&self) -> Result<&[R], DAFError> {
         ensure!(
             !self.file_record.is_empty(),
-            EmptyFileRecordSanfu { kind: R::name() }
+            EmptyFileRecordSnafu { kind: R::name() }
         );
-        // if self.file_record.is_empty() {
-        //     return Err(AniseError::MalformedData(0));
-        // }
         // Move onto the next record, DAF indexes start at 1 ... =(
         let rcrd_idx = (self.file_record.fwrd_idx() - 1) * RCRD_LEN;
-        let rcrd_bytes = self
+        let rcrd_bytes = match self
             .bytes
             .get(rcrd_idx..rcrd_idx + RCRD_LEN)
-            .ok_or_else(|| AniseError::MalformedData(self.file_record.fwrd_idx() + RCRD_LEN))?;
+            .ok_or_else(|| DecodingError::InaccessibleBytes {
+                start: rcrd_idx,
+                end: rcrd_idx + RCRD_LEN,
+                size: self.bytes.len(),
+            }) {
+            Ok(it) => it,
+            Err(source) => {
+                return Err(DAFError::DecodingSummary {
+                    kind: R::name(),
+                    source,
+                })
+            }
+        };
 
         // The summaries are defined in the same record as the DAF summary
         Ok(match Ref::new_slice(&rcrd_bytes[SummaryRecord::SIZE..]) {
@@ -183,7 +193,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     pub fn summary_from_name(&self, name: &str) -> Result<(&R, usize), DAFError> {
         let idx = self
             .name_record
-            .index_from_name(name, self.file_record.summary_size())?;
+            .index_from_name::<R>(name, self.file_record.summary_size())?;
 
         Ok((self.nth_summary(idx)?.1, idx))
     }
@@ -273,25 +283,40 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         let (_, this_summary) = self.nth_summary(idx)?;
         // Grab the data in native endianness (TODO: How to support both big and little endian?)
         trace!("{idx} -> {this_summary:?}");
-        if this_summary.is_empty() {
-            return Err(DAFError::EmptyData {
-                kind: R::name(),
-                idx: this_summary.start_index(),
-            });
-        }
+        ensure!(
+            !self.file_record.is_empty(),
+            EmptyFileRecordSnafu { kind: R::name() }
+        );
+        let start = (this_summary.start_index() - 1) * DBL_SIZE;
+        let end = this_summary.end_index() * DBL_SIZE;
         let data: &[f64] = Ref::new_slice(
-            self.bytes
-                .get(
-                    (this_summary.start_index() - 1) * DBL_SIZE
-                        ..this_summary.end_index() * DBL_SIZE,
-                )
-                .ok_or_else(|| AniseError::MalformedData(this_summary.end_index() + RCRD_LEN))?,
+            match self
+                .bytes
+                .get(start..end)
+                .ok_or_else(|| DecodingError::InaccessibleBytes {
+                    start,
+                    end,
+                    size: self.bytes.len(),
+                }) {
+                Ok(it) => it,
+                Err(source) => {
+                    return Err(DAFError::DecodingData {
+                        kind: R::name(),
+                        idx,
+                        source,
+                    })
+                }
+            },
         )
         .unwrap()
         .into_slice();
 
         // Convert it
-        S::from_slice_f64(data)
+        S::from_slice_f64(data).with_context(|_| DecodingDataSnafu {
+            kind: R::name(),
+            idx,
+        })
+        // S::from_slice_f64(data)
     }
 
     pub fn comments(&self) -> Result<Option<String>, AniseError> {

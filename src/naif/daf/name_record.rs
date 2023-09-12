@@ -10,10 +10,10 @@
 
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
-use crate::{prelude::AniseError, DBL_SIZE};
+use crate::DBL_SIZE;
 use log::warn;
 
-use super::{NAIFRecord, RCRD_LEN};
+use super::{DAFError, NAIFRecord, NAIFSummaryRecord, RCRD_LEN};
 
 #[derive(AsBytes, Clone, Debug, FromZeroes, FromBytes)]
 #[repr(C)]
@@ -83,12 +83,19 @@ impl NameRecord {
     /// Searches the name record for the provided name.
     ///
     /// **Warning:** this performs an O(N) search!
-    pub fn index_from_name(&self, name: &str, summary_size: usize) -> Result<usize, AniseError> {
+    pub fn index_from_name<R: NAIFSummaryRecord>(
+        &self,
+        name: &str,
+        summary_size: usize,
+    ) -> Result<usize, DAFError> {
         for i in 0..self.num_entries(summary_size) {
             if self.nth_name(i, summary_size) == name {
                 return Ok(i);
             }
         }
-        Err(AniseError::ItemNotFound)
+        Err(DAFError::NameError {
+            kind: R::name(),
+            name,
+        })
     }
 }

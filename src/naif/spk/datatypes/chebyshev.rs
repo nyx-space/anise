@@ -10,10 +10,10 @@
 
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits};
-use log::error;
+use snafu::ensure;
 
 use crate::{
-    errors::IntegrityErrorKind,
+    errors::{DecodingError, IntegrityErrorKind, SubNormalSnafu, TooFewDoublesSnafu},
     math::{interpolation::chebyshev_eval, Vector3},
     naif::{
         daf::{NAIFDataRecord, NAIFDataSet, NAIFSummaryRecord},
@@ -55,25 +55,36 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
     type StateKind = (Vector3, Vector3);
     type RecordKind = Type2ChebyshevRecord<'a>;
 
-    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, AniseError> {
-        if slice.len() < 5 {
-            error!(
-                "Cannot build a Type 2 Chebyshev set from only {} items",
-                slice.len()
-            );
-            return Err(AniseError::MalformedData(5));
-        }
+    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError> {
+        ensure!(
+            slice.len() >= 5,
+            TooFewDoublesSnafu {
+                dataset: "Chebyshev Type 2",
+                need: 5_usize,
+                got: slice.len()
+            }
+        );
         // For this kind of record, the data is stored at the very end of the dataset
         let seconds_since_j2000 = slice[slice.len() - 4];
-        if !seconds_since_j2000.is_finite() {
-            // The Epoch initialization will fail on subnormal data
-            return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
-        }
+        ensure!(
+            !seconds_since_j2000.is_finite(),
+            SubNormalSnafu {
+                dataset: "Chebyshev Type 2",
+                variable: "seconds since J2000 ET"
+            }
+        );
+
         let start_epoch = Epoch::from_et_seconds(seconds_since_j2000);
+
         let interval_length_s = slice[slice.len() - 3];
-        if !interval_length_s.is_finite() {
-            return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
-        }
+        ensure!(
+            !interval_length_s.is_finite(),
+            SubNormalSnafu {
+                dataset: "Chebyshev Type 2",
+                variable: "interval length in seconds"
+            }
+        );
+
         let interval_length = interval_length_s.seconds();
         let rsize = slice[slice.len() - 2] as usize;
         let num_records = slice[slice.len() - 1] as usize;

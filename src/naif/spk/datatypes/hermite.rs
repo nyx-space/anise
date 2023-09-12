@@ -10,9 +10,9 @@
 
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits};
-use log::error;
+use snafu::ensure;
 
-use crate::errors::IntegrityErrorKind;
+use crate::errors::{DecodingError, IntegrityErrorKind, SubNormalSnafu, TooFewDoublesSnafu};
 use crate::math::interpolation::{hermite_eval, MAX_SAMPLES};
 use crate::naif::spk::summary::SPKSummaryRecord;
 use crate::{
@@ -51,24 +51,35 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
     type StateKind = CartesianState;
     type RecordKind = PositionVelocityRecord;
 
-    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, AniseError> {
-        if slice.len() < 5 {
-            error!(
-                "Cannot build a Type 12 Hermite set from only {} items",
-                slice.len()
-            );
-            return Err(AniseError::MalformedData(5));
-        }
+    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError> {
+        ensure!(
+            slice.len() >= 5,
+            TooFewDoublesSnafu {
+                dataset: "Hermite Type 12",
+                need: 5_usize,
+                got: slice.len()
+            }
+        );
         // For this kind of record, the metadata is stored at the very end of the dataset, so we need to read that first.
         let seconds_since_j2000 = slice[slice.len() - 4];
-        if !seconds_since_j2000.is_finite() {
-            return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
-        }
+        ensure!(
+            !seconds_since_j2000.is_finite(),
+            SubNormalSnafu {
+                dataset: "Hermite Type 12",
+                variable: "seconds since J2000 ET"
+            }
+        );
+
         let first_state_epoch = Epoch::from_et_seconds(seconds_since_j2000);
         let step_size_s = slice[slice.len() - 3];
-        if !step_size_s.is_finite() {
-            return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
-        }
+        ensure!(
+            !step_size_s.is_finite(),
+            SubNormalSnafu {
+                dataset: "Hermite Type 12",
+                variable: "step size in seconds"
+            }
+        );
+
         let step_size = step_size_s.seconds();
         let window_size = slice[slice.len() - 2] as usize;
         let num_records = slice[slice.len() - 1] as usize;
@@ -148,14 +159,16 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
     type StateKind = (Vector3, Vector3);
     type RecordKind = PositionVelocityRecord;
 
-    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, AniseError> {
-        if slice.len() < 3 {
-            error!(
-                "Cannot build a Type 13 Hermite set from only {} items",
-                slice.len()
-            );
-            return Err(AniseError::MalformedData(5));
-        }
+    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError> {
+        ensure!(
+            slice.len() >= 3,
+            TooFewDoublesSnafu {
+                dataset: "Hermite Type 13",
+                need: 3_usize,
+                got: slice.len()
+            }
+        );
+
         // For this kind of record, the metadata is stored at the very end of the dataset
         let num_records = slice[slice.len() - 1] as usize;
         // NOTE: The Type 12 and 13 specify that the windows size minus one is stored!
