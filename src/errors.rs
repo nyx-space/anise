@@ -64,6 +64,71 @@ pub enum AniseError {
     },
 }
 
+use snafu::prelude::*;
+
+use crate::NaifId;
+
+/// Errors associated with handling NAIF DAF files
+#[derive(Debug, Snafu)]
+pub enum DAFError<'a> {
+    /// Somehow you've entered code that should not be reachable, please file a bug.
+    Unreachable,
+    #[snafu(display("No DAF/{kind} data have been loaded"))]
+    NoDAFLoaded { kind: &'a str },
+    /// While searching for the root of the loaded ephemeris tree, we're recursed more times than allowed.
+    MaxRecursionDepth,
+    #[snafu(display("DAF/{kind}: summary {id} not present"))]
+    SummaryIdError { kind: &'a str, id: NaifId },
+    #[snafu(display(
+        "DAF/{kind}: summary {id} not present or does not cover requested epoch of {epoch}"
+    ))]
+    SummaryIdAtEpochError {
+        kind: &'a str,
+        id: NaifId,
+        epoch: Epoch,
+    },
+    #[snafu(display("DAF/{kind}: summary `{name}` not present"))]
+    SummaryNameError { kind: &'a str, name: &'a str },
+    #[snafu(display(
+        "DAF/{kind}: summary `{name}` not present or does not cover requested epoch of {epoch}"
+    ))]
+    SummaryNameAtEpochError {
+        kind: &'a str,
+        name: &'a str,
+        epoch: Epoch,
+    },
+    #[snafu(display("DAF/{kind}: no interpolation data for `{name}` at {epoch}"))]
+    InterpolationDataErrorFromName {
+        kind: &'a str,
+        name: &'a str,
+        epoch: Epoch,
+    },
+    #[snafu(display("DAF/{kind}: no interpolation data for {id} at {epoch}"))]
+    InterpolationDataErrorFromId {
+        kind: &'a str,
+        id: NaifId,
+        epoch: Epoch,
+    },
+    #[snafu(display(
+        "DAF/{kind}: file record is empty (ensure file is valid, e.g. do you need to run git-lfs)"
+    ))]
+    EmptyFileRecord { kind: &'a str },
+    #[snafu(display(
+        "DAF/{kind}: summary contains no data (start and end index both set to {idx})"
+    ))]
+    EmptyData { kind: &'a str, idx: usize },
+    #[snafu(display("DAF/{kind}: no data record for `{name}`"))]
+    NameError { kind: &'a str, name: &'a str },
+}
+
+#[derive(Debug, Snafu)]
+pub enum EphemerisError {
+    #[snafu(display(
+        "Could not translate from {from} to {to}: no common origin found at epoch {e}"
+    ))]
+    TranslationOriginError { from: Frame, to: Frame, e: Epoch },
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum InternalErrorKind {
     /// Appending to the lookup table failed

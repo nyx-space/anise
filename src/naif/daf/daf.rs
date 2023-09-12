@@ -10,6 +10,7 @@
 
 pub use super::{FileRecord, NameRecord, SummaryRecord};
 use super::{NAIFDataSet, NAIFRecord, NAIFSummaryRecord};
+use crate::errors::DAFError;
 use crate::file2heap;
 use crate::{errors::IntegrityErrorKind, prelude::AniseError, DBL_SIZE};
 use bytes::Bytes;
@@ -17,6 +18,7 @@ use core::hash::Hash;
 use core::ops::Deref;
 use hifitime::Epoch;
 use log::{error, trace, warn};
+use snafu::{ensure, ResultExt};
 use std::marker::PhantomData;
 
 use zerocopy::AsBytes;
@@ -145,10 +147,14 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     /// Parses the data summaries on the fly.
-    pub fn data_summaries(&self) -> Result<&[R], AniseError> {
-        if self.file_record.is_empty() {
-            return Err(AniseError::MalformedData(0));
-        }
+    pub fn data_summaries(&self) -> Result<&[R], DAFError> {
+        ensure!(
+            !self.file_record.is_empty(),
+            EmptyFileRecordSanfu { kind: R::name() }
+        );
+        // if self.file_record.is_empty() {
+        //     return Err(AniseError::MalformedData(0));
+        // }
         // Move onto the next record, DAF indexes start at 1 ... =(
         let rcrd_idx = (self.file_record.fwrd_idx() - 1) * RCRD_LEN;
         let rcrd_bytes = self
@@ -163,7 +169,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         })
     }
 
-    pub fn nth_summary(&self, n: usize) -> Result<(&str, &R), AniseError> {
+    pub fn nth_summary(&self, n: usize) -> Result<(&str, &R), DAFError> {
         let name = self
             .name_record
             .nth_name(n, self.file_record.summary_size());
@@ -174,7 +180,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     /// Returns the summary given the name of the summary record
-    pub fn summary_from_name(&self, name: &str) -> Result<(&R, usize), AniseError> {
+    pub fn summary_from_name(&self, name: &str) -> Result<(&R, usize), DAFError> {
         let idx = self
             .name_record
             .index_from_name(name, self.file_record.summary_size())?;
@@ -187,34 +193,37 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         &self,
         name: &str,
         epoch: Epoch,
-    ) -> Result<(&R, usize), AniseError> {
+    ) -> Result<(&R, usize), DAFError> {
         let (summary, idx) = self.summary_from_name(name)?;
 
         if epoch >= summary.start_epoch() && epoch <= summary.end_epoch() {
             Ok((summary, idx))
         } else {
             error!("No summary {name} valid at epoch {epoch}");
-            Err(AniseError::MissingInterpolationData(epoch))
+            Err(DAFError::SummaryNameAtEpochError {
+                kind: R::name(),
+                name: name,
+                epoch,
+            })
         }
     }
 
-    /// Returns the summary given the name of the summary record
-    pub fn summary_from_id(&self, id: i32) -> Result<(&R, usize), AniseError> {
+    /// Returns the summary given the id of the summary record
+    pub fn summary_from_id(&self, id: i32) -> Result<(&R, usize), DAFError> {
         for (idx, summary) in self.data_summaries()?.iter().enumerate() {
             if summary.id() == id {
                 return Ok((summary, idx));
             }
         }
 
-        Err(AniseError::ItemNotFound)
+        Err(DAFError::SummaryIdError {
+            kind: R::name(),
+            id,
+        })
     }
 
     /// Returns the summary given the name of the summary record if that summary has data defined at the requested epoch
-    pub fn summary_from_id_at_epoch(
-        &self,
-        id: i32,
-        epoch: Epoch,
-    ) -> Result<(&R, usize), AniseError> {
+    pub fn summary_from_id_at_epoch(&self, id: i32, epoch: Epoch) -> Result<(&R, usize), DAFError> {
         // NOTE: We iterate through the whole summary because a specific NAIF ID may be repeated in the summary for different valid epochs
         // so we can't just call `summary_from_id`.
         for (idx, summary) in self.data_summaries()?.iter().enumerate() {
@@ -233,11 +242,15 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 }
             }
         }
-        Err(AniseError::MissingInterpolationData(epoch))
+        Err(DAFError::InterpolationDataErrorFromId {
+            kind: R::name(),
+            id,
+            epoch,
+        })
     }
 
     /// Provided a name that is in the summary, return its full data, if name is available.
-    pub fn data_from_name<'a, S: NAIFDataSet<'a>>(&'a self, name: &str) -> Result<S, AniseError> {
+    pub fn data_from_name<'a, S: NAIFDataSet<'a>>(&'a self, name: &str) -> Result<S, DAFError> {
         // O(N) search through the summaries
         for idx in 0..self
             .name_record
@@ -249,20 +262,22 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 return self.nth_data(idx);
             }
         }
-        Err(AniseError::DAFParserError(format!(
-            "Could not find data for {name}"
-        )))
+        Err(DAFError::NameError {
+            kind: R::name(),
+            name,
+        })
     }
 
     /// Provided a name that is in the summary, return its full data, if name is available.
-    pub fn nth_data<'a, S: NAIFDataSet<'a>>(&'a self, idx: usize) -> Result<S, AniseError> {
+    pub fn nth_data<'a, S: NAIFDataSet<'a>>(&'a self, idx: usize) -> Result<S, DAFError> {
         let (_, this_summary) = self.nth_summary(idx)?;
         // Grab the data in native endianness (TODO: How to support both big and little endian?)
         trace!("{idx} -> {this_summary:?}");
         if this_summary.is_empty() {
-            return Err(AniseError::InternalError(
-                crate::errors::InternalErrorKind::Generic,
-            ));
+            return Err(DAFError::EmptyData {
+                kind: R::name(),
+                idx: this_summary.start_index(),
+            });
         }
         let data: &[f64] = Ref::new_slice(
             self.bytes

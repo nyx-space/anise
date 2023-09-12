@@ -47,6 +47,8 @@ pub trait NAIFSummaryRecord: NAIFRecord + Copy {
     fn is_empty(&self) -> bool {
         self.start_index() == self.end_index()
     }
+    /// Name of this NAIF type
+    fn name<'a>() -> &'a str;
 }
 
 pub trait NAIFDataSet<'a>: Sized + Display {
