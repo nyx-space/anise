@@ -81,6 +81,7 @@ pub enum DecodingError {
         size: usize,
     },
     Integrity {
+        #[snafu(backtrace)]
         source: IntegrityError,
     },
 }

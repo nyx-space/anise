@@ -141,6 +141,7 @@ pub enum DAFError {
     ))]
     FileRecord {
         kind: &'static str,
+        #[snafu(backtrace)]
         source: FileRecordError,
     },
     #[snafu(display(
@@ -158,25 +159,30 @@ pub enum DAFError {
     #[snafu(display("DAF/{kind}: summary: {source}"))]
     DecodingSummary {
         kind: &'static str,
+        #[snafu(backtrace)]
         source: DecodingError,
     },
     #[snafu(display("DAF/{kind}: comments: {source}"))]
     DecodingComments {
         kind: &'static str,
+        #[snafu(backtrace)]
         source: DecodingError,
     },
     #[snafu(display("DAF/{kind}: name: {source}"))]
     DecodingName {
         kind: &'static str,
+        #[snafu(backtrace)]
         source: DecodingError,
     },
     #[snafu(display("DAF/{kind}: data index {idx}: {source}"))]
     DecodingData {
         kind: &'static str,
         idx: usize,
+        #[snafu(backtrace)]
         source: DecodingError,
     },
     DAFIntegrity {
+        #[snafu(backtrace)]
         source: IntegrityError,
     },
     IO {
