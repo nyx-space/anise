@@ -192,15 +192,16 @@ impl<F: FrameTrait> Add for Cartesian<F> {
         ensure!(
             self.epoch == other.epoch,
             EpochMismatchSnafu {
+                action: "translating states",
                 epoch1: self.epoch,
                 epoch2: other.epoch
             }
         );
 
-        // TODO: Reenable this.
         // ensure!(
         //     self.frame == other.frame,
         //     FrameMismatchSnafu {
+        //         action: "translating states",
         //         frame1: self.frame,
         //         frame2: other.frame
         //     }

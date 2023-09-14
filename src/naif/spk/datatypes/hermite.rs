@@ -226,7 +226,11 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
         if epoch.to_et_seconds() < self.epoch_data[0]
             || epoch.to_et_seconds() > *self.epoch_data.last().unwrap()
         {
-            return Err(InterpolationError::NoInterpolationData { epoch });
+            return Err(InterpolationError::NoInterpolationData {
+                req: epoch,
+                start: Epoch::from_et_seconds(self.epoch_data[0]),
+                end: Epoch::from_et_seconds(*self.epoch_data.last().unwrap()),
+            });
         }
         // Now, perform a binary search on the epochs themselves.
         match self.epoch_data.binary_search_by(|epoch_et| {

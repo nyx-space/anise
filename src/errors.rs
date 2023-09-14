@@ -120,7 +120,9 @@ pub enum IntegrityError {
 
 #[derive(Clone, PartialEq, Eq, Debug, Snafu)]
 pub enum MathError {
+    /// Prevented a division by zero, check data integrity
     DivisionByZero,
+    /// 
     StateEpochsDiffer,
     StateFramesDiffer,
     InvalidInterpolationData,

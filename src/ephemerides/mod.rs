@@ -36,18 +36,18 @@ pub enum EphemerisError<'a> {
     },
     #[snafu(display("no ephemeris data loaded (must call load_spk)"))]
     NoEphemerisLoaded,
-    #[snafu(display("trying {action} caused {source}"))]
+    #[snafu(display("when {action} caused {source}"))]
     UnderlyingDAF {
         action: &'a str,
         #[snafu(backtrace)]
         source: DAFError,
     },
-    #[snafu(display("trying {action} caused {source}"))]
+    #[snafu(display("during an ephemeris operation: {source}"))]
     UnderlyingPhysics {
-        action: &'a str,
         #[snafu(backtrace)]
         source: PhysicsError,
     },
+    #[snafu(display("during an ephemeris operation: {source}"))]
     UnderlyingInterpolation {
         #[snafu(backtrace)]
         source: InterpolationError,

@@ -25,15 +25,22 @@ pub(crate) const MAX_SAMPLES: usize = 32;
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub enum InterpolationError {
+    #[snafu(display("decoding error during interpolation: {source}"))]
     UnderlyingDecoding {
         #[snafu(backtrace)]
         source: DecodingError,
     },
+    #[snafu(display("math error during interpolation: {source}"))]
     UnderlyingMath {
         #[snafu(backtrace)]
         source: MathError,
     },
+    #[snafu(display("spline valid from {start} to {end} but requested {req}"))]
     NoInterpolationData {
-        epoch: Epoch,
+        req: Epoch,
+        start: Epoch,
+        end: Epoch,
     },
+    #[snafu(display("no interpolation data to {epoch}, but prior checks suceeded (check integrity of the data?)"))]
+    MissingInterpolationData { epoch: Epoch },
 }

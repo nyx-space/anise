@@ -214,8 +214,6 @@ impl<'a> Almanac<'a> {
             frame: from_frame,
         };
 
-        (input_state + frame_state).with_context(|_| UnderlyingPhysicsSnafu {
-            action: "manual state translation",
-        })
+        (input_state + frame_state).with_context(|_| UnderlyingPhysicsSnafu {})
     }
 }

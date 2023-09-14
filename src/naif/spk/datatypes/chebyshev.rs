@@ -120,9 +120,13 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         epoch: Epoch,
         summary: &Self::SummaryKind,
     ) -> Result<(Vector3, Vector3), InterpolationError> {
-        if epoch < summary.start_epoch() || epoch < summary.end_epoch() {
+        if epoch < summary.start_epoch() || epoch > summary.end_epoch() {
             // No need to go any further.
-            return Err(InterpolationError::NoInterpolationData { epoch });
+            return Err(InterpolationError::NoInterpolationData {
+                req: epoch,
+                start: summary.start_epoch(),
+                end: summary.end_epoch(),
+            });
         }
 
         let window_duration_s = self.interval_length.to_seconds();

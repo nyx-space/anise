@@ -39,7 +39,7 @@ pub(crate) fn chebyshev_eval(
         w[1] = w[0];
         w[0] = (spline_coeffs
             .get(j - 1)
-            .ok_or(InterpolationError::NoInterpolationData { epoch: eval_epoch })?)
+            .ok_or(InterpolationError::MissingInterpolationData { epoch: eval_epoch })?)
             + (2.0 * normalized_time * w[1] - w[2]);
 
         dw[2] = dw[1];
@@ -49,7 +49,7 @@ pub(crate) fn chebyshev_eval(
 
     let val = (spline_coeffs
         .first()
-        .ok_or(InterpolationError::NoInterpolationData { epoch: eval_epoch })?)
+        .ok_or(InterpolationError::MissingInterpolationData { epoch: eval_epoch })?)
         + (normalized_time * w[0] - w[1]);
 
     let deriv = (w[0] + normalized_time * dw[0] - dw[1]) / spline_radius_s;
