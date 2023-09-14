@@ -18,17 +18,17 @@ use super::NAIFRecord;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
-pub enum FileRecordError<'a> {
+pub enum FileRecordError {
     /// Endian of file does not match the endian order of the machine
     WrongEndian,
     /// Could not parse the endian flag
     ParsingError,
     /// Endian flag should be either `BIG-IEEE` or `LTL-IEEE`
     InvalidEndian {
-        read: &'a str,
+        read: String,
     },
     UnsupportedIdentifier {
-        loci: &'a str,
+        loci: String,
     },
     NotDAF,
     NoIdentifier,
@@ -101,13 +101,15 @@ impl FileRecord {
                 "PCK" => Ok("PCK"),
                 _ => {
                     error!("DAF of type `{}` is not yet supported", &str_locidw[4..]);
-                    Err(FileRecordError::UnsupportedIdentifier { loci })
+                    Err(FileRecordError::UnsupportedIdentifier {
+                        loci: loci.to_string(),
+                    })
                 }
             }
         }
     }
 
-    pub fn endianness<'a>(&self) -> Result<Endian, FileRecordError> {
+    pub fn endianness(&self) -> Result<Endian, FileRecordError> {
         let str_endianness =
             core::str::from_utf8(&self.endian_str).map_err(|_| FileRecordError::ParsingError)?;
 
@@ -117,7 +119,7 @@ impl FileRecord {
             Endian::Big
         } else {
             return Err(FileRecordError::InvalidEndian {
-                read: str_endianness,
+                read: str_endianness.to_string(),
             });
         };
         if file_endian != Endian::f64_native() || file_endian != Endian::u64_native() {

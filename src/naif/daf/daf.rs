@@ -74,7 +74,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     pub fn check_then_parse<'a, B: Deref<Target = [u8]>>(
         bytes: B,
         expected: u32,
-    ) -> Result<Self, DAFError<'a>> {
+    ) -> Result<Self, DAFError> {
         let computed = crc32fast::hash(&bytes);
         if computed != expected {
             return Err(DAFError::DAFIntegrity {
@@ -85,20 +85,18 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         Self::parse(bytes)
     }
 
-    pub fn load<'a, P: AsRef<Path>>(path: P) -> Result<Self, DAFError<'a>> {
+    pub fn load<'a, P: AsRef<Path>>(path: P) -> Result<Self, DAFError> {
         // TODO: Reenable this
         Self::parse(file2heap!(path).unwrap())
     }
 
-    pub fn from_static<'a, B: Deref<Target = [u8]>>(
-        bytes: &'static B,
-    ) -> Result<Self, DAFError<'a>> {
+    pub fn from_static<'a, B: Deref<Target = [u8]>>(bytes: &'static B) -> Result<Self, DAFError> {
         let crc32_checksum = crc32fast::hash(bytes);
         let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
         // Check that the endian-ness is compatible with this platform.
         file_record
             .endianness()
-            .with_context(|_| FileRecordSnafu { kind: R::name() })?;
+            .with_context(|_| FileRecordSnafu { kind: R::NAME })?;
 
         // Move onto the next record.
         let rcrd_idx = file_record.fwrd_idx() * RCRD_LEN;
@@ -109,7 +107,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 end: rcrd_idx + RCRD_LEN,
                 size: bytes.len(),
             })
-            .with_context(|_| DecodingNameSnafu { kind: R::name() })?;
+            .with_context(|_| DecodingNameSnafu { kind: R::NAME })?;
         let name_record = NameRecord::read_from(rcrd_bytes).unwrap();
 
         Ok(Self {
@@ -122,13 +120,13 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     /// Parse the provided bytes as a SPICE Double Array File
-    pub fn parse<'a, B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DAFError<'a>> {
+    pub fn parse<'a, B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DAFError> {
         let crc32_checksum = crc32fast::hash(&bytes);
         let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
         // Check that the endian-ness is compatible with this platform.
         file_record
             .endianness()
-            .with_context(|_| FileRecordSnafu { kind: R::name() })?;
+            .with_context(|_| FileRecordSnafu { kind: R::NAME })?;
 
         // Move onto the next record.
         let rcrd_idx = file_record.fwrd_idx() * RCRD_LEN;
@@ -139,7 +137,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 end: rcrd_idx + RCRD_LEN,
                 size: bytes.len(),
             })
-            .with_context(|_| DecodingNameSnafu { kind: R::name() })?;
+            .with_context(|_| DecodingNameSnafu { kind: R::NAME })?;
         let name_record = NameRecord::read_from(rcrd_bytes).unwrap();
 
         Ok(Self {
@@ -166,7 +164,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     pub fn data_summaries(&self) -> Result<&[R], DAFError> {
         if self.file_record.is_empty() {
             return Err(DAFError::FileRecord {
-                kind: R::name(),
+                kind: R::NAME,
                 source: FileRecordError::EmptyRecord,
             });
         }
@@ -184,7 +182,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             Ok(it) => it,
             Err(source) => {
                 return Err(DAFError::DecodingSummary {
-                    kind: R::name(),
+                    kind: R::NAME,
                     source,
                 })
             }
@@ -229,8 +227,8 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         } else {
             error!("No summary {name} valid at epoch {epoch}");
             Err(DAFError::SummaryNameAtEpochError {
-                kind: R::name(),
-                name: name,
+                kind: R::NAME,
+                name: name.to_string(),
                 epoch,
             })
         }
@@ -244,10 +242,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             }
         }
 
-        Err(DAFError::SummaryIdError {
-            kind: R::name(),
-            id,
-        })
+        Err(DAFError::SummaryIdError { kind: R::NAME, id })
     }
 
     /// Returns the summary given the name of the summary record if that summary has data defined at the requested epoch
@@ -271,7 +266,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             }
         }
         Err(DAFError::InterpolationDataErrorFromId {
-            kind: R::name(),
+            kind: R::NAME,
             id,
             epoch,
         })
@@ -291,8 +286,8 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             }
         }
         Err(DAFError::NameError {
-            kind: R::name(),
-            name,
+            kind: R::NAME,
+            name: name.to_string(),
         })
     }
 
@@ -303,7 +298,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         trace!("{idx} -> {this_summary:?}");
         if self.file_record.is_empty() {
             return Err(DAFError::FileRecord {
-                kind: R::name(),
+                kind: R::NAME,
                 source: FileRecordError::EmptyRecord,
             });
         }
@@ -322,7 +317,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 Ok(it) => it,
                 Err(source) => {
                     return Err(DAFError::DecodingData {
-                        kind: R::name(),
+                        kind: R::NAME,
                         idx,
                         source,
                     })
@@ -333,10 +328,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         .into_slice();
 
         // Convert it
-        S::from_slice_f64(data).with_context(|_| DecodingDataSnafu {
-            kind: R::name(),
-            idx,
-        })
+        S::from_slice_f64(data).with_context(|_| DecodingDataSnafu { kind: R::NAME, idx })
         // S::from_slice_f64(data)
     }
 
@@ -357,7 +349,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                     Ok(it) => it,
                     Err(source) => {
                         return Err(DAFError::DecodingComments {
-                            kind: R::name(),
+                            kind: R::NAME,
                             source,
                         })
                     }

@@ -83,9 +83,9 @@ impl NameRecord {
     /// Searches the name record for the provided name.
     ///
     /// **Warning:** this performs an O(N) search!
-    pub fn index_from_name<'a, R: NAIFSummaryRecord>(
-        &'a self,
-        name: &'a str,
+    pub fn index_from_name<R: NAIFSummaryRecord>(
+        &self,
+        name: &str,
         summary_size: usize,
     ) -> Result<usize, DAFError> {
         for i in 0..self.num_entries(summary_size) {
@@ -94,8 +94,8 @@ impl NameRecord {
             }
         }
         Err(DAFError::NameError {
-            kind: R::name(),
-            name,
+            kind: R::NAME,
+            name: name.to_string(),
         })
     }
 }

@@ -50,7 +50,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
     type SummaryKind = SPKSummaryRecord;
     type StateKind = CartesianState;
     type RecordKind = PositionVelocityRecord;
-    const DATASET_NAME: &'a str = "Lagrange Type 8";
+    const DATASET_NAME: &'static str = "Lagrange Type 8";
 
     fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError> {
         ensure!(
@@ -114,7 +114,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
         &self,
         _epoch: Epoch,
         _: &Self::SummaryKind,
-    ) -> Result<CartesianState, InterpolationError<'a>> {
+    ) -> Result<CartesianState, InterpolationError> {
         todo!("https://github.com/anise-toolkit/anise.rs/issues/12")
     }
 
@@ -158,7 +158,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
     type SummaryKind = SPKSummaryRecord;
     type StateKind = (Vector3, Vector3);
     type RecordKind = PositionVelocityRecord;
-    const DATASET_NAME: &'a str = "Lagrange Type 9";
+    const DATASET_NAME: &'static str = "Lagrange Type 9";
 
     fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError> {
         ensure!(
@@ -207,7 +207,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
         &self,
         _epoch: Epoch,
         _: &Self::SummaryKind,
-    ) -> Result<Self::StateKind, InterpolationError<'a>> {
+    ) -> Result<Self::StateKind, InterpolationError> {
         todo!("https://github.com/anise-toolkit/anise.rs/issues/13")
     }
 

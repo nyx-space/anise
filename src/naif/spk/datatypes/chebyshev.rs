@@ -56,7 +56,7 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
     type SummaryKind = SPKSummaryRecord;
     type StateKind = (Vector3, Vector3);
     type RecordKind = Type2ChebyshevRecord<'a>;
-    const DATASET_NAME: &'a str = "Chebyshev Type 2";
+    const DATASET_NAME: &'static str = "Chebyshev Type 2";
 
     fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError> {
         ensure!(
@@ -119,7 +119,7 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         &self,
         epoch: Epoch,
         summary: &Self::SummaryKind,
-    ) -> Result<(Vector3, Vector3), InterpolationError<'a>> {
+    ) -> Result<(Vector3, Vector3), InterpolationError> {
         if epoch < summary.start_epoch() || epoch < summary.end_epoch() {
             // No need to go any further.
             return Err(InterpolationError::NoInterpolationData { epoch });

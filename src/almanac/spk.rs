@@ -86,7 +86,7 @@ impl<'a: 'b, 'b> Almanac<'a> {
         &self,
         id: i32,
         epoch: Epoch,
-    ) -> Result<(&SPKSummaryRecord, usize, usize), DAFError<'a>> {
+    ) -> Result<(&SPKSummaryRecord, usize, usize), DAFError> {
         // TODO: Consider a return type here
         for (spk_no, maybe_spk) in self
             .spk_data

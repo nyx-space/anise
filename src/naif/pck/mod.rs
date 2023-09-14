@@ -28,6 +28,8 @@ pub struct BPCSummaryRecord {
 impl NAIFRecord for BPCSummaryRecord {}
 
 impl NAIFSummaryRecord for BPCSummaryRecord {
+    const NAME: &'static str = "BPCSummaryRecord";
+
     fn start_index(&self) -> usize {
         self.start_idx as usize
     }
@@ -54,9 +56,5 @@ impl NAIFSummaryRecord for BPCSummaryRecord {
 
     fn end_epoch_et_s(&self) -> f64 {
         self.end_epoch_et_s
-    }
-
-    fn name<'a>() -> &'a str {
-        "BPCSummaryRecord"
     }
 }

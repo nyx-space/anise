@@ -51,7 +51,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
     type SummaryKind = SPKSummaryRecord;
     type StateKind = CartesianState;
     type RecordKind = PositionVelocityRecord;
-    const DATASET_NAME: &'a str = "Hermite Type 12";
+    const DATASET_NAME: &'static str = "Hermite Type 12";
 
     fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError> {
         ensure!(
@@ -114,7 +114,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
         &self,
         _epoch: Epoch,
         _: &Self::SummaryKind,
-    ) -> Result<CartesianState, InterpolationError<'a>> {
+    ) -> Result<CartesianState, InterpolationError> {
         todo!("https://github.com/anise-toolkit/anise.rs/issues/14")
     }
 
@@ -169,7 +169,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
     type SummaryKind = SPKSummaryRecord;
     type StateKind = (Vector3, Vector3);
     type RecordKind = PositionVelocityRecord;
-    const DATASET_NAME: &'a str = "Hermite Type 13";
+    const DATASET_NAME: &'static str = "Hermite Type 13";
 
     fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError> {
         ensure!(

@@ -53,7 +53,7 @@ pub trait NAIFSummaryRecord: NAIFRecord + Copy {
         self.start_index() == self.end_index()
     }
     /// Name of this NAIF type
-    fn name<'a>() -> &'a str;
+    const NAME: &'static str;
 }
 
 pub trait NAIFDataSet<'a>: Sized + Display {
@@ -67,7 +67,7 @@ pub trait NAIFDataSet<'a>: Sized + Display {
     type StateKind;
 
     /// The name of this data set, used in errors
-    const DATASET_NAME: &'a str;
+    const DATASET_NAME: &'static str;
 
     /// Builds this dataset given a slice of f64 data
     fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError>;
@@ -91,48 +91,48 @@ pub trait NAIFDataRecord<'a>: Display {
 /// Errors associated with handling NAIF DAF files
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
-pub enum DAFError<'a> {
+pub enum DAFError {
     #[snafu(display("No DAF/{kind} data have been loaded"))]
     NoDAFLoaded {
-        kind: &'a str,
+        kind: &'static str,
     },
     /// While searching for the root of the loaded ephemeris tree, we're recursed more times than allowed.
     MaxRecursionDepth,
     #[snafu(display("DAF/{kind}: summary {id} not present"))]
     SummaryIdError {
-        kind: &'a str,
+        kind: &'static str,
         id: NaifId,
     },
     #[snafu(display(
         "DAF/{kind}: summary {id} not present or does not cover requested epoch of {epoch}"
     ))]
     SummaryIdAtEpochError {
-        kind: &'a str,
+        kind: &'static str,
         id: NaifId,
         epoch: Epoch,
     },
     #[snafu(display("DAF/{kind}: summary `{name}` not present"))]
     SummaryNameError {
-        kind: &'a str,
-        name: &'a str,
+        kind: &'static str,
+        name: String,
     },
     #[snafu(display(
         "DAF/{kind}: summary `{name}` not present or does not cover requested epoch of {epoch}"
     ))]
     SummaryNameAtEpochError {
-        kind: &'a str,
-        name: &'a str,
+        kind: &'static str,
+        name: String,
         epoch: Epoch,
     },
     #[snafu(display("DAF/{kind}: no interpolation data for `{name}` at {epoch}"))]
     InterpolationDataErrorFromName {
-        kind: &'a str,
-        name: &'a str,
+        kind: &'static str,
+        name: String,
         epoch: Epoch,
     },
     #[snafu(display("DAF/{kind}: no interpolation data for {id} at {epoch}"))]
     InterpolationDataErrorFromId {
-        kind: &'a str,
+        kind: &'static str,
         id: NaifId,
         epoch: Epoch,
     },
@@ -140,44 +140,44 @@ pub enum DAFError<'a> {
         "DAF/{kind}: file record is empty (ensure file is valid, e.g. do you need to run git-lfs)"
     ))]
     FileRecord {
-        kind: &'a str,
-        source: FileRecordError<'a>,
+        kind: &'static str,
+        source: FileRecordError,
     },
     #[snafu(display(
         "DAF/{kind}: summary contains no data (start and end index both set to {idx})"
     ))]
     EmptySummary {
-        kind: &'a str,
+        kind: &'static str,
         idx: usize,
     },
     #[snafu(display("DAF/{kind}: no data record for `{name}`"))]
     NameError {
-        kind: &'a str,
-        name: &'a str,
+        kind: &'static str,
+        name: String,
     },
     #[snafu(display("DAF/{kind}: summary: {source}"))]
     DecodingSummary {
-        kind: &'a str,
-        source: DecodingError<'a>,
+        kind: &'static str,
+        source: DecodingError,
     },
     #[snafu(display("DAF/{kind}: comments: {source}"))]
     DecodingComments {
-        kind: &'a str,
-        source: DecodingError<'a>,
+        kind: &'static str,
+        source: DecodingError,
     },
     #[snafu(display("DAF/{kind}: name: {source}"))]
     DecodingName {
-        kind: &'a str,
-        source: DecodingError<'a>,
+        kind: &'static str,
+        source: DecodingError,
     },
     #[snafu(display("DAF/{kind}: data index {idx}: {source}"))]
     DecodingData {
-        kind: &'a str,
+        kind: &'static str,
         idx: usize,
-        source: DecodingError<'a>,
+        source: DecodingError,
     },
     DAFIntegrity {
-        source: IntegrityError<'a>,
+        source: IntegrityError,
     },
     IO {
         source: IOError,

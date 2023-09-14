@@ -24,8 +24,8 @@ pub(crate) const MAX_SAMPLES: usize = 32;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
-pub enum InterpolationError<'a> {
-    UnderlyingDecoding { source: DecodingError<'a> },
+pub enum InterpolationError {
+    UnderlyingDecoding { source: DecodingError },
     UnderlyingMath { source: MathError },
     NoInterpolationData { epoch: Epoch },
 }

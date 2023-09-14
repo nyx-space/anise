@@ -65,12 +65,12 @@ pub enum AniseError {
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
-pub enum DecodingError<'a> {
+pub enum DecodingError {
     #[snafu(display(
         "could not decode {dataset} data -- need at least {need} doubles but found {got}"
     ))]
     TooFewDoubles {
-        dataset: &'a str,
+        dataset: &'static str,
         got: usize,
         need: usize,
     },
@@ -81,7 +81,7 @@ pub enum DecodingError<'a> {
         size: usize,
     },
     Integrity {
-        source: IntegrityError<'a>,
+        source: IntegrityError,
     },
 }
 
@@ -97,7 +97,7 @@ pub enum InternalErrorKind {
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
-pub enum IntegrityError<'a> {
+pub enum IntegrityError {
     /// Data checksum differs from expected checksum
     ChecksumInvalid { expected: u32, computed: u32 },
     /// Data between two ephemerides expected to be identical mismatch (may happen on merger of files)
@@ -111,7 +111,10 @@ pub enum IntegrityError<'a> {
     #[snafu(display(
         "data for {variable} in {dataset} decoded as subnormal double (data malformed?)"
     ))]
-    SubNormal { dataset: &'a str, variable: &'a str },
+    SubNormal {
+        dataset: &'static str,
+        variable: &'static str,
+    },
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Snafu)]

@@ -133,6 +133,7 @@ impl<'a> SPKSummaryRecord {
 impl NAIFRecord for SPKSummaryRecord {}
 
 impl NAIFSummaryRecord for SPKSummaryRecord {
+    const NAME: &'static str = "SPKSummaryRecord";
     fn start_index(&self) -> usize {
         self.start_idx as usize
     }
@@ -159,10 +160,6 @@ impl NAIFSummaryRecord for SPKSummaryRecord {
 
     fn end_epoch_et_s(&self) -> f64 {
         self.end_epoch_et_s
-    }
-
-    fn name<'a>() -> &'a str {
-        "SPKSummaryRecord"
     }
 }
 

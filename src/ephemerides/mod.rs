@@ -39,7 +39,7 @@ pub enum EphemerisError<'a> {
     #[snafu(display("trying {action} caused {source}"))]
     UnderlyingDAF {
         action: &'a str,
-        source: DAFError<'a>,
+        source: DAFError,
     },
     #[snafu(display("trying {action} caused {source}"))]
     UnderlyingPhysics {
@@ -47,6 +47,6 @@ pub enum EphemerisError<'a> {
         source: PhysicsError,
     },
     UnderlyingInterpolation {
-        source: InterpolationError<'a>,
+        source: InterpolationError,
     },
 }
