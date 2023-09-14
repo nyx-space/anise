@@ -14,7 +14,6 @@ use super::{
 };
 pub use super::{FileRecord, NameRecord, SummaryRecord};
 use crate::errors::DecodingError;
-use crate::file2heap;
 use crate::naif::daf::DecodingDataSnafu;
 use crate::{errors::IntegrityError, prelude::AniseError, DBL_SIZE};
 use bytes::Bytes;
@@ -23,6 +22,7 @@ use core::ops::Deref;
 use hifitime::Epoch;
 use log::{error, trace, warn};
 use snafu::ResultExt;
+use std::fmt::Debug;
 use std::marker::PhantomData;
 
 use zerocopy::AsBytes;
@@ -71,7 +71,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     /// Parse the DAF only if the CRC32 checksum of the data is valid
-    pub fn check_then_parse<'a, B: Deref<Target = [u8]>>(
+    pub fn check_then_parse<B: Deref<Target = [u8]>>(
         bytes: B,
         expected: u32,
     ) -> Result<Self, DAFError> {
@@ -85,12 +85,29 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         Self::parse(bytes)
     }
 
-    pub fn load<'a, P: AsRef<Path>>(path: P) -> Result<Self, DAFError> {
-        // TODO: Reenable this
-        Self::parse(file2heap!(path).unwrap())
+    pub fn load<P: AsRef<Path> + Debug>(path: P) -> Result<Self, DAFError> {
+        match File::open(&path) {
+            Err(source) => Err(DAFError::IO {
+                action: format!("loading {path:?}"),
+                source,
+            }),
+            Ok(file) => unsafe {
+                use memmap2::MmapOptions;
+                match MmapOptions::new().map(&file) {
+                    Err(source) => Err(DAFError::IO {
+                        action: format!("mmap of {path:?}"),
+                        source,
+                    }),
+                    Ok(mmap) => {
+                        let bytes = Bytes::copy_from_slice(&mmap);
+                        Self::parse(bytes)
+                    }
+                }
+            },
+        }
     }
 
-    pub fn from_static<'a, B: Deref<Target = [u8]>>(bytes: &'static B) -> Result<Self, DAFError> {
+    pub fn from_static<B: Deref<Target = [u8]>>(bytes: &'static B) -> Result<Self, DAFError> {
         let crc32_checksum = crc32fast::hash(bytes);
         let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
         // Check that the endian-ness is compatible with this platform.
@@ -120,7 +137,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     /// Parse the provided bytes as a SPICE Double Array File
-    pub fn parse<'a, B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DAFError> {
+    pub fn parse<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DAFError> {
         let crc32_checksum = crc32fast::hash(&bytes);
         let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
         // Check that the endian-ness is compatible with this platform.

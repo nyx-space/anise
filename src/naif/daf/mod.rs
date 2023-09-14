@@ -93,16 +93,11 @@ pub trait NAIFDataRecord<'a>: Display {
 #[snafu(visibility(pub(crate)))]
 pub enum DAFError {
     #[snafu(display("No DAF/{kind} data have been loaded"))]
-    NoDAFLoaded {
-        kind: &'static str,
-    },
+    NoDAFLoaded { kind: &'static str },
     /// While searching for the root of the loaded ephemeris tree, we're recursed more times than allowed.
     MaxRecursionDepth,
     #[snafu(display("DAF/{kind}: summary {id} not present"))]
-    SummaryIdError {
-        kind: &'static str,
-        id: NaifId,
-    },
+    SummaryIdError { kind: &'static str, id: NaifId },
     #[snafu(display(
         "DAF/{kind}: summary {id} not present or does not cover requested epoch of {epoch}"
     ))]
@@ -112,10 +107,7 @@ pub enum DAFError {
         epoch: Epoch,
     },
     #[snafu(display("DAF/{kind}: summary `{name}` not present"))]
-    SummaryNameError {
-        kind: &'static str,
-        name: String,
-    },
+    SummaryNameError { kind: &'static str, name: String },
     #[snafu(display(
         "DAF/{kind}: summary `{name}` not present or does not cover requested epoch of {epoch}"
     ))]
@@ -147,15 +139,9 @@ pub enum DAFError {
     #[snafu(display(
         "DAF/{kind}: summary contains no data (start and end index both set to {idx})"
     ))]
-    EmptySummary {
-        kind: &'static str,
-        idx: usize,
-    },
+    EmptySummary { kind: &'static str, idx: usize },
     #[snafu(display("DAF/{kind}: no data record for `{name}`"))]
-    NameError {
-        kind: &'static str,
-        name: String,
-    },
+    NameError { kind: &'static str, name: String },
     #[snafu(display("DAF/{kind}: summary: {source}"))]
     DecodingSummary {
         kind: &'static str,
@@ -185,7 +171,6 @@ pub enum DAFError {
         #[snafu(backtrace)]
         source: IntegrityError,
     },
-    IO {
-        source: IOError,
-    },
+    #[snafu(display("while {action} encountered input/output error {source}"))]
+    IO { action: String, source: IOError },
 }

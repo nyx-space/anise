@@ -5,7 +5,6 @@ use anise::{
 };
 
 use iai::black_box;
-use spice;
 
 const NUM_QUERIES_PER_PAIR: f64 = 100.0;
 

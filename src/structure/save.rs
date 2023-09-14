@@ -19,8 +19,6 @@ use std::path::Path;
 pub trait Asn1Serde<'a>: Encode + Decode<'a> {
     /// Saves this context in the providef filename.
     /// If overwrite is set to false, and the filename already exists, this function will return an error.
-    ///
-    /// TODO: This function should only be available with the alloc feature gate.
     fn save_as(&self, filename: &'a str, overwrite: bool) -> Result<(), AniseError> {
         match self.encoded_len() {
             Err(e) => Err(AniseError::InternalError(e.into())),

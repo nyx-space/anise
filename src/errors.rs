@@ -122,11 +122,13 @@ pub enum IntegrityError {
 pub enum MathError {
     /// Prevented a division by zero, check data integrity
     DivisionByZero,
-    /// 
+    ///
     StateEpochsDiffer,
     StateFramesDiffer,
     InvalidInterpolationData,
-    PolynomialOrderError { order: usize },
+    PolynomialOrderError {
+        order: usize,
+    },
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]

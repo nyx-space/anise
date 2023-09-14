@@ -79,7 +79,6 @@ impl<'a: 'b, 'b> Almanac<'a> {
         id: i32,
         epoch: Epoch,
     ) -> Result<(&BPCSummaryRecord, usize, usize), AniseError> {
-        // TODO: Consider a return type here
         for (no, maybe_bpc) in self
             .bpc_data
             .iter()
@@ -124,7 +123,6 @@ impl<'a: 'b, 'b> Almanac<'a> {
 
     /// Returns the summary given the name of the summary record if that summary has data defined at the requested epoch
     pub fn bpc_summary(&self, id: i32) -> Result<(&BPCSummaryRecord, usize, usize), AniseError> {
-        // TODO: Consider a return type here
         for (no, maybe_bpc) in self
             .bpc_data
             .iter()

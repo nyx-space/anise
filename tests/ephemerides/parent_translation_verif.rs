@@ -15,7 +15,7 @@ use anise::file2heap;
 use anise::math::Vector3;
 use anise::prelude::*;
 
-const ZEROS: &'static [u8] = &[0; 2048];
+const ZEROS: &[u8] = &[0; 2048];
 /// Test that we can load data from a static pointer to it.
 #[test]
 fn invalid_load_from_static() {
@@ -57,15 +57,15 @@ fn de438s_parent_translation_verif() {
         .unwrap();
 
     let pos_expct_km = Vector3::new(
-        9.5205530594596043e+07,
-        -4.6160758818180226e+07,
-        -2.6779476581501361e+07,
+        9.520_553_059_459_604e7,
+        -4.616_075_881_818_022_6e7,
+        -2.677_947_658_150_136e7,
     );
 
     let vel_expct_km_s = Vector3::new(
-        1.6612048969243794e+01,
-        2.8272067093941200e+01,
-        1.1668575714409423e+01,
+        1.661_204_896_924_379_4e1,
+        2.827_206_709_394_12e1,
+        1.166_857_571_440_942_3e1,
     );
 
     // We expect exactly the same output as SPICE to machine precision.

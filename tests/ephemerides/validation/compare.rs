@@ -18,7 +18,7 @@ use log::{error, info};
 use parquet::{arrow::ArrowWriter, file::properties::WriterProperties};
 use std::{collections::HashMap, fs::File, sync::Arc};
 
-const COMPONENT: &[&'static str] = &["X", "Y", "Z", "VX", "VY", "VZ"];
+const COMPONENT: &[&str] = &["X", "Y", "Z", "VX", "VY", "VZ"];
 
 // Number of items to keep in memory before flushing to the parquet file
 const BATCH_SIZE: usize = 10_000;
@@ -108,7 +108,7 @@ impl CompareEphem {
         let props = WriterProperties::builder().build();
         let writer = ArrowWriter::try_new(file, Arc::new(schema), Some(props)).unwrap();
 
-        let me = Self {
+        Self {
             output_file_name,
             input_file_names,
             num_queries_per_pair,
@@ -121,9 +121,7 @@ impl CompareEphem {
             batch_spice_val: Vec::new(),
             batch_anise_val: Vec::new(),
             batch_abs_diff: Vec::new(),
-        };
-
-        me
+        }
     }
 
     /// Executes this ephemeris validation and return the number of querying errors
@@ -223,8 +221,7 @@ impl CompareEphem {
                 / (self.num_queries_per_pair as f64))
                 .seconds();
 
-            let mut time_it =
-                TimeSeries::exclusive(*start_epoch, *end_epoch - time_step, time_step);
+            let time_it = TimeSeries::exclusive(*start_epoch, *end_epoch - time_step, time_step);
 
             info!("{time_it} for {from_frame} -> {to_frame} ");
 
@@ -232,7 +229,7 @@ impl CompareEphem {
                 continue;
             }
 
-            while let Some(epoch) = time_it.next() {
+            for epoch in time_it {
                 let data = match ctx.translate_from_to_km_s_geometric(*from_frame, *to_frame, epoch)
                 {
                     Ok(state) => {
@@ -255,7 +252,7 @@ impl CompareEphem {
                         let (spice_state, _) =
                             spice::spkezr(&targ, epoch.to_et_seconds(), "J2000", "NONE", &obs);
 
-                        let data = EphemValData {
+                        EphemValData {
                             src_frame: format!("{from_frame:e}"),
                             dst_frame: format!("{to_frame:e}"),
                             epoch_et_s: epoch.to_et_seconds(),
@@ -271,9 +268,7 @@ impl CompareEphem {
                             anise_val_vx_km_s: state.velocity_km_s.x,
                             anise_val_vy_km_s: state.velocity_km_s.y,
                             anise_val_vz_km_s: state.velocity_km_s.z,
-                        };
-
-                        data
+                        }
                     }
 
                     Err(e) => {

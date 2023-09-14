@@ -374,7 +374,7 @@ mod ut_quaternion {
             let (uvec, angle_rad) = q1_to_q2.uvec_angle();
 
             if uvec.norm() > EPSILON {
-                if angle < -PI || angle > PI {
+                if !(-PI..=PI).contains(&angle) {
                     assert_eq!(uvec, -uvec_q1, "{angle}");
                 } else {
                     assert_eq!(uvec, uvec_q1, "{angle}");
@@ -394,7 +394,7 @@ mod ut_quaternion {
 
             let (uvec, _angle_rad) = q2_to_q1.uvec_angle();
             if uvec.norm() > EPSILON {
-                if angle >= -PI && angle <= PI {
+                if (-PI..=PI).contains(&angle) {
                     assert_eq!(uvec, -uvec_q1, "{angle}");
                 } else {
                     assert_eq!(uvec, uvec_q1, "{angle}");

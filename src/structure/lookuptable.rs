@@ -184,7 +184,6 @@ impl<'a, const ENTRIES: usize> Decode<'a> for LookUpTable<'a, ENTRIES> {
         }
 
         if !lut.check_integrity() {
-            // TODO: Change this to print the error but don't prevent loading the data.
             warn!(
                 "decoded lookup table is not integral: {} names but {} ids",
                 lut.by_name.len(),
@@ -218,7 +217,7 @@ mod lut_ut {
         let mut repr = LookUpTable::<32>::default();
         let num_bytes = 363;
         for i in 0..32 {
-            let id = -20 - (i as i32);
+            let id = -20 - i;
             repr.append_id(
                 id,
                 Entry {
@@ -250,9 +249,9 @@ mod lut_ut {
             names.push(format!("Name{}", i));
         }
 
-        for i in 0..LUT_SIZE {
+        for (i, name) in names.iter().enumerate().take(LUT_SIZE) {
             repr.append_name(
-                &names[i],
+                name,
                 Entry {
                     start_idx: (i * num_bytes) as u32,
                     end_idx: ((i + 1) * num_bytes) as u32,

@@ -15,7 +15,6 @@ use crate::naif::SPK;
 use crate::{errors::AniseError, naif::daf::DAFError};
 use log::error;
 
-// TODO: Switch these to build constants so that it's configurable when building the library.
 use super::{Almanac, MAX_LOADED_SPKS};
 
 impl<'a: 'b, 'b> Almanac<'a> {
@@ -87,7 +86,6 @@ impl<'a: 'b, 'b> Almanac<'a> {
         id: i32,
         epoch: Epoch,
     ) -> Result<(&SPKSummaryRecord, usize, usize), DAFError> {
-        // TODO: Consider a return type here
         for (spk_no, maybe_spk) in self
             .spk_data
             .iter()
@@ -136,7 +134,6 @@ impl<'a: 'b, 'b> Almanac<'a> {
 
     /// Returns the summary given the name of the summary record if that summary has data defined at the requested epoch
     pub fn spk_summary(&self, id: i32) -> Result<(&SPKSummaryRecord, usize, usize), AniseError> {
-        // TODO: Consider a return type here
         for (spk_no, maybe_spk) in self
             .spk_data
             .iter()

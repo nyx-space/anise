@@ -1,7 +1,6 @@
 use anise::{constants::frames::EARTH_J2000, file2heap, prelude::*};
 
 use iai::black_box;
-use spice;
 
 fn benchmark_spice_single_hop_type13_hermite() {
     let epoch = Epoch::from_gregorian_hms(2000, 1, 1, 14, 0, 0, TimeScale::UTC);

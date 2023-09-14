@@ -2,8 +2,6 @@ use anise::{constants::frames::EARTH_J2000, file2heap, prelude::*};
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-use spice;
-
 const NUM_QUERIES: f64 = 100.0;
 
 fn benchmark_spice_single_hop_type13_hermite(time_it: TimeSeries) {

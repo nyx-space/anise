@@ -27,12 +27,12 @@ pub struct CelestialFrame {
 }
 
 impl FrameTrait for CelestialFrame {
-    fn ephemeris_hash(&self) -> NaifId {
-        self.frame.ephemeris_hash()
+    fn ephemeris_id(&self) -> NaifId {
+        self.frame.ephemeris_id()
     }
 
-    fn orientation_hash(&self) -> NaifId {
-        self.frame.orientation_hash()
+    fn orientation_id(&self) -> NaifId {
+        self.frame.orientation_id()
     }
 }
 

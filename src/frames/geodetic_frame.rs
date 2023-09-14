@@ -35,12 +35,12 @@ pub struct GeodeticFrame {
 }
 
 impl FrameTrait for GeodeticFrame {
-    fn ephemeris_hash(&self) -> NaifId {
-        self.celestial_frame.ephemeris_hash()
+    fn ephemeris_id(&self) -> NaifId {
+        self.celestial_frame.ephemeris_id()
     }
 
-    fn orientation_hash(&self) -> NaifId {
-        self.celestial_frame.orientation_hash()
+    fn orientation_id(&self) -> NaifId {
+        self.celestial_frame.orientation_id()
     }
 }
 

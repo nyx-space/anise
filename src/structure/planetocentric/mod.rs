@@ -328,7 +328,7 @@ mod planetary_constants_ut {
         ]);
         assert_eq!(prime_m.as_ref().unwrap().coeffs_count, 13);
 
-        let gm_moon = 4.9028000661637961E+03;
+        let gm_moon = 4.902_800_066_163_796E3;
 
         let moon = PlanetaryData {
             object_id: 301,

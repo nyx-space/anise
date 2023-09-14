@@ -423,9 +423,11 @@ mod dataset_ut {
         lut.append(-20, "SRP spacecraft", srp_sc_entry).unwrap();
         lut.append(-50, "Full spacecraft", full_sc_entry).unwrap();
         // Build the dataset
-        let mut dataset = DataSet::default();
-        dataset.lut = lut;
-        dataset.bytes = &packed_buf;
+        let mut dataset = DataSet {
+            lut,
+            bytes: &packed_buf,
+            ..Default::default()
+        };
         dataset.set_crc32();
         // And encode it.
 

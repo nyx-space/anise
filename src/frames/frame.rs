@@ -18,25 +18,24 @@ use crate::NaifId;
 /// Defines a Frame kind, allows for compile time checking of operations.
 pub trait FrameTrait: Copy + Debug + PartialEq + Send + Sync {
     /// Returns the ephemeris hash of this frame.
-    /// TODO: Rename away from `hash` these are no longer hashes but NaifIDs
-    fn ephemeris_hash(&self) -> NaifId;
+    fn ephemeris_id(&self) -> NaifId;
     /// Returns the orientation hash of this frame.
-    fn orientation_hash(&self) -> NaifId;
+    fn orientation_id(&self) -> NaifId;
     /// Returns true if the ephemeris origin is equal to the provided hash
-    fn ephem_origin_hash_match(&self, other_hash: NaifId) -> bool {
-        self.ephemeris_hash() == other_hash
+    fn ephem_origin_id_match(&self, other_hash: NaifId) -> bool {
+        self.ephemeris_id() == other_hash
     }
     /// Returns true if the orientation origin is equal to the provided hash
-    fn orient_origin_hash_match(&self, other_hash: NaifId) -> bool {
-        self.orientation_hash() == other_hash
+    fn orient_origin_id_match(&self, other_hash: NaifId) -> bool {
+        self.orientation_id() == other_hash
     }
     /// Returns true if the ephemeris origin is equal to the provided frame
     fn ephem_origin_match(&self, other: Self) -> bool {
-        self.ephem_origin_hash_match(other.ephemeris_hash())
+        self.ephem_origin_id_match(other.ephemeris_id())
     }
     /// Returns true if the orientation origin is equal to the provided frame
     fn orient_origin_match(&self, other: Self) -> bool {
-        self.orient_origin_hash_match(other.orientation_hash())
+        self.orient_origin_id_match(other.orientation_id())
     }
 }
 
@@ -48,11 +47,11 @@ pub struct Frame {
 }
 
 impl FrameTrait for Frame {
-    fn ephemeris_hash(&self) -> NaifId {
+    fn ephemeris_id(&self) -> NaifId {
         self.ephemeris_id
     }
 
-    fn orientation_hash(&self) -> NaifId {
+    fn orientation_id(&self) -> NaifId {
         self.orientation_id
     }
 }

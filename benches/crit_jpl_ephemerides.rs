@@ -5,8 +5,6 @@ use anise::{
 };
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-use spice;
-
 const NUM_QUERIES_PER_PAIR: f64 = 100.0;
 
 fn benchmark_spice_single_hop_type2_cheby(time_it: TimeSeries) {

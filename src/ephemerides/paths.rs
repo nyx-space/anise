@@ -143,7 +143,6 @@ impl<'a> Almanac<'a> {
         to_frame: Frame,
         epoch: Epoch,
     ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH], NaifId), EphemerisError<'a>> {
-        // TODO: Consider returning a structure that has explicit fields -- see how I use it first
         if from_frame == to_frame {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
             return Ok((0, [None; MAX_TREE_DEPTH], from_frame.ephemeris_id));

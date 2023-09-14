@@ -48,7 +48,7 @@ impl<'a> Almanac<'a> {
 
         // The fwrd variables are the states from the `from frame` to the common node
         let (mut pos_fwrd, mut vel_fwrd, mut acc_fwrd, mut frame_fwrd) =
-            if from_frame.ephem_origin_hash_match(common_node) {
+            if from_frame.ephem_origin_id_match(common_node) {
                 (
                     Vector3::zeros(),
                     Vector3::zeros(),
@@ -61,7 +61,7 @@ impl<'a> Almanac<'a> {
 
         // The bwrd variables are the states from the `to frame` back to the common node
         let (mut pos_bwrd, mut vel_bwrd, mut acc_bwrd, mut frame_bwrd) =
-            if to_frame.ephem_origin_hash_match(common_node) {
+            if to_frame.ephem_origin_id_match(common_node) {
                 (
                     Vector3::zeros(),
                     Vector3::zeros(),
@@ -73,7 +73,7 @@ impl<'a> Almanac<'a> {
             };
 
         for cur_node_hash in path.iter().take(node_count) {
-            if !frame_fwrd.ephem_origin_hash_match(common_node) {
+            if !frame_fwrd.ephem_origin_id_match(common_node) {
                 let (cur_pos_fwrd, cur_vel_fwrd, cur_acc_fwrd, cur_frame_fwrd) =
                     self.translate_to_parent(frame_fwrd, epoch, ab_corr, length_unit, time_unit)?;
 
@@ -83,7 +83,7 @@ impl<'a> Almanac<'a> {
                 frame_fwrd = cur_frame_fwrd;
             }
 
-            if !frame_bwrd.ephem_origin_hash_match(common_node) {
+            if !frame_bwrd.ephem_origin_id_match(common_node) {
                 let (cur_pos_bwrd, cur_vel_bwrd, cur_acc_bwrd, cur_frame_bwrd) =
                     self.translate_to_parent(frame_bwrd, epoch, ab_corr, length_unit, time_unit)?;
 

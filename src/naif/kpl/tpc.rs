@@ -125,12 +125,12 @@ fn test_parse_gm() {
     // Basic values testing
     assert_eq!(
         assignments[&1].data[&Parameter::GravitationalParameter],
-        KPLValue::Float(2.2031780000000021E+04)
+        KPLValue::Float(2.203_178_000_000_002E4)
     );
 
     assert_eq!(
         assignments[&399].data[&Parameter::GravitationalParameter],
-        KPLValue::Float(3.9860043543609598E+05)
+        KPLValue::Float(3.986_004_354_360_96E5)
     );
 }
 
