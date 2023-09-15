@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -13,6 +13,7 @@ use snafu::prelude::*;
 
 use crate::prelude::Frame;
 use crate::structure::semver::Semver;
+use crate::NaifId;
 use core::convert::From;
 use core::fmt;
 use std::io::ErrorKind as IOErrorKind;
@@ -119,6 +120,7 @@ pub enum IntegrityError {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Snafu)]
+#[snafu(visibility(pub(crate)))]
 pub enum MathError {
     /// Prevented a division by zero, check data integrity
     DivisionByZero,
@@ -129,6 +131,33 @@ pub enum MathError {
     PolynomialOrderError {
         order: usize,
     },
+}
+
+#[derive(Debug, Snafu)]
+#[snafu(visibility(pub(crate)))]
+pub enum PhysicsError {
+    /// Somehow you've entered code that should not be reachable, please file a bug.
+    Unreachable,
+    #[snafu(display("epochs {epoch1} and {epoch2} differ while {action}"))]
+    EpochMismatch {
+        action: &'static str,
+        epoch1: Epoch,
+        epoch2: Epoch,
+    },
+    #[snafu(display("frames {frame1} and {frame2} differ while {action}"))]
+    FrameMismatch {
+        action: &'static str,
+        frame1: Frame,
+        frame2: Frame,
+    },
+    #[snafu(display("origins {from1} and {from2} differ while {action}"))]
+    OriginMismatch {
+        action: &'static str,
+        from1: NaifId,
+        from2: NaifId,
+    },
+    #[snafu(display("{action} requires the time derivative of the DCM but it is not set"))]
+    DCMMissingDerivative { action: &'static str },
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]

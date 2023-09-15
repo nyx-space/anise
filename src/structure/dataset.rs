@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -433,8 +433,6 @@ mod dataset_ut {
 
         let mut buf = vec![];
         dataset.encode_to_vec(&mut buf).unwrap();
-
-        dbg!(buf.len());
 
         let repr_dec = DataSet::<SpacecraftData, 4>::from_der(&buf).unwrap();
 

@@ -16,42 +16,38 @@ use crate::{
     prelude::Frame,
 };
 
-pub mod paths;
-pub mod translate_to_parent;
-pub mod translations;
-
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
-pub enum EphemerisError {
+pub enum OrientationError {
     /// Somehow you've entered code that should not be reachable, please file a bug.
     Unreachable,
     #[snafu(display(
-        "could not load SPK because all {max_slots} are used (modify `MAX_LOADED_SPKS` at build time)"
-    ))]
+         "could not load BPC because all {max_slots} are used (modify `MAX_LOADED_BPCS` at build time)"
+     ))]
     StructureIsFull { max_slots: usize },
     #[snafu(display(
-        "Could not translate from {from} to {to}: no common origin found at epoch {epoch}"
+        "Could not rotate from {from} to {to}: no common origin found at epoch {epoch}"
     ))]
-    TranslationOrigin {
+    RotationOrigin {
         from: Frame,
         to: Frame,
         epoch: Epoch,
     },
-    #[snafu(display("no ephemeris data loaded (must call load_spk)"))]
-    NoEphemerisLoaded,
+    #[snafu(display("no oreitnation data loaded (must call load_bpc or DataSet::from_bytes)"))]
+    NoOrientationsLoaded,
     #[snafu(display("when {action} caused {source}"))]
-    SPK {
+    BPC {
         action: &'static str,
         #[snafu(backtrace)]
         source: DAFError,
     },
-    #[snafu(display("during an ephemeris operation: {source}"))]
-    UnderlyingPhysics {
+    #[snafu(display("during an orientation operation: {source}"))]
+    OrientationPhysics {
         #[snafu(backtrace)]
         source: PhysicsError,
     },
-    #[snafu(display("during an ephemeris interpolation {source}"))]
-    EphemInterpolation {
+    #[snafu(display("during an orientation interpolation {source}"))]
+    OrientationInterpolation {
         #[snafu(backtrace)]
         source: InterpolationError,
     },

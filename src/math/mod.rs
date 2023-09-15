@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -22,29 +22,6 @@ pub mod polyfit;
 pub mod rotation;
 pub mod units;
 pub mod utils;
-
-use hifitime::Epoch;
-use snafu::prelude::*;
-
-use crate::prelude::Frame;
-#[derive(Debug, Snafu)]
-#[snafu(visibility(pub(crate)))]
-pub enum PhysicsError {
-    /// Somehow you've entered code that should not be reachable, please file a bug.
-    Unreachable,
-    #[snafu(display("epochs {epoch1} and {epoch2} differ while {action}"))]
-    EpochMismatch {
-        action: &'static str,
-        epoch1: Epoch,
-        epoch2: Epoch,
-    },
-    #[snafu(display("frames {frame1} and {frame2} differ while {}"))]
-    FrameMismatch {
-        action: &'static str,
-        frame1: Frame,
-        frame2: Frame,
-    },
-}
 
 /// Returns the projection of a onto b
 pub fn projv(a: &Vector3, b: &Vector3) -> Vector3 {
