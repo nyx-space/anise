@@ -34,24 +34,20 @@ impl<'a> Metadata<'a> {
     /// Only decode the anise version and dataset type
     pub fn decode_header(bytes: &[u8]) -> Result<Self, DecodingError> {
         let anise_version =
-            Semver::from_der(
-                bytes
-                    .get(..5)
-                    .ok_or_else(|| DecodingError::InaccessibleBytes {
-                        start: 0,
-                        end: 5,
-                        size: bytes.len(),
-                    })?,
-            )
-            .or_else(|err| Err(DecodingError::DecodingDer { err }))?;
-        let dataset_type = DataSetType::from_der(bytes.get(5..8).ok_or_else(|| {
+            Semver::from_der(bytes.get(..5).ok_or(DecodingError::InaccessibleBytes {
+                start: 0,
+                end: 5,
+                size: bytes.len(),
+            })?)
+            .map_err(|err| DecodingError::DecodingDer { err })?;
+        let dataset_type = DataSetType::from_der(bytes.get(5..8).ok_or({
             DecodingError::InaccessibleBytes {
                 start: 5,
                 end: 8,
                 size: bytes.len(),
             }
         })?)
-        .or_else(|err| Err(DecodingError::DecodingDer { err }))?;
+        .map_err(|err| DecodingError::DecodingDer { err })?;
         let me = Self {
             anise_version,
             dataset_type,

@@ -180,7 +180,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             .with_context(|_| DecodingSummarySnafu { kind: R::NAME })?;
 
         SummaryRecord::read_from(&rcrd_bytes[..SummaryRecord::SIZE])
-            .ok_or_else(|| DecodingError::Casting)
+            .ok_or(DecodingError::Casting)
             .with_context(|_| DecodingSummarySnafu { kind: R::NAME })
     }
 

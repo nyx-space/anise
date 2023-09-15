@@ -198,7 +198,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
                 // If we can't load the file, let's try to load the version only to be helpful
                 let semver_bytes = bytes
                     .get(0..5)
-                    .ok_or_else(|| DecodingError::InaccessibleBytes {
+                    .ok_or(DecodingError::InaccessibleBytes {
                         start: 0,
                         end: 5,
                         size: bytes.len(),

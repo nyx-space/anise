@@ -78,12 +78,17 @@ fn test_spk_load_bytes() {
         7040, 3520, 3520, 1760, 1760, 1760, 1760, 1760, 1760, 3520, 14080, 14080, 1, 1, 1,
     ];
 
-    for n in 0..de421.daf_summary().unwrap().num_summaries() {
+    // for n in 0..de421.daf_summary().unwrap().num_summaries() {
+    for (n, segment) in seg_len
+        .iter()
+        .enumerate()
+        .take(de421.daf_summary().unwrap().num_summaries())
+    {
         let (name, summary) = de421.nth_summary(n).unwrap();
         println!("{} -> {}", name, summary);
         // We know that the DE421 data is all in Type 2
         let data_set = de421.nth_data::<Type2ChebyshevSet>(n).unwrap();
-        assert_eq!(data_set.num_records, seg_len[n]);
+        assert_eq!(data_set.num_records, *segment);
         if summary.target_id == 301 {
             assert_eq!(
                 summary.start_idx, 944041,
