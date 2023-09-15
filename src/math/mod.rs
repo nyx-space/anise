@@ -32,13 +32,13 @@ use crate::prelude::Frame;
 pub enum PhysicsError {
     /// Somehow you've entered code that should not be reachable, please file a bug.
     Unreachable,
-    #[snafu(display("epochs {epoch1} and {epoch2} do not match while {action}"))]
+    #[snafu(display("epochs {epoch1} and {epoch2} differ while {action}"))]
     EpochMismatch {
         action: &'static str,
         epoch1: Epoch,
         epoch2: Epoch,
     },
-    #[snafu(display("frames {frame1} and {frame2} do not match while {}"))]
+    #[snafu(display("frames {frame1} and {frame2} differ while {}"))]
     FrameMismatch {
         action: &'static str,
         frame1: Frame,

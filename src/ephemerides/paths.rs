@@ -11,7 +11,7 @@
 use hifitime::Epoch;
 use snafu::{ensure, ResultExt};
 
-use super::{EphemerisError, NoEphemerisLoadedSnafu, UnderlyingDAFSnafu};
+use super::{EphemerisError, NoEphemerisLoadedSnafu, SPKSnafu};
 use crate::almanac::Almanac;
 use crate::frames::Frame;
 use crate::naif::daf::{DAFError, NAIFSummaryRecord};
@@ -27,7 +27,7 @@ impl<'a> Almanac<'a> {
     ///
     /// 1. For each loaded SPK, iterated in reverse order (to mimic SPICE behavior)
     /// 2. For each summary record in each SPK, follow the ephemeris branch all the way up until the end of this SPK or until the SSB.
-    pub fn try_find_context_center(&self) -> Result<NaifId, EphemerisError<'a>> {
+    pub fn try_find_context_center(&self) -> Result<NaifId, EphemerisError> {
         ensure!(self.num_loaded_spk() > 0, NoEphemerisLoadedSnafu);
 
         // The common center is the absolute minimum of all centers due to the NAIF numbering.
@@ -36,7 +36,7 @@ impl<'a> Almanac<'a> {
         for maybe_spk in self.spk_data.iter().take(self.num_loaded_spk()).rev() {
             let spk = maybe_spk.unwrap();
 
-            for summary in spk.data_summaries().with_context(|_| UnderlyingDAFSnafu {
+            for summary in spk.data_summaries().with_context(|_| SPKSnafu {
                 action: "finding ephemeris root",
             })? {
                 // This summary exists, so we need to follow the branch of centers up the tree.
@@ -57,7 +57,7 @@ impl<'a> Almanac<'a> {
         &self,
         source: &Frame,
         epoch: Epoch,
-    ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH]), EphemerisError<'a>> {
+    ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH]), EphemerisError> {
         let common_center = self.try_find_context_center()?;
         // Build a tree, set a fixed depth to avoid allocations
         let mut of_path = [None; MAX_TREE_DEPTH];
@@ -69,12 +69,7 @@ impl<'a> Almanac<'a> {
         }
 
         // Grab the summary data, which we use to find the paths
-        let summary = self
-            .spk_summary_at_epoch(source.ephemeris_id, epoch)
-            .with_context(|_| UnderlyingDAFSnafu {
-                action: "grabbing summary data",
-            })?
-            .0;
+        let summary = self.spk_summary_at_epoch(source.ephemeris_id, epoch)?.0;
 
         let mut center_id = summary.center_id;
 
@@ -87,12 +82,7 @@ impl<'a> Almanac<'a> {
         }
 
         for _ in 0..MAX_TREE_DEPTH {
-            let summary = self
-                .spk_summary_at_epoch(center_id, epoch)
-                .with_context(|_| UnderlyingDAFSnafu {
-                    action: "grabbing parent summary",
-                })?
-                .0;
+            let summary = self.spk_summary_at_epoch(center_id, epoch)?.0;
             center_id = summary.center_id;
             of_path[of_path_len] = Some(center_id);
             of_path_len += 1;
@@ -102,7 +92,7 @@ impl<'a> Almanac<'a> {
             }
         }
 
-        Err(EphemerisError::UnderlyingDAF {
+        Err(EphemerisError::SPK {
             action: "computing path to common node",
             source: DAFError::MaxRecursionDepth,
         })
@@ -142,7 +132,7 @@ impl<'a> Almanac<'a> {
         from_frame: Frame,
         to_frame: Frame,
         epoch: Epoch,
-    ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH], NaifId), EphemerisError<'a>> {
+    ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH], NaifId), EphemerisError> {
         if from_frame == to_frame {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
             return Ok((0, [None; MAX_TREE_DEPTH], from_frame.ephemeris_id));

@@ -26,12 +26,12 @@ pub(crate) const MAX_SAMPLES: usize = 32;
 #[snafu(visibility(pub(crate)))]
 pub enum InterpolationError {
     #[snafu(display("decoding error during interpolation: {source}"))]
-    UnderlyingDecoding {
+    InterpDecoding {
         #[snafu(backtrace)]
         source: DecodingError,
     },
     #[snafu(display("math error during interpolation: {source}"))]
-    UnderlyingMath {
+    InterpMath {
         #[snafu(backtrace)]
         source: MathError,
     },

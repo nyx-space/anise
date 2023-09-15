@@ -11,10 +11,10 @@
 use log::trace;
 use snafu::ResultExt;
 
-use super::{EphemerisError, UnderlyingDAFSnafu};
+use super::{EphemerisError, SPKSnafu};
 use crate::almanac::Almanac;
 use crate::astro::Aberration;
-use crate::ephemerides::UnderlyingInterpolationSnafu;
+use crate::ephemerides::EphemInterpolationSnafu;
 use crate::hifitime::Epoch;
 use crate::math::units::*;
 use crate::math::Vector3;
@@ -41,16 +41,13 @@ impl<'a> Almanac<'a> {
         _ab_corr: Aberration,
         distance_unit: LengthUnit,
         time_unit: TimeUnit,
-    ) -> Result<(Vector3, Vector3, Vector3, Frame), EphemerisError<'a>> {
+    ) -> Result<(Vector3, Vector3, Vector3, Frame), EphemerisError> {
         // TODO: Create a CartesianState struct which can be "upgraded" to an Orbit if the frame is of the correct type?
         // I guess this is what the `Orbit` struct in Nyx does.
 
         // First, let's find the SPK summary for this frame.
-        let (summary, spk_no, idx_in_spk) = self
-            .spk_summary_at_epoch(source.ephemeris_id, epoch)
-            .with_context(|_| UnderlyingDAFSnafu {
-            action: "fetching SPK summary for source frame",
-        })?;
+        let (summary, spk_no, idx_in_spk) =
+            self.spk_summary_at_epoch(source.ephemeris_id, epoch)?;
 
         let new_frame = source.with_ephem(summary.center_id);
 
@@ -69,31 +66,31 @@ impl<'a> Almanac<'a> {
                 // Type 2 Chebyshev
                 let data = spk_data
                     .nth_data::<Type2ChebyshevSet>(idx_in_spk)
-                    .with_context(|_| UnderlyingDAFSnafu {
+                    .with_context(|_| SPKSnafu {
                         action: "fetching data for interpolation",
                     })?;
                 data.evaluate(epoch, summary)
-                    .with_context(|_| UnderlyingInterpolationSnafu)?
+                    .with_context(|_| EphemInterpolationSnafu)?
             }
             9 => {
                 // Type 9: Lagrange Interpolation --- Unequal Time Steps
                 let data = spk_data
                     .nth_data::<LagrangeSetType9>(idx_in_spk)
-                    .with_context(|_| UnderlyingDAFSnafu {
+                    .with_context(|_| SPKSnafu {
                         action: "fetching data for interpolation",
                     })?;
                 data.evaluate(epoch, summary)
-                    .with_context(|_| UnderlyingInterpolationSnafu)?
+                    .with_context(|_| EphemInterpolationSnafu)?
             }
             13 => {
                 // Type 13: Hermite Interpolation --- Unequal Time Steps
                 let data = spk_data
                     .nth_data::<HermiteSetType13>(idx_in_spk)
-                    .with_context(|_| UnderlyingDAFSnafu {
+                    .with_context(|_| SPKSnafu {
                         action: "fetching data for interpolation",
                     })?;
                 data.evaluate(epoch, summary)
-                    .with_context(|_| UnderlyingInterpolationSnafu)?
+                    .with_context(|_| EphemInterpolationSnafu)?
             }
             _ => todo!("{} is not yet supported", summary.data_type_i),
         };

@@ -37,7 +37,7 @@ impl<'a> Almanac<'a> {
         ab_corr: Aberration,
         length_unit: LengthUnit,
         time_unit: TimeUnit,
-    ) -> Result<CartesianState, EphemerisError<'a>> {
+    ) -> Result<CartesianState, EphemerisError> {
         if from_frame == to_frame {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
             return Ok(CartesianState::zero(from_frame));
@@ -115,7 +115,7 @@ impl<'a> Almanac<'a> {
         to_frame: Frame,
         epoch: Epoch,
         ab_corr: Aberration,
-    ) -> Result<CartesianState, EphemerisError<'a>> {
+    ) -> Result<CartesianState, EphemerisError> {
         self.translate_from_to(
             from_frame,
             to_frame,
@@ -133,7 +133,7 @@ impl<'a> Almanac<'a> {
         to_frame: Frame,
         epoch: Epoch,
         ab_corr: Aberration,
-    ) -> Result<CartesianState, EphemerisError<'a>> {
+    ) -> Result<CartesianState, EphemerisError> {
         self.translate_from_to(
             from_frame,
             to_frame,
@@ -150,7 +150,7 @@ impl<'a> Almanac<'a> {
         from_frame: Frame,
         to_frame: Frame,
         epoch: Epoch,
-    ) -> Result<CartesianState, EphemerisError<'a>> {
+    ) -> Result<CartesianState, EphemerisError> {
         self.translate_from_to(
             from_frame,
             to_frame,
@@ -167,7 +167,7 @@ impl<'a> Almanac<'a> {
         from_frame: Frame,
         to_frame: Frame,
         epoch: Epoch,
-    ) -> Result<CartesianState, EphemerisError<'a>> {
+    ) -> Result<CartesianState, EphemerisError> {
         self.translate_from_to(
             from_frame,
             to_frame,

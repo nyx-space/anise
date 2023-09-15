@@ -26,7 +26,7 @@ pub(crate) fn chebyshev_eval(
     degree: usize,
 ) -> Result<(f64, f64), InterpolationError> {
     if spline_radius_s.abs() < EPSILON {
-        return Err(InterpolationError::UnderlyingMath {
+        return Err(InterpolationError::InterpMath {
             source: MathError::DivisionByZero,
         });
     }

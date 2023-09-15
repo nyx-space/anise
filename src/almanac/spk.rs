@@ -10,22 +10,23 @@
 
 use hifitime::Epoch;
 
+use crate::ephemerides::EphemerisError;
+use crate::naif::daf::DAFError;
 use crate::naif::spk::summary::SPKSummaryRecord;
 use crate::naif::SPK;
-use crate::{errors::AniseError, naif::daf::DAFError};
 use log::error;
 
 use super::{Almanac, MAX_LOADED_SPKS};
 
 impl<'a: 'b, 'b> Almanac<'a> {
-    pub fn from_spk(spk: &'a SPK) -> Result<Almanac<'a>, AniseError> {
+    pub fn from_spk(spk: &'a SPK) -> Result<Almanac<'a>, EphemerisError> {
         let me = Self::default();
         me.load_spk(spk)
     }
 
     /// Loads a new SPK file into a new context.
     /// This new context is needed to satisfy the unloading of files. In fact, to unload a file, simply let the newly loaded context drop out of scope and Rust will clean it up.
-    pub fn load_spk(&self, spk: &'b SPK) -> Result<Almanac<'b>, AniseError> {
+    pub fn load_spk(&self, spk: &'b SPK) -> Result<Almanac<'b>, EphemerisError> {
         // This is just a bunch of pointers so it doesn't use much memory.
         let mut me = self.clone();
         // Parse as SPK and place into the SPK list if there is room
@@ -37,7 +38,9 @@ impl<'a: 'b, 'b> Almanac<'a> {
             }
         }
         if data_idx == MAX_LOADED_SPKS {
-            return Err(AniseError::StructureIsFull);
+            return Err(EphemerisError::StructureIsFull {
+                max_slots: MAX_LOADED_SPKS,
+            });
         }
         me.spk_data[data_idx] = Some(spk);
         Ok(me)
@@ -61,7 +64,7 @@ impl<'a: 'b, 'b> Almanac<'a> {
         &self,
         name: &str,
         epoch: Epoch,
-    ) -> Result<(&SPKSummaryRecord, usize, usize), AniseError> {
+    ) -> Result<(&SPKSummaryRecord, usize, usize), EphemerisError> {
         for (spk_no, maybe_spk) in self
             .spk_data
             .iter()
@@ -76,8 +79,15 @@ impl<'a: 'b, 'b> Almanac<'a> {
         }
 
         // If we're reached this point, there is no relevant summary at this epoch.
-        error!("Context: No summary {name} valid at epoch {epoch}");
-        Err(AniseError::MissingInterpolationData(epoch))
+        error!("Almanach: No summary {name} valid at epoch {epoch}");
+        Err(EphemerisError::SPK {
+            action: "searching for SPK summary",
+            source: DAFError::SummaryNameAtEpochError {
+                kind: "SPK",
+                name: name.to_string(),
+                epoch,
+            },
+        })
     }
 
     /// Returns the summary given the name of the summary record if that summary has data defined at the requested epoch
@@ -85,7 +95,7 @@ impl<'a: 'b, 'b> Almanac<'a> {
         &self,
         id: i32,
         epoch: Epoch,
-    ) -> Result<(&SPKSummaryRecord, usize, usize), DAFError> {
+    ) -> Result<(&SPKSummaryRecord, usize, usize), EphemerisError> {
         for (spk_no, maybe_spk) in self
             .spk_data
             .iter()
@@ -100,12 +110,15 @@ impl<'a: 'b, 'b> Almanac<'a> {
             }
         }
 
-        error!("Context: No summary {id} valid at epoch {epoch}");
+        error!("Almanach: No summary {id} valid at epoch {epoch}");
         // If we're reached this point, there is no relevant summary at this epoch.
-        Err(DAFError::SummaryIdAtEpochError {
-            kind: "SPK",
-            id,
-            epoch,
+        Err(EphemerisError::SPK {
+            action: "searching for SPK summary",
+            source: DAFError::SummaryIdAtEpochError {
+                kind: "SPK",
+                id,
+                epoch,
+            },
         })
     }
 
@@ -113,7 +126,7 @@ impl<'a: 'b, 'b> Almanac<'a> {
     pub fn spk_summary_from_name(
         &self,
         name: &str,
-    ) -> Result<(&SPKSummaryRecord, usize, usize), AniseError> {
+    ) -> Result<(&SPKSummaryRecord, usize, usize), EphemerisError> {
         for (spk_no, maybe_spk) in self
             .spk_data
             .iter()
@@ -128,12 +141,22 @@ impl<'a: 'b, 'b> Almanac<'a> {
         }
 
         // If we're reached this point, there is no relevant summary at this epoch.
-        error!("Context: No summary {name} valid");
-        Err(AniseError::NoInterpolationData)
+        error!("Almanach: No summary {name} valid");
+
+        Err(EphemerisError::SPK {
+            action: "searching for SPK summary",
+            source: DAFError::SummaryNameError {
+                kind: "SPK",
+                name: name.to_string(),
+            },
+        })
     }
 
     /// Returns the summary given the name of the summary record if that summary has data defined at the requested epoch
-    pub fn spk_summary(&self, id: i32) -> Result<(&SPKSummaryRecord, usize, usize), AniseError> {
+    pub fn spk_summary(
+        &self,
+        id: i32,
+    ) -> Result<(&SPKSummaryRecord, usize, usize), EphemerisError> {
         for (spk_no, maybe_spk) in self
             .spk_data
             .iter()
@@ -148,8 +171,11 @@ impl<'a: 'b, 'b> Almanac<'a> {
             }
         }
 
-        error!("Context: No summary {id} valid");
+        error!("Almanach: No summary {id} valid");
         // If we're reached this point, there is no relevant summary
-        Err(AniseError::NoInterpolationData)
+        Err(EphemerisError::SPK {
+            action: "searching for SPK summary",
+            source: DAFError::SummaryIdError { kind: "SPK", id },
+        })
     }
 }

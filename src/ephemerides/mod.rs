@@ -23,9 +23,13 @@ pub mod translations;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
-pub enum EphemerisError<'a> {
+pub enum EphemerisError {
     /// Somehow you've entered code that should not be reachable, please file a bug.
     Unreachable,
+    #[snafu(display(
+        "could not load SPK because all {max_slots} are used (modify `MAX_LOADED_SPKS` at build time)"
+    ))]
+    StructureIsFull { max_slots: usize },
     #[snafu(display(
         "Could not translate from {from} to {to}: no common origin found at epoch {epoch}"
     ))]
@@ -37,8 +41,8 @@ pub enum EphemerisError<'a> {
     #[snafu(display("no ephemeris data loaded (must call load_spk)"))]
     NoEphemerisLoaded,
     #[snafu(display("when {action} caused {source}"))]
-    UnderlyingDAF {
-        action: &'a str,
+    SPK {
+        action: &'static str,
         #[snafu(backtrace)]
         source: DAFError,
     },
@@ -47,8 +51,8 @@ pub enum EphemerisError<'a> {
         #[snafu(backtrace)]
         source: PhysicsError,
     },
-    #[snafu(display("during an ephemeris operation: {source}"))]
-    UnderlyingInterpolation {
+    #[snafu(display("during an ephemeris interpolation {source}"))]
+    EphemInterpolation {
         #[snafu(backtrace)]
         source: InterpolationError,
     },

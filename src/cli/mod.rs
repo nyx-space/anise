@@ -21,16 +21,16 @@ pub enum CliErrors {
         source: io::Error,
     },
     /// ANISE error encountered"
-    SomeDAF {
+    CliDAF {
         source: DAFError,
     },
-    SomeFileRecord {
+    CliFileRecord {
         source: FileRecordError,
     },
     ArgumentError {
         arg: String,
     },
     AniseError {
-        err: AniseError,
+        source: AniseError,
     },
 }

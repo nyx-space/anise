@@ -14,7 +14,7 @@ use snafu::{ensure, ResultExt};
 
 use crate::errors::{DecodingError, IntegrityError, TooFewDoublesSnafu};
 use crate::math::interpolation::{
-    hermite_eval, InterpolationError, UnderlyingDecodingSnafu, UnderlyingMathSnafu, MAX_SAMPLES,
+    hermite_eval, InterpDecodingSnafu, InterpMathSnafu, InterpolationError, MAX_SAMPLES,
 };
 use crate::naif::spk::summary::SPKSummaryRecord;
 use crate::{
@@ -242,7 +242,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 // Oh wow, this state actually exists, no interpolation needed!
                 Ok(self
                     .nth_record(idx)
-                    .with_context(|_| UnderlyingDecodingSnafu)?
+                    .with_context(|_| InterpDecodingSnafu)?
                     .to_pos_vel())
             }
             Err(idx) => {
@@ -267,9 +267,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 let mut vys = [0.0; MAX_SAMPLES];
                 let mut vzs = [0.0; MAX_SAMPLES];
                 for (cno, idx) in (first_idx..last_idx).enumerate() {
-                    let record = self
-                        .nth_record(idx)
-                        .with_context(|_| UnderlyingDecodingSnafu)?;
+                    let record = self.nth_record(idx).with_context(|_| InterpDecodingSnafu)?;
                     xs[cno] = record.x_km;
                     ys[cno] = record.y_km;
                     zs[cno] = record.z_km;
@@ -289,7 +287,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                     &vxs[..self.samples],
                     epoch.to_et_seconds(),
                 )
-                .with_context(|_| UnderlyingMathSnafu)?;
+                .with_context(|_| InterpMathSnafu)?;
 
                 let (y_km, vy_km_s) = hermite_eval(
                     &epochs[..self.samples],
@@ -297,7 +295,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                     &vys[..self.samples],
                     epoch.to_et_seconds(),
                 )
-                .with_context(|_| UnderlyingMathSnafu)?;
+                .with_context(|_| InterpMathSnafu)?;
 
                 let (z_km, vz_km_s) = hermite_eval(
                     &epochs[..self.samples],
@@ -305,7 +303,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                     &vzs[..self.samples],
                     epoch.to_et_seconds(),
                 )
-                .with_context(|_| UnderlyingMathSnafu)?;
+                .with_context(|_| InterpMathSnafu)?;
 
                 // And build the result
                 let pos_km = Vector3::new(x_km, y_km, z_km);
