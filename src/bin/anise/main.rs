@@ -5,7 +5,7 @@ use snafu::prelude::*;
 
 use anise::cli::args::{Actions, Args};
 use anise::cli::inspect::{BpcRow, SpkRow};
-use anise::cli::{AniseSnafu, CliDAFSnafu, CliErrors, CliFileRecordSnafu};
+use anise::cli::{AniseSnafu, CliDAFSnafu, CliDataSetSnafu, CliErrors, CliFileRecordSnafu};
 use anise::file2heap;
 use anise::naif::daf::{FileRecord, NAIFRecord, NAIFSummaryRecord};
 use anise::naif::kpl::parser::convert_tpc;
@@ -46,14 +46,14 @@ fn main() -> Result<(), CliErrors> {
                     DataSetType::SpacecraftData => {
                         // Decode as spacecraft data
                         let dataset = DataSet::<SpacecraftData, 64>::try_from_bytes(&bytes)
-                            .map_err(|source| CliErrors::AniseError { source })?;
+                            .with_context(|_| CliDataSetSnafu)?;
                         println!("{dataset}");
                         Ok(())
                     }
                     DataSetType::PlanetaryData => {
                         // Decode as planetary data
                         let dataset = DataSet::<PlanetaryData, 64>::try_from_bytes(&bytes)
-                            .map_err(|source| CliErrors::AniseError { source })?;
+                            .with_context(|_| CliDataSetSnafu)?;
                         println!("{dataset}");
                         Ok(())
                     }
@@ -178,12 +178,11 @@ fn main() -> Result<(), CliErrors> {
             gmfile,
             outfile,
         } => {
-            let dataset =
-                convert_tpc(pckfile, gmfile).map_err(|source| CliErrors::AniseError { source })?;
+            let dataset = convert_tpc(pckfile, gmfile).with_context(|_| CliDataSetSnafu)?;
 
             dataset
                 .save_as(outfile, false)
-                .map_err(|source| CliErrors::AniseError { source })?;
+                .with_context(|_| CliDataSetSnafu)?;
 
             Ok(())
         }

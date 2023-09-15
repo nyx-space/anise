@@ -16,6 +16,7 @@ use crate::structure::semver::Semver;
 use crate::NaifId;
 use core::convert::From;
 use core::fmt;
+use der::Error as DerError;
 use std::io::ErrorKind as IOErrorKind;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -86,8 +87,14 @@ pub enum DecodingError {
         #[snafu(backtrace)]
         source: IntegrityError,
     },
+    #[snafu(display("decoding DER failed: {err}"))]
+    DecodingDer { err: DerError },
     #[snafu(display("somehow casting the data failed"))]
     Casting,
+    #[snafu(display("could not load ANISE data version {got}, expected {exp}"))]
+    AniseVersion { got: Semver, exp: Semver },
+    #[snafu(display("data could not be parsed as {kind} despite ANISE version matching (should be loaded as another type?)"))]
+    Obscure { kind: &'static str },
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]

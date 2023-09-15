@@ -13,8 +13,28 @@ use der::{
 };
 use heapless::FnvIndexMap;
 use log::warn;
+use snafu::prelude::*;
 
-use crate::{prelude::AniseError, NaifId};
+use crate::{errors::DecodingError, NaifId};
+
+#[derive(Debug, Snafu)]
+#[snafu(visibility(pub(crate)))]
+pub enum LutError {
+    #[snafu(display(
+        "ID LUT is full with all {max_slots} taken (increase ENTRIES at build time)"
+    ))]
+    IdLutFull { max_slots: usize },
+    #[snafu(display(
+        "Names LUT is full with all {max_slots} taken (increase ENTRIES at build time)"
+    ))]
+    NameLutFull { max_slots: usize },
+    #[snafu(display("must provide either an ID or a name for a loop up, but provided neither"))]
+    NoKeyProvided,
+    #[snafu(display("ID {id} not in look up table"))]
+    UnknownId { id: NaifId },
+    #[snafu(display("name {name} not in look up table"))]
+    UnknownName { name: String },
+}
 
 /// A lookup table entry contains the start and end indexes in the data array of the data that is sought after.
 ///
@@ -30,6 +50,14 @@ pub struct Entry {
 impl Entry {
     pub(crate) fn as_range(&self) -> core::ops::Range<usize> {
         self.start_idx as usize..self.end_idx as usize
+    }
+    /// Returns a pre-populated decoding error
+    pub(crate) fn decoding_error(&self) -> DecodingError {
+        DecodingError::InaccessibleBytes {
+            start: self.start_idx as usize,
+            end: self.end_idx as usize,
+            size: (self.end_idx - self.start_idx) as usize,
+        }
     }
 }
 
@@ -66,27 +94,27 @@ pub struct LookUpTable<'a, const ENTRIES: usize> {
 }
 
 impl<'a, const ENTRIES: usize> LookUpTable<'a, ENTRIES> {
-    pub fn append(&mut self, id: i32, name: &'a str, entry: Entry) -> Result<(), AniseError> {
+    pub fn append(&mut self, id: i32, name: &'a str, entry: Entry) -> Result<(), LutError> {
         self.by_id
             .insert(id, entry)
-            .map_err(|_| AniseError::StructureIsFull)?;
+            .map_err(|_| LutError::IdLutFull { max_slots: ENTRIES })?;
         self.by_name
             .insert(name, entry)
-            .map_err(|_| AniseError::StructureIsFull)?;
+            .map_err(|_| LutError::NameLutFull { max_slots: ENTRIES })?;
         Ok(())
     }
 
-    pub fn append_id(&mut self, id: i32, entry: Entry) -> Result<(), AniseError> {
+    pub fn append_id(&mut self, id: i32, entry: Entry) -> Result<(), LutError> {
         self.by_id
             .insert(id, entry)
-            .map_err(|_| AniseError::StructureIsFull)?;
+            .map_err(|_| LutError::IdLutFull { max_slots: ENTRIES })?;
         Ok(())
     }
 
-    pub fn append_name(&mut self, name: &'a str, entry: Entry) -> Result<(), AniseError> {
+    pub fn append_name(&mut self, name: &'a str, entry: Entry) -> Result<(), LutError> {
         self.by_name
             .insert(name, entry)
-            .map_err(|_| AniseError::StructureIsFull)?;
+            .map_err(|_| LutError::NameLutFull { max_slots: ENTRIES })?;
         Ok(())
     }
 

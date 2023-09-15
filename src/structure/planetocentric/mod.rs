@@ -42,7 +42,9 @@ pub struct PlanetaryData {
     pub nut_prec_angles: [NutationPrecessionAngle; MAX_NUT_PREC_ANGLES],
 }
 
-impl<'a> DataSetT<'a> for PlanetaryData {}
+impl<'a> DataSetT<'a> for PlanetaryData {
+    const NAME: &'static str = "planetary data";
+}
 
 impl PlanetaryData {
     /// Specifies what data is available in this structure.

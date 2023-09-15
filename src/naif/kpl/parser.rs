@@ -19,8 +19,7 @@ use log::{error, info, warn};
 
 use crate::naif::kpl::tpc::TPCItem;
 use crate::naif::kpl::Parameter;
-use crate::prelude::AniseError;
-use crate::structure::dataset::{DataSet, DataSetBuilder, DataSetType};
+use crate::structure::dataset::{DataSet, DataSetBuilder, DataSetError, DataSetType};
 use crate::structure::metadata::Metadata;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
 use crate::structure::planetocentric::phaseangle::PhaseAngle;
@@ -78,7 +77,7 @@ impl Assignment {
 pub fn parse_file<P: AsRef<Path>, I: KPLItem>(
     file_path: P,
     show_comments: bool,
-) -> Result<HashMap<i32, I>, AniseError> {
+) -> Result<HashMap<i32, I>, DataSetError> {
     let file = File::open(file_path).expect("Failed to open file");
     let reader = BufReader::new(file);
 
@@ -135,7 +134,7 @@ pub fn parse_file<P: AsRef<Path>, I: KPLItem>(
 pub fn convert_tpc<'a, P: AsRef<Path>>(
     pck: P,
     gm: P,
-) -> Result<DataSet<'a, PlanetaryData, 64>, AniseError> {
+) -> Result<DataSet<'a, PlanetaryData, 64>, DataSetError> {
     let mut buf = vec![];
     let mut dataset_builder = DataSetBuilder::default();
 

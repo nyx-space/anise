@@ -8,28 +8,57 @@
  * Documentation: https://nyxspace.com/
  */
 use super::{
-    lookuptable::{Entry, LookUpTable},
+    lookuptable::{Entry, LookUpTable, LutError},
     metadata::Metadata,
     semver::Semver,
     ANISE_VERSION,
 };
-use crate::{errors::IntegrityError, prelude::AniseError, NaifId};
+use crate::{
+    errors::{DecodingError, IntegrityError},
+    NaifId,
+};
 use core::fmt;
 use core::marker::PhantomData;
+use core::ops::Deref;
 use der::{asn1::OctetStringRef, Decode, Encode, Reader, Writer};
 use log::{error, trace};
-use std::ops::Deref;
+use snafu::prelude::*;
 
 macro_rules! io_imports {
     () => {
         use std::fs::File;
-        use std::io::Write;
+        use std::io::{Error as IOError, ErrorKind as IOErrorKind, Write};
         use std::path::Path;
         use std::path::PathBuf;
     };
 }
 
 io_imports!();
+
+#[derive(Debug, Snafu)]
+#[snafu(visibility(pub(crate)))]
+pub enum DataSetError {
+    #[snafu(display("when {action} {source}"))]
+    DataSetLut {
+        action: &'static str,
+        source: LutError,
+    },
+    #[snafu(display("when {action} {source}"))]
+    DataSetIntegrity {
+        action: &'static str,
+        source: IntegrityError,
+    },
+    #[snafu(display("when {action} {source}"))]
+    DataDecoding {
+        action: &'static str,
+        source: DecodingError,
+    },
+    #[snafu(display("input/output error while {action}"))]
+    IO {
+        action: &'static str,
+        source: IOError,
+    },
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
@@ -75,7 +104,9 @@ impl<'a> Decode<'a> for DataSetType {
 }
 
 /// The kind of data that can be encoded in a dataset
-pub trait DataSetT<'a>: Encode + Decode<'a> {}
+pub trait DataSetT<'a>: Encode + Decode<'a> {
+    const NAME: &'static str;
+}
 
 /// A DataSet is the core structure shared by all ANISE binary data.
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
@@ -102,7 +133,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSetBuilder<'a, T, ENTRIES> {
         data: T,
         id: Option<NaifId>,
         name: Option<&'a str>,
-    ) -> Result<(), AniseError> {
+    ) -> Result<(), DataSetError> {
         let mut this_buf = vec![];
         data.encode_to_vec(&mut this_buf).unwrap();
         // Build this entry data.
@@ -112,20 +143,38 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSetBuilder<'a, T, ENTRIES> {
         };
 
         if id.is_some() && name.is_some() {
-            self.dataset.lut.append(id.unwrap(), name.unwrap(), entry)?;
+            self.dataset
+                .lut
+                .append(id.unwrap(), name.unwrap(), entry)
+                .with_context(|_| DataSetLutSnafu {
+                    action: "pushing data with ID and name",
+                })?;
         } else if id.is_some() {
-            self.dataset.lut.append_id(id.unwrap(), entry)?;
+            self.dataset
+                .lut
+                .append_id(id.unwrap(), entry)
+                .with_context(|_| DataSetLutSnafu {
+                    action: "pushing data with ID only",
+                })?;
         } else if name.is_some() {
-            self.dataset.lut.append_name(name.unwrap(), entry)?;
+            self.dataset
+                .lut
+                .append_name(name.unwrap(), entry)
+                .with_context(|_| DataSetLutSnafu {
+                    action: "pushing data with name only",
+                })?;
         } else {
-            return Err(AniseError::ItemNotFound);
+            return Err(DataSetError::DataSetLut {
+                action: "pushing data",
+                source: LutError::NoKeyProvided,
+            });
         }
         buf.extend_from_slice(&this_buf);
 
         Ok(())
     }
 
-    pub fn finalize(mut self, buf: &'a [u8]) -> Result<DataSet<'a, T, ENTRIES>, AniseError> {
+    pub fn finalize(mut self, buf: &'a [u8]) -> Result<DataSet<'a, T, ENTRIES>, DataSetError> {
         self.dataset.bytes = buf;
         self.dataset.set_crc32();
         Ok(self.dataset)
@@ -134,41 +183,52 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSetBuilder<'a, T, ENTRIES> {
 
 impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
     /// Try to load an Anise file from a pointer of bytes
-    pub fn try_from_bytes(bytes: &'a [u8]) -> Result<Self, AniseError> {
+    pub fn try_from_bytes(bytes: &'a [u8]) -> Result<Self, DataSetError> {
         match Self::from_der(bytes) {
             Ok(ctx) => {
                 trace!("[try_from_bytes] loaded context successfully");
                 // Check the full integrity on load of the file.
-                // TODO: Raise this error
-                ctx.check_integrity().unwrap();
+                ctx.check_integrity()
+                    .with_context(|_| DataSetIntegritySnafu {
+                        action: "loading data set from bytes",
+                    })?;
                 Ok(ctx)
             }
-            Err(e) => {
+            Err(_) => {
                 // If we can't load the file, let's try to load the version only to be helpful
-                match bytes.get(0..5) {
-                    Some(semver_bytes) => match Semver::from_der(semver_bytes) {
-                        Ok(file_version) => {
-                            if file_version == ANISE_VERSION {
-                                error!("[try_from_bytes] context bytes corrupted but ANISE library version match");
-                                Err(AniseError::DecodingError(e))
-                            } else {
-                                error!(
-                                    "[try_from_bytes] context bytes and ANISE library version mismatch"
-                                );
-                                Err(AniseError::IncompatibleVersion {
+                let semver_bytes = bytes
+                    .get(0..5)
+                    .ok_or_else(|| DecodingError::InaccessibleBytes {
+                        start: 0,
+                        end: 5,
+                        size: bytes.len(),
+                    })
+                    .with_context(|_| DataDecodingSnafu {
+                        action: "checking data set version",
+                    })?;
+                match Semver::from_der(semver_bytes) {
+                    Ok(file_version) => {
+                        if file_version == ANISE_VERSION {
+                            Err(DataSetError::DataDecoding {
+                                action: "loading from bytes",
+                                source: DecodingError::Obscure { kind: T::NAME },
+                            })
+                        } else {
+                            Err(DataSetError::DataDecoding {
+                                action: "checking data set version",
+                                source: DecodingError::AniseVersion {
                                     got: file_version,
                                     exp: ANISE_VERSION,
-                                })
-                            }
+                                },
+                            })
                         }
-                        Err(e) => {
-                            error!("[try_from_bytes] context bytes not in ANISE format");
-                            Err(AniseError::DecodingError(e))
-                        }
-                    },
-                    None => {
-                        error!("[try_from_bytes] context bytes way too short (less than 5 bytes)");
-                        Err(AniseError::DecodingError(e))
+                    }
+                    Err(err) => {
+                        error!("context bytes not in ANISE format");
+                        Err(DataSetError::DataDecoding {
+                            action: "loading SemVer",
+                            source: DecodingError::DecodingDer { err },
+                        })
                     }
                 }
             }
@@ -221,44 +281,69 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
         }
     }
 
-    pub fn get_by_id(&self, id: NaifId) -> Result<T, AniseError> {
+    pub fn get_by_id(&self, id: NaifId) -> Result<T, DataSetError> {
         if let Some(entry) = self.lut.by_id.get(&id) {
             // Found the ID
-            match T::from_der(&self.bytes[entry.as_range()]) {
-                Ok(data) => Ok(data),
-                Err(e) => {
-                    println!("{e:?}");
-                    dbg!(&self.bytes[entry.as_range()]);
-                    Err(AniseError::MalformedData(entry.start_idx as usize))
-                }
-            }
+            let bytes = self
+                .bytes
+                .get(entry.as_range())
+                .ok_or_else(|| entry.decoding_error())
+                .with_context(|_| DataDecodingSnafu {
+                    action: "fetching by ID",
+                })?;
+            T::from_der(bytes)
+                .map_err(|err| DecodingError::DecodingDer { err })
+                .with_context(|_| DataDecodingSnafu {
+                    action: "fetching by ID",
+                })
         } else {
-            Err(AniseError::ItemNotFound)
+            Err(DataSetError::DataSetLut {
+                action: "fetching by ID",
+                source: LutError::UnknownId { id },
+            })
         }
     }
 
-    pub fn get_by_name(&self, id: NaifId) -> Result<T, AniseError> {
-        if let Some(entry) = self.lut.by_id.get(&id) {
-            // Found the ID
-            if let Ok(data) = T::from_der(&self.bytes[entry.as_range()]) {
-                Ok(data)
-            } else {
-                Err(AniseError::MalformedData(entry.start_idx as usize))
-            }
+    pub fn get_by_name(&self, name: &str) -> Result<T, DataSetError> {
+        if let Some(entry) = self.lut.by_name.get(&name) {
+            // Found the name
+            let bytes = self
+                .bytes
+                .get(entry.as_range())
+                .ok_or_else(|| entry.decoding_error())
+                .with_context(|_| DataDecodingSnafu {
+                    action: "fetching by name",
+                })?;
+            T::from_der(bytes)
+                .map_err(|err| DecodingError::DecodingDer { err })
+                .with_context(|_| DataDecodingSnafu {
+                    action: "fetching by name",
+                })
         } else {
-            Err(AniseError::ItemNotFound)
+            Err(DataSetError::DataSetLut {
+                action: "fetching by ID",
+                source: LutError::UnknownName {
+                    name: name.to_string(),
+                },
+            })
         }
     }
 
     /// Saves this dataset to the provided file
     /// If overwrite is set to false, and the filename already exists, this function will return an error.
 
-    pub fn save_as(&self, filename: PathBuf, overwrite: bool) -> Result<(), AniseError> {
+    pub fn save_as(&self, filename: PathBuf, overwrite: bool) -> Result<(), DataSetError> {
         use log::{info, warn};
 
         if Path::new(&filename).exists() {
             if !overwrite {
-                return Err(AniseError::FileExists);
+                return Err(DataSetError::IO {
+                    source: IOError::new(
+                        IOErrorKind::AlreadyExists,
+                        "file exists and overwrite flag set to false",
+                    ),
+                    action: "creating data set file",
+                });
             } else {
                 warn!("[save_as] overwriting {}", filename.display());
             }
@@ -268,17 +353,26 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
 
         match File::create(&filename) {
             Ok(mut file) => {
-                if let Err(e) = self.encode_to_vec(&mut buf) {
-                    return Err(AniseError::DecodingError(e));
+                if let Err(err) = self.encode_to_vec(&mut buf) {
+                    return Err(DataSetError::DataDecoding {
+                        action: "encoding data set",
+                        source: DecodingError::DecodingDer { err },
+                    });
                 }
-                if let Err(e) = file.write_all(&buf) {
-                    Err(e.kind().into())
+                if let Err(source) = file.write_all(&buf) {
+                    Err(DataSetError::IO {
+                        source,
+                        action: "writing data set to file",
+                    })
                 } else {
                     info!("[OK] dataset saved to {}", filename.display());
                     Ok(())
                 }
             }
-            Err(e) => Err(e.kind().into()),
+            Err(source) => Err(DataSetError::IO {
+                source,
+                action: "creating data set file",
+            }),
         }
     }
 }

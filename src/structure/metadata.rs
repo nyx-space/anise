@@ -12,7 +12,7 @@ use core::str::FromStr;
 use der::{asn1::Utf8StringRef, Decode, Encode, Reader, Writer};
 use hifitime::Epoch;
 
-use crate::prelude::AniseError;
+use crate::errors::DecodingError;
 
 use super::{dataset::DataSetType, semver::Semver, ANISE_VERSION};
 
@@ -32,10 +32,26 @@ pub struct Metadata<'a> {
 
 impl<'a> Metadata<'a> {
     /// Only decode the anise version and dataset type
-    pub fn decode_header(bytes: &[u8]) -> Result<Self, AniseError> {
-        let anise_version = Semver::from_der(&bytes[..5]).map_err(AniseError::DecodingError)?;
-        let dataset_type =
-            DataSetType::from_der(&bytes[5..8]).map_err(AniseError::DecodingError)?;
+    pub fn decode_header(bytes: &[u8]) -> Result<Self, DecodingError> {
+        let anise_version =
+            Semver::from_der(
+                bytes
+                    .get(..5)
+                    .ok_or_else(|| DecodingError::InaccessibleBytes {
+                        start: 0,
+                        end: 5,
+                        size: bytes.len(),
+                    })?,
+            )
+            .or_else(|err| Err(DecodingError::DecodingDer { err }))?;
+        let dataset_type = DataSetType::from_der(bytes.get(5..8).ok_or_else(|| {
+            DecodingError::InaccessibleBytes {
+                start: 5,
+                end: 8,
+                size: bytes.len(),
+            }
+        })?)
+        .or_else(|err| Err(DecodingError::DecodingDer { err }))?;
         let me = Self {
             anise_version,
             dataset_type,
