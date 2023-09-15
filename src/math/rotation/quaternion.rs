@@ -237,7 +237,7 @@ impl Mul for Quaternion {
 
     fn mul(self, rhs: Quaternion) -> Result<Quaternion, PhysicsError> {
         ensure!(
-            self.from == rhs.from,
+            self.to == rhs.from,
             OriginMismatchSnafu {
                 action: "multiplying quaternions",
                 from1: self.from,

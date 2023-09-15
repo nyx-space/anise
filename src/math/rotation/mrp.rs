@@ -200,9 +200,9 @@ impl Mul for MRP {
 
     fn mul(self, rhs: Self) -> Self::Output {
         ensure!(
-            self.from == rhs.from,
+            self.to == rhs.from,
             OriginMismatchSnafu {
-                action: "computing relative MRP",
+                action: "composing MRPs",
                 from1: self.from,
                 from2: rhs.from
             }
