@@ -8,10 +8,12 @@
  * Documentation: https://nyxspace.com/
  */
 
+use std::str::Utf8Error;
+
 use snafu::prelude::*;
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
-use crate::{naif::Endian, prelude::AniseError};
+use crate::naif::Endian;
 use log::error;
 
 use super::NAIFRecord;
@@ -21,8 +23,10 @@ use super::NAIFRecord;
 pub enum FileRecordError {
     /// Endian of file does not match the endian order of the machine
     WrongEndian,
-    /// Could not parse the endian flag
-    ParsingError,
+    /// Could not parse the endian flag or internal filename as a UTF8 string
+    ParsingError {
+        source: Utf8Error,
+    },
     /// Endian flag should be either `BIG-IEEE` or `LTL-IEEE`
     InvalidEndian {
         read: String,
@@ -111,7 +115,7 @@ impl FileRecord {
 
     pub fn endianness(&self) -> Result<Endian, FileRecordError> {
         let str_endianness =
-            core::str::from_utf8(&self.endian_str).map_err(|_| FileRecordError::ParsingError)?;
+            core::str::from_utf8(&self.endian_str).with_context(|_| ParsingSnafu)?;
 
         let file_endian = if str_endianness == "LTL-IEEE" {
             Endian::Little
@@ -129,11 +133,10 @@ impl FileRecord {
         }
     }
 
-    pub fn internal_filename(&self) -> Result<&str, AniseError> {
-        match core::str::from_utf8(&self.internal_filename) {
-            Ok(filename) => Ok(filename.trim()),
-            Err(e) => Err(AniseError::DAFParserError(format!("{e}"))),
-        }
+    pub fn internal_filename(&self) -> Result<&str, FileRecordError> {
+        Ok(core::str::from_utf8(&self.internal_filename)
+            .with_context(|_| ParsingSnafu)?
+            .trim())
     }
 
     /// Returns whether this record was just null bytes

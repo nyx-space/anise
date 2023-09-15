@@ -10,12 +10,11 @@
 
 use core::fmt;
 use hifitime::Epoch;
-use log::{error, trace};
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 use crate::{
+    ephemerides::EphemerisError,
     naif::daf::{NAIFRecord, NAIFSummaryRecord},
-    prelude::AniseError,
 };
 
 #[derive(Clone, Copy, Debug, Default, AsBytes, FromZeroes, FromBytes)]
@@ -32,13 +31,13 @@ pub struct SPKSummaryRecord {
 }
 
 impl<'a> SPKSummaryRecord {
-    pub fn spice_name(&self) -> Result<&'a str, AniseError> {
+    pub fn spice_name(&self) -> Result<&'a str, EphemerisError> {
         Self::id_to_human_name(self.target_id)
     }
 
     /// Converts the provided ID to its human name.
     /// Only works for the common celestial bodies
-    pub fn id_to_human_name(id: i32) -> Result<&'a str, AniseError> {
+    pub fn id_to_human_name(id: i32) -> Result<&'a str, EphemerisError> {
         if id % 100 == 99 {
             // This is the planet itself
             match id / 100 {
@@ -51,9 +50,7 @@ impl<'a> SPKSummaryRecord {
                 7 => Ok("Uranus"),
                 8 => Ok("Neptune"),
                 9 => Ok("Pluto"),
-                _ => Err(AniseError::DAFParserError(format!(
-                    "Human name unknown for {id}"
-                ))),
+                _ => Err(EphemerisError::IdToName { id }),
             }
         } else if id == 301 {
             Ok("Moon")
@@ -71,18 +68,16 @@ impl<'a> SPKSummaryRecord {
                 8 => Ok("Neptune Barycenter"),
                 9 => Ok("Pluto Barycenter"),
                 10 => Ok("Sun"),
-                _ => Err(AniseError::DAFParserError(format!(
-                    "Human name unknown for barycenter {id}"
-                ))),
+                _ => Err(EphemerisError::IdToName { id }),
             }
         } else {
-            panic!("Human name unknown for {id}");
+            Err(EphemerisError::IdToName { id })
         }
     }
 
     /// Converts the provided ID to its human name.
     /// Only works for the common celestial bodies
-    pub fn human_name_to_id(name: &'a str) -> Result<i32, AniseError> {
+    pub fn human_name_to_id(name: &'a str) -> Result<i32, EphemerisError> {
         match name {
             "Mercury" => Ok(1),
             "Venus" => Ok(2),
@@ -102,10 +97,9 @@ impl<'a> SPKSummaryRecord {
             "Uranus Barycenter" => Ok(7),
             "Neptune Barycenter" => Ok(8),
             "Pluto Barycenter" => Ok(9),
-            _ => {
-                trace!("[human_name_to_id] unknown NAIF ID for `{name}`");
-                Err(AniseError::ItemNotFound)
-            }
+            _ => Err(EphemerisError::NameToId {
+                name: name.to_string(),
+            }),
         }
     }
 
@@ -119,14 +113,13 @@ impl<'a> SPKSummaryRecord {
     /// 0. In BSP files, the name is stored as a comment and is unstructured. So it's hard to copy those. (Help needed)
     /// 1. One limitation of this approach is that given file may only contain one "Earth"
     /// 2. Another limitation is that this code does not know all of the possible moons in the whole solar system.
+    pub fn try_human_name(&self) -> Result<&'a str, EphemerisError> {
+        Self::id_to_human_name(self.target_id)
+    }
+
+    /// Same as [try_human_name] but unwraps the result
     pub fn human_name(&self) -> &'a str {
-        match Self::id_to_human_name(self.target_id) {
-            Ok(name) => name,
-            Err(e) => {
-                error!("{}", e);
-                panic!("Human name unknown for {self}")
-            }
-        }
+        self.try_human_name().unwrap()
     }
 }
 

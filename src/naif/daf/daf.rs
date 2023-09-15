@@ -10,12 +10,13 @@
 
 use super::file_record::FileRecordError;
 use super::{
-    DAFError, DecodingNameSnafu, FileRecordSnafu, NAIFDataSet, NAIFRecord, NAIFSummaryRecord,
+    DAFError, DecodingNameSnafu, DecodingSummarySnafu, FileRecordSnafu, NAIFDataSet, NAIFRecord,
+    NAIFSummaryRecord,
 };
 pub use super::{FileRecord, NameRecord, SummaryRecord};
 use crate::errors::DecodingError;
 use crate::naif::daf::DecodingDataSnafu;
-use crate::{errors::IntegrityError, prelude::AniseError, DBL_SIZE};
+use crate::{errors::IntegrityError, DBL_SIZE};
 use bytes::Bytes;
 use core::hash::Hash;
 use core::ops::Deref;
@@ -166,15 +167,21 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         })
     }
 
-    pub fn daf_summary(&self) -> Result<SummaryRecord, AniseError> {
+    pub fn daf_summary(&self) -> Result<SummaryRecord, DAFError> {
         let rcrd_idx = (self.file_record.fwrd_idx() - 1) * RCRD_LEN;
         let rcrd_bytes = self
             .bytes
             .get(rcrd_idx..rcrd_idx + RCRD_LEN)
-            .ok_or_else(|| AniseError::MalformedData(self.file_record.fwrd_idx() + RCRD_LEN))?;
+            .ok_or_else(|| DecodingError::InaccessibleBytes {
+                start: rcrd_idx,
+                end: rcrd_idx + RCRD_LEN,
+                size: self.bytes.len(),
+            })
+            .with_context(|_| DecodingSummarySnafu { kind: R::NAME })?;
 
         SummaryRecord::read_from(&rcrd_bytes[..SummaryRecord::SIZE])
-            .ok_or(AniseError::MalformedData(SummaryRecord::SIZE))
+            .ok_or_else(|| DecodingError::Casting)
+            .with_context(|_| DecodingSummarySnafu { kind: R::NAME })
     }
 
     /// Parses the data summaries on the fly.

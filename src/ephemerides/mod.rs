@@ -13,7 +13,7 @@ use snafu::prelude::*;
 
 use crate::{
     errors::PhysicsError, math::interpolation::InterpolationError, naif::daf::DAFError,
-    prelude::Frame,
+    prelude::Frame, NaifId,
 };
 
 pub mod paths;
@@ -55,4 +55,8 @@ pub enum EphemerisError {
         #[snafu(backtrace)]
         source: InterpolationError,
     },
+    #[snafu(display("unknown name associated with NAIF ID {id}"))]
+    IdToName { id: NaifId },
+    #[snafu(display("unknown NAIF ID associated with `{name}`"))]
+    NameToId { name: String },
 }

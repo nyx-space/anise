@@ -81,10 +81,13 @@ pub enum DecodingError {
         end: usize,
         size: usize,
     },
+    #[snafu(display("integrity error during decoding: {source}"))]
     Integrity {
         #[snafu(backtrace)]
         source: IntegrityError,
     },
+    #[snafu(display("somehow casting the data failed"))]
+    Casting,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
