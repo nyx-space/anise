@@ -6,6 +6,7 @@ use std::io;
 
 use crate::{
     naif::daf::{file_record::FileRecordError, DAFError},
+    prelude::AniseError,
     structure::dataset::DataSetError,
 };
 
@@ -32,5 +33,8 @@ pub enum CliErrors {
     },
     CliDataSet {
         source: DataSetError,
+    },
+    AniseError {
+        source: AniseError,
     },
 }
