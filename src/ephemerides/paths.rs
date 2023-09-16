@@ -55,7 +55,7 @@ impl<'a> Almanac<'a> {
     /// Try to construct the path from the source frame all the way to the root ephemeris of this context.
     pub fn ephemeris_path_to_root(
         &self,
-        source: &Frame,
+        source: Frame,
         epoch: Epoch,
     ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH]), EphemerisError> {
         let common_center = self.try_find_context_center()?;
@@ -139,8 +139,8 @@ impl<'a> Almanac<'a> {
         }
 
         // Grab the paths
-        let (from_len, from_path) = self.ephemeris_path_to_root(&from_frame, epoch)?;
-        let (to_len, to_path) = self.ephemeris_path_to_root(&to_frame, epoch)?;
+        let (from_len, from_path) = self.ephemeris_path_to_root(from_frame, epoch)?;
+        let (to_len, to_path) = self.ephemeris_path_to_root(to_frame, epoch)?;
 
         // Now that we have the paths, we can find the matching origin.
 

@@ -39,8 +39,6 @@ pub enum AniseError {
     ItemNotFound,
     /// Raised when requesting the interpolation for data that is not available in this spline.
     NoInterpolationData,
-    /// If this is raised, please report a bug
-    InternalError(InternalErrorKind),
     /// Raised to prevent overwriting an existing file
     FileExists,
     /// Raised if a transformation is requested but the frames have no common origin
@@ -95,16 +93,6 @@ pub enum DecodingError {
     AniseVersion { got: Semver, exp: Semver },
     #[snafu(display("data could not be parsed as {kind} despite ANISE version matching (should be loaded as another type?)"))]
     Obscure { kind: &'static str },
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum InternalErrorKind {
-    /// Appending to the lookup table failed
-    LUTAppendFailure,
-    /// May happen if the interpolation scheme is not yet supported
-    InterpolationNotSupported,
-    /// Some generic internal error, check the logs of the program and file a bug report
-    Generic,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Snafu)]
@@ -186,12 +174,6 @@ impl From<IOErrorKind> for AniseError {
     }
 }
 
-impl From<InternalErrorKind> for AniseError {
-    fn from(e: InternalErrorKind) -> Self {
-        Self::InternalError(e)
-    }
-}
-
 impl From<MathError> for AniseError {
     fn from(e: MathError) -> Self {
         Self::MathError(e)
@@ -212,9 +194,6 @@ impl fmt::Display for AniseError {
             }
             Self::InvalidTimeSystem => write!(f, "ANISE error: invalid time system"),
             Self::ItemNotFound => write!(f, "ANISE error: requested item not found in context"),
-            Self::InternalError(e) => {
-                write!(f, "ANISE internal error: {e:?} -- please report a bug")
-            }
             Self::NoInterpolationData => write!(
                 f,
                 "ANISE error: No interpolation for the requested component"

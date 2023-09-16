@@ -179,3 +179,67 @@ impl<'a: 'b, 'b> Almanac<'a> {
         })
     }
 }
+
+#[cfg(test)]
+mod ut_almanach_spk {
+    use crate::{
+        constants::orientations::J2000,
+        prelude::{Almanac, Epoch, Frame},
+    };
+
+    #[test]
+    fn summaries_nothing_loaded() {
+        let almanac = Almanac::default();
+        let e = Epoch::now().unwrap();
+
+        assert!(
+            almanac.spk_summary(0).is_err(),
+            "empty almanach should report an error"
+        );
+        assert!(
+            almanac.spk_summary_at_epoch(0, e).is_err(),
+            "empty almanach should report an error"
+        );
+        assert!(
+            almanac.spk_summary_from_name("invalid name").is_err(),
+            "empty almanach should report an error"
+        );
+        assert!(
+            almanac
+                .spk_summary_from_name_at_epoch("invalid name", e)
+                .is_err(),
+            "empty almanach should report an error"
+        );
+    }
+
+    #[test]
+    fn queries_nothing_loaded() {
+        let almanac = Almanac::default();
+        let e = Epoch::now().unwrap();
+        let moon_j2k = Frame {
+            ephemeris_id: 301,
+            orientation_id: J2000,
+        };
+        let earth_j2k = Frame {
+            ephemeris_id: 399,
+            orientation_id: J2000,
+        };
+
+        assert!(
+            almanac.try_find_context_center().is_err(),
+            "empty almanach should report an error"
+        );
+
+        assert!(
+            almanac.ephemeris_path_to_root(moon_j2k, e).is_err(),
+            "empty almanach should report an error"
+        );
+
+        assert!(
+            almanac
+                .common_ephemeris_path(moon_j2k, earth_j2k, e)
+                .is_err(),
+            "empty almanach should report an error"
+        );
+    }
+}
