@@ -14,7 +14,7 @@ use snafu::{ensure, ResultExt};
 
 use crate::errors::{DecodingError, IntegrityError, TooFewDoublesSnafu};
 use crate::math::interpolation::{
-    hermite_eval, InterpDecodingSnafu, InterpMathSnafu, InterpolationError, MAX_SAMPLES,
+    hermite_eval, InterpDecodingSnafu, InterpolationError, MAX_SAMPLES,
 };
 use crate::naif::spk::summary::SPKSummaryRecord;
 use crate::{
@@ -286,24 +286,21 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                     &xs[..self.samples],
                     &vxs[..self.samples],
                     epoch.to_et_seconds(),
-                )
-                .with_context(|_| InterpMathSnafu)?;
+                )?;
 
                 let (y_km, vy_km_s) = hermite_eval(
                     &epochs[..self.samples],
                     &ys[..self.samples],
                     &vys[..self.samples],
                     epoch.to_et_seconds(),
-                )
-                .with_context(|_| InterpMathSnafu)?;
+                )?;
 
                 let (z_km, vz_km_s) = hermite_eval(
                     &epochs[..self.samples],
                     &zs[..self.samples],
                     &vzs[..self.samples],
                     epoch.to_et_seconds(),
-                )
-                .with_context(|_| InterpMathSnafu)?;
+                )?;
 
                 // And build the result
                 let pos_km = Vector3::new(x_km, y_km, z_km);

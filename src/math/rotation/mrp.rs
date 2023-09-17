@@ -81,7 +81,12 @@ impl MRP {
     ///
     /// The shadow MRP as a new instance of `MRP`.
     pub fn shadow(&self) -> Result<Self, MathError> {
-        ensure!(!self.is_singular(), DivisionByZeroSnafu);
+        ensure!(
+            !self.is_singular(),
+            DivisionByZeroSnafu {
+                action: "cannot compute shadow MRP of a singular MRP"
+            }
+        );
 
         let s_squared = self.s0 * self.s0 + self.s1 * self.s1 + self.s2 * self.s2;
         Ok(MRP {
@@ -230,7 +235,12 @@ impl TryFrom<Quaternion> for MRP {
     /// # Failure cases
     /// + A zero rotation, as the associated MRP is singular
     fn try_from(q: Quaternion) -> Result<Self, Self::Error> {
-        ensure!((1.0 + q.w).abs() >= EPSILON, DivisionByZeroSnafu);
+        ensure!(
+            (1.0 + q.w).abs() >= EPSILON,
+            DivisionByZeroSnafu {
+                action: "quaternion represents a zero rotation, which is a singular MRP"
+            }
+        );
 
         let s = Self {
             from: q.from,
@@ -241,7 +251,12 @@ impl TryFrom<Quaternion> for MRP {
         }
         .normalize();
         // We don't ever want to deal with singular MRPs, so check once more
-        ensure!(!s.is_singular(), DivisionByZeroSnafu);
+        ensure!(
+            !s.is_singular(),
+            DivisionByZeroSnafu {
+                action: "MRP from quaternion is singular"
+            }
+        );
         Ok(s)
     }
 }

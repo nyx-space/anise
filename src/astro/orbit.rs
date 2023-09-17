@@ -12,7 +12,7 @@ use super::PhysicsResult;
 use crate::{
     errors::{
         HyperbolicTrueAnomalySnafu, InfiniteValueSnafu, ParabolicEccentricitySnafu,
-        ParabolicSemiParamSnafu, PhysicsError,
+        ParabolicSemiParamSnafu, PhysicsError, RadiusSnafu,
     },
     math::{
         angles::{between_0_360, between_pm_180},
@@ -29,6 +29,9 @@ use snafu::ensure;
 
 /// If an orbit has an eccentricity below the following value, it is considered circular (only affects warning messages)
 pub const ECC_EPSILON: f64 = 1e-11;
+
+/// A helper type alias, but no assumptions are made on the underlying validity of the frame.
+pub type Orbit = CartesianState;
 
 impl CartesianState {
     /// Attempts to create a new Orbit around the provided Celestial or Geoid frame from the Keplerian orbital elements.
@@ -145,6 +148,19 @@ impl CartesianState {
         dt: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
+        ensure!(
+            r_a > EPSILON,
+            RadiusSnafu {
+                action: "radius of apoapsis is negative"
+            }
+        );
+        ensure!(
+            r_p > EPSILON,
+            RadiusSnafu {
+                action: "radius of periapsis is negative"
+            }
+        );
+        // The two checks above ensure that sma > 0
         let sma = (r_a + r_p) / 2.0;
         let ecc = r_a / sma - 1.0;
         Self::try_keplerian(sma, ecc, inc, raan, aop, ta, dt, frame)
@@ -212,45 +228,64 @@ impl CartesianState {
         Ok(Vector6::new(
             self.sma_km()?,
             self.ecc()?,
-            self.inc_deg(),
-            self.raan_deg(),
+            self.inc_deg()?,
+            self.raan_deg()?,
             self.aop_deg()?,
             self.ta_deg()?,
         ))
     }
 
     /// Returns the orbital momentum vector
-    pub fn hvec(&self) -> Vector3 {
-        self.radius_km.cross(&self.velocity_km_s)
+    pub fn hvec(&self) -> PhysicsResult<Vector3> {
+        ensure!(
+            self.rmag_km() > EPSILON,
+            RadiusSnafu {
+                action: "cannot compute orbital momentum vector with zero radius"
+            }
+        );
+        ensure!(
+            self.vmag_km_s() > EPSILON,
+            RadiusSnafu {
+                action: "cannot compute orbital momentum vector with zero velocity"
+            }
+        );
+        Ok(self.radius_km.cross(&self.velocity_km_s))
     }
 
     /// Returns the orbital momentum value on the X axis
-    pub fn hx(&self) -> f64 {
-        self.hvec()[0]
+    pub fn hx(&self) -> PhysicsResult<f64> {
+        Ok(self.hvec()?[0])
     }
 
     /// Returns the orbital momentum value on the Y axis
-    pub fn hy(&self) -> f64 {
-        self.hvec()[1]
+    pub fn hy(&self) -> PhysicsResult<f64> {
+        Ok(self.hvec()?[1])
     }
 
     /// Returns the orbital momentum value on the Z axis
-    pub fn hz(&self) -> f64 {
-        self.hvec()[2]
+    pub fn hz(&self) -> PhysicsResult<f64> {
+        Ok(self.hvec()?[2])
     }
 
     /// Returns the norm of the orbital momentum
-    pub fn hmag(&self) -> f64 {
-        self.hvec().norm()
+    pub fn hmag(&self) -> PhysicsResult<f64> {
+        Ok(self.hvec()?.norm())
     }
 
     /// Returns the specific mechanical energy in km^2/s^2
     pub fn energy_km2_s2(&self) -> PhysicsResult<f64> {
+        ensure!(
+            self.rmag_km() > EPSILON,
+            RadiusSnafu {
+                action: "cannot compute energy with zero radial state"
+            }
+        );
         Ok(self.vmag_km_s().powi(2) / 2.0 - self.frame.mu_km3_s2()? / self.rmag_km())
     }
 
     /// Returns the semi-major axis in km
     pub fn sma_km(&self) -> PhysicsResult<f64> {
+        // Division by zero prevented in energy_km2_s2
         Ok(-self.frame.mu_km3_s2()? / (2.0 * self.energy_km2_s2()?))
     }
 
@@ -259,8 +294,8 @@ impl CartesianState {
         let me = Self::keplerian(
             new_sma_km,
             self.ecc()?,
-            self.inc_deg(),
-            self.raan_deg(),
+            self.inc_deg()?,
+            self.raan_deg()?,
             self.aop_deg()?,
             self.ta_deg()?,
             self.epoch,
@@ -298,6 +333,12 @@ impl CartesianState {
     /// Returns the eccentricity vector (no unit)
     pub fn evec(&self) -> Result<Vector3, PhysicsError> {
         let r = self.radius_km;
+        ensure!(
+            self.rmag_km() > EPSILON,
+            RadiusSnafu {
+                action: "cannot compute eccentricity vector with zero radial state"
+            }
+        );
         let v = self.velocity_km_s;
         Ok(
             ((v.norm().powi(2) - self.frame.mu_km3_s2()? / r.norm()) * r - (r.dot(&v)) * v)
@@ -315,8 +356,8 @@ impl CartesianState {
         let me = Self::keplerian(
             self.sma_km()?,
             new_ecc,
-            self.inc_deg(),
-            self.raan_deg(),
+            self.inc_deg()?,
+            self.raan_deg()?,
             self.aop_deg()?,
             self.ta_deg()?,
             self.epoch,
@@ -343,8 +384,8 @@ impl CartesianState {
     }
 
     /// Returns the inclination in degrees
-    pub fn inc_deg(&self) -> f64 {
-        (self.hvec()[2] / self.hmag()).acos().to_degrees()
+    pub fn inc_deg(&self) -> PhysicsResult<f64> {
+        Ok((self.hvec()?[2] / self.hmag()?).acos().to_degrees())
     }
 
     /// Mutates this orbit to change the INC
@@ -353,7 +394,7 @@ impl CartesianState {
             self.sma_km()?,
             self.ecc()?,
             new_inc_deg,
-            self.raan_deg(),
+            self.raan_deg()?,
             self.aop_deg()?,
             self.ta_deg()?,
             self.epoch,
@@ -375,13 +416,13 @@ impl CartesianState {
     /// Returns a copy of the state with a provided INC added to the current one
     pub fn add_inc_deg(self, delta_inc_deg: f64) -> PhysicsResult<Self> {
         let mut me = self;
-        me.set_inc_deg(me.inc_deg() + delta_inc_deg)?;
+        me.set_inc_deg(me.inc_deg()? + delta_inc_deg)?;
         Ok(me)
     }
 
     /// Returns the argument of periapsis in degrees
     pub fn aop_deg(&self) -> PhysicsResult<f64> {
-        let n = Vector3::new(0.0, 0.0, 1.0).cross(&self.hvec());
+        let n = Vector3::new(0.0, 0.0, 1.0).cross(&self.hvec()?);
         let cos_aop = n.dot(&self.evec()?) / (n.norm() * self.ecc()?);
         let aop = cos_aop.acos();
         if aop.is_nan() {
@@ -402,8 +443,8 @@ impl CartesianState {
         let me = Self::keplerian(
             self.sma_km()?,
             self.ecc()?,
-            self.inc_deg(),
-            self.raan_deg(),
+            self.inc_deg()?,
+            self.raan_deg()?,
             new_aop_deg,
             self.ta_deg()?,
             self.epoch,
@@ -430,20 +471,20 @@ impl CartesianState {
     }
 
     /// Returns the right ascension of ther ascending node in degrees
-    pub fn raan_deg(&self) -> f64 {
-        let n = Vector3::new(0.0, 0.0, 1.0).cross(&self.hvec());
+    pub fn raan_deg(&self) -> PhysicsResult<f64> {
+        let n = Vector3::new(0.0, 0.0, 1.0).cross(&self.hvec()?);
         let cos_raan = n[0] / n.norm();
         let raan = cos_raan.acos();
         if raan.is_nan() {
             if cos_raan > 1.0 {
-                180.0
+                Ok(180.0)
             } else {
-                0.0
+                Ok(0.0)
             }
         } else if n[1] < 0.0 {
-            (2.0 * PI - raan).to_degrees()
+            Ok((2.0 * PI - raan).to_degrees())
         } else {
-            raan.to_degrees()
+            Ok(raan.to_degrees())
         }
     }
 
@@ -452,7 +493,7 @@ impl CartesianState {
         let me = Self::keplerian(
             self.sma_km()?,
             self.ecc()?,
-            self.inc_deg(),
+            self.inc_deg()?,
             new_raan_deg,
             self.aop_deg()?,
             self.ta_deg()?,
@@ -475,7 +516,7 @@ impl CartesianState {
     /// Returns a copy of the state with a provided RAAN added to the current one
     pub fn add_raan_deg(self, delta_raan_deg: f64) -> PhysicsResult<Self> {
         let mut me = self;
-        me.set_raan_deg(me.raan_deg() + delta_raan_deg)?;
+        me.set_raan_deg(me.raan_deg()? + delta_raan_deg)?;
         Ok(me)
     }
 
@@ -515,8 +556,8 @@ impl CartesianState {
         let me = Self::keplerian(
             self.sma_km()?,
             self.ecc()?,
-            self.inc_deg(),
-            self.raan_deg(),
+            self.inc_deg()?,
+            self.raan_deg()?,
             self.aop_deg()?,
             new_ta_deg,
             self.epoch,
@@ -547,8 +588,8 @@ impl CartesianState {
         Self::try_keplerian_apsis_radii(
             new_ra_km,
             new_rp_km,
-            self.inc_deg(),
-            self.raan_deg(),
+            self.inc_deg()?,
+            self.raan_deg()?,
             self.aop_deg()?,
             self.ta_deg()?,
             self.epoch,
@@ -565,8 +606,8 @@ impl CartesianState {
         Self::try_keplerian_apsis_radii(
             self.apoapsis_km()? + delta_ra_km,
             self.periapsis_km()? + delta_rp_km,
-            self.inc_deg(),
-            self.raan_deg(),
+            self.inc_deg()?,
+            self.raan_deg()?,
             self.aop_deg()?,
             self.ta_deg()?,
             self.epoch,
@@ -578,7 +619,7 @@ impl CartesianState {
     pub fn tlong_deg(&self) -> PhysicsResult<f64> {
         // Angles already in degrees
         Ok(between_0_360(
-            self.aop_deg()? + self.raan_deg() + self.ta_deg()?,
+            self.aop_deg()? + self.raan_deg()? + self.ta_deg()?,
         ))
     }
 
@@ -588,7 +629,7 @@ impl CartesianState {
     /// instead of relying on the ill-defined true anomaly.
     pub fn aol_deg(&self) -> PhysicsResult<f64> {
         Ok(between_0_360(if self.ecc()? < ECC_EPSILON {
-            self.tlong_deg()? - self.raan_deg()
+            self.tlong_deg()? - self.raan_deg()?
         } else {
             self.aop_deg()? + self.ta_deg()?
         }))
@@ -661,7 +702,7 @@ impl CartesianState {
     /// NOTE: Mean Brouwer Short are only defined around Earth. However, `nyx` does *not* check the
     /// main celestial body around which the state is defined (GMAT does perform this verification).
     pub fn is_brouwer_short_valid(&self) -> PhysicsResult<bool> {
-        if self.inc_deg() > 180.0 {
+        if self.inc_deg()? > 180.0 {
             info!("Brouwer Mean Short only applicable for inclinations less than 180.0");
             Ok(false)
         } else if self.ecc()? >= 1.0 || self.ecc()? < 0.0 {
@@ -691,10 +732,8 @@ impl CartesianState {
         if self.ecc()? <= 1.0 {
             Ok(((self.sma_km()? * self.ecc()?).powi(2) - self.sma_km()?.powi(2)).sqrt())
         } else {
-            Ok(
-                self.hmag().powi(2)
-                    / (self.frame.mu_km3_s2()? * (self.ecc()?.powi(2) - 1.0).sqrt()),
-            )
+            Ok(self.hmag()?.powi(2)
+                / (self.frame.mu_km3_s2()? * (self.ecc()?.powi(2) - 1.0).sqrt()))
         }
     }
 

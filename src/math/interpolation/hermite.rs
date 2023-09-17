@@ -64,7 +64,7 @@ use core::f64::EPSILON;
 use crate::errors::MathError;
 use log::error;
 
-use super::MAX_SAMPLES;
+use super::{InterpolationError, MAX_SAMPLES};
 
 /// From the abscissas (xs), the ordinates (ys), and the first derivatives (ydots), build the Hermite interpolation of the function and evaluate it at the requested abscissa (x).
 ///
@@ -77,16 +77,20 @@ pub fn hermite_eval(
     ys: &[f64],
     ydots: &[f64],
     x_eval: f64,
-) -> Result<(f64, f64), MathError> {
+) -> Result<(f64, f64), InterpolationError> {
     if xs.len() != ys.len() || xs.len() != ydots.len() {
-        error!("Abscissas (xs), ordinates (ys), and first derivatives (ydots) must contain the same number of items, but they are of lengths {}, {}, and {}", xs.len(), ys.len(), ydots.len());
-        return Err(MathError::InvalidInterpolationData);
+        return Err(InterpolationError::CorruptedData {
+            what: "lengths of abscissas (xs), ordinates (ys), and first derivatives (ydots) differ",
+        });
     } else if xs.is_empty() {
-        error!("No interpolation data provided");
-        return Err(MathError::InvalidInterpolationData);
+        return Err(InterpolationError::CorruptedData {
+            what: "list of abscissas (xs) is empty",
+        });
     } else if xs.len() > MAX_SAMPLES {
         error!("More than {MAX_SAMPLES} samples provided, which is the maximum number of items allowed for a Hermite interpolation");
-        return Err(MathError::InvalidInterpolationData);
+        return Err(InterpolationError::CorruptedData {
+            what: "list of abscissas (xs) contains more items than MAX_SAMPLES (32)",
+        });
     }
 
     // At this point, we know that the lengths of items is correct, so we can directly address them without worry for overflowing the array.
@@ -118,7 +122,12 @@ pub fn hermite_eval(
         let c2 = x_eval - xs[i - 1];
         let denom = xs[i] - xs[i - 1];
         if denom.abs() < EPSILON {
-            return Err(MathError::DivisionByZero);
+            return Err(InterpolationError::InterpMath {
+                source: MathError::DivisionByZero {
+                    action:
+                        "hermite data contains likely duplicate abcissa, remove duplicate states",
+                },
+            });
         }
 
         /*        The second column of WORK contains interpolated derivative */
@@ -173,7 +182,11 @@ pub fn hermite_eval(
             let c2 = x_eval - xs[xi - 1];
             let denom = xs[xij - 1] - xs[xi - 1];
             if denom.abs() < EPSILON {
-                return Err(MathError::DivisionByZero);
+                return Err(InterpolationError::InterpMath {
+                    source:MathError::DivisionByZero {
+                    action:
+                        "hermite data contains likely duplicate abcissa, remove duplicate states",
+                }});
             }
 
             /*           Compute the interpolated derivative at X for the Ith */

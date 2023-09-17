@@ -136,7 +136,7 @@ fn test_parse_gm() {
 
 #[test]
 fn test_anise_conversion() {
-    use crate::errors::AniseError;
+    use crate::errors::InputOutputError;
     use crate::naif::kpl::parser::convert_tpc;
     use crate::{file2heap, file_mmap, structure::dataset::DataSet};
     use std::fs::File;

@@ -32,7 +32,7 @@ pub mod time {
 pub mod prelude {
     pub use crate::almanac::Almanac;
     pub use crate::astro::Aberration;
-    pub use crate::errors::AniseError;
+    pub use crate::errors::InputOutputError;
     pub use crate::frames::*;
     pub use crate::math::units::*;
     pub use crate::naif::daf::NAIFSummaryRecord;
@@ -52,12 +52,12 @@ pub(crate) type NaifId = i32;
 macro_rules! file2heap {
     ($filename:tt) => {
         match File::open($filename) {
-            Err(e) => Err(AniseError::IOError(e.kind())),
+            Err(e) => Err(InputOutputError::IOError { kind: e.kind() }),
             Ok(file) => unsafe {
                 use bytes::Bytes;
                 use memmap2::MmapOptions;
                 match MmapOptions::new().map(&file) {
-                    Err(_) => Err(AniseError::IOUnknownError),
+                    Err(_) => Err(InputOutputError::IOUnknownError),
                     Ok(mmap) => {
                         let bytes = Bytes::copy_from_slice(&mmap);
                         Ok(bytes)
@@ -73,11 +73,11 @@ macro_rules! file2heap {
 macro_rules! file_mmap {
     ($filename:tt) => {
         match File::open($filename) {
-            Err(e) => Err(AniseError::IOError(e.kind())),
+            Err(e) => Err(InputOutputError::IOError { kind: e.kind() }),
             Ok(file) => unsafe {
                 use memmap2::MmapOptions;
                 match MmapOptions::new().map(&file) {
-                    Err(_) => Err(AniseError::IOUnknownError),
+                    Err(_) => Err(InputOutputError::IOUnknownError),
                     Ok(mmap) => Ok(mmap),
                 }
             },

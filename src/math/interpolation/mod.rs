@@ -43,4 +43,6 @@ pub enum InterpolationError {
     },
     #[snafu(display("no interpolation data to {epoch}, but prior checks suceeded (check integrity of the data?)"))]
     MissingInterpolationData { epoch: Epoch },
+    #[snafu(display("interpolation data corrupted: {what}"))]
+    CorruptedData { what: &'static str },
 }
