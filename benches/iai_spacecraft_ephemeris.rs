@@ -37,7 +37,7 @@ fn benchmark_anise_single_hop_type13_hermite() {
     let my_sc_j2k = Frame::from_ephem_j2000(-10000001);
 
     black_box(
-        ctx.translate_from_to_km_s_geometric(my_sc_j2k, EARTH_J2000, epoch)
+        ctx.translate_from_to_geometric(my_sc_j2k, EARTH_J2000, epoch)
             .unwrap(),
     );
 }

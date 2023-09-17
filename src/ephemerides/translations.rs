@@ -24,7 +24,7 @@ use crate::prelude::Frame;
 pub const MAX_TREE_DEPTH: usize = 8;
 
 impl<'a> Almanac<'a> {
-    /// Returns the position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`.
+    /// Returns the Cartesian state  needed to translate the `from_frame` to the `to_frame`.
     ///
     /// **WARNING:** This function only performs the translation and no rotation whatsoever. Use the `transform_from_to` function instead to include rotations.
     ///
@@ -35,8 +35,6 @@ impl<'a> Almanac<'a> {
         to_frame: Frame,
         epoch: Epoch,
         ab_corr: Aberration,
-        length_unit: LengthUnit,
-        time_unit: TimeUnit,
     ) -> Result<CartesianState, EphemerisError> {
         if from_frame == to_frame {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
@@ -47,32 +45,25 @@ impl<'a> Almanac<'a> {
             self.common_ephemeris_path(from_frame, to_frame, epoch)?;
 
         // The fwrd variables are the states from the `from frame` to the common node
-        let (mut pos_fwrd, mut vel_fwrd, mut frame_fwrd) = if from_frame
-            .ephem_origin_id_match(common_node)
-        {
-            (Vector3::zeros(), Vector3::zeros(), from_frame)
-        } else {
-            self.translation_parts_to_parent(from_frame, epoch, ab_corr, length_unit, time_unit)?
-        };
+        let (mut pos_fwrd, mut vel_fwrd, mut frame_fwrd) =
+            if from_frame.ephem_origin_id_match(common_node) {
+                (Vector3::zeros(), Vector3::zeros(), from_frame)
+            } else {
+                self.translation_parts_to_parent(from_frame, epoch, ab_corr)?
+            };
 
         // The bwrd variables are the states from the `to frame` back to the common node
         let (mut pos_bwrd, mut vel_bwrd, mut frame_bwrd) =
             if to_frame.ephem_origin_id_match(common_node) {
                 (Vector3::zeros(), Vector3::zeros(), to_frame)
             } else {
-                self.translation_parts_to_parent(to_frame, epoch, ab_corr, length_unit, time_unit)?
+                self.translation_parts_to_parent(to_frame, epoch, ab_corr)?
             };
 
         for cur_node_hash in path.iter().take(node_count) {
             if !frame_fwrd.ephem_origin_id_match(common_node) {
-                let (cur_pos_fwrd, cur_vel_fwrd, cur_frame_fwrd) = self
-                    .translation_parts_to_parent(
-                        frame_fwrd,
-                        epoch,
-                        ab_corr,
-                        length_unit,
-                        time_unit,
-                    )?;
+                let (cur_pos_fwrd, cur_vel_fwrd, cur_frame_fwrd) =
+                    self.translation_parts_to_parent(frame_fwrd, epoch, ab_corr)?;
 
                 pos_fwrd += cur_pos_fwrd;
                 vel_fwrd += cur_vel_fwrd;
@@ -80,14 +71,8 @@ impl<'a> Almanac<'a> {
             }
 
             if !frame_bwrd.ephem_origin_id_match(common_node) {
-                let (cur_pos_bwrd, cur_vel_bwrd, cur_frame_bwrd) = self
-                    .translation_parts_to_parent(
-                        frame_bwrd,
-                        epoch,
-                        ab_corr,
-                        length_unit,
-                        time_unit,
-                    )?;
+                let (cur_pos_bwrd, cur_vel_bwrd, cur_frame_bwrd) =
+                    self.translation_parts_to_parent(frame_bwrd, epoch, ab_corr)?;
 
                 pos_bwrd += cur_pos_bwrd;
                 vel_bwrd += cur_vel_bwrd;
@@ -108,74 +93,14 @@ impl<'a> Almanac<'a> {
         })
     }
 
-    /// Returns the position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in km, the velocity in km/s, and the acceleration in km/s^2.
-    pub fn translate_from_to_km_s(
-        &self,
-        from_frame: Frame,
-        to_frame: Frame,
-        epoch: Epoch,
-        ab_corr: Aberration,
-    ) -> Result<CartesianState, EphemerisError> {
-        self.translate_from_to(
-            from_frame,
-            to_frame,
-            epoch,
-            ab_corr,
-            LengthUnit::Kilometer,
-            TimeUnit::Second,
-        )
-    }
-
-    /// Returns the position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in m, the velocity in m/s, and the acceleration in m/s^2.
-    pub fn translate_from_to_m_s(
-        &self,
-        from_frame: Frame,
-        to_frame: Frame,
-        epoch: Epoch,
-        ab_corr: Aberration,
-    ) -> Result<CartesianState, EphemerisError> {
-        self.translate_from_to(
-            from_frame,
-            to_frame,
-            epoch,
-            ab_corr,
-            LengthUnit::Meter,
-            TimeUnit::Second,
-        )
-    }
-
     /// Returns the geometric position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in km, the velocity in km/s, and the acceleration in km/s^2.
-    pub fn translate_from_to_km_s_geometric(
+    pub fn translate_from_to_geometric(
         &self,
         from_frame: Frame,
         to_frame: Frame,
         epoch: Epoch,
     ) -> Result<CartesianState, EphemerisError> {
-        self.translate_from_to(
-            from_frame,
-            to_frame,
-            epoch,
-            Aberration::None,
-            LengthUnit::Kilometer,
-            TimeUnit::Second,
-        )
-    }
-
-    /// Returns the geometric position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in m, the velocity in m/s, and the acceleration in m/s^2.
-    pub fn translate_from_to_m_s_geometric(
-        &self,
-        from_frame: Frame,
-        to_frame: Frame,
-        epoch: Epoch,
-    ) -> Result<CartesianState, EphemerisError> {
-        self.translate_from_to(
-            from_frame,
-            to_frame,
-            epoch,
-            Aberration::None,
-            LengthUnit::Meter,
-            TimeUnit::Second,
-        )
+        self.translate_from_to(from_frame, to_frame, epoch, Aberration::None)
     }
 
     /// Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame
@@ -194,14 +119,7 @@ impl<'a> Almanac<'a> {
         time_unit: TimeUnit,
     ) -> Result<CartesianState, EphemerisError> {
         // Compute the frame translation
-        let frame_state = self.translate_from_to(
-            from_frame,
-            to_frame,
-            epoch,
-            ab_corr,
-            distance_unit,
-            time_unit,
-        )?;
+        let frame_state = self.translate_from_to(from_frame, to_frame, epoch, ab_corr)?;
 
         let dist_unit_factor = LengthUnit::Kilometer.from_meters() * distance_unit.to_meters();
         let time_unit_factor = time_unit.in_seconds();

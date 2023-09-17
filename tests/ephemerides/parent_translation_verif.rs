@@ -46,15 +46,12 @@ fn de438s_parent_translation_verif() {
     ['9.5205530594596043e+07', '-4.6160758818180226e+07', '-2.6779476581501361e+07', '1.6612048969243794e+01', '2.8272067093941200e+01', '1.1668575714409423e+01']
     */
 
-    let (pos, vel, _) = ctx
-        .translate_to_parent(
-            VENUS_J2000,
-            epoch,
-            Aberration::None,
-            LengthUnit::Kilometer,
-            TimeUnit::Second,
-        )
+    let state = ctx
+        .translate_to_parent(VENUS_J2000, epoch, Aberration::None)
         .unwrap();
+
+    let pos = state.radius_km;
+    let vel = state.velocity_km_s;
 
     let pos_expct_km = Vector3::new(
         9.520_553_059_459_604e7,
@@ -71,17 +68,6 @@ fn de438s_parent_translation_verif() {
     // We expect exactly the same output as SPICE to machine precision.
     assert!((pos - pos_expct_km).norm() < EPSILON);
     assert!((vel - vel_expct_km_s).norm() < EPSILON);
-
-    // Same thing but in Megameters per millisecond
-    let (pos, vel, _) = ctx
-        .translate_to_parent(
-            VENUS_J2000,
-            epoch,
-            Aberration::None,
-            LengthUnit::Megameter,
-            TimeUnit::Millisecond,
-        )
-        .unwrap();
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(

@@ -58,8 +58,6 @@ fn de440s_translation_verif_venus2emb() {
         EARTH_MOON_BARYCENTER_J2000,
         epoch,
         Aberration::None,
-        LengthUnit::Kilometer,
-        TimeUnit::Second,
     );
     match rslt {
         Ok(state) => {
@@ -92,7 +90,7 @@ fn de440s_translation_verif_venus2emb() {
 
             // Test the opposite translation
             let state = ctx
-                .translate_from_to_km_s_geometric(EARTH_MOON_BARYCENTER_J2000, VENUS_J2000, epoch)
+                .translate_from_to_geometric(EARTH_MOON_BARYCENTER_J2000, VENUS_J2000, epoch)
                 .unwrap();
 
             // We expect exactly the same output as SPICE to machine precision.
@@ -147,14 +145,7 @@ fn de438s_translation_verif_venus2luna() {
     */
 
     let state = ctx
-        .translate_from_to(
-            VENUS_J2000,
-            LUNA_J2000,
-            epoch,
-            Aberration::None,
-            LengthUnit::Kilometer,
-            TimeUnit::Second,
-        )
+        .translate_from_to(VENUS_J2000, LUNA_J2000, epoch, Aberration::None)
         .unwrap();
 
     let pos_expct_km = Vector3::new(
@@ -190,7 +181,7 @@ fn de438s_translation_verif_venus2luna() {
 
     // Test the opposite translation
     let state = ctx
-        .translate_from_to_km_s_geometric(LUNA_J2000, VENUS_J2000, epoch)
+        .translate_from_to_geometric(LUNA_J2000, VENUS_J2000, epoch)
         .unwrap();
 
     // We expect exactly the same output as SPICE to machine precision.
@@ -250,8 +241,6 @@ fn de438s_translation_verif_emb2luna() {
             LUNA_J2000,
             epoch,
             Aberration::None,
-            LengthUnit::Kilometer,
-            TimeUnit::Second,
         )
         .unwrap();
 
@@ -296,8 +285,6 @@ fn de438s_translation_verif_emb2luna() {
             EARTH_MOON_BARYCENTER_J2000,
             epoch,
             Aberration::None,
-            LengthUnit::Kilometer,
-            TimeUnit::Second,
         )
         .unwrap();
 
@@ -345,7 +332,7 @@ fn spk_hermite_type13_verif() {
     let my_sc_j2k = Frame::from_ephem_j2000(-10000001);
 
     let state = ctx
-        .translate_from_to_km_s_geometric(my_sc_j2k, EARTH_J2000, epoch)
+        .translate_from_to_geometric(my_sc_j2k, EARTH_J2000, epoch)
         .unwrap();
     println!("{state:?}");
 
@@ -404,7 +391,7 @@ fn multithread_query() {
     let epochs: Vec<Epoch> = time_it.collect();
     epochs.into_par_iter().for_each(|epoch| {
         let state = ctx
-            .translate_from_to_km_s_geometric(LUNA_J2000, EARTH_MOON_BARYCENTER_J2000, epoch)
+            .translate_from_to_geometric(LUNA_J2000, EARTH_MOON_BARYCENTER_J2000, epoch)
             .unwrap();
         println!("{state:?}");
     });
