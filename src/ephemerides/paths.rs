@@ -148,8 +148,8 @@ impl<'a> Almanac<'a> {
         // path is which brings the non zero-length path back to the file root.
         if from_len == 0 && to_len == 0 {
             Err(EphemerisError::TranslationOrigin {
-                from: from_frame,
-                to: to_frame,
+                from: from_frame.into(),
+                to: to_frame.into(),
                 epoch,
             })
         } else if from_len != 0 && to_len == 0 {

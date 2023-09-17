@@ -86,11 +86,11 @@ impl Frame {
 
     /// Returns the gravitational parameters of this frame, if defined
     pub fn mu_km3_s2(&self) -> Result<f64, PhysicsError> {
-        Ok(self.mu_km3_s2.ok_or(PhysicsError::MissingFrameData {
+        self.mu_km3_s2.ok_or(PhysicsError::MissingFrameData {
             action: "retrieving mean equatorial radius",
             data: "shape",
-            frame: *self,
-        })?)
+            frame: self.into(),
+        })
     }
 
     /// Returns the mean equatorial radius in km, if defined
@@ -100,7 +100,7 @@ impl Frame {
             .ok_or(PhysicsError::MissingFrameData {
                 action: "retrieving mean equatorial radius",
                 data: "shape",
-                frame: *self,
+                frame: self.into(),
             })?
             .mean_equatorial_radius_km())
     }
@@ -112,7 +112,7 @@ impl Frame {
             .ok_or(PhysicsError::MissingFrameData {
                 action: "retrieving semi major axis radius",
                 data: "shape",
-                frame: *self,
+                frame: self.into(),
             })?
             .semi_major_equatorial_radius_km)
     }
@@ -123,7 +123,7 @@ impl Frame {
             .ok_or(PhysicsError::MissingFrameData {
                 action: "retrieving flattening ratio",
                 data: "shape",
-                frame: *self,
+                frame: self.into(),
             })?
             .flattening())
     }

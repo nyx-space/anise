@@ -13,7 +13,7 @@ use snafu::prelude::*;
 
 use crate::{
     errors::PhysicsError, math::interpolation::InterpolationError, naif::daf::DAFError,
-    prelude::Frame, NaifId,
+    prelude::FrameUid, NaifId,
 };
 
 pub mod paths;
@@ -33,8 +33,8 @@ pub enum EphemerisError {
         "Could not translate from {from} to {to}: no common origin found at epoch {epoch}"
     ))]
     TranslationOrigin {
-        from: Frame,
-        to: Frame,
+        from: FrameUid,
+        to: FrameUid,
         epoch: Epoch,
     },
     #[snafu(display("no ephemeris data loaded (must call load_spk)"))]

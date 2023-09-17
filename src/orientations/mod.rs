@@ -13,7 +13,7 @@ use snafu::prelude::*;
 
 use crate::{
     errors::PhysicsError, math::interpolation::InterpolationError, naif::daf::DAFError,
-    prelude::Frame,
+    prelude::FrameUid,
 };
 
 #[derive(Debug, Snafu)]
@@ -29,8 +29,8 @@ pub enum OrientationError {
         "Could not rotate from {from} to {to}: no common origin found at epoch {epoch}"
     ))]
     RotationOrigin {
-        from: Frame,
-        to: Frame,
+        from: FrameUid,
+        to: FrameUid,
         epoch: Epoch,
     },
     #[snafu(display("no oreitnation data loaded (must call load_bpc or DataSet::from_bytes)"))]

@@ -11,7 +11,7 @@
 use hifitime::Epoch;
 use snafu::prelude::*;
 
-use crate::prelude::Frame;
+use crate::prelude::FrameUid;
 use crate::structure::semver::Semver;
 use crate::NaifId;
 use core::convert::From;
@@ -41,11 +41,6 @@ pub enum AniseError {
     NoInterpolationData,
     /// Raised to prevent overwriting an existing file
     FileExists,
-    /// Raised if a transformation is requested but the frames have no common origin
-    DisjointFrames {
-        from_frame: Frame,
-        to_frame: Frame,
-    },
     /// Raised if the ephemeris or orientation is deeper to the context origin than this library supports
     MaxTreeDepth,
     /// Raised if there is no interpolation data for the requested epoch, i.e. ephemeris/orientation starts after or ends before the requested epoch
@@ -107,7 +102,10 @@ pub enum IntegrityError {
     /// The lookup table is broken somehow
     LookupTable,
     /// Raised if a transformation is requested but the frames have no common origin
-    DisjointRoots { from_frame: Frame, to_frame: Frame },
+    DisjointRoots {
+        from_frame: FrameUid,
+        to_frame: FrameUid,
+    },
     #[snafu(display(
         "data for {variable} in {dataset} decoded as subnormal double (data malformed?)"
     ))]
@@ -145,8 +143,8 @@ pub enum PhysicsError {
     #[snafu(display("frames {frame1} and {frame2} differ while {action}"))]
     FrameMismatch {
         action: &'static str,
-        frame1: Frame,
-        frame2: Frame,
+        frame1: FrameUid,
+        frame2: FrameUid,
     },
     #[snafu(display("origins {from1} and {from2} differ while {action}"))]
     OriginMismatch {
@@ -160,7 +158,7 @@ pub enum PhysicsError {
     MissingFrameData {
         action: &'static str,
         data: &'static str,
-        frame: Frame,
+        frame: FrameUid,
     },
     #[snafu(display("parabolic orbits are physically impossible and the eccentricity calculated to be within {limit:e} of 1.0"))]
     ParabolicEccentricity { limit: f64 },
@@ -208,11 +206,6 @@ impl fmt::Display for AniseError {
             Self::FileExists => write!(
                 f,
                 "ANISE error: operation aborted to prevent overwriting an existing file"
-            ),
-            Self::DisjointFrames { from_frame: from, to_frame: to } => write!(
-                f,
-                "ANISE error: frame {} and {} do not share a common origin",
-                to, from
             ),
             Self::MaxTreeDepth => write!(
                 f,
