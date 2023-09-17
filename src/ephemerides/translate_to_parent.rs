@@ -41,7 +41,7 @@ impl<'a> Almanac<'a> {
         _ab_corr: Aberration,
         distance_unit: LengthUnit,
         time_unit: TimeUnit,
-    ) -> Result<(Vector3, Vector3, Vector3, Frame), EphemerisError> {
+    ) -> Result<(Vector3, Vector3, Frame), EphemerisError> {
         // TODO: Create a CartesianState struct which can be "upgraded" to an Orbit if the frame is of the correct type?
         // I guess this is what the `Orbit` struct in Nyx does.
 
@@ -55,9 +55,6 @@ impl<'a> Almanac<'a> {
 
         // This should not fail because we've fetched the spk_no from above with the spk_summary_at_epoch call.
         let spk_data = self.spk_data[spk_no].ok_or(EphemerisError::Unreachable)?;
-
-        // Perform a translation with position and velocity;
-        let acc = Vector3::zeros();
 
         // Now let's simply evaluate the data
         let (pos_km, vel_km_s) = match summary.data_type_i {
@@ -102,7 +99,6 @@ impl<'a> Almanac<'a> {
         Ok((
             pos_km * dist_unit_factor,
             vel_km_s * dist_unit_factor / time_unit_factor,
-            acc * dist_unit_factor / time_unit_factor.powi(2),
             new_frame,
         ))
     }

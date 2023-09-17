@@ -26,9 +26,9 @@ pub trait GeodeticFrameTrait: CelestialFrameTrait {
     fn angular_velocity_deg_s(&self) -> f64;
 }
 
-/// A GeodeticFrame is a Celestial Frame whose equatorial and semi major radii are defined.
+/// A GeodeticParameters defines the parameters needed
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct GeodeticFrame {
+pub struct GeodeticParameters {
     pub celestial_frame: CelestialFrame,
     pub shape: Ellipsoid,
     pub angular_velocity_deg: f64,
@@ -82,45 +82,5 @@ impl Into<Frame> for GeodeticFrame {
     /// This will cause the LOSS of the constants stored in the frame detail.
     fn into(self) -> Frame {
         self.celestial_frame.frame
-    }
-}
-
-impl<'a> Almanac<'a> {
-    /// Tries to find the geodetic frame data given the ephemeris center name and the orientation name.
-    /// # Note
-    /// The ephemeris name MUST match the name of the planetary constant.
-    /// To load the planetary constants with another name, use `geodetic_frame_from`
-    pub fn geodetic_frame(
-        &self,
-        ephemeris_name: &'a str,
-        orientation_name: &'a str,
-    ) -> Result<GeodeticFrame, AniseError> {
-        self.geodetic_frame_from(ephemeris_name, orientation_name, ephemeris_name)
-    }
-
-    /// Tries to find the geodetic frame data given the ephemeris center name, the orientation name, and the name of the planetary constants
-    pub fn geodetic_frame_from(
-        &self,
-        _ephemeris_name: &'a str,
-        _orientation_name: &'a str,
-        _planetary_constants_name: &'a str,
-    ) -> Result<GeodeticFrame, AniseError> {
-        todo!()
-        // let constants = self.planetary_constants_from_name(planetary_constants_name)?;
-
-        // if constants.shape.is_none() {
-        //     error!("no shape data associated with {planetary_constants_name}");
-        //     return Err(AniseError::ParameterNotSpecified);
-        // }
-
-        // // TODO: Figure out how to specify / where to find the angular velocity. And maybe it shouldn't exist!
-        // Ok(GeodeticFrame {
-        //     celestial_frame: CelestialFrame {
-        //         frame: Frame::from_ephemeris_orientation_names(ephemeris_name, orientation_name),
-        //         mu_km3_s2: constants.mu_km3_s2,
-        //     },
-        //     shape: constants.shape.unwrap(),
-        //     angular_velocity_deg: 0.0,
-        // })
     }
 }

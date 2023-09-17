@@ -95,7 +95,7 @@ pub enum DecodingError {
     Obscure { kind: &'static str },
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Snafu)]
+#[derive(Copy, Clone, PartialEq, Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub enum IntegrityError {
     /// Data checksum differs from expected checksum
@@ -156,17 +156,24 @@ pub enum PhysicsError {
     },
     #[snafu(display("{action} requires the time derivative of the DCM but it is not set"))]
     DCMMissingDerivative { action: &'static str },
+    #[snafu(display("{action} requires the frame {frame} to have {data} defined"))]
+    MissingFrameData {
+        action: &'static str,
+        data: &'static str,
+        frame: Frame,
+    },
+    #[snafu(display("parabolic orbits are physically impossible and the eccentricity calculated to be within {limit:e} of 1.0"))]
+    ParabolicEccentricity { limit: f64 },
+    #[snafu(display("parabolic orbits are physically impossible and the semilatus rectum (semi-parameter) calculated to be {p}"))]
+    ParabolicSemiParam { p: f64 },
+    #[snafu(display("hyperbolic true anomaly is physically impossible: {ta_deg} deg"))]
+    HyperbolicTrueAnomaly { ta_deg: f64 },
+    #[snafu(display("infinite value encountered when {action}"))]
+    InfiniteValue { action: &'static str },
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub enum PhysicsErrorKind {
-    /// ANISE does not support parabolic orbits because these are not physically real.
-    ParabolicOrbit,
-    /// True anomaly of the provided hyperbolic orbit is physically impossible
-    InvalidHyperbolicTrueAnomaly(f64),
-    /// Some computation led to a value being infinite, check the error logs
-    InfiniteValue,
-}
+pub enum PhysicsErrorKind {}
 
 impl From<IOErrorKind> for AniseError {
     fn from(e: IOErrorKind) -> Self {

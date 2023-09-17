@@ -18,7 +18,7 @@ use crate::hifitime::Epoch;
 use crate::math::cartesian::CartesianState;
 use crate::math::units::*;
 use crate::math::Vector3;
-use crate::prelude::{Frame, FrameTrait};
+use crate::prelude::Frame;
 
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
 pub const MAX_TREE_DEPTH: usize = 8;
@@ -47,49 +47,37 @@ impl<'a> Almanac<'a> {
             self.common_ephemeris_path(from_frame, to_frame, epoch)?;
 
         // The fwrd variables are the states from the `from frame` to the common node
-        let (mut pos_fwrd, mut vel_fwrd, mut acc_fwrd, mut frame_fwrd) =
+        let (mut pos_fwrd, mut vel_fwrd, mut frame_fwrd) =
             if from_frame.ephem_origin_id_match(common_node) {
-                (
-                    Vector3::zeros(),
-                    Vector3::zeros(),
-                    Vector3::zeros(),
-                    from_frame,
-                )
+                (Vector3::zeros(), Vector3::zeros(), from_frame)
             } else {
                 self.translate_to_parent(from_frame, epoch, ab_corr, length_unit, time_unit)?
             };
 
         // The bwrd variables are the states from the `to frame` back to the common node
-        let (mut pos_bwrd, mut vel_bwrd, mut acc_bwrd, mut frame_bwrd) =
+        let (mut pos_bwrd, mut vel_bwrd, mut frame_bwrd) =
             if to_frame.ephem_origin_id_match(common_node) {
-                (
-                    Vector3::zeros(),
-                    Vector3::zeros(),
-                    Vector3::zeros(),
-                    to_frame,
-                )
+                (Vector3::zeros(), Vector3::zeros(), to_frame)
             } else {
                 self.translate_to_parent(to_frame, epoch, ab_corr, length_unit, time_unit)?
             };
 
         for cur_node_hash in path.iter().take(node_count) {
             if !frame_fwrd.ephem_origin_id_match(common_node) {
-                let (cur_pos_fwrd, cur_vel_fwrd, cur_acc_fwrd, cur_frame_fwrd) =
+                let (cur_pos_fwrd, cur_vel_fwrd, cur_frame_fwrd) =
                     self.translate_to_parent(frame_fwrd, epoch, ab_corr, length_unit, time_unit)?;
 
                 pos_fwrd += cur_pos_fwrd;
                 vel_fwrd += cur_vel_fwrd;
-                acc_fwrd += cur_acc_fwrd;
                 frame_fwrd = cur_frame_fwrd;
             }
 
             if !frame_bwrd.ephem_origin_id_match(common_node) {
-                let (cur_pos_bwrd, cur_vel_bwrd, cur_acc_bwrd, cur_frame_bwrd) =
+                let (cur_pos_bwrd, cur_vel_bwrd, cur_frame_bwrd) =
                     self.translate_to_parent(frame_bwrd, epoch, ab_corr, length_unit, time_unit)?;
 
                 pos_bwrd += cur_pos_bwrd;
                 vel_bwrd += cur_vel_bwrd;
-                acc_bwrd += cur_acc_bwrd;
                 frame_bwrd = cur_frame_bwrd;
             }
 
@@ -102,7 +90,6 @@ impl<'a> Almanac<'a> {
         Ok(CartesianState {
             radius_km: pos_fwrd - pos_bwrd,
             velocity_km_s: vel_fwrd - vel_bwrd,
-            acceleration_km_s2: Some(acc_fwrd - acc_bwrd),
             epoch,
             frame: to_frame,
         })
@@ -209,7 +196,6 @@ impl<'a> Almanac<'a> {
         let input_state = CartesianState {
             radius_km: position * dist_unit_factor,
             velocity_km_s: velocity * dist_unit_factor / time_unit_factor,
-            acceleration_km_s2: None,
             epoch,
             frame: from_frame,
         };

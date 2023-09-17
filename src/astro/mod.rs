@@ -8,6 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 
+use crate::errors::PhysicsError;
+
 /// Defines the aberration corrections to the state of the target body to account for one-way light time and stellar aberration.
 /// **WARNING:** This enum is a placeholder until [https://github.com/anise-toolkit/anise.rs/issues/26] is implemented.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -17,3 +19,5 @@ pub enum Aberration {
 
 pub mod orbit;
 pub mod orbit_geodetic;
+
+pub type PhysicsResult<T> = Result<T, PhysicsError>;

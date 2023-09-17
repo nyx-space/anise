@@ -8,10 +8,5 @@
  * Documentation: https://nyxspace.com/
  */
 
-pub mod celestial_frame;
 pub mod frame;
-pub mod geodetic_frame;
-
-pub use celestial_frame::{CelestialFrame, CelestialFrameTrait};
-pub use frame::{Frame, FrameTrait};
-pub use geodetic_frame::{GeodeticFrame, GeodeticFrameTrait};
+pub use frame::Frame;

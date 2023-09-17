@@ -183,8 +183,8 @@ impl<'a: 'b, 'b> Almanac<'a> {
 #[cfg(test)]
 mod ut_almanach_spk {
     use crate::{
-        constants::orientations::J2000,
-        prelude::{Almanac, Epoch, Frame},
+        constants::frames::{EARTH_J2000, LUNA_J2000},
+        prelude::{Almanac, Epoch},
     };
 
     #[test]
@@ -216,14 +216,6 @@ mod ut_almanach_spk {
     fn queries_nothing_loaded() {
         let almanac = Almanac::default();
         let e = Epoch::now().unwrap();
-        let moon_j2k = Frame {
-            ephemeris_id: 301,
-            orientation_id: J2000,
-        };
-        let earth_j2k = Frame {
-            ephemeris_id: 399,
-            orientation_id: J2000,
-        };
 
         assert!(
             almanac.try_find_context_center().is_err(),
@@ -231,13 +223,13 @@ mod ut_almanach_spk {
         );
 
         assert!(
-            almanac.ephemeris_path_to_root(moon_j2k, e).is_err(),
+            almanac.ephemeris_path_to_root(LUNA_J2000, e).is_err(),
             "empty almanach should report an error"
         );
 
         assert!(
             almanac
-                .common_ephemeris_path(moon_j2k, earth_j2k, e)
+                .common_ephemeris_path(LUNA_J2000, EARTH_J2000, e)
                 .is_err(),
             "empty almanach should report an error"
         );
