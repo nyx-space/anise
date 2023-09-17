@@ -50,8 +50,8 @@ fn de438s_parent_translation_verif() {
         .translate_to_parent(VENUS_J2000, epoch, Aberration::None)
         .unwrap();
 
-    let pos = state.radius_km;
-    let vel = state.velocity_km_s;
+    let pos_km = state.radius_km;
+    let vel_km_s = state.velocity_km_s;
 
     let pos_expct_km = Vector3::new(
         9.520_553_059_459_604e7,
@@ -66,22 +66,21 @@ fn de438s_parent_translation_verif() {
     );
 
     // We expect exactly the same output as SPICE to machine precision.
-    assert!((pos - pos_expct_km).norm() < EPSILON);
-    assert!((vel - vel_expct_km_s).norm() < EPSILON);
+    assert!((pos_km - pos_expct_km).norm() < EPSILON);
+    assert!((vel_km_s - vel_expct_km_s).norm() < EPSILON);
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        (pos - pos_expct_km * 1e-3).norm() < EPSILON,
+        (pos_km - pos_expct_km).norm() < EPSILON,
         "got {} but want {}",
-        pos,
-        pos_expct_km * 1e-3
+        pos_km,
+        pos_expct_km
     );
 
-    // NOTE: km/s and Mm/ms correspond to the same number: times 1e3 for km -> Mm and times 1e-3 for s -> ms.
     assert!(
-        (vel - vel_expct_km_s).norm() < EPSILON,
+        (vel_km_s - vel_expct_km_s).norm() < EPSILON,
         "got {} but want {}",
-        vel,
+        vel_km_s,
         vel_expct_km_s
     );
 }
