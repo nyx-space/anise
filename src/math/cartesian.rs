@@ -19,11 +19,10 @@ use hifitime::Epoch;
 use nalgebra::Vector6;
 use snafu::ensure;
 
-/// Defines a Cartesian state in a given frame at a given epoch in a given time scale.
+/// Defines a Cartesian state in a given frame at a given epoch in a given time scale. Radius data is expressed in kilometers. Velocity data is expressed in kilometers per second.
+/// Regardless of the constructor used, this struct stores all the state information in Cartesian coordinates as these are always non singular.
 ///
 /// Unless noted otherwise, algorithms are from GMAT 2016a [StateConversionUtil.cpp](https://github.com/ChristopherRabotin/GMAT/blob/37201a6290e7f7b941bc98ee973a527a5857104b/src/base/util/StateConversionUtil.cpp).
-/// Regardless of the constructor used, this struct stores all the state information in Cartesian coordinates
-/// as these are always non singular.
 #[derive(Copy, Clone, Debug)]
 pub struct CartesianState {
     /// Position radius in kilometers

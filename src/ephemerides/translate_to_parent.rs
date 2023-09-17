@@ -16,8 +16,8 @@ use crate::almanac::Almanac;
 use crate::astro::Aberration;
 use crate::ephemerides::EphemInterpolationSnafu;
 use crate::hifitime::Epoch;
-use crate::math::units::*;
-use crate::math::Vector3;
+use crate::math::cartesian::CartesianState;
+use crate::math::{units::*, Vector3};
 use crate::naif::daf::NAIFDataSet;
 use crate::naif::spk::datatypes::{HermiteSetType13, LagrangeSetType9, Type2ChebyshevSet};
 use crate::prelude::Frame;
@@ -34,17 +34,12 @@ impl<'a> Almanac<'a> {
     /// + As of now, some interpolation types are not supported, and if that were to happen, this would return an error.
     ///
     /// **WARNING:** This function only performs the translation and no rotation whatsoever. Use the `transform_to_parent_from` function instead to include rotations.
-    pub fn translate_to_parent(
+    pub(crate) fn translation_parts_to_parent_km_s(
         &self,
         source: Frame,
         epoch: Epoch,
         _ab_corr: Aberration,
-        distance_unit: LengthUnit,
-        time_unit: TimeUnit,
     ) -> Result<(Vector3, Vector3, Frame), EphemerisError> {
-        // TODO: Create a CartesianState struct which can be "upgraded" to an Orbit if the frame is of the correct type?
-        // I guess this is what the `Orbit` struct in Nyx does.
-
         // First, let's find the SPK summary for this frame.
         let (summary, spk_no, idx_in_spk) =
             self.spk_summary_at_epoch(source.ephemeris_id, epoch)?;
@@ -92,14 +87,45 @@ impl<'a> Almanac<'a> {
             _ => todo!("{} is not yet supported", summary.data_type_i),
         };
 
+        Ok((pos_km, vel_km_s, new_frame))
+    }
+
+    pub(crate) fn translation_parts_to_parent(
+        &self,
+        source: Frame,
+        epoch: Epoch,
+        ab_corr: Aberration,
+        distance_unit: LengthUnit,
+        time_unit: TimeUnit,
+    ) -> Result<(Vector3, Vector3, Frame), EphemerisError> {
+        let (radius_km, velocity_km_s, frame) =
+            self.translation_parts_to_parent_km_s(source, epoch, ab_corr)?;
+
         // Convert the units based on the storage units.
         let dist_unit_factor = LengthUnit::Kilometer.from_meters() * distance_unit.to_meters();
         let time_unit_factor = TimeUnit::Second.from_seconds() * time_unit.in_seconds();
 
         Ok((
-            pos_km * dist_unit_factor,
-            vel_km_s * dist_unit_factor / time_unit_factor,
-            new_frame,
+            radius_km * dist_unit_factor,
+            velocity_km_s * dist_unit_factor / time_unit_factor,
+            frame,
         ))
+    }
+
+    pub fn translate_to_parent(
+        &self,
+        source: Frame,
+        epoch: Epoch,
+        ab_corr: Aberration,
+    ) -> Result<CartesianState, EphemerisError> {
+        let (radius_km, velocity_km_s, frame) =
+            self.translation_parts_to_parent_km_s(source, epoch, ab_corr)?;
+
+        Ok(CartesianState {
+            radius_km,
+            velocity_km_s,
+            epoch,
+            frame,
+        })
     }
 }
