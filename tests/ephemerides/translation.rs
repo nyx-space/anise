@@ -399,3 +399,45 @@ fn multithread_query() {
     let delta_t = Epoch::now().unwrap() - start;
     println!("Took {delta_t}");
 }
+
+#[test]
+fn hermite_query() {
+    use anise::naif::kpl::parser::convert_tpc;
+
+    let traj = SPK::load("./data/gmat-hermite.bsp").unwrap();
+    let summary = traj.data_summaries().unwrap()[0];
+    println!("{}", summary);
+    let mut ctx = Almanac::from_spk(&traj).unwrap();
+    // Also load the plantaery data
+    ctx.planetary_data = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
+    let summary_from_ctx = ctx.spk_summary(summary.id()).unwrap().0;
+
+    // The UIDs of the frames match.
+    assert_eq!(
+        summary.center_frame_uid(),
+        summary_from_ctx.center_frame_uid()
+    );
+
+    // And the summaries match
+    assert_eq!(&summary, summary_from_ctx);
+
+    // Let's load the actual frame information from the planetary data.
+    let to_frame = ctx.frame_from_uid(summary.center_frame_uid()).unwrap();
+
+    let summary_duration = summary.end_epoch() - summary.start_epoch();
+    // Query in the middle to the parent, since we don't have anything else loaded.
+
+    let state = ctx
+        .translate_from_to(
+            summary.target_frame(),
+            to_frame,
+            summary.start_epoch() + summary_duration * 0.5,
+            Aberration::None,
+        )
+        .unwrap();
+
+    println!("{state}");
+    // At this point, the frame is not celestial because the SPK summary does not have that knowledge.
+
+    // Let's load the planetary constants dataset and grab the frame information from there.
+}

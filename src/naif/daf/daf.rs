@@ -108,33 +108,9 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         }
     }
 
+    /// Parse the provided static byte array as a SPICE Double Array File
     pub fn from_static<B: Deref<Target = [u8]>>(bytes: &'static B) -> Result<Self, DAFError> {
-        let crc32_checksum = crc32fast::hash(bytes);
-        let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
-        // Check that the endian-ness is compatible with this platform.
-        file_record
-            .endianness()
-            .with_context(|_| FileRecordSnafu { kind: R::NAME })?;
-
-        // Move onto the next record.
-        let rcrd_idx = file_record.fwrd_idx() * RCRD_LEN;
-        let rcrd_bytes = bytes
-            .get(rcrd_idx..rcrd_idx + RCRD_LEN)
-            .ok_or_else(|| DecodingError::InaccessibleBytes {
-                start: rcrd_idx,
-                end: rcrd_idx + RCRD_LEN,
-                size: bytes.len(),
-            })
-            .with_context(|_| DecodingNameSnafu { kind: R::NAME })?;
-        let name_record = NameRecord::read_from(rcrd_bytes).unwrap();
-
-        Ok(Self {
-            file_record,
-            name_record,
-            bytes: Bytes::from_static(bytes),
-            crc32_checksum,
-            _daf_type: PhantomData,
-        })
+        Self::parse(Bytes::from_static(bytes))
     }
 
     /// Parse the provided bytes as a SPICE Double Array File
@@ -432,4 +408,9 @@ impl<R: NAIFSummaryRecord> Hash for DAF<R> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.bytes.hash(state);
     }
+}
+
+#[cfg(test)]
+mod daf_ut {
+    // TODO(now): test wrong crc32
 }

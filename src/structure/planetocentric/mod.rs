@@ -8,7 +8,10 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::NaifId;
+use crate::{
+    prelude::{Frame, FrameUid},
+    NaifId,
+};
 pub mod ellipsoid;
 pub mod nutprec;
 pub mod phaseangle;
@@ -47,6 +50,15 @@ impl<'a> DataSetT<'a> for PlanetaryData {
 }
 
 impl PlanetaryData {
+    /// Converts this planetary data into a Frame
+    pub fn to_frame(&self, uid: FrameUid) -> Frame {
+        Frame {
+            ephemeris_id: uid.ephemeris_id,
+            orientation_id: uid.orientation_id,
+            mu_km3_s2: Some(self.mu_km3_s2),
+            shape: self.shape,
+        }
+    }
     /// Specifies what data is available in this structure.
     ///
     /// Returns:

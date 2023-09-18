@@ -1,6 +1,6 @@
 #[test]
 fn test_load_ctx() {
-    // Start bycreating the ANISE planetary data
+    // Start by creating the ANISE planetary data
     use anise::{
         naif::kpl::parser::convert_tpc,
         prelude::{Almanac, BPC, SPK},

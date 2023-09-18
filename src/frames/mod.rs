@@ -48,6 +48,18 @@ impl From<&Frame> for FrameUid {
     }
 }
 
+impl From<FrameUid> for Frame {
+    fn from(uid: FrameUid) -> Self {
+        Self::from_ephem_orient(uid.ephemeris_id, uid.orientation_id)
+    }
+}
+
+impl From<&FrameUid> for Frame {
+    fn from(uid: &FrameUid) -> Self {
+        Self::from_ephem_orient(uid.ephemeris_id, uid.orientation_id)
+    }
+}
+
 impl fmt::Display for FrameUid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         let body_name = match celestial_name_from_id(self.ephemeris_id) {

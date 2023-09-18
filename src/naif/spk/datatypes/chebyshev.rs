@@ -285,3 +285,5 @@ impl<'a> NAIFDataRecord<'a> for Type3ChebyshevRecord<'a> {
         }
     }
 }
+
+// TODO(now): Add decoding tests with invalid data

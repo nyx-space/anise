@@ -622,4 +622,6 @@ mod dataset_ut {
         // And check that we get an error if the data is wrong.
         assert!(repr_dec.get_by_id(0).is_err())
     }
+
+    // TODO(now): Add test for invalid ANISE version, decoding garbage after a valid anise version, and decoding pure garbage
 }

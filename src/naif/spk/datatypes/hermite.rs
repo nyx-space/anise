@@ -343,3 +343,5 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
         Ok(())
     }
 }
+
+// TODO(now): Add decoding tests with invalid data

@@ -21,6 +21,7 @@ pub const MAX_SPACECRAFT_DATA: usize = 16;
 pub const MAX_PLANETARY_DATA: usize = 64;
 
 pub mod bpc;
+pub mod planetary;
 pub mod spk;
 
 /// An Almanac contains all of the loaded SPICE and ANISE data.

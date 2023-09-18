@@ -124,3 +124,5 @@ impl<'a> fmt::Display for Metadata<'a> {
         )
     }
 }
+
+// TODO(now): Add decoding tests

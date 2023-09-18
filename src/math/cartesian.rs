@@ -8,13 +8,13 @@
  * Documentation: https://nyxspace.com/
  */
 
-use core::ops::Add;
-
 use super::{perpv, Vector3};
 use crate::{
     errors::{EpochMismatchSnafu, FrameMismatchSnafu, PhysicsError},
     prelude::Frame,
 };
+use core::fmt;
+use core::ops::Add;
 use hifitime::Epoch;
 use nalgebra::Vector6;
 use snafu::ensure;
@@ -209,3 +209,45 @@ impl PartialEq for CartesianState {
         self.eq_within(other, radial_tol, velocity_tol)
     }
 }
+
+#[allow(clippy::format_in_format_args)]
+impl fmt::Display for CartesianState {
+    // Prints as Cartesian in floating point with units
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let decimals = f.precision().unwrap_or(6);
+        write!(
+            f,
+            "[{}] {}\tposition = [{}, {}, {}] km\tvelocity = [{}, {}, {}] km/s",
+            self.frame,
+            self.epoch,
+            format!("{:.*}", decimals, self.radius_km.x),
+            format!("{:.*}", decimals, self.radius_km.y),
+            format!("{:.*}", decimals, self.radius_km.z),
+            format!("{:.*}", decimals, self.velocity_km_s.x),
+            format!("{:.*}", decimals, self.velocity_km_s.y),
+            format!("{:.*}", decimals, self.velocity_km_s.z)
+        )
+    }
+}
+
+#[allow(clippy::format_in_format_args)]
+impl fmt::LowerExp for CartesianState {
+    // Prints as Cartesian in scientific notation with units
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let decimals = f.precision().unwrap_or(6);
+        write!(
+            f,
+            "[{}] {}\tposition = [{}, {}, {}] km\tvelocity = [{}, {}, {}] km/s",
+            self.frame,
+            self.epoch,
+            format!("{:.*}", decimals, self.radius_km.x),
+            format!("{:.*}", decimals, self.radius_km.y),
+            format!("{:.*}", decimals, self.radius_km.z),
+            format!("{:.*}", decimals, self.velocity_km_s.x),
+            format!("{:.*}", decimals, self.velocity_km_s.y),
+            format!("{:.*}", decimals, self.velocity_km_s.z)
+        )
+    }
+}
+
+// TODO(now): Add on Add with different frames and epochs, and make one correct

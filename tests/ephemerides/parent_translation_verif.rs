@@ -84,3 +84,5 @@ fn de438s_parent_translation_verif() {
         vel_expct_km_s
     );
 }
+
+// TODO(now): Summary from name and summary from ID

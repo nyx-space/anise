@@ -23,8 +23,9 @@ use crate::{
 };
 use core::f64::consts::PI;
 use core::f64::EPSILON;
+use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits};
-use log::{info, warn};
+use log::{error, info, warn};
 use snafu::ensure;
 
 /// If an orbit has an eccentricity below the following value, it is considered circular (only affects warning messages)
@@ -749,5 +750,48 @@ impl CartesianState {
     /// Returns the $C_3$ of this orbit in km^2/s^2
     pub fn c3_km2_s2(&self) -> PhysicsResult<f64> {
         Ok(-self.frame.mu_km3_s2()? / self.sma_km()?)
+    }
+}
+
+#[allow(clippy::format_in_format_args)]
+impl fmt::LowerHex for Orbit {
+    // Prints the Keplerian orbital elements in floating point with units
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if !self.frame.is_celestial() {
+            error!("you must update the frame from the Almanach before printing this state's orbital parameters");
+            Err(fmt::Error)
+        } else {
+            let decimals = f.precision().unwrap_or(6);
+            write!(
+                f,
+                "[{}] {}\tsma = {} km\tecc = {}\tinc = {} deg\traan = {} deg\taop = {} deg\tta = {} deg",
+                self.frame,
+                self.epoch,
+                format!("{:.*}", decimals, self.sma_km().or_else(|err| {
+                    error!("{err}");
+                    Err(fmt::Error)
+                })?),
+                format!("{:.*}", decimals, self.ecc().or_else(|err| {
+                    error!("{err}");
+                    Err(fmt::Error) 
+                })?),
+                format!("{:.*}", decimals, self.inc_deg().or_else(|err| {
+                    error!("{err}");
+                    Err(fmt::Error) 
+                })?),
+                format!("{:.*}", decimals, self.raan_deg().or_else(|err| {
+                    error!("{err}");
+                    Err(fmt::Error) 
+                })?),
+                format!("{:.*}", decimals, self.aop_deg().or_else(|err| {
+                    error!("{err}");
+                    Err(fmt::Error) 
+                })?),
+                format!("{:.*}", decimals, self.ta_deg().or_else(|err| {
+                    error!("{err}");
+                    Err(fmt::Error) 
+                })?),
+            )
+        }
     }
 }

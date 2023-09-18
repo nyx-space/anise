@@ -15,9 +15,10 @@ use zerocopy::{AsBytes, FromBytes, FromZeroes};
 use crate::{
     ephemerides::EphemerisError,
     naif::daf::{NAIFRecord, NAIFSummaryRecord},
+    prelude::{Frame, FrameUid},
 };
 
-#[derive(Clone, Copy, Debug, Default, AsBytes, FromZeroes, FromBytes)]
+#[derive(Clone, Copy, Debug, Default, AsBytes, FromZeroes, FromBytes, PartialEq)]
 #[repr(C)]
 pub struct SPKSummaryRecord {
     pub start_epoch_et_s: f64,
@@ -31,6 +32,32 @@ pub struct SPKSummaryRecord {
 }
 
 impl<'a> SPKSummaryRecord {
+    /// Returns the target frame UID of this summary
+    pub fn target_frame_uid(&self) -> FrameUid {
+        FrameUid {
+            ephemeris_id: self.target_id,
+            orientation_id: self.frame_id,
+        }
+    }
+
+    /// Returns the center frame UID of this summary
+    pub fn center_frame_uid(&self) -> FrameUid {
+        FrameUid {
+            ephemeris_id: self.center_id,
+            orientation_id: self.frame_id,
+        }
+    }
+
+    /// Returns the target frame UID of this summary
+    pub fn target_frame(&self) -> Frame {
+        Frame::from(self.target_frame_uid())
+    }
+
+    /// Returns the center frame UID of this summary
+    pub fn center_frame(&self) -> Frame {
+        Frame::from(self.center_frame_uid())
+    }
+
     pub fn spice_name(&self) -> Result<&'a str, EphemerisError> {
         Self::id_to_human_name(self.target_id)
     }
