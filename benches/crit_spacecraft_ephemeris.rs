@@ -44,9 +44,9 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let buf = file2heap!("data/gmat-hermite.bsp").unwrap();
     let spacecraft = SPK::parse(buf).unwrap();
 
-    let ctx = Almanac::from_spk(&spk)
+    let ctx = Almanac::from_spk(spk)
         .unwrap()
-        .load_spk(&spacecraft)
+        .load_spk(spacecraft)
         .unwrap();
 
     // Load SPICE data

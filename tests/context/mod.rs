@@ -6,6 +6,8 @@ fn test_load_ctx() {
         prelude::{Almanac, BPC, SPK},
     };
 
+    dbg!(core::mem::size_of::<Almanac>());
+
     let dataset = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
 
     // Load BSP and BPC
@@ -14,9 +16,11 @@ fn test_load_ctx() {
     let spk = SPK::load("data/de440.bsp").unwrap();
     let bpc = BPC::load("data/earth_latest_high_prec.bpc").unwrap();
 
-    let mut loaded_ctx = ctx.load_spk(&spk).unwrap().load_bpc(&bpc).unwrap();
+    let mut loaded_ctx = ctx.load_spk(spk).unwrap().load_bpc(bpc).unwrap();
 
     loaded_ctx.planetary_data = dataset;
 
     println!("{loaded_ctx}");
+
+    dbg!(core::mem::size_of::<Almanac>());
 }

@@ -31,9 +31,9 @@ pub mod spk;
 #[derive(Clone, Default)]
 pub struct Almanac<'a> {
     /// NAIF SPK is kept unchanged
-    pub spk_data: [Option<&'a SPK>; MAX_LOADED_SPKS],
+    pub spk_data: [Option<SPK>; MAX_LOADED_SPKS],
     /// NAIF BPC is kept unchanged
-    pub bpc_data: [Option<&'a BPC>; MAX_LOADED_BPCS],
+    pub bpc_data: [Option<BPC>; MAX_LOADED_BPCS],
     /// Dataset of planetary data
     pub planetary_data: DataSet<'a, PlanetaryData, MAX_PLANETARY_DATA>,
     /// Dataset of spacecraft data

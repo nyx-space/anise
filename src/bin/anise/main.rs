@@ -106,14 +106,14 @@ fn main() -> Result<(), CliErrors> {
                     let mut rows = Vec::new();
 
                     for (sno, summary) in pck.data_summaries().unwrap().iter().enumerate() {
-                        let name = pck
-                            .name_record
-                            .nth_name(sno, pck.file_record.summary_size());
+                        let name_rcrd = pck.name_record().unwrap();
+                        let name =
+                            name_rcrd.nth_name(sno, pck.file_record().unwrap().summary_size());
                         if summary.is_empty() {
                             continue;
                         }
                         rows.push(BpcRow {
-                            name,
+                            name: name.to_string(),
                             start_epoch: format!("{:E}", summary.start_epoch()),
                             end_epoch: format!("{:E}", summary.end_epoch()),
                             duration: summary.end_epoch() - summary.start_epoch(),
@@ -143,15 +143,15 @@ fn main() -> Result<(), CliErrors> {
                     let mut rows = Vec::new();
 
                     for (sno, summary) in spk.data_summaries().unwrap().iter().enumerate() {
-                        let name = spk
-                            .name_record
-                            .nth_name(sno, spk.file_record.summary_size());
+                        let name_rcrd = spk.name_record().unwrap();
+                        let name =
+                            name_rcrd.nth_name(sno, spk.file_record().unwrap().summary_size());
                         if summary.is_empty() {
                             continue;
                         }
 
                         rows.push(SpkRow {
-                            name,
+                            name: name.to_string(),
                             center: summary.center_id,
                             start_epoch: format!("{:E}", summary.start_epoch()),
                             end_epoch: format!("{:E}", summary.end_epoch()),

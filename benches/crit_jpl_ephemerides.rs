@@ -38,7 +38,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let path = "./data/de440s.bsp";
     let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Almanac::from_spk(&spk).unwrap();
+    let ctx = Almanac::from_spk(spk).unwrap();
 
     // Load SPICE data
     spice::furnsh("data/de440s.bsp");

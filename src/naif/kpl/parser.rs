@@ -17,6 +17,7 @@ use std::path::Path;
 
 use log::{error, info, warn};
 
+use crate::almanac::MAX_PLANETARY_DATA;
 use crate::naif::kpl::tpc::TPCItem;
 use crate::naif::kpl::Parameter;
 use crate::structure::dataset::{DataSet, DataSetBuilder, DataSetError, DataSetType};
@@ -134,7 +135,7 @@ pub fn parse_file<P: AsRef<Path>, I: KPLItem>(
 pub fn convert_tpc<'a, P: AsRef<Path>>(
     pck: P,
     gm: P,
-) -> Result<DataSet<'a, PlanetaryData, 64>, DataSetError> {
+) -> Result<DataSet<'a, PlanetaryData, MAX_PLANETARY_DATA>, DataSetError> {
     let mut buf = vec![];
     let mut dataset_builder = DataSetBuilder::default();
 

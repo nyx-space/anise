@@ -17,6 +17,7 @@ use crate::{
     errors::{DecodingError, IntegrityError},
     NaifId,
 };
+use bytes::Bytes;
 use core::fmt;
 use core::marker::PhantomData;
 use core::ops::Deref;
@@ -116,7 +117,7 @@ pub struct DataSet<'a, T: DataSetT<'a>, const ENTRIES: usize> {
     pub lut: LookUpTable<'a, ENTRIES>,
     pub data_checksum: u32,
     /// The actual data from the dataset
-    pub bytes: &'a [u8],
+    pub bytes: Bytes,
     _daf_type: PhantomData<T>,
 }
 
@@ -175,7 +176,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSetBuilder<'a, T, ENTRIES> {
     }
 
     pub fn finalize(mut self, buf: &'a [u8]) -> Result<DataSet<'a, T, ENTRIES>, DataSetError> {
-        self.dataset.bytes = buf;
+        self.dataset.bytes = Bytes::copy_from_slice(buf);
         self.dataset.set_crc32();
         Ok(self.dataset)
     }
@@ -183,7 +184,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSetBuilder<'a, T, ENTRIES> {
 
 impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
     /// Try to load an Anise file from a pointer of bytes
-    pub fn try_from_bytes(bytes: &'a [u8]) -> Result<Self, DataSetError> {
+    pub fn try_from_bytes<B: Deref<Target = [u8]>>(bytes: &'a B) -> Result<Self, DataSetError> {
         match Self::from_der(bytes) {
             Ok(ctx) => {
                 trace!("[try_from_bytes] loaded context successfully");
@@ -243,7 +244,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
 
     /// Compute the CRC32 of the underlying bytes
     pub fn crc32(&self) -> u32 {
-        crc32fast::hash(self.bytes)
+        crc32fast::hash(&self.bytes)
     }
 
     /// Sets the checksum of this data.
@@ -253,7 +254,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
 
     pub fn check_integrity(&self) -> Result<(), IntegrityError> {
         // Ensure that the data is correctly decoded
-        let computed_chksum = crc32fast::hash(self.bytes);
+        let computed_chksum = crc32fast::hash(&self.bytes);
         if computed_chksum == self.data_checksum {
             Ok(())
         } else {
@@ -281,7 +282,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
         }
     }
 
-    pub fn get_by_id(&self, id: NaifId) -> Result<T, DataSetError> {
+    pub fn get_by_id(&'a self, id: NaifId) -> Result<T, DataSetError> {
         if let Some(entry) = self.lut.by_id.get(&id) {
             // Found the ID
             let bytes = self
@@ -304,7 +305,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
         }
     }
 
-    pub fn get_by_name(&self, name: &str) -> Result<T, DataSetError> {
+    pub fn get_by_name(&'a self, name: &str) -> Result<T, DataSetError> {
         if let Some(entry) = self.lut.by_name.get(&name) {
             // Found the name
             let bytes = self
@@ -379,7 +380,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
 
 impl<'a, T: DataSetT<'a>, const ENTRIES: usize> Encode for DataSet<'a, T, ENTRIES> {
     fn encoded_len(&self) -> der::Result<der::Length> {
-        let as_byte_ref = OctetStringRef::new(self.bytes)?;
+        let as_byte_ref = OctetStringRef::new(&self.bytes)?;
         self.metadata.encoded_len()?
             + self.lut.encoded_len()?
             + self.data_checksum.encoded_len()?
@@ -387,7 +388,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> Encode for DataSet<'a, T, ENTRIE
     }
 
     fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
-        let as_byte_ref = OctetStringRef::new(self.bytes)?;
+        let as_byte_ref = OctetStringRef::new(&self.bytes)?;
         self.metadata.encode(encoder)?;
         self.lut.encode(encoder)?;
         self.data_checksum.encode(encoder)?;
@@ -405,7 +406,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> Decode<'a> for DataSet<'a, T, EN
             metadata,
             lut,
             data_checksum: crc32_checksum,
-            bytes: bytes.as_bytes(),
+            bytes: Bytes::copy_from_slice(bytes.as_bytes()),
             _daf_type: PhantomData::<T>,
         })
     }
@@ -425,6 +426,8 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> fmt::Display for DataSet<'a, T, 
 
 #[cfg(test)]
 mod dataset_ut {
+    use bytes::Bytes;
+
     use crate::structure::{
         dataset::DataSetBuilder,
         lookuptable::Entry,
@@ -519,7 +522,7 @@ mod dataset_ut {
         // Build the dataset
         let mut dataset = DataSet {
             lut,
-            bytes: &packed_buf,
+            bytes: Bytes::copy_from_slice(&packed_buf),
             ..Default::default()
         };
         dataset.set_crc32();

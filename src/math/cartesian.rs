@@ -251,3 +251,6 @@ impl fmt::LowerExp for CartesianState {
 }
 
 // TODO(now): Add on Add with different frames and epochs, and make one correct
+
+#[cfg(test)]
+mod cartesian_state_ut {}

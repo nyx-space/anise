@@ -39,7 +39,7 @@ fn benchmark_anise_single_hop_type2_cheby() {
     let path = "./data/de440s.bsp";
     let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Almanac::from_spk(&spk).unwrap();
+    let ctx = Almanac::from_spk(spk).unwrap();
 
     for epoch in time_it {
         black_box(

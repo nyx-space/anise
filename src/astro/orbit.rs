@@ -767,29 +767,29 @@ impl fmt::LowerHex for Orbit {
                 "[{}] {}\tsma = {} km\tecc = {}\tinc = {} deg\traan = {} deg\taop = {} deg\tta = {} deg",
                 self.frame,
                 self.epoch,
-                format!("{:.*}", decimals, self.sma_km().or_else(|err| {
+                format!("{:.*}", decimals, self.sma_km().map_err(|err| {
                     error!("{err}");
-                    Err(fmt::Error)
+                    fmt::Error
                 })?),
-                format!("{:.*}", decimals, self.ecc().or_else(|err| {
+                format!("{:.*}", decimals, self.ecc().map_err(|err| {
                     error!("{err}");
-                    Err(fmt::Error) 
+                    fmt::Error
                 })?),
-                format!("{:.*}", decimals, self.inc_deg().or_else(|err| {
+                format!("{:.*}", decimals, self.inc_deg().map_err(|err| {
                     error!("{err}");
-                    Err(fmt::Error) 
+                    fmt::Error
                 })?),
-                format!("{:.*}", decimals, self.raan_deg().or_else(|err| {
+                format!("{:.*}", decimals, self.raan_deg().map_err(|err| {
                     error!("{err}");
-                    Err(fmt::Error) 
+                    fmt::Error
                 })?),
-                format!("{:.*}", decimals, self.aop_deg().or_else(|err| {
+                format!("{:.*}", decimals, self.aop_deg().map_err(|err| {
                     error!("{err}");
-                    Err(fmt::Error) 
+                    fmt::Error
                 })?),
-                format!("{:.*}", decimals, self.ta_deg().or_else(|err| {
+                format!("{:.*}", decimals, self.ta_deg().map_err(|err| {
                     error!("{err}");
-                    Err(fmt::Error) 
+                    fmt::Error
                 })?),
             )
         }

@@ -102,7 +102,7 @@ impl<'a> Decode<'a> for Metadata<'a> {
 
 impl<'a> fmt::Display for Metadata<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "ANISE version {}", self.anise_version)?;
+        write!(f, "ANISE version {}", self.anise_version)?;
         writeln!(
             f,
             "Originator: {}",
@@ -125,4 +125,53 @@ impl<'a> fmt::Display for Metadata<'a> {
     }
 }
 
-// TODO(now): Add decoding tests
+#[cfg(test)]
+mod metadata_ut {
+    use super::Metadata;
+    use der::{Decode, Encode};
+
+    #[test]
+    fn meta_encdec_min_repr() {
+        // A minimal representation of a planetary constant.
+        let repr = Metadata::default();
+
+        let mut buf = vec![];
+        repr.encode_to_vec(&mut buf).unwrap();
+
+        let repr_dec = Metadata::from_der(&buf).unwrap();
+
+        assert_eq!(repr, repr_dec);
+
+        assert_eq!(
+            format!("{repr}"),
+            format!(
+                r#"ANISE version ANISE version 0.0.1
+Originator: (not set)
+Creation date: {}
+Metadata URI: (not set)
+"#,
+                repr_dec.creation_date
+            )
+        );
+    }
+
+    #[test]
+    fn meta_invalid() {
+        let repr = Metadata::default();
+
+        let mut buf = vec![];
+        repr.encode_to_vec(&mut buf).unwrap();
+
+        // Check that we can decode the header only
+        assert!(Metadata::decode_header(&buf).is_ok());
+        // Check that reducing the number of bytes prevents decoding the header
+        assert!(
+            Metadata::decode_header(&buf[..7]).is_err(),
+            "should not have enough for dataset"
+        );
+        assert!(
+            Metadata::decode_header(&buf[..4]).is_err(),
+            "should not have enough for version"
+        );
+    }
+}

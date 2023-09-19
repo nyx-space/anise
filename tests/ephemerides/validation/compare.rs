@@ -208,7 +208,7 @@ impl CompareEphem {
             }
         }
 
-        for spk in &spks {
+        for spk in spks {
             ctx = ctx.load_spk(spk).unwrap();
         }
 

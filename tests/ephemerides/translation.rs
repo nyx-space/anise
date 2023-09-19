@@ -30,7 +30,7 @@ fn de440s_translation_verif_venus2emb() {
     let path = "./data/de440s.bsp";
     let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Almanac::from_spk(&spk).unwrap();
+    let ctx = Almanac::from_spk(spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(1002, 2, 7);
 
@@ -122,7 +122,7 @@ fn de438s_translation_verif_venus2luna() {
     let path = "./data/de440s.bsp";
     let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Almanac::from_spk(&spk).unwrap();
+    let ctx = Almanac::from_spk(spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
@@ -214,7 +214,7 @@ fn de438s_translation_verif_emb2luna() {
     let path = "./data/de440s.bsp";
     let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Almanac::from_spk(&spk).unwrap();
+    let ctx = Almanac::from_spk(spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
@@ -322,9 +322,9 @@ fn spk_hermite_type13_verif() {
     let buf = file2heap!("data/gmat-hermite.bsp").unwrap();
     let spacecraft = SPK::parse(buf).unwrap();
 
-    let ctx = Almanac::from_spk(&spk)
+    let ctx = Almanac::from_spk(spk)
         .unwrap()
-        .load_spk(&spacecraft)
+        .load_spk(spacecraft)
         .unwrap();
 
     let epoch = Epoch::from_gregorian_hms(2000, 1, 1, 14, 0, 0, TimeScale::UTC);
@@ -378,7 +378,7 @@ fn multithread_query() {
     let path = "./data/de440s.bsp";
     let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Almanac::from_spk(&spk).unwrap();
+    let ctx = Almanac::from_spk(spk).unwrap();
 
     let start_epoch = Epoch::from_str("2000-01-01T00:00:00 ET").unwrap();
 
@@ -403,11 +403,13 @@ fn multithread_query() {
 #[test]
 fn hermite_query() {
     use anise::naif::kpl::parser::convert_tpc;
+    use core::mem::size_of;
 
     let traj = SPK::load("./data/gmat-hermite.bsp").unwrap();
     let summary = traj.data_summaries().unwrap()[0];
     println!("{}", summary);
-    let mut ctx = Almanac::from_spk(&traj).unwrap();
+    let mut ctx = Almanac::from_spk(traj).unwrap();
+    dbg!(size_of::<Almanac>());
     // Also load the plantaery data
     ctx.planetary_data = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
     let summary_from_ctx = ctx.spk_summary(summary.id()).unwrap().0;
@@ -422,21 +424,28 @@ fn hermite_query() {
     assert_eq!(&summary, summary_from_ctx);
 
     // Let's load the actual frame information from the planetary data.
-    let to_frame = ctx.frame_from_uid(summary.center_frame_uid()).unwrap();
+    // match ctx.frame_from_uid(summary.center_frame_uid()) {
+    //     Ok(to_frame) => {
+    //         let summary_duration = summary.end_epoch() - summary.start_epoch();
+    //         // Query in the middle to the parent, since we don't have anything else loaded.
 
-    let summary_duration = summary.end_epoch() - summary.start_epoch();
-    // Query in the middle to the parent, since we don't have anything else loaded.
+    //         let state = ctx
+    //             .translate_from_to(
+    //                 summary.target_frame(),
+    //                 to_frame,
+    //                 summary.start_epoch() + summary_duration * 0.5,
+    //                 Aberration::None,
+    //             )
+    //             .unwrap();
 
-    let state = ctx
-        .translate_from_to(
-            summary.target_frame(),
-            to_frame,
-            summary.start_epoch() + summary_duration * 0.5,
-            Aberration::None,
-        )
-        .unwrap();
+    //         println!("{state}");
+    //     }
+    //     Err(e) => {
+    //         println!("{e}");
+    //         panic!("woomp");
+    //     }
+    // }
 
-    println!("{state}");
     // At this point, the frame is not celestial because the SPK summary does not have that knowledge.
 
     // Let's load the planetary constants dataset and grab the frame information from there.

@@ -49,7 +49,9 @@ impl<'a> Almanac<'a> {
         trace!("query {source} wrt to {new_frame} @ {epoch:E}");
 
         // This should not fail because we've fetched the spk_no from above with the spk_summary_at_epoch call.
-        let spk_data = self.spk_data[spk_no].ok_or(EphemerisError::Unreachable)?;
+        let spk_data = self.spk_data[spk_no]
+            .as_ref()
+            .ok_or(EphemerisError::Unreachable)?;
 
         // Now let's simply evaluate the data
         let (pos_km, vel_km_s) = match summary.data_type_i {

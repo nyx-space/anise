@@ -29,9 +29,9 @@ fn benchmark_anise_single_hop_type13_hermite() {
     let buf = file2heap!("data/gmat-hermite.bsp").unwrap();
     let spacecraft = SPK::parse(buf).unwrap();
 
-    let ctx = Almanac::from_spk(&spk)
+    let ctx = Almanac::from_spk(spk)
         .unwrap()
-        .load_spk(&spacecraft)
+        .load_spk(spacecraft)
         .unwrap();
 
     let my_sc_j2k = Frame::from_ephem_j2000(-10000001);

@@ -34,7 +34,7 @@ impl<'a> Almanac<'a> {
         let mut common_center = i32::MAX;
 
         for maybe_spk in self.spk_data.iter().take(self.num_loaded_spk()).rev() {
-            let spk = maybe_spk.unwrap();
+            let spk = maybe_spk.as_ref().unwrap();
 
             for summary in spk.data_summaries().with_context(|_| SPKSnafu {
                 action: "finding ephemeris root",

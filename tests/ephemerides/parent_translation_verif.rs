@@ -30,7 +30,7 @@ fn de438s_parent_translation_verif() {
 
     let bytes = file2heap!("data/de440s.bsp").unwrap();
     let de438s = SPK::parse(bytes).unwrap();
-    let ctx = Almanac::from_spk(&de438s).unwrap();
+    let ctx = Almanac::from_spk(de438s).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
