@@ -32,7 +32,7 @@ fn de440s_translation_verif_venus2emb() {
     let spk = SPK::parse(buf).unwrap();
     let ctx = Almanac::from_spk(spk).unwrap();
 
-    let epoch = Epoch::from_gregorian_utc_at_midnight(1002, 2, 7);
+    let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
     /*
     Python code:
