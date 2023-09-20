@@ -32,9 +32,11 @@ impl Default for NameRecord {
 impl NAIFRecord for NameRecord {}
 
 impl NameRecord {
-    /// Returns the number of names in this record
-    pub fn num_entries(&self, summary_size: usize) -> usize {
-        self.raw_names.len() / summary_size * DBL_SIZE
+    /// Returns the maximum number of names in this record given the provided summary size.
+    ///
+    /// Note that we don't actually use `&self` here, but it's just easier to call.
+    pub const fn num_entries(&self, summary_size: usize) -> usize {
+        RCRD_LEN / (summary_size * DBL_SIZE)
     }
 
     pub fn nth_name(&self, n: usize, summary_size: usize) -> &str {

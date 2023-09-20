@@ -39,8 +39,11 @@ fn test_binary_pck_load() {
     let name_rcrd = high_prec.name_record().unwrap();
     let summary_size = high_prec.file_record().unwrap().summary_size();
     for idx in 0..name_rcrd.num_entries(summary_size) {
-        let name = name_rcrd.nth_name(idx, summary_size);
         let summary = &high_prec.data_summaries().unwrap()[idx];
+        if summary.is_empty() {
+            break;
+        }
+        let name = name_rcrd.nth_name(idx, summary_size);
         println!("{} -> {:?}", name, summary);
     }
 }
