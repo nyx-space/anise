@@ -175,8 +175,8 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSetBuilder<'a, T, ENTRIES> {
         Ok(())
     }
 
-    pub fn finalize(mut self, buf: &'a [u8]) -> Result<DataSet<'a, T, ENTRIES>, DataSetError> {
-        self.dataset.bytes = Bytes::copy_from_slice(buf);
+    pub fn finalize(mut self, buf: Vec<u8>) -> Result<DataSet<'a, T, ENTRIES>, DataSetError> {
+        self.dataset.bytes = Bytes::copy_from_slice(&buf);
         self.dataset.set_crc32();
         Ok(self.dataset)
     }
@@ -599,7 +599,7 @@ mod dataset_ut {
             .push_into(&mut buf, srp_sc, None, Some("ID less SRP spacecraft"))
             .unwrap();
 
-        let dataset = builder.finalize(&buf).unwrap();
+        let dataset = builder.finalize(buf).unwrap();
 
         // And encode it.
 

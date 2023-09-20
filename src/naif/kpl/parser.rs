@@ -232,7 +232,7 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
 
     println!("Added {} items", dataset_builder.dataset.lut.by_id.len());
 
-    let mut dataset = dataset_builder.dataset;
+    let mut dataset = dataset_builder.finalize(buf)?;
     dataset.metadata = Metadata::default();
     dataset.metadata.dataset_type = DataSetType::PlanetaryData;
 
