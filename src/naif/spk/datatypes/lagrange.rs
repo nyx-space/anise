@@ -245,5 +245,3 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
         Ok(())
     }
 }
-
-// TODO(now): Add decoding tests with invalid data

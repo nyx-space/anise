@@ -36,6 +36,7 @@ pub struct CartesianState {
 }
 
 impl CartesianState {
+    /// Builds a state of zero radius and velocity at zero seconds TDB (01 Jan 2000, midnight TDB) in the provided frame.
     pub fn zero(frame: Frame) -> Self {
         Self {
             radius_km: Vector3::zeros(),
@@ -45,7 +46,8 @@ impl CartesianState {
         }
     }
 
-    pub fn zero_as_epoch(epoch: Epoch, frame: Frame) -> Self {
+    /// Builds a state of zero radius and velocity at the provided epoch in the provided frame.
+    pub fn zero_at_epoch(epoch: Epoch, frame: Frame) -> Self {
         Self {
             radius_km: Vector3::zeros(),
             velocity_km_s: Vector3::zeros(),
@@ -54,7 +56,7 @@ impl CartesianState {
         }
     }
 
-    /// Creates a new Cartesian state in the provided frame at the provided Epoch, and does not set its acceleration.
+    /// Creates a new Cartesian state in the provided frame at the provided Epoch.
     ///
     /// **Units:** km, km, km, km/s, km/s, km/s
     #[allow(clippy::too_many_arguments)]
@@ -240,17 +242,72 @@ impl fmt::LowerExp for CartesianState {
             "[{:x}] {}\tposition = [{}, {}, {}] km\tvelocity = [{}, {}, {}] km/s",
             self.frame,
             self.epoch,
-            format!("{:.*}", decimals, self.radius_km.x),
-            format!("{:.*}", decimals, self.radius_km.y),
-            format!("{:.*}", decimals, self.radius_km.z),
-            format!("{:.*}", decimals, self.velocity_km_s.x),
-            format!("{:.*}", decimals, self.velocity_km_s.y),
-            format!("{:.*}", decimals, self.velocity_km_s.z)
+            format!("{:.*e}", decimals, self.radius_km.x),
+            format!("{:.*e}", decimals, self.radius_km.y),
+            format!("{:.*e}", decimals, self.radius_km.z),
+            format!("{:.*e}", decimals, self.velocity_km_s.x),
+            format!("{:.*e}", decimals, self.velocity_km_s.y),
+            format!("{:.*e}", decimals, self.velocity_km_s.z)
         )
     }
 }
 
-// TODO(now): Add on Add with different frames and epochs, and make one correct
-
 #[cfg(test)]
-mod cartesian_state_ut {}
+mod cartesian_state_ut {
+    use hifitime::{Epoch, TimeUnits};
+
+    use crate::constants::frames::{EARTH_J2000, VENUS_J2000};
+    use crate::errors::PhysicsError;
+
+    use super::CartesianState;
+
+    #[test]
+    fn add_wrong_epoch() {
+        let e = Epoch::now().unwrap();
+        let e2 = e + 1.seconds();
+        let frame = EARTH_J2000;
+        let s1 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
+        let s2 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e2, frame);
+
+        assert_eq!(
+            s1 + s2,
+            Err(PhysicsError::EpochMismatch {
+                action: "translating states",
+                epoch1: e,
+                epoch2: e2,
+            })
+        )
+    }
+
+    #[test]
+    fn add_wrong_frame() {
+        let e = Epoch::now().unwrap();
+        let frame = EARTH_J2000;
+        let frame2 = VENUS_J2000;
+        let s1 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
+        let s2 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame2);
+
+        assert_eq!(
+            s1 + s2,
+            Err(PhysicsError::FrameMismatch {
+                action: "translating states",
+                frame1: frame.into(),
+                frame2: frame2.into(),
+            })
+        )
+    }
+
+    #[test]
+    fn add_nominal() {
+        let e = Epoch::now().unwrap();
+        let frame = EARTH_J2000;
+        let s1 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
+        let s2 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
+        let s3 = CartesianState::new(20.0, 40.0, 60.0, 2.0, 4.0, 4.0, e, frame);
+
+        assert_eq!(s1 + s2, Ok(s3));
+
+        assert_eq!(format!("{s1}"), format!("[Earth J2000] {e}\tposition = [10.000000, 20.000000, 30.000000] km\tvelocity = [1.000000, 2.000000, 2.000000] km/s"));
+        assert_eq!(format!("{s1:e}"), format!("[Earth J2000] {e}\tposition = [1.000000e1, 2.000000e1, 3.000000e1] km\tvelocity = [1.000000e0, 2.000000e0, 2.000000e0] km/s"));
+    }
+}

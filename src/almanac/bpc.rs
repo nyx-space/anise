@@ -72,7 +72,7 @@ impl<'a: 'b, 'b> Almanac<'a> {
         }
 
         // If we're reached this point, there is no relevant summary at this epoch.
-        error!("Almanach: No summary {name} valid at epoch {epoch}");
+        error!("Almanac: No summary {name} valid at epoch {epoch}");
         Err(OrientationError::BPC {
             action: "searching for BPC summary",
             source: DAFError::SummaryNameAtEpochError {
@@ -103,7 +103,7 @@ impl<'a: 'b, 'b> Almanac<'a> {
             }
         }
 
-        error!("Almanach: No summary {id} valid at epoch {epoch}");
+        error!("Almanac: No summary {id} valid at epoch {epoch}");
         // If we're reached this point, there is no relevant summary at this epoch.
         Err(OrientationError::BPC {
             action: "searching for BPC summary",
@@ -134,7 +134,7 @@ impl<'a: 'b, 'b> Almanac<'a> {
         }
 
         // If we're reached this point, there is no relevant summary at this epoch.
-        error!("Almanach: No summary {name} valid");
+        error!("Almanac: No summary {name} valid");
         Err(OrientationError::BPC {
             action: "searching for BPC summary",
             source: DAFError::SummaryNameError {
@@ -163,7 +163,7 @@ impl<'a: 'b, 'b> Almanac<'a> {
             }
         }
 
-        error!("Almanach: No summary {id} valid");
+        error!("Almanac: No summary {id} valid");
         // If we're reached this point, there is no relevant summary
         Err(OrientationError::BPC {
             action: "searching for BPC summary",
@@ -173,7 +173,7 @@ impl<'a: 'b, 'b> Almanac<'a> {
 }
 
 #[cfg(test)]
-mod ut_almanach_bpc {
+mod ut_almanac_bpc {
     use crate::prelude::{Almanac, Epoch};
 
     #[test]
@@ -184,21 +184,21 @@ mod ut_almanach_bpc {
 
         assert!(
             almanac.bpc_summary(0).is_err(),
-            "empty almanach should report an error"
+            "empty Almanac should report an error"
         );
         assert!(
             almanac.bpc_summary_at_epoch(0, e).is_err(),
-            "empty almanach should report an error"
+            "empty Almanac should report an error"
         );
         assert!(
             almanac.bpc_summary_from_name("invalid name").is_err(),
-            "empty almanach should report an error"
+            "empty Almanac should report an error"
         );
         assert!(
             almanac
                 .bpc_summary_from_name_at_epoch("invalid name", e)
                 .is_err(),
-            "empty almanach should report an error"
+            "empty Almanac should report an error"
         );
     }
 }

@@ -184,16 +184,59 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
         );
 
         // For this kind of record, the metadata is stored at the very end of the dataset
-        let num_records = slice[slice.len() - 1] as usize;
+        let num_records_f64 = slice[slice.len() - 1];
+        if !num_records_f64.is_finite() {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::InvalidValue {
+                    dataset: Self::DATASET_NAME,
+                    variable: "number of records",
+                    value: num_records_f64,
+                    reason: "must be a finite value",
+                },
+            });
+        }
+        let num_records = num_records_f64 as usize;
+
         // NOTE: The Type 12 and 13 specify that the windows size minus one is stored!
-        let samples = slice[slice.len() - 2] as usize + 1;
+        let num_samples_f64 = slice[slice.len() - 2];
+        if !num_samples_f64.is_finite() {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::InvalidValue {
+                    dataset: Self::DATASET_NAME,
+                    variable: "number of interpolation samples",
+                    value: num_samples_f64,
+                    reason: "must be a finite value",
+                },
+            });
+        }
+
+        let samples = num_samples_f64 as usize + 1;
         // NOTE: The ::SIZE returns the C representation memory size of this, but we only want the number of doubles.
         let state_data_end_idx = PositionVelocityRecord::SIZE / DBL_SIZE * num_records;
-        let state_data = slice.get(0..state_data_end_idx).unwrap();
+        let state_data =
+            slice
+                .get(0..state_data_end_idx)
+                .ok_or(DecodingError::InaccessibleBytes {
+                    start: 0,
+                    end: state_data_end_idx,
+                    size: slice.len(),
+                })?;
         let epoch_data_end_idx = state_data_end_idx + num_records;
-        let epoch_data = slice.get(state_data_end_idx..epoch_data_end_idx).unwrap();
+        let epoch_data = slice.get(state_data_end_idx..epoch_data_end_idx).ok_or(
+            DecodingError::InaccessibleBytes {
+                start: state_data_end_idx,
+                end: epoch_data_end_idx,
+                size: slice.len(),
+            },
+        )?;
         // And the epoch directory is whatever remains minus the metadata
-        let epoch_registry = slice.get(epoch_data_end_idx..slice.len() - 2).unwrap();
+        let epoch_registry = slice.get(epoch_data_end_idx..slice.len() - 2).ok_or(
+            DecodingError::InaccessibleBytes {
+                start: epoch_data_end_idx,
+                end: slice.len() - 2,
+                size: slice.len(),
+            },
+        )?;
 
         Ok(Self {
             samples,
@@ -346,4 +389,105 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
     }
 }
 
-// TODO(now): Add decoding tests with invalid data
+#[cfg(test)]
+mod hermite_ut {
+    use crate::{
+        errors::{DecodingError, IntegrityError},
+        naif::daf::NAIFDataSet,
+    };
+
+    use super::HermiteSetType13;
+
+    #[test]
+    fn too_small() {
+        if HermiteSetType13::from_slice_f64(&[0.1, 0.2])
+            != Err(DecodingError::TooFewDoubles {
+                dataset: "Hermite Type 13",
+                got: 2,
+                need: 3,
+            })
+        {
+            panic!("test failure");
+        }
+    }
+
+    #[test]
+    fn invalid_data() {
+        // Two metadata, one state, one epoch
+        let zeros = [0.0_f64; 2 * 7 + 2];
+
+        let mut invalid_num_records = zeros.clone();
+        invalid_num_records[zeros.len() - 1] = f64::INFINITY;
+        match HermiteSetType13::from_slice_f64(&invalid_num_records) {
+            Ok(_) => panic!("test failed on invalid num records"),
+            Err(e) => {
+                assert_eq!(
+                    e,
+                    DecodingError::Integrity {
+                        source: IntegrityError::InvalidValue {
+                            dataset: "Hermite Type 13",
+                            variable: "number of records",
+                            value: f64::INFINITY,
+                            reason: "must be a finite value",
+                        },
+                    }
+                );
+            }
+        }
+
+        let mut invalid_num_samples = zeros.clone();
+        invalid_num_samples[zeros.len() - 2] = f64::INFINITY;
+        match HermiteSetType13::from_slice_f64(&invalid_num_samples) {
+            Ok(_) => panic!("test failed on invalid num samples"),
+            Err(e) => {
+                assert_eq!(
+                    e,
+                    DecodingError::Integrity {
+                        source: IntegrityError::InvalidValue {
+                            dataset: "Hermite Type 13",
+                            variable: "number of interpolation samples",
+                            value: f64::INFINITY,
+                            reason: "must be a finite value",
+                        },
+                    }
+                );
+            }
+        }
+
+        let mut invalid_epoch = zeros.clone();
+        invalid_epoch[zeros.len() - 3] = f64::INFINITY;
+
+        let dataset = HermiteSetType13::from_slice_f64(&invalid_epoch).unwrap();
+        match dataset.check_integrity() {
+            Ok(_) => panic!("test failed on invalid interval_length"),
+            Err(e) => {
+                assert_eq!(
+                    e,
+                    IntegrityError::SubNormal {
+                        dataset: "Hermite Type 13",
+                        variable: "one of the epoch registry data",
+                    },
+                );
+            }
+        }
+
+        let mut invalid_record = zeros.clone();
+        invalid_record[0] = f64::INFINITY;
+        // Force the number of records to be one, otherwise everything is considered the epoch registry
+        invalid_record[zeros.len() - 1] = 1.0;
+
+        let dataset = HermiteSetType13::from_slice_f64(&invalid_record).unwrap();
+        match dataset.check_integrity() {
+            Ok(_) => panic!("test failed on invalid interval_length"),
+            Err(e) => {
+                assert_eq!(
+                    e,
+                    IntegrityError::SubNormal {
+                        dataset: "Hermite Type 13",
+                        variable: "one of the state data",
+                    },
+                );
+            }
+        }
+    }
+}

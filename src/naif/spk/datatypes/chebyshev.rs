@@ -89,6 +89,15 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
                     variable: "interval length in seconds",
                 },
             });
+        } else if interval_length_s <= 0.0 {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::InvalidValue {
+                    dataset: Self::DATASET_NAME,
+                    variable: "interval length in seconds",
+                    value: interval_length_s,
+                    reason: "must be strictly greater than zero",
+                },
+            });
         }
 
         let interval_length = interval_length_s.seconds();
@@ -288,4 +297,91 @@ impl<'a> NAIFDataRecord<'a> for Type3ChebyshevRecord<'a> {
     }
 }
 
-// TODO(now): Add decoding tests with invalid data
+#[cfg(test)]
+mod chebyshev_ut {
+    use crate::{
+        errors::{DecodingError, IntegrityError},
+        naif::daf::NAIFDataSet,
+    };
+
+    use super::Type2ChebyshevSet;
+
+    #[test]
+    fn too_small() {
+        if Type2ChebyshevSet::from_slice_f64(&[0.1, 0.2, 0.3, 0.4])
+            != Err(DecodingError::TooFewDoubles {
+                dataset: "Chebyshev Type 2",
+                got: 4,
+                need: 5,
+            })
+        {
+            panic!("test failure");
+        }
+    }
+
+    #[test]
+    fn subnormal() {
+        match Type2ChebyshevSet::from_slice_f64(&[0.0, f64::INFINITY, 0.0, 0.0, 0.0]) {
+            Ok(_) => panic!("test failed on invalid init_epoch"),
+            Err(e) => {
+                assert_eq!(
+                    e,
+                    DecodingError::Integrity {
+                        source: IntegrityError::SubNormal {
+                            dataset: "Chebyshev Type 2",
+                            variable: "seconds since J2000 ET",
+                        },
+                    }
+                );
+            }
+        }
+
+        match Type2ChebyshevSet::from_slice_f64(&[0.0, 0.0, f64::INFINITY, 0.0, 0.0]) {
+            Ok(_) => panic!("test failed on invalid interval_length"),
+            Err(e) => {
+                assert_eq!(
+                    e,
+                    DecodingError::Integrity {
+                        source: IntegrityError::SubNormal {
+                            dataset: "Chebyshev Type 2",
+                            variable: "interval length in seconds",
+                        },
+                    }
+                );
+            }
+        }
+
+        match Type2ChebyshevSet::from_slice_f64(&[0.0, 0.0, -1e-16, 0.0, 0.0]) {
+            Ok(_) => panic!("test failed on invalid interval_length"),
+            Err(e) => {
+                assert_eq!(
+                    e,
+                    DecodingError::Integrity {
+                        source: IntegrityError::InvalidValue {
+                            dataset: "Chebyshev Type 2",
+                            variable: "interval length in seconds",
+                            value: -1e-16,
+                            reason: "must be strictly greater than zero"
+                        },
+                    }
+                );
+            }
+        }
+
+        // Load a slice whose metadata is OK but the record data is not
+        let dataset =
+            Type2ChebyshevSet::from_slice_f64(&[f64::INFINITY, 0.0, 2e-16, 0.0, 0.0]).unwrap();
+        match dataset.check_integrity() {
+            Ok(_) => panic!("test failed on invalid interval_length"),
+            Err(e) => {
+                assert_eq!(
+                    e,
+                    IntegrityError::SubNormal {
+                        dataset: "Chebyshev Type 2",
+                        variable: "one of the record data",
+                    },
+                );
+            }
+        }
+    }
+}

@@ -212,6 +212,7 @@ pub mod frames {
     pub const SUN_J2000: Frame = Frame::from_ephem_orient(SUN, J2000);
     pub const LUNA_J2000: Frame = Frame::from_ephem_orient(LUNA, J2000);
     pub const EARTH_J2000: Frame = Frame::from_ephem_orient(EARTH, J2000);
+    pub const EME2000: Frame = Frame::from_ephem_orient(EARTH, J2000);
 }
 
 #[cfg(test)]

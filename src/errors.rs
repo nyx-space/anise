@@ -81,6 +81,13 @@ pub enum IntegrityError {
         dataset: &'static str,
         variable: &'static str,
     },
+    #[snafu(display("data for {variable}={value} in {dataset} is invalid {reason}"))]
+    InvalidValue {
+        dataset: &'static str,
+        variable: &'static str,
+        value: f64,
+        reason: &'static str,
+    },
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Snafu)]

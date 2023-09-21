@@ -39,7 +39,7 @@ pub struct SpacecraftData<'a> {
 }
 
 impl<'a> DataSetT<'a> for SpacecraftData<'a> {
-    const NAME: &'static str = "spacecraft datas";
+    const NAME: &'static str = "spacecraft data";
 }
 
 impl<'a> SpacecraftData<'a> {

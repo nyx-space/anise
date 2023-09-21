@@ -49,67 +49,61 @@ fn de440s_translation_verif_venus2emb() {
     '2.0519128282958704e+01']
     */
 
-    // dbg!(ctx
-    //     .common_ephemeris_path(VENUS_J2000, EARTH_MOON_BARYCENTER_J2000, epoch)
-    //     .unwrap());
+    let state = ctx
+        .translate_from_to(
+            VENUS_J2000,
+            EARTH_MOON_BARYCENTER_J2000,
+            epoch,
+            Aberration::None,
+        )
+        .unwrap();
 
-    let rslt = ctx.translate_from_to(
-        VENUS_J2000,
-        EARTH_MOON_BARYCENTER_J2000,
-        epoch,
-        Aberration::None,
+    let pos_expct_km = Vector3::new(
+        2.050_446_429_737_834_6e8,
+        -1.359_580_236_493_070_4e8,
+        -6.572_279_147_862_178e7,
     );
-    match rslt {
-        Ok(state) => {
-            let pos_expct_km = Vector3::new(
-                2.050_446_429_737_834_6e8,
-                -1.359_580_236_493_070_4e8,
-                -6.572_279_147_862_178e7,
-            );
 
-            let vel_expct_km_s = Vector3::new(
-                3.701_208_612_553_388_4e1,
-                4.868_544_139_465_165_4e1,
-                2.051_912_828_295_870_4e1,
-            );
+    let vel_expct_km_s = Vector3::new(
+        3.701_208_612_553_388_4e1,
+        4.868_544_139_465_165_4e1,
+        2.051_912_828_295_870_4e1,
+    );
 
-            // We expect exactly the same output as SPICE to machine precision.
-            assert!(
-                relative_eq!(state.radius_km, pos_expct_km, epsilon = EPSILON),
-                "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
-                state.radius_km,
-                pos_expct_km - state.radius_km
-            );
+    // We expect exactly the same output as SPICE to machine precision.
+    assert!(
+        relative_eq!(state.radius_km, pos_expct_km, epsilon = EPSILON),
+        "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
+        state.radius_km,
+        pos_expct_km - state.radius_km
+    );
 
-            assert!(
-                relative_eq!(state.velocity_km_s, vel_expct_km_s, epsilon = EPSILON),
-                "vel = {}\nexp = {vel_expct_km_s}\nerr = {:e}",
-                state.velocity_km_s,
-                vel_expct_km_s - state.velocity_km_s
-            );
+    assert!(
+        relative_eq!(state.velocity_km_s, vel_expct_km_s, epsilon = EPSILON),
+        "vel = {}\nexp = {vel_expct_km_s}\nerr = {:e}",
+        state.velocity_km_s,
+        vel_expct_km_s - state.velocity_km_s
+    );
 
-            // Test the opposite translation
-            let state = ctx
-                .translate_from_to_geometric(EARTH_MOON_BARYCENTER_J2000, VENUS_J2000, epoch)
-                .unwrap();
+    // Test the opposite translation
+    let state = ctx
+        .translate_from_to_geometric(EARTH_MOON_BARYCENTER_J2000, VENUS_J2000, epoch)
+        .unwrap();
 
-            // We expect exactly the same output as SPICE to machine precision.
-            assert!(
-                relative_eq!(state.radius_km, -pos_expct_km, epsilon = EPSILON),
-                "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
-                state.radius_km,
-                pos_expct_km + state.radius_km
-            );
+    // We expect exactly the same output as SPICE to machine precision.
+    assert!(
+        relative_eq!(state.radius_km, -pos_expct_km, epsilon = EPSILON),
+        "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
+        state.radius_km,
+        pos_expct_km + state.radius_km
+    );
 
-            assert!(
-                relative_eq!(state.velocity_km_s, -vel_expct_km_s, epsilon = EPSILON),
-                "vel = {}\nexp = {vel_expct_km_s}\nerr = {:e}",
-                state.velocity_km_s,
-                vel_expct_km_s + state.velocity_km_s
-            );
-        }
-        Err(e) => println!("{e}"),
-    };
+    assert!(
+        relative_eq!(state.velocity_km_s, -vel_expct_km_s, epsilon = EPSILON),
+        "vel = {}\nexp = {vel_expct_km_s}\nerr = {:e}",
+        state.velocity_km_s,
+        vel_expct_km_s + state.velocity_km_s
+    );
 }
 
 #[test]
@@ -407,11 +401,12 @@ fn hermite_query() {
     let traj = SPK::load("./data/gmat-hermite.bsp").unwrap();
     let summary = traj.data_summaries().unwrap()[0];
     println!("{}", summary);
-    let mut ctx = Almanac::from_spk(traj).unwrap();
 
-    // Also load the plantaery data
+    let mut ctx = Almanac::from_spk(traj).unwrap();
+    // Also load the plantery data
     ctx.planetary_data = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
-    let summary_from_ctx = ctx.spk_summary(summary.id()).unwrap().0;
+
+    let summary_from_ctx = ctx.spk_summary_from_name("SPK_SEGMENT").unwrap().0;
 
     // The UIDs of the frames match.
     assert_eq!(
@@ -423,30 +418,21 @@ fn hermite_query() {
     assert_eq!(&summary, summary_from_ctx);
 
     // Let's load the actual frame information from the planetary data.
-    match ctx.frame_from_uid(summary.center_frame_uid()) {
-        Ok(to_frame) => {
-            let summary_duration = summary.end_epoch() - summary.start_epoch();
-            // Query in the middle to the parent, since we don't have anything else loaded.
+    let to_frame = ctx
+        .frame_from_uid(summary.center_frame_uid())
+        .expect("frame not found?!");
+    let summary_duration = summary.end_epoch() - summary.start_epoch();
 
-            let state = ctx
-                .translate_from_to(
-                    summary.target_frame(),
-                    to_frame,
-                    summary.start_epoch() + summary_duration * 0.5,
-                    Aberration::None,
-                )
-                .unwrap();
+    // Query in the middle to the parent, since we don't have anything else loaded.
+    let state = ctx
+        .translate_from_to(
+            summary.target_frame(),
+            to_frame,
+            summary.start_epoch() + summary_duration * 0.5,
+            Aberration::None,
+        )
+        .unwrap();
 
-            println!("{state}");
-            println!("{state:x}");
-        }
-        Err(e) => {
-            println!("{e}");
-            panic!("woomp");
-        }
-    }
-
-    // At this point, the frame is not celestial because the SPK summary does not have that knowledge.
-
-    // Let's load the planetary constants dataset and grab the frame information from there.
+    println!("{state}");
+    assert_eq!(format!("{state:x}"), "[Earth J2000] 2000-01-01T13:39:27.999998123 UTC\tsma = 7192.041350 km\tecc = 0.024628\tinc = 12.851841 deg\traan = 306.170038 deg\taop = 315.085528 deg\tta = 96.135384 deg");
 }

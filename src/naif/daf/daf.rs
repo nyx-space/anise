@@ -45,8 +45,6 @@ io_imports!();
 pub(crate) const RCRD_LEN: usize = 1024;
 #[derive(Clone, Default, Debug, PartialEq)]
 pub struct DAF<R: NAIFSummaryRecord> {
-    // pub file_record: FileRecord,
-    // pub name_record: NameRecord,
     pub bytes: Bytes,
     pub crc32_checksum: u32,
     pub _daf_type: PhantomData<R>,

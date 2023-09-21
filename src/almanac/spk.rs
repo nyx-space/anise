@@ -79,7 +79,7 @@ impl<'a: 'b, 'b> Almanac<'a> {
         }
 
         // If we're reached this point, there is no relevant summary at this epoch.
-        error!("Almanach: No summary {name} valid at epoch {epoch}");
+        error!("Almanac: No summary {name} valid at epoch {epoch}");
         Err(EphemerisError::SPK {
             action: "searching for SPK summary",
             source: DAFError::SummaryNameAtEpochError {
@@ -110,7 +110,7 @@ impl<'a: 'b, 'b> Almanac<'a> {
             }
         }
 
-        error!("Almanach: No summary {id} valid at epoch {epoch}");
+        error!("Almanac: No summary {id} valid at epoch {epoch}");
         // If we're reached this point, there is no relevant summary at this epoch.
         Err(EphemerisError::SPK {
             action: "searching for SPK summary",
@@ -141,7 +141,7 @@ impl<'a: 'b, 'b> Almanac<'a> {
         }
 
         // If we're reached this point, there is no relevant summary at this epoch.
-        error!("Almanach: No summary {name} valid");
+        error!("Almanac: No summary {name} valid");
 
         Err(EphemerisError::SPK {
             action: "searching for SPK summary",
@@ -171,7 +171,7 @@ impl<'a: 'b, 'b> Almanac<'a> {
             }
         }
 
-        error!("Almanach: No summary {id} valid");
+        error!("Almanac: No summary {id} valid");
         // If we're reached this point, there is no relevant summary
         Err(EphemerisError::SPK {
             action: "searching for SPK summary",
@@ -181,7 +181,7 @@ impl<'a: 'b, 'b> Almanac<'a> {
 }
 
 #[cfg(test)]
-mod ut_almanach_spk {
+mod ut_almanac_spk {
     use crate::{
         constants::frames::{EARTH_J2000, LUNA_J2000},
         prelude::{Almanac, Epoch},
@@ -194,21 +194,21 @@ mod ut_almanach_spk {
 
         assert!(
             almanac.spk_summary(0).is_err(),
-            "empty almanach should report an error"
+            "empty Almanac should report an error"
         );
         assert!(
             almanac.spk_summary_at_epoch(0, e).is_err(),
-            "empty almanach should report an error"
+            "empty Almanac should report an error"
         );
         assert!(
             almanac.spk_summary_from_name("invalid name").is_err(),
-            "empty almanach should report an error"
+            "empty Almanac should report an error"
         );
         assert!(
             almanac
                 .spk_summary_from_name_at_epoch("invalid name", e)
                 .is_err(),
-            "empty almanach should report an error"
+            "empty Almanac should report an error"
         );
     }
 
@@ -219,19 +219,19 @@ mod ut_almanach_spk {
 
         assert!(
             almanac.try_find_context_center().is_err(),
-            "empty almanach should report an error"
+            "empty Almanac should report an error"
         );
 
         assert!(
             almanac.ephemeris_path_to_root(LUNA_J2000, e).is_err(),
-            "empty almanach should report an error"
+            "empty Almanac should report an error"
         );
 
         assert!(
             almanac
                 .common_ephemeris_path(LUNA_J2000, EARTH_J2000, e)
                 .is_err(),
-            "empty almanach should report an error"
+            "empty Almanac should report an error"
         );
     }
 }

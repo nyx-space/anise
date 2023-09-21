@@ -758,7 +758,7 @@ impl fmt::LowerHex for Orbit {
     // Prints the Keplerian orbital elements in floating point with units
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if !self.frame.is_celestial() {
-            error!("you must update the frame from the Almanach before printing this state's orbital parameters");
+            error!("you must update the frame from the Almanac before printing this state's orbital parameters");
             Err(fmt::Error)
         } else {
             let decimals = f.precision().unwrap_or(6);
