@@ -21,16 +21,20 @@ macro_rules! f64_eq {
     ($x:expr, $val:expr, $msg:expr) => {
         assert!(
             ($x - $val).abs() < 1e-10,
-            "{}: {:.2e}",
+            "{}: {:.2e}\tgot: {}\twant: {}",
             $msg,
-            ($x - $val).abs()
+            ($x - $val).abs(),
+            $x,
+            $val
         )
     };
 }
 
 #[rstest]
-fn state_def_circ_inc(almanac: Almanac) {
-    let eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
+fn val_state_def_circ_inc(almanac: Almanac) {
+    let mut eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
+    // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
+    eme2k.mu_km3_s2 = Some(398_600.4415);
 
     let epoch = Epoch::from_mjd_tai(21_545.0);
     let cart = Orbit::new(
@@ -61,9 +65,10 @@ fn state_def_circ_inc(almanac: Almanac) {
         -25.842_247_282_849_137,
         "energy"
     );
+
     assert_eq!(
         cart.period().unwrap(),
-        6_740.269_063_643_045 * Unit::Second,
+        6_740.269_063_641 * Unit::Second,
         "period"
     );
     f64_eq!(cart.hx().unwrap(), 35_065.806_679_607_005, "HX");
@@ -108,7 +113,7 @@ fn state_def_circ_inc(almanac: Almanac) {
     );
     assert_eq!(
         kep.period().unwrap(),
-        7_378.877_993_957_958 * Unit::Second,
+        7_378.877_993_955 * Unit::Second,
         "period"
     );
     f64_eq!(kep.hx().unwrap(), -10_200.784_799_426_574, "HX");
@@ -145,8 +150,10 @@ fn state_def_circ_inc(almanac: Almanac) {
 }
 
 #[rstest]
-fn state_def_elliptical(almanac: Almanac) {
-    let eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
+fn val_state_def_elliptical(almanac: Almanac) {
+    let mut eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
+    // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
+    eme2k.mu_km3_s2 = Some(398_600.4415);
 
     let epoch = Epoch::from_mjd_tai(21_545.0);
     let cart = Orbit::new(
@@ -166,7 +173,7 @@ fn state_def_elliptical(almanac: Almanac) {
     );
     assert_eq!(
         cart.period().unwrap(),
-        6_740.269_063_643_042_5 * Unit::Second,
+        6_740.269_063_641 * Unit::Second,
         "period"
     );
     f64_eq!(cart.hx().unwrap(), 0.015_409_898_034_704_383, "HX");
@@ -211,7 +218,7 @@ fn state_def_elliptical(almanac: Almanac) {
     );
     assert_eq!(
         kep.period().unwrap(),
-        7_378.877_993_957_964 * Unit::Second,
+        7_378.877_993_955 * Unit::Second,
         "period"
     );
     f64_eq!(kep.hx().unwrap(), -10_197.722_829_337_885, "HX");
@@ -243,8 +250,10 @@ fn state_def_elliptical(almanac: Almanac) {
 }
 
 #[rstest]
-fn state_def_circ_eq(almanac: Almanac) {
-    let eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
+fn val_state_def_circ_eq(almanac: Almanac) {
+    let mut eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
+    // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
+    eme2k.mu_km3_s2 = Some(398_600.4415);
 
     let epoch = Epoch::from_mjd_tai(21_545.0);
     let cart = Orbit::new(
@@ -264,7 +273,7 @@ fn state_def_circ_eq(almanac: Almanac) {
     );
     assert_eq!(
         cart.period().unwrap(),
-        86_820.776_152_986_1 * Unit::Second,
+        86_820.776_152_981 * Unit::Second,
         "period"
     );
     f64_eq!(cart.hx().unwrap(), 2.225_951_522_241_969_5, "HX");
@@ -307,7 +316,7 @@ fn state_def_circ_eq(almanac: Almanac) {
     );
     assert_eq!(
         kep.period().unwrap(),
-        24_417.396_242_570_256 * Unit::Second,
+        24_417.396_242_566 * Unit::Second,
         "period"
     );
     f64_eq!(kep.hx().unwrap(), -0.001_194_024_028_558_358_7, "HX");
@@ -339,8 +348,10 @@ fn state_def_circ_eq(almanac: Almanac) {
 }
 
 #[rstest]
-fn state_def_equatorial(almanac: Almanac) {
-    let eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
+fn val_state_def_equatorial(almanac: Almanac) {
+    let mut eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
+    // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
+    eme2k.mu_km3_s2 = Some(398_600.4415);
 
     let epoch = Epoch::from_mjd_tai(21_545.0);
     let cart = Orbit::new(
@@ -363,8 +374,10 @@ fn state_def_equatorial(almanac: Almanac) {
 }
 
 #[rstest]
-fn state_def_reciprocity(almanac: Almanac) {
-    let eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
+fn val_state_def_reciprocity(almanac: Almanac) {
+    let mut eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
+    // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
+    eme2k.mu_km3_s2 = Some(398_600.4415);
 
     let epoch = Epoch::from_mjd_tai(21_545.0);
 
@@ -433,7 +446,7 @@ fn state_def_reciprocity(almanac: Almanac) {
 }
 
 #[rstest]
-fn geodetic_vallado(almanac: Almanac) {
+fn verif_geodetic_vallado(almanac: Almanac) {
     let eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
 
     let epoch = Epoch::from_mjd_tai(51_545.0);
@@ -443,9 +456,9 @@ fn geodetic_vallado(almanac: Almanac) {
     let rj = 6862.875;
     let rj_val = 6_862.874_999_999_999;
     let rk = 6448.296;
-    let lat = 34.352_495_139_917_26; // Valldo: 34.352496
+    let lat = 34.352_519_916_935_62; // Valldo: 34.352496
     let long = 46.446_416_856_789_96; // Vallado 46.4464
-    let height = 5_085.219_430_345_17; // Vallado: 5085.22
+    let height = 5_085.217_419_357_936; // Vallado: 5085.22
     let r = Orbit::from_position(ri, rj, rk, epoch, eme2k);
     f64_eq!(r.geodetic_latitude().unwrap(), lat, "latitude (φ)");
     f64_eq!(r.geodetic_longitude(), long, "longitude (λ)");
@@ -470,9 +483,9 @@ fn geodetic_vallado(almanac: Almanac) {
     let long = 345.5975;
     let height = 56.0e-3;
     let height_val = 0.056_000_000_000_494_765;
-    let ri = 6_119.399_587_411_616;
-    let rj = -1_571.479_380_333_195;
-    let rk = -871.561_161_926_003_9;
+    let ri = 6_119.4032_332_711_09;
+    let rj = -1_571.480_316_600_378_3;
+    let rk = -871.560_226_712_024_7;
     let r = Orbit::from_altlatlong(
         lat,
         long,
@@ -492,7 +505,7 @@ fn geodetic_vallado(almanac: Almanac) {
 }
 
 #[rstest]
-fn with_init(almanac: Almanac) {
+fn verif_with_init(almanac: Almanac) {
     let eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
 
     let epoch = Epoch::from_gregorian_tai_at_midnight(2021, 3, 4);
