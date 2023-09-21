@@ -58,13 +58,15 @@ impl<'a> SPKSummaryRecord {
         Frame::from(self.center_frame_uid())
     }
 
+    #[cfg(feature = "spkezr_validation")]
     pub fn spice_name(&self) -> Result<&'a str, EphemerisError> {
-        Self::id_to_human_name(self.target_id)
+        Self::id_to_spice_name(self.target_id)
     }
 
     /// Converts the provided ID to its human name.
     /// Only works for the common celestial bodies
-    pub fn id_to_human_name(id: i32) -> Result<&'a str, EphemerisError> {
+    #[cfg(feature = "spkezr_validation")]
+    pub fn id_to_spice_name(id: i32) -> Result<&'a str, EphemerisError> {
         if id % 100 == 99 {
             // This is the planet itself
             match id / 100 {
@@ -104,7 +106,8 @@ impl<'a> SPKSummaryRecord {
 
     /// Converts the provided ID to its human name.
     /// Only works for the common celestial bodies
-    pub fn human_name_to_id(name: &'a str) -> Result<i32, EphemerisError> {
+    #[cfg(feature = "spkezr_validation")]
+    pub fn spice_name_to_id(name: &'a str) -> Result<i32, EphemerisError> {
         match name {
             "Mercury" => Ok(1),
             "Venus" => Ok(2),
@@ -128,25 +131,6 @@ impl<'a> SPKSummaryRecord {
                 name: name.to_string(),
             }),
         }
-    }
-
-    /// Returns the human name of this segment if it can be guessed, else the standard name.
-    ///
-    /// # Returned value
-    /// 1. Typically, this will return the name of the celestial body
-    /// 2. The name is appended with "Barycenter" if the celestial object is know to have moons
-    ///
-    /// # Limitations
-    /// 0. In BSP files, the name is stored as a comment and is unstructured. So it's hard to copy those. (Help needed)
-    /// 1. One limitation of this approach is that given file may only contain one "Earth"
-    /// 2. Another limitation is that this code does not know all of the possible moons in the whole solar system.
-    pub fn try_human_name(&self) -> Result<&'a str, EphemerisError> {
-        Self::id_to_human_name(self.target_id)
-    }
-
-    /// Same as [try_human_name] but unwraps the result
-    pub fn human_name(&self) -> &'a str {
-        self.try_human_name().unwrap()
     }
 }
 

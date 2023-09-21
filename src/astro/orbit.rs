@@ -146,7 +146,7 @@ impl CartesianState {
         raan: f64,
         aop: f64,
         ta: f64,
-        dt: Epoch,
+        epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
         ensure!(
@@ -164,7 +164,7 @@ impl CartesianState {
         // The two checks above ensure that sma > 0
         let sma = (r_a + r_p) / 2.0;
         let ecc = r_a / sma - 1.0;
-        Self::try_keplerian(sma, ecc, inc, raan, aop, ta, dt, frame)
+        Self::try_keplerian(sma, ecc, inc, raan, aop, ta, epoch, frame)
     }
 
     /// Attempts to create a new Orbit around the provided frame from the borrowed state vector
@@ -208,10 +208,10 @@ impl CartesianState {
         raan: f64,
         aop: f64,
         ta: f64,
-        dt: Epoch,
+        epoch: Epoch,
         frame: Frame,
     ) -> Self {
-        Self::try_keplerian_apsis_radii(r_a, r_p, inc, raan, aop, ta, dt, frame).unwrap()
+        Self::try_keplerian_apsis_radii(r_a, r_p, inc, raan, aop, ta, epoch, frame).unwrap()
     }
 
     /// Creates a new Orbit around the provided frame from the borrowed state vector

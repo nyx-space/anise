@@ -234,16 +234,16 @@ impl CompareEphem {
                     Ok(state) => {
                         // Find the SPICE names
                         let targ =
-                            match SPKSummaryRecord::human_name_to_id(&format!("{from_frame:e}")) {
+                            match SPKSummaryRecord::spice_name_to_id(&format!("{from_frame:e}")) {
                                 Ok(id) => {
-                                    SPKSummaryRecord::id_to_human_name(id).unwrap().to_string()
+                                    SPKSummaryRecord::id_to_spice_name(id).unwrap().to_string()
                                 }
                                 Err(_) => format!("{from_frame:e}"),
                             };
 
-                        let obs = match SPKSummaryRecord::human_name_to_id(&format!("{to_frame:e}"))
+                        let obs = match SPKSummaryRecord::spice_name_to_id(&format!("{to_frame:e}"))
                         {
-                            Ok(id) => SPKSummaryRecord::id_to_human_name(id).unwrap().to_string(),
+                            Ok(id) => SPKSummaryRecord::id_to_spice_name(id).unwrap().to_string(),
                             Err(_) => format!("{to_frame:e}"),
                         };
 

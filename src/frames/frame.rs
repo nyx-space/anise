@@ -187,3 +187,16 @@ impl fmt::LowerHex for Frame {
         write!(f, "{uid}")
     }
 }
+
+#[cfg(test)]
+mod frame_ut {
+    use crate::constants::frames::EME2000;
+
+    #[test]
+    fn format_frame() {
+        assert_eq!(format!("{EME2000}"), "Earth J2000");
+        assert_eq!(format!("{EME2000:x}"), "Earth J2000");
+        assert_eq!(format!("{EME2000:o}"), "J2000");
+        assert_eq!(format!("{EME2000:e}"), "Earth");
+    }
+}

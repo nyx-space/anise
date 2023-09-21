@@ -502,6 +502,18 @@ fn verif_geodetic_vallado(almanac: Almanac) {
     f64_eq!(r.geodetic_latitude().unwrap(), lat_val, "latitude (φ)");
     f64_eq!(r.geodetic_longitude(), long, "longitude (λ)");
     f64_eq!(r.geodetic_height().unwrap(), height_val, "height");
+
+    // Check reciprocity near poles
+    let r = Orbit::from_altlatlong(
+        0.1,
+        long,
+        height_val,
+        mean_earth_angular_velocity_deg_s,
+        epoch,
+        eme2k,
+    )
+    .unwrap();
+    f64_eq!(r.geodetic_latitude().unwrap(), 0.1, "latitude (φ)");
 }
 
 #[rstest]

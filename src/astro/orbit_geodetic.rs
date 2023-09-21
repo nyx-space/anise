@@ -30,7 +30,7 @@ impl CartesianState {
         raan: f64,
         aop: f64,
         ta: f64,
-        dt: Epoch,
+        epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
         Self::try_keplerian(
@@ -40,7 +40,7 @@ impl CartesianState {
             raan,
             aop,
             ta,
-            dt,
+            epoch,
             frame,
         )
     }
@@ -54,7 +54,7 @@ impl CartesianState {
         raan: f64,
         aop: f64,
         ta: f64,
-        dt: Epoch,
+        epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
         Self::try_keplerian_apsis_radii(
@@ -64,7 +64,7 @@ impl CartesianState {
             raan,
             aop,
             ta,
-            dt,
+            epoch,
             frame,
         )
     }
@@ -79,7 +79,7 @@ impl CartesianState {
         longitude_deg: f64,
         height_km: f64,
         angular_velocity: f64,
-        dt: Epoch,
+        epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
         let e2 = 2.0 * frame.flattening()? - frame.flattening()?.powi(2);
@@ -101,7 +101,7 @@ impl CartesianState {
             velocity[0],
             velocity[1],
             velocity[2],
-            dt,
+            epoch,
             frame,
         ))
     }

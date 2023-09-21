@@ -10,6 +10,7 @@
 
 use super::{perpv, Vector3};
 use crate::{
+    astro::PhysicsResult,
     errors::{EpochMismatchSnafu, FrameMismatchSnafu, PhysicsError},
     prelude::Frame,
 };
@@ -133,14 +134,18 @@ impl CartesianState {
         )
     }
 
-    /// Returns the distance in kilometers between this state and another state.
-    /// Will **panic** is the frames are different
-    pub fn distance_to(&self, other: &Self) -> f64 {
-        assert_eq!(
-            self.frame, other.frame,
-            "cannot compute the distance between two states in different frames"
+    /// Returns the distance in kilometers between this state and another state, if both frame match (epoch does not need to match).
+    pub fn distance_to(&self, other: &Self) -> PhysicsResult<f64> {
+        ensure!(
+            self.frame == other.frame,
+            FrameMismatchSnafu {
+                action: "translating states",
+                frame1: self.frame,
+                frame2: other.frame
+            }
         );
-        self.distance_to_point_km(&other.radius_km)
+
+        Ok(self.distance_to_point_km(&other.radius_km))
     }
 
     /// Returns the distance in kilometers between this state and a point assumed to be in the same frame.
@@ -254,10 +259,13 @@ impl fmt::LowerExp for CartesianState {
 
 #[cfg(test)]
 mod cartesian_state_ut {
+    use std::f64::EPSILON;
+
     use hifitime::{Epoch, TimeUnits};
 
     use crate::constants::frames::{EARTH_J2000, VENUS_J2000};
     use crate::errors::PhysicsError;
+    use crate::math::Vector6;
 
     use super::CartesianState;
 
@@ -309,5 +317,36 @@ mod cartesian_state_ut {
 
         assert_eq!(format!("{s1}"), format!("[Earth J2000] {e}\tposition = [10.000000, 20.000000, 30.000000] km\tvelocity = [1.000000, 2.000000, 2.000000] km/s"));
         assert_eq!(format!("{s1:e}"), format!("[Earth J2000] {e}\tposition = [1.000000e1, 2.000000e1, 3.000000e1] km\tvelocity = [1.000000e0, 2.000000e0, 2.000000e0] km/s"));
+    }
+
+    #[test]
+    fn distance() {
+        let e = Epoch::now().unwrap();
+        let frame = EARTH_J2000;
+        let s1 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
+        let s2 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
+
+        assert!(s1.distance_to(&s2).unwrap().abs() < EPSILON);
+
+        let as_vec6 = Vector6::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0);
+        assert_eq!(s1.to_cartesian_pos_vel(), as_vec6);
+
+        assert_eq!(
+            CartesianState::from_cartesian_pos_vel(as_vec6, e, frame),
+            s1
+        );
+    }
+
+    #[test]
+    fn zeros() {
+        let e = Epoch::now().unwrap();
+        let frame = EARTH_J2000;
+        let s = CartesianState::zero(frame);
+
+        // We cannot call the orbital momentum magnitude if the radius is zero.
+        assert!(s.hmag().is_err());
+
+        let s = CartesianState::zero_at_epoch(e, frame);
+        assert!(s.hmag().is_err());
     }
 }
