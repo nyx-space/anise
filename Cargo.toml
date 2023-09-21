@@ -33,6 +33,7 @@ bytes = "1.4.0"
 snafu = { version = "0.7.4", features = ["backtrace"] }
 lexical-core = "0.8.5"
 heapless = "0.7.16"
+rstest = "0.18.2"
 
 [dev-dependencies]
 rust-spice = "0.7.4"

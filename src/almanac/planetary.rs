@@ -38,7 +38,7 @@ impl<'a: 'b, 'b> Almanac<'a> {
     }
 
     /// Given the frame, attempt to retrieve the full frame information, if that frame is loaded
-    pub fn fetch_frame(&self, frame: Frame) -> Result<Frame, PlanetaryDataError> {
+    pub fn frame_fetch(&self, frame: Frame) -> Result<Frame, PlanetaryDataError> {
         self.frame_from_uid(frame.into())
     }
 }
