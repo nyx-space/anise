@@ -14,6 +14,7 @@ use core::fmt::Debug;
 use crate::constants::celestial_objects::celestial_name_from_id;
 use crate::constants::orientations::{orientation_name_from_id, J2000};
 use crate::errors::PhysicsError;
+use crate::prelude::FrameUid;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
 use crate::NaifId;
 
@@ -176,5 +177,13 @@ impl fmt::Octal for Frame {
         };
 
         write!(f, "{orientation_name}")
+    }
+}
+
+impl fmt::LowerHex for Frame {
+    /// Only prints the UID
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        let uid: FrameUid = self.into();
+        write!(f, "{uid}")
     }
 }

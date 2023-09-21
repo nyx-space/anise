@@ -764,7 +764,7 @@ impl fmt::LowerHex for Orbit {
             let decimals = f.precision().unwrap_or(6);
             write!(
                 f,
-                "[{}] {}\tsma = {} km\tecc = {}\tinc = {} deg\traan = {} deg\taop = {} deg\tta = {} deg",
+                "[{:x}] {}\tsma = {} km\tecc = {}\tinc = {} deg\traan = {} deg\taop = {} deg\tta = {} deg",
                 self.frame,
                 self.epoch,
                 format!("{:.*}", decimals, self.sma_km().map_err(|err| {

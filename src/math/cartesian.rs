@@ -217,7 +217,7 @@ impl fmt::Display for CartesianState {
         let decimals = f.precision().unwrap_or(6);
         write!(
             f,
-            "[{}] {}\tposition = [{}, {}, {}] km\tvelocity = [{}, {}, {}] km/s",
+            "[{:x}] {}\tposition = [{}, {}, {}] km\tvelocity = [{}, {}, {}] km/s",
             self.frame,
             self.epoch,
             format!("{:.*}", decimals, self.radius_km.x),
@@ -237,7 +237,7 @@ impl fmt::LowerExp for CartesianState {
         let decimals = f.precision().unwrap_or(6);
         write!(
             f,
-            "[{}] {}\tposition = [{}, {}, {}] km\tvelocity = [{}, {}, {}] km/s",
+            "[{:x}] {}\tposition = [{}, {}, {}] km\tvelocity = [{}, {}, {}] km/s",
             self.frame,
             self.epoch,
             format!("{:.*}", decimals, self.radius_km.x),
