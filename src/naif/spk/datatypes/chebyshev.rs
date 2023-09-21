@@ -24,6 +24,7 @@ use crate::{
     },
 };
 
+#[derive(PartialEq)]
 pub struct Type2ChebyshevSet<'a> {
     pub init_epoch: Epoch,
     pub interval_length: Duration,
@@ -242,6 +243,7 @@ impl<'a> NAIFDataRecord<'a> for Type2ChebyshevRecord<'a> {
     }
 }
 
+#[derive(PartialEq)]
 pub struct Type3ChebyshevRecord<'a> {
     pub midpoint: Epoch,
     pub radius: Duration,

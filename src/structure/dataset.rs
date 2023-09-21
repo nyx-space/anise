@@ -61,6 +61,54 @@ pub enum DataSetError {
     },
 }
 
+impl PartialEq for DataSetError {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                Self::DataSetLut {
+                    action: l_action,
+                    source: l_source,
+                },
+                Self::DataSetLut {
+                    action: r_action,
+                    source: r_source,
+                },
+            ) => l_action == r_action && l_source == r_source,
+            (
+                Self::DataSetIntegrity {
+                    action: l_action,
+                    source: l_source,
+                },
+                Self::DataSetIntegrity {
+                    action: r_action,
+                    source: r_source,
+                },
+            ) => l_action == r_action && l_source == r_source,
+            (
+                Self::DataDecoding {
+                    action: l_action,
+                    source: l_source,
+                },
+                Self::DataDecoding {
+                    action: r_action,
+                    source: r_source,
+                },
+            ) => l_action == r_action && l_source == r_source,
+            (
+                Self::IO {
+                    action: l_action,
+                    source: _l_source,
+                },
+                Self::IO {
+                    action: r_action,
+                    source: _r_source,
+                },
+            ) => l_action == r_action,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
 pub enum DataSetType {
@@ -426,13 +474,13 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> fmt::Display for DataSet<'a, T, 
 
 #[cfg(test)]
 mod dataset_ut {
-    use bytes::Bytes;
-
     use crate::structure::{
         dataset::DataSetBuilder,
         lookuptable::Entry,
         spacecraft::{DragData, Inertia, Mass, SRPData, SpacecraftData},
+        SpacecraftDataSet,
     };
+    use bytes::Bytes;
 
     use super::{DataSet, Decode, Encode, LookUpTable};
 
@@ -608,7 +656,7 @@ mod dataset_ut {
 
         dbg!(ebuf.len());
 
-        let repr_dec = DataSet::<SpacecraftData, 16>::from_bytes(&ebuf);
+        let repr_dec = SpacecraftDataSet::from_bytes(&ebuf);
 
         assert_eq!(dataset, repr_dec);
 
@@ -623,8 +671,6 @@ mod dataset_ut {
         assert_eq!(srp_repr, srp_sc);
 
         // And check that we get an error if the data is wrong.
-        assert!(repr_dec.get_by_id(0).is_err())
+        assert!(repr_dec.get_by_id(0).is_err());
     }
-
-    // TODO(now): Add test for invalid ANISE version, decoding garbage after a valid anise version, and decoding pure garbage
 }

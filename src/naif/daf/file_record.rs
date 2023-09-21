@@ -18,7 +18,7 @@ use log::error;
 
 use super::NAIFRecord;
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
 pub enum FileRecordError {
     /// Endian of file does not match the endian order of the machine

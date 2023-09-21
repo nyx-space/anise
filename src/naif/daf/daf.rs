@@ -43,7 +43,7 @@ macro_rules! io_imports {
 io_imports!();
 
 pub(crate) const RCRD_LEN: usize = 1024;
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, PartialEq)]
 pub struct DAF<R: NAIFSummaryRecord> {
     // pub file_record: FileRecord,
     // pub name_record: NameRecord,
@@ -408,5 +408,75 @@ impl<R: NAIFSummaryRecord> Hash for DAF<R> {
 
 #[cfg(test)]
 mod daf_ut {
-    // TODO(now): test wrong crc32
+    use hifitime::Epoch;
+
+    use crate::{
+        errors::{InputOutputError, IntegrityError},
+        file2heap,
+        naif::{daf::DAFError, spk::datatypes::HermiteSetType13, SPK},
+    };
+
+    use std::fs::File;
+
+    #[test]
+    fn crc32_errors() {
+        let mut traj = SPK::load("./data/gmat-hermite.bsp").unwrap();
+        let nominal_crc = traj.crc32();
+
+        assert_eq!(
+            SPK::check_then_parse(
+                file2heap!("./data/gmat-hermite.bsp").unwrap(),
+                nominal_crc + 1
+            ),
+            Err(DAFError::DAFIntegrity {
+                source: IntegrityError::ChecksumInvalid {
+                    expected: nominal_crc + 1,
+                    computed: nominal_crc
+                },
+            })
+        );
+
+        // Change the checksum of the traj and check that scrub fails
+        traj.crc32_checksum += 1;
+        assert_eq!(
+            traj.scrub(),
+            Err(IntegrityError::ChecksumInvalid {
+                expected: nominal_crc + 1,
+                computed: nominal_crc
+            })
+        );
+    }
+
+    #[test]
+    fn summary_from_name() {
+        let epoch = Epoch::now().unwrap();
+        let traj = SPK::load("./data/gmat-hermite.bsp").unwrap();
+
+        assert_eq!(
+            traj.summary_from_name_at_epoch("name", epoch),
+            Err(DAFError::NameError {
+                kind: "SPKSummaryRecord",
+                name: "name".to_string()
+            })
+        );
+
+        // SPK_SEGMENT
+
+        assert_eq!(
+            traj.summary_from_name_at_epoch("SPK_SEGMENT", epoch),
+            Err(DAFError::SummaryNameAtEpochError {
+                kind: "SPKSummaryRecord",
+                name: "SPK_SEGMENT".to_string(),
+                epoch
+            })
+        );
+
+        if traj.nth_data::<HermiteSetType13>(0).unwrap()
+            != traj.data_from_name("SPK_SEGMENT").unwrap()
+        {
+            // We cannot user assert_eq! because the NAIF Data Set do not (and should not) impl Debug
+            // These data sets are the full record!
+            panic!("nth data test failed");
+        }
+    }
 }

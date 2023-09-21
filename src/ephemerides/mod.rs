@@ -20,7 +20,7 @@ pub mod paths;
 pub mod translate_to_parent;
 pub mod translations;
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
 pub enum EphemerisError {
     /// Somehow you've entered code that should not be reachable, please file a bug.

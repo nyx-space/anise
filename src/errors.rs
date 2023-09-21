@@ -26,7 +26,7 @@ pub enum InputOutputError {
     IOUnknownError,
 }
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
 pub enum DecodingError {
     #[snafu(display(
@@ -92,7 +92,7 @@ pub enum MathError {
     InvalidInterpolationData,
 }
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
 pub enum PhysicsError {
     /// Somehow you've entered code that should not be reachable, please file a bug.

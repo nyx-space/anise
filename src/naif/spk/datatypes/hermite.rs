@@ -25,6 +25,7 @@ use crate::{
 
 use super::posvel::PositionVelocityRecord;
 
+#[derive(PartialEq)]
 pub struct HermiteSetType12<'a> {
     pub first_state_epoch: Epoch,
     pub step_size: Duration,
@@ -132,6 +133,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
     }
 }
 
+#[derive(PartialEq)]
 pub struct HermiteSetType13<'a> {
     /// Number of samples to use to build the interpolation
     pub samples: usize,

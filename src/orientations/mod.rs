@@ -16,7 +16,7 @@ use crate::{
     prelude::FrameUid,
 };
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
 pub enum OrientationError {
     /// Somehow you've entered code that should not be reachable, please file a bug.

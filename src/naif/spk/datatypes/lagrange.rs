@@ -24,6 +24,7 @@ use crate::{
 
 use super::posvel::PositionVelocityRecord;
 
+#[derive(PartialEq)]
 pub struct LagrangeSetType8<'a> {
     pub first_state_epoch: Epoch,
     pub step_size: Duration,
@@ -132,6 +133,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
     }
 }
 
+#[derive(PartialEq)]
 pub struct LagrangeSetType9<'a> {
     pub degree: usize,
     pub num_records: usize,

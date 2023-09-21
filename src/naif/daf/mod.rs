@@ -56,7 +56,7 @@ pub trait NAIFSummaryRecord: NAIFRecord + Copy {
     const NAME: &'static str;
 }
 
-pub trait NAIFDataSet<'a>: Sized + Display {
+pub trait NAIFDataSet<'a>: Sized + Display + PartialEq {
     /// The underlying record representation
     type RecordKind: NAIFDataRecord<'a>;
 
@@ -173,4 +173,169 @@ pub enum DAFError {
     },
     #[snafu(display("while {action} encountered input/output error {source}"))]
     IO { action: String, source: IOError },
+}
+
+// Manual implementation of PartialEq because IOError does not derive it, sadly.
+impl PartialEq for DAFError {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::NoDAFLoaded { kind: l_kind }, Self::NoDAFLoaded { kind: r_kind }) => {
+                l_kind == r_kind
+            }
+            (
+                Self::SummaryIdError {
+                    kind: l_kind,
+                    id: l_id,
+                },
+                Self::SummaryIdError {
+                    kind: r_kind,
+                    id: r_id,
+                },
+            ) => l_kind == r_kind && l_id == r_id,
+            (
+                Self::SummaryIdAtEpochError {
+                    kind: l_kind,
+                    id: l_id,
+                    epoch: l_epoch,
+                },
+                Self::SummaryIdAtEpochError {
+                    kind: r_kind,
+                    id: r_id,
+                    epoch: r_epoch,
+                },
+            ) => l_kind == r_kind && l_id == r_id && l_epoch == r_epoch,
+            (
+                Self::SummaryNameError {
+                    kind: l_kind,
+                    name: l_name,
+                },
+                Self::SummaryNameError {
+                    kind: r_kind,
+                    name: r_name,
+                },
+            ) => l_kind == r_kind && l_name == r_name,
+            (
+                Self::SummaryNameAtEpochError {
+                    kind: l_kind,
+                    name: l_name,
+                    epoch: l_epoch,
+                },
+                Self::SummaryNameAtEpochError {
+                    kind: r_kind,
+                    name: r_name,
+                    epoch: r_epoch,
+                },
+            ) => l_kind == r_kind && l_name == r_name && l_epoch == r_epoch,
+            (
+                Self::InterpolationDataErrorFromName {
+                    kind: l_kind,
+                    name: l_name,
+                    epoch: l_epoch,
+                },
+                Self::InterpolationDataErrorFromName {
+                    kind: r_kind,
+                    name: r_name,
+                    epoch: r_epoch,
+                },
+            ) => l_kind == r_kind && l_name == r_name && l_epoch == r_epoch,
+            (
+                Self::InterpolationDataErrorFromId {
+                    kind: l_kind,
+                    id: l_id,
+                    epoch: l_epoch,
+                },
+                Self::InterpolationDataErrorFromId {
+                    kind: r_kind,
+                    id: r_id,
+                    epoch: r_epoch,
+                },
+            ) => l_kind == r_kind && l_id == r_id && l_epoch == r_epoch,
+            (
+                Self::FileRecord {
+                    kind: l_kind,
+                    source: l_source,
+                },
+                Self::FileRecord {
+                    kind: r_kind,
+                    source: r_source,
+                },
+            ) => l_kind == r_kind && l_source == r_source,
+            (
+                Self::EmptySummary {
+                    kind: l_kind,
+                    idx: l_idx,
+                },
+                Self::EmptySummary {
+                    kind: r_kind,
+                    idx: r_idx,
+                },
+            ) => l_kind == r_kind && l_idx == r_idx,
+            (
+                Self::NameError {
+                    kind: l_kind,
+                    name: l_name,
+                },
+                Self::NameError {
+                    kind: r_kind,
+                    name: r_name,
+                },
+            ) => l_kind == r_kind && l_name == r_name,
+            (
+                Self::DecodingSummary {
+                    kind: l_kind,
+                    source: l_source,
+                },
+                Self::DecodingSummary {
+                    kind: r_kind,
+                    source: r_source,
+                },
+            ) => l_kind == r_kind && l_source == r_source,
+            (
+                Self::DecodingComments {
+                    kind: l_kind,
+                    source: l_source,
+                },
+                Self::DecodingComments {
+                    kind: r_kind,
+                    source: r_source,
+                },
+            ) => l_kind == r_kind && l_source == r_source,
+            (
+                Self::DecodingName {
+                    kind: l_kind,
+                    source: l_source,
+                },
+                Self::DecodingName {
+                    kind: r_kind,
+                    source: r_source,
+                },
+            ) => l_kind == r_kind && l_source == r_source,
+            (
+                Self::DecodingData {
+                    kind: l_kind,
+                    idx: l_idx,
+                    source: l_source,
+                },
+                Self::DecodingData {
+                    kind: r_kind,
+                    idx: r_idx,
+                    source: r_source,
+                },
+            ) => l_kind == r_kind && l_idx == r_idx && l_source == r_source,
+            (Self::DAFIntegrity { source: l_source }, Self::DAFIntegrity { source: r_source }) => {
+                l_source == r_source
+            }
+            (
+                Self::IO {
+                    action: l_action,
+                    source: _l_source,
+                },
+                Self::IO {
+                    action: r_action,
+                    source: _r_source,
+                },
+            ) => l_action == r_action,
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
 }

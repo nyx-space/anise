@@ -17,7 +17,7 @@ use snafu::prelude::*;
 
 use crate::{errors::DecodingError, NaifId};
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
 pub enum LutError {
     #[snafu(display(

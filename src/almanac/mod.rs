@@ -9,9 +9,7 @@
  */
 
 use crate::naif::{BPC, SPK};
-use crate::structure::dataset::DataSet;
-use crate::structure::planetocentric::PlanetaryData;
-use crate::structure::spacecraft::SpacecraftData;
+use crate::structure::{PlanetaryDataSet, SpacecraftDataSet};
 use core::fmt;
 
 // TODO: Switch these to build constants so that it's configurable when building the library.
@@ -35,9 +33,9 @@ pub struct Almanac<'a> {
     /// NAIF BPC is kept unchanged
     pub bpc_data: [Option<BPC>; MAX_LOADED_BPCS],
     /// Dataset of planetary data
-    pub planetary_data: DataSet<'a, PlanetaryData, MAX_PLANETARY_DATA>,
+    pub planetary_data: PlanetaryDataSet<'a>,
     /// Dataset of spacecraft data
-    pub spacecraft_data: DataSet<'a, SpacecraftData<'a>, MAX_SPACECRAFT_DATA>,
+    pub spacecraft_data: SpacecraftDataSet<'a>,
 }
 
 impl<'a> fmt::Display for Almanac<'a> {

@@ -15,7 +15,7 @@ use crate::{
 use super::Almanac;
 use snafu::prelude::*;
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
 pub enum PlanetaryDataError {
     #[snafu(display("when {action} {source}"))]
