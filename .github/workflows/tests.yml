@@ -118,13 +118,13 @@ jobs:
 
       - name: Rust-SPICE JPL DE validation
         run: | 
-          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_jplde_de440s --features validation --release -- --nocapture --ignored
-          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_jplde_de440_full --features validation --release -- --nocapture --ignored
+          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_jplde_de440s --features spkezr_validation --release -- --nocapture --ignored
+          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_jplde_de440_full --features spkezr_validation --release -- --nocapture --ignored
 
       - name: Rust-SPICE hermite validation
         run: |
-          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_hermite_type13_from_gmat --features validation --release -- --nocapture --ignored
-          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_hermite_type13_with_varying_segment_sizes --features validation --release -- --nocapture --ignored
+          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_hermite_type13_from_gmat --features spkezr_validation --release -- --nocapture --ignored
+          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_hermite_type13_with_varying_segment_sizes --features spkezr_validation --release -- --nocapture --ignored
 
       # Now analyze the results and create pretty plots
       - uses: actions/setup-python@v4

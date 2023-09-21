@@ -26,8 +26,9 @@ pub enum PlanetaryDataError {
 }
 
 impl<'a: 'b, 'b> Almanac<'a> {
-    /// Given the frame UID, attempt to retrieve the full frame information, if that frame is loaded
-    pub fn frame_from_uid(&self, uid: FrameUid) -> Result<Frame, PlanetaryDataError> {
+    /// Given the frame UID (or something that can be transformed into it), attempt to retrieve the full frame information, if that frame is loaded
+    pub fn frame_from_uid<U: Into<FrameUid>>(&self, uid: U) -> Result<Frame, PlanetaryDataError> {
+        let uid = uid.into();
         Ok(self
             .planetary_data
             .get_by_id(uid.ephemeris_id)
@@ -35,10 +36,5 @@ impl<'a: 'b, 'b> Almanac<'a> {
                 action: "fetching frame by its UID via ephemeris_id",
             })?
             .to_frame(uid))
-    }
-
-    /// Given the frame, attempt to retrieve the full frame information, if that frame is loaded
-    pub fn frame_fetch(&self, frame: Frame) -> Result<Frame, PlanetaryDataError> {
-        self.frame_from_uid(frame.into())
     }
 }

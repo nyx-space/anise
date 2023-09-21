@@ -32,7 +32,7 @@ macro_rules! f64_eq {
 
 #[rstest]
 fn val_state_def_circ_inc(almanac: Almanac) {
-    let mut eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
+    let mut eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
     eme2k.mu_km3_s2 = Some(398_600.4415);
 
@@ -151,7 +151,7 @@ fn val_state_def_circ_inc(almanac: Almanac) {
 
 #[rstest]
 fn val_state_def_elliptical(almanac: Almanac) {
-    let mut eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
+    let mut eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
     eme2k.mu_km3_s2 = Some(398_600.4415);
 
@@ -251,7 +251,7 @@ fn val_state_def_elliptical(almanac: Almanac) {
 
 #[rstest]
 fn val_state_def_circ_eq(almanac: Almanac) {
-    let mut eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
+    let mut eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
     eme2k.mu_km3_s2 = Some(398_600.4415);
 
@@ -349,7 +349,7 @@ fn val_state_def_circ_eq(almanac: Almanac) {
 
 #[rstest]
 fn val_state_def_equatorial(almanac: Almanac) {
-    let mut eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
+    let mut eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
     eme2k.mu_km3_s2 = Some(398_600.4415);
 
@@ -375,7 +375,7 @@ fn val_state_def_equatorial(almanac: Almanac) {
 
 #[rstest]
 fn val_state_def_reciprocity(almanac: Almanac) {
-    let mut eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
+    let mut eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
     eme2k.mu_km3_s2 = Some(398_600.4415);
 
@@ -447,7 +447,7 @@ fn val_state_def_reciprocity(almanac: Almanac) {
 
 #[rstest]
 fn verif_geodetic_vallado(almanac: Almanac) {
-    let eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
+    let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
 
     let epoch = Epoch::from_mjd_tai(51_545.0);
     // Test case from Vallado, 4th Ed., page 173, Example 3-3
@@ -518,7 +518,7 @@ fn verif_geodetic_vallado(almanac: Almanac) {
 
 #[rstest]
 fn verif_with_init(almanac: Almanac) {
-    let eme2k = almanac.frame_from_uid(EARTH_J2000.into()).unwrap();
+    let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
 
     let epoch = Epoch::from_gregorian_tai_at_midnight(2021, 3, 4);
     let kep = Orbit::keplerian(

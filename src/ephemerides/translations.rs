@@ -36,6 +36,14 @@ impl<'a> Almanac<'a> {
         epoch: Epoch,
         ab_corr: Aberration,
     ) -> Result<CartesianState, EphemerisError> {
+        let mut to_frame: Frame = to_frame;
+
+        // If there is no frame info, the user hasn't loaded this frame, but might still want to compute a translation.
+        if let Ok(to_frame_info) = self.frame_from_uid(to_frame) {
+            // User has loaded the planetary data for this frame, so let's use that as the to_frame.
+            to_frame = to_frame_info;
+        }
+
         if from_frame == to_frame {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
             return Ok(CartesianState::zero(from_frame));

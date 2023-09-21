@@ -417,30 +417,26 @@ fn hermite_query() {
     // And the summaries match
     assert_eq!(&summary, summary_from_ctx);
 
-    // Let's load the actual frame information from the planetary data.
-    let to_frame = ctx
-        .frame_from_uid(summary.center_frame_uid())
-        .expect("frame not found?!");
     let summary_duration = summary.end_epoch() - summary.start_epoch();
 
     // Query in the middle to the parent, since we don't have anything else loaded.
     let state = ctx
         .translate_from_to(
             summary.target_frame(),
-            to_frame,
+            summary.center_frame(),
             summary.start_epoch() + summary_duration * 0.5,
             Aberration::None,
         )
         .unwrap();
 
-    println!("{state}");
+    // This tests that we've loaded the frame info from the Almanac, otherwise we cannot compute the orbital elements.
     assert_eq!(format!("{state:x}"), "[Earth J2000] 2000-01-01T13:39:27.999998123 UTC\tsma = 7192.041350 km\tecc = 0.024628\tinc = 12.851841 deg\traan = 306.170038 deg\taop = 315.085528 deg\tta = 96.135384 deg");
 
     // Fetch the state at the start of this spline to make sure we don't glitch.
     assert!(ctx
         .translate_from_to(
             summary.target_frame(),
-            to_frame,
+            summary.center_frame(),
             summary.start_epoch(),
             Aberration::None,
         )
