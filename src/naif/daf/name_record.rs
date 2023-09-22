@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -10,10 +10,10 @@
 
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
-use crate::{prelude::AniseError, DBL_SIZE};
+use crate::DBL_SIZE;
 use log::warn;
 
-use super::{NAIFRecord, RCRD_LEN};
+use super::{DAFError, NAIFRecord, NAIFSummaryRecord, RCRD_LEN};
 
 #[derive(AsBytes, Clone, Debug, FromZeroes, FromBytes)]
 #[repr(C)]
@@ -32,9 +32,11 @@ impl Default for NameRecord {
 impl NAIFRecord for NameRecord {}
 
 impl NameRecord {
-    /// Returns the number of names in this record
-    pub fn num_entries(&self, summary_size: usize) -> usize {
-        self.raw_names.len() / summary_size * DBL_SIZE
+    /// Returns the maximum number of names in this record given the provided summary size.
+    ///
+    /// Note that we don't actually use `&self` here, but it's just easier to call.
+    pub const fn num_entries(&self, summary_size: usize) -> usize {
+        RCRD_LEN / (summary_size * DBL_SIZE)
     }
 
     pub fn nth_name(&self, n: usize, summary_size: usize) -> &str {
@@ -83,12 +85,19 @@ impl NameRecord {
     /// Searches the name record for the provided name.
     ///
     /// **Warning:** this performs an O(N) search!
-    pub fn index_from_name(&self, name: &str, summary_size: usize) -> Result<usize, AniseError> {
+    pub fn index_from_name<R: NAIFSummaryRecord>(
+        &self,
+        name: &str,
+        summary_size: usize,
+    ) -> Result<usize, DAFError> {
         for i in 0..self.num_entries(summary_size) {
             if self.nth_name(i, summary_size) == name {
                 return Ok(i);
             }
         }
-        Err(AniseError::ItemNotFound)
+        Err(DAFError::NameError {
+            kind: R::NAME,
+            name: name.to_string(),
+        })
     }
 }

@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -8,11 +8,13 @@
  * Documentation: https://nyxspace.com/
  */
 
+use crate::errors::{OriginMismatchSnafu, PhysicsError};
 use crate::math::rotation::EPSILON;
-use crate::{math::Vector3, math::Vector4, prelude::AniseError, NaifId};
+use crate::{math::Vector3, math::Vector4, NaifId};
 use core::fmt;
 use core::ops::Mul;
 use nalgebra::Matrix4x3;
+use snafu::ensure;
 
 pub use core::f64::consts::{FRAC_PI_2, FRAC_PI_3, FRAC_PI_4, PI, TAU};
 
@@ -231,43 +233,45 @@ impl EulerParameter {
 }
 
 impl Mul for Quaternion {
-    type Output = Result<Quaternion, AniseError>;
+    type Output = Result<Quaternion, PhysicsError>;
 
-    fn mul(self, rhs: Quaternion) -> Result<Quaternion, AniseError> {
-        if self.to != rhs.from {
-            Err(AniseError::IncompatibleRotation {
-                from: rhs.from,
-                to: self.to,
-            })
+    fn mul(self, rhs: Quaternion) -> Result<Quaternion, PhysicsError> {
+        ensure!(
+            self.to == rhs.from,
+            OriginMismatchSnafu {
+                action: "multiplying quaternions",
+                from1: self.from,
+                from2: rhs.from
+            }
+        );
+
+        let s = self.w * rhs.w - self.x * rhs.x - self.y * rhs.y - self.z * rhs.z;
+        let i = self.w * rhs.x + self.x * rhs.w + self.y * rhs.z - self.z * rhs.y;
+        let j = self.w * rhs.y - self.x * rhs.z + self.y * rhs.w + self.z * rhs.x;
+        let k = self.w * rhs.z + self.x * rhs.y - self.y * rhs.x + self.z * rhs.w;
+
+        let (from, to) = if self.to == rhs.from && self.from == rhs.to {
+            // Then we don't change the frames
+            (self.from, self.to)
         } else {
-            let s = self.w * rhs.w - self.x * rhs.x - self.y * rhs.y - self.z * rhs.z;
-            let i = self.w * rhs.x + self.x * rhs.w + self.y * rhs.z - self.z * rhs.y;
-            let j = self.w * rhs.y - self.x * rhs.z + self.y * rhs.w + self.z * rhs.x;
-            let k = self.w * rhs.z + self.x * rhs.y - self.y * rhs.x + self.z * rhs.w;
+            (self.from, rhs.to)
+        };
 
-            let (from, to) = if self.to == rhs.from && self.from == rhs.to {
-                // Then we don't change the frames
-                (self.from, self.to)
-            } else {
-                (self.from, rhs.to)
-            };
-
-            Ok(Quaternion {
-                w: s,
-                x: i,
-                y: j,
-                z: k,
-                from,
-                to,
-            })
-        }
+        Ok(Quaternion {
+            w: s,
+            x: i,
+            y: j,
+            z: k,
+            from,
+            to,
+        })
     }
 }
 
 impl Mul for &Quaternion {
-    type Output = Result<Quaternion, AniseError>;
+    type Output = Result<Quaternion, PhysicsError>;
 
-    fn mul(self, other: &Quaternion) -> Result<Quaternion, AniseError> {
+    fn mul(self, other: &Quaternion) -> Result<Quaternion, PhysicsError> {
         *self * *other
     }
 }
@@ -374,7 +378,7 @@ mod ut_quaternion {
             let (uvec, angle_rad) = q1_to_q2.uvec_angle();
 
             if uvec.norm() > EPSILON {
-                if angle < -PI || angle > PI {
+                if !(-PI..=PI).contains(&angle) {
                     assert_eq!(uvec, -uvec_q1, "{angle}");
                 } else {
                     assert_eq!(uvec, uvec_q1, "{angle}");
@@ -394,7 +398,7 @@ mod ut_quaternion {
 
             let (uvec, _angle_rad) = q2_to_q1.uvec_angle();
             if uvec.norm() > EPSILON {
-                if angle >= -PI && angle <= PI {
+                if (-PI..=PI).contains(&angle) {
                     assert_eq!(uvec, -uvec_q1, "{angle}");
                 } else {
                     assert_eq!(uvec, uvec_q1, "{angle}");

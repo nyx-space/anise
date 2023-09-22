@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -8,9 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 
+use snafu::ensure;
+
 use crate::{
+    errors::{DivisionByZeroSnafu, MathError, OriginMismatchSnafu, PhysicsError},
     math::{Matrix3, Vector3},
-    prelude::AniseError,
     NaifId,
 };
 use core::f64::EPSILON;
@@ -78,21 +80,22 @@ impl MRP {
     /// # Returns
     ///
     /// The shadow MRP as a new instance of `MRP`.
-    pub fn shadow(&self) -> Result<Self, AniseError> {
-        if self.is_singular() {
-            Err(AniseError::MathError(
-                crate::errors::MathErrorKind::DivisionByZero,
-            ))
-        } else {
-            let s_squared = self.s0 * self.s0 + self.s1 * self.s1 + self.s2 * self.s2;
-            Ok(MRP {
-                s0: -self.s0 / s_squared,
-                s1: -self.s1 / s_squared,
-                s2: -self.s2 / s_squared,
-                from: self.from,
-                to: self.to,
-            })
-        }
+    pub fn shadow(&self) -> Result<Self, MathError> {
+        ensure!(
+            !self.is_singular(),
+            DivisionByZeroSnafu {
+                action: "cannot compute shadow MRP of a singular MRP"
+            }
+        );
+
+        let s_squared = self.s0 * self.s0 + self.s1 * self.s1 + self.s2 * self.s2;
+        Ok(MRP {
+            s0: -self.s0 / s_squared,
+            s1: -self.s1 / s_squared,
+            s2: -self.s2 / s_squared,
+            from: self.from,
+            to: self.to,
+        })
     }
 
     /// Returns whether this MRP is singular.
@@ -161,26 +164,28 @@ impl MRP {
     }
 
     /// Returns the relative MRP between self and the rhs MRP.
-    pub fn relative_to(&self, rhs: &Self) -> Result<Self, AniseError> {
-        if self.from != rhs.from {
-            Err(AniseError::IncompatibleRotation {
-                from: self.from,
-                to: rhs.to,
-            })
-        } else {
-            // Using the same notation as in Eq. 3.153 in Schaub and Junkins, 3rd edition
-            let s_prime = self;
-            let s_dprime = rhs;
-            let denom = 1.0
-                + s_prime.norm_squared() * s_dprime.norm_squared()
-                + 2.0 * s_prime.as_vector().dot(&s_dprime.as_vector());
-            let num1 = (1.0 - s_prime.norm_squared()) * s_dprime.as_vector();
-            let num2 = -(1.0 - s_dprime.norm_squared()) * s_prime.as_vector();
-            let num3 = 2.0 * s_dprime.as_vector().cross(&s_prime.as_vector());
+    pub fn relative_to(&self, rhs: &Self) -> Result<Self, PhysicsError> {
+        ensure!(
+            self.from == rhs.from,
+            OriginMismatchSnafu {
+                action: "computing relative MRP",
+                from1: self.from,
+                from2: rhs.from
+            }
+        );
 
-            let sigma = (num1 + num2 + num3) / denom;
-            Ok(Self::new(sigma[0], sigma[1], sigma[2], rhs.from, self.to))
-        }
+        // Using the same notation as in Eq. 3.153 in Schaub and Junkins, 3rd edition
+        let s_prime = self;
+        let s_dprime = rhs;
+        let denom = 1.0
+            + s_prime.norm_squared() * s_dprime.norm_squared()
+            + 2.0 * s_prime.as_vector().dot(&s_dprime.as_vector());
+        let num1 = (1.0 - s_prime.norm_squared()) * s_dprime.as_vector();
+        let num2 = -(1.0 - s_dprime.norm_squared()) * s_prime.as_vector();
+        let num3 = 2.0 * s_dprime.as_vector().cross(&s_prime.as_vector());
+
+        let sigma = (num1 + num2 + num3) / denom;
+        Ok(Self::new(sigma[0], sigma[1], sigma[2], rhs.from, self.to))
     }
 }
 
@@ -196,60 +201,63 @@ impl PartialEq for MRP {
 }
 
 impl Mul for MRP {
-    type Output = Result<MRP, AniseError>;
+    type Output = Result<MRP, PhysicsError>;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        if self.to != rhs.from {
-            Err(AniseError::IncompatibleRotation {
-                from: rhs.from,
-                to: self.to,
-            })
-        } else {
-            // Using the same notation as in Eq. 3.152 in Schaub and Junkins, 3rd edition
-            let s_prime = self;
-            let s_dprime = rhs;
-            let denom = 1.0 + s_prime.norm_squared() * s_dprime.norm_squared()
-                - 2.0 * s_prime.as_vector().dot(&s_dprime.as_vector());
-            let num1 = (1.0 - s_prime.norm_squared()) * s_dprime.as_vector();
-            let num2 = (1.0 - s_dprime.norm_squared()) * s_prime.as_vector();
-            let num3 = -2.0 * s_dprime.as_vector().cross(&s_prime.as_vector());
+        ensure!(
+            self.to == rhs.from,
+            OriginMismatchSnafu {
+                action: "composing MRPs",
+                from1: self.from,
+                from2: rhs.from
+            }
+        );
 
-            let sigma = (num1 + num2 + num3) / denom;
-            Ok(Self::new(sigma[0], sigma[1], sigma[2], self.from, rhs.to))
-        }
+        // Using the same notation as in Eq. 3.152 in Schaub and Junkins, 3rd edition
+        let s_prime = self;
+        let s_dprime = rhs;
+        let denom = 1.0 + s_prime.norm_squared() * s_dprime.norm_squared()
+            - 2.0 * s_prime.as_vector().dot(&s_dprime.as_vector());
+        let num1 = (1.0 - s_prime.norm_squared()) * s_dprime.as_vector();
+        let num2 = (1.0 - s_dprime.norm_squared()) * s_prime.as_vector();
+        let num3 = -2.0 * s_dprime.as_vector().cross(&s_prime.as_vector());
+
+        let sigma = (num1 + num2 + num3) / denom;
+        Ok(Self::new(sigma[0], sigma[1], sigma[2], self.from, rhs.to))
     }
 }
 
 impl TryFrom<Quaternion> for MRP {
-    type Error = AniseError;
+    type Error = MathError;
 
     /// Try to convert a quaternion into its MRP representation
     ///
     /// # Failure cases
     /// + A zero rotation, as the associated MRP is singular
     fn try_from(q: Quaternion) -> Result<Self, Self::Error> {
-        if (1.0 + q.w).abs() < EPSILON {
-            Err(AniseError::MathError(
-                crate::errors::MathErrorKind::DivisionByZero,
-            ))
-        } else {
-            let s = Self {
-                from: q.from,
-                to: q.to,
-                s0: q.x / (1.0 + q.w),
-                s1: q.y / (1.0 + q.w),
-                s2: q.z / (1.0 + q.w),
+        ensure!(
+            (1.0 + q.w).abs() >= EPSILON,
+            DivisionByZeroSnafu {
+                action: "quaternion represents a zero rotation, which is a singular MRP"
             }
-            .normalize();
-            // We don't ever want to deal with singular MRPs, so check once more
-            if s.is_singular() {
-                Err(AniseError::MathError(
-                    crate::errors::MathErrorKind::DivisionByZero,
-                ))
-            } else {
-                Ok(s)
-            }
+        );
+
+        let s = Self {
+            from: q.from,
+            to: q.to,
+            s0: q.x / (1.0 + q.w),
+            s1: q.y / (1.0 + q.w),
+            s2: q.z / (1.0 + q.w),
         }
+        .normalize();
+        // We don't ever want to deal with singular MRPs, so check once more
+        ensure!(
+            !s.is_singular(),
+            DivisionByZeroSnafu {
+                action: "MRP from quaternion is singular"
+            }
+        );
+        Ok(s)
     }
 }
 

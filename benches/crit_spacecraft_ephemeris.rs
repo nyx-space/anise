@@ -2,8 +2,6 @@ use anise::{constants::frames::EARTH_J2000, file2heap, prelude::*};
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-use spice;
-
 const NUM_QUERIES: f64 = 100.0;
 
 fn benchmark_spice_single_hop_type13_hermite(time_it: TimeSeries) {
@@ -27,7 +25,7 @@ fn benchmark_anise_single_hop_type13_hermite(ctx: &Almanac, time_it: TimeSeries)
     let my_sc_j2k = Frame::from_ephem_j2000(-10000001);
     for epoch in time_it {
         black_box(
-            ctx.translate_from_to_km_s_geometric(my_sc_j2k, EARTH_J2000, epoch)
+            ctx.translate_from_to_geometric(my_sc_j2k, EARTH_J2000, epoch)
                 .unwrap(),
         );
     }
@@ -46,9 +44,9 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let buf = file2heap!("data/gmat-hermite.bsp").unwrap();
     let spacecraft = SPK::parse(buf).unwrap();
 
-    let ctx = Almanac::from_spk(&spk)
+    let ctx = Almanac::from_spk(spk)
         .unwrap()
-        .load_spk(&spacecraft)
+        .load_spk(spacecraft)
         .unwrap();
 
     // Load SPICE data

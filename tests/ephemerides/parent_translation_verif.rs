@@ -15,7 +15,7 @@ use anise::file2heap;
 use anise::math::Vector3;
 use anise::prelude::*;
 
-const ZEROS: &'static [u8] = &[0; 2048];
+const ZEROS: &[u8] = &[0; 2048];
 /// Test that we can load data from a static pointer to it.
 #[test]
 fn invalid_load_from_static() {
@@ -30,7 +30,7 @@ fn de438s_parent_translation_verif() {
 
     let bytes = file2heap!("data/de440s.bsp").unwrap();
     let de438s = SPK::parse(bytes).unwrap();
-    let ctx = Almanac::from_spk(&de438s).unwrap();
+    let ctx = Almanac::from_spk(de438s).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
@@ -46,58 +46,41 @@ fn de438s_parent_translation_verif() {
     ['9.5205530594596043e+07', '-4.6160758818180226e+07', '-2.6779476581501361e+07', '1.6612048969243794e+01', '2.8272067093941200e+01', '1.1668575714409423e+01']
     */
 
-    let (pos, vel, acc, _) = ctx
-        .translate_to_parent(
-            VENUS_J2000,
-            epoch,
-            Aberration::None,
-            LengthUnit::Kilometer,
-            TimeUnit::Second,
-        )
+    let state = ctx
+        .translate_to_parent(VENUS_J2000, epoch, Aberration::None)
         .unwrap();
 
+    let pos_km = state.radius_km;
+    let vel_km_s = state.velocity_km_s;
+
     let pos_expct_km = Vector3::new(
-        9.5205530594596043e+07,
-        -4.6160758818180226e+07,
-        -2.6779476581501361e+07,
+        9.520_553_059_459_604e7,
+        -4.616_075_881_818_022_6e7,
+        -2.677_947_658_150_136e7,
     );
 
     let vel_expct_km_s = Vector3::new(
-        1.6612048969243794e+01,
-        2.8272067093941200e+01,
-        1.1668575714409423e+01,
+        1.661_204_896_924_379_4e1,
+        2.827_206_709_394_12e1,
+        1.166_857_571_440_942_3e1,
     );
 
     // We expect exactly the same output as SPICE to machine precision.
-    assert!((pos - pos_expct_km).norm() < EPSILON);
-    assert!((vel - vel_expct_km_s).norm() < EPSILON);
-    assert!(acc.norm() < EPSILON);
-
-    // Same thing but in Megameters per millisecond
-    let (pos, vel, acc, _) = ctx
-        .translate_to_parent(
-            VENUS_J2000,
-            epoch,
-            Aberration::None,
-            LengthUnit::Megameter,
-            TimeUnit::Millisecond,
-        )
-        .unwrap();
+    assert!((pos_km - pos_expct_km).norm() < EPSILON);
+    assert!((vel_km_s - vel_expct_km_s).norm() < EPSILON);
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        (pos - pos_expct_km * 1e-3).norm() < EPSILON,
+        (pos_km - pos_expct_km).norm() < EPSILON,
         "got {} but want {}",
-        pos,
-        pos_expct_km * 1e-3
+        pos_km,
+        pos_expct_km
     );
 
-    // NOTE: km/s and Mm/ms correspond to the same number: times 1e3 for km -> Mm and times 1e-3 for s -> ms.
     assert!(
-        (vel - vel_expct_km_s).norm() < EPSILON,
+        (vel_km_s - vel_expct_km_s).norm() < EPSILON,
         "got {} but want {}",
-        vel,
+        vel_km_s,
         vel_expct_km_s
     );
-    assert!(acc.norm() < EPSILON);
 }

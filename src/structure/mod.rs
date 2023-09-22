@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -19,7 +19,11 @@ pub mod planetocentric;
 pub mod semver;
 pub mod spacecraft;
 
-use self::semver::Semver;
+use self::{
+    dataset::DataSet, planetocentric::PlanetaryData, semver::Semver, spacecraft::SpacecraftData,
+};
+use crate::almanac::{MAX_PLANETARY_DATA, MAX_SPACECRAFT_DATA};
+
 /// The current version of ANISE
 pub const ANISE_VERSION: Semver = Semver {
     major: 0,
@@ -27,5 +31,5 @@ pub const ANISE_VERSION: Semver = Semver {
     patch: 1,
 };
 
-/// The maximum number of trajectories that can be loaded in a single context
-pub const MAX_TRAJECTORIES: usize = 31;
+pub type SpacecraftDataSet<'a> = DataSet<'a, SpacecraftData<'a>, MAX_SPACECRAFT_DATA>;
+pub type PlanetaryDataSet<'a> = DataSet<'a, PlanetaryData, MAX_PLANETARY_DATA>;

@@ -1,7 +1,6 @@
 use anise::{constants::frames::EARTH_J2000, file2heap, prelude::*};
 
 use iai::black_box;
-use spice;
 
 fn benchmark_spice_single_hop_type13_hermite() {
     let epoch = Epoch::from_gregorian_hms(2000, 1, 1, 14, 0, 0, TimeScale::UTC);
@@ -30,15 +29,15 @@ fn benchmark_anise_single_hop_type13_hermite() {
     let buf = file2heap!("data/gmat-hermite.bsp").unwrap();
     let spacecraft = SPK::parse(buf).unwrap();
 
-    let ctx = Almanac::from_spk(&spk)
+    let ctx = Almanac::from_spk(spk)
         .unwrap()
-        .load_spk(&spacecraft)
+        .load_spk(spacecraft)
         .unwrap();
 
     let my_sc_j2k = Frame::from_ephem_j2000(-10000001);
 
     black_box(
-        ctx.translate_from_to_km_s_geometric(my_sc_j2k, EARTH_J2000, epoch)
+        ctx.translate_from_to_geometric(my_sc_j2k, EARTH_J2000, epoch)
             .unwrap(),
     );
 }

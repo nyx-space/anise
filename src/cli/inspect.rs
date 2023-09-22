@@ -2,8 +2,8 @@ use hifitime::Duration;
 use tabled::Tabled;
 
 #[derive(Tabled)]
-pub struct BpcRow<'a> {
-    pub name: &'a str,
+pub struct BpcRow {
+    pub name: String,
     pub start_epoch: String,
     pub end_epoch: String,
     pub duration: Duration,
@@ -13,8 +13,8 @@ pub struct BpcRow<'a> {
 }
 
 #[derive(Tabled)]
-pub struct SpkRow<'a> {
-    pub name: &'a str,
+pub struct SpkRow {
+    pub name: String,
     pub target: String,
     pub frame: String,
     pub center: i32,

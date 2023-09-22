@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -10,21 +10,21 @@
 
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits};
-use log::error;
+use snafu::ensure;
 
 use crate::{
-    errors::IntegrityErrorKind,
-    math::{cartesian::CartesianState, Vector3},
+    errors::{DecodingError, IntegrityError, TooFewDoublesSnafu},
+    math::{cartesian::CartesianState, interpolation::InterpolationError, Vector3},
     naif::{
         daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord},
         spk::summary::SPKSummaryRecord,
     },
-    prelude::AniseError,
     DBL_SIZE,
 };
 
 use super::posvel::PositionVelocityRecord;
 
+#[derive(PartialEq)]
 pub struct LagrangeSetType8<'a> {
     pub first_state_epoch: Epoch,
     pub step_size: Duration,
@@ -51,25 +51,40 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
     type SummaryKind = SPKSummaryRecord;
     type StateKind = CartesianState;
     type RecordKind = PositionVelocityRecord;
+    const DATASET_NAME: &'static str = "Lagrange Type 8";
 
-    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, AniseError> {
-        if slice.len() < 5 {
-            error!(
-                "Cannot build a Type 8 Lagrange set from only {} items",
-                slice.len()
-            );
-            return Err(AniseError::MalformedData(5));
-        }
+    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError> {
+        ensure!(
+            slice.len() >= 5,
+            TooFewDoublesSnafu {
+                dataset: Self::DATASET_NAME,
+                need: 5_usize,
+                got: slice.len()
+            }
+        );
+
         // For this kind of record, the metadata is stored at the very end of the dataset, so we need to read that first.
         let seconds_since_j2000 = slice[slice.len() - 4];
         if !seconds_since_j2000.is_finite() {
-            return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::SubNormal {
+                    dataset: Self::DATASET_NAME,
+                    variable: "seconds since J2000 ET",
+                },
+            });
         }
+
         let first_state_epoch = Epoch::from_et_seconds(seconds_since_j2000);
         let step_size_s = slice[slice.len() - 3];
         if !step_size_s.is_finite() {
-            return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::SubNormal {
+                    dataset: "Hermite Type 12",
+                    variable: "step size in seconds",
+                },
+            });
         }
+
         let step_size = step_size_s.seconds();
         let degree = slice[slice.len() - 2] as usize;
         let num_records = slice[slice.len() - 1] as usize;
@@ -83,12 +98,16 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
         })
     }
 
-    fn nth_record(&self, n: usize) -> Result<Self::RecordKind, AniseError> {
+    fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError> {
         let rcrd_len = self.record_data.len() / self.num_records;
         Ok(Self::RecordKind::from_slice_f64(
             self.record_data
                 .get(n * rcrd_len..(n + 1) * rcrd_len)
-                .ok_or(AniseError::MalformedData((n + 1) * rcrd_len))?,
+                .ok_or(DecodingError::InaccessibleBytes {
+                    start: n * rcrd_len,
+                    end: (n + 1) * rcrd_len,
+                    size: self.record_data.len(),
+                })?,
         ))
     }
 
@@ -96,14 +115,17 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
         &self,
         _epoch: Epoch,
         _: &Self::SummaryKind,
-    ) -> Result<CartesianState, crate::prelude::AniseError> {
+    ) -> Result<CartesianState, InterpolationError> {
         todo!("https://github.com/anise-toolkit/anise.rs/issues/12")
     }
 
-    fn check_integrity(&self) -> Result<(), AniseError> {
+    fn check_integrity(&self) -> Result<(), IntegrityError> {
         for val in self.record_data {
             if !val.is_finite() {
-                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+                return Err(IntegrityError::SubNormal {
+                    dataset: Self::DATASET_NAME,
+                    variable: "one of the record data",
+                });
             }
         }
 
@@ -111,6 +133,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
     }
 }
 
+#[derive(PartialEq)]
 pub struct LagrangeSetType9<'a> {
     pub degree: usize,
     pub num_records: usize,
@@ -137,15 +160,18 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
     type SummaryKind = SPKSummaryRecord;
     type StateKind = (Vector3, Vector3);
     type RecordKind = PositionVelocityRecord;
+    const DATASET_NAME: &'static str = "Lagrange Type 9";
 
-    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, AniseError> {
-        if slice.len() < 3 {
-            error!(
-                "Cannot build a Type 9 Lagrange set from only {} items",
-                slice.len()
-            );
-            return Err(AniseError::MalformedData(5));
-        }
+    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError> {
+        ensure!(
+            slice.len() >= 3,
+            TooFewDoublesSnafu {
+                dataset: Self::DATASET_NAME,
+                need: 3_usize,
+                got: slice.len()
+            }
+        );
+
         // For this kind of record, the metadata is stored at the very end of the dataset
         let num_records = slice[slice.len() - 1] as usize;
         let degree = slice[slice.len() - 2] as usize;
@@ -166,12 +192,16 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
         })
     }
 
-    fn nth_record(&self, n: usize) -> Result<Self::RecordKind, AniseError> {
+    fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError> {
         let rcrd_len = self.state_data.len() / self.num_records;
         Ok(Self::RecordKind::from_slice_f64(
             self.state_data
                 .get(n * rcrd_len..(n + 1) * rcrd_len)
-                .ok_or(AniseError::MalformedData((n + 1) * rcrd_len))?,
+                .ok_or(DecodingError::InaccessibleBytes {
+                    start: n * rcrd_len,
+                    end: (n + 1) * rcrd_len,
+                    size: self.state_data.len(),
+                })?,
         ))
     }
 
@@ -179,27 +209,36 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
         &self,
         _epoch: Epoch,
         _: &Self::SummaryKind,
-    ) -> Result<Self::StateKind, crate::prelude::AniseError> {
+    ) -> Result<Self::StateKind, InterpolationError> {
         todo!("https://github.com/anise-toolkit/anise.rs/issues/13")
     }
 
-    fn check_integrity(&self) -> Result<(), AniseError> {
+    fn check_integrity(&self) -> Result<(), IntegrityError> {
         // Verify that none of the data is invalid once when we load it.
         for val in self.epoch_data {
             if !val.is_finite() {
-                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+                return Err(IntegrityError::SubNormal {
+                    dataset: Self::DATASET_NAME,
+                    variable: "one of the epoch data",
+                });
             }
         }
 
         for val in self.epoch_registry {
             if !val.is_finite() {
-                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+                return Err(IntegrityError::SubNormal {
+                    dataset: Self::DATASET_NAME,
+                    variable: "one of the epoch registry data",
+                });
             }
         }
 
         for val in self.state_data {
             if !val.is_finite() {
-                return Err(AniseError::IntegrityError(IntegrityErrorKind::SubNormal));
+                return Err(IntegrityError::SubNormal {
+                    dataset: Self::DATASET_NAME,
+                    variable: "one of the state data",
+                });
             }
         }
 

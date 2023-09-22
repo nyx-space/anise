@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -8,7 +8,10 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::NaifId;
+use crate::{
+    prelude::{Frame, FrameUid},
+    NaifId,
+};
 pub mod ellipsoid;
 pub mod nutprec;
 pub mod phaseangle;
@@ -42,9 +45,20 @@ pub struct PlanetaryData {
     pub nut_prec_angles: [NutationPrecessionAngle; MAX_NUT_PREC_ANGLES],
 }
 
-impl<'a> DataSetT<'a> for PlanetaryData {}
+impl<'a> DataSetT<'a> for PlanetaryData {
+    const NAME: &'static str = "planetary data";
+}
 
 impl PlanetaryData {
+    /// Converts this planetary data into a Frame
+    pub fn to_frame(&self, uid: FrameUid) -> Frame {
+        Frame {
+            ephemeris_id: uid.ephemeris_id,
+            orientation_id: uid.orientation_id,
+            mu_km3_s2: Some(self.mu_km3_s2),
+            shape: self.shape,
+        }
+    }
     /// Specifies what data is available in this structure.
     ///
     /// Returns:
@@ -328,7 +342,7 @@ mod planetary_constants_ut {
         ]);
         assert_eq!(prime_m.as_ref().unwrap().coeffs_count, 13);
 
-        let gm_moon = 4.9028000661637961E+03;
+        let gm_moon = 4.902_800_066_163_796E3;
 
         let moon = PlanetaryData {
             object_id: 301,

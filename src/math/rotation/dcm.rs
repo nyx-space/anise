@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -8,8 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 use crate::{
+    errors::PhysicsError,
     math::{Matrix3, Matrix6, Vector3, Vector6},
-    prelude::AniseError,
     NaifId,
 };
 use nalgebra::Vector4;
@@ -88,7 +88,7 @@ impl DCM {
     }
 
     /// Returns the 6x6 DCM to rotate a state, if the time derivative of this DCM exists.
-    pub fn state_dcm(&self) -> Result<Matrix6, AniseError> {
+    pub fn state_dcm(&self) -> Result<Matrix6, PhysicsError> {
         match self.rot_mat_dt {
             Some(mat_dt) => {
                 let mut full_dcm = Matrix6::zeros();
@@ -104,7 +104,9 @@ impl DCM {
 
                 Ok(full_dcm)
             }
-            None => Err(AniseError::ItemNotFound),
+            None => Err(PhysicsError::DCMMissingDerivative {
+                action: "building the 6x6 DCM matrix",
+            }),
         }
     }
 
@@ -154,7 +156,7 @@ impl Mul<Vector3> for DCM {
 }
 
 impl Mul<Vector6> for DCM {
-    type Output = Result<Vector6, AniseError>;
+    type Output = Result<Vector6, PhysicsError>;
 
     /// Applying the matrix to a vector yields the vector's representation in the new coordinate system.
     fn mul(self, rhs: Vector6) -> Self::Output {

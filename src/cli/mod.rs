@@ -1,23 +1,40 @@
 extern crate clap;
 extern crate tabled;
-extern crate thiserror;
 
+use snafu::prelude::*;
 use std::io;
 
-use thiserror::Error;
-
-use crate::prelude::AniseError;
+use crate::{
+    naif::daf::{file_record::FileRecordError, DAFError},
+    prelude::InputOutputError,
+    structure::dataset::DataSetError,
+};
 
 pub mod args;
 
 pub mod inspect;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Snafu)]
+#[snafu(visibility(pub))]
 pub enum CliErrors {
-    #[error("File not found or unreadable")]
-    FileNotFound(#[from] io::Error),
-    #[error("ANISE error encountered")]
-    AniseError(#[from] AniseError),
-    #[error("{0}")]
-    ArgumentError(String),
+    /// File not found or unreadable
+    FileNotFound {
+        source: io::Error,
+    },
+    /// ANISE error encountered"
+    CliDAF {
+        source: DAFError,
+    },
+    CliFileRecord {
+        source: FileRecordError,
+    },
+    ArgumentError {
+        arg: String,
+    },
+    CliDataSet {
+        source: DataSetError,
+    },
+    AniseError {
+        source: InputOutputError,
+    },
 }

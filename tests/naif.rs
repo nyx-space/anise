@@ -36,9 +36,15 @@ fn test_binary_pck_load() {
     assert_eq!(high_prec.crc32(), 0x97bca34c);
     assert!(high_prec.scrub().is_ok());
 
-    for n in 0..high_prec.daf_summary().unwrap().num_summaries() {
-        let (name, data) = high_prec.nth_summary(n).unwrap();
-        println!("{} -> {:?}", name, data);
+    let name_rcrd = high_prec.name_record().unwrap();
+    let summary_size = high_prec.file_record().unwrap().summary_size();
+    for idx in 0..name_rcrd.num_entries(summary_size) {
+        let summary = &high_prec.data_summaries().unwrap()[idx];
+        if summary.is_empty() {
+            break;
+        }
+        let name = name_rcrd.nth_name(idx, summary_size);
+        println!("{} -> {:?}", name, summary);
     }
 }
 
@@ -56,13 +62,22 @@ fn test_spk_load_bytes() {
     assert_eq!(de421.crc32(), 0x5c78bc13);
     assert!(de421.scrub().is_ok());
 
-    assert_eq!(de421.file_record.nd, 2);
-    assert_eq!(de421.file_record.ni, 6);
-    assert_eq!(de421.file_record.identification().unwrap(), "SPK");
-    assert_eq!(de421.file_record.internal_filename().unwrap(), "NIO2SPK");
-    assert_eq!(de421.file_record.forward, 4);
-    assert_eq!(de421.file_record.backward, 4);
-    assert_eq!(de421.file_record.endianness().unwrap(), Endian::Little);
+    assert_eq!(de421.file_record().unwrap().nd, 2);
+    assert_eq!(de421.file_record().unwrap().ni, 6);
+    assert_eq!(
+        de421.file_record().unwrap().identification().unwrap(),
+        "SPK"
+    );
+    assert_eq!(
+        de421.file_record().unwrap().internal_filename().unwrap(),
+        "NIO2SPK"
+    );
+    assert_eq!(de421.file_record().unwrap().forward, 4);
+    assert_eq!(de421.file_record().unwrap().backward, 4);
+    assert_eq!(
+        de421.file_record().unwrap().endianness().unwrap(),
+        Endian::Little
+    );
     assert_eq!(de421.daf_summary().unwrap().num_summaries(), 15);
     assert_eq!(de421.daf_summary().unwrap().next_record(), 0);
     assert_eq!(de421.daf_summary().unwrap().prev_record(), 0);
@@ -78,12 +93,21 @@ fn test_spk_load_bytes() {
         7040, 3520, 3520, 1760, 1760, 1760, 1760, 1760, 1760, 3520, 14080, 14080, 1, 1, 1,
     ];
 
-    for n in 0..de421.daf_summary().unwrap().num_summaries() {
-        let (name, summary) = de421.nth_summary(n).unwrap();
+    let name_rcrd = de421.name_record().unwrap();
+    let summary_size = de421.file_record().unwrap().summary_size();
+
+    for (n, segment) in seg_len
+        .iter()
+        .enumerate()
+        .take(de421.daf_summary().unwrap().num_summaries())
+    {
+        let name = name_rcrd.nth_name(n, summary_size);
+        let summary = &de421.data_summaries().unwrap()[n];
+
         println!("{} -> {}", name, summary);
         // We know that the DE421 data is all in Type 2
         let data_set = de421.nth_data::<Type2ChebyshevSet>(n).unwrap();
-        assert_eq!(data_set.num_records, seg_len[n]);
+        assert_eq!(data_set.num_records, *segment);
         if summary.target_id == 301 {
             assert_eq!(
                 summary.start_idx, 944041,
@@ -112,23 +136,27 @@ fn test_spk_load_bytes() {
     println!("{data_set}");
 
     // Put this in a context
-    let spice = Almanac::default();
-    let spice = spice.load_spk(&de421).unwrap();
+    let default_almanac = Almanac::default();
+    let spice = default_almanac.load_spk(de421).unwrap();
+    assert_eq!(spice.num_loaded_spk(), 1);
+    assert_eq!(default_almanac.num_loaded_spk(), 0);
 
     // Now load another DE file
     // NOTE: Rust has strict lifetime requirements, and the Spice Context is set up such that loading another dataset will return a new context with that data set loaded in it.
     {
         let bytes = file2heap!("data/de440.bsp").unwrap();
         let de440 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
-        let spice = spice.load_spk(&de440).unwrap();
+        let spice = spice.load_spk(de440).unwrap();
 
         // And another
         let bytes = file2heap!("data/de440s.bsp").unwrap();
         let de440 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
-        let spice = spice.load_spk(&de440).unwrap();
+        let spice = spice.load_spk(de440).unwrap();
 
         // NOTE: Because everything is a pointer, the size on the stack remains constant at 521 bytes.
         println!("{}", size_of_val(&spice));
+        assert_eq!(spice.num_loaded_spk(), 3);
+        assert_eq!(default_almanac.num_loaded_spk(), 0);
     }
 
     // NOTE: Because everything is a pointer, the size on the stack remains constant at 521 bytes.
@@ -147,13 +175,16 @@ fn test_spk_rename_summary() {
 
     let example_data = SPK::load(path).unwrap();
 
-    example_data
-        .name_record
-        .set_nth_name(0, example_data.file_record.summary_size(), "BLAH BLAH");
+    example_data.name_record().unwrap().set_nth_name(
+        0,
+        example_data.file_record().unwrap().summary_size(),
+        "BLAH BLAH",
+    );
 
     dbg!(example_data
-        .name_record
-        .nth_name(0, example_data.file_record.summary_size()));
+        .name_record()
+        .unwrap()
+        .nth_name(0, example_data.file_record().unwrap().summary_size()));
 
     example_data.persist("target/rename-test.bsp").unwrap();
 }

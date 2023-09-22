@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -12,7 +12,7 @@ use core::str::FromStr;
 use std::fmt::Debug;
 use std::{collections::HashMap, hash::Hash};
 
-use crate::prelude::AniseError;
+use snafu::{whatever, Whatever};
 
 use self::parser::Assignment;
 
@@ -38,10 +38,10 @@ pub enum KPLValue {
 }
 
 impl KPLValue {
-    pub fn to_vec_f64(&self) -> Result<Vec<f64>, AniseError> {
+    pub fn to_vec_f64(&self) -> Result<Vec<f64>, Whatever> {
         match self {
             KPLValue::Matrix(data) => Ok(data.clone()),
-            _ => Err(AniseError::ParameterNotSpecified),
+            _ => whatever!("can only convert matrices to vec of f64"),
         }
     }
 }
@@ -90,7 +90,7 @@ pub enum Parameter {
 }
 
 impl FromStr for Parameter {
-    type Err = AniseError;
+    type Err = Whatever;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -115,12 +115,10 @@ impl FromStr for Parameter {
             "UNITS" => Ok(Self::Units),
             "AXES" => Ok(Self::Axes),
             "GMLIST" | "NAME" | "SPEC" => {
-                // This is a known unsupported parameter
-                Err(AniseError::ParameterNotSpecified)
+                whatever!("unsupported parameter `{s}`")
             }
             _ => {
-                println!("WHAT IS `{s}` ?");
-                Err(AniseError::ParameterNotSpecified)
+                whatever!("unknown parameter `{s}`")
             }
         }
     }

@@ -5,8 +5,6 @@ use anise::{
 };
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-use spice;
-
 const NUM_QUERIES_PER_PAIR: f64 = 100.0;
 
 fn benchmark_spice_single_hop_type2_cheby(time_it: TimeSeries) {
@@ -24,7 +22,7 @@ fn benchmark_spice_single_hop_type2_cheby(time_it: TimeSeries) {
 fn benchmark_anise_single_hop_type2_cheby(ctx: &Almanac, time_it: TimeSeries) {
     for epoch in time_it {
         black_box(
-            ctx.translate_from_to_km_s_geometric(EARTH_J2000, LUNA_J2000, epoch)
+            ctx.translate_from_to_geometric(EARTH_J2000, LUNA_J2000, epoch)
                 .unwrap(),
         );
     }
@@ -40,7 +38,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let path = "./data/de440s.bsp";
     let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Almanac::from_spk(&spk).unwrap();
+    let ctx = Almanac::from_spk(spk).unwrap();
 
     // Load SPICE data
     spice::furnsh("data/de440s.bsp");

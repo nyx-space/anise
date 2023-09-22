@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -10,15 +10,15 @@
 
 use core::fmt;
 use hifitime::Epoch;
-use log::{error, trace};
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 use crate::{
+    ephemerides::EphemerisError,
     naif::daf::{NAIFRecord, NAIFSummaryRecord},
-    prelude::AniseError,
+    prelude::{Frame, FrameUid},
 };
 
-#[derive(Clone, Copy, Debug, Default, AsBytes, FromZeroes, FromBytes)]
+#[derive(Clone, Copy, Debug, Default, AsBytes, FromZeroes, FromBytes, PartialEq)]
 #[repr(C)]
 pub struct SPKSummaryRecord {
     pub start_epoch_et_s: f64,
@@ -32,13 +32,41 @@ pub struct SPKSummaryRecord {
 }
 
 impl<'a> SPKSummaryRecord {
-    pub fn spice_name(&self) -> Result<&'a str, AniseError> {
-        Self::id_to_human_name(self.target_id)
+    /// Returns the target frame UID of this summary
+    pub fn target_frame_uid(&self) -> FrameUid {
+        FrameUid {
+            ephemeris_id: self.target_id,
+            orientation_id: self.frame_id,
+        }
+    }
+
+    /// Returns the center frame UID of this summary
+    pub fn center_frame_uid(&self) -> FrameUid {
+        FrameUid {
+            ephemeris_id: self.center_id,
+            orientation_id: self.frame_id,
+        }
+    }
+
+    /// Returns the target frame UID of this summary
+    pub fn target_frame(&self) -> Frame {
+        Frame::from(self.target_frame_uid())
+    }
+
+    /// Returns the center frame UID of this summary
+    pub fn center_frame(&self) -> Frame {
+        Frame::from(self.center_frame_uid())
+    }
+
+    #[cfg(feature = "spkezr_validation")]
+    pub fn spice_name(&self) -> Result<&'a str, EphemerisError> {
+        Self::id_to_spice_name(self.target_id)
     }
 
     /// Converts the provided ID to its human name.
     /// Only works for the common celestial bodies
-    pub fn id_to_human_name(id: i32) -> Result<&'a str, AniseError> {
+    #[cfg(feature = "spkezr_validation")]
+    pub fn id_to_spice_name(id: i32) -> Result<&'a str, EphemerisError> {
         if id % 100 == 99 {
             // This is the planet itself
             match id / 100 {
@@ -51,9 +79,7 @@ impl<'a> SPKSummaryRecord {
                 7 => Ok("Uranus"),
                 8 => Ok("Neptune"),
                 9 => Ok("Pluto"),
-                _ => Err(AniseError::DAFParserError(format!(
-                    "Human name unknown for {id}"
-                ))),
+                _ => Err(EphemerisError::IdToName { id }),
             }
         } else if id == 301 {
             Ok("Moon")
@@ -71,18 +97,17 @@ impl<'a> SPKSummaryRecord {
                 8 => Ok("Neptune Barycenter"),
                 9 => Ok("Pluto Barycenter"),
                 10 => Ok("Sun"),
-                _ => Err(AniseError::DAFParserError(format!(
-                    "Human name unknown for barycenter {id}"
-                ))),
+                _ => Err(EphemerisError::IdToName { id }),
             }
         } else {
-            panic!("Human name unknown for {id}");
+            Err(EphemerisError::IdToName { id })
         }
     }
 
     /// Converts the provided ID to its human name.
     /// Only works for the common celestial bodies
-    pub fn human_name_to_id(name: &'a str) -> Result<i32, AniseError> {
+    #[cfg(feature = "spkezr_validation")]
+    pub fn spice_name_to_id(name: &'a str) -> Result<i32, EphemerisError> {
         match name {
             "Mercury" => Ok(1),
             "Venus" => Ok(2),
@@ -102,30 +127,9 @@ impl<'a> SPKSummaryRecord {
             "Uranus Barycenter" => Ok(7),
             "Neptune Barycenter" => Ok(8),
             "Pluto Barycenter" => Ok(9),
-            _ => {
-                trace!("[human_name_to_id] unknown NAIF ID for `{name}`");
-                Err(AniseError::ItemNotFound)
-            }
-        }
-    }
-
-    /// Returns the human name of this segment if it can be guessed, else the standard name.
-    ///
-    /// # Returned value
-    /// 1. Typically, this will return the name of the celestial body
-    /// 2. The name is appended with "Barycenter" if the celestial object is know to have moons
-    ///
-    /// # Limitations
-    /// 0. In BSP files, the name is stored as a comment and is unstructured. So it's hard to copy those. (Help needed)
-    /// 1. One limitation of this approach is that given file may only contain one "Earth"
-    /// 2. Another limitation is that this code does not know all of the possible moons in the whole solar system.
-    pub fn human_name(&self) -> &'a str {
-        match Self::id_to_human_name(self.target_id) {
-            Ok(name) => name,
-            Err(e) => {
-                error!("{}", e);
-                panic!("Human name unknown for {self}")
-            }
+            _ => Err(EphemerisError::NameToId {
+                name: name.to_string(),
+            }),
         }
     }
 }
@@ -133,6 +137,7 @@ impl<'a> SPKSummaryRecord {
 impl NAIFRecord for SPKSummaryRecord {}
 
 impl NAIFSummaryRecord for SPKSummaryRecord {
+    const NAME: &'static str = "SPKSummaryRecord";
     fn start_index(&self) -> usize {
         self.start_idx as usize
     }

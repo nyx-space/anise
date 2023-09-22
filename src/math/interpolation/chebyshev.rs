@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -8,9 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::{errors::MathErrorKind, prelude::AniseError};
+use crate::errors::MathError;
 use core::f64::EPSILON;
 use hifitime::Epoch;
+
+use super::InterpolationError;
 
 /// Attempts to evaluate a Chebyshev polynomial given the coefficients, returning the value and its derivative
 ///
@@ -22,9 +24,13 @@ pub(crate) fn chebyshev_eval(
     spline_radius_s: f64,
     eval_epoch: Epoch,
     degree: usize,
-) -> Result<(f64, f64), AniseError> {
+) -> Result<(f64, f64), InterpolationError> {
     if spline_radius_s.abs() < EPSILON {
-        return Err(AniseError::MathError(MathErrorKind::DivisionByZero));
+        return Err(InterpolationError::InterpMath {
+            source: MathError::DivisionByZero {
+                action: "spline radius in Chebyshev eval is zero",
+            },
+        });
     }
     // Workspace arrays
     let mut w = [0.0_f64; 3];
@@ -35,7 +41,7 @@ pub(crate) fn chebyshev_eval(
         w[1] = w[0];
         w[0] = (spline_coeffs
             .get(j - 1)
-            .ok_or(AniseError::MissingInterpolationData(eval_epoch))?)
+            .ok_or(InterpolationError::MissingInterpolationData { epoch: eval_epoch })?)
             + (2.0 * normalized_time * w[1] - w[2]);
 
         dw[2] = dw[1];
@@ -45,7 +51,7 @@ pub(crate) fn chebyshev_eval(
 
     let val = (spline_coeffs
         .first()
-        .ok_or(AniseError::MissingInterpolationData(eval_epoch))?)
+        .ok_or(InterpolationError::MissingInterpolationData { epoch: eval_epoch })?)
         + (normalized_time * w[0] - w[1]);
 
     let deriv = (w[0] + normalized_time * dw[0] - dw[1]) / spline_radius_s;

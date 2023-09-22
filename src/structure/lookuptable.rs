@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -13,8 +13,28 @@ use der::{
 };
 use heapless::FnvIndexMap;
 use log::warn;
+use snafu::prelude::*;
 
-use crate::{prelude::AniseError, NaifId};
+use crate::{errors::DecodingError, NaifId};
+
+#[derive(Debug, Snafu, PartialEq)]
+#[snafu(visibility(pub(crate)))]
+pub enum LutError {
+    #[snafu(display(
+        "ID LUT is full with all {max_slots} taken (increase ENTRIES at build time)"
+    ))]
+    IdLutFull { max_slots: usize },
+    #[snafu(display(
+        "Names LUT is full with all {max_slots} taken (increase ENTRIES at build time)"
+    ))]
+    NameLutFull { max_slots: usize },
+    #[snafu(display("must provide either an ID or a name for a loop up, but provided neither"))]
+    NoKeyProvided,
+    #[snafu(display("ID {id} not in look up table"))]
+    UnknownId { id: NaifId },
+    #[snafu(display("name {name} not in look up table"))]
+    UnknownName { name: String },
+}
 
 /// A lookup table entry contains the start and end indexes in the data array of the data that is sought after.
 ///
@@ -30,6 +50,14 @@ pub struct Entry {
 impl Entry {
     pub(crate) fn as_range(&self) -> core::ops::Range<usize> {
         self.start_idx as usize..self.end_idx as usize
+    }
+    /// Returns a pre-populated decoding error
+    pub(crate) fn decoding_error(&self) -> DecodingError {
+        DecodingError::InaccessibleBytes {
+            start: self.start_idx as usize,
+            end: self.end_idx as usize,
+            size: (self.end_idx - self.start_idx) as usize,
+        }
     }
 }
 
@@ -66,27 +94,27 @@ pub struct LookUpTable<'a, const ENTRIES: usize> {
 }
 
 impl<'a, const ENTRIES: usize> LookUpTable<'a, ENTRIES> {
-    pub fn append(&mut self, id: i32, name: &'a str, entry: Entry) -> Result<(), AniseError> {
+    pub fn append(&mut self, id: i32, name: &'a str, entry: Entry) -> Result<(), LutError> {
         self.by_id
             .insert(id, entry)
-            .map_err(|_| AniseError::StructureIsFull)?;
+            .map_err(|_| LutError::IdLutFull { max_slots: ENTRIES })?;
         self.by_name
             .insert(name, entry)
-            .map_err(|_| AniseError::StructureIsFull)?;
+            .map_err(|_| LutError::NameLutFull { max_slots: ENTRIES })?;
         Ok(())
     }
 
-    pub fn append_id(&mut self, id: i32, entry: Entry) -> Result<(), AniseError> {
+    pub fn append_id(&mut self, id: i32, entry: Entry) -> Result<(), LutError> {
         self.by_id
             .insert(id, entry)
-            .map_err(|_| AniseError::StructureIsFull)?;
+            .map_err(|_| LutError::IdLutFull { max_slots: ENTRIES })?;
         Ok(())
     }
 
-    pub fn append_name(&mut self, name: &'a str, entry: Entry) -> Result<(), AniseError> {
+    pub fn append_name(&mut self, name: &'a str, entry: Entry) -> Result<(), LutError> {
         self.by_name
             .insert(name, entry)
-            .map_err(|_| AniseError::StructureIsFull)?;
+            .map_err(|_| LutError::NameLutFull { max_slots: ENTRIES })?;
         Ok(())
     }
 
@@ -184,7 +212,6 @@ impl<'a, const ENTRIES: usize> Decode<'a> for LookUpTable<'a, ENTRIES> {
         }
 
         if !lut.check_integrity() {
-            // TODO: Change this to print the error but don't prevent loading the data.
             warn!(
                 "decoded lookup table is not integral: {} names but {} ids",
                 lut.by_name.len(),
@@ -218,7 +245,7 @@ mod lut_ut {
         let mut repr = LookUpTable::<32>::default();
         let num_bytes = 363;
         for i in 0..32 {
-            let id = -20 - (i as i32);
+            let id = -20 - i;
             repr.append_id(
                 id,
                 Entry {
@@ -250,9 +277,9 @@ mod lut_ut {
             names.push(format!("Name{}", i));
         }
 
-        for i in 0..LUT_SIZE {
+        for (i, name) in names.iter().enumerate().take(LUT_SIZE) {
             repr.append_name(
-                &names[i],
+                name,
                 Entry {
                     start_idx: (i * num_bytes) as u32,
                     end_idx: ((i + 1) * num_bytes) as u32,

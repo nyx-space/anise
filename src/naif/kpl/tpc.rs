@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -125,18 +125,18 @@ fn test_parse_gm() {
     // Basic values testing
     assert_eq!(
         assignments[&1].data[&Parameter::GravitationalParameter],
-        KPLValue::Float(2.2031780000000021E+04)
+        KPLValue::Float(2.203_178_000_000_002E4)
     );
 
     assert_eq!(
         assignments[&399].data[&Parameter::GravitationalParameter],
-        KPLValue::Float(3.9860043543609598E+05)
+        KPLValue::Float(3.986_004_354_360_96E5)
     );
 }
 
 #[test]
 fn test_anise_conversion() {
-    use crate::errors::AniseError;
+    use crate::errors::InputOutputError;
     use crate::naif::kpl::parser::convert_tpc;
     use crate::{file2heap, file_mmap, structure::dataset::DataSet};
     use std::fs::File;

@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -21,6 +21,7 @@ pub mod errors;
 pub mod frames;
 pub mod math;
 pub mod naif;
+pub mod orientations;
 pub mod structure;
 
 /// Re-export of hifitime
@@ -31,7 +32,7 @@ pub mod time {
 pub mod prelude {
     pub use crate::almanac::Almanac;
     pub use crate::astro::Aberration;
-    pub use crate::errors::AniseError;
+    pub use crate::errors::InputOutputError;
     pub use crate::frames::*;
     pub use crate::math::units::*;
     pub use crate::naif::daf::NAIFSummaryRecord;
@@ -51,12 +52,12 @@ pub(crate) type NaifId = i32;
 macro_rules! file2heap {
     ($filename:tt) => {
         match File::open($filename) {
-            Err(e) => Err(AniseError::IOError(e.kind())),
+            Err(e) => Err(InputOutputError::IOError { kind: e.kind() }),
             Ok(file) => unsafe {
                 use bytes::Bytes;
                 use memmap2::MmapOptions;
                 match MmapOptions::new().map(&file) {
-                    Err(_) => Err(AniseError::IOUnknownError),
+                    Err(_) => Err(InputOutputError::IOUnknownError),
                     Ok(mmap) => {
                         let bytes = Bytes::copy_from_slice(&mmap);
                         Ok(bytes)
@@ -72,11 +73,11 @@ macro_rules! file2heap {
 macro_rules! file_mmap {
     ($filename:tt) => {
         match File::open($filename) {
-            Err(e) => Err(AniseError::IOError(e.kind())),
+            Err(e) => Err(InputOutputError::IOError { kind: e.kind() }),
             Ok(file) => unsafe {
                 use memmap2::MmapOptions;
                 match MmapOptions::new().map(&file) {
-                    Err(_) => Err(AniseError::IOUnknownError),
+                    Err(_) => Err(InputOutputError::IOUnknownError),
                     Ok(mmap) => Ok(mmap),
                 }
             },

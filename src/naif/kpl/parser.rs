@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -17,10 +17,10 @@ use std::path::Path;
 
 use log::{error, info, warn};
 
+use crate::almanac::MAX_PLANETARY_DATA;
 use crate::naif::kpl::tpc::TPCItem;
 use crate::naif::kpl::Parameter;
-use crate::prelude::AniseError;
-use crate::structure::dataset::{DataSet, DataSetBuilder, DataSetType};
+use crate::structure::dataset::{DataSet, DataSetBuilder, DataSetError, DataSetType};
 use crate::structure::metadata::Metadata;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
 use crate::structure::planetocentric::phaseangle::PhaseAngle;
@@ -78,7 +78,7 @@ impl Assignment {
 pub fn parse_file<P: AsRef<Path>, I: KPLItem>(
     file_path: P,
     show_comments: bool,
-) -> Result<HashMap<i32, I>, AniseError> {
+) -> Result<HashMap<i32, I>, DataSetError> {
     let file = File::open(file_path).expect("Failed to open file");
     let reader = BufReader::new(file);
 
@@ -135,7 +135,7 @@ pub fn parse_file<P: AsRef<Path>, I: KPLItem>(
 pub fn convert_tpc<'a, P: AsRef<Path>>(
     pck: P,
     gm: P,
-) -> Result<DataSet<'a, PlanetaryData, 64>, AniseError> {
+) -> Result<DataSet<'a, PlanetaryData, MAX_PLANETARY_DATA>, DataSetError> {
     let mut buf = vec![];
     let mut dataset_builder = DataSetBuilder::default();
 
@@ -232,7 +232,7 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
 
     println!("Added {} items", dataset_builder.dataset.lut.by_id.len());
 
-    let mut dataset = dataset_builder.dataset;
+    let mut dataset = dataset_builder.finalize(buf)?;
     dataset.metadata = Metadata::default();
     dataset.metadata.dataset_type = DataSetType::PlanetaryData;
 

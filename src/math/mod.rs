@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -18,10 +18,8 @@ pub type Matrix6 = nalgebra::Matrix6<f64>;
 pub mod angles;
 pub mod cartesian;
 pub mod interpolation;
-pub mod polyfit;
 pub mod rotation;
 pub mod units;
-pub mod utils;
 
 /// Returns the projection of a onto b
 pub fn projv(a: &Vector3, b: &Vector3) -> Vector3 {
