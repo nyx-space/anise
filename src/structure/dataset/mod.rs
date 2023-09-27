@@ -7,14 +7,16 @@
  *
  * Documentation: https://nyxspace.com/
  */
+use self::error::DataDecodingSnafu;
 use super::{
-    lookuptable::{Entry, LookUpTable, LutError},
+    lookuptable::{LookUpTable, LutError},
     metadata::Metadata,
     semver::Semver,
     ANISE_VERSION,
 };
 use crate::{
     errors::{DecodingError, IntegrityError},
+    structure::dataset::error::DataSetIntegritySnafu,
     NaifId,
 };
 use bytes::Bytes;
@@ -36,123 +38,12 @@ macro_rules! io_imports {
 
 io_imports!();
 
-#[derive(Debug, Snafu)]
-#[snafu(visibility(pub(crate)))]
-pub enum DataSetError {
-    #[snafu(display("when {action} {source}"))]
-    DataSetLut {
-        action: &'static str,
-        source: LutError,
-    },
-    #[snafu(display("when {action} {source}"))]
-    DataSetIntegrity {
-        action: &'static str,
-        source: IntegrityError,
-    },
-    #[snafu(display("when {action} {source}"))]
-    DataDecoding {
-        action: &'static str,
-        source: DecodingError,
-    },
-    #[snafu(display("input/output error while {action}"))]
-    IO {
-        action: &'static str,
-        source: IOError,
-    },
-}
-
-impl PartialEq for DataSetError {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (
-                Self::DataSetLut {
-                    action: l_action,
-                    source: l_source,
-                },
-                Self::DataSetLut {
-                    action: r_action,
-                    source: r_source,
-                },
-            ) => l_action == r_action && l_source == r_source,
-            (
-                Self::DataSetIntegrity {
-                    action: l_action,
-                    source: l_source,
-                },
-                Self::DataSetIntegrity {
-                    action: r_action,
-                    source: r_source,
-                },
-            ) => l_action == r_action && l_source == r_source,
-            (
-                Self::DataDecoding {
-                    action: l_action,
-                    source: l_source,
-                },
-                Self::DataDecoding {
-                    action: r_action,
-                    source: r_source,
-                },
-            ) => l_action == r_action && l_source == r_source,
-            (
-                Self::IO {
-                    action: l_action,
-                    source: _l_source,
-                },
-                Self::IO {
-                    action: r_action,
-                    source: _r_source,
-                },
-            ) => l_action == r_action,
-            _ => false,
-        }
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-#[repr(u8)]
-pub enum DataSetType {
-    /// Used only if not encoding a dataset but some other structure
-    NotApplicable,
-    SpacecraftData,
-    PlanetaryData,
-    EulerParameterData,
-}
-
-impl From<u8> for DataSetType {
-    fn from(val: u8) -> Self {
-        match val {
-            0 => DataSetType::NotApplicable,
-            1 => DataSetType::SpacecraftData,
-            2 => DataSetType::PlanetaryData,
-            3 => DataSetType::EulerParameterData,
-            _ => panic!("Invalid value for DataSetType {val}"),
-        }
-    }
-}
-
-impl From<DataSetType> for u8 {
-    fn from(val: DataSetType) -> Self {
-        val as u8
-    }
-}
-
-impl Encode for DataSetType {
-    fn encoded_len(&self) -> der::Result<der::Length> {
-        (*self as u8).encoded_len()
-    }
-
-    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
-        (*self as u8).encode(encoder)
-    }
-}
-
-impl<'a> Decode<'a> for DataSetType {
-    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
-        let asu8: u8 = decoder.decode()?;
-        Ok(Self::from(asu8))
-    }
-}
+pub mod builder;
+pub mod datatype;
+pub(crate) mod error;
+use builder::DataSetBuilder;
+use datatype::DataSetType;
+use error::DataSetError;
 
 /// The kind of data that can be encoded in a dataset
 pub trait DataSetT<'a>: Encode + Decode<'a> {
@@ -169,67 +60,6 @@ pub struct DataSet<'a, T: DataSetT<'a>, const ENTRIES: usize> {
     /// The actual data from the dataset
     pub bytes: Bytes,
     _daf_type: PhantomData<T>,
-}
-
-/// Dataset builder allows building a dataset. It requires allocations.
-#[derive(Clone, Default, Debug)]
-pub struct DataSetBuilder<'a, T: DataSetT<'a>, const ENTRIES: usize> {
-    pub dataset: DataSet<'a, T, ENTRIES>,
-}
-
-impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSetBuilder<'a, T, ENTRIES> {
-    pub fn push_into(
-        &mut self,
-        buf: &mut Vec<u8>,
-        data: T,
-        id: Option<NaifId>,
-        name: Option<&'a str>,
-    ) -> Result<(), DataSetError> {
-        let mut this_buf = vec![];
-        data.encode_to_vec(&mut this_buf).unwrap();
-        // Build this entry data.
-        let entry = Entry {
-            start_idx: buf.len() as u32,
-            end_idx: (buf.len() + this_buf.len()) as u32,
-        };
-
-        if id.is_some() && name.is_some() {
-            self.dataset
-                .lut
-                .append(id.unwrap(), name.unwrap(), entry)
-                .with_context(|_| DataSetLutSnafu {
-                    action: "pushing data with ID and name",
-                })?;
-        } else if id.is_some() {
-            self.dataset
-                .lut
-                .append_id(id.unwrap(), entry)
-                .with_context(|_| DataSetLutSnafu {
-                    action: "pushing data with ID only",
-                })?;
-        } else if name.is_some() {
-            self.dataset
-                .lut
-                .append_name(name.unwrap(), entry)
-                .with_context(|_| DataSetLutSnafu {
-                    action: "pushing data with name only",
-                })?;
-        } else {
-            return Err(DataSetError::DataSetLut {
-                action: "pushing data",
-                source: LutError::NoKeyProvided,
-            });
-        }
-        buf.extend_from_slice(&this_buf);
-
-        Ok(())
-    }
-
-    pub fn finalize(mut self, buf: Vec<u8>) -> Result<DataSet<'a, T, ENTRIES>, DataSetError> {
-        self.dataset.bytes = Bytes::copy_from_slice(&buf);
-        self.dataset.set_crc32();
-        Ok(self.dataset)
-    }
 }
 
 impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
