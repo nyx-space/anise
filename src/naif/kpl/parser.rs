@@ -13,17 +13,15 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use log::{error, info, warn};
 
-use crate::file2heap;
 use crate::math::rotation::{Quaternion, DCM};
 use crate::math::Matrix3;
 use crate::naif::kpl::fk::FKItem;
 use crate::naif::kpl::tpc::TPCItem;
 use crate::naif::kpl::Parameter;
-use crate::prelude::InputOutputError;
 use crate::structure::dataset::{DataSetBuilder, DataSetError, DataSetType};
 use crate::structure::metadata::Metadata;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
@@ -247,7 +245,6 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
 pub fn convert_fk<'a, P: AsRef<Path>>(
     fk_file_path: P,
     show_comments: bool,
-    output_file_path: PathBuf,
 ) -> Result<EulerParameterDataSet<'a>, DataSetError> {
     let mut buf = vec![];
     let mut dataset_builder = DataSetBuilder::default();
@@ -302,7 +299,8 @@ pub fn convert_fk<'a, P: AsRef<Path>>(
             }
             q.to = to;
 
-            dataset_builder.push_into(&mut buf, q, Some(id), item.name.as_deref())?;
+            // dataset_builder.push_into(&mut buf, q, Some(id), item.name.as_deref())?;
+            dataset_builder.push_into(&mut buf, q, Some(id), None)?;
         } else if let Some(matrix) = item.data.get(&Parameter::Matrix) {
             let mat_data = matrix.to_vec_f64().unwrap();
             let rot_mat = Matrix3::new(
@@ -322,8 +320,8 @@ pub fn convert_fk<'a, P: AsRef<Path>>(
                 rot_mat,
                 rot_mat_dt: None,
             };
-            dataset_builder.push_into(&mut buf, dcm.into(), Some(id), item.name.as_deref())?;
-            // dataset_builder.push_into(&mut buf, dcm.into(), Some(id), None)?;
+            // dataset_builder.push_into(&mut buf, dcm.into(), Some(id), item.name.as_deref())?;
+            dataset_builder.push_into(&mut buf, dcm.into(), Some(id), None)?;
         }
     }
 
@@ -331,10 +329,5 @@ pub fn convert_fk<'a, P: AsRef<Path>>(
     dataset.metadata = Metadata::default();
     dataset.metadata.dataset_type = DataSetType::EulerParameterData;
 
-    // Write the data to the output file and return a heap-loaded version of it.
-    dataset.save_as(&output_file_path, true)?;
-
-    Ok(EulerParameterDataSet::try_from_bytes(
-        &file2heap!(output_file_path).unwrap(),
-    )?)
+    Ok(dataset)
 }

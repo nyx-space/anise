@@ -193,8 +193,7 @@ mod fk_ut {
 
     #[test]
     fn test_convert_fk() {
-        let dataset =
-            convert_fk("data/moon_080317.txt", false, "target/moon_fk.anise".into()).unwrap();
+        let dataset = convert_fk("data/moon_080317.txt", false).unwrap();
 
         assert_eq!(dataset.len(), 3, "expected three items");
     }

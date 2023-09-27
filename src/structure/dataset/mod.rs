@@ -38,12 +38,13 @@ macro_rules! io_imports {
 
 io_imports!();
 
-pub mod builder;
-pub mod datatype;
-pub(crate) mod error;
-use builder::DataSetBuilder;
-use datatype::DataSetType;
-use error::DataSetError;
+mod builder;
+mod datatype;
+mod error;
+
+pub use builder::DataSetBuilder;
+pub use datatype::DataSetType;
+pub use error::DataSetError;
 
 /// The kind of data that can be encoded in a dataset
 pub trait DataSetT<'a>: Encode + Decode<'a> {
