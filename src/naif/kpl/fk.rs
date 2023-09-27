@@ -77,6 +77,8 @@ impl KPLItem for FKItem {
 
 #[cfg(test)]
 mod fk_ut {
+    use crate::naif::kpl::parser::convert_fk;
+
     use super::{FKItem, KPLValue, Parameter};
 
     #[test]
@@ -187,5 +189,13 @@ mod fk_ut {
             KPLValue::Matrix(vec![3.0, 2.0, 1.0])
         );
         assert_eq!(assignments[&31007].data.len(), 7);
+    }
+
+    #[test]
+    fn test_convert_fk() {
+        let dataset =
+            convert_fk("data/moon_080317.txt", false, "target/moon_fk.anise".into()).unwrap();
+
+        assert_eq!(dataset.len(), 3, "expected three items");
     }
 }

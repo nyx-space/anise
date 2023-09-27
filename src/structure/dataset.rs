@@ -116,6 +116,7 @@ pub enum DataSetType {
     NotApplicable,
     SpacecraftData,
     PlanetaryData,
+    EulerParameterData,
 }
 
 impl From<u8> for DataSetType {
@@ -124,6 +125,7 @@ impl From<u8> for DataSetType {
             0 => DataSetType::NotApplicable,
             1 => DataSetType::SpacecraftData,
             2 => DataSetType::PlanetaryData,
+            3 => DataSetType::EulerParameterData,
             _ => panic!("Invalid value for DataSetType {val}"),
         }
     }
@@ -381,7 +383,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
     /// Saves this dataset to the provided file
     /// If overwrite is set to false, and the filename already exists, this function will return an error.
 
-    pub fn save_as(&self, filename: PathBuf, overwrite: bool) -> Result<(), DataSetError> {
+    pub fn save_as(&self, filename: &PathBuf, overwrite: bool) -> Result<(), DataSetError> {
         use log::{info, warn};
 
         if Path::new(&filename).exists() {
@@ -422,6 +424,15 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
                 source,
                 action: "creating data set file",
             }),
+        }
+    }
+
+    /// Returns the length of the LONGEST of the two look up tables
+    pub fn len(&self) -> usize {
+        if self.lut.by_id.len() > self.lut.by_name.len() {
+            self.lut.by_id.len()
+        } else {
+            self.lut.by_name.len()
         }
     }
 }

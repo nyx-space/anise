@@ -13,18 +13,23 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use log::{error, info, warn};
 
-use crate::almanac::MAX_PLANETARY_DATA;
+use crate::file2heap;
+use crate::math::rotation::{Quaternion, DCM};
+use crate::math::Matrix3;
+use crate::naif::kpl::fk::FKItem;
 use crate::naif::kpl::tpc::TPCItem;
 use crate::naif::kpl::Parameter;
-use crate::structure::dataset::{DataSet, DataSetBuilder, DataSetError, DataSetType};
+use crate::prelude::InputOutputError;
+use crate::structure::dataset::{DataSetBuilder, DataSetError, DataSetType};
 use crate::structure::metadata::Metadata;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
 use crate::structure::planetocentric::phaseangle::PhaseAngle;
 use crate::structure::planetocentric::PlanetaryData;
+use crate::structure::{EulerParameterDataSet, PlanetaryDataSet};
 
 use super::{KPLItem, KPLValue};
 
@@ -135,7 +140,7 @@ pub fn parse_file<P: AsRef<Path>, I: KPLItem>(
 pub fn convert_tpc<'a, P: AsRef<Path>>(
     pck: P,
     gm: P,
-) -> Result<DataSet<'a, PlanetaryData, MAX_PLANETARY_DATA>, DataSetError> {
+) -> Result<PlanetaryDataSet<'a>, DataSetError> {
     let mut buf = vec![];
     let mut dataset_builder = DataSetBuilder::default();
 
@@ -150,7 +155,7 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
         }
     }
 
-    // Now that planetary_data has everything, we'll create a vector of the planetary data in the ANISE ASN1 format.
+    // Now that planetary_data has everything, we'll create the planetary dataset in the ANISE ASN1 format.
 
     for (object_id, planetary_data) in planetary_data {
         match planetary_data.data.get(&Parameter::GravitationalParameter) {
@@ -237,4 +242,99 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
     dataset.metadata.dataset_type = DataSetType::PlanetaryData;
 
     Ok(dataset)
+}
+
+pub fn convert_fk<'a, P: AsRef<Path>>(
+    fk_file_path: P,
+    show_comments: bool,
+    output_file_path: PathBuf,
+) -> Result<EulerParameterDataSet<'a>, DataSetError> {
+    let mut buf = vec![];
+    let mut dataset_builder = DataSetBuilder::default();
+
+    let assignments = parse_file::<_, FKItem>(fk_file_path, show_comments)?;
+    // Add all of the data into the data set
+
+    for (id, item) in assignments {
+        if !item.data.contains_key(&Parameter::Angles)
+            && !item.data.contains_key(&Parameter::Matrix)
+        {
+            println!("{id} contains neither angles nor matrix, cannot convert to Euler Parameter");
+            continue;
+        } else if let Some(angles) = item.data.get(&Parameter::Angles) {
+            let unit = item
+                .data
+                .get(&Parameter::Units)
+                .expect(&format!("no unit data for FK ID {id}"));
+            let mut angle_data = angles.to_vec_f64().unwrap();
+            if unit == &KPLValue::String("ARCSECONDS".to_string()) {
+                // Convert the angles data into degrees
+                for item in &mut angle_data {
+                    *item /= 3600.0;
+                }
+            }
+            // Build the quaternion from the Euler matrices
+            let from = id;
+            let to = item.data[&Parameter::Center].to_i32().unwrap();
+            let temp_to1 = 12345; // Dummy value to support multiplications
+            let temp_to2 = 67890; // Dummy value to support multiplications
+            let mut q = Quaternion::identity(from, temp_to1);
+
+            for (i, rot) in item.data[&Parameter::Axes]
+                .to_vec_f64()
+                .unwrap()
+                .iter()
+                .enumerate()
+            {
+                let (from, to) = if i % 2 == 0 {
+                    (temp_to1, temp_to2)
+                } else {
+                    (temp_to2, temp_to1)
+                };
+                let this_q = if rot == &1.0 {
+                    Quaternion::about_x(angle_data[i].to_radians(), from, to)
+                } else if rot == &2.0 {
+                    Quaternion::about_y(angle_data[i].to_radians(), from, to)
+                } else {
+                    Quaternion::about_z(angle_data[i].to_radians(), from, to)
+                };
+                q = (q * this_q).unwrap();
+            }
+            q.to = to;
+
+            dataset_builder.push_into(&mut buf, q, Some(id), item.name.as_deref())?;
+        } else if let Some(matrix) = item.data.get(&Parameter::Matrix) {
+            let mat_data = matrix.to_vec_f64().unwrap();
+            let rot_mat = Matrix3::new(
+                mat_data[0],
+                mat_data[1],
+                mat_data[2],
+                mat_data[3],
+                mat_data[4],
+                mat_data[5],
+                mat_data[6],
+                mat_data[7],
+                mat_data[8],
+            );
+            let dcm = DCM {
+                from: id,
+                to: item.data[&Parameter::Center].to_i32().unwrap(),
+                rot_mat,
+                rot_mat_dt: None,
+            };
+            dataset_builder.push_into(&mut buf, dcm.into(), Some(id), item.name.as_deref())?;
+            // dataset_builder.push_into(&mut buf, dcm.into(), Some(id), None)?;
+        }
+    }
+
+    let mut dataset: EulerParameterDataSet = dataset_builder.finalize(buf)?;
+    dataset.metadata = Metadata::default();
+    dataset.metadata.dataset_type = DataSetType::EulerParameterData;
+
+    // Write the data to the output file and return a heap-loaded version of it.
+    dataset.save_as(&output_file_path, true)?;
+
+    Ok(EulerParameterDataSet::try_from_bytes(
+        &file2heap!(output_file_path).unwrap(),
+    )?)
 }

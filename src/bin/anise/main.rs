@@ -1,6 +1,8 @@
 extern crate pretty_env_logger;
 use std::env::{set_var, var};
 
+use anise::naif::kpl::fk::FKItem;
+use anise::structure::{EulerParameterDataSet, PlanetaryDataSet, SpacecraftDataSet};
 use snafu::prelude::*;
 
 use anise::cli::args::{Actions, Args};
@@ -8,7 +10,7 @@ use anise::cli::inspect::{BpcRow, SpkRow};
 use anise::cli::{AniseSnafu, CliDAFSnafu, CliDataSetSnafu, CliErrors, CliFileRecordSnafu};
 use anise::file2heap;
 use anise::naif::daf::{FileRecord, NAIFRecord, NAIFSummaryRecord};
-use anise::naif::kpl::parser::convert_tpc;
+use anise::naif::kpl::parser::{convert_tpc, parse_file};
 use anise::prelude::*;
 use anise::structure::dataset::{DataSet, DataSetType};
 use anise::structure::metadata::Metadata;
@@ -45,14 +47,21 @@ fn main() -> Result<(), CliErrors> {
                     DataSetType::NotApplicable => unreachable!("no such ANISE data yet"),
                     DataSetType::SpacecraftData => {
                         // Decode as spacecraft data
-                        let dataset = DataSet::<SpacecraftData, 64>::try_from_bytes(&bytes)
+                        let dataset = SpacecraftDataSet::try_from_bytes(&bytes)
                             .with_context(|_| CliDataSetSnafu)?;
                         println!("{dataset}");
                         Ok(())
                     }
                     DataSetType::PlanetaryData => {
                         // Decode as planetary data
-                        let dataset = DataSet::<PlanetaryData, 64>::try_from_bytes(&bytes)
+                        let dataset = PlanetaryDataSet::try_from_bytes(&bytes)
+                            .with_context(|_| CliDataSetSnafu)?;
+                        println!("{dataset}");
+                        Ok(())
+                    }
+                    DataSetType::EulerParameterData => {
+                        // Decode as euler paramater data
+                        let dataset = EulerParameterDataSet::try_from_bytes(&bytes)
                             .with_context(|_| CliDataSetSnafu)?;
                         println!("{dataset}");
                         Ok(())
@@ -176,12 +185,22 @@ fn main() -> Result<(), CliErrors> {
         Actions::ConvertTpc {
             pckfile,
             gmfile,
+            fkfile,
             outfile,
         } => {
-            let dataset = convert_tpc(pckfile, gmfile).with_context(|_| CliDataSetSnafu)?;
+            let mut dataset = convert_tpc(pckfile, gmfile).with_context(|_| CliDataSetSnafu)?;
+
+            if let Some(fkfile) = fkfile {
+                let assignments = parse_file::<_, FKItem>("data/moon_080317.txt", false)
+                    .with_context(|_| CliDataSetSnafu)?;
+
+                for (id, item) in assignments {
+                    if let Ok(planetary_data) = dataset.get_by_id(id) {}
+                }
+            }
 
             dataset
-                .save_as(outfile, false)
+                .save_as(&outfile, false)
                 .with_context(|_| CliDataSetSnafu)?;
 
             Ok(())

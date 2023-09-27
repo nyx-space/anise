@@ -44,6 +44,13 @@ impl KPLValue {
             _ => whatever!("can only convert matrices to vec of f64"),
         }
     }
+
+    pub fn to_i32(&self) -> Result<i32, Whatever> {
+        match self {
+            KPLValue::Integer(data) => Ok(*data),
+            _ => whatever!("can only convert Integer to i32"),
+        }
+    }
 }
 
 impl From<f64> for KPLValue {
