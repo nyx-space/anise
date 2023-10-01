@@ -87,6 +87,25 @@ impl DCM {
         }
     }
 
+    /// Initialize a new DCM for the Euler 313 rotation, typically used for right asc, declination, and twist
+    ///
+    /// Source: https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/rotation.html#Working%20with%20RA,%20Dec%20and%20Twist
+    pub fn euler313(theta1: f64, theta2: f64, theta3: f64, from: NaifId, to: NaifId) -> Self {
+        let w_dcm = Self::r3(theta3, from, to);
+        let dec_dcm = Self::r1(theta2, from, to);
+        let ra_dcm = Self::r3(theta1, from, to);
+        // Perform a multiplication of the DCMs, regardless of frames.
+        // let dcm = w_dcm.rot_mat * dec_dcm.rot_mat * ra_dcm.rot_mat;
+        let dcm = ra_dcm.rot_mat * dec_dcm.rot_mat * w_dcm.rot_mat;
+
+        Self {
+            rot_mat: dcm,
+            from,
+            to,
+            rot_mat_dt: None,
+        }
+    }
+
     /// Returns the 6x6 DCM to rotate a state, if the time derivative of this DCM exists.
     pub fn state_dcm(&self) -> Result<Matrix6, PhysicsError> {
         match self.rot_mat_dt {

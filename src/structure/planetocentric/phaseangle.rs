@@ -8,13 +8,13 @@
  * Documentation: https://nyxspace.com/
  */
 use der::{Decode, Encode, Reader, Writer};
-use zerocopy::{AsBytes, FromBytes, FromZeroes};
+use hifitime::Epoch;
 
 use super::MAX_NUT_PREC_ANGLES;
 
 /// Angle data is represented as a polynomial of an angle, exactly like in SPICE PCK.
 /// In fact, the following documentation is basically copied from [the required PCK reading](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/pck.html).
-#[derive(Copy, Clone, Debug, Default, PartialEq, AsBytes, FromZeroes, FromBytes)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 #[repr(C)]
 pub struct PhaseAngle {
     /// The fixed offset of the angular data
@@ -23,7 +23,8 @@ pub struct PhaseAngle {
     pub rate_deg: f64,
     /// The acceleration of this angle per T (same definition as above).
     pub accel_deg: f64,
-    pub coeffs_count: u64,
+    /// Number of nutation / precession angle coefficients
+    pub coeffs_count: u8,
     pub coeffs: [f64; MAX_NUT_PREC_ANGLES],
 }
 
@@ -40,10 +41,23 @@ impl PhaseAngle {
                 offset_deg: data[0],
                 rate_deg: data[1],
                 accel_deg: data[2],
-                coeffs_count: data.len().saturating_sub(3) as u64,
+                coeffs_count: (data.len() as u8).saturating_sub(3),
                 coeffs,
             })
         }
+    }
+
+    /// Evaluates this phase angle in degrees provided the epoch
+    pub fn evaluate_deg(&self, epoch: Epoch) -> f64 {
+        let days_d = epoch.to_tdb_days_since_j2000();
+        let centuries_t2 = epoch.to_tdb_centuries_since_j2000().powi(2);
+
+        println!(
+            "{} + {} * d + {} * T^2",
+            self.offset_deg, self.rate_deg, self.accel_deg
+        );
+
+        self.offset_deg + self.rate_deg * days_d + self.accel_deg * centuries_t2
     }
 }
 

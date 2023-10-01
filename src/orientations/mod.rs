@@ -13,8 +13,10 @@ use snafu::prelude::*;
 
 use crate::{
     errors::PhysicsError, math::interpolation::InterpolationError, naif::daf::DAFError,
-    prelude::FrameUid,
+    prelude::FrameUid, structure::dataset::DataSetError,
 };
+
+mod rotate_to_parent;
 
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
@@ -50,5 +52,10 @@ pub enum OrientationError {
     OrientationInterpolation {
         #[snafu(backtrace)]
         source: InterpolationError,
+    },
+    #[snafu(display("during an orientation query {source}"))]
+    OrientationDataSet {
+        #[snafu(backtrace)]
+        source: DataSetError,
     },
 }

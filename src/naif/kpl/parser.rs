@@ -191,7 +191,7 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
                                     let pola_dec = PhaseAngle::maybe_new(&pola_dec_data);
 
                                     let prime_mer_data: Vec<f64> = planetary_data.data
-                                        [&Parameter::PoleDec]
+                                        [&Parameter::PrimeMeridian]
                                         .to_vec_f64()
                                         .unwrap();
                                     let prime_mer = PhaseAngle::maybe_new(&prime_mer_data);

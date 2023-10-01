@@ -140,6 +140,7 @@ fn test_anise_conversion() {
     use crate::naif::kpl::parser::convert_tpc;
     use crate::{file2heap, file_mmap, structure::dataset::DataSet};
     use std::fs::File;
+    use std::path::PathBuf;
 
     let dataset = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
 
@@ -148,7 +149,7 @@ fn test_anise_conversion() {
     let path = "target/gm_pck_08.anise";
 
     // Test saving
-    dataset.save_as(path.into(), true).unwrap();
+    dataset.save_as(&PathBuf::from(path), true).unwrap();
 
     // Test reloading
     let bytes = file2heap!(path).unwrap();

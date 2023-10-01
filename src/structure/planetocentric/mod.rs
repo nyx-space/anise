@@ -8,7 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 
+use std::f64::consts::FRAC_PI_2;
+
 use crate::{
+    astro::PhysicsResult,
+    math::rotation::DCM,
     prelude::{Frame, FrameUid},
     NaifId,
 };
@@ -17,6 +21,7 @@ pub mod nutprec;
 pub mod phaseangle;
 use der::{Decode, Encode, Reader, Writer};
 use ellipsoid::Ellipsoid;
+use hifitime::Epoch;
 use nutprec::NutationPrecessionAngle;
 use phaseangle::PhaseAngle;
 
@@ -86,6 +91,85 @@ impl PlanetaryData {
         }
 
         bits
+    }
+
+    /// Computes the rotation to the parent frame
+    pub fn rotation_to_parent(&self, epoch: Epoch) -> PhysicsResult<DCM> {
+        if self.pole_declination.is_none()
+            && self.prime_meridian.is_none()
+            && self.pole_right_ascension.is_none()
+        {
+            Ok(DCM::identity(self.object_id, self.parent_id))
+        } else {
+            let mut variable_angles_deg = [0.0_f64; MAX_NUT_PREC_ANGLES];
+            for (ii, nut_prec_angle) in self
+                .nut_prec_angles
+                .iter()
+                .enumerate()
+                .take(self.num_nut_prec_angles.into())
+            {
+                variable_angles_deg[ii] = nut_prec_angle.evaluate_deg(epoch);
+            }
+
+            let right_asc_rad = match self.pole_right_ascension {
+                Some(right_asc_deg) => {
+                    let mut angle_rad = right_asc_deg.evaluate_deg(epoch).to_radians();
+                    // Add the nutation and precession angles for this phase angle
+                    for (ii, nut_prec_coeff) in right_asc_deg
+                        .coeffs
+                        .iter()
+                        .enumerate()
+                        .take(right_asc_deg.coeffs_count as usize)
+                    {
+                        angle_rad += nut_prec_coeff * variable_angles_deg[ii].to_radians().sin();
+                    }
+                    angle_rad + FRAC_PI_2
+                }
+                None => 0.0,
+            };
+
+            let dec_rad = match self.pole_declination {
+                Some(decl_deg) => {
+                    let mut angle_rad = decl_deg.evaluate_deg(epoch).to_radians();
+                    // Add the nutation and precession angles for this phase angle
+                    for (ii, nut_prec_coeff) in decl_deg
+                        .coeffs
+                        .iter()
+                        .enumerate()
+                        .take(decl_deg.coeffs_count as usize)
+                    {
+                        angle_rad += nut_prec_coeff * variable_angles_deg[ii].to_radians().cos();
+                    }
+                    FRAC_PI_2 - angle_rad
+                }
+                None => 0.0,
+            };
+
+            let twist_rad = match self.prime_meridian {
+                Some(twist_deg) => {
+                    let mut angle_rad = twist_deg.evaluate_deg(epoch).to_radians();
+                    // Add the nutation and precession angles for this phase angle
+                    for (ii, nut_prec_coeff) in twist_deg
+                        .coeffs
+                        .iter()
+                        .enumerate()
+                        .take(twist_deg.coeffs_count as usize)
+                    {
+                        angle_rad += nut_prec_coeff * variable_angles_deg[ii].to_radians().sin();
+                    }
+                    angle_rad
+                }
+                None => 0.0,
+            };
+
+            Ok(DCM::euler313(
+                right_asc_rad,
+                dec_rad,
+                twist_rad,
+                self.parent_id,
+                self.object_id,
+            ))
+        }
     }
 }
 

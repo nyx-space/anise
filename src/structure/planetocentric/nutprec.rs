@@ -9,11 +9,10 @@
  */
 
 use der::{Decode, Encode, Reader, Writer};
-use hifitime::{Epoch, Unit};
-use zerocopy::{AsBytes, FromBytes, FromZeroes};
+use hifitime::Epoch;
 
 /// This structure is only used to store the nutation and precession angle data.
-#[derive(Copy, Clone, Debug, Default, PartialEq, AsBytes, FromZeroes, FromBytes)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 #[repr(C)]
 pub struct NutationPrecessionAngle {
     offset_deg: f64,
@@ -23,8 +22,7 @@ pub struct NutationPrecessionAngle {
 impl NutationPrecessionAngle {
     /// Evaluates this nutation precession angle at the given epoch
     pub fn evaluate_deg(&self, epoch: Epoch) -> f64 {
-        // SPICE actually uses ET not TDB, so we use that too.
-        let d = epoch.to_tdb_duration().to_unit(Unit::Century);
+        let d = epoch.to_tdb_days_since_j2000();
         self.offset_deg + self.rate_deg * d
     }
 }
@@ -52,6 +50,7 @@ impl<'a> Decode<'a> for NutationPrecessionAngle {
 #[cfg(test)]
 mod nut_prec_ut {
     use super::{Decode, Encode, Epoch, NutationPrecessionAngle};
+    use hifitime::TimeUnits;
     #[test]
     fn zero_repr() {
         let repr = NutationPrecessionAngle {
@@ -68,6 +67,7 @@ mod nut_prec_ut {
 
     #[test]
     fn example_repr() {
+        // From the start example of the pck00008 file
         let repr = NutationPrecessionAngle {
             offset_deg: 125.045,
             rate_deg: -0.052992,
@@ -82,5 +82,11 @@ mod nut_prec_ut {
 
         // Ensure that at zero, we have only an offset.
         assert_eq!(repr.evaluate_deg(Epoch::from_tdb_seconds(0.0)), 125.045);
+        // Ensure that we correctly evaluate this variable.
+        // E1 = 125.045 -  0.052992 d, d represents days past J2000 ( TDB )
+        assert_eq!(
+            repr.evaluate_deg(Epoch::from_tdb_duration(1.days())),
+            125.045 - 0.052992
+        );
     }
 }
