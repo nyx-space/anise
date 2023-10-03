@@ -29,8 +29,13 @@ pub enum Actions {
         pckfile: PathBuf,
         /// Path to the KPL gravity data TPC file (e.g. gm_de431.tpc)
         gmfile: PathBuf,
-        /// Optionally, modify the previous files with data from the provided FK TPC file (e.g. moon_080317.txt)
-        fkfile: Option<PathBuf>,
+        /// Output ANISE binary file
+        outfile: PathBuf,
+    },
+    /// Convert the provided Frame Kernel into an ANISE dataset
+    ConvertFk {
+        /// Path to the FK (e.g. moon_080317.fk)
+        fkfile: PathBuf,
         /// Output ANISE binary file
         outfile: PathBuf,
     },

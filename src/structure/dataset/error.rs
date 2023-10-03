@@ -29,6 +29,8 @@ pub enum DataSetError {
         action: &'static str,
         source: IOError,
     },
+    #[snafu(display("data set conversion error: {action}"))]
+    Conversion { action: String },
 }
 
 impl PartialEq for DataSetError {

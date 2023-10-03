@@ -1,7 +1,6 @@
 extern crate pretty_env_logger;
 use std::env::{set_var, var};
 
-use anise::naif::kpl::fk::FKItem;
 use anise::structure::{EulerParameterDataSet, PlanetaryDataSet, SpacecraftDataSet};
 use snafu::prelude::*;
 
@@ -10,12 +9,10 @@ use anise::cli::inspect::{BpcRow, SpkRow};
 use anise::cli::{AniseSnafu, CliDAFSnafu, CliDataSetSnafu, CliErrors, CliFileRecordSnafu};
 use anise::file2heap;
 use anise::naif::daf::{FileRecord, NAIFRecord, NAIFSummaryRecord};
-use anise::naif::kpl::parser::{convert_tpc, parse_file};
+use anise::naif::kpl::parser::{convert_fk, convert_tpc};
 use anise::prelude::*;
-use anise::structure::dataset::{DataSet, DataSetType};
+use anise::structure::dataset::DataSetType;
 use anise::structure::metadata::Metadata;
-use anise::structure::planetocentric::PlanetaryData;
-use anise::structure::spacecraft::SpacecraftData;
 use clap::Parser;
 use log::info;
 use tabled::{settings::Style, Table};
@@ -185,19 +182,18 @@ fn main() -> Result<(), CliErrors> {
         Actions::ConvertTpc {
             pckfile,
             gmfile,
-            fkfile,
             outfile,
         } => {
-            let mut dataset = convert_tpc(pckfile, gmfile).with_context(|_| CliDataSetSnafu)?;
+            let dataset = convert_tpc(pckfile, gmfile).with_context(|_| CliDataSetSnafu)?;
 
-            if let Some(fkfile) = fkfile {
-                let assignments = parse_file::<_, FKItem>("data/moon_080317.txt", false)
-                    .with_context(|_| CliDataSetSnafu)?;
+            dataset
+                .save_as(&outfile, false)
+                .with_context(|_| CliDataSetSnafu)?;
 
-                for (id, item) in assignments {
-                    if let Ok(planetary_data) = dataset.get_by_id(id) {}
-                }
-            }
+            Ok(())
+        }
+        Actions::ConvertFk { fkfile, outfile } => {
+            let dataset = convert_fk(fkfile, false).unwrap();
 
             dataset
                 .save_as(&outfile, false)

@@ -233,7 +233,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
 
         let mut buf = vec![];
 
-        match File::create(&filename) {
+        match File::create(filename) {
             Ok(mut file) => {
                 if let Err(err) = self.encode_to_vec(&mut buf) {
                     return Err(DataSetError::DataDecoding {
@@ -265,6 +265,11 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
         } else {
             self.lut.by_name.len()
         }
+    }
+
+    /// Returns whether this dataset is empty
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 

@@ -256,13 +256,15 @@ pub fn convert_fk<'a, P: AsRef<Path>>(
         if !item.data.contains_key(&Parameter::Angles)
             && !item.data.contains_key(&Parameter::Matrix)
         {
-            println!("{id} contains neither angles nor matrix, cannot convert to Euler Parameter");
+            warn!("{id} contains neither angles nor matrix, cannot convert to Euler Parameter");
             continue;
         } else if let Some(angles) = item.data.get(&Parameter::Angles) {
             let unit = item
                 .data
                 .get(&Parameter::Units)
-                .expect(&format!("no unit data for FK ID {id}"));
+                .ok_or(DataSetError::Conversion {
+                    action: format!("no unit data for FK ID {id}"),
+                })?;
             let mut angle_data = angles.to_vec_f64().unwrap();
             if unit == &KPLValue::String("ARCSECONDS".to_string()) {
                 // Convert the angles data into degrees
