@@ -39,7 +39,4 @@ No change
 
 No change
 
-
----
-
-Thank you for contributing to ANISE!
+<!-- Thank you for contributing to ANISE! -->
