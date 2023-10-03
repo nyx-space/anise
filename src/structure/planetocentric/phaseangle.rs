@@ -48,16 +48,14 @@ impl PhaseAngle {
     }
 
     /// Evaluates this phase angle in degrees provided the epoch
-    pub fn evaluate_deg(&self, epoch: Epoch) -> f64 {
-        let days_d = epoch.to_tdb_days_since_j2000();
-        let centuries_t2 = epoch.to_tdb_centuries_since_j2000().powi(2);
+    pub fn evaluate_deg(&self, epoch: Epoch, twist: bool) -> f64 {
+        let factor = if twist {
+            epoch.to_tdb_days_since_j2000()
+        } else {
+            epoch.to_tdb_centuries_since_j2000()
+        };
 
-        println!(
-            "{} + {} * d + {} * T^2",
-            self.offset_deg, self.rate_deg, self.accel_deg
-        );
-
-        self.offset_deg + self.rate_deg * days_d + self.accel_deg * centuries_t2
+        self.offset_deg + self.rate_deg * factor + self.accel_deg * factor.powi(2)
     }
 }
 

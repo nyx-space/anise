@@ -95,8 +95,7 @@ impl DCM {
         let dec_dcm = Self::r1(theta2, from, to);
         let ra_dcm = Self::r3(theta1, from, to);
         // Perform a multiplication of the DCMs, regardless of frames.
-        // let dcm = w_dcm.rot_mat * dec_dcm.rot_mat * ra_dcm.rot_mat;
-        let dcm = ra_dcm.rot_mat * dec_dcm.rot_mat * w_dcm.rot_mat;
+        let dcm = w_dcm.rot_mat * dec_dcm.rot_mat * ra_dcm.rot_mat;
 
         Self {
             rot_mat: dcm,

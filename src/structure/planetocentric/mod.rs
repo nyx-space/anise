@@ -30,6 +30,38 @@ use super::dataset::DataSetT;
 pub const MAX_NUT_PREC_ANGLES: usize = 16;
 
 /// ANISE supports two different kinds of orientation data. High precision, with spline based interpolations, and constants right ascension, declination, and prime meridian, typically used for planetary constant data.
+///
+/// # Documentation of rotation angles
+/// Source: https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/pck.html#Models%20for%20the%20Sun,%20Planets,%20and%20some%20Minor%20Bodies%20in%20Text%20PCK%20Kernels
+///  The angles RA, DEC, and W are defined as follows:
+///
+/// ```text
+///                                  2
+///                             RA2*t
+/// RA  =  RA0  +  RA1*t/T  +  ------  + [optional trig polynomials]
+///                                2
+///                               T
+///
+///                                  2
+///                            DEC2*t
+/// DEC =  DEC0 + DEC1*t/T  +  ------- + [optional trig polynomials]
+///                                2
+///                               T
+///
+///                                 2
+///                             W2*t
+/// W   =  W0   + W1*t/d    +  -----   + [optional trig polynomials]
+///                               2
+///                              d
+/// ```
+///
+/// where
+///
+/// d = seconds/day
+/// T = seconds/Julian century
+/// t = ephemeris time, expressed as seconds past the reference epoch
+/// for this body or planetary system
+///
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct PlanetaryData {
     /// The NAIF ID of this object
@@ -113,7 +145,7 @@ impl PlanetaryData {
 
             let right_asc_rad = match self.pole_right_ascension {
                 Some(right_asc_deg) => {
-                    let mut angle_rad = right_asc_deg.evaluate_deg(epoch).to_radians();
+                    let mut angle_rad = right_asc_deg.evaluate_deg(epoch, false).to_radians();
                     // Add the nutation and precession angles for this phase angle
                     for (ii, nut_prec_coeff) in right_asc_deg
                         .coeffs
@@ -130,7 +162,7 @@ impl PlanetaryData {
 
             let dec_rad = match self.pole_declination {
                 Some(decl_deg) => {
-                    let mut angle_rad = decl_deg.evaluate_deg(epoch).to_radians();
+                    let mut angle_rad = decl_deg.evaluate_deg(epoch, false).to_radians();
                     // Add the nutation and precession angles for this phase angle
                     for (ii, nut_prec_coeff) in decl_deg
                         .coeffs
@@ -138,7 +170,7 @@ impl PlanetaryData {
                         .enumerate()
                         .take(decl_deg.coeffs_count as usize)
                     {
-                        angle_rad += nut_prec_coeff * variable_angles_deg[ii].to_radians().cos();
+                        (angle_rad += nut_prec_coeff * variable_angles_deg[ii].to_radians().cos());
                     }
                     FRAC_PI_2 - angle_rad
                 }
@@ -147,7 +179,7 @@ impl PlanetaryData {
 
             let twist_rad = match self.prime_meridian {
                 Some(twist_deg) => {
-                    let mut angle_rad = twist_deg.evaluate_deg(epoch).to_radians();
+                    let mut angle_rad = twist_deg.evaluate_deg(epoch, true).to_radians();
                     // Add the nutation and precession angles for this phase angle
                     for (ii, nut_prec_coeff) in twist_deg
                         .coeffs
