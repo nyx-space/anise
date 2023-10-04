@@ -27,7 +27,7 @@ use phaseangle::PhaseAngle;
 
 use super::dataset::DataSetT;
 
-pub const MAX_NUT_PREC_ANGLES: usize = 16;
+pub const MAX_NUT_PREC_ANGLES: usize = 32;
 
 /// ANISE supports two different kinds of orientation data. High precision, with spline based interpolations, and constants right ascension, declination, and prime meridian, typically used for planetary constant data.
 ///
@@ -103,6 +103,7 @@ impl PlanetaryData {
     /// + Bit 1 is set if `pole_right_ascension` is available
     /// + Bit 2 is set if `pole_declination` is available
     /// + Bit 3 is set if `prime_meridian` is available
+    /// + Bit 4 is set if `long_axis` is available
     fn available_data(&self) -> u8 {
         let mut bits: u8 = 0;
 
@@ -140,7 +141,7 @@ impl PlanetaryData {
                 .enumerate()
                 .take(self.num_nut_prec_angles.into())
             {
-                variable_angles_deg[ii] = nut_prec_angle.evaluate_deg(epoch);
+                variable_angles_deg[ii] = nut_prec_angle.evaluate_deg(epoch)
             }
 
             let right_asc_rad = match self.pole_right_ascension {
@@ -170,7 +171,7 @@ impl PlanetaryData {
                         .enumerate()
                         .take(decl_deg.coeffs_count as usize)
                     {
-                        (angle_rad += nut_prec_coeff * variable_angles_deg[ii].to_radians().cos());
+                        angle_rad += nut_prec_coeff * variable_angles_deg[ii].to_radians().cos();
                     }
                     FRAC_PI_2 - angle_rad
                 }
@@ -216,6 +217,7 @@ impl Encode for PlanetaryData {
             + self.pole_right_ascension.encoded_len()?
             + self.pole_declination.encoded_len()?
             + self.prime_meridian.encoded_len()?
+            + self.long_axis.encoded_len()?
             + self.num_nut_prec_angles.encoded_len()?
             + self.nut_prec_angles.encoded_len()?
     }
@@ -229,6 +231,7 @@ impl Encode for PlanetaryData {
         self.pole_right_ascension.encode(encoder)?;
         self.pole_declination.encode(encoder)?;
         self.prime_meridian.encode(encoder)?;
+        self.long_axis.encode(encoder)?;
         self.num_nut_prec_angles.encode(encoder)?;
         self.nut_prec_angles.encode(encoder)
     }
@@ -415,13 +418,30 @@ mod planetary_constants_ut {
 
         let mut buf = vec![];
         min_repr.encode_to_vec(&mut buf).unwrap();
-        dbg!(buf.len());
+        assert_eq!(buf.len(), 341);
 
         let min_repr_dec = PlanetaryData::from_der(&buf).unwrap();
 
         assert_eq!(min_repr, min_repr_dec);
 
-        dbg!(core::mem::size_of::<PlanetaryData>());
+        assert_eq!(core::mem::size_of::<PlanetaryData>(), 1472);
+    }
+
+    #[test]
+    fn pc_encdec_with_long_axis_only() {
+        let min_repr = PlanetaryData {
+            object_id: 1234,
+            mu_km3_s2: 12345.6789,
+            long_axis: Some(1789.4),
+            ..Default::default()
+        };
+
+        let mut buf = vec![];
+        min_repr.encode_to_vec(&mut buf).unwrap();
+
+        let min_repr_dec = PlanetaryData::from_der(&buf).unwrap();
+
+        assert_eq!(min_repr, min_repr_dec);
     }
 
     #[test]
@@ -476,7 +496,7 @@ mod planetary_constants_ut {
         // Encode
         let mut buf = vec![];
         moon.encode_to_vec(&mut buf).unwrap();
-        dbg!(buf.len());
+        assert_eq!(buf.len(), 721);
 
         let moon_dec = PlanetaryData::from_der(&buf).unwrap();
 

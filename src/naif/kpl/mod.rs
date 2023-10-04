@@ -41,14 +41,14 @@ impl KPLValue {
     pub fn to_vec_f64(&self) -> Result<Vec<f64>, Whatever> {
         match self {
             KPLValue::Matrix(data) => Ok(data.clone()),
-            _ => whatever!("can only convert matrices to vec of f64"),
+            _ => whatever!("can only convert matrices to vec of f64 but this is {self:?}"),
         }
     }
 
     pub fn to_i32(&self) -> Result<i32, Whatever> {
         match self {
             KPLValue::Integer(data) => Ok(*data),
-            _ => whatever!("can only convert Integer to i32"),
+            _ => whatever!("can only convert Integer to i32 but this is {self:?}"),
         }
     }
 }
@@ -68,6 +68,17 @@ impl From<i32> for KPLValue {
 impl From<String> for KPLValue {
     fn from(value: String) -> Self {
         Self::String(value)
+    }
+}
+
+impl TryFrom<&KPLValue> for f64 {
+    type Error = Whatever;
+
+    fn try_from(value: &KPLValue) -> Result<Self, Self::Error> {
+        match value {
+            KPLValue::Float(data) => Ok(*data),
+            _ => whatever!("can only convert float to f64 but this is {value:?}"),
+        }
     }
 }
 

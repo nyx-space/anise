@@ -24,6 +24,11 @@ pub mod celestial_objects {
     pub const SUN: NaifId = 10;
     pub const LUNA: NaifId = 301;
     pub const EARTH: NaifId = 399;
+    pub const MARS: NaifId = 499;
+    pub const JUPITER: NaifId = 599;
+    pub const SATURN: NaifId = 699;
+    pub const URANUS: NaifId = 799;
+    pub const NEPTUNE: NaifId = 899;
 
     pub const fn celestial_name_from_id(id: NaifId) -> Option<&'static str> {
         match id {
@@ -177,10 +182,20 @@ pub mod orientations {
     /// The DE-403 frame is treated as equivalent to the J2000 frame.
     pub const DE143: NaifId = 21;
 
+    /// Body fixed IAU rotation
+    pub const IAU_MERCURY: NaifId = 199;
+    pub const IAU_VENUS: NaifId = 299;
+    pub const IAU_EARTH: NaifId = 399;
+    pub const IAU_MARS: NaifId = 499;
+    pub const IAU_JUPITER: NaifId = 599;
+    pub const IAU_SATURN: NaifId = 699;
+    pub const IAU_NEPTUNE: NaifId = 799;
+    pub const IAU_URANUS: NaifId = 899;
+
     /// Given the frame ID, try to return a human name
     /// Source: // https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/frames.html#Appendix.%20%60%60Built%20in''%20Inertial%20Reference%20Frames
-    pub const fn orientation_name_from_id(hash: NaifId) -> Option<&'static str> {
-        match hash {
+    pub const fn orientation_name_from_id(id: NaifId) -> Option<&'static str> {
+        match id {
             J2000 => Some("J2000"),
             B1950 => Some("B1950"),
             FK4 => Some("FK4"),
@@ -188,6 +203,14 @@ pub mod orientations {
             MARSIAU => Some("Mars IAU"),
             ECLIPJ2000 => Some("ECLIPJ2000"),
             ECLIPB1950 => Some("ECLIPB1950"),
+            IAU_MERCURY => Some("IAU_MERCURY"),
+            IAU_VENUS => Some("IAU_VENUS"),
+            IAU_EARTH => Some("IAU_EARTH"),
+            IAU_MARS => Some("IAU_MARS"),
+            IAU_JUPITER => Some("IAU_JUPITER"),
+            IAU_SATURN => Some("IAU_SATURN"),
+            IAU_NEPTUNE => Some("IAU_NEPTUNE"),
+            IAU_URANUS => Some("IAU_URANUS"),
             _ => None,
         }
     }
@@ -196,7 +219,7 @@ pub mod orientations {
 pub mod frames {
     use crate::prelude::Frame;
 
-    use super::{celestial_objects::*, orientations::J2000};
+    use super::{celestial_objects::*, orientations::*};
 
     pub const SSB_J2000: Frame = Frame::from_ephem_orient(SOLAR_SYSTEM_BARYCENTER, J2000);
     pub const MERCURY_J2000: Frame = Frame::from_ephem_orient(MERCURY, J2000);
@@ -213,6 +236,16 @@ pub mod frames {
     pub const LUNA_J2000: Frame = Frame::from_ephem_orient(LUNA, J2000);
     pub const EARTH_J2000: Frame = Frame::from_ephem_orient(EARTH, J2000);
     pub const EME2000: Frame = Frame::from_ephem_orient(EARTH, J2000);
+
+    /// Body fixed IAU rotation
+    pub const IAU_MERCURY_FRAME: Frame = Frame::from_ephem_orient(MERCURY, IAU_MERCURY);
+    pub const IAU_VENUS_FRAME: Frame = Frame::from_ephem_orient(VENUS, IAU_VENUS);
+    pub const IAU_EARTH_FRAME: Frame = Frame::from_ephem_orient(EARTH, IAU_EARTH);
+    pub const IAU_MARS_FRAME: Frame = Frame::from_ephem_orient(MARS, IAU_MARS);
+    pub const IAU_JUPITER_FRAME: Frame = Frame::from_ephem_orient(JUPITER, IAU_JUPITER);
+    pub const IAU_SATURN_FRAME: Frame = Frame::from_ephem_orient(SATURN, IAU_SATURN);
+    pub const IAU_NEPTUNE_FRAME: Frame = Frame::from_ephem_orient(NEPTUNE, IAU_NEPTUNE);
+    pub const IAU_URANUS_FRAME: Frame = Frame::from_ephem_orient(URANUS, IAU_URANUS);
 }
 
 #[cfg(test)]

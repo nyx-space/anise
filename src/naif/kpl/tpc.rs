@@ -115,6 +115,13 @@ fn test_parse_pck() {
         assignments[&5].data[&Parameter::NutPrecAngles],
         KPLValue::Matrix(expt_nutprec.into())
     );
+
+    // Check for Neptune which has the NUT_PREC_PM
+    let expt_nut_prec_pm = [-0.48, 0., 0., 0., 0., 0., 0., 0.];
+    assert_eq!(
+        assignments[&899].data[&Parameter::NutPrecPm],
+        KPLValue::Matrix(expt_nut_prec_pm.into())
+    );
 }
 
 #[test]
@@ -144,6 +151,7 @@ fn test_anise_conversion() {
 
     let dataset = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
 
+    assert!(!dataset.is_empty(), "should not be empty");
     assert_eq!(dataset.lut.by_id.len(), 47);
 
     let path = "target/gm_pck_08.anise";

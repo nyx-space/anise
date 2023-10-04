@@ -338,15 +338,15 @@ mod dataset_ut {
 
         let mut buf = vec![];
         repr.encode_to_vec(&mut buf).unwrap();
-        dbg!(buf.len());
+        assert_eq!(buf.len(), 60);
 
         let repr_dec = DataSet::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
 
         dbg!(repr);
-        dbg!(core::mem::size_of::<DataSet<SpacecraftData, 2>>());
-        dbg!(core::mem::size_of::<DataSet<SpacecraftData, 128>>());
+        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData, 2>>(), 232);
+        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData, 128>>(), 7288);
     }
 
     #[test]
@@ -501,7 +501,7 @@ mod dataset_ut {
         let mut ebuf = vec![];
         dataset.encode_to_vec(&mut ebuf).unwrap();
 
-        dbg!(ebuf.len());
+        assert_eq!(ebuf.len(), 724);
 
         let repr_dec = SpacecraftDataSet::from_bytes(&ebuf);
 

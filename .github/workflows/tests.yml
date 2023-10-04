@@ -125,6 +125,10 @@ jobs:
         run: |
           RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_hermite_type13_from_gmat --features spkezr_validation --release -- --nocapture --ignored
           RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_hermite_type13_with_varying_segment_sizes --features spkezr_validation --release -- --nocapture --ignored
+      
+      - name: Rust-SPICE PCK validation
+        run: | 
+          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_iau_rotation_to_parent --release -- --nocapture --ignored
 
       # Now analyze the results and create pretty plots
       - uses: actions/setup-python@v4

@@ -15,15 +15,15 @@ use hifitime::Epoch;
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 #[repr(C)]
 pub struct NutationPrecessionAngle {
-    offset_deg: f64,
-    rate_deg: f64,
+    pub offset_deg: f64,
+    pub rate_deg: f64,
 }
 
 impl NutationPrecessionAngle {
     /// Evaluates this nutation precession angle at the given epoch
     pub fn evaluate_deg(&self, epoch: Epoch) -> f64 {
         let d = epoch.to_tdb_days_since_j2000();
-        self.offset_deg + self.rate_deg * d
+        dbg!(self.offset_deg + self.rate_deg * d)
     }
 }
 

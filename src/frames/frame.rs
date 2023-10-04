@@ -160,23 +160,20 @@ impl fmt::Display for Frame {
 impl fmt::LowerExp for Frame {
     /// Only prints the ephemeris name
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        let body_name = match celestial_name_from_id(self.ephemeris_id) {
-            Some(name) => name.to_string(),
-            None => format!("{}", self.ephemeris_id),
-        };
-        write!(f, "{body_name}")
+        match celestial_name_from_id(self.ephemeris_id) {
+            Some(name) => write!(f, "{name}"),
+            None => write!(f, "{}", self.ephemeris_id),
+        }
     }
 }
 
 impl fmt::Octal for Frame {
     /// Only prints the orientation name
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        let orientation_name = match orientation_name_from_id(self.orientation_id) {
-            Some(name) => name.to_string(),
-            None => format!("orientation {}", self.orientation_id),
-        };
-
-        write!(f, "{orientation_name}")
+        match orientation_name_from_id(self.orientation_id) {
+            Some(name) => write!(f, "{name}"),
+            None => write!(f, "orientation {}", self.orientation_id),
+        }
     }
 }
 
