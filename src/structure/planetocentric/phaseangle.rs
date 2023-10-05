@@ -7,10 +7,10 @@
  *
  * Documentation: https://nyxspace.com/
  */
-use der::{Decode, Encode, Reader, Writer};
-use hifitime::Epoch;
-
 use super::MAX_NUT_PREC_ANGLES;
+use core::fmt;
+use der::{Decode, Encode, Reader, Writer};
+use hifitime::{Epoch, Unit};
 
 /// Angle data is represented as a polynomial of an angle, exactly like in SPICE PCK.
 /// In fact, the following documentation is basically copied from [the required PCK reading](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/pck.html).
@@ -48,12 +48,8 @@ impl PhaseAngle {
     }
 
     /// Evaluates this phase angle in degrees provided the epoch
-    pub fn evaluate_deg(&self, epoch: Epoch, twist: bool) -> f64 {
-        let factor = if twist {
-            epoch.to_tdb_days_since_j2000()
-        } else {
-            epoch.to_tdb_centuries_since_j2000()
-        };
+    pub fn evaluate_deg(&self, epoch: Epoch, rate_unit: Unit) -> f64 {
+        let factor = epoch.to_tdb_duration().to_unit(rate_unit);
 
         self.offset_deg + self.rate_deg * factor + self.accel_deg * factor.powi(2)
     }
@@ -61,7 +57,6 @@ impl PhaseAngle {
 
 impl Encode for PhaseAngle {
     fn encoded_len(&self) -> der::Result<der::Length> {
-        // TODO: Consider encoding this as a DataArray?
         self.offset_deg.encoded_len()?
             + self.rate_deg.encoded_len()?
             + self.accel_deg.encoded_len()?
@@ -87,5 +82,19 @@ impl<'a> Decode<'a> for PhaseAngle {
             coeffs_count: decoder.decode()?,
             coeffs: decoder.decode()?,
         })
+    }
+}
+
+impl fmt::Display for PhaseAngle {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.accel_deg.abs() > 0.0 {
+            write!(
+                f,
+                "{} + {} x + {} x^2",
+                self.offset_deg, self.rate_deg, self.accel_deg
+            )
+        } else {
+            write!(f, "{} + {} x", self.offset_deg, self.rate_deg)
+        }
     }
 }

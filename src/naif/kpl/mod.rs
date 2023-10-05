@@ -89,6 +89,7 @@ pub enum Parameter {
     NutPrecDec,
     NutPrecPm,
     NutPrecAngles,
+    MaxPhaseDegree,
     LongAxis,
     PoleRa,
     PoleDec,
@@ -132,6 +133,7 @@ impl FromStr for Parameter {
             "MATRIX" => Ok(Self::Matrix),
             "UNITS" => Ok(Self::Units),
             "AXES" => Ok(Self::Axes),
+            "MAX_PHASE_DEGREE" => Ok(Self::MaxPhaseDegree),
             "GMLIST" | "NAME" | "SPEC" => {
                 whatever!("unsupported parameter `{s}`")
             }

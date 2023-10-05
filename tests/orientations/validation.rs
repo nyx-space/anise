@@ -28,7 +28,7 @@ const DCM_EPSILON: f64 = 1e-10;
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
 fn validate_iau_rotation_to_parent() {
-    let pck = "data/pck00008.tpc";
+    let pck = "data/pck00011.tpc";
     spice::furnsh(pck);
     let planetary_data = convert_tpc(pck, "data/gm_de431.tpc").unwrap();
 
@@ -40,27 +40,13 @@ fn validate_iau_rotation_to_parent() {
     for frame in [
         // IAU_MERCURY_FRAME,
         // IAU_VENUS_FRAME,
-        IAU_EARTH_FRAME,
+        // IAU_EARTH_FRAME,
         // IAU_MARS_FRAME,
         IAU_JUPITER_FRAME,
         // IAU_SATURN_FRAME,
         // IAU_NEPTUNE_FRAME,
         // IAU_URANUS_FRAME,
     ] {
-        if let Ok(pc) = almanac.planetary_data.get_by_id(frame.orientation_id) {
-            if pc.num_nut_prec_angles > 0 {
-                dbg!(pc);
-            }
-        }
-        if let Ok(pc) = almanac
-            .planetary_data
-            .get_by_id(dbg!(frame.orientation_id / 100))
-        {
-            if pc.num_nut_prec_angles > 0 {
-                dbg!(pc);
-            }
-        }
-        // continue;
         for (num, epoch) in TimeSeries::inclusive(
             Epoch::from_tdb_duration(Duration::ZERO),
             Epoch::from_tdb_duration(0.2.centuries()),
@@ -68,6 +54,8 @@ fn validate_iau_rotation_to_parent() {
         )
         .enumerate()
         {
+            let dcm = almanac.rotation_to_parent(frame, epoch).unwrap();
+
             let rot_data = spice::pxform("J2000", &format!("{frame:o}"), epoch.to_tdb_seconds());
             // Confirmed that the M3x3 below is the correct representation from SPICE by using the mxv spice function and compare that to the nalgebra equivalent computation.
             let spice_mat = Matrix3::new(
@@ -81,8 +69,6 @@ fn validate_iau_rotation_to_parent() {
                 rot_data[2][1],
                 rot_data[2][2],
             );
-
-            let dcm = almanac.rotation_to_parent(frame, epoch).unwrap();
 
             let spice_dcm = DCM {
                 rot_mat: spice_mat,

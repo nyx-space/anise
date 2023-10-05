@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+use core::fmt;
 use der::{Decode, Encode, Reader, Writer};
 use hifitime::Epoch;
 
@@ -22,8 +23,8 @@ pub struct NutationPrecessionAngle {
 impl NutationPrecessionAngle {
     /// Evaluates this nutation precession angle at the given epoch
     pub fn evaluate_deg(&self, epoch: Epoch) -> f64 {
-        let d = epoch.to_tdb_days_since_j2000();
-        dbg!(self.offset_deg + self.rate_deg * d)
+        let t = epoch.to_tdb_centuries_since_j2000();
+        self.offset_deg + self.rate_deg * t
     }
 }
 
@@ -44,6 +45,12 @@ impl<'a> Decode<'a> for NutationPrecessionAngle {
             offset_deg: decoder.decode()?,
             rate_deg: decoder.decode()?,
         })
+    }
+}
+
+impl fmt::Display for NutationPrecessionAngle {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} + {} T", self.offset_deg, self.rate_deg)
     }
 }
 

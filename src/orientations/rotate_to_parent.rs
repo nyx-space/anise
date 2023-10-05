@@ -41,9 +41,14 @@ impl<'a> Almanac<'a> {
                     .planetary_data
                     .get_by_id(source.orientation_id)
                     .with_context(|_| OrientationDataSetSnafu)?;
+                // Fetch the parent info
+                let system_data = self
+                    .planetary_data
+                    .get_by_id(planetary_data.parent_id)
+                    .with_context(|_| OrientationDataSetSnafu)?;
 
                 planetary_data
-                    .rotation_to_parent(epoch)
+                    .rotation_to_parent(epoch, &system_data)
                     .with_context(|_| OrientationPhysicsSnafu)
             }
         }

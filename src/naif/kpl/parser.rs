@@ -157,7 +157,6 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
     // Now that planetary_data has everything, we'll create the planetary dataset in the ANISE ASN1 format.
 
     for (object_id, planetary_data) in planetary_data {
-        dbg!(object_id);
         match planetary_data.data.get(&Parameter::GravitationalParameter) {
             Some(mu_km3_s2_value) => {
                 match mu_km3_s2_value {
@@ -182,7 +181,7 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
                             None => None,
                         };
 
-                        let constant = match planetary_data.data.get(&Parameter::PoleRa) {
+                        let mut constant = match planetary_data.data.get(&Parameter::PoleRa) {
                             Some(data) => match data {
                                 KPLValue::Matrix(pole_ra_data) => {
                                     let mut pole_ra_data = pole_ra_data.clone();
@@ -215,32 +214,6 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
                                     }
                                     let prime_mer = PhaseAngle::maybe_new(&prime_mer_data);
 
-                                    let (num_nut_prec_angles, nut_prec_angles) =
-                                        match planetary_data.data.get(&Parameter::NutPrecAngles) {
-                                            Some(nut_prec_val) => {
-                                                let nut_prec_data =
-                                                    nut_prec_val.to_vec_f64().unwrap();
-                                                let mut coeffs =
-                                                    [NutationPrecessionAngle::default();
-                                                        MAX_NUT_PREC_ANGLES];
-                                                for (i, nut_prec) in
-                                                    nut_prec_data.chunks(2).enumerate()
-                                                {
-                                                    coeffs[i] = NutationPrecessionAngle {
-                                                        offset_deg: nut_prec[0],
-                                                        rate_deg: nut_prec[1],
-                                                    };
-                                                }
-
-                                                (coeffs.len() as u8, coeffs)
-                                            }
-                                            None => (
-                                                0,
-                                                [NutationPrecessionAngle::default();
-                                                    MAX_NUT_PREC_ANGLES],
-                                            ),
-                                        };
-
                                     let long_axis =
                                         match planetary_data.data.get(&Parameter::LongAxis) {
                                             Some(val) => match val {
@@ -265,9 +238,8 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
                                         pole_right_ascension: pola_ra,
                                         pole_declination: pola_dec,
                                         prime_meridian: prime_mer,
-                                        num_nut_prec_angles,
-                                        nut_prec_angles,
                                         long_axis,
+                                        ..Default::default()
                                     }
                                 }
                                 _ => unreachable!(),
@@ -281,6 +253,32 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
                                     ..Default::default()
                                 }
                             }
+                        };
+
+                        // Add the nutation precession angles, which are defined for the system
+                        if let Some(nut_prec_val) =
+                            planetary_data.data.get(&Parameter::NutPrecAngles)
+                        {
+                            let phase_deg =
+                                match planetary_data.data.get(&Parameter::MaxPhaseDegree) {
+                                    Some(val) => (val.to_i32().unwrap() + 1) as usize,
+                                    None => 2,
+                                };
+                            let nut_prec_data = nut_prec_val.to_vec_f64().unwrap();
+                            let mut coeffs =
+                                [NutationPrecessionAngle::default(); MAX_NUT_PREC_ANGLES];
+                            let mut num = 0;
+                            for (i, nut_prec) in nut_prec_data.chunks(phase_deg).enumerate() {
+                                // TODO: Convert to PhaseAngle without any nut prec angles ... or move the nut prec angles into its own field?
+                                coeffs[i] = NutationPrecessionAngle {
+                                    offset_deg: nut_prec[0],
+                                    rate_deg: nut_prec[1],
+                                };
+                                num += 1;
+                            }
+
+                            constant.num_nut_prec_angles = num;
+                            constant.nut_prec_angles = coeffs;
                         };
 
                         dataset_builder.push_into(&mut buf, constant, Some(object_id), None)?;

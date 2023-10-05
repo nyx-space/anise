@@ -21,7 +21,7 @@ pub mod nutprec;
 pub mod phaseangle;
 use der::{Decode, Encode, Reader, Writer};
 use ellipsoid::Ellipsoid;
-use hifitime::Epoch;
+use hifitime::{Epoch, Unit};
 use nutprec::NutationPrecessionAngle;
 use phaseangle::PhaseAngle;
 
@@ -126,8 +126,30 @@ impl PlanetaryData {
         bits
     }
 
+    fn uses_trig_polynomial(&self) -> bool {
+        if let Some(phase) = self.pole_right_ascension {
+            if phase.coeffs_count > 0 {
+                return true;
+            }
+        }
+
+        if let Some(phase) = self.pole_declination {
+            if phase.coeffs_count > 0 {
+                return true;
+            }
+        }
+
+        if let Some(phase) = self.prime_meridian {
+            if phase.coeffs_count > 0 {
+                return true;
+            }
+        }
+
+        false
+    }
+
     /// Computes the rotation to the parent frame
-    pub fn rotation_to_parent(&self, epoch: Epoch) -> PhysicsResult<DCM> {
+    pub fn rotation_to_parent(&self, epoch: Epoch, system: &Self) -> PhysicsResult<DCM> {
         if self.pole_declination.is_none()
             && self.prime_meridian.is_none()
             && self.pole_right_ascension.is_none()
@@ -135,27 +157,42 @@ impl PlanetaryData {
             Ok(DCM::identity(self.object_id, self.parent_id))
         } else {
             let mut variable_angles_deg = [0.0_f64; MAX_NUT_PREC_ANGLES];
-            for (ii, nut_prec_angle) in self
-                .nut_prec_angles
-                .iter()
-                .enumerate()
-                .take(self.num_nut_prec_angles.into())
-            {
-                variable_angles_deg[ii] = nut_prec_angle.evaluate_deg(epoch)
+            // Skip the computation of the nutation and precession angles of the system if we won't be using them.
+            if self.uses_trig_polynomial() {
+                for (ii, nut_prec_angle) in system
+                    .nut_prec_angles
+                    .iter()
+                    .enumerate()
+                    .take(system.num_nut_prec_angles.into())
+                {
+                    variable_angles_deg[ii] = nut_prec_angle.evaluate_deg(epoch);
+                    println!(
+                        "J{} = {nut_prec_angle} = {}",
+                        ii + 1,
+                        variable_angles_deg[ii]
+                    );
+                }
             }
 
             let right_asc_rad = match self.pole_right_ascension {
                 Some(right_asc_deg) => {
-                    let mut angle_rad = right_asc_deg.evaluate_deg(epoch, false).to_radians();
+                    let mut angle_rad = right_asc_deg
+                        .evaluate_deg(epoch, Unit::Century)
+                        .to_radians();
+                    print!("alpha = {right_asc_deg} +");
                     // Add the nutation and precession angles for this phase angle
-                    for (ii, nut_prec_coeff) in right_asc_deg
+                    for (ii, coeff) in right_asc_deg
                         .coeffs
                         .iter()
                         .enumerate()
                         .take(right_asc_deg.coeffs_count as usize)
                     {
-                        angle_rad += nut_prec_coeff * variable_angles_deg[ii].to_radians().sin();
+                        if coeff.abs() > 0.0 {
+                            print!(" {coeff} * sin({}) +", variable_angles_deg[ii]);
+                            angle_rad += coeff * variable_angles_deg[ii].to_radians().sin();
+                        }
                     }
+                    println!();
                     angle_rad + FRAC_PI_2
                 }
                 None => 0.0,
@@ -163,16 +200,21 @@ impl PlanetaryData {
 
             let dec_rad = match self.pole_declination {
                 Some(decl_deg) => {
-                    let mut angle_rad = decl_deg.evaluate_deg(epoch, false).to_radians();
+                    let mut angle_rad = decl_deg.evaluate_deg(epoch, Unit::Century).to_radians();
+                    print!("delta = {decl_deg} +");
                     // Add the nutation and precession angles for this phase angle
-                    for (ii, nut_prec_coeff) in decl_deg
+                    for (ii, coeff) in decl_deg
                         .coeffs
                         .iter()
                         .enumerate()
                         .take(decl_deg.coeffs_count as usize)
                     {
-                        angle_rad += nut_prec_coeff * variable_angles_deg[ii].to_radians().cos();
+                        if coeff.abs() > 0.0 {
+                            print!(" {coeff} * cos({}) +", variable_angles_deg[ii]);
+                            angle_rad += coeff * variable_angles_deg[ii].to_radians().cos();
+                        }
                     }
+                    println!();
                     FRAC_PI_2 - angle_rad
                 }
                 None => 0.0,
@@ -180,16 +222,21 @@ impl PlanetaryData {
 
             let twist_rad = match self.prime_meridian {
                 Some(twist_deg) => {
-                    let mut angle_rad = twist_deg.evaluate_deg(epoch, true).to_radians();
+                    let mut angle_rad = twist_deg.evaluate_deg(epoch, Unit::Day).to_radians();
+                    print!("w = {twist_deg} +");
                     // Add the nutation and precession angles for this phase angle
-                    for (ii, nut_prec_coeff) in twist_deg
+                    for (ii, coeff) in twist_deg
                         .coeffs
                         .iter()
                         .enumerate()
                         .take(twist_deg.coeffs_count as usize)
                     {
-                        angle_rad += nut_prec_coeff * variable_angles_deg[ii].to_radians().sin();
+                        if coeff.abs() > 0.0 {
+                            print!(" {coeff} * sin({}) +", variable_angles_deg[ii]);
+                            angle_rad += coeff * variable_angles_deg[ii].to_radians().sin();
+                        }
                     }
+                    println!();
                     angle_rad
                 }
                 None => 0.0,
