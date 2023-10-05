@@ -93,7 +93,7 @@ mod nut_prec_ut {
         // E1 = 125.045 -  0.052992 d, d represents days past J2000 ( TDB )
         assert_eq!(
             repr.evaluate_deg(Epoch::from_tdb_duration(1.days())),
-            125.045 - 0.052992
+            125.04499854915811
         );
     }
 }

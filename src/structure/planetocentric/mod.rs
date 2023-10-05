@@ -166,11 +166,6 @@ impl PlanetaryData {
                     .take(system.num_nut_prec_angles.into())
                 {
                     variable_angles_deg[ii] = nut_prec_angle.evaluate_deg(epoch);
-                    println!(
-                        "J{} = {nut_prec_angle} = {}",
-                        ii + 1,
-                        variable_angles_deg[ii]
-                    );
                 }
             }
 
@@ -179,7 +174,6 @@ impl PlanetaryData {
                     let mut angle_rad = right_asc_deg
                         .evaluate_deg(epoch, Unit::Century)
                         .to_radians();
-                    print!("alpha = {right_asc_deg} +");
                     // Add the nutation and precession angles for this phase angle
                     for (ii, coeff) in right_asc_deg
                         .coeffs
@@ -187,12 +181,8 @@ impl PlanetaryData {
                         .enumerate()
                         .take(right_asc_deg.coeffs_count as usize)
                     {
-                        if coeff.abs() > 0.0 {
-                            print!(" {coeff} * sin({}) +", variable_angles_deg[ii]);
-                            angle_rad += coeff * variable_angles_deg[ii].to_radians().sin();
-                        }
+                        angle_rad += coeff * variable_angles_deg[ii].to_radians().sin();
                     }
-                    println!();
                     angle_rad + FRAC_PI_2
                 }
                 None => 0.0,
@@ -201,7 +191,6 @@ impl PlanetaryData {
             let dec_rad = match self.pole_declination {
                 Some(decl_deg) => {
                     let mut angle_rad = decl_deg.evaluate_deg(epoch, Unit::Century).to_radians();
-                    print!("delta = {decl_deg} +");
                     // Add the nutation and precession angles for this phase angle
                     for (ii, coeff) in decl_deg
                         .coeffs
@@ -209,12 +198,8 @@ impl PlanetaryData {
                         .enumerate()
                         .take(decl_deg.coeffs_count as usize)
                     {
-                        if coeff.abs() > 0.0 {
-                            print!(" {coeff} * cos({}) +", variable_angles_deg[ii]);
-                            angle_rad += coeff * variable_angles_deg[ii].to_radians().cos();
-                        }
+                        angle_rad += coeff * variable_angles_deg[ii].to_radians().cos();
                     }
-                    println!();
                     FRAC_PI_2 - angle_rad
                 }
                 None => 0.0,
@@ -223,7 +208,6 @@ impl PlanetaryData {
             let twist_rad = match self.prime_meridian {
                 Some(twist_deg) => {
                     let mut angle_rad = twist_deg.evaluate_deg(epoch, Unit::Day).to_radians();
-                    print!("w = {twist_deg} +");
                     // Add the nutation and precession angles for this phase angle
                     for (ii, coeff) in twist_deg
                         .coeffs
@@ -231,12 +215,8 @@ impl PlanetaryData {
                         .enumerate()
                         .take(twist_deg.coeffs_count as usize)
                     {
-                        if coeff.abs() > 0.0 {
-                            print!(" {coeff} * sin({}) +", variable_angles_deg[ii]);
-                            angle_rad += coeff * variable_angles_deg[ii].to_radians().sin();
-                        }
+                        angle_rad += coeff * variable_angles_deg[ii].to_radians().sin();
                     }
-                    println!();
                     angle_rad
                 }
                 None => 0.0,

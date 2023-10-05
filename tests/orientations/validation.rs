@@ -28,7 +28,8 @@ const DCM_EPSILON: f64 = 1e-10;
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
 fn validate_iau_rotation_to_parent() {
-    let pck = "data/pck00011.tpc";
+    // Known bug with nutation and precession angles: https://github.com/nyx-space/anise/issues/122
+    let pck = "data/pck00008.tpc";
     spice::furnsh(pck);
     let planetary_data = convert_tpc(pck, "data/gm_de431.tpc").unwrap();
 
@@ -38,13 +39,13 @@ fn validate_iau_rotation_to_parent() {
     };
 
     for frame in [
-        // IAU_MERCURY_FRAME,
-        // IAU_VENUS_FRAME,
-        // IAU_EARTH_FRAME,
-        // IAU_MARS_FRAME,
+        IAU_MERCURY_FRAME,
+        IAU_VENUS_FRAME,
+        IAU_EARTH_FRAME,
+        IAU_MARS_FRAME,
         IAU_JUPITER_FRAME,
-        // IAU_SATURN_FRAME,
-        // IAU_NEPTUNE_FRAME,
+        IAU_SATURN_FRAME,
+        // IAU_NEPTUNE_FRAME, // Bug: https://github.com/nyx-space/anise/issues/122
         // IAU_URANUS_FRAME,
     ] {
         for (num, epoch) in TimeSeries::inclusive(
@@ -105,9 +106,6 @@ fn validate_iau_rotation_to_parent() {
                 dcm.rot_mat,
                 (dcm.rot_mat - spice_mat).norm()
             );
-            if num > 1 {
-                break;
-            }
         }
     }
 }
