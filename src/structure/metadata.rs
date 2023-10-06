@@ -16,8 +16,8 @@ use crate::errors::DecodingError;
 
 use super::{dataset::DataSetType, semver::Semver, ANISE_VERSION};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Metadata<'a> {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Metadata {
     /// The ANISE version number. Can be used for partial decoding to determine whether a file is compatible with a library.
     pub anise_version: Semver,
     /// The type of dataset encoded in the rest of the structure
@@ -25,12 +25,12 @@ pub struct Metadata<'a> {
     /// Date time of the creation of this file.
     pub creation_date: Epoch,
     /// Originator of the file, either an organization, a person, a tool, or a combination thereof
-    pub originator: &'a str,
+    pub originator: String,
     /// Unique resource identifier to the metadata of this file. This is for FAIR compliance.
-    pub metadata_uri: &'a str,
+    pub metadata_uri: String,
 }
 
-impl<'a> Metadata<'a> {
+impl Metadata {
     /// Only decode the anise version and dataset type
     pub fn decode_header(bytes: &[u8]) -> Result<Self, DecodingError> {
         let anise_version =
@@ -57,7 +57,7 @@ impl<'a> Metadata<'a> {
     }
 }
 
-impl Default for Metadata<'_> {
+impl Default for Metadata {
     fn default() -> Self {
         Self {
             anise_version: ANISE_VERSION,
@@ -69,38 +69,38 @@ impl Default for Metadata<'_> {
     }
 }
 
-impl<'a> Encode for Metadata<'a> {
+impl Encode for Metadata {
     fn encoded_len(&self) -> der::Result<der::Length> {
         self.anise_version.encoded_len()?
             + self.dataset_type.encoded_len()?
             + Utf8StringRef::new(&format!("{}", self.creation_date))?.encoded_len()?
-            + Utf8StringRef::new(self.originator)?.encoded_len()?
-            + Utf8StringRef::new(self.metadata_uri)?.encoded_len()?
+            + Utf8StringRef::new(&self.originator)?.encoded_len()?
+            + Utf8StringRef::new(&self.metadata_uri)?.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         self.anise_version.encode(encoder)?;
         self.dataset_type.encode(encoder)?;
         Utf8StringRef::new(&format!("{}", self.creation_date))?.encode(encoder)?;
-        Utf8StringRef::new(self.originator)?.encode(encoder)?;
-        Utf8StringRef::new(self.metadata_uri)?.encode(encoder)
+        Utf8StringRef::new(&self.originator)?.encode(encoder)?;
+        Utf8StringRef::new(&self.metadata_uri)?.encode(encoder)
     }
 }
 
-impl<'a> Decode<'a> for Metadata<'a> {
+impl<'a> Decode<'a> for Metadata {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         Ok(Self {
             anise_version: decoder.decode()?,
             dataset_type: decoder.decode()?,
             creation_date: Epoch::from_str(decoder.decode::<Utf8StringRef<'a>>()?.as_str())
                 .unwrap(),
-            originator: decoder.decode::<Utf8StringRef<'a>>()?.as_str(),
-            metadata_uri: decoder.decode::<Utf8StringRef<'a>>()?.as_str(),
+            originator: decoder.decode::<Utf8StringRef<'a>>()?.to_string(),
+            metadata_uri: decoder.decode::<Utf8StringRef<'a>>()?.to_string(),
         })
     }
 }
 
-impl<'a> fmt::Display for Metadata<'a> {
+impl<'a> fmt::Display for Metadata {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ANISE version {}", self.anise_version)?;
         writeln!(
@@ -109,7 +109,7 @@ impl<'a> fmt::Display for Metadata<'a> {
             if self.originator.is_empty() {
                 "(not set)"
             } else {
-                self.originator
+                &self.originator
             }
         )?;
         writeln!(f, "Creation date: {}", self.creation_date)?;
@@ -119,7 +119,7 @@ impl<'a> fmt::Display for Metadata<'a> {
             if self.metadata_uri.is_empty() {
                 "(not set)"
             } else {
-                self.metadata_uri
+                &self.metadata_uri
             }
         )
     }

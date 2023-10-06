@@ -54,7 +54,7 @@ pub trait DataSetT<'a>: Encode + Decode<'a> {
 /// A DataSet is the core structure shared by all ANISE binary data.
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub struct DataSet<'a, T: DataSetT<'a>, const ENTRIES: usize> {
-    pub metadata: Metadata<'a>,
+    pub metadata: Metadata,
     /// All datasets have LookUpTable (LUT) that stores the mapping between a key and its index in the ephemeris list.
     pub lut: LookUpTable<'a, ENTRIES>,
     pub data_checksum: u32,
