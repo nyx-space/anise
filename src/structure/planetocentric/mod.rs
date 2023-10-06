@@ -443,7 +443,7 @@ mod planetary_constants_ut {
 
         let mut buf = vec![];
         min_repr.encode_to_vec(&mut buf).unwrap();
-        assert_eq!(buf.len(), 341);
+        assert_eq!(buf.len(), 566);
 
         let min_repr_dec = PlanetaryData::from_der(&buf).unwrap();
 
@@ -521,7 +521,7 @@ mod planetary_constants_ut {
         // Encode
         let mut buf = vec![];
         moon.encode_to_vec(&mut buf).unwrap();
-        assert_eq!(buf.len(), 721);
+        assert_eq!(buf.len(), 946);
 
         let moon_dec = PlanetaryData::from_der(&buf).unwrap();
 
