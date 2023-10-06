@@ -25,7 +25,6 @@ use crate::naif::kpl::Parameter;
 use crate::structure::dataset::{DataSetBuilder, DataSetError, DataSetType};
 use crate::structure::metadata::Metadata;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
-use crate::structure::planetocentric::nutprec::NutationPrecessionAngle;
 use crate::structure::planetocentric::phaseangle::PhaseAngle;
 use crate::structure::planetocentric::{PlanetaryData, MAX_NUT_PREC_ANGLES};
 use crate::structure::{EulerParameterDataSet, PlanetaryDataSet};
@@ -265,14 +264,14 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
                                     None => 2,
                                 };
                             let nut_prec_data = nut_prec_val.to_vec_f64().unwrap();
-                            let mut coeffs =
-                                [NutationPrecessionAngle::default(); MAX_NUT_PREC_ANGLES];
+                            let mut coeffs = [PhaseAngle::<0>::default(); MAX_NUT_PREC_ANGLES];
                             let mut num = 0;
                             for (i, nut_prec) in nut_prec_data.chunks(phase_deg).enumerate() {
                                 // TODO: Convert to PhaseAngle without any nut prec angles ... or move the nut prec angles into its own field?
-                                coeffs[i] = NutationPrecessionAngle {
+                                coeffs[i] = PhaseAngle::<0> {
                                     offset_deg: nut_prec[0],
                                     rate_deg: nut_prec[1],
+                                    ..Default::default()
                                 };
                                 num += 1;
                             }

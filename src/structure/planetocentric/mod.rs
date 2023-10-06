@@ -17,12 +17,10 @@ use crate::{
     NaifId,
 };
 pub mod ellipsoid;
-pub mod nutprec;
 pub mod phaseangle;
 use der::{Decode, Encode, Reader, Writer};
 use ellipsoid::Ellipsoid;
 use hifitime::{Epoch, Unit};
-use nutprec::NutationPrecessionAngle;
 use phaseangle::PhaseAngle;
 
 use super::dataset::DataSetT;
@@ -72,14 +70,14 @@ pub struct PlanetaryData {
     pub mu_km3_s2: f64,
     /// The shape is always a tri axial ellipsoid
     pub shape: Option<Ellipsoid>,
-    pub pole_right_ascension: Option<PhaseAngle>,
-    pub pole_declination: Option<PhaseAngle>,
-    pub prime_meridian: Option<PhaseAngle>,
+    pub pole_right_ascension: Option<PhaseAngle<MAX_NUT_PREC_ANGLES>>,
+    pub pole_declination: Option<PhaseAngle<MAX_NUT_PREC_ANGLES>>,
+    pub prime_meridian: Option<PhaseAngle<MAX_NUT_PREC_ANGLES>>,
     pub long_axis: Option<f64>,
     /// These are the nutation precession angles as a list of tuples to rebuild them.
     /// E.g. For `E1 = 125.045 -  0.052992 d`, this would be stored as a single entry `(125.045, -0.052992)`.
     pub num_nut_prec_angles: u8,
-    pub nut_prec_angles: [NutationPrecessionAngle; MAX_NUT_PREC_ANGLES],
+    pub nut_prec_angles: [PhaseAngle<0>; MAX_NUT_PREC_ANGLES],
 }
 
 impl<'a> DataSetT<'a> for PlanetaryData {
@@ -165,7 +163,7 @@ impl PlanetaryData {
                     .enumerate()
                     .take(system.num_nut_prec_angles.into())
                 {
-                    variable_angles_deg[ii] = nut_prec_angle.evaluate_deg(epoch);
+                    variable_angles_deg[ii] = nut_prec_angle.evaluate_deg(epoch, Unit::Century);
                 }
             }
 
