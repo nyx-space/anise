@@ -176,6 +176,9 @@ jobs:
           cargo llvm-cov clean --workspace
           cargo llvm-cov test --no-report -- --test-threads=1
           cargo llvm-cov test --no-report --tests -- compile_fail
+          cargo llvm-cov test --no-report validate_iau_rotation_to_parent -- --nocapture --ignored
+          cargo llvm-cov test --no-report validate_jplde_de440s --features spkezr_validation -- --nocapture --ignored
+          cargo llvm-cov test --no-report validate_hermite_type13_from_gmat --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov report --lcov > lcov.txt
         env:
           RUSTFLAGS: --cfg __ui_tests
