@@ -449,7 +449,7 @@ mod planetary_constants_ut {
 
         assert_eq!(min_repr, min_repr_dec);
 
-        assert_eq!(core::mem::size_of::<PlanetaryData>(), 1472);
+        assert_eq!(core::mem::size_of::<PlanetaryData>(), 1984);
     }
 
     #[test]
