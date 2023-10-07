@@ -34,7 +34,7 @@ fn common_root_verif() {
 
         // The root of all these files should be the SSB
         assert_eq!(
-            ctx.try_find_context_center().unwrap(),
+            ctx.try_find_ephemeris_root().unwrap(),
             SOLAR_SYSTEM_BARYCENTER
         );
 

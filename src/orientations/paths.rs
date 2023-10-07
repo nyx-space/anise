@@ -11,8 +11,9 @@
 use hifitime::Epoch;
 use snafu::{ensure, ResultExt};
 
-use super::{EphemerisError, NoEphemerisLoadedSnafu, SPKSnafu};
+use super::{BPCSnafu, NoOrientationsLoadedSnafu, OrientationError};
 use crate::almanac::Almanac;
+use crate::constants::orientations::J2000;
 use crate::frames::Frame;
 use crate::naif::daf::{DAFError, NAIFSummaryRecord};
 use crate::NaifId;
@@ -21,44 +22,64 @@ use crate::NaifId;
 pub const MAX_TREE_DEPTH: usize = 8;
 
 impl<'a> Almanac<'a> {
-    /// Returns the root of all of the loaded ephemerides, typically this should be the Solar System Barycenter.
+    /// Returns the root of all of the loaded orientations (BPC or planetary), typically this should be J2000.
     ///
     /// # Algorithm
     ///
-    /// 1. For each loaded SPK, iterated in reverse order (to mimic SPICE behavior)
-    /// 2. For each summary record in each SPK, follow the ephemeris branch all the way up until the end of this SPK or until the SSB.
-    pub fn try_find_ephemeris_root(&self) -> Result<NaifId, EphemerisError> {
-        ensure!(self.num_loaded_spk() > 0, NoEphemerisLoadedSnafu);
+    /// 1. For each loaded BPC, iterated in reverse order (to mimic SPICE behavior)
+    /// 2. For each summary record in each BPC, follow the ephemeris branch all the way up until the end of this BPC or until the J2000.
+    pub fn try_find_orientation_root(&self) -> Result<NaifId, OrientationError> {
+        ensure!(
+            self.num_loaded_bpc() > 0 || !self.planetary_data.is_empty(),
+            NoOrientationsLoadedSnafu
+        );
 
         // The common center is the absolute minimum of all centers due to the NAIF numbering.
         let mut common_center = i32::MAX;
 
-        for maybe_spk in self.spk_data.iter().take(self.num_loaded_spk()).rev() {
-            let spk = maybe_spk.as_ref().unwrap();
+        for maybe_bpc in self.bpc_data.iter().take(self.num_loaded_bpc()).rev() {
+            let bpc = maybe_bpc.as_ref().unwrap();
 
-            for summary in spk.data_summaries().with_context(|_| SPKSnafu {
-                action: "finding ephemeris root",
+            for summary in bpc.data_summaries().with_context(|_| BPCSnafu {
+                action: "finding orientation root",
             })? {
                 // This summary exists, so we need to follow the branch of centers up the tree.
-                if !summary.is_empty() && summary.center_id.abs() < common_center.abs() {
-                    common_center = summary.center_id;
-                    if common_center == 0 {
-                        // We're at the SSB, there is nothing higher up
+                if !summary.is_empty() && summary.inertial_frame_id.abs() < common_center.abs() {
+                    common_center = summary.inertial_frame_id;
+                    if common_center == J2000 {
+                        // there is nothing higher up
                         return Ok(common_center);
                     }
                 }
             }
         }
+
+        // If we reached this point, it means that we didn't find J2000 in the loaded BPCs, so let's iterate through the planetary data
+        if !self.planetary_data.is_empty() {
+            for id in self.planetary_data.lut.by_id.keys() {
+                if let Ok(pc) = self.planetary_data.get_by_id(*id) {
+                    if pc.parent_id < common_center {
+                        println!("{pc}");
+                        common_center = dbg!(pc.parent_id);
+                        if common_center == J2000 {
+                            // there is nothing higher up
+                            return Ok(common_center);
+                        }
+                    }
+                }
+            }
+        }
+
         Ok(common_center)
     }
 
     /// Try to construct the path from the source frame all the way to the root ephemeris of this context.
-    pub fn ephemeris_path_to_root(
+    pub fn orientation_path_to_root(
         &self,
         source: Frame,
         epoch: Epoch,
-    ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH]), EphemerisError> {
-        let common_center = self.try_find_ephemeris_root()?;
+    ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH]), OrientationError> {
+        let common_center = self.try_find_orientation_root()?;
         // Build a tree, set a fixed depth to avoid allocations
         let mut of_path = [None; MAX_TREE_DEPTH];
         let mut of_path_len = 0;
@@ -69,30 +90,30 @@ impl<'a> Almanac<'a> {
         }
 
         // Grab the summary data, which we use to find the paths
-        let summary = self.spk_summary_at_epoch(source.ephemeris_id, epoch)?.0;
+        let summary = self.bpc_summary_at_epoch(source.orientation_id, epoch)?.0;
 
-        let mut center_id = summary.center_id;
+        let mut inertial_frame_id = summary.inertial_frame_id;
 
-        of_path[of_path_len] = Some(summary.center_id);
+        of_path[of_path_len] = Some(summary.inertial_frame_id);
         of_path_len += 1;
 
-        if summary.center_id == common_center {
+        if summary.inertial_frame_id == common_center {
             // Well that was quick!
             return Ok((of_path_len, of_path));
         }
 
         for _ in 0..MAX_TREE_DEPTH {
-            let summary = self.spk_summary_at_epoch(center_id, epoch)?.0;
-            center_id = summary.center_id;
-            of_path[of_path_len] = Some(center_id);
+            let summary = self.bpc_summary_at_epoch(inertial_frame_id, epoch)?.0;
+            inertial_frame_id = summary.inertial_frame_id;
+            of_path[of_path_len] = Some(inertial_frame_id);
             of_path_len += 1;
-            if center_id == common_center {
+            if inertial_frame_id == common_center {
                 // We're found the path!
                 return Ok((of_path_len, of_path));
             }
         }
 
-        Err(EphemerisError::SPK {
+        Err(OrientationError::BPC {
             action: "computing path to common node",
             source: DAFError::MaxRecursionDepth,
         })
@@ -127,27 +148,27 @@ impl<'a> Almanac<'a> {
     /// This can likely be simplified as this as a time complexity of O(n×m) where n, m are the lengths of the paths from
     /// the ephemeris up to the root.
     /// This can probably be optimized to avoid rewinding the entire frame path up to the root frame
-    pub fn common_ephemeris_path(
+    pub fn common_orientation_path(
         &self,
         from_frame: Frame,
         to_frame: Frame,
         epoch: Epoch,
-    ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH], NaifId), EphemerisError> {
+    ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH], NaifId), OrientationError> {
         if from_frame == to_frame {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
             return Ok((0, [None; MAX_TREE_DEPTH], from_frame.ephemeris_id));
         }
 
         // Grab the paths
-        let (from_len, from_path) = self.ephemeris_path_to_root(from_frame, epoch)?;
-        let (to_len, to_path) = self.ephemeris_path_to_root(to_frame, epoch)?;
+        let (from_len, from_path) = self.orientation_path_to_root(from_frame, epoch)?;
+        let (to_len, to_path) = self.orientation_path_to_root(to_frame, epoch)?;
 
         // Now that we have the paths, we can find the matching origin.
 
         // If either path is of zero length, that means one of them is at the root of this ANISE file, so the common
         // path is which brings the non zero-length path back to the file root.
         if from_len == 0 && to_len == 0 {
-            Err(EphemerisError::TranslationOrigin {
+            Err(OrientationError::RotationOrigin {
                 from: from_frame.into(),
                 to: to_frame.into(),
                 epoch,
@@ -192,7 +213,7 @@ impl<'a> Almanac<'a> {
             }
 
             // This is weird and I don't think it should happen, so let's raise an error.
-            Err(EphemerisError::Unreachable)
+            Err(OrientationError::Unreachable)
         }
     }
 }

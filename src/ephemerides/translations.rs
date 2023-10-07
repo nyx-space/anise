@@ -11,7 +11,7 @@
 use snafu::ResultExt;
 
 use super::EphemerisError;
-use super::UnderlyingPhysicsSnafu;
+use super::EphemerisPhysicsSnafu;
 use crate::almanac::Almanac;
 use crate::astro::Aberration;
 use crate::hifitime::Epoch;
@@ -139,6 +139,6 @@ impl<'a> Almanac<'a> {
             frame: from_frame,
         };
 
-        (input_state + frame_state).with_context(|_| UnderlyingPhysicsSnafu {})
+        (input_state + frame_state).with_context(|_| EphemerisPhysicsSnafu {})
     }
 }

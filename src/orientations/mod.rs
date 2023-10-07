@@ -16,6 +16,7 @@ use crate::{
     prelude::FrameUid, structure::dataset::DataSetError,
 };
 
+mod paths;
 mod rotate_to_parent;
 
 #[derive(Debug, Snafu, PartialEq)]
@@ -35,7 +36,7 @@ pub enum OrientationError {
         to: FrameUid,
         epoch: Epoch,
     },
-    #[snafu(display("no oreitnation data loaded (must call load_bpc or DataSet::from_bytes)"))]
+    #[snafu(display("no orientation data loaded (must call load_bpc or DataSet::from_bytes)"))]
     NoOrientationsLoaded,
     #[snafu(display("when {action} caused {source}"))]
     BPC {

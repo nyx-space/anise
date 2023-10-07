@@ -46,7 +46,7 @@ pub enum EphemerisError {
         source: DAFError,
     },
     #[snafu(display("during an ephemeris operation: {source}"))]
-    UnderlyingPhysics {
+    EphemerisPhysics {
         #[snafu(backtrace)]
         source: PhysicsError,
     },

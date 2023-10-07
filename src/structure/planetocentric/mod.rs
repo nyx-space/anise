@@ -8,14 +8,15 @@
  * Documentation: https://nyxspace.com/
  */
 
-use std::f64::consts::FRAC_PI_2;
-
 use crate::{
     astro::PhysicsResult,
+    constants::orientations::orientation_name_from_id,
     math::rotation::DCM,
     prelude::{Frame, FrameUid},
     NaifId,
 };
+use core::f64::consts::FRAC_PI_2;
+use core::fmt;
 pub mod ellipsoid;
 pub mod phaseangle;
 use der::{Decode, Encode, Reader, Writer};
@@ -315,6 +316,41 @@ impl<'a> Decode<'a> for PlanetaryData {
     }
 }
 
+impl fmt::Display for PlanetaryData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Initialize new frame UIDs with arbitrary ephemeris centers, and we don't print those.
+        let orientation_name = match orientation_name_from_id(self.object_id) {
+            Some(name) => name.to_string(),
+            None => format!("planetary data {}", self.object_id),
+        };
+
+        write!(f, "{orientation_name}")?;
+        match self.shape {
+            Some(shape) => {
+                write!(f, " (μ = {} km3/s, {})", self.mu_km3_s2, shape)?;
+            }
+            None => {
+                write!(f, " (μ = {} km3/s)", self.mu_km3_s2)?;
+            }
+        }
+
+        if let Some(ra) = self.pole_right_ascension {
+            write!(f, " RA = {}", ra)?;
+        }
+        if let Some(dec) = self.pole_declination {
+            write!(f, " Dec = {}", dec)?;
+        }
+        if let Some(pm) = self.prime_meridian {
+            write!(f, " PM = {}", pm)?;
+        }
+        if self.num_nut_prec_angles > 0 {
+            write!(f, " + {} nut/prec angles", self.num_nut_prec_angles)?;
+        }
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod planetary_constants_ut {
     use super::{Ellipsoid, PhaseAngle, PlanetaryData};
@@ -335,6 +371,10 @@ mod planetary_constants_ut {
         let repr_dec = PlanetaryData::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
+        assert_eq!(
+            format!("{repr}"),
+            "planetary data 1234 (μ = 12345.6789 km3/s)"
+        );
     }
 
     #[test]
@@ -353,6 +393,10 @@ mod planetary_constants_ut {
         let repr_dec = PlanetaryData::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
+        assert_eq!(
+            format!("{repr}"),
+            "planetary data 1234 (μ = 12345.6789 km3/s, eq. radius = 6378.1366 km, polar radius = 6356.7519 km, f = 0.0033528131084554717)"
+        );
     }
 
     #[test]
@@ -375,6 +419,10 @@ mod planetary_constants_ut {
         let repr_dec = PlanetaryData::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
+        assert_eq!(
+            format!("{repr}"),
+            "planetary data 1234 (μ = 12345.6789 km3/s) RA = 270 + 0.003 x"
+        );
     }
 
     #[test]
@@ -397,6 +445,10 @@ mod planetary_constants_ut {
         let repr_dec = PlanetaryData::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
+        assert_eq!(
+            format!("{repr}"),
+            "planetary data 1234 (μ = 12345.6789 km3/s) Dec = 66.541 + 0.013 x"
+        );
     }
 
     #[test]
@@ -406,7 +458,7 @@ mod planetary_constants_ut {
             rate_deg: 13.1763582,
             ..Default::default()
         };
-        let min_repr = PlanetaryData {
+        let repr = PlanetaryData {
             object_id: 1234,
             mu_km3_s2: 12345.6789,
             prime_meridian: Some(earth_data),
@@ -414,11 +466,15 @@ mod planetary_constants_ut {
         };
 
         let mut buf = vec![];
-        min_repr.encode_to_vec(&mut buf).unwrap();
+        repr.encode_to_vec(&mut buf).unwrap();
 
         let min_repr_dec = PlanetaryData::from_der(&buf).unwrap();
 
-        assert_eq!(min_repr, min_repr_dec);
+        assert_eq!(repr, min_repr_dec);
+        assert_eq!(
+            format!("{repr}"),
+            "planetary data 1234 (μ = 12345.6789 km3/s) PM = 38.317 + 13.1763582 x"
+        );
     }
 
     #[test]
@@ -433,7 +489,7 @@ mod planetary_constants_ut {
             rate_deg: 13.1763582,
             ..Default::default()
         };
-        let min_repr = PlanetaryData {
+        let repr = PlanetaryData {
             object_id: 1234,
             mu_km3_s2: 12345.6789,
             pole_declination: Some(earth_data_dec),
@@ -442,14 +498,16 @@ mod planetary_constants_ut {
         };
 
         let mut buf = vec![];
-        min_repr.encode_to_vec(&mut buf).unwrap();
+        repr.encode_to_vec(&mut buf).unwrap();
         assert_eq!(buf.len(), 566);
 
         let min_repr_dec = PlanetaryData::from_der(&buf).unwrap();
 
-        assert_eq!(min_repr, min_repr_dec);
+        assert_eq!(repr, min_repr_dec);
 
         assert_eq!(core::mem::size_of::<PlanetaryData>(), 1984);
+
+        assert_eq!(format!("{repr}"), "planetary data 1234 (μ = 12345.6789 km3/s) Dec = 66.541 + 0.013 x PM = 38.317 + 13.1763582 x");
     }
 
     #[test]
@@ -526,5 +584,7 @@ mod planetary_constants_ut {
         let moon_dec = PlanetaryData::from_der(&buf).unwrap();
 
         assert_eq!(moon, moon_dec);
+
+        assert_eq!(format!("{moon}"), "planetary data 301 (μ = 4902.800066163796 km3/s) RA = 269.9949 + 0.0031 x Dec = 66.5392 + 0.013 x PM = 38.3213 + 13.17635815 x + -0.0000000000014 x^2");
     }
 }

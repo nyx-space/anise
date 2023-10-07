@@ -17,6 +17,7 @@ use std::path::Path;
 
 use log::{error, info, warn};
 
+use crate::constants::orientations::J2000;
 use crate::math::rotation::{Quaternion, DCM};
 use crate::math::Matrix3;
 use crate::naif::kpl::fk::FKItem;
@@ -230,7 +231,7 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
                                         parent_id: if object_id > 100 {
                                             object_id / 100
                                         } else {
-                                            0
+                                            J2000
                                         },
                                         mu_km3_s2: *mu_km3_s2,
                                         shape: ellipsoid,
@@ -249,6 +250,7 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
                                     object_id,
                                     mu_km3_s2: *mu_km3_s2,
                                     shape: ellipsoid,
+                                    parent_id: J2000,
                                     ..Default::default()
                                 }
                             }

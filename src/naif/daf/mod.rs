@@ -8,11 +8,13 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::{errors::IntegrityError, math::interpolation::InterpolationError, NaifId};
+use crate::{
+    errors::IntegrityError, math::interpolation::InterpolationError, prelude::InputOutputError,
+    NaifId,
+};
 use core::fmt::Display;
 use hifitime::Epoch;
 use snafu::prelude::*;
-use std::io::Error as IOError;
 use zerocopy::{AsBytes, FromBytes};
 
 pub(crate) const RCRD_LEN: usize = 1024;
@@ -172,7 +174,10 @@ pub enum DAFError {
         source: IntegrityError,
     },
     #[snafu(display("while {action} encountered input/output error {source}"))]
-    IO { action: String, source: IOError },
+    IO {
+        action: String,
+        source: InputOutputError,
+    },
 }
 
 // Manual implementation of PartialEq because IOError does not derive it, sadly.
