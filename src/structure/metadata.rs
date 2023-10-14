@@ -7,17 +7,20 @@
  *
  * Documentation: https://nyxspace.com/
  */
+use crate::errors::DecodingError;
 use core::fmt;
 use core::str::FromStr;
 use der::{asn1::Utf8StringRef, Decode, Encode, Reader, Writer};
+use heapless::String;
 use hifitime::Epoch;
 
-use crate::errors::DecodingError;
+/// Default maximum length of the Metadata originator length string
+pub const MAX_ORIGINATOR_LEN: usize = 32;
 
 use super::{dataset::DataSetType, semver::Semver, ANISE_VERSION};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Metadata<'a> {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Metadata {
     /// The ANISE version number. Can be used for partial decoding to determine whether a file is compatible with a library.
     pub anise_version: Semver,
     /// The type of dataset encoded in the rest of the structure
@@ -25,12 +28,10 @@ pub struct Metadata<'a> {
     /// Date time of the creation of this file.
     pub creation_date: Epoch,
     /// Originator of the file, either an organization, a person, a tool, or a combination thereof
-    pub originator: &'a str,
-    /// Unique resource identifier to the metadata of this file. This is for FAIR compliance.
-    pub metadata_uri: &'a str,
+    pub originator: String<MAX_ORIGINATOR_LEN>,
 }
 
-impl<'a> Metadata<'a> {
+impl Metadata {
     /// Only decode the anise version and dataset type
     pub fn decode_header(bytes: &[u8]) -> Result<Self, DecodingError> {
         let anise_version =
@@ -57,50 +58,51 @@ impl<'a> Metadata<'a> {
     }
 }
 
-impl Default for Metadata<'_> {
+impl Default for Metadata {
     fn default() -> Self {
         Self {
             anise_version: ANISE_VERSION,
             dataset_type: DataSetType::NotApplicable,
             creation_date: Epoch::now().unwrap(),
             originator: Default::default(),
-            metadata_uri: Default::default(),
         }
     }
 }
 
-impl<'a> Encode for Metadata<'a> {
+impl<'a> Encode for Metadata {
     fn encoded_len(&self) -> der::Result<der::Length> {
         self.anise_version.encoded_len()?
             + self.dataset_type.encoded_len()?
             + Utf8StringRef::new(&format!("{}", self.creation_date))?.encoded_len()?
-            + Utf8StringRef::new(self.originator)?.encoded_len()?
-            + Utf8StringRef::new(self.metadata_uri)?.encoded_len()?
+            + Utf8StringRef::new(&self.originator)?.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         self.anise_version.encode(encoder)?;
         self.dataset_type.encode(encoder)?;
         Utf8StringRef::new(&format!("{}", self.creation_date))?.encode(encoder)?;
-        Utf8StringRef::new(self.originator)?.encode(encoder)?;
-        Utf8StringRef::new(self.metadata_uri)?.encode(encoder)
+        Utf8StringRef::new(&self.originator)?.encode(encoder)
     }
 }
 
-impl<'a> Decode<'a> for Metadata<'a> {
+impl<'a> Decode<'a> for Metadata {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
+        let anise_version = decoder.decode()?;
+        let dataset_type = decoder.decode()?;
+        let creation_date =
+            Epoch::from_str(decoder.decode::<Utf8StringRef<'a>>()?.as_str()).unwrap();
+        let orig_str = decoder.decode::<Utf8StringRef<'a>>()?.as_str();
+        let originator = orig_str[..MAX_ORIGINATOR_LEN.min(orig_str.len())].into();
         Ok(Self {
-            anise_version: decoder.decode()?,
-            dataset_type: decoder.decode()?,
-            creation_date: Epoch::from_str(decoder.decode::<Utf8StringRef<'a>>()?.as_str())
-                .unwrap(),
-            originator: decoder.decode::<Utf8StringRef<'a>>()?.as_str(),
-            metadata_uri: decoder.decode::<Utf8StringRef<'a>>()?.as_str(),
+            anise_version,
+            dataset_type,
+            creation_date,
+            originator,
         })
     }
 }
 
-impl<'a> fmt::Display for Metadata<'a> {
+impl<'a> fmt::Display for Metadata {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ANISE version {}", self.anise_version)?;
         writeln!(
@@ -109,24 +111,16 @@ impl<'a> fmt::Display for Metadata<'a> {
             if self.originator.is_empty() {
                 "(not set)"
             } else {
-                self.originator
+                &self.originator
             }
         )?;
-        writeln!(f, "Creation date: {}", self.creation_date)?;
-        writeln!(
-            f,
-            "Metadata URI: {}",
-            if self.metadata_uri.is_empty() {
-                "(not set)"
-            } else {
-                self.metadata_uri
-            }
-        )
+        writeln!(f, "Creation date: {}", self.creation_date)
     }
 }
 
 #[cfg(test)]
 mod metadata_ut {
+
     use super::Metadata;
     use der::{Decode, Encode};
 
@@ -148,7 +142,6 @@ mod metadata_ut {
                 r#"ANISE version ANISE version 0.0.1
 Originator: (not set)
 Creation date: {}
-Metadata URI: (not set)
 "#,
                 repr_dec.creation_date
             )
@@ -173,5 +166,18 @@ Metadata URI: (not set)
             Metadata::decode_header(&buf[..4]).is_err(),
             "should not have enough for version"
         );
+    }
+
+    #[test]
+    fn meta_with_orig() {
+        let mut repr = Metadata::default();
+        repr.originator = "Nyx Space Origin".into();
+
+        let mut buf = vec![];
+        repr.encode_to_vec(&mut buf).unwrap();
+
+        let repr_dec = Metadata::from_der(&buf).unwrap();
+
+        assert_eq!(repr, repr_dec);
     }
 }

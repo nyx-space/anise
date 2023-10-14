@@ -14,12 +14,11 @@ mod inertia;
 mod mass;
 mod srp;
 
+use super::dataset::DataSetT;
 pub use drag::DragData;
 pub use inertia::Inertia;
 pub use mass::Mass;
 pub use srp::SRPData;
-
-use super::dataset::DataSetT;
 
 /// Spacecraft constants can store the same spacecraft constant data as the CCSDS Orbit Parameter Message (OPM) and CCSDS Attitude Parameter Messages (APM)
 #[derive(Copy, Clone, Default, Debug, PartialEq)]

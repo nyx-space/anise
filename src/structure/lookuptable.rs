@@ -11,11 +11,14 @@ use der::{
     asn1::{OctetStringRef, SequenceOf},
     Decode, Encode, Reader, Writer,
 };
-use heapless::FnvIndexMap;
+use heapless::{FnvIndexMap, String};
 use log::warn;
 use snafu::prelude::*;
 
 use crate::{errors::DecodingError, NaifId};
+
+/// Maximum length of a look up table name string
+pub const KEY_NAME_LEN: usize = 32;
 
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
@@ -33,7 +36,7 @@ pub enum LutError {
     #[snafu(display("ID {id} not in look up table"))]
     UnknownId { id: NaifId },
     #[snafu(display("name {name} not in look up table"))]
-    UnknownName { name: String },
+    UnknownName { name: String<KEY_NAME_LEN> },
 }
 
 /// A lookup table entry contains the start and end indexes in the data array of the data that is sought after.
@@ -86,20 +89,20 @@ impl<'a> Decode<'a> for Entry {
 /// # Note
 /// _Both_ the IDs and the name MUST be unique in the look up table.
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
-pub struct LookUpTable<'a, const ENTRIES: usize> {
+pub struct LookUpTable<const ENTRIES: usize> {
     /// Unique IDs of each item in the
     pub by_id: FnvIndexMap<NaifId, Entry, ENTRIES>,
     /// Corresponding index for each hash
-    pub by_name: FnvIndexMap<&'a str, Entry, ENTRIES>,
+    pub by_name: FnvIndexMap<String<32>, Entry, ENTRIES>,
 }
 
-impl<'a, const ENTRIES: usize> LookUpTable<'a, ENTRIES> {
-    pub fn append(&mut self, id: i32, name: &'a str, entry: Entry) -> Result<(), LutError> {
+impl<const ENTRIES: usize> LookUpTable<ENTRIES> {
+    pub fn append(&mut self, id: i32, name: &str, entry: Entry) -> Result<(), LutError> {
         self.by_id
             .insert(id, entry)
             .map_err(|_| LutError::IdLutFull { max_slots: ENTRIES })?;
         self.by_name
-            .insert(name, entry)
+            .insert(name.into(), entry)
             .map_err(|_| LutError::NameLutFull { max_slots: ENTRIES })?;
         Ok(())
     }
@@ -111,9 +114,9 @@ impl<'a, const ENTRIES: usize> LookUpTable<'a, ENTRIES> {
         Ok(())
     }
 
-    pub fn append_name(&mut self, name: &'a str, entry: Entry) -> Result<(), LutError> {
+    pub fn append_name(&mut self, name: &str, entry: Entry) -> Result<(), LutError> {
         self.by_name
-            .insert(name, entry)
+            .insert(name.into(), entry)
             .map_err(|_| LutError::NameLutFull { max_slots: ENTRIES })?;
         Ok(())
     }
@@ -174,7 +177,7 @@ impl<'a, const ENTRIES: usize> LookUpTable<'a, ENTRIES> {
     }
 }
 
-impl<'a, const ENTRIES: usize> Encode for LookUpTable<'a, ENTRIES> {
+impl<const ENTRIES: usize> Encode for LookUpTable<ENTRIES> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let (ids, names, id_entries, name_entries) = self.der_encoding();
         ids.encoded_len()?
@@ -192,7 +195,7 @@ impl<'a, const ENTRIES: usize> Encode for LookUpTable<'a, ENTRIES> {
     }
 }
 
-impl<'a, const ENTRIES: usize> Decode<'a> for LookUpTable<'a, ENTRIES> {
+impl<'a, const ENTRIES: usize> Decode<'a> for LookUpTable<ENTRIES> {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         // Decode as sequences and use that to build the look up table.
         let mut lut = Self::default();
@@ -206,8 +209,9 @@ impl<'a, const ENTRIES: usize> Decode<'a> for LookUpTable<'a, ENTRIES> {
         }
 
         for (name, entry) in names.iter().zip(name_entries.iter()) {
+            let key = core::str::from_utf8(name.as_bytes()).unwrap();
             lut.by_name
-                .insert(core::str::from_utf8(name.as_bytes()).unwrap(), *entry)
+                .insert(key[..KEY_NAME_LEN.min(key.len())].into(), *entry)
                 .unwrap();
         }
 
@@ -237,7 +241,7 @@ mod lut_ut {
         assert_eq!(repr, repr_dec);
 
         dbg!(repr);
-        assert_eq!(core::mem::size_of::<LookUpTable<64>>(), 3600);
+        assert_eq!(core::mem::size_of::<LookUpTable<64>>(), 5136);
     }
 
     #[test]

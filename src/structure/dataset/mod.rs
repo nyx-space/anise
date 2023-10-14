@@ -54,13 +54,13 @@ pub trait DataSetT<'a>: Encode + Decode<'a> {
 /// A DataSet is the core structure shared by all ANISE binary data.
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub struct DataSet<'a, T: DataSetT<'a>, const ENTRIES: usize> {
-    pub metadata: Metadata<'a>,
+    pub metadata: Metadata,
     /// All datasets have LookUpTable (LUT) that stores the mapping between a key and its index in the ephemeris list.
-    pub lut: LookUpTable<'a, ENTRIES>,
+    pub lut: LookUpTable<ENTRIES>,
     pub data_checksum: u32,
     /// The actual data from the dataset
     pub bytes: Bytes,
-    _daf_type: PhantomData<T>,
+    _daf_type: PhantomData<&'a T>,
 }
 
 impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
@@ -187,7 +187,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
     }
 
     pub fn get_by_name(&'a self, name: &str) -> Result<T, DataSetError> {
-        if let Some(entry) = self.lut.by_name.get(&name) {
+        if let Some(entry) = self.lut.by_name.get(&name.into()) {
             // Found the name
             let bytes = self
                 .bytes
@@ -204,9 +204,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
         } else {
             Err(DataSetError::DataSetLut {
                 action: "fetching by ID",
-                source: LutError::UnknownName {
-                    name: name.to_string(),
-                },
+                source: LutError::UnknownName { name: name.into() },
             })
         }
     }
@@ -302,7 +300,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> Decode<'a> for DataSet<'a, T, EN
             lut,
             data_checksum: crc32_checksum,
             bytes: Bytes::copy_from_slice(bytes.as_bytes()),
-            _daf_type: PhantomData::<T>,
+            _daf_type: PhantomData::<&'a T>,
         })
     }
 }
@@ -338,15 +336,15 @@ mod dataset_ut {
 
         let mut buf = vec![];
         repr.encode_to_vec(&mut buf).unwrap();
-        assert_eq!(buf.len(), 60);
+        assert_eq!(buf.len(), 58);
 
         let repr_dec = DataSet::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
 
         dbg!(repr);
-        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData, 2>>(), 232);
-        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData, 128>>(), 7288);
+        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData, 2>>(), 288);
+        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData, 128>>(), 10368);
     }
 
     #[test]
@@ -501,7 +499,7 @@ mod dataset_ut {
         let mut ebuf = vec![];
         dataset.encode_to_vec(&mut ebuf).unwrap();
 
-        assert_eq!(ebuf.len(), 724);
+        assert_eq!(ebuf.len(), 722);
 
         let repr_dec = SpacecraftDataSet::from_bytes(&ebuf);
 
