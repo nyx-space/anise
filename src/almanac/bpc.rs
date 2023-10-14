@@ -18,7 +18,7 @@ use log::error;
 
 use super::{Almanac, MAX_LOADED_BPCS};
 
-impl<'a> Almanac<'a> {
+impl<'a> Almanac {
     /// Loads a Binary Planetary Constants kernel.
     pub fn load_bpc(&self, bpc: BPC) -> Result<Self, OrientationError> {
         // This is just a bunch of pointers so it doesn't use much memory.

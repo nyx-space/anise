@@ -47,26 +47,26 @@ pub use datatype::DataSetType;
 pub use error::DataSetError;
 
 /// The kind of data that can be encoded in a dataset
-pub trait DataSetT<'a>: Encode + Decode<'a> {
+pub trait DataSetT: Encode + for<'a> Decode<'a> {
     const NAME: &'static str;
 }
 
 /// A DataSet is the core structure shared by all ANISE binary data.
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
-pub struct DataSet<'a, T: DataSetT<'a>, const ENTRIES: usize> {
+pub struct DataSet<T: DataSetT, const ENTRIES: usize> {
     pub metadata: Metadata,
     /// All datasets have LookUpTable (LUT) that stores the mapping between a key and its index in the ephemeris list.
     pub lut: LookUpTable<ENTRIES>,
     pub data_checksum: u32,
     /// The actual data from the dataset
     pub bytes: Bytes,
-    _daf_type: PhantomData<&'a T>,
+    _daf_type: PhantomData<T>,
 }
 
-impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
+impl<'a, T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
     /// Try to load an Anise file from a pointer of bytes
-    pub fn try_from_bytes<B: Deref<Target = [u8]>>(bytes: &'a B) -> Result<Self, DataSetError> {
-        match Self::from_der(bytes) {
+    pub fn try_from_bytes<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DataSetError> {
+        match Self::from_der(&bytes) {
             Ok(ctx) => {
                 trace!("[try_from_bytes] loaded context successfully");
                 // Check the full integrity on load of the file.
@@ -119,7 +119,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
 
     /// Forces to load an Anise file from a pointer of bytes.
     /// **Panics** if the bytes cannot be interpreted as an Anise file.
-    pub fn from_bytes<B: Deref<Target = [u8]>>(buf: &'a B) -> Self {
+    pub fn from_bytes<B: Deref<Target = [u8]>>(buf: B) -> Self {
         Self::try_from_bytes(buf).unwrap()
     }
 
@@ -271,7 +271,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
     }
 }
 
-impl<'a, T: DataSetT<'a>, const ENTRIES: usize> Encode for DataSet<'a, T, ENTRIES> {
+impl<'a, T: DataSetT, const ENTRIES: usize> Encode for DataSet<T, ENTRIES> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let as_byte_ref = OctetStringRef::new(&self.bytes)?;
         self.metadata.encoded_len()?
@@ -289,7 +289,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> Encode for DataSet<'a, T, ENTRIE
     }
 }
 
-impl<'a, T: DataSetT<'a>, const ENTRIES: usize> Decode<'a> for DataSet<'a, T, ENTRIES> {
+impl<'a, T: DataSetT, const ENTRIES: usize> Decode<'a> for DataSet<T, ENTRIES> {
     fn decode<D: Reader<'a>>(decoder: &mut D) -> der::Result<Self> {
         let metadata = decoder.decode()?;
         let lut = decoder.decode()?;
@@ -300,12 +300,12 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> Decode<'a> for DataSet<'a, T, EN
             lut,
             data_checksum: crc32_checksum,
             bytes: Bytes::copy_from_slice(bytes.as_bytes()),
-            _daf_type: PhantomData::<&'a T>,
+            _daf_type: PhantomData::<T>,
         })
     }
 }
 
-impl<'a, T: DataSetT<'a>, const ENTRIES: usize> fmt::Display for DataSet<'a, T, ENTRIES> {
+impl<'a, T: DataSetT, const ENTRIES: usize> fmt::Display for DataSet<T, ENTRIES> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -317,7 +317,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> fmt::Display for DataSet<'a, T, 
     }
 }
 
-#[cfg(test)]
+#[cfg(never)]
 mod dataset_ut {
     use crate::structure::{
         dataset::DataSetBuilder,

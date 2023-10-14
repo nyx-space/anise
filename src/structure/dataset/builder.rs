@@ -21,11 +21,11 @@ use super::{
 
 /// Dataset builder allows building a dataset. It requires allocations.
 #[derive(Clone, Default, Debug)]
-pub struct DataSetBuilder<'a, T: DataSetT<'a>, const ENTRIES: usize> {
-    pub dataset: DataSet<'a, T, ENTRIES>,
+pub struct DataSetBuilder<T: DataSetT, const ENTRIES: usize> {
+    pub dataset: DataSet<T, ENTRIES>,
 }
 
-impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSetBuilder<'a, T, ENTRIES> {
+impl<'a, T: DataSetT, const ENTRIES: usize> DataSetBuilder<T, ENTRIES> {
     pub fn push_into(
         &mut self,
         buf: &mut Vec<u8>,
@@ -73,7 +73,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSetBuilder<'a, T, ENTRIES> {
         Ok(())
     }
 
-    pub fn finalize(mut self, buf: Vec<u8>) -> Result<DataSet<'a, T, ENTRIES>, DataSetError> {
+    pub fn finalize(mut self, buf: Vec<u8>) -> Result<DataSet<T, ENTRIES>, DataSetError> {
         self.dataset.bytes = Bytes::copy_from_slice(&buf);
         self.dataset.set_crc32();
         Ok(self.dataset)

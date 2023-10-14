@@ -22,7 +22,7 @@ use crate::naif::daf::NAIFDataSet;
 use crate::naif::spk::datatypes::{HermiteSetType13, LagrangeSetType9, Type2ChebyshevSet};
 use crate::prelude::Frame;
 
-impl<'a> Almanac<'a> {
+impl<'a> Almanac {
     /// Returns the position vector and velocity vector of the `source` with respect to its parent in the ephemeris at the provided epoch,
     /// and in the provided distance and time units.
     ///

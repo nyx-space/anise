@@ -27,20 +27,20 @@ pub mod spk;
 /// # Limitations
 /// The stack space required depends on the maximum number of each type that can be loaded.
 #[derive(Clone, Default)]
-pub struct Almanac<'a> {
+pub struct Almanac {
     /// NAIF SPK is kept unchanged
     pub spk_data: [Option<SPK>; MAX_LOADED_SPKS],
     /// NAIF BPC is kept unchanged
     pub bpc_data: [Option<BPC>; MAX_LOADED_BPCS],
     /// Dataset of planetary data
-    pub planetary_data: PlanetaryDataSet<'a>,
+    pub planetary_data: PlanetaryDataSet,
     /// Dataset of spacecraft data
-    pub spacecraft_data: SpacecraftDataSet<'a>,
+    pub spacecraft_data: SpacecraftDataSet,
     /// Dataset of euler parameters
-    pub euler_param_data: EulerParameterDataSet<'a>,
+    pub euler_param_data: EulerParameterDataSet,
 }
 
-impl<'a> fmt::Display for Almanac<'a> {
+impl<'a> fmt::Display for Almanac {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(
             f,

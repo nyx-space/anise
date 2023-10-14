@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 use crate::errors::DecodingError;
+use bytes::Bytes;
 use core::fmt;
 use core::str::FromStr;
 use der::{asn1::Utf8StringRef, Decode, Encode, Reader, Writer};
@@ -55,6 +56,10 @@ impl Metadata {
             ..Default::default()
         };
         Ok(me)
+    }
+
+    pub fn from_bytes(buf: Bytes) -> Self {
+        Self::from_der(&buf).unwrap()
     }
 }
 

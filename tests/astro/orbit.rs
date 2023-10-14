@@ -10,7 +10,7 @@ use anise::time::{Epoch, Unit};
 use rstest::*;
 
 #[fixture]
-fn almanac<'a>() -> Almanac<'a> {
+fn almanac() -> Almanac {
     let mut ctx = Almanac::default();
 
     ctx.planetary_data = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();

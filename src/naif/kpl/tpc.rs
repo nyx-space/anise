@@ -161,18 +161,18 @@ fn test_anise_conversion() {
 
     // Test reloading
     let bytes = file2heap!(path).unwrap();
-    let reloaded = DataSet::from_bytes(&bytes);
+    let reloaded = DataSet::from_bytes(bytes);
 
     assert_eq!(reloaded, dataset);
 
     // Test loading from file loaded on heap
     use std::fs;
     let data = fs::read(path).unwrap();
-    let reloaded = DataSet::from_bytes(&data);
+    let reloaded = DataSet::from_bytes(data);
     assert_eq!(reloaded, dataset);
 
     // Test reloading with real mmap
     let mmap = file_mmap!(path).unwrap();
-    let reloaded = DataSet::from_bytes(&mmap);
+    let reloaded = DataSet::from_bytes(mmap);
     assert_eq!(reloaded, dataset);
 }

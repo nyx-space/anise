@@ -37,9 +37,9 @@ pub struct SpacecraftData<'a> {
     pub inertia: Option<Inertia>,
 }
 
-impl<'a> DataSetT<'a> for SpacecraftData<'a> {
-    const NAME: &'static str = "spacecraft data";
-}
+// impl<'a> DataSetT for SpacecraftData<'a> {
+//     const NAME: &'static str = "spacecraft data";
+// }
 
 impl<'a> SpacecraftData<'a> {
     /// Specifies what data is available in this structure.

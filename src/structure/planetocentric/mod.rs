@@ -81,7 +81,7 @@ pub struct PlanetaryData {
     pub nut_prec_angles: [PhaseAngle<0>; MAX_NUT_PREC_ANGLES],
 }
 
-impl<'a> DataSetT<'a> for PlanetaryData {
+impl DataSetT for PlanetaryData {
     const NAME: &'static str = "planetary data";
 }
 

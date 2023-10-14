@@ -44,21 +44,21 @@ fn main() -> Result<(), CliErrors> {
                     DataSetType::NotApplicable => unreachable!("no such ANISE data yet"),
                     DataSetType::SpacecraftData => {
                         // Decode as spacecraft data
-                        let dataset = SpacecraftDataSet::try_from_bytes(&bytes)
+                        let dataset = SpacecraftDataSet::try_from_bytes(bytes)
                             .with_context(|_| CliDataSetSnafu)?;
                         println!("{dataset}");
                         Ok(())
                     }
                     DataSetType::PlanetaryData => {
                         // Decode as planetary data
-                        let dataset = PlanetaryDataSet::try_from_bytes(&bytes)
+                        let dataset = PlanetaryDataSet::try_from_bytes(bytes)
                             .with_context(|_| CliDataSetSnafu)?;
                         println!("{dataset}");
                         Ok(())
                     }
                     DataSetType::EulerParameterData => {
                         // Decode as euler paramater data
-                        let dataset = EulerParameterDataSet::try_from_bytes(&bytes)
+                        let dataset = EulerParameterDataSet::try_from_bytes(bytes)
                             .with_context(|_| CliDataSetSnafu)?;
                         println!("{dataset}");
                         Ok(())

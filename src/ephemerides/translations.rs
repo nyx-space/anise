@@ -23,7 +23,7 @@ use crate::prelude::Frame;
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
 pub const MAX_TREE_DEPTH: usize = 8;
 
-impl<'a> Almanac<'a> {
+impl<'a> Almanac {
     /// Returns the Cartesian state  needed to translate the `from_frame` to the `to_frame`.
     ///
     /// **WARNING:** This function only performs the translation and no rotation whatsoever. Use the `transform_from_to` function instead to include rotations.

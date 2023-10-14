@@ -136,10 +136,7 @@ pub fn parse_file<P: AsRef<Path>, I: KPLItem>(
     Ok(map)
 }
 
-pub fn convert_tpc<'a, P: AsRef<Path>>(
-    pck: P,
-    gm: P,
-) -> Result<PlanetaryDataSet<'a>, DataSetError> {
+pub fn convert_tpc<'a, P: AsRef<Path>>(pck: P, gm: P) -> Result<PlanetaryDataSet, DataSetError> {
     let mut buf = vec![];
     let mut dataset_builder = DataSetBuilder::default();
 
@@ -282,6 +279,8 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
                             constant.nut_prec_angles = coeffs;
                         };
 
+                        // Todo: Switch this to a Map of ID -> constant, and another map of Name -> ID.
+                        // Skip the DER serialization in full.
                         dataset_builder.push_into(&mut buf, constant, Some(object_id), None)?;
                         info!("Added {object_id}");
                     }
@@ -308,7 +307,7 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(
 pub fn convert_fk<'a, P: AsRef<Path>>(
     fk_file_path: P,
     show_comments: bool,
-) -> Result<EulerParameterDataSet<'a>, DataSetError> {
+) -> Result<EulerParameterDataSet, DataSetError> {
     let mut buf = vec![];
     let mut dataset_builder = DataSetBuilder::default();
 

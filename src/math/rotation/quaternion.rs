@@ -366,7 +366,7 @@ impl Encode for EulerParameter {
     }
 }
 
-impl<'a> DataSetT<'a> for EulerParameter {
+impl DataSetT for EulerParameter {
     const NAME: &'static str = "euler parameter";
 }
 
