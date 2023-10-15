@@ -18,7 +18,7 @@ use log::error;
 
 use super::{Almanac, MAX_LOADED_SPKS};
 
-impl<'a> Almanac {
+impl Almanac {
     pub fn from_spk(spk: SPK) -> Result<Almanac, EphemerisError> {
         let me = Self::default();
         me.load_spk(spk)

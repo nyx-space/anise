@@ -20,7 +20,7 @@ use crate::NaifId;
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
 pub const MAX_TREE_DEPTH: usize = 8;
 
-impl<'a> Almanac {
+impl Almanac {
     /// Returns the root of all of the loaded ephemerides, typically this should be the Solar System Barycenter.
     ///
     /// # Algorithm

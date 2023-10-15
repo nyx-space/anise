@@ -16,7 +16,7 @@ use nalgebra::Vector4;
 
 use core::ops::Mul;
 
-use super::{Quaternion, Rotation};
+use super::{r1, r2, r3, Quaternion, Rotation};
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct DCM {
@@ -41,10 +41,8 @@ impl DCM {
     /// * `angle_rad` - The angle of rotation in radians.
     ///
     pub fn r1(angle_rad: f64, from: NaifId, to: NaifId) -> Self {
-        let (s, c) = angle_rad.sin_cos();
-        let rot_mat = Matrix3::new(1.0, 0.0, 0.0, 0.0, c, s, 0.0, -s, c);
         Self {
-            rot_mat,
+            rot_mat: r1(angle_rad),
             from,
             to,
             rot_mat_dt: None,
@@ -59,10 +57,8 @@ impl DCM {
     /// * `angle` - The angle of rotation in radians.
     ///
     pub fn r2(angle_rad: f64, from: NaifId, to: NaifId) -> Self {
-        let (s, c) = angle_rad.sin_cos();
-        let rot_mat = Matrix3::new(c, 0.0, -s, 0.0, 1.0, 0.0, s, 0.0, c);
         Self {
-            rot_mat,
+            rot_mat: r2(angle_rad),
             from,
             to,
             rot_mat_dt: None,
@@ -77,10 +73,8 @@ impl DCM {
     /// * `angle_rad` - The angle of rotation in radians.
     ///
     pub fn r3(angle_rad: f64, from: NaifId, to: NaifId) -> Self {
-        let (s, c) = angle_rad.sin_cos();
-        let rot_mat = Matrix3::new(c, s, 0.0, -s, c, 0.0, 0.0, 0.0, 1.0);
         Self {
-            rot_mat,
+            rot_mat: r3(angle_rad),
             from,
             to,
             rot_mat_dt: None,

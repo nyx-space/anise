@@ -29,7 +29,7 @@ impl<'a, T: DataSetT, const ENTRIES: usize> DataSetBuilder<T, ENTRIES> {
     pub fn push_into(
         &mut self,
         buf: &mut Vec<u8>,
-        data: T,
+        data: &T,
         id: Option<NaifId>,
         name: Option<&'a str>,
     ) -> Result<(), DataSetError> {

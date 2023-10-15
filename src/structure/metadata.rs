@@ -74,7 +74,7 @@ impl Default for Metadata {
     }
 }
 
-impl<'a> Encode for Metadata {
+impl Encode for Metadata {
     fn encoded_len(&self) -> der::Result<der::Length> {
         self.anise_version.encoded_len()?
             + self.dataset_type.encoded_len()?
@@ -107,7 +107,7 @@ impl<'a> Decode<'a> for Metadata {
     }
 }
 
-impl<'a> fmt::Display for Metadata {
+impl fmt::Display for Metadata {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ANISE version {}", self.anise_version)?;
         writeln!(
@@ -175,8 +175,10 @@ Creation date: {}
 
     #[test]
     fn meta_with_orig() {
-        let mut repr = Metadata::default();
-        repr.originator = "Nyx Space Origin".into();
+        let repr = Metadata {
+            originator: "Nyx Space Origin".into(),
+            ..Default::default()
+        };
 
         let mut buf = vec![];
         repr.encode_to_vec(&mut buf).unwrap();

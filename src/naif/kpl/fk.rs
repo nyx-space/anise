@@ -193,8 +193,20 @@ mod fk_ut {
 
     #[test]
     fn test_convert_fk() {
+        use crate::math::rotation::{r1, r2, r3, DCM};
         let dataset = convert_fk("data/moon_080317.txt", false).unwrap();
 
         assert_eq!(dataset.len(), 3, "expected three items");
+
+        // Check that we've correctly set the names.
+        let moon_me = dataset.get_by_name("MOON_ME_DE421").unwrap();
+        // From the file:
+        // TKFRAME_31007_ANGLES = (67.92   78.56   0.30 )
+        // TKFRAME_31007_AXES   = (3,      2,      1    )
+        // These angles are in arcseconds.
+        let expected = r3((67.92 / 3600.0_f64).to_radians())
+            * r2((78.56 / 3600.0_f64).to_radians())
+            * r1((0.30 / 3600.0_f64).to_radians());
+        assert!((DCM::from(moon_me).rot_mat - expected).norm() < 1e-10);
     }
 }

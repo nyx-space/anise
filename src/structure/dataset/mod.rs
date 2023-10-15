@@ -63,7 +63,7 @@ pub struct DataSet<T: DataSetT, const ENTRIES: usize> {
     _daf_type: PhantomData<T>,
 }
 
-impl<'a, T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
+impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
     /// Try to load an Anise file from a pointer of bytes
     pub fn try_from_bytes<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DataSetError> {
         match Self::from_der(&bytes) {
@@ -163,7 +163,7 @@ impl<'a, T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
         }
     }
 
-    pub fn get_by_id(&'a self, id: NaifId) -> Result<T, DataSetError> {
+    pub fn get_by_id(&self, id: NaifId) -> Result<T, DataSetError> {
         if let Some(entry) = self.lut.by_id.get(&id) {
             // Found the ID
             let bytes = self
@@ -186,7 +186,7 @@ impl<'a, T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
         }
     }
 
-    pub fn get_by_name(&'a self, name: &str) -> Result<T, DataSetError> {
+    pub fn get_by_name(&self, name: &str) -> Result<T, DataSetError> {
         if let Some(entry) = self.lut.by_name.get(&name.into()) {
             // Found the name
             let bytes = self
@@ -271,7 +271,7 @@ impl<'a, T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
     }
 }
 
-impl<'a, T: DataSetT, const ENTRIES: usize> Encode for DataSet<T, ENTRIES> {
+impl<T: DataSetT, const ENTRIES: usize> Encode for DataSet<T, ENTRIES> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let as_byte_ref = OctetStringRef::new(&self.bytes)?;
         self.metadata.encoded_len()?
@@ -305,7 +305,7 @@ impl<'a, T: DataSetT, const ENTRIES: usize> Decode<'a> for DataSet<T, ENTRIES> {
     }
 }
 
-impl<'a, T: DataSetT, const ENTRIES: usize> fmt::Display for DataSet<T, ENTRIES> {
+impl<T: DataSetT, const ENTRIES: usize> fmt::Display for DataSet<T, ENTRIES> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -317,7 +317,7 @@ impl<'a, T: DataSetT, const ENTRIES: usize> fmt::Display for DataSet<T, ENTRIES>
     }
 }
 
-#[cfg(never)]
+#[cfg(test)]
 mod dataset_ut {
     use crate::structure::{
         dataset::DataSetBuilder,
@@ -351,8 +351,7 @@ mod dataset_ut {
     fn spacecraft_constants_lookup() {
         // Build some data first.
         let full_sc = SpacecraftData {
-            name: "full spacecraft",
-            comments: "this is an example of encoding spacecraft data",
+            name: "full spacecraft".into(),
             srp_data: Some(SRPData {
                 area_m2: 2.0,
                 coeff_reflectivity: 1.8,
@@ -370,8 +369,7 @@ mod dataset_ut {
             drag_data: Some(DragData::default()),
         };
         let srp_sc = SpacecraftData {
-            name: "SRP only spacecraft",
-            comments: "this is an example of encoding spacecraft data",
+            name: "SRP only spacecraft".into(),
             srp_data: Some(SRPData::default()),
             ..Default::default()
         };
@@ -446,8 +444,7 @@ mod dataset_ut {
     fn spacecraft_constants_lookup_builder() {
         // Build some data first.
         let full_sc = SpacecraftData {
-            name: "full spacecraft",
-            comments: "this is an example of encoding spacecraft data",
+            name: "full spacecraft".into(),
             srp_data: Some(SRPData {
                 area_m2: 2.0,
                 coeff_reflectivity: 1.8,
@@ -465,8 +462,7 @@ mod dataset_ut {
             drag_data: Some(DragData::default()),
         };
         let srp_sc = SpacecraftData {
-            name: "SRP only spacecraft",
-            comments: "this is an example of encoding spacecraft data",
+            name: "SRP only spacecraft".into(),
             srp_data: Some(SRPData::default()),
             ..Default::default()
         };
@@ -475,21 +471,21 @@ mod dataset_ut {
         let mut buf = vec![];
         let mut builder = DataSetBuilder::default();
         builder
-            .push_into(&mut buf, srp_sc, Some(-20), Some("SRP spacecraft"))
+            .push_into(&mut buf, &srp_sc, Some(-20), Some("SRP spacecraft"))
             .unwrap();
 
         builder
-            .push_into(&mut buf, full_sc, Some(-50), Some("Full spacecraft"))
+            .push_into(&mut buf, &full_sc, Some(-50), Some("Full spacecraft"))
             .unwrap();
 
         // Pushing without name as ID -51
         builder
-            .push_into(&mut buf, full_sc, Some(-51), None)
+            .push_into(&mut buf, &full_sc, Some(-51), None)
             .unwrap();
 
         // Pushing without ID
         builder
-            .push_into(&mut buf, srp_sc, None, Some("ID less SRP spacecraft"))
+            .push_into(&mut buf, &srp_sc, None, Some("ID less SRP spacecraft"))
             .unwrap();
 
         let dataset = builder.finalize(buf).unwrap();
@@ -501,7 +497,7 @@ mod dataset_ut {
 
         assert_eq!(ebuf.len(), 722);
 
-        let repr_dec = SpacecraftDataSet::from_bytes(&ebuf);
+        let repr_dec = SpacecraftDataSet::from_bytes(ebuf);
 
         assert_eq!(dataset, repr_dec);
 

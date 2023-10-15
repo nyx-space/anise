@@ -18,7 +18,7 @@ use crate::math::rotation::DCM;
 use crate::orientations::OrientationDataSetSnafu;
 use crate::prelude::Frame;
 
-impl<'a> Almanac {
+impl Almanac {
     /// Returns the position vector and velocity vector of the `source` with respect to its parent in the ephemeris at the provided epoch,
     /// and in the provided distance and time units.
     ///

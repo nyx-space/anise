@@ -40,7 +40,7 @@ pub struct Almanac {
     pub euler_param_data: EulerParameterDataSet,
 }
 
-impl<'a> fmt::Display for Almanac {
+impl fmt::Display for Almanac {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(
             f,

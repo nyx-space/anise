@@ -68,7 +68,7 @@ impl SpacecraftData {
     }
 }
 
-impl<'a> Encode for SpacecraftData {
+impl Encode for SpacecraftData {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let available_flags = self.available_data();
         Utf8StringRef::new(&self.name)?.encoded_len()?

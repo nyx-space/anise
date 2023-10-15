@@ -416,7 +416,7 @@ mod hermite_ut {
         // Two metadata, one state, one epoch
         let zeros = [0.0_f64; 2 * 7 + 2];
 
-        let mut invalid_num_records = zeros.clone();
+        let mut invalid_num_records = zeros;
         invalid_num_records[zeros.len() - 1] = f64::INFINITY;
         match HermiteSetType13::from_slice_f64(&invalid_num_records) {
             Ok(_) => panic!("test failed on invalid num records"),
@@ -435,7 +435,7 @@ mod hermite_ut {
             }
         }
 
-        let mut invalid_num_samples = zeros.clone();
+        let mut invalid_num_samples = zeros;
         invalid_num_samples[zeros.len() - 2] = f64::INFINITY;
         match HermiteSetType13::from_slice_f64(&invalid_num_samples) {
             Ok(_) => panic!("test failed on invalid num samples"),
@@ -454,7 +454,7 @@ mod hermite_ut {
             }
         }
 
-        let mut invalid_epoch = zeros.clone();
+        let mut invalid_epoch = zeros;
         invalid_epoch[zeros.len() - 3] = f64::INFINITY;
 
         let dataset = HermiteSetType13::from_slice_f64(&invalid_epoch).unwrap();
@@ -471,7 +471,7 @@ mod hermite_ut {
             }
         }
 
-        let mut invalid_record = zeros.clone();
+        let mut invalid_record = zeros;
         invalid_record[0] = f64::INFINITY;
         // Force the number of records to be one, otherwise everything is considered the epoch registry
         invalid_record[zeros.len() - 1] = 1.0;

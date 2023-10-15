@@ -18,7 +18,7 @@ use std::path::Path;
 use log::{error, info, warn};
 
 use crate::constants::orientations::J2000;
-use crate::math::rotation::{Quaternion, DCM};
+use crate::math::rotation::{r1, r2, r3, DCM};
 use crate::math::Matrix3;
 use crate::naif::kpl::fk::FKItem;
 use crate::naif::kpl::tpc::TPCItem;
@@ -136,7 +136,7 @@ pub fn parse_file<P: AsRef<Path>, I: KPLItem>(
     Ok(map)
 }
 
-pub fn convert_tpc<'a, P: AsRef<Path>>(pck: P, gm: P) -> Result<PlanetaryDataSet, DataSetError> {
+pub fn convert_tpc<P: AsRef<Path>>(pck: P, gm: P) -> Result<PlanetaryDataSet, DataSetError> {
     let mut buf = vec![];
     let mut dataset_builder = DataSetBuilder::default();
 
@@ -281,7 +281,7 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(pck: P, gm: P) -> Result<PlanetaryDataSet
 
                         // Todo: Switch this to a Map of ID -> constant, and another map of Name -> ID.
                         // Skip the DER serialization in full.
-                        dataset_builder.push_into(&mut buf, constant, Some(object_id), None)?;
+                        dataset_builder.push_into(&mut buf, &constant, Some(object_id), None)?;
                         info!("Added {object_id}");
                     }
                     _ => error!(
@@ -304,7 +304,7 @@ pub fn convert_tpc<'a, P: AsRef<Path>>(pck: P, gm: P) -> Result<PlanetaryDataSet
     Ok(dataset)
 }
 
-pub fn convert_fk<'a, P: AsRef<Path>>(
+pub fn convert_fk<P: AsRef<Path>>(
     fk_file_path: P,
     show_comments: bool,
 ) -> Result<EulerParameterDataSet, DataSetError> {
@@ -312,8 +312,8 @@ pub fn convert_fk<'a, P: AsRef<Path>>(
     let mut dataset_builder = DataSetBuilder::default();
 
     let assignments = parse_file::<_, FKItem>(fk_file_path, show_comments)?;
-    // Add all of the data into the data set
 
+    // Add all of the data into the data set
     for (id, item) in assignments {
         if !item.data.contains_key(&Parameter::Angles)
             && !item.data.contains_key(&Parameter::Matrix)
@@ -337,9 +337,8 @@ pub fn convert_fk<'a, P: AsRef<Path>>(
             // Build the quaternion from the Euler matrices
             let from = id;
             let to = item.data[&Parameter::Center].to_i32().unwrap();
-            let temp_to1 = 12345; // Dummy value to support multiplications
-            let temp_to2 = 67890; // Dummy value to support multiplications
-            let mut q = Quaternion::identity(from, temp_to1);
+
+            let mut dcm = Matrix3::identity();
 
             for (i, rot) in item.data[&Parameter::Axes]
                 .to_vec_f64()
@@ -347,24 +346,25 @@ pub fn convert_fk<'a, P: AsRef<Path>>(
                 .iter()
                 .enumerate()
             {
-                let (from, to) = if i % 2 == 0 {
-                    (temp_to1, temp_to2)
-                } else {
-                    (temp_to2, temp_to1)
-                };
-                let this_q = if rot == &1.0 {
-                    Quaternion::about_x(angle_data[i].to_radians(), from, to)
+                let this_dcm = if rot == &1.0 {
+                    r1(angle_data[i].to_radians())
                 } else if rot == &2.0 {
-                    Quaternion::about_y(angle_data[i].to_radians(), from, to)
+                    r2(angle_data[i].to_radians())
                 } else {
-                    Quaternion::about_z(angle_data[i].to_radians(), from, to)
+                    r3(angle_data[i].to_radians())
                 };
-                q = (q * this_q).unwrap();
+                dcm *= this_dcm;
             }
-            q.to = to;
+            // Convert to quaternion
+            let q = DCM {
+                rot_mat: dcm,
+                to,
+                from,
+                rot_mat_dt: None,
+            }
+            .into();
 
-            // dataset_builder.push_into(&mut buf, q, Some(id), item.name.as_deref())?;
-            dataset_builder.push_into(&mut buf, q, Some(id), None)?;
+            dataset_builder.push_into(&mut buf, &q, Some(id), item.name.as_deref())?;
         } else if let Some(matrix) = item.data.get(&Parameter::Matrix) {
             let mat_data = matrix.to_vec_f64().unwrap();
             let rot_mat = Matrix3::new(
@@ -384,8 +384,7 @@ pub fn convert_fk<'a, P: AsRef<Path>>(
                 rot_mat,
                 rot_mat_dt: None,
             };
-            // dataset_builder.push_into(&mut buf, dcm.into(), Some(id), item.name.as_deref())?;
-            dataset_builder.push_into(&mut buf, dcm.into(), Some(id), None)?;
+            dataset_builder.push_into(&mut buf, &dcm.into(), Some(id), item.name.as_deref())?;
         }
     }
 
