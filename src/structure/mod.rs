@@ -35,7 +35,7 @@ pub const ANISE_VERSION: Semver = Semver {
 };
 
 /// Spacecraft Data Set allow mapping an ID and/or name to spacecraft data, optionally including mass, drag, SRP, an inertia information
-pub type SpacecraftDataSet = DataSet<PlanetaryData, MAX_SPACECRAFT_DATA>;
+pub type SpacecraftDataSet = DataSet<SpacecraftData, MAX_SPACECRAFT_DATA>;
 /// Planetary Data Set allow mapping an ID and/or name to planetary data, optionally including shape information and rotation information
 pub type PlanetaryDataSet = DataSet<PlanetaryData, MAX_PLANETARY_DATA>;
 /// Euler Parameter Data Set allow mapping an ID and/or name to a time invariant Quaternion
