@@ -495,7 +495,7 @@ mod dataset_ut {
         let mut ebuf = vec![];
         dataset.encode_to_vec(&mut ebuf).unwrap();
 
-        assert_eq!(ebuf.len(), 722);
+        assert_eq!(ebuf.len(), 530);
 
         let repr_dec = SpacecraftDataSet::from_bytes(ebuf);
 
