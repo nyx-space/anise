@@ -8,7 +8,5 @@
  * Documentation: https://nyxspace.com/
  */
 
-// Defines the supported data types
-pub mod datatypes;
 // Defines how to read an SPK
 pub mod summary;

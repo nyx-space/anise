@@ -398,7 +398,8 @@ mod daf_ut {
     use crate::{
         errors::{InputOutputError, IntegrityError},
         file2heap,
-        naif::{daf::DAFError, spk::datatypes::HermiteSetType13, SPK},
+        naif::daf::{datatypes::HermiteSetType13, DAFError},
+        prelude::SPK,
     };
 
     use std::fs::File;

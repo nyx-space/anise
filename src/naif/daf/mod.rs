@@ -25,6 +25,8 @@ pub use data_types::DataType as DafDataType;
 pub mod file_record;
 pub mod name_record;
 pub mod summary_record;
+// Defines the supported data types
+pub mod datatypes;
 
 pub use daf::DAF;
 

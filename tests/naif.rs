@@ -13,9 +13,9 @@ use std::mem::size_of_val;
 use anise::{
     file2heap,
     naif::{
-        daf::DAF,
+        daf::{datatypes::Type2ChebyshevSet, DAF},
         pck::BPCSummaryRecord,
-        spk::{datatypes::Type2ChebyshevSet, summary::SPKSummaryRecord},
+        spk::summary::SPKSummaryRecord,
         Endian,
     },
     prelude::*,
