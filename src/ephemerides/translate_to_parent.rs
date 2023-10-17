@@ -18,7 +18,7 @@ use crate::ephemerides::EphemInterpolationSnafu;
 use crate::hifitime::Epoch;
 use crate::math::cartesian::CartesianState;
 use crate::math::Vector3;
-use crate::naif::daf::NAIFDataSet;
+use crate::naif::daf::{DAFError, DafDataType, NAIFDataSet};
 use crate::naif::spk::datatypes::{HermiteSetType13, LagrangeSetType9, Type2ChebyshevSet};
 use crate::prelude::Frame;
 
@@ -54,10 +54,8 @@ impl Almanac {
             .ok_or(EphemerisError::Unreachable)?;
 
         // Now let's simply evaluate the data
-        let (pos_km, vel_km_s) = match summary.data_type_i {
-            // TODO : match against enumeration instead of direct integer match for clarity ?
-            2 => {
-                // Type 2 Chebyshev
+        let (pos_km, vel_km_s) = match summary.data_type()? {
+            DafDataType::Type2ChebyshevTriplet => {
                 let data = spk_data
                     .nth_data::<Type2ChebyshevSet>(idx_in_spk)
                     .with_context(|_| SPKSnafu {
@@ -66,8 +64,7 @@ impl Almanac {
                 data.evaluate(epoch, summary)
                     .with_context(|_| EphemInterpolationSnafu)?
             }
-            9 => {
-                // Type 9: Lagrange Interpolation --- Unequal Time Steps
+            DafDataType::Type9LagrangeUnequalStep => {
                 let data = spk_data
                     .nth_data::<LagrangeSetType9>(idx_in_spk)
                     .with_context(|_| SPKSnafu {
@@ -76,8 +73,7 @@ impl Almanac {
                 data.evaluate(epoch, summary)
                     .with_context(|_| EphemInterpolationSnafu)?
             }
-            13 => {
-                // Type 13: Hermite Interpolation --- Unequal Time Steps
+            DafDataType::Type13HermiteUnequalStep => {
                 let data = spk_data
                     .nth_data::<HermiteSetType13>(idx_in_spk)
                     .with_context(|_| SPKSnafu {
@@ -86,7 +82,15 @@ impl Almanac {
                 data.evaluate(epoch, summary)
                     .with_context(|_| EphemInterpolationSnafu)?
             }
-            _ => todo!("{} is not yet supported", summary.data_type_i),
+            dtype => {
+                return Err(EphemerisError::SPK {
+                    action: "translation to parent",
+                    source: DAFError::UnsupportedDatatype {
+                        dtype,
+                        kind: "SPK computations",
+                    },
+                })
+            }
         };
 
         Ok((pos_km, vel_km_s, new_frame))

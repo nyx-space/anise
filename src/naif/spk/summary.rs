@@ -14,7 +14,7 @@ use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 use crate::{
     ephemerides::EphemerisError,
-    naif::daf::{NAIFRecord, NAIFSummaryRecord},
+    naif::daf::{DafDataType, NAIFRecord, NAIFSummaryRecord},
     prelude::{Frame, FrameUid},
 };
 
@@ -32,6 +32,13 @@ pub struct SPKSummaryRecord {
 }
 
 impl<'a> SPKSummaryRecord {
+    pub fn data_type(&self) -> Result<DafDataType, EphemerisError> {
+        DafDataType::try_from(self.data_type_i).map_err(|source| EphemerisError::SPK {
+            action: "converting data type from i32",
+            source,
+        })
+    }
+
     /// Returns the target frame UID of this summary
     pub fn target_frame_uid(&self) -> FrameUid {
         FrameUid {
