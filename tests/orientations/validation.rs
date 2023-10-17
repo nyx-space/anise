@@ -19,7 +19,7 @@ use anise::{
 };
 use hifitime::{Duration, Epoch, TimeSeries, TimeUnits};
 
-// Allow up to one arcsecond of error
+// Allow up to one arcsecond of error (or 0.06 microradians)
 const MAX_ERR_DEG: f64 = 3.6e-6;
 const DCM_EPSILON: f64 = 1e-10;
 

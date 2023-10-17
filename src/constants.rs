@@ -186,6 +186,7 @@ pub mod orientations {
     pub const IAU_MERCURY: NaifId = 199;
     pub const IAU_VENUS: NaifId = 299;
     pub const IAU_EARTH: NaifId = 399;
+    pub const ITRF93: NaifId = 3000;
     pub const IAU_MARS: NaifId = 499;
     pub const IAU_JUPITER: NaifId = 599;
     pub const IAU_SATURN: NaifId = 699;

@@ -14,9 +14,9 @@ use crate::{
 };
 use nalgebra::Vector4;
 
-use core::ops::Mul;
-
 use super::{r1, r2, r3, Quaternion, Rotation};
+use core::fmt;
+use core::ops::Mul;
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct DCM {
@@ -292,6 +292,19 @@ impl PartialEq for DCM {
 
             self.from == other.from && self.to == other.to && rot_mat_match && dt_match
         }
+    }
+}
+
+impl fmt::Display for DCM {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Rotation {} -> {} (transport theorem = {}){}",
+            self.from,
+            self.to,
+            self.rot_mat_dt.is_some(),
+            self.rot_mat
+        )
     }
 }
 

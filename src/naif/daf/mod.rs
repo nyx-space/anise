@@ -66,9 +66,6 @@ pub trait NAIFDataSet<'a>: Sized + Display + PartialEq {
     /// The underlying record representation
     type RecordKind: NAIFDataRecord<'a>;
 
-    /// The summary record supported by this data set
-    type SummaryKind: NAIFSummaryRecord;
-
     /// The state that is returned from an evaluation of this data set
     type StateKind;
 
@@ -80,10 +77,10 @@ pub trait NAIFDataSet<'a>: Sized + Display + PartialEq {
 
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError>;
 
-    fn evaluate(
+    fn evaluate<S: NAIFSummaryRecord>(
         &self,
         epoch: Epoch,
-        summary: &Self::SummaryKind,
+        summary: &S,
     ) -> Result<Self::StateKind, InterpolationError>;
 
     /// Checks the integrity of this data set, returns an error if the data has issues.

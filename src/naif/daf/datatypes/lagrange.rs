@@ -15,10 +15,7 @@ use snafu::ensure;
 use crate::{
     errors::{DecodingError, IntegrityError, TooFewDoublesSnafu},
     math::{cartesian::CartesianState, interpolation::InterpolationError, Vector3},
-    naif::{
-        daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord},
-        spk::summary::SPKSummaryRecord,
-    },
+    naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord, NAIFSummaryRecord},
     DBL_SIZE,
 };
 
@@ -48,7 +45,6 @@ impl<'a> fmt::Display for LagrangeSetType8<'a> {
 }
 
 impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
-    type SummaryKind = SPKSummaryRecord;
     type StateKind = CartesianState;
     type RecordKind = PositionVelocityRecord;
     const DATASET_NAME: &'static str = "Lagrange Type 8";
@@ -111,10 +107,10 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
         ))
     }
 
-    fn evaluate(
+    fn evaluate<S: NAIFSummaryRecord>(
         &self,
         _epoch: Epoch,
-        _: &Self::SummaryKind,
+        _: &S,
     ) -> Result<CartesianState, InterpolationError> {
         todo!("https://github.com/anise-toolkit/anise.rs/issues/12")
     }
@@ -157,7 +153,6 @@ impl<'a> fmt::Display for LagrangeSetType9<'a> {
 }
 
 impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
-    type SummaryKind = SPKSummaryRecord;
     type StateKind = (Vector3, Vector3);
     type RecordKind = PositionVelocityRecord;
     const DATASET_NAME: &'static str = "Lagrange Type 9";
@@ -205,10 +200,10 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
         ))
     }
 
-    fn evaluate(
+    fn evaluate<S: NAIFSummaryRecord>(
         &self,
         _epoch: Epoch,
-        _: &Self::SummaryKind,
+        _: &S,
     ) -> Result<Self::StateKind, InterpolationError> {
         todo!("https://github.com/anise-toolkit/anise.rs/issues/13")
     }

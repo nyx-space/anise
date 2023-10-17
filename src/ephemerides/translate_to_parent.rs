@@ -24,16 +24,13 @@ use crate::prelude::Frame;
 
 impl Almanac {
     /// Returns the position vector and velocity vector of the `source` with respect to its parent in the ephemeris at the provided epoch,
-    /// and in the provided distance and time units.
-    ///
-    /// # Example
-    /// If the ephemeris stores position interpolation coefficients in kilometer but this function is called with millimeters as a distance unit,
-    /// the output vectors will be in mm, mm/s, mm/s^2 respectively.
+    /// Units are those used in the SPK, typically distances are in kilometers and velocities in kilometers per second.
     ///
     /// # Errors
     /// + As of now, some interpolation types are not supported, and if that were to happen, this would return an error.
     ///
-    /// **WARNING:** This function only performs the translation and no rotation whatsoever. Use the `transform_to_parent_from` function instead to include rotations.
+    /// # Warning
+    /// This function only performs the translation and no rotation whatsoever. Use the `transform_to_parent_from` function instead to include rotations.
     pub(crate) fn translation_parts_to_parent(
         &self,
         source: Frame,
@@ -46,7 +43,7 @@ impl Almanac {
 
         let new_frame = source.with_ephem(summary.center_id);
 
-        trace!("query {source} wrt to {new_frame} @ {epoch:E}");
+        trace!("translate {source} wrt to {new_frame} @ {epoch:E}");
 
         // This should not fail because we've fetched the spk_no from above with the spk_summary_at_epoch call.
         let spk_data = self.spk_data[spk_no]

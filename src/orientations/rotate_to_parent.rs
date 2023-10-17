@@ -14,13 +14,14 @@ use snafu::ResultExt;
 use super::{OrientationError, OrientationPhysicsSnafu};
 use crate::almanac::Almanac;
 use crate::hifitime::Epoch;
-use crate::math::rotation::DCM;
-use crate::orientations::OrientationDataSetSnafu;
+use crate::math::rotation::{r1, r3, DCM};
+use crate::naif::daf::datatypes::Type2ChebyshevSet;
+use crate::naif::daf::{DAFError, DafDataType, NAIFDataSet};
+use crate::orientations::{BPCSnafu, OrientationDataSetSnafu, OrientationInterpolationSnafu};
 use crate::prelude::Frame;
 
 impl Almanac {
-    /// Returns the position vector and velocity vector of the `source` with respect to its parent in the ephemeris at the provided epoch,
-    /// and in the provided distance and time units.
+    /// Returns the direct cosine matrix (DCM) to rotate from the `source` to its parent in the orientation hierarchy at the provided epoch,
     ///
     /// # Example
     /// If the ephemeris stores position interpolation coefficients in kilometer but this function is called with millimeters as a distance unit,
@@ -29,11 +30,51 @@ impl Almanac {
     /// # Errors
     /// + As of now, some interpolation types are not supported, and if that were to happen, this would return an error.
     ///
-    /// **WARNING:** This function only performs the translation and no rotation whatsoever. Use the `transform_to_parent_from` function instead to include rotations.
+    /// **WARNING:** This function only performs the rotation and no translation whatsoever. Use the `transform_to_parent_from` function instead to include rotations.
     pub fn rotation_to_parent(&self, source: Frame, epoch: Epoch) -> Result<DCM, OrientationError> {
         // Let's see if this orientation is defined in the loaded BPC files
         match self.bpc_summary_at_epoch(source.orientation_id, epoch) {
-            Ok((_summary, _bpc_no, _idx_in_bpc)) => todo!("BPC not yet supported"),
+            Ok((summary, bpc_no, idx_in_bpc)) => {
+                let new_frame = source.with_orient(summary.inertial_frame_id);
+
+                trace!("rotate {source} wrt to {new_frame} @ {epoch:E}");
+
+                // This should not fail because we've fetched the spk_no from above with the spk_summary_at_epoch call.
+                let bpc_data = self.bpc_data[bpc_no]
+                    .as_ref()
+                    .ok_or(OrientationError::Unreachable)?;
+
+                let (ra_dec_w, d_ra_dec_w) = match summary.data_type()? {
+                    DafDataType::Type2ChebyshevTriplet => {
+                        let data = bpc_data
+                            .nth_data::<Type2ChebyshevSet>(idx_in_bpc)
+                            .with_context(|_| BPCSnafu {
+                                action: "fetching data for interpolation",
+                            })?;
+                        data.evaluate(epoch, summary)
+                            .with_context(|_| OrientationInterpolationSnafu)?
+                    }
+                    dtype => {
+                        return Err(OrientationError::BPC {
+                            action: "rotation to parent",
+                            source: DAFError::UnsupportedDatatype {
+                                dtype,
+                                kind: "BPC computations",
+                            },
+                        })
+                    }
+                };
+
+                // And build the DCM
+                let rot_mat = r3(ra_dec_w[2]) * r1(ra_dec_w[1]) * r3(ra_dec_w[0]);
+                let rot_mat_dt = Some(r3(d_ra_dec_w[2]) * r1(d_ra_dec_w[1]) * r3(d_ra_dec_w[0]));
+                Ok(DCM {
+                    rot_mat,
+                    rot_mat_dt,
+                    from: source.orientation_id,
+                    to: summary.inertial_frame_id,
+                })
+            }
             Err(_) => {
                 trace!("query {source} wrt to its parent @ {epoch:E} using planetary data");
                 // Not available as a BPC, so let's see if there's planetary data for it.

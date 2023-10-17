@@ -18,10 +18,7 @@ use crate::{
         interpolation::{chebyshev_eval, InterpDecodingSnafu, InterpolationError},
         Vector3,
     },
-    naif::{
-        daf::{NAIFDataRecord, NAIFDataSet, NAIFSummaryRecord},
-        spk::summary::SPKSummaryRecord,
-    },
+    naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFSummaryRecord},
 };
 
 #[derive(PartialEq)]
@@ -54,7 +51,6 @@ impl<'a> fmt::Display for Type2ChebyshevSet<'a> {
 }
 
 impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
-    type SummaryKind = SPKSummaryRecord;
     type StateKind = (Vector3, Vector3);
     type RecordKind = Type2ChebyshevRecord<'a>;
     const DATASET_NAME: &'static str = "Chebyshev Type 2";
@@ -125,10 +121,10 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         ))
     }
 
-    fn evaluate(
+    fn evaluate<S: NAIFSummaryRecord>(
         &self,
         epoch: Epoch,
-        summary: &Self::SummaryKind,
+        summary: &S,
     ) -> Result<(Vector3, Vector3), InterpolationError> {
         if epoch < summary.start_epoch() || epoch > summary.end_epoch() {
             // No need to go any further.
@@ -142,7 +138,7 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         let window_duration_s = self.interval_length.to_seconds();
 
         let radius_s = window_duration_s / 2.0;
-        let ephem_start_delta_s = epoch.to_et_seconds() - summary.start_epoch_et_s;
+        let ephem_start_delta_s = epoch.to_et_seconds() - summary.start_epoch_et_s();
 
         /*
                 CSPICE CODE

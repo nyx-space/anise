@@ -8,9 +8,14 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::naif::daf::{NAIFRecord, NAIFSummaryRecord};
+use crate::{
+    naif::daf::{NAIFRecord, NAIFSummaryRecord},
+    orientations::OrientationError,
+};
 use hifitime::Epoch;
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
+
+use super::daf::DafDataType;
 
 #[derive(Clone, Copy, Debug, Default, AsBytes, FromZeroes, FromBytes)]
 #[repr(C)]
@@ -23,6 +28,15 @@ pub struct BPCSummaryRecord {
     pub start_idx: i32,
     pub end_idx: i32,
     pub unused: i32,
+}
+
+impl BPCSummaryRecord {
+    pub fn data_type(&self) -> Result<DafDataType, OrientationError> {
+        DafDataType::try_from(self.data_type_i).map_err(|source| OrientationError::BPC {
+            action: "converting data type from i32",
+            source,
+        })
+    }
 }
 
 impl NAIFRecord for BPCSummaryRecord {}

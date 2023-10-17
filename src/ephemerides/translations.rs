@@ -24,11 +24,13 @@ use crate::prelude::Frame;
 pub const MAX_TREE_DEPTH: usize = 8;
 
 impl Almanac {
-    /// Returns the Cartesian state  needed to translate the `from_frame` to the `to_frame`.
+    /// Returns the Cartesian state needed to translate the `from_frame` to the `to_frame`.
     ///
-    /// **WARNING:** This function only performs the translation and no rotation whatsoever. Use the `transform_from_to` function instead to include rotations.
+    /// # Warning
+    /// This function only performs the translation and no rotation whatsoever. Use the `transform_from_to` function instead to include rotations.
     ///
-    /// Note: this function performs a recursion of no more than twice the [MAX_TREE_DEPTH].
+    /// # Note
+    /// This function performs a recursion of no more than twice the [MAX_TREE_DEPTH].
     pub fn translate_from_to(
         &self,
         from_frame: Frame,

@@ -16,7 +16,7 @@ use crate::errors::{DecodingError, IntegrityError, TooFewDoublesSnafu};
 use crate::math::interpolation::{
     hermite_eval, InterpDecodingSnafu, InterpolationError, MAX_SAMPLES,
 };
-use crate::naif::spk::summary::SPKSummaryRecord;
+use crate::naif::daf::NAIFSummaryRecord;
 use crate::{
     math::{cartesian::CartesianState, Vector3},
     naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord},
@@ -49,7 +49,6 @@ impl<'a> fmt::Display for HermiteSetType12<'a> {
 }
 
 impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
-    type SummaryKind = SPKSummaryRecord;
     type StateKind = CartesianState;
     type RecordKind = PositionVelocityRecord;
     const DATASET_NAME: &'static str = "Hermite Type 12";
@@ -111,10 +110,10 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
         ))
     }
 
-    fn evaluate(
+    fn evaluate<S: NAIFSummaryRecord>(
         &self,
         _epoch: Epoch,
-        _: &Self::SummaryKind,
+        _: &S,
     ) -> Result<CartesianState, InterpolationError> {
         todo!("https://github.com/anise-toolkit/anise.rs/issues/14")
     }
@@ -168,7 +167,6 @@ impl<'a> fmt::Display for HermiteSetType13<'a> {
 }
 
 impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
-    type SummaryKind = SPKSummaryRecord;
     type StateKind = (Vector3, Vector3);
     type RecordKind = PositionVelocityRecord;
     const DATASET_NAME: &'static str = "Hermite Type 13";
@@ -260,10 +258,10 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
         ))
     }
 
-    fn evaluate(
+    fn evaluate<S: NAIFSummaryRecord>(
         &self,
         epoch: Epoch,
-        _: &Self::SummaryKind,
+        _: &S,
     ) -> Result<Self::StateKind, InterpolationError> {
         // Start by doing a binary search on the epoch registry to limit the search space in the total number of epochs.
         // TODO: use the epoch registry to reduce the search space
