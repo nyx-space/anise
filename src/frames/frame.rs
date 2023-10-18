@@ -11,7 +11,7 @@
 use core::fmt;
 use core::fmt::Debug;
 
-use crate::constants::celestial_objects::celestial_name_from_id;
+use crate::constants::celestial_objects::{celestial_name_from_id, SOLAR_SYSTEM_BARYCENTER};
 use crate::constants::orientations::{orientation_name_from_id, J2000};
 use crate::errors::PhysicsError;
 use crate::prelude::FrameUid;
@@ -42,6 +42,10 @@ impl Frame {
 
     pub const fn from_ephem_j2000(ephemeris_id: NaifId) -> Self {
         Self::from_ephem_orient(ephemeris_id, J2000)
+    }
+
+    pub const fn from_orient_ssb(orientation_id: NaifId) -> Self {
+        Self::from_ephem_orient(SOLAR_SYSTEM_BARYCENTER, orientation_id)
     }
 
     /// Returns a copy of this Frame whose ephemeris ID is set to the provided ID

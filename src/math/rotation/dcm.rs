@@ -10,6 +10,7 @@
 use crate::{
     errors::PhysicsError,
     math::{Matrix3, Matrix6, Vector3, Vector6},
+    prelude::Frame,
     NaifId,
 };
 use nalgebra::Vector4;
@@ -85,11 +86,11 @@ impl DCM {
     ///
     /// Source: https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/rotation.html#Working%20with%20RA,%20Dec%20and%20Twist
     pub fn euler313(theta1: f64, theta2: f64, theta3: f64, from: NaifId, to: NaifId) -> Self {
-        let w_dcm = Self::r3(theta3, from, to);
-        let dec_dcm = Self::r1(theta2, from, to);
-        let ra_dcm = Self::r3(theta1, from, to);
+        let ra_dcm = r3(theta1);
+        let dec_dcm = r1(theta2);
+        let w_dcm = r3(theta3);
         // Perform a multiplication of the DCMs, regardless of frames.
-        let dcm = w_dcm.rot_mat * dec_dcm.rot_mat * ra_dcm.rot_mat;
+        let dcm = w_dcm * dec_dcm * ra_dcm;
 
         Self {
             rot_mat: dcm,
@@ -131,6 +132,20 @@ impl DCM {
             to,
             rot_mat_dt: None,
         }
+    }
+
+    /// Returns whether the `rot_mat` of this DCM is a valid rotation matrix.
+    /// The criteria for validity are:
+    /// -- The columns of the matrix are unit vectors, within a specified tolerance.
+    /// -- The determinant of the matrix formed by unitizing the columns of the input matrix is 1, within a specified tolerance. This criterion ensures that the columns of the matrix are nearly orthogonal, and that they form a right-handed basis.
+    /// [Source: SPICE's rotation.req](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/rotation.html#Validating%20a%20rotation%20matrix)
+    pub fn is_valid(&self, unit_tol: f64, det_tol: f64) -> bool {
+        for col in self.rot_mat.column_iter() {
+            if (col.norm() - 1.0).abs() > unit_tol {
+                return false;
+            }
+        }
+        (self.rot_mat.determinant() - 1.0).abs() < det_tol
     }
 }
 
@@ -299,9 +314,9 @@ impl fmt::Display for DCM {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Rotation {} -> {} (transport theorem = {}){}",
-            self.from,
-            self.to,
+            "Rotation {:o} -> {:o} (transport theorem = {}){}",
+            Frame::from_orient_ssb(self.from),
+            Frame::from_orient_ssb(self.to),
             self.rot_mat_dt.is_some(),
             self.rot_mat
         )
