@@ -114,7 +114,6 @@ fn validate_iau_rotation_to_parent() {
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
 fn validate_bpc_rotation_to_parent() {
-    // Known bug with nutation and precession angles: https://github.com/nyx-space/anise/issues/122
     let pck = "data/earth_latest_high_prec.bpc";
     spice::furnsh(pck);
 
