@@ -193,6 +193,9 @@ pub mod orientations {
     pub const IAU_NEPTUNE: NaifId = 799;
     pub const IAU_URANUS: NaifId = 899;
 
+    /// Angle between J2000 to solar system ecliptic J2000 ([ECLIPJ2000]), in radians (about 23.43929 degrees). Apply this rotation about the X axis ([r1])
+    pub const J2000_TO_ECLIPJ2000_ANGLE_RAD: f64 = 0.40909280422232897;
+
     /// Given the frame ID, try to return a human name
     /// Source: // https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/frames.html#Appendix.%20%60%60Built%20in''%20Inertial%20Reference%20Frames
     pub const fn orientation_name_from_id(id: NaifId) -> Option<&'static str> {
@@ -238,6 +241,7 @@ pub mod frames {
     pub const LUNA_J2000: Frame = Frame::from_ephem_orient(LUNA, J2000);
     pub const EARTH_J2000: Frame = Frame::from_ephem_orient(EARTH, J2000);
     pub const EME2000: Frame = Frame::from_ephem_orient(EARTH, J2000);
+    pub const EARTH_ECLIPJ2000: Frame = Frame::from_ephem_orient(EARTH, ECLIPJ2000);
 
     /// Body fixed IAU rotation
     pub const IAU_MERCURY_FRAME: Frame = Frame::from_ephem_orient(MERCURY, IAU_MERCURY);

@@ -8,8 +8,14 @@
  * Documentation: https://nyxspace.com/
  */
 
+use std::f64::EPSILON;
+
 use anise::{
-    constants::{celestial_objects::EARTH, frames::*, orientations::ITRF93},
+    constants::{
+        celestial_objects::EARTH,
+        frames::*,
+        orientations::{ECLIPJ2000, ITRF93, J2000},
+    },
     math::{
         rotation::{Quaternion, DCM},
         Matrix3,
@@ -187,5 +193,48 @@ fn validate_bpc_rotation_to_parent() {
             (dcm.rot_mat - spice_mat).norm(),
             dcm.rot_mat - spice_mat
         );
+    }
+}
+
+/// Ensure that our rotation for [ECLIPJ2000] to [J2000] matches the one from SPICE.
+#[ignore = "Requires Rust SPICE -- must be executed serially"]
+#[test]
+fn validate_j2000_ecliptic() {
+    // The eclipj2000 to j2000 rotation is embedded, so we don't need to load anything.
+    let almanac = Almanac::default();
+
+    for (num, epoch) in TimeSeries::inclusive(
+        Epoch::from_tdb_duration(0.11.centuries()),
+        Epoch::from_tdb_duration(0.2.centuries()),
+        100.days(),
+    )
+    .enumerate()
+    {
+        let rot_data = spice::pxform("J2000", "ECLIPJ2000", epoch.to_tdb_seconds());
+
+        let dcm = almanac.rotation_to_parent(EARTH_ECLIPJ2000, epoch).unwrap();
+
+        let spice_mat = Matrix3::new(
+            rot_data[0][0],
+            rot_data[0][1],
+            rot_data[0][2],
+            rot_data[1][0],
+            rot_data[1][1],
+            rot_data[1][2],
+            rot_data[2][0],
+            rot_data[2][1],
+            rot_data[2][2],
+        );
+
+        assert!(
+            (dcm.rot_mat - spice_mat).norm() < EPSILON,
+            "#{num} {epoch}\ngot: {}want:{spice_mat}err = {:.3e}: {:.3e}",
+            dcm.rot_mat,
+            (dcm.rot_mat - spice_mat).norm(),
+            dcm.rot_mat - spice_mat
+        );
+
+        assert_eq!(dcm.from, ECLIPJ2000);
+        assert_eq!(dcm.to, J2000);
     }
 }
