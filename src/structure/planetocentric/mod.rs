@@ -11,7 +11,10 @@
 use crate::{
     astro::PhysicsResult,
     constants::orientations::orientation_name_from_id,
-    math::rotation::DCM,
+    math::{
+        rotation::{r1, r3, DCM},
+        Matrix3,
+    },
     prelude::{Frame, FrameUid},
     NaifId,
 };
@@ -21,7 +24,7 @@ pub mod ellipsoid;
 pub mod phaseangle;
 use der::{Decode, Encode, Reader, Writer};
 use ellipsoid::Ellipsoid;
-use hifitime::{Epoch, Unit};
+use hifitime::{Epoch, TimeUnits, Unit};
 use phaseangle::PhaseAngle;
 
 use super::dataset::DataSetT;
@@ -147,13 +150,13 @@ impl PlanetaryData {
         false
     }
 
-    /// Computes the rotation to the parent frame
-    pub fn rotation_to_parent(&self, epoch: Epoch, system: &Self) -> PhysicsResult<DCM> {
+    /// Computes the rotation to the parent frame, returning only the rotation matrix
+    fn dcm_to_parent(&self, epoch: Epoch, system: &Self) -> PhysicsResult<Matrix3> {
         if self.pole_declination.is_none()
             && self.prime_meridian.is_none()
             && self.pole_right_ascension.is_none()
         {
-            Ok(DCM::identity(self.object_id, self.parent_id))
+            Ok(Matrix3::identity())
         } else {
             let mut variable_angles_deg = [0.0_f64; MAX_NUT_PREC_ANGLES];
             // Skip the computation of the nutation and precession angles of the system if we won't be using them.
@@ -221,13 +224,36 @@ impl PlanetaryData {
                 None => 0.0,
             };
 
-            Ok(DCM::euler313(
-                right_asc_rad,
-                dec_rad,
-                twist_rad,
-                self.parent_id,
-                self.object_id,
-            ))
+            let ra_dcm = r3(right_asc_rad);
+            let dec_dcm = r1(dec_rad);
+            let w_dcm = r3(twist_rad);
+            // Perform a multiplication of the DCMs, regardless of frames.
+            Ok(w_dcm * dec_dcm * ra_dcm)
+        }
+    }
+
+    /// Computes the rotation to the parent frame, including its time derivative.
+    pub fn rotation_to_parent(&self, epoch: Epoch, system: &Self) -> PhysicsResult<DCM> {
+        if self.pole_declination.is_none()
+            && self.prime_meridian.is_none()
+            && self.pole_right_ascension.is_none()
+        {
+            Ok(DCM::identity(self.object_id, self.parent_id))
+        } else {
+            // For planetary constants data, we perform a finite differencing to compute the time derivative.
+            let mut dcm = DCM {
+                rot_mat: self.dcm_to_parent(epoch, system)?,
+                from: self.parent_id,
+                to: self.object_id,
+                rot_mat_dt: None,
+            };
+            // Compute rotation matrix one second before
+            let pre_rot_dcm = self.dcm_to_parent(epoch - 1.seconds(), system)?;
+            let post_rot_dcm = self.dcm_to_parent(epoch + 1.seconds(), system)?;
+
+            dcm.rot_mat_dt = Some((post_rot_dcm - pre_rot_dcm) / 2.0);
+
+            Ok(dcm)
         }
     }
 }

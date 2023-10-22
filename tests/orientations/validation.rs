@@ -65,7 +65,16 @@ fn validate_iau_rotation_to_parent() {
         {
             let dcm = almanac.rotation_to_parent(frame, epoch).unwrap();
 
-            let rot_data = spice::pxform("J2000", &format!("{frame:o}"), epoch.to_tdb_seconds());
+            let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];
+            unsafe {
+                spice::c::sxform_c(
+                    cstr!("J2000"),
+                    cstr!(format!("{frame:o}")),
+                    epoch.to_tdb_seconds(),
+                    rot_data.as_mut_ptr(),
+                );
+            }
+
             // Confirmed that the M3x3 below is the correct representation from SPICE by using the mxv spice function and compare that to the nalgebra equivalent computation.
             let spice_mat = Matrix3::new(
                 rot_data[0][0],
@@ -79,12 +88,36 @@ fn validate_iau_rotation_to_parent() {
                 rot_data[2][2],
             );
 
+            let rot_mat_dt = Some(Matrix3::new(
+                rot_data[3][0],
+                rot_data[3][1],
+                rot_data[3][2],
+                rot_data[4][0],
+                rot_data[4][1],
+                rot_data[4][2],
+                rot_data[5][0],
+                rot_data[5][1],
+                rot_data[5][2],
+            ));
+
             let spice_dcm = DCM {
                 rot_mat: spice_mat,
                 from: dcm.from,
                 to: dcm.to,
-                rot_mat_dt: None,
+                rot_mat_dt,
             };
+
+            if num == 0 {
+                println!("ANISE: {dcm}{}", dcm.rot_mat_dt.unwrap());
+                println!("SPICE: {spice_dcm}{}", spice_dcm.rot_mat_dt.unwrap());
+
+                println!("DCM error\n{:e}", dcm.rot_mat - spice_dcm.rot_mat);
+
+                println!(
+                    "derivative error\n{:e}",
+                    dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()
+                );
+            }
 
             // Compute the different in PRV and rotation angle
             let q_anise = Quaternion::from(dcm);
@@ -114,6 +147,16 @@ fn validate_iau_rotation_to_parent() {
                 dcm.rot_mat,
                 (dcm.rot_mat - spice_mat).norm(),
                 dcm.rot_mat - spice_mat
+            );
+
+            // Check the derivative
+            assert!(
+                (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm() < DCM_DT_EPSILON,
+                "#{num} {epoch}\ngot: {}want:{}err = {:.3e}: {:.3e}",
+                dcm.rot_mat_dt.unwrap(),
+                spice_dcm.rot_mat_dt.unwrap(),
+                (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm(),
+                dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()
             );
         }
     }
@@ -223,13 +266,15 @@ fn validate_bpc_rotation_to_parent() {
             (dcm.rot_mat - rot_mat).norm(),
             dcm.rot_mat - rot_mat
         );
+
         // Check the derivative
         assert!(
             (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm() < DCM_DT_EPSILON,
-            "#{num} {epoch}\ngot: {}want:{rot_mat}err = {:.3e}: {:.3e}",
-            dcm.rot_mat,
-            (dcm.rot_mat - rot_mat).norm(),
-            dcm.rot_mat - rot_mat
+            "#{num} {epoch}\ngot: {}want:{}err = {:.3e}: {:.3e}",
+            dcm.rot_mat_dt.unwrap(),
+            spice_dcm.rot_mat_dt.unwrap(),
+            (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm(),
+            dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()
         );
     }
 }

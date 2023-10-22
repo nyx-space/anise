@@ -106,6 +106,7 @@ impl Almanac {
                     .planetary_data
                     .get_by_id(source.orientation_id)
                     .with_context(|_| OrientationDataSetSnafu)?;
+
                 // Fetch the parent info
                 let system_data = match self.planetary_data.get_by_id(planetary_data.parent_id) {
                     Ok(parent) => parent,
