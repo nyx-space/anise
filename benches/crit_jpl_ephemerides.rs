@@ -52,5 +52,5 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     });
 }
 
-criterion_group!(de438s, criterion_benchmark);
-criterion_main!(de438s);
+criterion_group!(de440s, criterion_benchmark);
+criterion_main!(de440s);

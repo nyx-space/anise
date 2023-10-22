@@ -28,14 +28,10 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let time_step = ((end_epoch - start_epoch).to_seconds() / NUM_QUERIES_PER_PAIR).seconds();
     let time_it = TimeSeries::exclusive(start_epoch, end_epoch - time_step, time_step);
 
-    // Load ANISE data
     let pck = "data/earth_latest_high_prec.bpc";
     spice::furnsh(pck);
     let bpc = BPC::load(pck).unwrap();
     let almanac = Almanac::from_bpc(bpc).unwrap();
-
-    // Load SPICE data
-    spice::furnsh("data/de440s.bsp");
 
     c.bench_function("ANISE DAF/BPC single hop to parent", |b| {
         b.iter(|| benchmark_anise_single_hop_type2_cheby(&almanac, time_it.clone()))
@@ -46,5 +42,5 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     });
 }
 
-criterion_group!(de438s, criterion_benchmark);
-criterion_main!(de438s);
+criterion_group!(bpc, criterion_benchmark);
+criterion_main!(bpc);
