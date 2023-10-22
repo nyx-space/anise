@@ -36,7 +36,7 @@ heapless = "0.7.16"
 rstest = "0.18.2"
 
 [dev-dependencies]
-rust-spice = "0.7.4"
+rust-spice = "0.7.6"
 parquet = "46.0.0"
 arrow = "46.0.0"
 criterion = "0.5"
