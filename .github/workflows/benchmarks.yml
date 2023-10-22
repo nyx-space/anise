@@ -11,7 +11,7 @@ on:
 
 jobs:
   ephem_type2_chebyshev:
-    name: JPL DE Benchmark
+    name: SPICE versus ANISE Benchmark
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources

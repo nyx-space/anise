@@ -16,7 +16,7 @@ use crate::almanac::Almanac;
 use crate::constants::frames::EARTH_ECLIPJ2000;
 use crate::constants::orientations::{ECLIPJ2000, J2000, J2000_TO_ECLIPJ2000_ANGLE_RAD};
 use crate::hifitime::Epoch;
-use crate::math::rotation::{r1, r3, DCM};
+use crate::math::rotation::{r1, r1_dot, r3, r3_dot, DCM};
 use crate::naif::daf::datatypes::Type2ChebyshevSet;
 use crate::naif::daf::{DAFError, DafDataType, NAIFDataSet};
 use crate::orientations::{BPCSnafu, OrientationDataSetSnafu, OrientationInterpolationSnafu};
@@ -77,8 +77,21 @@ impl Almanac {
                 };
 
                 // And build the DCM
-                let rot_mat = r3(ra_dec_w[2]) * r1(ra_dec_w[1]) * r3(ra_dec_w[0]);
-                let rot_mat_dt = Some(r3(d_ra_dec_w[2]) * r1(d_ra_dec_w[1]) * r3(d_ra_dec_w[0]));
+                let twist_rad = ra_dec_w[2];
+                let dec_rad = ra_dec_w[1];
+                let ra_rad = ra_dec_w[0];
+
+                let twist_dot_rad = d_ra_dec_w[2];
+                let dec_dot_rad = d_ra_dec_w[1];
+                let ra_dot_rad = d_ra_dec_w[0];
+
+                let rot_mat = r3(twist_rad) * r1(dec_rad) * r3(ra_rad);
+                let rot_mat_dt = Some(
+                    twist_dot_rad * r3_dot(twist_rad) * r1(dec_rad) * r3(ra_rad)
+                        + dec_dot_rad * r3(twist_rad) * r1_dot(dec_rad) * r3(ra_rad)
+                        + ra_dot_rad * r3(twist_rad) * r1(dec_rad) * r3_dot(ra_rad),
+                );
+
                 Ok(DCM {
                     rot_mat,
                     rot_mat_dt,

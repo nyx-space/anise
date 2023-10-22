@@ -61,5 +61,9 @@ name = "crit_jpl_ephemerides"
 harness = false
 
 [[bench]]
-name = "iai_spacecraft_ephemeris"
+name = "crit_spacecraft_ephemeris"
+harness = false
+
+[[bench]]
+name = "crit_bpc_rotation"
 harness = false
