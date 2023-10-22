@@ -29,7 +29,6 @@ use spice::cstr;
 // Allow up to one arcsecond of error (or 0.06 microradians)
 const MAX_ERR_DEG: f64 = 3.6e-6;
 const DCM_EPSILON: f64 = 1e-9;
-const DCM_DT_EPSILON: f64 = 1e-12;
 
 /// This test converts the PCK file into its ANISE equivalent format, loads it into an Almanac, and compares the rotations computed by the Almanac and by SPICE
 /// It only check the IAU rotations to its J2000 parent, and accounts for nutation and precession coefficients where applicable.
@@ -151,7 +150,7 @@ fn validate_iau_rotation_to_parent() {
 
             // Check the derivative
             assert!(
-                (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm() < DCM_DT_EPSILON,
+                (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm() < DCM_EPSILON,
                 "#{num} {epoch}\ngot: {}want:{}err = {:.3e}: {:.3e}",
                 dcm.rot_mat_dt.unwrap(),
                 spice_dcm.rot_mat_dt.unwrap(),
@@ -269,7 +268,7 @@ fn validate_bpc_rotation_to_parent() {
 
         // Check the derivative
         assert!(
-            (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm() < DCM_DT_EPSILON,
+            (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm() < 1e-13,
             "#{num} {epoch}\ngot: {}want:{}err = {:.3e}: {:.3e}",
             dcm.rot_mat_dt.unwrap(),
             spice_dcm.rot_mat_dt.unwrap(),
