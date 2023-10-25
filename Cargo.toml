@@ -38,7 +38,7 @@ rstest = "0.18.2"
 [dev-dependencies]
 rust-spice = "0.7.4"
 parquet = "47.0.0"
-arrow = "47.0.0"
+arrow = "48.0.0"
 criterion = "0.5"
 iai = "0.1"
 polars = { version = "0.34", features = ["lazy", "parquet"] }
