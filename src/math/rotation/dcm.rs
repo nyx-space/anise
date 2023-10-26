@@ -8,12 +8,14 @@
  * Documentation: https://nyxspace.com/
  */
 use crate::{
-    errors::PhysicsError,
-    math::{Matrix3, Matrix6, Vector3, Vector6},
+    astro::PhysicsResult,
+    errors::{OriginMismatchSnafu, PhysicsError},
+    math::{cartesian::CartesianState, Matrix3, Matrix6, Vector3, Vector6},
     prelude::Frame,
     NaifId,
 };
 use nalgebra::Vector4;
+use snafu::ensure;
 
 use super::{r1, r2, r3, Quaternion, Rotation};
 use core::fmt;
@@ -129,6 +131,50 @@ impl DCM {
         }
         (self.rot_mat.determinant() - 1.0).abs() < det_tol
     }
+
+    /// Multiplies this DCM with another one WITHOUT checking if the frames match.
+    pub(crate) fn mul_unchecked(&self, other: Self) -> Self {
+        let mut rslt = *self;
+        rslt.rot_mat *= other.rot_mat;
+        rslt.to = other.to;
+        if let Some(other_rot_mat_dt) = other.rot_mat_dt {
+            if let Some(rot_mat_dt) = self.rot_mat_dt {
+                rslt.rot_mat_dt = Some(rot_mat_dt * other_rot_mat_dt);
+            } else {
+                rslt.rot_mat_dt = Some(other_rot_mat_dt);
+            }
+        } // else: no change to the copy
+        rslt
+    }
+
+    pub fn transpose(&self) -> Self {
+        Self {
+            rot_mat: self.rot_mat.transpose(),
+            rot_mat_dt: match self.rot_mat_dt {
+                Some(rot_mat_dt) => Some(rot_mat_dt.transpose()),
+                None => None,
+            },
+            to: self.from,
+            from: self.to,
+        }
+    }
+}
+
+impl Mul for DCM {
+    type Output = Result<Self, PhysicsError>;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        ensure!(
+            self.to == rhs.from,
+            OriginMismatchSnafu {
+                action: "multiplying DCMs",
+                from1: self.from,
+                from2: rhs.from
+            }
+        );
+
+        Ok(self.mul_unchecked(rhs))
+    }
 }
 
 impl Mul<Vector3> for DCM {
@@ -165,11 +211,34 @@ impl Mul<Vector3> for DCM {
 }
 
 impl Mul<Vector6> for DCM {
-    type Output = Result<Vector6, PhysicsError>;
+    type Output = PhysicsResult<Vector6>;
 
     /// Applying the matrix to a vector yields the vector's representation in the new coordinate system.
     fn mul(self, rhs: Vector6) -> Self::Output {
         Ok(self.state_dcm()? * rhs)
+    }
+}
+
+impl Mul<CartesianState> for DCM {
+    type Output = PhysicsResult<CartesianState>;
+
+    fn mul(self, rhs: CartesianState) -> Self::Output {
+        ensure!(
+            self.from == rhs.frame.orientation_id,
+            OriginMismatchSnafu {
+                action: "rotating Cartesian state",
+                from1: self.from,
+                from2: rhs.frame.orientation_id
+            }
+        );
+        let new_state = self.state_dcm()? * rhs.to_cartesian_pos_vel();
+
+        let mut rslt = rhs;
+        rslt.radius_km = new_state.fixed_rows::<3>(0).to_owned().into();
+        rslt.velocity_km_s = new_state.fixed_rows::<3>(3).to_owned().into();
+        rslt.frame.orientation_id = self.to;
+
+        Ok(rslt)
     }
 }
 
@@ -296,11 +365,15 @@ impl fmt::Display for DCM {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Rotation {:o} -> {:o} (transport theorem = {}){}",
+            "Rotation {:o} -> {:o} (transport theorem = {}){}Derivative: {}",
             Frame::from_orient_ssb(self.from),
             Frame::from_orient_ssb(self.to),
             self.rot_mat_dt.is_some(),
-            self.rot_mat
+            self.rot_mat,
+            match self.rot_mat_dt {
+                None => "None".to_string(),
+                Some(dcm_dt) => format!("{dcm_dt}"),
+            }
         )
     }
 }

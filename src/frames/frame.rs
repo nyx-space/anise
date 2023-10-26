@@ -73,19 +73,19 @@ impl Frame {
     }
 
     /// Returns true if the ephemeris origin is equal to the provided ID
-    pub fn ephem_origin_id_match(&self, other_id: NaifId) -> bool {
+    pub const fn ephem_origin_id_match(&self, other_id: NaifId) -> bool {
         self.ephemeris_id == other_id
     }
     /// Returns true if the orientation origin is equal to the provided ID
-    pub fn orient_origin_id_match(&self, other_id: NaifId) -> bool {
+    pub const fn orient_origin_id_match(&self, other_id: NaifId) -> bool {
         self.orientation_id == other_id
     }
     /// Returns true if the ephemeris origin is equal to the provided frame
-    pub fn ephem_origin_match(&self, other: Self) -> bool {
+    pub const fn ephem_origin_match(&self, other: Self) -> bool {
         self.ephem_origin_id_match(other.ephemeris_id)
     }
     /// Returns true if the orientation origin is equal to the provided frame
-    pub fn orient_origin_match(&self, other: Self) -> bool {
+    pub const fn orient_origin_match(&self, other: Self) -> bool {
         self.orient_origin_id_match(other.orientation_id)
     }
 

@@ -292,11 +292,20 @@ fn validate_j2000_ecliptic() {
     )
     .enumerate()
     {
-        let rot_data = spice::pxform("J2000", "ECLIPJ2000", epoch.to_tdb_seconds());
-
         let dcm = almanac.rotation_to_parent(EARTH_ECLIPJ2000, epoch).unwrap();
 
-        let spice_mat = Matrix3::new(
+        let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];
+        unsafe {
+            spice::c::sxform_c(
+                cstr!("J2000"),
+                cstr!("ECLIPJ2000"),
+                epoch.to_tdb_seconds(),
+                rot_data.as_mut_ptr(),
+            );
+        }
+
+        // Confirmed that the M3x3 below is the correct representation from SPICE by using the mxv spice function and compare that to the nalgebra equivalent computation.
+        let rot_mat = Matrix3::new(
             rot_data[0][0],
             rot_data[0][1],
             rot_data[0][2],
@@ -308,15 +317,164 @@ fn validate_j2000_ecliptic() {
             rot_data[2][2],
         );
 
+        let rot_mat_dt = Matrix3::new(
+            rot_data[3][0],
+            rot_data[3][1],
+            rot_data[3][2],
+            rot_data[4][0],
+            rot_data[4][1],
+            rot_data[4][2],
+            rot_data[5][0],
+            rot_data[5][1],
+            rot_data[5][2],
+        );
+
+        let spice_dcm = DCM {
+            rot_mat,
+            from: dcm.from,
+            to: dcm.to,
+            rot_mat_dt: if rot_mat_dt.norm() == 0.0 {
+                // I know this will be the case.
+                None
+            } else {
+                Some(rot_mat_dt)
+            },
+        };
+
         assert!(
-            (dcm.rot_mat - spice_mat).norm() < EPSILON,
-            "#{num} {epoch}\ngot: {}want:{spice_mat}err = {:.3e}: {:.3e}",
+            (dcm.rot_mat - rot_mat).norm() < EPSILON,
+            "#{num} {epoch}\ngot: {}want:{rot_mat}err = {:.3e}: {:.3e}",
             dcm.rot_mat,
-            (dcm.rot_mat - spice_mat).norm(),
-            dcm.rot_mat - spice_mat
+            (dcm.rot_mat - rot_mat).norm(),
+            dcm.rot_mat - rot_mat
+        );
+
+        // Check the derivative
+        assert_eq!(
+            dcm.rot_mat_dt, spice_dcm.rot_mat_dt,
+            "expected both derivatives to be unuset"
         );
 
         assert_eq!(dcm.from, ECLIPJ2000);
         assert_eq!(dcm.to, J2000);
+    }
+}
+
+#[ignore = "Requires Rust SPICE -- must be executed serially"]
+#[test]
+fn validate_bpc_rotations() {
+    let pck = "data/earth_latest_high_prec.bpc";
+    spice::furnsh(pck);
+
+    let bpc = BPC::load(pck).unwrap();
+    let almanac = Almanac::from_bpc(bpc).unwrap();
+
+    let frame = Frame::from_ephem_orient(EARTH, ITRF93);
+
+    // This BPC file start in 2011 and ends in 2022.
+    for (num, epoch) in TimeSeries::inclusive(
+        Epoch::from_tdb_duration(0.11.centuries()),
+        Epoch::from_tdb_duration(0.2.centuries()),
+        1.days(),
+    )
+    .enumerate()
+    {
+        let dcm = almanac
+            .rotate_from_to(EARTH_ITRF93, EME2000, epoch)
+            .unwrap();
+
+        let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];
+        unsafe {
+            spice::c::sxform_c(
+                cstr!("ITRF93"),
+                cstr!("J2000"),
+                epoch.to_tdb_seconds(),
+                rot_data.as_mut_ptr(),
+            );
+        }
+
+        // Confirmed that the M3x3 below is the correct representation from SPICE by using the mxv spice function and compare that to the nalgebra equivalent computation.
+        let rot_mat = Matrix3::new(
+            rot_data[0][0],
+            rot_data[0][1],
+            rot_data[0][2],
+            rot_data[1][0],
+            rot_data[1][1],
+            rot_data[1][2],
+            rot_data[2][0],
+            rot_data[2][1],
+            rot_data[2][2],
+        );
+
+        let rot_mat_dt = Some(Matrix3::new(
+            rot_data[3][0],
+            rot_data[3][1],
+            rot_data[3][2],
+            rot_data[4][0],
+            rot_data[4][1],
+            rot_data[4][2],
+            rot_data[5][0],
+            rot_data[5][1],
+            rot_data[5][2],
+        ));
+
+        let spice_dcm = DCM {
+            rot_mat,
+            from: dcm.from,
+            to: dcm.to,
+            rot_mat_dt,
+        };
+
+        if num == 0 {
+            println!("ANISE: {dcm}{}", dcm.rot_mat_dt.unwrap());
+            println!("SPICE: {spice_dcm}{}", spice_dcm.rot_mat_dt.unwrap());
+
+            println!("DCM error\n{:e}", dcm.rot_mat - spice_dcm.rot_mat);
+
+            println!(
+                "derivative error\n{:e}",
+                dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()
+            );
+        }
+
+        // Compute the different in PRV and rotation angle
+        let q_anise = Quaternion::from(dcm);
+        let q_spice = Quaternion::from(spice_dcm);
+
+        let (anise_uvec, anise_angle) = q_anise.uvec_angle();
+        let (spice_uvec, spice_angle) = q_spice.uvec_angle();
+
+        let uvec_angle_deg_err = anise_uvec.dot(&spice_uvec).acos().to_degrees();
+        let deg_err = (anise_angle - spice_angle).to_degrees();
+
+        // In some cases, the arc cos of the angle between the unit vectors is NaN (because the dot product is rounded just past -1 or +1)
+        // so we allow NaN.
+        // However, we also check the rotation about that unit vector AND we check that the DCMs match too.
+        assert!(
+            uvec_angle_deg_err.abs() < MAX_ERR_DEG || uvec_angle_deg_err.is_nan(),
+            "#{num} @ {epoch} unit vector angle error for {frame}: {uvec_angle_deg_err:e} deg"
+        );
+        assert!(
+            deg_err.abs() < MAX_ERR_DEG,
+            "#{num} @ {epoch} rotation error for {frame}: {deg_err:e} deg"
+        );
+
+        assert!(
+            (dcm.rot_mat - rot_mat).norm() < DCM_EPSILON,
+            "#{num} {epoch}\ngot: {}want:{rot_mat}err = {:.3e}: {:.3e}",
+            dcm.rot_mat,
+            (dcm.rot_mat - rot_mat).norm(),
+            dcm.rot_mat - rot_mat
+        );
+
+        // Check the derivative
+        assert!(
+            (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm() < 1e-13,
+            "#{num} {epoch}\ngot: {}want:{}err = {:.3e}: {:.3e}",
+            dcm.rot_mat_dt.unwrap(),
+            spice_dcm.rot_mat_dt.unwrap(),
+            (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm(),
+            dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()
+        );
     }
 }

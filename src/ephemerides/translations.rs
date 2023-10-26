@@ -70,7 +70,7 @@ impl Almanac {
                 self.translation_parts_to_parent(to_frame, epoch, ab_corr)?
             };
 
-        for cur_node_hash in path.iter().take(node_count) {
+        for cur_node_id in path.iter().take(node_count) {
             if !frame_fwrd.ephem_origin_id_match(common_node) {
                 let (cur_pos_fwrd, cur_vel_fwrd, cur_frame_fwrd) =
                     self.translation_parts_to_parent(frame_fwrd, epoch, ab_corr)?;
@@ -90,7 +90,7 @@ impl Almanac {
             }
 
             // We know this exist, so we can safely unwrap it
-            if cur_node_hash.unwrap() == common_node {
+            if cur_node_id.unwrap() == common_node {
                 break;
             }
         }

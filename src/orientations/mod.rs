@@ -18,6 +18,7 @@ use crate::{
 
 mod paths;
 mod rotate_to_parent;
+mod rotations;
 
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]

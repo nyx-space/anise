@@ -13,7 +13,6 @@ use snafu::ResultExt;
 
 use super::{OrientationError, OrientationPhysicsSnafu};
 use crate::almanac::Almanac;
-use crate::constants::frames::EARTH_ECLIPJ2000;
 use crate::constants::orientations::{ECLIPJ2000, J2000, J2000_TO_ECLIPJ2000_ANGLE_RAD};
 use crate::hifitime::Epoch;
 use crate::math::rotation::{r1, r1_dot, r3, r3_dot, DCM};
@@ -34,7 +33,10 @@ impl Almanac {
     ///
     /// **WARNING:** This function only performs the rotation and no translation whatsoever. Use the `transform_to_parent_from` function instead to include rotations.
     pub fn rotation_to_parent(&self, source: Frame, epoch: Epoch) -> Result<DCM, OrientationError> {
-        if source == EARTH_ECLIPJ2000 {
+        if source.orient_origin_id_match(J2000) {
+            // The parent of Earth ecliptic J2000 is the J2000 inertial frame.
+            return Ok(DCM::identity(J2000, J2000));
+        } else if source.orient_origin_id_match(ECLIPJ2000) {
             // The parent of Earth ecliptic J2000 is the J2000 inertial frame.
             return Ok(DCM {
                 rot_mat: r1(J2000_TO_ECLIPJ2000_ANGLE_RAD),

@@ -252,6 +252,9 @@ pub mod frames {
     pub const IAU_SATURN_FRAME: Frame = Frame::from_ephem_orient(SATURN, IAU_SATURN);
     pub const IAU_NEPTUNE_FRAME: Frame = Frame::from_ephem_orient(NEPTUNE, IAU_NEPTUNE);
     pub const IAU_URANUS_FRAME: Frame = Frame::from_ephem_orient(URANUS, IAU_URANUS);
+
+    /// Common high precision frame
+    pub const EARTH_ITRF93: Frame = Frame::from_ephem_orient(EARTH, ITRF93);
 }
 
 #[cfg(test)]

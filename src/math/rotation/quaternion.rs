@@ -235,9 +235,9 @@ impl EulerParameter {
 }
 
 impl Mul for Quaternion {
-    type Output = Result<Quaternion, PhysicsError>;
+    type Output = Result<Self, PhysicsError>;
 
-    fn mul(self, rhs: Quaternion) -> Result<Quaternion, PhysicsError> {
+    fn mul(self, rhs: Quaternion) -> Self::Output {
         ensure!(
             self.to == rhs.from,
             OriginMismatchSnafu {
