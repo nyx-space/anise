@@ -107,6 +107,7 @@ impl DCM {
         }
     }
 
+    /// Builds an identity rotation
     pub fn identity(from: i32, to: i32) -> Self {
         let rot_mat = Matrix3::identity();
 
@@ -116,6 +117,11 @@ impl DCM {
             to,
             rot_mat_dt: None,
         }
+    }
+
+    /// Returns whether this rotation is identity, checking first the frames and then the rotation matrix (but ignores its time derivative)
+    pub fn is_identity(&self) -> bool {
+        self.to == self.from || (self.rot_mat - Matrix3::identity()).norm() < 1e-8
     }
 
     /// Returns whether the `rot_mat` of this DCM is a valid rotation matrix.

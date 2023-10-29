@@ -41,52 +41,63 @@ impl<'a, T: DataSetT, const ENTRIES: usize> DataSetBuilder<T, ENTRIES> {
             end_idx: (buf.len() + this_buf.len()) as u32,
         };
 
-        // XXX: Consider switching to a double match
-        if id.is_some() && name.is_some() {
-            self.dataset
-                .lut
-                .append(id.unwrap(), name.unwrap(), entry)
-                .with_context(|_| DataSetLutSnafu {
-                    action: "pushing data with ID and name",
-                })?;
-            // If the ID is the body of a system with a single object, also insert it for the system ID.
-            if [199, 299].contains(&id.unwrap()) {
-                self.dataset
-                    .lut
-                    .append(id.unwrap() / 100, name.unwrap(), entry)
-                    .with_context(|_| DataSetLutSnafu {
-                        action: "pushing data with ID and name",
-                    })?;
+        match id {
+            Some(id) => {
+                match name {
+                    Some(name) => {
+                        // Both an ID and a name
+                        self.dataset.lut.append(id, name, entry).with_context(|_| {
+                            DataSetLutSnafu {
+                                action: "pushing data with ID and name",
+                            }
+                        })?;
+                        // If the ID is the body of a system with a single object, also insert it for the system ID.
+                        if [199, 299].contains(&id) {
+                            self.dataset
+                                .lut
+                                .append(id / 100, name, entry)
+                                .with_context(|_| DataSetLutSnafu {
+                                    action: "pushing data with ID and name",
+                                })?;
+                        }
+                    }
+                    None => {
+                        // Only an ID and no name
+                        self.dataset.lut.append_id(id, entry).with_context(|_| {
+                            DataSetLutSnafu {
+                                action: "pushing data with ID only",
+                            }
+                        })?;
+                        // If the ID is the body of a system with a single object, also insert it for the system ID.
+                        if [199, 299].contains(&id) {
+                            self.dataset
+                                .lut
+                                .append_id(id / 100, entry)
+                                .with_context(|_| DataSetLutSnafu {
+                                    action: "pushing data with ID and name",
+                                })?;
+                        }
+                    }
+                }
             }
-        } else if id.is_some() {
-            self.dataset
-                .lut
-                .append_id(id.unwrap(), entry)
-                .with_context(|_| DataSetLutSnafu {
-                    action: "pushing data with ID only",
-                })?;
-            // If the ID is the body of a system with a single object, also insert it for the system ID.
-            if [199, 299].contains(&id.unwrap()) {
-                self.dataset
-                    .lut
-                    .append_id(id.unwrap() / 100, entry)
-                    .with_context(|_| DataSetLutSnafu {
-                        action: "pushing data with ID and name",
-                    })?;
+            None => {
+                if name.is_some() {
+                    // Only a name
+                    self.dataset
+                        .lut
+                        .append_name(name.unwrap(), entry)
+                        .with_context(|_| DataSetLutSnafu {
+                            action: "pushing data with name only",
+                        })?;
+                } else {
+                    return Err(DataSetError::DataSetLut {
+                        action: "pushing data",
+                        source: LutError::NoKeyProvided,
+                    });
+                }
             }
-        } else if name.is_some() {
-            self.dataset
-                .lut
-                .append_name(name.unwrap(), entry)
-                .with_context(|_| DataSetLutSnafu {
-                    action: "pushing data with name only",
-                })?;
-        } else {
-            return Err(DataSetError::DataSetLut {
-                action: "pushing data",
-                source: LutError::NoKeyProvided,
-            });
         }
+
         buf.extend_from_slice(&this_buf);
 
         Ok(())

@@ -94,7 +94,6 @@ impl Almanac {
         }
 
         // Grab the summary data, which we use to find the paths
-        // XXX: Need to check the other guy too
         // Let's see if this orientation is defined in the loaded BPC files
         let mut inertial_frame_id = match self.bpc_summary_at_epoch(source.orientation_id, epoch) {
             Ok((summary, _, _)) => summary.inertial_frame_id,

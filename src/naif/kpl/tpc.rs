@@ -152,7 +152,7 @@ fn test_anise_conversion() {
     let dataset = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
 
     assert!(!dataset.is_empty(), "should not be empty");
-    assert_eq!(dataset.lut.by_id.len(), 47);
+    assert_eq!(dataset.lut.by_id.len(), 49);
 
     let path = "target/gm_pck_08.anise";
 

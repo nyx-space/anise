@@ -84,7 +84,11 @@ impl Almanac {
             }
         }
 
-        let mut rslt = dcm_bwrd.mul_unchecked(dcm_fwrd);
+        let mut rslt = if dcm_fwrd.is_identity() {
+            dcm_bwrd.transpose()
+        } else {
+            dcm_bwrd.mul_unchecked(dcm_fwrd)
+        };
         rslt.from = from_frame.orientation_id;
         rslt.to = to_frame.orientation_id;
 
