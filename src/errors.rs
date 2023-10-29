@@ -11,12 +11,29 @@
 use hifitime::Epoch;
 use snafu::prelude::*;
 
+use crate::ephemerides::EphemerisError;
+use crate::orientations::OrientationError;
 use crate::prelude::FrameUid;
 use crate::structure::semver::Semver;
 use crate::NaifId;
 use core::convert::From;
 use der::Error as DerError;
 use std::io::ErrorKind as IOErrorKind;
+
+#[derive(Debug, Snafu)]
+#[snafu(visibility(pub))]
+pub enum AlmanacError {
+    #[snafu(display("{action} encountered an error with ephemeris computation {source}"))]
+    Ephemeris {
+        action: &'static str,
+        source: EphemerisError,
+    },
+    #[snafu(display("{action} encountered an error with orientation computation {source}"))]
+    Orientation {
+        action: &'static str,
+        source: OrientationError,
+    },
+}
 
 #[derive(Debug, Snafu)]
 pub enum InputOutputError {

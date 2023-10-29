@@ -191,7 +191,7 @@ impl Add for CartesianState {
         );
 
         ensure!(
-            self.frame == other.frame,
+            self.frame.ephemeris_id == other.frame.ephemeris_id,
             FrameMismatchSnafu {
                 action: "translating states",
                 frame1: self.frame,

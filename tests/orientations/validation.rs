@@ -506,7 +506,7 @@ fn validate_bpc_to_iau_rotations() {
         planetary_data,
         ..Default::default()
     };
-    let almanac = almanac.load_bpc(BPC::load(bpc).unwrap()).unwrap();
+    let almanac = almanac.with_bpc(BPC::load(bpc).unwrap()).unwrap();
 
     println!("{almanac}");
 

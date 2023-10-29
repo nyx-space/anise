@@ -318,7 +318,7 @@ fn spk_hermite_type13_verif() {
 
     let ctx = Almanac::from_spk(spk)
         .unwrap()
-        .load_spk(spacecraft)
+        .with_spk(spacecraft)
         .unwrap();
 
     let epoch = Epoch::from_gregorian_hms(2000, 1, 1, 14, 0, 0, TimeScale::UTC);

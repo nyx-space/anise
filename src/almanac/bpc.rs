@@ -21,11 +21,11 @@ use super::{Almanac, MAX_LOADED_BPCS};
 impl Almanac {
     pub fn from_bpc(bpc: BPC) -> Result<Almanac, OrientationError> {
         let me = Self::default();
-        me.load_bpc(bpc)
+        me.with_bpc(bpc)
     }
 
     /// Loads a Binary Planetary Constants kernel.
-    pub fn load_bpc(&self, bpc: BPC) -> Result<Self, OrientationError> {
+    pub fn with_bpc(&self, bpc: BPC) -> Result<Self, OrientationError> {
         // This is just a bunch of pointers so it doesn't use much memory.
         let mut me = self.clone();
         let mut data_idx = MAX_LOADED_BPCS;

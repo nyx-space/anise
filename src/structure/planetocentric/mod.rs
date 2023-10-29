@@ -89,13 +89,17 @@ impl DataSetT for PlanetaryData {
 }
 
 impl PlanetaryData {
-    /// Converts this planetary data into a Frame
+    /// Converts this planetary data into a Frame, unsetting any shape data for non-body-fixed frames (ID < 100).
     pub fn to_frame(&self, uid: FrameUid) -> Frame {
         Frame {
             ephemeris_id: uid.ephemeris_id,
             orientation_id: uid.orientation_id,
             mu_km3_s2: Some(self.mu_km3_s2),
-            shape: self.shape,
+            shape: if uid.orientation_id < 100 {
+                None
+            } else {
+                self.shape
+            },
         }
     }
     /// Specifies what data is available in this structure.
