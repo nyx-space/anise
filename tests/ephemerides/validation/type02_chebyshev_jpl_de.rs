@@ -12,7 +12,7 @@ use super::{compare::*, validate::Validation};
 
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
-fn validate_de440_full() {
+fn validate_jplde_de440_full() {
     let file_name = "spk-type2-validation-de440".to_string();
     let comparator =
         CompareEphem::new(vec!["data/de440.bsp".to_string()], file_name.clone(), 1_000);
@@ -31,7 +31,7 @@ fn validate_de440_full() {
 
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
-fn validate_de440s() {
+fn validate_jplde_de440s() {
     let output_file_name = "spk-type2-validation-de440s".to_string();
     let comparator = CompareEphem::new(
         vec!["data/de440s.bsp".to_string()],

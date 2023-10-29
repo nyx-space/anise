@@ -125,7 +125,7 @@ impl Almanac {
     ) -> Result<CartesianState, EphemerisError> {
         let frame_state = self.translate_from_to(state.frame, to_frame, state.epoch, ab_corr)?;
 
-        (state + frame_state).with_context(|_| EphemerisPhysicsSnafu {})
+        Ok(state.add_unchecked(frame_state))
     }
 
     /// Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame

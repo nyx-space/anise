@@ -763,33 +763,8 @@ impl fmt::LowerHex for Orbit {
             Err(fmt::Error)
         } else {
             let decimals = f.precision().unwrap_or(6);
-            if self.frame.is_geodetic() {
-                write!(
-                    f,
-                    "[{:x}] {}\trange = {} km\talt. = {} km\tlatitude = {} deg\tlongitude = {} deg",
-                    self.frame,
-                    self.epoch,
-                    format!("{:.*}", decimals, self.rmag_km()),
-                    format!(
-                        "{:.*}",
-                        decimals,
-                        self.geodetic_height().map_err(|err| {
-                            error!("{err}");
-                            fmt::Error
-                        })?
-                    ),
-                    format!(
-                        "{:.*}",
-                        decimals,
-                        self.geodetic_latitude().map_err(|err| {
-                            error!("{err}");
-                            fmt::Error
-                        })?
-                    ),
-                    format!("{:.*}", decimals, self.geodetic_longitude()),
-                )
-            } else {
-                write!(
+
+            write!(
                 f,
                 "[{:x}] {}\tsma = {} km\tecc = {}\tinc = {} deg\traan = {} deg\taop = {} deg\tta = {} deg",
                 self.frame,
@@ -819,7 +794,43 @@ impl fmt::LowerHex for Orbit {
                     fmt::Error
                 })?),
             )
-            }
+        }
+    }
+}
+
+#[allow(clippy::format_in_format_args)]
+impl fmt::UpperHex for Orbit {
+    /// Prints the prints the range, altitude, latitude, and longitude with respect to the planetocentric frame in floating point with units if frame is celestial,
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if !self.frame.is_geodetic() {
+            error!("you must update the frame from the Almanac before printing this state's planetocentric parameters");
+            Err(fmt::Error)
+        } else {
+            let decimals = f.precision().unwrap_or(3);
+            write!(
+                f,
+                "[{:x}] {}\trange = {} km\talt. = {} km\tlatitude = {} deg\tlongitude = {} deg",
+                self.frame,
+                self.epoch,
+                format!("{:.*}", decimals, self.rmag_km()),
+                format!(
+                    "{:.*}",
+                    decimals,
+                    self.geodetic_height().map_err(|err| {
+                        error!("{err}");
+                        fmt::Error
+                    })?
+                ),
+                format!(
+                    "{:.*}",
+                    decimals,
+                    self.geodetic_latitude().map_err(|err| {
+                        error!("{err}");
+                        fmt::Error
+                    })?
+                ),
+                format!("{:.*}", decimals, self.geodetic_longitude()),
+            )
         }
     }
 }

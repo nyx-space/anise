@@ -95,11 +95,7 @@ impl PlanetaryData {
             ephemeris_id: uid.ephemeris_id,
             orientation_id: uid.orientation_id,
             mu_km3_s2: Some(self.mu_km3_s2),
-            shape: if uid.orientation_id < 100 {
-                None
-            } else {
-                self.shape
-            },
+            shape: self.shape,
         }
     }
     /// Specifies what data is available in this structure.

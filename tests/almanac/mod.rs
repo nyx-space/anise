@@ -1,7 +1,7 @@
 // Start by creating the ANISE planetary data
 use anise::{
     astro::orbit::Orbit,
-    constants::frames::{EARTH_ITRF93, EARTH_J2000},
+    constants::frames::{EARTH_ITRF93, EARTH_J2000, JUPITER_BARYCENTER_J2000},
     naif::kpl::parser::convert_tpc,
     prelude::{Aberration, Almanac, BPC, SPK},
 };
@@ -30,7 +30,7 @@ fn test_load_ctx() {
 }
 
 #[test]
-fn test_state_translation() {
+fn test_state_transformation() {
     // Load BSP and BPC
     let ctx = Almanac::default();
 
@@ -56,14 +56,28 @@ fn test_state_translation() {
     );
 
     // Transform that into another frame.
-    let transformed_state = almanac
+    let state_itrf93 = almanac
         .transform_to(orig_state, EARTH_ITRF93, Aberration::None)
         .unwrap();
 
-    // BUG: ITRF93 is NOT considered geodetic with my new change, ugh.
-
-    // This will print the orbital elements
     println!("{orig_state:x}");
-    // This will print the geodetic data (because frame is geodetic)
-    println!("{transformed_state:x}");
+    println!("{state_itrf93:X}");
+
+    // Check that doing the same from the original state matches
+    let from_orig_state_to_jupiter = almanac
+        .transform_to(orig_state, JUPITER_BARYCENTER_J2000, Aberration::None)
+        .unwrap();
+
+    println!("{from_orig_state_to_jupiter}");
+
+    // Convert the ITRF93 to Jupiter J2000
+
+    let from_state_itrf93_to_jupiter = almanac
+        .transform_to(state_itrf93, JUPITER_BARYCENTER_J2000, Aberration::None)
+        .unwrap();
+
+    println!("{from_state_itrf93_to_jupiter}");
+
+    // TODO: Reenable this.
+    // assert_eq!(from_orig_state_to_jupiter, from_state_itrf93_to_jupiter);
 }

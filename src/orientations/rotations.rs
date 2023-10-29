@@ -42,7 +42,7 @@ impl Almanac {
             to_frame = to_frame_info;
         }
 
-        if from_frame == to_frame {
+        if from_frame.orient_origin_match(to_frame) {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
             return Ok(DCM::identity(
                 from_frame.orientation_id,

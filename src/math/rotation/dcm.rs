@@ -85,26 +85,22 @@ impl DCM {
     }
 
     /// Returns the 6x6 DCM to rotate a state, if the time derivative of this DCM exists.
-    pub fn state_dcm(&self) -> Result<Matrix6, PhysicsError> {
-        match self.rot_mat_dt {
-            Some(mat_dt) => {
-                let mut full_dcm = Matrix6::zeros();
-                for i in 0..6 {
-                    for j in 0..6 {
-                        if (i < 3 && j < 3) || (i >= 3 && j >= 3) {
-                            full_dcm[(i, j)] = self.rot_mat[(i % 3, j % 3)];
-                        } else if i >= 3 && j < 3 {
-                            full_dcm[(i, j)] = mat_dt[(i - 3, j)];
-                        }
-                    }
+    pub fn state_dcm(&self) -> Matrix6 {
+        let mut full_dcm = Matrix6::zeros();
+        for i in 0..6 {
+            for j in 0..6 {
+                if (i < 3 && j < 3) || (i >= 3 && j >= 3) {
+                    full_dcm[(i, j)] = self.rot_mat[(i % 3, j % 3)];
+                } else if i >= 3 && j < 3 {
+                    full_dcm[(i, j)] = self
+                        .rot_mat_dt
+                        .map(|dcm_dt| dcm_dt[(i - 3, j)])
+                        .unwrap_or(0.0);
                 }
-
-                Ok(full_dcm)
             }
-            None => Err(PhysicsError::DCMMissingDerivative {
-                action: "building the 6x6 DCM matrix",
-            }),
         }
+
+        full_dcm
     }
 
     /// Builds an identity rotation
@@ -218,11 +214,11 @@ impl Mul<Vector3> for DCM {
 }
 
 impl Mul<Vector6> for DCM {
-    type Output = PhysicsResult<Vector6>;
+    type Output = Vector6;
 
     /// Applying the matrix to a vector yields the vector's representation in the new coordinate system.
     fn mul(self, rhs: Vector6) -> Self::Output {
-        Ok(self.state_dcm()? * rhs)
+        self.state_dcm() * rhs
     }
 }
 
@@ -238,7 +234,7 @@ impl Mul<CartesianState> for DCM {
                 from2: rhs.frame.orientation_id
             }
         );
-        let new_state = self.state_dcm()? * rhs.to_cartesian_pos_vel();
+        let new_state = self.state_dcm() * rhs.to_cartesian_pos_vel();
 
         let mut rslt = rhs;
         rslt.radius_km = new_state.fixed_rows::<3>(0).to_owned().into();
