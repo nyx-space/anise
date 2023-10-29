@@ -11,7 +11,7 @@
 use hifitime::Epoch;
 use snafu::{ensure, ResultExt};
 
-use super::{BPCSnafu, NoOrientationsLoadedSnafu, OrientationError};
+use super::{BPCSnafu, NoOrientationsLoadedSnafu, OrientationDataSetSnafu, OrientationError};
 use crate::almanac::Almanac;
 use crate::constants::orientations::{ECLIPJ2000, J2000};
 use crate::frames::Frame;
@@ -59,7 +59,7 @@ impl Almanac {
             for id in self.planetary_data.lut.by_id.keys() {
                 if let Ok(pc) = self.planetary_data.get_by_id(*id) {
                     if pc.parent_id < common_center {
-                        common_center = dbg!(pc.parent_id);
+                        common_center = pc.parent_id;
                         if common_center == J2000 {
                             // there is nothing higher up
                             return Ok(common_center);
@@ -94,14 +94,24 @@ impl Almanac {
         }
 
         // Grab the summary data, which we use to find the paths
-        let summary = self.bpc_summary_at_epoch(source.orientation_id, epoch)?.0;
+        // XXX: Need to check the other guy too
+        // Let's see if this orientation is defined in the loaded BPC files
+        let mut inertial_frame_id = match self.bpc_summary_at_epoch(source.orientation_id, epoch) {
+            Ok((summary, _, _)) => summary.inertial_frame_id,
+            Err(_) => {
+                // Not available as a BPC, so let's see if there's planetary data for it.
+                let planetary_data = self
+                    .planetary_data
+                    .get_by_id(source.orientation_id)
+                    .with_context(|_| OrientationDataSetSnafu)?;
+                planetary_data.parent_id
+            }
+        };
 
-        let mut inertial_frame_id = summary.inertial_frame_id;
-
-        of_path[of_path_len] = Some(summary.inertial_frame_id);
+        of_path[of_path_len] = Some(inertial_frame_id);
         of_path_len += 1;
 
-        if summary.inertial_frame_id == ECLIPJ2000 {
+        if inertial_frame_id == ECLIPJ2000 {
             // Add the hop to J2000
             inertial_frame_id = J2000;
             of_path[of_path_len] = Some(inertial_frame_id);
@@ -113,9 +123,21 @@ impl Almanac {
             return Ok((of_path_len, of_path));
         }
 
-        for _ in 0..MAX_TREE_DEPTH {
-            let summary = self.bpc_summary_at_epoch(inertial_frame_id, epoch)?.0;
-            inertial_frame_id = summary.inertial_frame_id;
+        for _ in 0..MAX_TREE_DEPTH - 1 {
+            inertial_frame_id = match self.bpc_summary_at_epoch(inertial_frame_id, epoch) {
+                Ok((summary, _, _)) => summary.inertial_frame_id,
+                Err(_) => {
+                    // Not available as a BPC, so let's see if there's planetary data for it.
+                    let planetary_data = self
+                        .planetary_data
+                        .get_by_id(inertial_frame_id)
+                        .with_context(|_| OrientationDataSetSnafu)?;
+                    planetary_data.parent_id
+                }
+            };
+
+            // let summary = self.bpc_summary_at_epoch(inertial_frame_id, epoch)?.0;
+            // inertial_frame_id = summary.inertial_frame_id;
             of_path[of_path_len] = Some(inertial_frame_id);
             of_path_len += 1;
             if inertial_frame_id == common_center {
@@ -195,8 +217,11 @@ impl Almanac {
                 }
             }
 
-            // This is weird and I don't think it should happen, so let's raise an error.
-            Err(OrientationError::Unreachable)
+            Err(OrientationError::RotationOrigin {
+                from: from_frame.into(),
+                to: to_frame.into(),
+                epoch,
+            })
         }
     }
 }

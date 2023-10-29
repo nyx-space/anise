@@ -154,10 +154,7 @@ impl DCM {
     pub fn transpose(&self) -> Self {
         Self {
             rot_mat: self.rot_mat.transpose(),
-            rot_mat_dt: match self.rot_mat_dt {
-                Some(rot_mat_dt) => Some(rot_mat_dt.transpose()),
-                None => None,
-            },
+            rot_mat_dt: self.rot_mat_dt.map(|rot_mat_dt| rot_mat_dt.transpose()),
             to: self.from,
             from: self.to,
         }
