@@ -508,25 +508,23 @@ fn validate_bpc_to_iau_rotations() {
     };
     let almanac = almanac.load_bpc(BPC::load(bpc).unwrap()).unwrap();
 
+    println!("{almanac}");
+
     let mut actual_max_uvec_err_deg = 0.0;
     let mut actual_max_err_deg = 0.0;
 
+    let start = Epoch::from_tdb_duration(0.11.centuries());
+    let end = Epoch::from_tdb_duration(0.20.centuries());
+
     for frame in [
-        // IAU_MERCURY_FRAME,
-        // IAU_VENUS_FRAME,
+        IAU_MERCURY_FRAME,
+        IAU_VENUS_FRAME,
         IAU_EARTH_FRAME,
-        // IAU_MARS_FRAME,
-        // IAU_JUPITER_FRAME,
-        // IAU_SATURN_FRAME,
+        IAU_MARS_FRAME,
+        IAU_JUPITER_FRAME,
+        IAU_SATURN_FRAME,
     ] {
-        // This BPC file start in 2011 and ends in 2022.
-        for (num, epoch) in TimeSeries::inclusive(
-            Epoch::from_tdb_duration(0.11.centuries()),
-            Epoch::from_tdb_duration(0.2.centuries()),
-            1.days(),
-        )
-        .enumerate()
-        {
+        for (num, epoch) in TimeSeries::inclusive(start, end, 1.days()).enumerate() {
             let dcm = almanac.rotate_from_to(EARTH_ITRF93, frame, epoch).unwrap();
 
             let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];
@@ -624,7 +622,8 @@ fn validate_bpc_to_iau_rotations() {
 
             // Check the derivative
             assert!(
-                (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm() < 1e-13,
+                (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm()
+                    < DCM_EPSILON * 0.1,
                 "#{num} {epoch}\ngot: {}want:{}err = {:.3e}: {:.3e}",
                 dcm.rot_mat_dt.unwrap(),
                 spice_dcm.rot_mat_dt.unwrap(),

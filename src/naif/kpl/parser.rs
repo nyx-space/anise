@@ -225,7 +225,9 @@ pub fn convert_tpc<P: AsRef<Path>>(pck: P, gm: P) -> Result<PlanetaryDataSet, Da
 
                                     PlanetaryData {
                                         object_id,
-                                        parent_id: if object_id > 100 {
+                                        parent_id: if [199, 299].contains(&object_id) {
+                                            J2000
+                                        } else if object_id > 100 {
                                             object_id / 100
                                         } else {
                                             J2000

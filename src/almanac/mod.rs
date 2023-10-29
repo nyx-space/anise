@@ -44,7 +44,7 @@ impl fmt::Display for Almanac {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(
             f,
-            "Context: #SPK = {}\t#BPC = {}",
+            "Almanac: #SPK = {}\t#BPC = {}",
             self.num_loaded_spk(),
             self.num_loaded_bpc()
         )?;

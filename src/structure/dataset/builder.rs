@@ -41,6 +41,7 @@ impl<'a, T: DataSetT, const ENTRIES: usize> DataSetBuilder<T, ENTRIES> {
             end_idx: (buf.len() + this_buf.len()) as u32,
         };
 
+        // XXX: Consider switching to a double match
         if id.is_some() && name.is_some() {
             self.dataset
                 .lut
@@ -48,6 +49,15 @@ impl<'a, T: DataSetT, const ENTRIES: usize> DataSetBuilder<T, ENTRIES> {
                 .with_context(|_| DataSetLutSnafu {
                     action: "pushing data with ID and name",
                 })?;
+            // If the ID is the body of a system with a single object, also insert it for the system ID.
+            if [199, 299].contains(&id.unwrap()) {
+                self.dataset
+                    .lut
+                    .append(id.unwrap() / 100, name.unwrap(), entry)
+                    .with_context(|_| DataSetLutSnafu {
+                        action: "pushing data with ID and name",
+                    })?;
+            }
         } else if id.is_some() {
             self.dataset
                 .lut
@@ -55,6 +65,15 @@ impl<'a, T: DataSetT, const ENTRIES: usize> DataSetBuilder<T, ENTRIES> {
                 .with_context(|_| DataSetLutSnafu {
                     action: "pushing data with ID only",
                 })?;
+            // If the ID is the body of a system with a single object, also insert it for the system ID.
+            if [199, 299].contains(&id.unwrap()) {
+                self.dataset
+                    .lut
+                    .append_id(id.unwrap() / 100, entry)
+                    .with_context(|_| DataSetLutSnafu {
+                        action: "pushing data with ID and name",
+                    })?;
+            }
         } else if name.is_some() {
             self.dataset
                 .lut
