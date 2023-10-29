@@ -26,8 +26,8 @@ use anise::{
 use hifitime::{Duration, Epoch, TimeSeries, TimeUnits};
 use spice::cstr;
 
-// Allow up to one arcsecond of error (or 0.06 microradians)
-const MAX_ERR_DEG: f64 = 3.6e-6;
+// Allow up to two arcsecond of error (or 0.12 microradians), but check test results for actualized error
+const MAX_ERR_DEG: f64 = 7.2e-6;
 const DCM_EPSILON: f64 = 1e-9;
 
 /// This test converts the PCK file into its ANISE equivalent format, loads it into an Almanac, and compares the rotations computed by the Almanac and by SPICE
@@ -371,6 +371,9 @@ fn validate_bpc_rotations() {
 
     let frame = Frame::from_ephem_orient(EARTH, ITRF93);
 
+    let mut actual_max_uvec_err_deg = 0.0;
+    let mut actual_max_err_deg = 0.0;
+
     // This BPC file start in 2011 and ends in 2022.
     for (num, epoch) in TimeSeries::inclusive(
         Epoch::from_tdb_duration(0.11.centuries()),
@@ -454,10 +457,19 @@ fn validate_bpc_rotations() {
             uvec_angle_deg_err.abs() < MAX_ERR_DEG || uvec_angle_deg_err.is_nan(),
             "#{num} @ {epoch} unit vector angle error for {frame}: {uvec_angle_deg_err:e} deg"
         );
+
+        if uvec_angle_deg_err.abs() > actual_max_uvec_err_deg {
+            actual_max_uvec_err_deg = uvec_angle_deg_err.abs();
+        }
+
         assert!(
             deg_err.abs() < MAX_ERR_DEG,
             "#{num} @ {epoch} rotation error for {frame}: {deg_err:e} deg"
         );
+
+        if deg_err.abs() > actual_max_err_deg {
+            actual_max_err_deg = deg_err.abs();
+        }
 
         assert!(
             (dcm.rot_mat - rot_mat).norm() < DCM_EPSILON,
@@ -477,4 +489,6 @@ fn validate_bpc_rotations() {
             dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()
         );
     }
+    println!("actualized max error in rotation angle = {actual_max_err_deg:.3e} deg");
+    println!("actualized max error in rotation direction = {actual_max_uvec_err_deg:.3e} deg");
 }

@@ -131,14 +131,14 @@ fn test_itrf93_to_j2k() {
     );
 
     // Check the derivative
-    // assert!(
-    //     (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm() < 1e-13,
-    //     "derivative error! got: {}want:{}derivative err = {:.3e}: {:.3e}",
-    //     dcm.rot_mat_dt.unwrap(),
-    //     spice_dcm.rot_mat_dt.unwrap(),
-    //     (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm(),
-    //     dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()
-    // );
+    assert!(
+        (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm() < 1e-13,
+        "derivative error! got: {}want:{}derivative err = {:.3e}: {:.3e}",
+        dcm.rot_mat_dt.unwrap(),
+        spice_dcm.rot_mat_dt.unwrap(),
+        (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm(),
+        dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()
+    );
 
     // Ensure transposed works too.
     let dcm_t = almanac
@@ -158,18 +158,18 @@ fn test_itrf93_to_j2k() {
     );
 
     // Check the derivative
-    // assert!(
-    //     (dcm_t.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap().transpose()).norm() < 1e-13,
-    //     "derivative error! got: {}want:{}derivative err = {:.3e}: {:.3e}",
-    //     dcm_t.rot_mat_dt.unwrap(),
-    //     spice_dcm.rot_mat_dt.unwrap().transpose(),
-    //     (dcm_t.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap().transpose()).norm(),
-    //     dcm_t.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap().transpose()
-    // );
+    assert!(
+        (dcm_t.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap().transpose()).norm() < 1e-13,
+        "derivative error! got: {}want:{}derivative err = {:.3e}: {:.3e}",
+        dcm_t.rot_mat_dt.unwrap(),
+        spice_dcm.rot_mat_dt.unwrap().transpose(),
+        (dcm_t.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap().transpose()).norm(),
+        dcm_t.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap().transpose()
+    );
 
     // And check that the transpose of one and the other are the same
     assert!(
-        dbg!((dcm.rot_mat - dcm_t.transpose().rot_mat).norm()) < 1e-12,
+        (dcm.rot_mat - dcm_t.transpose().rot_mat).norm() < 1e-12,
         "dcm = {dcm} dcm_t = {dcm_t} whose transpose is {}",
         dcm_t.transpose()
     );
