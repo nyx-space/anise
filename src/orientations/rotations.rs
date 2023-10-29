@@ -68,34 +68,23 @@ impl Almanac {
         };
 
         for cur_node_id in path.iter().take(node_count) {
-            if dcm_fwrd.to != common_node {
-                let cur_dcm =
-                    self.rotation_to_parent(Frame::from_orient_ssb(dcm_fwrd.to), epoch)?;
-
-                println!("cur_bwrd_dcm = {cur_dcm}");
-
-                dcm_fwrd = dcm_fwrd.mul_unchecked(cur_dcm);
-            }
-
-            if dcm_bwrd.from != common_node {
-                let cur_dcm =
-                    self.rotation_to_parent(Frame::from_orient_ssb(dcm_fwrd.to), epoch)?;
-
-                println!("cur_fwrd_dcm = {cur_dcm}");
-
-                // XXX: This causes multiple unneeded recomputations, must set the frames correctly!
-                dcm_bwrd = dcm_bwrd.mul_unchecked(cur_dcm);
-            }
-
-            // We know this exist, so we can safely unwrap it
-            if cur_node_id.unwrap() == common_node {
+            let next_parent = cur_node_id.unwrap();
+            if next_parent == common_node {
                 break;
             }
-        }
-        println!("dcm_bwrd = {dcm_bwrd}");
-        println!("dcm_fwrd = {dcm_fwrd}");
 
-        let mut rslt = dcm_bwrd.mul_unchecked(dcm_fwrd.transpose());
+            let cur_dcm = self.rotation_to_parent(Frame::from_orient_ssb(next_parent), epoch)?;
+
+            if dcm_fwrd.to == next_parent {
+                dcm_fwrd = dcm_fwrd.mul_unchecked(cur_dcm).transpose();
+            } else if dcm_bwrd.to == next_parent {
+                dcm_bwrd = dcm_bwrd.mul_unchecked(cur_dcm).transpose();
+            } else {
+                return Err(OrientationError::Unreachable);
+            }
+        }
+
+        let mut rslt = dcm_fwrd.mul_unchecked(dcm_bwrd.transpose());
         rslt.from = from_frame.orientation_id;
         rslt.to = to_frame.orientation_id;
 
