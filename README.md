@@ -1,42 +1,59 @@
-# ANISE
+# ANISE (Attitude, Navigation, Instrument, Spacecraft, Ephemeris)
 
-This is the main implementation of the ANISE toolkit specifications in Rust.
+ANISE, inspired by the iconic Dune universe, is a modern Rust-based library aimed at revolutionizing space navigation and ephemeris calculations. It reimagines the functionalities of the NAIF SPICE toolkit with enhanced performance, precision, and ease of use, leveraging Rust's safety and speed.
 
-# Features
+[Please fill out our user survey](https://7ug5imdtt8v.typeform.com/to/qYDB14Hj)
 
-- Thread safe computations from the SPICE toolkit
-- Convert NAIF SPK files into ANISE files with `anise convert path-to-spk`, yields a 5% space reduction (only Chebyshev Type 2 currently supported)
-- Inspect an ANISE file with `anise inspect path-to-file`
-- Perform frame translations (no rotations yet) between whichever ephemeris is in the context, or from a provided Cartesian state into another frame
+## Introduction
 
-Please refer to https://github.com/anise-toolkit/specs for the specifications.
+In the realm of space exploration, navigation, and astrophysics, precise and efficient computation of spacecraft position, orientation, and time is critical. ANISE, standing for "Attitude, Navigation, Instrument, Spacecraft, Ephemeris," offers a Rust-native approach to these challenges. This toolkit provides a suite of functionalities including but not limited to:
 
-# Design
-TODO
-## Implementation choices
-As with any specification, some implementation choices, or limitations, must be made. In particular, ANISE.rs does not use any memory allocation, therefore everything is statically allocated and lives on the program stack. This is important for performance for programs on soft real-time embedded devices.
++ Loading SPK, BPC, PCK, FK, and TPC files.
++ High-precision translations, rotations, and their combination (rigid body transformations).
++ Comprehensive time system conversions using the hifitime library (including TT, TAI, ET, TDB, UTC, GPS time, and more).
 
-### Depth of translations and rotations
-In this implementation, a translation or a rotation may not be more than 8 nodes from the root of the ANISE context.
+ANISE stands validated against the traditional SPICE toolkit, ensuring accuracy and reliability, with translations achieving machine precision (2e-16) and rotations presenting minimal error (less than two arcseconds in the pointing of the rotation axis and less than one arcsecond in the angle about this rotation axis).
 
-**Behavior:** this library can still read an ANISE file which stores data deeper than 8 nodes, however, it will not be able to perform any translations or rotations which involve it, and instead return a `MaxTreeDepth` error.
+## Features
 
-**Practical example:**
-The following ephemeris is valid, can be stored, and computations made with this ephemeris (from central node of the context to the further away):
++ **High Precision**: Achieves near machine precision in translations and minimal errors in rotations.
++ **Time System Conversions**: Extensive support for various time systems crucial in astrodynamics.
++ **Rust Efficiency**: Harnesses the speed and safety of Rust for space computations.
 
-```
-Solar System barycenter
-╰─> Earth Moon Barycenter
-    ╰─> Earth
-        ╰─> ISS
-            ╰─> Columbus
-                ╰─> Hub window #1
-                    ╰─> Camera mount
-                        ╰─> Camera lense /!\ MAX DEPTH REACHED (cannot add a deeper ephemeris) /!\
+## Getting Started
+
+## Installation
+
+```sh
+cargo add anise
 ```
 
-# Development
-## Requirements
-1. `rustc` version `1.64` or higher (required for the 2021 edition): https://rust-lang.org/ (TODO: Set a minimum compatible rust version)
-2. `git`
-1. `rust-spice` is used for exhaustive testing of the SPICE interoperability. It requires the cspice library.
+## Usage
+
+Here's a simple example to get started with ANISE:
+
+```rust
+
+// Example code demonstrating a basic operation with ANISE
+```
+
+Please refer to the [test suite](./tests/) for comprehensive examples until I write better documentation.
+
+## Contributing
+
+Contributions to ANISE are welcome! Whether it's in the form of feature requests, bug reports, code contributions, or documentation improvements, every bit of help is greatly appreciated.
+
+## License
+
+ANISE is distributed under the Mozilla Public License 2.0 (MPL-2.0), offering a balanced approach to open-source by allowing the use of source code within both open and proprietary software. MPL-2.0 requires that modifications to the covered code be released under the same license, thus ensuring improvements remain open-source. However, it allows the combining of the covered software with proprietary parts, providing flexibility for both academic and commercial integrations.
+
+For more details, please see the [full text of the license](./LICENSE) or read [a summary by Github](https://choosealicense.com/licenses/mpl-2.0/).
+
+## Acknowledgements
+
+ANISE is heavily inspired by the NAIF SPICE toolkit and its excellent documentation
+
+
+## Contact
+
+For any inquiries, feedback, or discussions, please [open an issue here](https://github.com/nyx-space/anise/issues) or contact the maintainer at christopher.rabotin@gmail.com.
