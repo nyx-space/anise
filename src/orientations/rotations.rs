@@ -64,30 +64,34 @@ impl Almanac {
         let mut dcm_bwrd = if to_frame.orient_origin_id_match(common_node) {
             DCM::identity(common_node, common_node)
         } else {
-            self.rotation_to_parent(to_frame, epoch)?
+            self.rotation_to_parent(to_frame, epoch)?.transpose()
         };
 
+        // XXX: This is all wrong. I need to grab the algorithm from Nyx because this is garbage.
         for cur_node_id in path.iter().take(node_count) {
             let next_parent = cur_node_id.unwrap();
-            if next_parent == common_node {
-                break;
-            }
 
             let cur_dcm = self.rotation_to_parent(Frame::from_orient_ssb(next_parent), epoch)?;
 
             if dcm_fwrd.to == next_parent {
-                dcm_fwrd = dcm_fwrd.mul_unchecked(cur_dcm).transpose();
-            } else if dcm_bwrd.to == next_parent {
-                dcm_bwrd = dcm_bwrd.mul_unchecked(cur_dcm).transpose();
+                dcm_fwrd = dcm_fwrd.mul_unchecked(cur_dcm); //.transpose();
+            } else if dcm_bwrd.from == next_parent {
+                dcm_bwrd = dcm_bwrd.transpose().mul_unchecked(cur_dcm).transpose();
             } else {
                 return Err(OrientationError::Unreachable);
+            }
+            if next_parent == common_node {
+                break;
             }
         }
 
         let mut rslt = if dcm_fwrd.is_identity() {
             dcm_bwrd.transpose()
+        } else if dcm_bwrd.is_identity() {
+            dcm_fwrd
         } else {
-            dcm_bwrd.mul_unchecked(dcm_fwrd)
+            // dcm_bwrd.mul_unchecked(dcm_fwrd)
+            dcm_fwrd.mul_unchecked(dcm_bwrd.transpose())
         };
         rslt.from = from_frame.orientation_id;
         rslt.to = to_frame.orientation_id;

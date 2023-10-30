@@ -134,6 +134,7 @@ jobs:
         run: | 
           RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_bpc_rotations --release -- --nocapture --ignored
           RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_bpc_to_iau_rotations --release -- --nocapture --ignored
+          RUST_BACKTRACE=1 RUST_LOG=debug cargo test de440s_translation_verif_venus2emb --release -- --nocapture --ignored
 
       # Now analyze the results and create pretty plots
       - uses: actions/setup-python@v4

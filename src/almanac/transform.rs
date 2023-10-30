@@ -65,20 +65,20 @@ impl Almanac {
         let state = self
             .translate_to(state, to_frame, ab_corr)
             .with_context(|_| EphemerisSnafu {
-                action: "transform provided state",
+                action: "transform state",
             })?;
 
         // Compute the frame rotation
         let dcm = self
             .rotate_from_to(state.frame, to_frame, state.epoch)
             .with_context(|_| OrientationSnafu {
-                action: "dcm for provided state",
+                action: "transform state dcm",
             })?;
 
         (dcm * state)
             .with_context(|_| OrientationPhysicsSnafu {})
             .with_context(|_| OrientationSnafu {
-                action: "transform from/to",
+                action: "transform state",
             })
     }
 
@@ -116,13 +116,13 @@ impl Almanac {
         let dcm = self
             .rotate_from_to(from_frame, to_frame, epoch)
             .with_context(|_| OrientationSnafu {
-                action: "dcm for provided state",
+                action: "transform provided state dcm",
             })?;
 
         (dcm * state)
             .with_context(|_| OrientationPhysicsSnafu {})
             .with_context(|_| OrientationSnafu {
-                action: "transform from/to",
+                action: "transform provided state",
             })
     }
 }

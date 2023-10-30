@@ -11,7 +11,7 @@ keywords = ["attitude", "navigation", "instrument", "spacecraft", "ephemeris"]
 categories = ["science", "simulation"]
 readme = "README.md"
 license = "MPL-2.0"
-exclude = ["cspice"]
+exclude = ["cspice*", "data", "analysis", ".vscode", ".github", ".venv"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

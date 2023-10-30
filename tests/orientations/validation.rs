@@ -17,8 +17,9 @@ use anise::{
         orientations::{ECLIPJ2000, ITRF93, J2000},
     },
     math::{
+        cartesian::CartesianState,
         rotation::{Quaternion, DCM},
-        Matrix3,
+        Matrix3, Vector3,
     },
     naif::kpl::parser::convert_tpc,
     prelude::{Almanac, Frame, BPC},
@@ -29,6 +30,8 @@ use spice::cstr;
 // Allow up to two arcsecond of error (or 0.12 microradians), but check test results for actualized error
 const MAX_ERR_DEG: f64 = 7.2e-6;
 const DCM_EPSILON: f64 = 1e-9;
+const POSITION_EPSILON_KM: f64 = 2e-6;
+const VELOCITY_EPSILON_KM_S: f64 = 5e-9;
 
 /// This test converts the PCK file into its ANISE equivalent format, loads it into an Almanac, and compares the rotations computed by the Almanac and by SPICE
 /// It only check the IAU rotations to its J2000 parent, and accounts for nutation and precession coefficients where applicable.
@@ -526,6 +529,7 @@ fn validate_bpc_to_iau_rotations() {
     ] {
         for (num, epoch) in TimeSeries::inclusive(start, end, 1.days()).enumerate() {
             let dcm = almanac.rotate_from_to(EARTH_ITRF93, frame, epoch).unwrap();
+            let dcm_t = almanac.rotate_from_to(frame, EARTH_ITRF93, epoch).unwrap();
 
             let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];
             unsafe {
@@ -581,6 +585,9 @@ fn validate_bpc_to_iau_rotations() {
                 );
             }
 
+            assert_eq!(dcm.from, EARTH_ITRF93.orientation_id);
+            assert_eq!(dcm.to, frame.orientation_id);
+
             // Compute the different in PRV and rotation angle
             let q_anise = Quaternion::from(dcm);
             let q_spice = Quaternion::from(spice_dcm);
@@ -620,7 +627,7 @@ fn validate_bpc_to_iau_rotations() {
                 dcm.rot_mat - rot_mat
             );
 
-            // Check the derivative
+            // Check the derivative with a slightly tighet constraint
             assert!(
                 (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm()
                     < DCM_EPSILON * 0.1,
@@ -629,6 +636,83 @@ fn validate_bpc_to_iau_rotations() {
                 spice_dcm.rot_mat_dt.unwrap(),
                 (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm(),
                 dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()
+            );
+
+            // Check that we match the SXFORM documentation on the DCM * CartesianState multiplication
+            let state = CartesianState {
+                radius_km: Vector3::new(1234.0, 5678.9, 1234.0),
+                velocity_km_s: Vector3::new(1.2340, 5.6789, 1.2340),
+                epoch,
+                frame: EARTH_ITRF93,
+            };
+
+            let spice_out = (spice_dcm * state).unwrap();
+            let anise_out = (dcm * state).unwrap();
+
+            assert_eq!(spice_out.frame, anise_out.frame);
+            assert!(dbg!(spice_out.radius_km - anise_out.radius_km).norm() < POSITION_EPSILON_KM);
+            assert!(
+                dbg!(spice_out.velocity_km_s - anise_out.velocity_km_s).norm()
+                    < VELOCITY_EPSILON_KM_S
+            );
+
+            // Grab the transposed DCM
+            let dcm_t = almanac.rotate_from_to(frame, EARTH_ITRF93, epoch).unwrap();
+            let dcm_t = almanac.rotate_from_to(frame, EARTH_ITRF93, epoch).unwrap();
+
+            let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];
+            unsafe {
+                spice::c::sxform_c(
+                    cstr!(format!("{frame:o}")),
+                    cstr!("ITRF93"),
+                    epoch.to_tdb_seconds(),
+                    rot_data.as_mut_ptr(),
+                );
+            }
+
+            // Confirmed that the M3x3 below is the correct representation from SPICE by using the mxv spice function and compare that to the nalgebra equivalent computation.
+            let rot_mat = Matrix3::new(
+                rot_data[0][0],
+                rot_data[0][1],
+                rot_data[0][2],
+                rot_data[1][0],
+                rot_data[1][1],
+                rot_data[1][2],
+                rot_data[2][0],
+                rot_data[2][1],
+                rot_data[2][2],
+            );
+
+            let rot_mat_dt = Some(Matrix3::new(
+                rot_data[3][0],
+                rot_data[3][1],
+                rot_data[3][2],
+                rot_data[4][0],
+                rot_data[4][1],
+                rot_data[4][2],
+                rot_data[5][0],
+                rot_data[5][1],
+                rot_data[5][2],
+            ));
+
+            let spice_dcm_t = DCM {
+                rot_mat,
+                from: dcm_t.from,
+                to: dcm_t.to,
+                rot_mat_dt,
+            };
+
+            let spice_rtn = (spice_dcm_t * spice_out).unwrap();
+            let anise_rtn = (dcm_t * anise_out).unwrap();
+
+            assert_eq!(spice_rtn.frame, anise_rtn.frame);
+            assert!(dbg!(spice_rtn.radius_km - state.radius_km).norm() < POSITION_EPSILON_KM);
+            assert!(
+                dbg!(spice_rtn.velocity_km_s - state.velocity_km_s).norm() < VELOCITY_EPSILON_KM_S
+            );
+            assert!(dbg!(anise_rtn.radius_km - state.radius_km).norm() < POSITION_EPSILON_KM);
+            assert!(
+                dbg!(anise_rtn.velocity_km_s - state.velocity_km_s).norm() < VELOCITY_EPSILON_KM_S
             );
         }
     }

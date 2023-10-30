@@ -14,7 +14,6 @@ use crate::naif::daf::DAFError;
 use crate::naif::pck::BPCSummaryRecord;
 use crate::naif::BPC;
 use crate::orientations::OrientationError;
-use log::error;
 
 use super::{Almanac, MAX_LOADED_BPCS};
 
@@ -77,7 +76,6 @@ impl Almanac {
         }
 
         // If we're reached this point, there is no relevant summary at this epoch.
-        error!("Almanac: No summary {name} valid at epoch {epoch}");
         Err(OrientationError::BPC {
             action: "searching for BPC summary",
             source: DAFError::SummaryNameAtEpochError {
@@ -108,7 +106,6 @@ impl Almanac {
             }
         }
 
-        error!("Almanac: No summary {id} valid at epoch {epoch}");
         // If we're reached this point, there is no relevant summary at this epoch.
         Err(OrientationError::BPC {
             action: "searching for BPC summary",
@@ -139,7 +136,6 @@ impl Almanac {
         }
 
         // If we're reached this point, there is no relevant summary at this epoch.
-        error!("Almanac: No summary {name} valid");
         Err(OrientationError::BPC {
             action: "searching for BPC summary",
             source: DAFError::SummaryNameError {
@@ -168,7 +164,6 @@ impl Almanac {
             }
         }
 
-        error!("Almanac: No summary {id} valid");
         // If we're reached this point, there is no relevant summary
         Err(OrientationError::BPC {
             action: "searching for BPC summary",
