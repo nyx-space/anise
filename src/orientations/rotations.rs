@@ -13,6 +13,7 @@ use snafu::ResultExt;
 use super::OrientationError;
 use super::OrientationPhysicsSnafu;
 use crate::almanac::Almanac;
+use crate::constants::orientations::J2000;
 use crate::hifitime::Epoch;
 use crate::math::cartesian::CartesianState;
 use crate::math::rotation::DCM;
@@ -61,42 +62,50 @@ impl Almanac {
         };
 
         // The bwrd variables are the states from the `to frame` back to the common node
-        let mut dcm_bwrd = if to_frame.orient_origin_id_match(common_node) {
+        let dcm_bwrd = if to_frame.orient_origin_id_match(common_node) {
             DCM::identity(common_node, common_node)
         } else {
             self.rotation_to_parent(to_frame, epoch)?.transpose()
         };
 
-        // XXX: This is all wrong. I need to grab the algorithm from Nyx because this is garbage.
         for cur_node_id in path.iter().take(node_count) {
             let next_parent = cur_node_id.unwrap();
+            if next_parent == J2000 {
+                // The parent rotation of J2000 is itself, so we can skip this.
+                continue;
+            }
 
             let cur_dcm = self.rotation_to_parent(Frame::from_orient_ssb(next_parent), epoch)?;
 
-            if dcm_fwrd.to == next_parent {
-                dcm_fwrd = dcm_fwrd.mul_unchecked(cur_dcm); //.transpose();
-            } else if dcm_bwrd.from == next_parent {
-                dcm_bwrd = dcm_bwrd.transpose().mul_unchecked(cur_dcm).transpose();
+            if dcm_fwrd.from == cur_dcm.from {
+                dcm_fwrd =
+                    (cur_dcm * dcm_fwrd.transpose()).with_context(|_| OrientationPhysicsSnafu)?;
+            } else if dcm_fwrd.from == cur_dcm.to {
+                dcm_fwrd = (dcm_fwrd * cur_dcm)
+                    .with_context(|_| OrientationPhysicsSnafu)?
+                    .transpose();
             } else {
-                return Err(OrientationError::Unreachable);
+                dcm_fwrd = (cur_dcm * dcm_fwrd).with_context(|_| OrientationPhysicsSnafu)?;
             }
+
             if next_parent == common_node {
                 break;
             }
         }
 
-        let mut rslt = if dcm_fwrd.is_identity() {
-            dcm_bwrd.transpose()
-        } else if dcm_bwrd.is_identity() {
-            dcm_fwrd
+        if dcm_fwrd.from == dcm_bwrd.from {
+            (dcm_bwrd * dcm_fwrd.transpose()).with_context(|_| OrientationPhysicsSnafu)
+        } else if dcm_fwrd.from == dcm_bwrd.to {
+            Ok((dcm_fwrd * dcm_bwrd)
+                .with_context(|_| OrientationPhysicsSnafu)?
+                .transpose())
+        } else if dcm_fwrd.to == dcm_bwrd.to {
+            Ok((dcm_fwrd.transpose() * dcm_bwrd)
+                .with_context(|_| OrientationPhysicsSnafu)?
+                .transpose())
         } else {
-            // dcm_bwrd.mul_unchecked(dcm_fwrd)
-            dcm_fwrd.mul_unchecked(dcm_bwrd.transpose())
-        };
-        rslt.from = from_frame.orientation_id;
-        rslt.to = to_frame.orientation_id;
-
-        Ok(rslt)
+            (dcm_bwrd * dcm_fwrd).with_context(|_| OrientationPhysicsSnafu)
+        }
     }
 
     /// Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame

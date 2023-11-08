@@ -138,7 +138,8 @@ impl DCM {
     pub(crate) fn mul_unchecked(&self, other: Self) -> Self {
         let mut rslt = *self;
         rslt.rot_mat *= other.rot_mat;
-        rslt.to = other.to;
+        // rslt.to = other.to;
+        rslt.from = other.from;
         // Make sure to apply the transport theorem.
         if let Some(other_rot_mat_dt) = other.rot_mat_dt {
             if let Some(rot_mat_dt) = self.rot_mat_dt {
@@ -167,16 +168,22 @@ impl Mul for DCM {
     type Output = Result<Self, PhysicsError>;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        ensure!(
-            self.to == rhs.from,
-            OriginMismatchSnafu {
-                action: "multiplying DCMs",
-                from1: self.from,
-                from2: rhs.from
-            }
-        );
+        if self.is_identity() {
+            Ok(rhs)
+        } else if rhs.is_identity() {
+            Ok(self)
+        } else {
+            ensure!(
+                self.from == rhs.to,
+                OriginMismatchSnafu {
+                    action: "multiplying DCMs",
+                    from1: self.from,
+                    from2: rhs.from
+                }
+            );
 
-        Ok(self.mul_unchecked(rhs))
+            Ok(self.mul_unchecked(rhs))
+        }
     }
 }
 

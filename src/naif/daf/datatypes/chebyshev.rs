@@ -174,8 +174,8 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
 
         let normalized_time = (epoch.to_et_seconds() - record.midpoint_et_s) / radius_s;
 
-        let mut pos = Vector3::zeros();
-        let mut vel = Vector3::zeros();
+        let mut state = Vector3::zeros();
+        let mut rate = Vector3::zeros();
 
         for (cno, coeffs) in [record.x_coeffs, record.y_coeffs, record.z_coeffs]
             .iter()
@@ -183,11 +183,11 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         {
             let (val, deriv) =
                 chebyshev_eval(normalized_time, coeffs, radius_s, epoch, self.degree())?;
-            pos[cno] = val;
-            vel[cno] = deriv;
+            state[cno] = val;
+            rate[cno] = deriv;
         }
 
-        Ok((pos, vel))
+        Ok((state, rate))
     }
 
     fn check_integrity(&self) -> Result<(), IntegrityError> {

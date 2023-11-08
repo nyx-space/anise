@@ -117,24 +117,18 @@ jobs:
           cargo run -- inspect data/de440.bsp
 
       - name: Rust-SPICE JPL DE validation
-        run: | 
-          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_jplde_de440s --features spkezr_validation --release -- --nocapture --ignored
-          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_jplde_de440_full --features spkezr_validation --release -- --nocapture --ignored
+        run: RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_jplde --features spkezr_validation --release -- --nocapture --include-ignored --test-threads 1
 
       - name: Rust-SPICE hermite validation
-        run: |
-          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_hermite_type13_from_gmat --features spkezr_validation --release -- --nocapture --ignored
-          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_hermite_type13_with_varying_segment_sizes --features spkezr_validation --release -- --nocapture --ignored
+        run: RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_hermite_type13_ --features spkezr_validation --release -- --nocapture --include-ignored --test-threads 1
       
       - name: Rust-SPICE PCK validation
-        run: | 
-          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_iau_rotation_to_parent --release -- --nocapture --ignored
+        run: RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_iau_rotation_to_parent --release -- --nocapture --ignored
       
       - name: Rust-SPICE BPC validation
         run: | 
-          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_bpc_rotations --release -- --nocapture --ignored
-          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_bpc_to_iau_rotations --release -- --nocapture --ignored
-          RUST_BACKTRACE=1 RUST_LOG=debug cargo test de440s_translation_verif_venus2emb --release -- --nocapture --ignored
+          RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_bpc_ --release -- --nocapture --include-ignored --test-threads 1
+          RUST_BACKTRACE=1 RUST_LOG=debug cargo test de440s_translation_verif_venus2emb --release -- --nocapture --ignored --include-ignored --test-threads 1
 
       # Now analyze the results and create pretty plots
       - uses: actions/setup-python@v4

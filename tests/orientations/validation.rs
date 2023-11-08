@@ -14,7 +14,7 @@ use anise::{
     constants::{
         celestial_objects::EARTH,
         frames::*,
-        orientations::{ECLIPJ2000, ITRF93, J2000},
+        orientations::{ECLIPJ2000, FK4, ITRF93, J2000},
     },
     math::{
         cartesian::CartesianState,
@@ -76,6 +76,14 @@ fn validate_iau_rotation_to_parent() {
                     rot_data.as_mut_ptr(),
                 );
             }
+
+            // Parent rotation of Earth IAU frame is 3 not J2000, etc.
+            assert!(
+                [J2000, FK4, 4, 5, 6].contains(&dcm.from),
+                "unexpected DCM from frame {}",
+                dcm.from
+            );
+            assert_eq!(dcm.to, frame.orientation_id);
 
             // Confirmed that the M3x3 below is the correct representation from SPICE by using the mxv spice function and compare that to the nalgebra equivalent computation.
             let spice_mat = Matrix3::new(
@@ -173,8 +181,6 @@ fn validate_bpc_rotation_to_parent() {
     let bpc = BPC::load(pck).unwrap();
     let almanac = Almanac::from_bpc(bpc).unwrap();
 
-    let frame = Frame::from_ephem_orient(EARTH, ITRF93);
-
     // This BPC file start in 2011 and ends in 2022.
     for (num, epoch) in TimeSeries::inclusive(
         Epoch::from_tdb_duration(0.11.centuries()),
@@ -183,7 +189,11 @@ fn validate_bpc_rotation_to_parent() {
     )
     .enumerate()
     {
-        let dcm = almanac.rotation_to_parent(frame, epoch).unwrap();
+        let dcm = almanac.rotation_to_parent(EARTH_ITRF93, epoch).unwrap();
+
+        if num == 0 {
+            println!("{dcm}");
+        }
 
         let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];
         unsafe {
@@ -254,11 +264,11 @@ fn validate_bpc_rotation_to_parent() {
         // However, we also check the rotation about that unit vector AND we check that the DCMs match too.
         assert!(
             uvec_angle_deg_err.abs() < MAX_ERR_DEG || uvec_angle_deg_err.is_nan(),
-            "#{num} @ {epoch} unit vector angle error for {frame}: {uvec_angle_deg_err:e} deg"
+            "#{num} @ {epoch} unit vector angle error: {uvec_angle_deg_err:e} deg"
         );
         assert!(
             deg_err.abs() < MAX_ERR_DEG,
-            "#{num} @ {epoch} rotation error for {frame}: {deg_err:e} deg"
+            "#{num} @ {epoch} rotation error: {deg_err:e} deg"
         );
 
         assert!(
@@ -278,6 +288,10 @@ fn validate_bpc_rotation_to_parent() {
             (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm(),
             dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()
         );
+
+        // Check the frames
+        assert_eq!(dcm.from, ECLIPJ2000);
+        assert_eq!(dcm.to, ITRF93);
     }
 }
 
@@ -306,6 +320,9 @@ fn validate_j2000_ecliptic() {
                 rot_data.as_mut_ptr(),
             );
         }
+
+        assert_eq!(dcm.from, J2000);
+        assert_eq!(dcm.to, ECLIPJ2000);
 
         // Confirmed that the M3x3 below is the correct representation from SPICE by using the mxv spice function and compare that to the nalgebra equivalent computation.
         let rot_mat = Matrix3::new(
@@ -357,9 +374,6 @@ fn validate_j2000_ecliptic() {
             dcm.rot_mat_dt, spice_dcm.rot_mat_dt,
             "expected both derivatives to be unuset"
         );
-
-        assert_eq!(dcm.from, ECLIPJ2000);
-        assert_eq!(dcm.to, J2000);
     }
 }
 
@@ -426,8 +440,8 @@ fn validate_bpc_rotations() {
 
         let spice_dcm = DCM {
             rot_mat,
-            from: dcm.from,
-            to: dcm.to,
+            from: ITRF93,
+            to: J2000,
             rot_mat_dt,
         };
 
@@ -529,7 +543,7 @@ fn validate_bpc_to_iau_rotations() {
     ] {
         for (num, epoch) in TimeSeries::inclusive(start, end, 1.days()).enumerate() {
             let dcm = almanac.rotate_from_to(EARTH_ITRF93, frame, epoch).unwrap();
-            let dcm_t = almanac.rotate_from_to(frame, EARTH_ITRF93, epoch).unwrap();
+            // let dcm_t = almanac.rotate_from_to(frame, EARTH_ITRF93, epoch).unwrap();
 
             let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];
             unsafe {
@@ -657,7 +671,6 @@ fn validate_bpc_to_iau_rotations() {
             );
 
             // Grab the transposed DCM
-            let dcm_t = almanac.rotate_from_to(frame, EARTH_ITRF93, epoch).unwrap();
             let dcm_t = almanac.rotate_from_to(frame, EARTH_ITRF93, epoch).unwrap();
 
             let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];

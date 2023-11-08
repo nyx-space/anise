@@ -41,8 +41,8 @@ impl Almanac {
             return Ok(DCM {
                 rot_mat: r1(J2000_TO_ECLIPJ2000_ANGLE_RAD),
                 rot_mat_dt: None,
-                from: ECLIPJ2000,
-                to: J2000,
+                from: J2000,
+                to: ECLIPJ2000,
             });
         }
         // Let's see if this orientation is defined in the loaded BPC files
@@ -57,6 +57,7 @@ impl Almanac {
                     .as_ref()
                     .ok_or(OrientationError::Unreachable)?;
 
+                // Compute the angles and their rates
                 let (ra_dec_w, d_ra_dec_w) = match summary.data_type()? {
                     DafDataType::Type2ChebyshevTriplet => {
                         let data = bpc_data
@@ -97,8 +98,8 @@ impl Almanac {
                 Ok(DCM {
                     rot_mat,
                     rot_mat_dt,
-                    from: source.orientation_id,
-                    to: summary.inertial_frame_id,
+                    from: summary.inertial_frame_id,
+                    to: source.orientation_id,
                 })
             }
             Err(_) => {
