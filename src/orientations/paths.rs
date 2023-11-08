@@ -185,42 +185,16 @@ impl Almanac {
             Ok((to_len, to_path, from_frame.orientation_id))
         } else {
             // Either are at the orientation root, so we'll step through the paths until we find the common root.
-            let mut common_path = [None; MAX_TREE_DEPTH];
-            let mut items: usize = 0;
+            let mut common_path = to_path;
+            let mut items: usize = to_len;
+            let common_node = to_path[to_len - 1].unwrap();
 
-            for to_obj in to_path.iter().take(to_len) {
-                // Check the trivial case of the common node being one of the input frames
-                if to_obj.unwrap() == from_frame.orientation_id {
-                    common_path[0] = Some(from_frame.orientation_id);
-                    items = 1;
-                    return Ok((items, common_path, from_frame.orientation_id));
-                }
-
-                for from_obj in from_path.iter().take(from_len) {
-                    // Check the trivial case of the common node being one of the input frames
-                    if items == 0 && from_obj.unwrap() == to_frame.orientation_id {
-                        common_path[0] = Some(to_frame.orientation_id);
-                        items = 1;
-                        return Ok((items, common_path, to_frame.orientation_id));
-                    }
-
-                    if from_obj == to_obj {
-                        // This is where the paths branch meet, so the root is the parent of the current item.
-                        // Recall that the path is _from_ the source to the root of the context, so we're walking them
-                        // backward until we find "where" the paths branched out.
-                        return Ok((items, common_path, to_obj.unwrap()));
-                    } else {
-                        common_path[items] = Some(from_obj.unwrap());
-                        items += 1;
-                    }
-                }
+            for from_obj in from_path.iter().take(from_len).rev().skip(1) {
+                common_path[items] = Some(from_obj.unwrap());
+                items += 1;
             }
 
-            Err(OrientationError::RotationOrigin {
-                from: from_frame.into(),
-                to: to_frame.into(),
-                epoch,
-            })
+            Ok((items, common_path, common_node))
         }
     }
 }
