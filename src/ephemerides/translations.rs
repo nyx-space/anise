@@ -99,7 +99,7 @@ impl Almanac {
             radius_km: pos_fwrd - pos_bwrd,
             velocity_km_s: vel_fwrd - vel_bwrd,
             epoch,
-            frame: to_frame,
+            frame: to_frame.with_orient(from_frame.orientation_id),
         })
     }
 
