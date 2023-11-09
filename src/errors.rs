@@ -133,11 +133,21 @@ pub enum PhysicsError {
         frame1: FrameUid,
         frame2: FrameUid,
     },
-    #[snafu(display("origins {from1} and {from2} differ while {action}"))]
-    OriginMismatch {
+    #[snafu(display(
+        "cannot {action} because rotations {from1}->{to1} and {from2}->{to2} are incompatible"
+    ))]
+    InvalidRotation {
         action: &'static str,
         from1: NaifId,
+        to1: NaifId,
         from2: NaifId,
+        to2: NaifId,
+    },
+    #[snafu(display("cannot rotate state in frame {state_frame} with rotation {from}->{to}"))]
+    InvalidStateRotation {
+        from: NaifId,
+        to: NaifId,
+        state_frame: FrameUid,
     },
     #[snafu(display("{action} requires the time derivative of the DCM but it is not set"))]
     DCMMissingDerivative { action: &'static str },

@@ -9,7 +9,7 @@
  */
 use crate::{
     astro::PhysicsResult,
-    errors::{OriginMismatchSnafu, PhysicsError},
+    errors::{InvalidRotationSnafu, InvalidStateRotationSnafu, PhysicsError},
     math::{cartesian::CartesianState, Matrix3, Matrix6, Vector3, Vector6},
     prelude::Frame,
     NaifId,
@@ -175,10 +175,12 @@ impl Mul for DCM {
         } else {
             ensure!(
                 self.from == rhs.to,
-                OriginMismatchSnafu {
-                    action: "multiplying DCMs",
+                InvalidRotationSnafu {
+                    action: "multiply DCMs",
                     from1: self.from,
-                    from2: rhs.from
+                    to1: self.to,
+                    from2: rhs.from,
+                    to2: rhs.to
                 }
             );
 
@@ -235,10 +237,10 @@ impl Mul<CartesianState> for DCM {
     fn mul(self, rhs: CartesianState) -> Self::Output {
         ensure!(
             self.from == rhs.frame.orientation_id,
-            OriginMismatchSnafu {
-                action: "rotating Cartesian state",
-                from1: self.from,
-                from2: rhs.frame.orientation_id
+            InvalidStateRotationSnafu {
+                from: self.from,
+                to: self.to,
+                state_frame: rhs.frame
             }
         );
         let new_state = self.state_dcm() * rhs.to_cartesian_pos_vel();

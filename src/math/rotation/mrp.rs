@@ -11,7 +11,7 @@
 use snafu::ensure;
 
 use crate::{
-    errors::{DivisionByZeroSnafu, MathError, OriginMismatchSnafu, PhysicsError},
+    errors::{DivisionByZeroSnafu, InvalidRotationSnafu, MathError, PhysicsError},
     math::{Matrix3, Vector3},
     NaifId,
 };
@@ -167,10 +167,12 @@ impl MRP {
     pub fn relative_to(&self, rhs: &Self) -> Result<Self, PhysicsError> {
         ensure!(
             self.from == rhs.from,
-            OriginMismatchSnafu {
-                action: "computing relative MRP",
+            InvalidRotationSnafu {
+                action: "compute relative MRP",
                 from1: self.from,
-                from2: rhs.from
+                to1: self.to,
+                from2: rhs.from,
+                to2: rhs.to
             }
         );
 
@@ -206,10 +208,12 @@ impl Mul for MRP {
     fn mul(self, rhs: Self) -> Self::Output {
         ensure!(
             self.to == rhs.from,
-            OriginMismatchSnafu {
-                action: "composing MRPs",
+            InvalidRotationSnafu {
+                action: "compose MRPs",
                 from1: self.from,
-                from2: rhs.from
+                to1: self.to,
+                from2: rhs.from,
+                to2: rhs.to
             }
         );
 

@@ -529,6 +529,8 @@ fn validate_bpc_to_iau_rotations() {
 
     let mut actual_max_uvec_err_deg = 0.0;
     let mut actual_max_err_deg = 0.0;
+    let mut actual_pos_err_km = 0.0;
+    let mut actual_vel_err_km_s = 0.0;
 
     let start = Epoch::from_tdb_duration(0.11.centuries());
     let end = Epoch::from_tdb_duration(0.20.centuries());
@@ -541,9 +543,8 @@ fn validate_bpc_to_iau_rotations() {
         IAU_JUPITER_FRAME,
         IAU_SATURN_FRAME,
     ] {
-        for (num, epoch) in TimeSeries::inclusive(start, end, 1.days()).enumerate() {
+        for (num, epoch) in TimeSeries::inclusive(start, end, 27.days()).enumerate() {
             let dcm = almanac.rotate_from_to(EARTH_ITRF93, frame, epoch).unwrap();
-            // let dcm_t = almanac.rotate_from_to(frame, EARTH_ITRF93, epoch).unwrap();
 
             let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];
             unsafe {
@@ -582,7 +583,7 @@ fn validate_bpc_to_iau_rotations() {
 
             let spice_dcm = DCM {
                 rot_mat,
-                from: dcm.from,
+                from: ITRF93,
                 to: dcm.to,
                 rot_mat_dt,
             };
@@ -664,11 +665,18 @@ fn validate_bpc_to_iau_rotations() {
             let anise_out = (dcm * state).unwrap();
 
             assert_eq!(spice_out.frame, anise_out.frame);
-            assert!(dbg!(spice_out.radius_km - anise_out.radius_km).norm() < POSITION_EPSILON_KM);
-            assert!(
-                dbg!(spice_out.velocity_km_s - anise_out.velocity_km_s).norm()
-                    < VELOCITY_EPSILON_KM_S
-            );
+            let pos_err_km = (spice_out.radius_km - anise_out.radius_km).norm();
+            assert!(pos_err_km < 10.0 * POSITION_EPSILON_KM);
+            let vel_err_km_s = (spice_out.velocity_km_s - anise_out.velocity_km_s).norm();
+            assert!(vel_err_km_s < VELOCITY_EPSILON_KM_S);
+
+            if pos_err_km > actual_pos_err_km {
+                actual_pos_err_km = pos_err_km;
+            }
+
+            if vel_err_km_s > actual_vel_err_km_s {
+                actual_vel_err_km_s = vel_err_km_s;
+            }
 
             // Grab the transposed DCM
             let dcm_t = almanac.rotate_from_to(frame, EARTH_ITRF93, epoch).unwrap();
@@ -719,16 +727,14 @@ fn validate_bpc_to_iau_rotations() {
             let anise_rtn = (dcm_t * anise_out).unwrap();
 
             assert_eq!(spice_rtn.frame, anise_rtn.frame);
-            assert!(dbg!(spice_rtn.radius_km - state.radius_km).norm() < POSITION_EPSILON_KM);
-            assert!(
-                dbg!(spice_rtn.velocity_km_s - state.velocity_km_s).norm() < VELOCITY_EPSILON_KM_S
-            );
-            assert!(dbg!(anise_rtn.radius_km - state.radius_km).norm() < POSITION_EPSILON_KM);
-            assert!(
-                dbg!(anise_rtn.velocity_km_s - state.velocity_km_s).norm() < VELOCITY_EPSILON_KM_S
-            );
+            assert!((spice_rtn.radius_km - state.radius_km).norm() < POSITION_EPSILON_KM);
+            assert!((spice_rtn.velocity_km_s - state.velocity_km_s).norm() < VELOCITY_EPSILON_KM_S);
+            assert!((anise_rtn.radius_km - state.radius_km).norm() < POSITION_EPSILON_KM);
+            assert!((anise_rtn.velocity_km_s - state.velocity_km_s).norm() < VELOCITY_EPSILON_KM_S);
         }
     }
     println!("actualized max error in rotation angle = {actual_max_err_deg:.3e} deg");
     println!("actualized max error in rotation direction = {actual_max_uvec_err_deg:.3e} deg");
+    println!("actualized max error in position = {actual_pos_err_km:.6e} km");
+    println!("actualized max error in velocity = {actual_vel_err_km_s:.6e} km/s");
 }

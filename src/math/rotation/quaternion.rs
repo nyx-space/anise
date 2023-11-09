@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::errors::{OriginMismatchSnafu, PhysicsError};
+use crate::errors::{InvalidRotationSnafu, PhysicsError};
 use crate::math::rotation::EPSILON;
 use crate::structure::dataset::DataSetT;
 use crate::{math::Vector3, math::Vector4, NaifId};
@@ -240,10 +240,12 @@ impl Mul for Quaternion {
     fn mul(self, rhs: Quaternion) -> Self::Output {
         ensure!(
             self.to == rhs.from,
-            OriginMismatchSnafu {
-                action: "multiplying quaternions",
+            InvalidRotationSnafu {
+                action: "multiply quaternions",
                 from1: self.from,
-                from2: rhs.from
+                to1: self.to,
+                from2: rhs.from,
+                to2: rhs.to
             }
         );
 

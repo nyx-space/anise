@@ -16,6 +16,7 @@ use crate::{
     math::{cartesian::CartesianState, units::LengthUnit, Vector3},
     orientations::OrientationPhysicsSnafu,
     prelude::{Aberration, Frame},
+    NaifId,
 };
 
 use super::Almanac;
@@ -124,5 +125,19 @@ impl Almanac {
             .with_context(|_| OrientationSnafu {
                 action: "transform provided state",
             })
+    }
+
+    /// Returns the Cartesian state of the object as seen from the provided observer frame (essentially `spkezr`).
+    ///
+    /// # Note
+    /// The units will be those of the underlying ephemeris data (typically km and km/s)
+    pub fn state_of(
+        &self,
+        object: NaifId,
+        observer: Frame,
+        epoch: Epoch,
+        ab_corr: Aberration,
+    ) -> Result<CartesianState, AlmanacError> {
+        self.transform_from_to(Frame::from_ephem_j2000(object), observer, epoch, ab_corr)
     }
 }
