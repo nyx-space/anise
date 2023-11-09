@@ -195,12 +195,12 @@ fn test_j2k_to_itrf93() {
     );
 
     // Check the derivative
-    // assert!(
-    //     (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm() < 1e-13,
-    //     "derivative error! got: {}want:{}derivative err = {:.3e}: {:.3e}",
-    //     dcm.rot_mat_dt.unwrap(),
-    //     spice_dcm.rot_mat_dt.unwrap(),
-    //     (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm(),
-    //     dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()
-    // );
+    assert!(
+        (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm() < 1e-13,
+        "derivative error! got: {}want:{}derivative err = {:.3e}: {:.3e}",
+        dcm.rot_mat_dt.unwrap(),
+        spice_dcm.rot_mat_dt.unwrap(),
+        (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm(),
+        dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()
+    );
 }

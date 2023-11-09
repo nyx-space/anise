@@ -146,7 +146,7 @@ impl DCM {
                 rslt.rot_mat_dt =
                     Some(rot_mat_dt * other.rot_mat + self.rot_mat * other_rot_mat_dt);
             } else {
-                rslt.rot_mat_dt = Some(other_rot_mat_dt);
+                rslt.rot_mat_dt = Some(self.rot_mat * other_rot_mat_dt);
             }
         } else if let Some(rot_mat_dt) = self.rot_mat_dt {
             rslt.rot_mat_dt = Some(rot_mat_dt * other.rot_mat);
