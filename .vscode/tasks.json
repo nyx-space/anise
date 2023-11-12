@@ -1,0 +1,62 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cargo",
+			"command": "test",
+			"args": [
+				"validate_bpc_",
+				"--",
+				"--nocapture",
+				"--include-ignored",
+				"--test-threads",
+				"1",
+			],
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "none",
+			"label": "ANISE: BPC validation"
+		},
+		{
+			"type": "cargo",
+			"command": "test",
+			"args": [
+				"validate_hermite_type13_",
+				"--features",
+				"spkezr_validation",
+				"--release",
+				"--",
+				"--nocapture",
+				"--include-ignored",
+				"--test-threads",
+				"1",
+			],
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "none",
+			"label": "ANISE: SPK Hermite validation"
+		},
+		{
+			"type": "cargo",
+			"command": "test",
+			"args": [
+				"validate_jplde",
+				"--features",
+				"spkezr_validation",
+				"--release",
+				"--",
+				"--nocapture",
+				"--include-ignored",
+				"--test-threads",
+				"1",
+			],
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "none",
+			"label": "ANISE: SPK Chebyshev validation"
+		}
+	]
+}
