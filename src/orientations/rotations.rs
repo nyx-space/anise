@@ -62,7 +62,7 @@ impl Almanac {
         };
 
         // The bwrd variables are the states from the `to frame` back to the common node
-        let dcm_bwrd = if to_frame.orient_origin_id_match(common_node) {
+        let mut dcm_bwrd = if to_frame.orient_origin_id_match(common_node) {
             DCM::identity(common_node, common_node)
         } else {
             self.rotation_to_parent(to_frame, epoch)?.transpose()
@@ -84,8 +84,13 @@ impl Almanac {
                 dcm_fwrd = (dcm_fwrd * cur_dcm)
                     .with_context(|_| OrientationPhysicsSnafu)?
                     .transpose();
+            } else if dcm_bwrd.to == cur_dcm.from {
+                dcm_bwrd = (cur_dcm * dcm_bwrd).with_context(|_| OrientationPhysicsSnafu)?;
+            } else if dcm_bwrd.to == cur_dcm.to {
+                dcm_bwrd =
+                    (dcm_bwrd.transpose() * cur_dcm).with_context(|_| OrientationPhysicsSnafu)?;
             } else {
-                dcm_fwrd = (cur_dcm * dcm_fwrd).with_context(|_| OrientationPhysicsSnafu)?;
+                return Err(OrientationError::Unreachable);
             }
 
             if next_parent == common_node {

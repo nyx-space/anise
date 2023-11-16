@@ -138,7 +138,6 @@ impl DCM {
     pub(crate) fn mul_unchecked(&self, other: Self) -> Self {
         let mut rslt = *self;
         rslt.rot_mat *= other.rot_mat;
-        // rslt.to = other.to;
         rslt.from = other.from;
         // Make sure to apply the transport theorem.
         if let Some(other_rot_mat_dt) = other.rot_mat_dt {
@@ -169,9 +168,16 @@ impl Mul for DCM {
 
     fn mul(self, rhs: Self) -> Self::Output {
         if self.is_identity() {
-            Ok(rhs)
+            let mut rslt = rhs;
+            rslt.from = rhs.from;
+            rslt.to = self.to;
+            Ok(rslt)
         } else if rhs.is_identity() {
-            Ok(self)
+            let mut rslt = self;
+            rslt.from = rhs.from;
+            rslt.to = self.to;
+            Ok(rslt)
+            // Ok(self)
         } else {
             ensure!(
                 self.from == rhs.to,
