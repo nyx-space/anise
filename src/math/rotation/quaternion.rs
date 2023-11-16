@@ -8,11 +8,13 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::errors::{OriginMismatchSnafu, PhysicsError};
+use crate::errors::{InvalidRotationSnafu, PhysicsError};
 use crate::math::rotation::EPSILON;
+use crate::structure::dataset::DataSetT;
 use crate::{math::Vector3, math::Vector4, NaifId};
 use core::fmt;
 use core::ops::Mul;
+use der::{Decode, Encode, Reader, Writer};
 use nalgebra::Matrix4x3;
 use snafu::ensure;
 
@@ -233,15 +235,17 @@ impl EulerParameter {
 }
 
 impl Mul for Quaternion {
-    type Output = Result<Quaternion, PhysicsError>;
+    type Output = Result<Self, PhysicsError>;
 
-    fn mul(self, rhs: Quaternion) -> Result<Quaternion, PhysicsError> {
+    fn mul(self, rhs: Quaternion) -> Self::Output {
         ensure!(
             self.to == rhs.from,
-            OriginMismatchSnafu {
-                action: "multiplying quaternions",
+            InvalidRotationSnafu {
+                action: "multiply quaternions",
                 from1: self.from,
-                from2: rhs.from
+                to1: self.to,
+                from2: rhs.from,
+                to2: rhs.to
             }
         );
 
@@ -316,6 +320,56 @@ impl fmt::Display for EulerParameter {
             self.from, self.to, self.w, self.x, self.y, self.z
         )
     }
+}
+
+impl Default for EulerParameter {
+    fn default() -> Self {
+        Self::identity(0, 0)
+    }
+}
+
+impl<'a> Decode<'a> for EulerParameter {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
+        let from = decoder.decode()?;
+        let to = decoder.decode()?;
+        let w = decoder.decode()?;
+        let x = decoder.decode()?;
+        let y = decoder.decode()?;
+        let z = decoder.decode()?;
+
+        Ok(Self {
+            w,
+            x,
+            y,
+            z,
+            from,
+            to,
+        })
+    }
+}
+
+impl Encode for EulerParameter {
+    fn encoded_len(&self) -> der::Result<der::Length> {
+        self.from.encoded_len()?
+            + self.to.encoded_len()?
+            + self.w.encoded_len()?
+            + self.x.encoded_len()?
+            + self.y.encoded_len()?
+            + self.z.encoded_len()?
+    }
+
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
+        self.from.encode(encoder)?;
+        self.to.encode(encoder)?;
+        self.w.encode(encoder)?;
+        self.x.encode(encoder)?;
+        self.y.encode(encoder)?;
+        self.z.encode(encoder)
+    }
+}
+
+impl DataSetT for EulerParameter {
+    const NAME: &'static str = "euler parameter";
 }
 
 #[cfg(test)]
@@ -494,4 +548,27 @@ mod ut_quaternion {
     }
 
     // TODO: Add useful tests
+
+    use der::{Decode, Encode};
+
+    #[test]
+    fn ep_encdec_min_repr() {
+        // A minimal representation of a planetary constant.
+        let repr = EulerParameter {
+            from: -123,
+            to: 345,
+            w: 0.1,
+            x: 0.2,
+            y: 0.2,
+            z: 0.2,
+        }
+        .normalize();
+
+        let mut buf = vec![];
+        repr.encode_to_vec(&mut buf).unwrap();
+
+        let repr_dec = EulerParameter::from_der(&buf).unwrap();
+
+        assert_eq!(repr, repr_dec);
+    }
 }

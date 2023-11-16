@@ -10,8 +10,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  type2_chebyshev:
-    name: JPL DE Benchmark
+  ephem_type2_chebyshev:
+    name: SPICE versus ANISE Benchmark
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -28,38 +28,17 @@ jobs:
       - name: Install CSPICE
         run: sh dev-env-setup.sh && cd .. # Return to root
 
-      - name: Bench
+      - name: Bench JPL Ephemerides
         run: cargo bench --bench "*_jpl_ephemerides"
+      
+      - name: Bench Spacecraft (Hermite type 13)
+        run: cargo bench --bench "*_spacecraft_ephemeris"
+      
+      - name: Bench Binary planetary constants
+        run: cargo bench --bench "crit_bpc_rotation"
 
       - name: Save benchmark artifacts
         uses: actions/upload-artifact@v3
         with:
           name: jpl-development-ephemerides-benchmark
-          path: target/criterion/**/report/*
-
-  type13_hermite:
-    name: Hermite Benchmark
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
-        with:
-          lfs: true
-
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-
-      - name: Install CSPICE
-        run: sh dev-env-setup.sh && cd .. # Return to root
-
-      - name: Bench
-        run: cargo bench --bench "*_spacecraft_ephemeris"
-
-      - name: Save benchmark artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: spacecraft-ephemeris-benchmark
           path: target/criterion/**/report/*

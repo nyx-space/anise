@@ -8,19 +8,25 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::{errors::IntegrityError, math::interpolation::InterpolationError, NaifId};
+use crate::{
+    errors::IntegrityError, math::interpolation::InterpolationError, prelude::InputOutputError,
+    NaifId,
+};
 use core::fmt::Display;
 use hifitime::Epoch;
 use snafu::prelude::*;
-use std::io::Error as IOError;
 use zerocopy::{AsBytes, FromBytes};
 
 pub(crate) const RCRD_LEN: usize = 1024;
 #[allow(clippy::module_inception)]
 pub mod daf;
+mod data_types;
+pub use data_types::DataType as DafDataType;
 pub mod file_record;
 pub mod name_record;
 pub mod summary_record;
+// Defines the supported data types
+pub mod datatypes;
 
 pub use daf::DAF;
 
@@ -60,9 +66,6 @@ pub trait NAIFDataSet<'a>: Sized + Display + PartialEq {
     /// The underlying record representation
     type RecordKind: NAIFDataRecord<'a>;
 
-    /// The summary record supported by this data set
-    type SummaryKind: NAIFSummaryRecord;
-
     /// The state that is returned from an evaluation of this data set
     type StateKind;
 
@@ -74,10 +77,10 @@ pub trait NAIFDataSet<'a>: Sized + Display + PartialEq {
 
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError>;
 
-    fn evaluate(
+    fn evaluate<S: NAIFSummaryRecord>(
         &self,
         epoch: Epoch,
-        summary: &Self::SummaryKind,
+        summary: &S,
     ) -> Result<Self::StateKind, InterpolationError>;
 
     /// Checks the integrity of this data set, returns an error if the data has issues.
@@ -172,7 +175,17 @@ pub enum DAFError {
         source: IntegrityError,
     },
     #[snafu(display("while {action} encountered input/output error {source}"))]
-    IO { action: String, source: IOError },
+    IO {
+        action: String,
+        source: InputOutputError,
+    },
+    #[snafu(display("data type {id}: {kind} (corrupted data?)"))]
+    Datatype { id: i32, kind: &'static str },
+    #[snafu(display("{dtype:?} not supported for {kind}"))]
+    UnsupportedDatatype {
+        dtype: DafDataType,
+        kind: &'static str,
+    },
 }
 
 // Manual implementation of PartialEq because IOError does not derive it, sadly.

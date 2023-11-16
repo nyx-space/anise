@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -13,9 +13,9 @@ use std::mem::size_of_val;
 use anise::{
     file2heap,
     naif::{
-        daf::DAF,
+        daf::{datatypes::Type2ChebyshevSet, DAF},
         pck::BPCSummaryRecord,
-        spk::{datatypes::Type2ChebyshevSet, summary::SPKSummaryRecord},
+        spk::summary::SPKSummaryRecord,
         Endian,
     },
     prelude::*,
@@ -137,7 +137,7 @@ fn test_spk_load_bytes() {
 
     // Put this in a context
     let default_almanac = Almanac::default();
-    let spice = default_almanac.load_spk(de421).unwrap();
+    let spice = default_almanac.with_spk(de421).unwrap();
     assert_eq!(spice.num_loaded_spk(), 1);
     assert_eq!(default_almanac.num_loaded_spk(), 0);
 
@@ -146,12 +146,12 @@ fn test_spk_load_bytes() {
     {
         let bytes = file2heap!("data/de440.bsp").unwrap();
         let de440 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
-        let spice = spice.load_spk(de440).unwrap();
+        let spice = spice.with_spk(de440).unwrap();
 
         // And another
         let bytes = file2heap!("data/de440s.bsp").unwrap();
         let de440 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
-        let spice = spice.load_spk(de440).unwrap();
+        let spice = spice.with_spk(de440).unwrap();
 
         // NOTE: Because everything is a pointer, the size on the stack remains constant at 521 bytes.
         println!("{}", size_of_val(&spice));

@@ -15,7 +15,7 @@ use crate::{
     prelude::Frame,
 };
 use core::fmt;
-use core::ops::Add;
+use core::ops::{Add, Neg, Sub};
 use hifitime::Epoch;
 use nalgebra::Vector6;
 use snafu::ensure;
@@ -174,6 +174,26 @@ impl CartesianState {
             && (self.velocity_km_s.z - other.velocity_km_s.z).abs() < velocity_tol_km_s
             && self.frame == other.frame
     }
+
+    /// Adds the other state to this state WITHOUT checking if the frames match.
+    pub(crate) fn add_unchecked(&self, other: Self) -> Self {
+        Self {
+            radius_km: self.radius_km + other.radius_km,
+            velocity_km_s: self.velocity_km_s + other.velocity_km_s,
+            epoch: self.epoch,
+            frame: self.frame,
+        }
+    }
+
+    /// Subs the other state to this state WITHOUT checking if the frames match.
+    pub(crate) fn sub_unchecked(&self, other: Self) -> Self {
+        Self {
+            radius_km: self.radius_km - other.radius_km,
+            velocity_km_s: self.velocity_km_s - other.velocity_km_s,
+            epoch: self.epoch,
+            frame: self.frame,
+        }
+    }
 }
 
 impl Add for CartesianState {
@@ -191,7 +211,7 @@ impl Add for CartesianState {
         );
 
         ensure!(
-            self.frame == other.frame,
+            self.frame.ephemeris_id == other.frame.ephemeris_id,
             FrameMismatchSnafu {
                 action: "translating states",
                 frame1: self.frame,
@@ -199,12 +219,7 @@ impl Add for CartesianState {
             }
         );
 
-        Ok(CartesianState {
-            radius_km: self.radius_km + other.radius_km,
-            velocity_km_s: self.velocity_km_s + other.velocity_km_s,
-            epoch: self.epoch,
-            frame: self.frame,
-        })
+        Ok(self.add_unchecked(other))
     }
 }
 
@@ -214,6 +229,44 @@ impl PartialEq for CartesianState {
         let radial_tol = 1e-5; // centimeter
         let velocity_tol = 1e-5; // centimeter per second
         self.eq_within(other, radial_tol, velocity_tol)
+    }
+}
+
+impl Sub for CartesianState {
+    type Output = Result<CartesianState, PhysicsError>;
+
+    /// Adds one state to another. This will return an error if the epochs or frames are different.
+    fn sub(self, other: CartesianState) -> Self::Output {
+        ensure!(
+            self.epoch == other.epoch,
+            EpochMismatchSnafu {
+                action: "translating states",
+                epoch1: self.epoch,
+                epoch2: other.epoch
+            }
+        );
+
+        ensure!(
+            self.frame.ephemeris_id == other.frame.ephemeris_id,
+            FrameMismatchSnafu {
+                action: "translating states",
+                frame1: self.frame,
+                frame2: other.frame
+            }
+        );
+
+        Ok(self.sub_unchecked(other))
+    }
+}
+
+impl Neg for CartesianState {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        let mut me = self;
+        me.radius_km = -me.radius_km;
+        me.velocity_km_s = -me.velocity_km_s;
+        me
     }
 }
 

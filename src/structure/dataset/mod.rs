@@ -7,14 +7,16 @@
  *
  * Documentation: https://nyxspace.com/
  */
+use self::error::DataDecodingSnafu;
 use super::{
-    lookuptable::{Entry, LookUpTable, LutError},
+    lookuptable::{LookUpTable, LutError},
     metadata::Metadata,
     semver::Semver,
     ANISE_VERSION,
 };
 use crate::{
     errors::{DecodingError, IntegrityError},
+    structure::dataset::error::DataSetIntegritySnafu,
     NaifId,
 };
 use bytes::Bytes;
@@ -36,204 +38,35 @@ macro_rules! io_imports {
 
 io_imports!();
 
-#[derive(Debug, Snafu)]
-#[snafu(visibility(pub(crate)))]
-pub enum DataSetError {
-    #[snafu(display("when {action} {source}"))]
-    DataSetLut {
-        action: &'static str,
-        source: LutError,
-    },
-    #[snafu(display("when {action} {source}"))]
-    DataSetIntegrity {
-        action: &'static str,
-        source: IntegrityError,
-    },
-    #[snafu(display("when {action} {source}"))]
-    DataDecoding {
-        action: &'static str,
-        source: DecodingError,
-    },
-    #[snafu(display("input/output error while {action}"))]
-    IO {
-        action: &'static str,
-        source: IOError,
-    },
-}
+mod builder;
+mod datatype;
+mod error;
 
-impl PartialEq for DataSetError {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (
-                Self::DataSetLut {
-                    action: l_action,
-                    source: l_source,
-                },
-                Self::DataSetLut {
-                    action: r_action,
-                    source: r_source,
-                },
-            ) => l_action == r_action && l_source == r_source,
-            (
-                Self::DataSetIntegrity {
-                    action: l_action,
-                    source: l_source,
-                },
-                Self::DataSetIntegrity {
-                    action: r_action,
-                    source: r_source,
-                },
-            ) => l_action == r_action && l_source == r_source,
-            (
-                Self::DataDecoding {
-                    action: l_action,
-                    source: l_source,
-                },
-                Self::DataDecoding {
-                    action: r_action,
-                    source: r_source,
-                },
-            ) => l_action == r_action && l_source == r_source,
-            (
-                Self::IO {
-                    action: l_action,
-                    source: _l_source,
-                },
-                Self::IO {
-                    action: r_action,
-                    source: _r_source,
-                },
-            ) => l_action == r_action,
-            _ => false,
-        }
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-#[repr(u8)]
-pub enum DataSetType {
-    /// Used only if not encoding a dataset but some other structure
-    NotApplicable,
-    SpacecraftData,
-    PlanetaryData,
-}
-
-impl From<u8> for DataSetType {
-    fn from(val: u8) -> Self {
-        match val {
-            0 => DataSetType::NotApplicable,
-            1 => DataSetType::SpacecraftData,
-            2 => DataSetType::PlanetaryData,
-            _ => panic!("Invalid value for DataSetType {val}"),
-        }
-    }
-}
-
-impl From<DataSetType> for u8 {
-    fn from(val: DataSetType) -> Self {
-        val as u8
-    }
-}
-
-impl Encode for DataSetType {
-    fn encoded_len(&self) -> der::Result<der::Length> {
-        (*self as u8).encoded_len()
-    }
-
-    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
-        (*self as u8).encode(encoder)
-    }
-}
-
-impl<'a> Decode<'a> for DataSetType {
-    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
-        let asu8: u8 = decoder.decode()?;
-        Ok(Self::from(asu8))
-    }
-}
+pub use builder::DataSetBuilder;
+pub use datatype::DataSetType;
+pub use error::DataSetError;
 
 /// The kind of data that can be encoded in a dataset
-pub trait DataSetT<'a>: Encode + Decode<'a> {
+pub trait DataSetT: Encode + for<'a> Decode<'a> {
     const NAME: &'static str;
 }
 
 /// A DataSet is the core structure shared by all ANISE binary data.
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
-pub struct DataSet<'a, T: DataSetT<'a>, const ENTRIES: usize> {
-    pub metadata: Metadata<'a>,
+pub struct DataSet<T: DataSetT, const ENTRIES: usize> {
+    pub metadata: Metadata,
     /// All datasets have LookUpTable (LUT) that stores the mapping between a key and its index in the ephemeris list.
-    pub lut: LookUpTable<'a, ENTRIES>,
+    pub lut: LookUpTable<ENTRIES>,
     pub data_checksum: u32,
     /// The actual data from the dataset
     pub bytes: Bytes,
     _daf_type: PhantomData<T>,
 }
 
-/// Dataset builder allows building a dataset. It requires allocations.
-#[derive(Clone, Default, Debug)]
-pub struct DataSetBuilder<'a, T: DataSetT<'a>, const ENTRIES: usize> {
-    pub dataset: DataSet<'a, T, ENTRIES>,
-}
-
-impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSetBuilder<'a, T, ENTRIES> {
-    pub fn push_into(
-        &mut self,
-        buf: &mut Vec<u8>,
-        data: T,
-        id: Option<NaifId>,
-        name: Option<&'a str>,
-    ) -> Result<(), DataSetError> {
-        let mut this_buf = vec![];
-        data.encode_to_vec(&mut this_buf).unwrap();
-        // Build this entry data.
-        let entry = Entry {
-            start_idx: buf.len() as u32,
-            end_idx: (buf.len() + this_buf.len()) as u32,
-        };
-
-        if id.is_some() && name.is_some() {
-            self.dataset
-                .lut
-                .append(id.unwrap(), name.unwrap(), entry)
-                .with_context(|_| DataSetLutSnafu {
-                    action: "pushing data with ID and name",
-                })?;
-        } else if id.is_some() {
-            self.dataset
-                .lut
-                .append_id(id.unwrap(), entry)
-                .with_context(|_| DataSetLutSnafu {
-                    action: "pushing data with ID only",
-                })?;
-        } else if name.is_some() {
-            self.dataset
-                .lut
-                .append_name(name.unwrap(), entry)
-                .with_context(|_| DataSetLutSnafu {
-                    action: "pushing data with name only",
-                })?;
-        } else {
-            return Err(DataSetError::DataSetLut {
-                action: "pushing data",
-                source: LutError::NoKeyProvided,
-            });
-        }
-        buf.extend_from_slice(&this_buf);
-
-        Ok(())
-    }
-
-    pub fn finalize(mut self, buf: Vec<u8>) -> Result<DataSet<'a, T, ENTRIES>, DataSetError> {
-        self.dataset.bytes = Bytes::copy_from_slice(&buf);
-        self.dataset.set_crc32();
-        Ok(self.dataset)
-    }
-}
-
-impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
+impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
     /// Try to load an Anise file from a pointer of bytes
-    pub fn try_from_bytes<B: Deref<Target = [u8]>>(bytes: &'a B) -> Result<Self, DataSetError> {
-        match Self::from_der(bytes) {
+    pub fn try_from_bytes<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DataSetError> {
+        match Self::from_der(&bytes) {
             Ok(ctx) => {
                 trace!("[try_from_bytes] loaded context successfully");
                 // Check the full integrity on load of the file.
@@ -286,7 +119,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
 
     /// Forces to load an Anise file from a pointer of bytes.
     /// **Panics** if the bytes cannot be interpreted as an Anise file.
-    pub fn from_bytes<B: Deref<Target = [u8]>>(buf: &'a B) -> Self {
+    pub fn from_bytes<B: Deref<Target = [u8]>>(buf: B) -> Self {
         Self::try_from_bytes(buf).unwrap()
     }
 
@@ -330,7 +163,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
         }
     }
 
-    pub fn get_by_id(&'a self, id: NaifId) -> Result<T, DataSetError> {
+    pub fn get_by_id(&self, id: NaifId) -> Result<T, DataSetError> {
         if let Some(entry) = self.lut.by_id.get(&id) {
             // Found the ID
             let bytes = self
@@ -353,8 +186,8 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
         }
     }
 
-    pub fn get_by_name(&'a self, name: &str) -> Result<T, DataSetError> {
-        if let Some(entry) = self.lut.by_name.get(&name) {
+    pub fn get_by_name(&self, name: &str) -> Result<T, DataSetError> {
+        if let Some(entry) = self.lut.by_name.get(&name.try_into().unwrap()) {
             // Found the name
             let bytes = self
                 .bytes
@@ -372,7 +205,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
             Err(DataSetError::DataSetLut {
                 action: "fetching by ID",
                 source: LutError::UnknownName {
-                    name: name.to_string(),
+                    name: name.try_into().unwrap(),
                 },
             })
         }
@@ -381,7 +214,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
     /// Saves this dataset to the provided file
     /// If overwrite is set to false, and the filename already exists, this function will return an error.
 
-    pub fn save_as(&self, filename: PathBuf, overwrite: bool) -> Result<(), DataSetError> {
+    pub fn save_as(&self, filename: &PathBuf, overwrite: bool) -> Result<(), DataSetError> {
         use log::{info, warn};
 
         if Path::new(&filename).exists() {
@@ -400,7 +233,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
 
         let mut buf = vec![];
 
-        match File::create(&filename) {
+        match File::create(filename) {
             Ok(mut file) => {
                 if let Err(err) = self.encode_to_vec(&mut buf) {
                     return Err(DataSetError::DataDecoding {
@@ -424,9 +257,23 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> DataSet<'a, T, ENTRIES> {
             }),
         }
     }
+
+    /// Returns the length of the LONGEST of the two look up tables
+    pub fn len(&self) -> usize {
+        if self.lut.by_id.len() > self.lut.by_name.len() {
+            self.lut.by_id.len()
+        } else {
+            self.lut.by_name.len()
+        }
+    }
+
+    /// Returns whether this dataset is empty
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
-impl<'a, T: DataSetT<'a>, const ENTRIES: usize> Encode for DataSet<'a, T, ENTRIES> {
+impl<T: DataSetT, const ENTRIES: usize> Encode for DataSet<T, ENTRIES> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let as_byte_ref = OctetStringRef::new(&self.bytes)?;
         self.metadata.encoded_len()?
@@ -444,7 +291,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> Encode for DataSet<'a, T, ENTRIE
     }
 }
 
-impl<'a, T: DataSetT<'a>, const ENTRIES: usize> Decode<'a> for DataSet<'a, T, ENTRIES> {
+impl<'a, T: DataSetT, const ENTRIES: usize> Decode<'a> for DataSet<T, ENTRIES> {
     fn decode<D: Reader<'a>>(decoder: &mut D) -> der::Result<Self> {
         let metadata = decoder.decode()?;
         let lut = decoder.decode()?;
@@ -460,7 +307,7 @@ impl<'a, T: DataSetT<'a>, const ENTRIES: usize> Decode<'a> for DataSet<'a, T, EN
     }
 }
 
-impl<'a, T: DataSetT<'a>, const ENTRIES: usize> fmt::Display for DataSet<'a, T, ENTRIES> {
+impl<T: DataSetT, const ENTRIES: usize> fmt::Display for DataSet<T, ENTRIES> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -491,23 +338,22 @@ mod dataset_ut {
 
         let mut buf = vec![];
         repr.encode_to_vec(&mut buf).unwrap();
-        dbg!(buf.len());
+        assert_eq!(buf.len(), 58);
 
         let repr_dec = DataSet::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
 
         dbg!(repr);
-        dbg!(core::mem::size_of::<DataSet<SpacecraftData, 2>>());
-        dbg!(core::mem::size_of::<DataSet<SpacecraftData, 128>>());
+        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData, 2>>(), 288);
+        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData, 128>>(), 10368);
     }
 
     #[test]
     fn spacecraft_constants_lookup() {
         // Build some data first.
         let full_sc = SpacecraftData {
-            name: "full spacecraft",
-            comments: "this is an example of encoding spacecraft data",
+            name: "full spacecraft".try_into().unwrap(),
             srp_data: Some(SRPData {
                 area_m2: 2.0,
                 coeff_reflectivity: 1.8,
@@ -525,8 +371,7 @@ mod dataset_ut {
             drag_data: Some(DragData::default()),
         };
         let srp_sc = SpacecraftData {
-            name: "SRP only spacecraft",
-            comments: "this is an example of encoding spacecraft data",
+            name: "SRP only spacecraft".try_into().unwrap(),
             srp_data: Some(SRPData::default()),
             ..Default::default()
         };
@@ -601,8 +446,7 @@ mod dataset_ut {
     fn spacecraft_constants_lookup_builder() {
         // Build some data first.
         let full_sc = SpacecraftData {
-            name: "full spacecraft",
-            comments: "this is an example of encoding spacecraft data",
+            name: "full spacecraft".try_into().unwrap(),
             srp_data: Some(SRPData {
                 area_m2: 2.0,
                 coeff_reflectivity: 1.8,
@@ -620,8 +464,7 @@ mod dataset_ut {
             drag_data: Some(DragData::default()),
         };
         let srp_sc = SpacecraftData {
-            name: "SRP only spacecraft",
-            comments: "this is an example of encoding spacecraft data",
+            name: "SRP only spacecraft".try_into().unwrap(),
             srp_data: Some(SRPData::default()),
             ..Default::default()
         };
@@ -630,21 +473,21 @@ mod dataset_ut {
         let mut buf = vec![];
         let mut builder = DataSetBuilder::default();
         builder
-            .push_into(&mut buf, srp_sc, Some(-20), Some("SRP spacecraft"))
+            .push_into(&mut buf, &srp_sc, Some(-20), Some("SRP spacecraft"))
             .unwrap();
 
         builder
-            .push_into(&mut buf, full_sc, Some(-50), Some("Full spacecraft"))
+            .push_into(&mut buf, &full_sc, Some(-50), Some("Full spacecraft"))
             .unwrap();
 
         // Pushing without name as ID -51
         builder
-            .push_into(&mut buf, full_sc, Some(-51), None)
+            .push_into(&mut buf, &full_sc, Some(-51), None)
             .unwrap();
 
         // Pushing without ID
         builder
-            .push_into(&mut buf, srp_sc, None, Some("ID less SRP spacecraft"))
+            .push_into(&mut buf, &srp_sc, None, Some("ID less SRP spacecraft"))
             .unwrap();
 
         let dataset = builder.finalize(buf).unwrap();
@@ -654,9 +497,9 @@ mod dataset_ut {
         let mut ebuf = vec![];
         dataset.encode_to_vec(&mut ebuf).unwrap();
 
-        dbg!(ebuf.len());
+        assert_eq!(ebuf.len(), 530);
 
-        let repr_dec = SpacecraftDataSet::from_bytes(&ebuf);
+        let repr_dec = SpacecraftDataSet::from_bytes(ebuf);
 
         assert_eq!(dataset, repr_dec);
 

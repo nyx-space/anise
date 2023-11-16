@@ -1,6 +1,7 @@
 extern crate pretty_env_logger;
 use std::env::{set_var, var};
 
+use anise::structure::{EulerParameterDataSet, PlanetaryDataSet, SpacecraftDataSet};
 use snafu::prelude::*;
 
 use anise::cli::args::{Actions, Args};
@@ -8,12 +9,10 @@ use anise::cli::inspect::{BpcRow, SpkRow};
 use anise::cli::{AniseSnafu, CliDAFSnafu, CliDataSetSnafu, CliErrors, CliFileRecordSnafu};
 use anise::file2heap;
 use anise::naif::daf::{FileRecord, NAIFRecord, NAIFSummaryRecord};
-use anise::naif::kpl::parser::convert_tpc;
+use anise::naif::kpl::parser::{convert_fk, convert_tpc};
 use anise::prelude::*;
-use anise::structure::dataset::{DataSet, DataSetType};
+use anise::structure::dataset::DataSetType;
 use anise::structure::metadata::Metadata;
-use anise::structure::planetocentric::PlanetaryData;
-use anise::structure::spacecraft::SpacecraftData;
 use clap::Parser;
 use log::info;
 use tabled::{settings::Style, Table};
@@ -45,14 +44,21 @@ fn main() -> Result<(), CliErrors> {
                     DataSetType::NotApplicable => unreachable!("no such ANISE data yet"),
                     DataSetType::SpacecraftData => {
                         // Decode as spacecraft data
-                        let dataset = DataSet::<SpacecraftData, 64>::try_from_bytes(&bytes)
+                        let dataset = SpacecraftDataSet::try_from_bytes(bytes)
                             .with_context(|_| CliDataSetSnafu)?;
                         println!("{dataset}");
                         Ok(())
                     }
                     DataSetType::PlanetaryData => {
                         // Decode as planetary data
-                        let dataset = DataSet::<PlanetaryData, 64>::try_from_bytes(&bytes)
+                        let dataset = PlanetaryDataSet::try_from_bytes(bytes)
+                            .with_context(|_| CliDataSetSnafu)?;
+                        println!("{dataset}");
+                        Ok(())
+                    }
+                    DataSetType::EulerParameterData => {
+                        // Decode as euler paramater data
+                        let dataset = EulerParameterDataSet::try_from_bytes(bytes)
                             .with_context(|_| CliDataSetSnafu)?;
                         println!("{dataset}");
                         Ok(())
@@ -181,7 +187,16 @@ fn main() -> Result<(), CliErrors> {
             let dataset = convert_tpc(pckfile, gmfile).with_context(|_| CliDataSetSnafu)?;
 
             dataset
-                .save_as(outfile, false)
+                .save_as(&outfile, false)
+                .with_context(|_| CliDataSetSnafu)?;
+
+            Ok(())
+        }
+        Actions::ConvertFk { fkfile, outfile } => {
+            let dataset = convert_fk(fkfile, false).unwrap();
+
+            dataset
+                .save_as(&outfile, false)
                 .with_context(|_| CliDataSetSnafu)?;
 
             Ok(())

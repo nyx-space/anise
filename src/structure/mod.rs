@@ -22,7 +22,10 @@ pub mod spacecraft;
 use self::{
     dataset::DataSet, planetocentric::PlanetaryData, semver::Semver, spacecraft::SpacecraftData,
 };
-use crate::almanac::{MAX_PLANETARY_DATA, MAX_SPACECRAFT_DATA};
+use crate::{
+    almanac::{MAX_PLANETARY_DATA, MAX_SPACECRAFT_DATA},
+    math::rotation::Quaternion,
+};
 
 /// The current version of ANISE
 pub const ANISE_VERSION: Semver = Semver {
@@ -31,5 +34,9 @@ pub const ANISE_VERSION: Semver = Semver {
     patch: 1,
 };
 
-pub type SpacecraftDataSet<'a> = DataSet<'a, SpacecraftData<'a>, MAX_SPACECRAFT_DATA>;
-pub type PlanetaryDataSet<'a> = DataSet<'a, PlanetaryData, MAX_PLANETARY_DATA>;
+/// Spacecraft Data Set allow mapping an ID and/or name to spacecraft data, optionally including mass, drag, SRP, an inertia information
+pub type SpacecraftDataSet = DataSet<SpacecraftData, MAX_SPACECRAFT_DATA>;
+/// Planetary Data Set allow mapping an ID and/or name to planetary data, optionally including shape information and rotation information
+pub type PlanetaryDataSet = DataSet<PlanetaryData, MAX_PLANETARY_DATA>;
+/// Euler Parameter Data Set allow mapping an ID and/or name to a time invariant Quaternion
+pub type EulerParameterDataSet = DataSet<Quaternion, MAX_PLANETARY_DATA>;

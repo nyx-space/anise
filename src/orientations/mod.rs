@@ -13,8 +13,12 @@ use snafu::prelude::*;
 
 use crate::{
     errors::PhysicsError, math::interpolation::InterpolationError, naif::daf::DAFError,
-    prelude::FrameUid,
+    prelude::FrameUid, structure::dataset::DataSetError,
 };
+
+mod paths;
+mod rotate_to_parent;
+mod rotations;
 
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
@@ -33,7 +37,7 @@ pub enum OrientationError {
         to: FrameUid,
         epoch: Epoch,
     },
-    #[snafu(display("no oreitnation data loaded (must call load_bpc or DataSet::from_bytes)"))]
+    #[snafu(display("no orientation data loaded (must call load_bpc or DataSet::from_bytes)"))]
     NoOrientationsLoaded,
     #[snafu(display("when {action} caused {source}"))]
     BPC {
@@ -50,5 +54,10 @@ pub enum OrientationError {
     OrientationInterpolation {
         #[snafu(backtrace)]
         source: InterpolationError,
+    },
+    #[snafu(display("during an orientation query {source}"))]
+    OrientationDataSet {
+        #[snafu(backtrace)]
+        source: DataSetError,
     },
 }

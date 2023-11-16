@@ -9,7 +9,7 @@
  */
 
 use crate::naif::{BPC, SPK};
-use crate::structure::{PlanetaryDataSet, SpacecraftDataSet};
+use crate::structure::{EulerParameterDataSet, PlanetaryDataSet, SpacecraftDataSet};
 use core::fmt;
 
 // TODO: Switch these to build constants so that it's configurable when building the library.
@@ -21,28 +21,31 @@ pub const MAX_PLANETARY_DATA: usize = 64;
 pub mod bpc;
 pub mod planetary;
 pub mod spk;
+pub mod transform;
 
 /// An Almanac contains all of the loaded SPICE and ANISE data.
 ///
 /// # Limitations
 /// The stack space required depends on the maximum number of each type that can be loaded.
 #[derive(Clone, Default)]
-pub struct Almanac<'a> {
+pub struct Almanac {
     /// NAIF SPK is kept unchanged
     pub spk_data: [Option<SPK>; MAX_LOADED_SPKS],
     /// NAIF BPC is kept unchanged
     pub bpc_data: [Option<BPC>; MAX_LOADED_BPCS],
     /// Dataset of planetary data
-    pub planetary_data: PlanetaryDataSet<'a>,
+    pub planetary_data: PlanetaryDataSet,
     /// Dataset of spacecraft data
-    pub spacecraft_data: SpacecraftDataSet<'a>,
+    pub spacecraft_data: SpacecraftDataSet,
+    /// Dataset of euler parameters
+    pub euler_param_data: EulerParameterDataSet,
 }
 
-impl<'a> fmt::Display for Almanac<'a> {
+impl fmt::Display for Almanac {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(
             f,
-            "Context: #SPK = {}\t#BPC = {}",
+            "Almanac: #SPK = {}\t#BPC = {}",
             self.num_loaded_spk(),
             self.num_loaded_bpc()
         )?;

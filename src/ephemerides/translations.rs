@@ -11,7 +11,7 @@
 use snafu::ResultExt;
 
 use super::EphemerisError;
-use super::UnderlyingPhysicsSnafu;
+use super::EphemerisPhysicsSnafu;
 use crate::almanac::Almanac;
 use crate::astro::Aberration;
 use crate::hifitime::Epoch;
@@ -23,12 +23,14 @@ use crate::prelude::Frame;
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
 pub const MAX_TREE_DEPTH: usize = 8;
 
-impl<'a> Almanac<'a> {
-    /// Returns the Cartesian state  needed to translate the `from_frame` to the `to_frame`.
+impl Almanac {
+    /// Returns the Cartesian state needed to translate the `from_frame` to the `to_frame`.
     ///
-    /// **WARNING:** This function only performs the translation and no rotation whatsoever. Use the `transform_from_to` function instead to include rotations.
+    /// # Warning
+    /// This function only performs the translation and no rotation whatsoever. Use the `transform_from_to` function instead to include rotations.
     ///
-    /// Note: this function performs a recursion of no more than twice the [MAX_TREE_DEPTH].
+    /// # Note
+    /// This function performs a recursion of no more than twice the [MAX_TREE_DEPTH].
     pub fn translate_from_to(
         &self,
         from_frame: Frame,
@@ -68,7 +70,7 @@ impl<'a> Almanac<'a> {
                 self.translation_parts_to_parent(to_frame, epoch, ab_corr)?
             };
 
-        for cur_node_hash in path.iter().take(node_count) {
+        for cur_node_id in path.iter().take(node_count) {
             if !frame_fwrd.ephem_origin_id_match(common_node) {
                 let (cur_pos_fwrd, cur_vel_fwrd, cur_frame_fwrd) =
                     self.translation_parts_to_parent(frame_fwrd, epoch, ab_corr)?;
@@ -88,7 +90,7 @@ impl<'a> Almanac<'a> {
             }
 
             // We know this exist, so we can safely unwrap it
-            if cur_node_hash.unwrap() == common_node {
+            if cur_node_id.unwrap() == common_node {
                 break;
             }
         }
@@ -97,7 +99,7 @@ impl<'a> Almanac<'a> {
             radius_km: pos_fwrd - pos_bwrd,
             velocity_km_s: vel_fwrd - vel_bwrd,
             epoch,
-            frame: to_frame,
+            frame: to_frame.with_orient(from_frame.orientation_id),
         })
     }
 
@@ -111,9 +113,24 @@ impl<'a> Almanac<'a> {
         self.translate_from_to(from_frame, to_frame, epoch, Aberration::None)
     }
 
+    /// Translates the provided Cartesian state into the requested frame
+    ///
+    /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the [transform_to] function instead to include rotations.
+    #[allow(clippy::too_many_arguments)]
+    pub fn translate_to(
+        &self,
+        state: CartesianState,
+        to_frame: Frame,
+        ab_corr: Aberration,
+    ) -> Result<CartesianState, EphemerisError> {
+        let frame_state = self.translate_from_to(state.frame, to_frame, state.epoch, ab_corr)?;
+
+        Ok(state.add_unchecked(frame_state))
+    }
+
     /// Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame
     ///
-    /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_state_to` function instead to include rotations.
+    /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the [transform_state_to] function instead to include rotations.
     #[allow(clippy::too_many_arguments)]
     pub fn translate_state_to(
         &self,
@@ -139,6 +156,6 @@ impl<'a> Almanac<'a> {
             frame: from_frame,
         };
 
-        (input_state + frame_state).with_context(|_| UnderlyingPhysicsSnafu {})
+        (input_state + frame_state).with_context(|_| EphemerisPhysicsSnafu {})
     }
 }

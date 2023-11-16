@@ -22,6 +22,42 @@ pub use quaternion::Quaternion;
 
 pub trait Rotation: TryInto<Quaternion> {}
 
+/// Build a 3x3 rotation matrix around the X axis
+pub fn r1(angle_rad: f64) -> Matrix3 {
+    let (s, c) = angle_rad.sin_cos();
+    Matrix3::new(1.0, 0.0, 0.0, 0.0, c, s, 0.0, -s, c)
+}
+
+/// Build the derivative of the 3x3 rotation matrix around the X axis
+pub fn r1_dot(angle_rad: f64) -> Matrix3 {
+    let (s, c) = angle_rad.sin_cos();
+    Matrix3::new(0.0, 0.0, 0.0, 0.0, -s, c, 0.0, -c, -s)
+}
+
+/// Build a 3x3 rotation matrix around the Y axis
+pub fn r2(angle_rad: f64) -> Matrix3 {
+    let (s, c) = angle_rad.sin_cos();
+    Matrix3::new(c, 0.0, -s, 0.0, 1.0, 0.0, s, 0.0, c)
+}
+
+/// Build the derivative of the 3x3 rotation matrix around the Y axis
+pub fn r2_dot(angle_rad: f64) -> Matrix3 {
+    let (s, c) = angle_rad.sin_cos();
+    Matrix3::new(-s, 0.0, -c, 0.0, 0.0, 0.0, c, 0.0, -s)
+}
+
+/// Build a 3x3 rotation matrix around the Z axis
+pub fn r3(angle_rad: f64) -> Matrix3 {
+    let (s, c) = angle_rad.sin_cos();
+    Matrix3::new(c, s, 0.0, -s, c, 0.0, 0.0, 0.0, 1.0)
+}
+
+/// Build the derivative of the 3x3 rotation matrix around the Z axis
+pub fn r3_dot(angle_rad: f64) -> Matrix3 {
+    let (s, c) = angle_rad.sin_cos();
+    Matrix3::new(-s, c, 0.0, -c, -s, 0.0, 0.0, 0.0, 0.0)
+}
+
 /// Generates the angles for the test
 #[cfg(test)]
 pub(crate) fn generate_angles() -> Vec<f64> {
@@ -38,6 +74,7 @@ pub(crate) fn generate_angles() -> Vec<f64> {
     angles
 }
 
+use super::Matrix3;
 #[cfg(test)]
 use super::Vector3;
 /// Returns whether two vectors can be considered equal after a rotation

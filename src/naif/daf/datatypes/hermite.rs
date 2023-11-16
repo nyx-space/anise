@@ -16,7 +16,7 @@ use crate::errors::{DecodingError, IntegrityError, TooFewDoublesSnafu};
 use crate::math::interpolation::{
     hermite_eval, InterpDecodingSnafu, InterpolationError, MAX_SAMPLES,
 };
-use crate::naif::spk::summary::SPKSummaryRecord;
+use crate::naif::daf::NAIFSummaryRecord;
 use crate::{
     math::{cartesian::CartesianState, Vector3},
     naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord},
@@ -49,7 +49,6 @@ impl<'a> fmt::Display for HermiteSetType12<'a> {
 }
 
 impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
-    type SummaryKind = SPKSummaryRecord;
     type StateKind = CartesianState;
     type RecordKind = PositionVelocityRecord;
     const DATASET_NAME: &'static str = "Hermite Type 12";
@@ -111,10 +110,10 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
         ))
     }
 
-    fn evaluate(
+    fn evaluate<S: NAIFSummaryRecord>(
         &self,
         _epoch: Epoch,
-        _: &Self::SummaryKind,
+        _: &S,
     ) -> Result<CartesianState, InterpolationError> {
         todo!("https://github.com/anise-toolkit/anise.rs/issues/14")
     }
@@ -168,7 +167,6 @@ impl<'a> fmt::Display for HermiteSetType13<'a> {
 }
 
 impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
-    type SummaryKind = SPKSummaryRecord;
     type StateKind = (Vector3, Vector3);
     type RecordKind = PositionVelocityRecord;
     const DATASET_NAME: &'static str = "Hermite Type 13";
@@ -260,10 +258,10 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
         ))
     }
 
-    fn evaluate(
+    fn evaluate<S: NAIFSummaryRecord>(
         &self,
         epoch: Epoch,
-        _: &Self::SummaryKind,
+        _: &S,
     ) -> Result<Self::StateKind, InterpolationError> {
         // Start by doing a binary search on the epoch registry to limit the search space in the total number of epochs.
         // TODO: use the epoch registry to reduce the search space
@@ -416,7 +414,7 @@ mod hermite_ut {
         // Two metadata, one state, one epoch
         let zeros = [0.0_f64; 2 * 7 + 2];
 
-        let mut invalid_num_records = zeros.clone();
+        let mut invalid_num_records = zeros;
         invalid_num_records[zeros.len() - 1] = f64::INFINITY;
         match HermiteSetType13::from_slice_f64(&invalid_num_records) {
             Ok(_) => panic!("test failed on invalid num records"),
@@ -435,7 +433,7 @@ mod hermite_ut {
             }
         }
 
-        let mut invalid_num_samples = zeros.clone();
+        let mut invalid_num_samples = zeros;
         invalid_num_samples[zeros.len() - 2] = f64::INFINITY;
         match HermiteSetType13::from_slice_f64(&invalid_num_samples) {
             Ok(_) => panic!("test failed on invalid num samples"),
@@ -454,7 +452,7 @@ mod hermite_ut {
             }
         }
 
-        let mut invalid_epoch = zeros.clone();
+        let mut invalid_epoch = zeros;
         invalid_epoch[zeros.len() - 3] = f64::INFINITY;
 
         let dataset = HermiteSetType13::from_slice_f64(&invalid_epoch).unwrap();
@@ -471,7 +469,7 @@ mod hermite_ut {
             }
         }
 
-        let mut invalid_record = zeros.clone();
+        let mut invalid_record = zeros;
         invalid_record[0] = f64::INFINITY;
         // Force the number of records to be one, otherwise everything is considered the epoch registry
         invalid_record[zeros.len() - 1] = 1.0;

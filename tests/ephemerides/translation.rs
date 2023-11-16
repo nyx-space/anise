@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -28,8 +28,7 @@ fn de440s_translation_verif_venus2emb() {
 
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de440s.bsp";
-    let buf = file2heap!(path).unwrap();
-    let spk = SPK::parse(buf).unwrap();
+    let spk = SPK::load(path).unwrap();
     let ctx = Almanac::from_spk(spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
@@ -318,7 +317,7 @@ fn spk_hermite_type13_verif() {
 
     let ctx = Almanac::from_spk(spk)
         .unwrap()
-        .load_spk(spacecraft)
+        .with_spk(spacecraft)
         .unwrap();
 
     let epoch = Epoch::from_gregorian_hms(2000, 1, 1, 14, 0, 0, TimeScale::UTC);

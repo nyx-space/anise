@@ -8,26 +8,24 @@
  * Documentation: https://nyxspace.com/
  */
 use der::{asn1::Utf8StringRef, Decode, Encode, Reader, Writer};
+use heapless::String;
 
 mod drag;
 mod inertia;
 mod mass;
 mod srp;
 
+use super::dataset::DataSetT;
 pub use drag::DragData;
 pub use inertia::Inertia;
 pub use mass::Mass;
 pub use srp::SRPData;
 
-use super::dataset::DataSetT;
-
 /// Spacecraft constants can store the same spacecraft constant data as the CCSDS Orbit Parameter Message (OPM) and CCSDS Attitude Parameter Messages (APM)
-#[derive(Copy, Clone, Default, Debug, PartialEq)]
-pub struct SpacecraftData<'a> {
+#[derive(Clone, Default, Debug, PartialEq)]
+pub struct SpacecraftData {
     /// Name is used as the input for the hashing function
-    pub name: &'a str,
-    /// Generic comments field
-    pub comments: &'a str,
+    pub name: String<32>,
     /// Mass of the spacecraft in kg
     pub mass_kg: Option<Mass>,
     /// Solar radiation pressure data
@@ -38,11 +36,11 @@ pub struct SpacecraftData<'a> {
     pub inertia: Option<Inertia>,
 }
 
-impl<'a> DataSetT<'a> for SpacecraftData<'a> {
+impl DataSetT for SpacecraftData {
     const NAME: &'static str = "spacecraft data";
 }
 
-impl<'a> SpacecraftData<'a> {
+impl SpacecraftData {
     /// Specifies what data is available in this structure.
     ///
     /// Returns:
@@ -70,11 +68,10 @@ impl<'a> SpacecraftData<'a> {
     }
 }
 
-impl<'a> Encode for SpacecraftData<'a> {
+impl Encode for SpacecraftData {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let available_flags = self.available_data();
-        Utf8StringRef::new(self.name)?.encoded_len()?
-            + Utf8StringRef::new(self.comments)?.encoded_len()?
+        Utf8StringRef::new(&self.name)?.encoded_len()?
             + available_flags.encoded_len()?
             + self.mass_kg.encoded_len()?
             + self.srp_data.encoded_len()?
@@ -83,8 +80,7 @@ impl<'a> Encode for SpacecraftData<'a> {
     }
 
     fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
-        Utf8StringRef::new(self.name)?.encode(encoder)?;
-        Utf8StringRef::new(self.comments)?.encode(encoder)?;
+        Utf8StringRef::new(&self.name)?.encode(encoder)?;
         self.available_data().encode(encoder)?;
         self.mass_kg.encode(encoder)?;
         self.srp_data.encode(encoder)?;
@@ -93,10 +89,9 @@ impl<'a> Encode for SpacecraftData<'a> {
     }
 }
 
-impl<'a> Decode<'a> for SpacecraftData<'a> {
+impl<'a> Decode<'a> for SpacecraftData {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
-        let name: Utf8StringRef = decoder.decode()?;
-        let comments: Utf8StringRef = decoder.decode()?;
+        let name = decoder.decode::<Utf8StringRef>()?.as_str();
 
         let data_flags: u8 = decoder.decode()?;
 
@@ -125,8 +120,7 @@ impl<'a> Decode<'a> for SpacecraftData<'a> {
         };
 
         Ok(Self {
-            name: name.as_str(),
-            comments: comments.as_str(),
+            name: name[..name.len().min(32)].try_into().unwrap(),
             mass_kg,
             srp_data,
             drag_data,
@@ -142,8 +136,7 @@ mod spacecraft_constants_ut {
     #[test]
     fn sc_min_repr() {
         let repr = SpacecraftData {
-            name: "demo spacecraft",
-            comments: "this is an example of encoding spacecraft data",
+            name: "demo spacecraft".try_into().unwrap(),
             ..Default::default()
         };
 
@@ -158,8 +151,7 @@ mod spacecraft_constants_ut {
     #[test]
     fn sc_with_srp_only() {
         let repr = SpacecraftData {
-            name: "demo spacecraft",
-            comments: "this is an example of encoding spacecraft data",
+            name: "demo spacecraft".try_into().unwrap(),
             srp_data: Some(SRPData::default()),
             ..Default::default()
         };
@@ -175,8 +167,7 @@ mod spacecraft_constants_ut {
     #[test]
     fn sc_with_drag_only() {
         let repr = SpacecraftData {
-            name: "demo spacecraft",
-            comments: "this is an example of encoding spacecraft data",
+            name: "demo spacecraft".try_into().unwrap(),
             drag_data: Some(DragData::default()),
             ..Default::default()
         };
@@ -192,8 +183,7 @@ mod spacecraft_constants_ut {
     #[test]
     fn sc_with_mass_only() {
         let repr = SpacecraftData {
-            name: "demo spacecraft",
-            comments: "this is an example of encoding spacecraft data",
+            name: "demo spacecraft".try_into().unwrap(),
             mass_kg: Some(Mass::default()),
             ..Default::default()
         };
@@ -209,8 +199,7 @@ mod spacecraft_constants_ut {
     #[test]
     fn sc_with_inertial_only() {
         let repr = SpacecraftData {
-            name: "demo spacecraft",
-            comments: "this is an example of encoding spacecraft data",
+            name: "demo spacecraft".try_into().unwrap(),
             inertia: Some(Inertia::default()),
             ..Default::default()
         };
@@ -226,8 +215,7 @@ mod spacecraft_constants_ut {
     #[test]
     fn sc_with_srp_mass_inertia() {
         let repr = SpacecraftData {
-            name: "demo spacecraft",
-            comments: "this is an example of encoding spacecraft data",
+            name: "demo spacecraft".try_into().unwrap(),
             srp_data: Some(SRPData {
                 area_m2: 2.0,
                 coeff_reflectivity: 1.8,
@@ -256,8 +244,7 @@ mod spacecraft_constants_ut {
     #[test]
     fn sc_full() {
         let repr = SpacecraftData {
-            name: "demo spacecraft",
-            comments: "this is an example of encoding spacecraft data",
+            name: "demo spacecraft".try_into().unwrap(),
             srp_data: Some(SRPData {
                 area_m2: 2.0,
                 coeff_reflectivity: 1.8,

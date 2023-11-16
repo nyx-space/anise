@@ -11,7 +11,7 @@
 use core::fmt;
 use core::fmt::Debug;
 
-use crate::constants::celestial_objects::celestial_name_from_id;
+use crate::constants::celestial_objects::{celestial_name_from_id, SOLAR_SYSTEM_BARYCENTER};
 use crate::constants::orientations::{orientation_name_from_id, J2000};
 use crate::errors::PhysicsError;
 use crate::prelude::FrameUid;
@@ -44,6 +44,10 @@ impl Frame {
         Self::from_ephem_orient(ephemeris_id, J2000)
     }
 
+    pub const fn from_orient_ssb(orientation_id: NaifId) -> Self {
+        Self::from_ephem_orient(SOLAR_SYSTEM_BARYCENTER, orientation_id)
+    }
+
     /// Returns a copy of this Frame whose ephemeris ID is set to the provided ID
     pub const fn with_ephem(&self, new_ephem_id: NaifId) -> Self {
         let mut me = *self;
@@ -69,19 +73,19 @@ impl Frame {
     }
 
     /// Returns true if the ephemeris origin is equal to the provided ID
-    pub fn ephem_origin_id_match(&self, other_id: NaifId) -> bool {
+    pub const fn ephem_origin_id_match(&self, other_id: NaifId) -> bool {
         self.ephemeris_id == other_id
     }
     /// Returns true if the orientation origin is equal to the provided ID
-    pub fn orient_origin_id_match(&self, other_id: NaifId) -> bool {
+    pub const fn orient_origin_id_match(&self, other_id: NaifId) -> bool {
         self.orientation_id == other_id
     }
     /// Returns true if the ephemeris origin is equal to the provided frame
-    pub fn ephem_origin_match(&self, other: Self) -> bool {
+    pub const fn ephem_origin_match(&self, other: Self) -> bool {
         self.ephem_origin_id_match(other.ephemeris_id)
     }
     /// Returns true if the orientation origin is equal to the provided frame
-    pub fn orient_origin_match(&self, other: Self) -> bool {
+    pub const fn orient_origin_match(&self, other: Self) -> bool {
         self.orient_origin_id_match(other.orientation_id)
     }
 
@@ -160,23 +164,20 @@ impl fmt::Display for Frame {
 impl fmt::LowerExp for Frame {
     /// Only prints the ephemeris name
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        let body_name = match celestial_name_from_id(self.ephemeris_id) {
-            Some(name) => name.to_string(),
-            None => format!("{}", self.ephemeris_id),
-        };
-        write!(f, "{body_name}")
+        match celestial_name_from_id(self.ephemeris_id) {
+            Some(name) => write!(f, "{name}"),
+            None => write!(f, "{}", self.ephemeris_id),
+        }
     }
 }
 
 impl fmt::Octal for Frame {
     /// Only prints the orientation name
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        let orientation_name = match orientation_name_from_id(self.orientation_id) {
-            Some(name) => name.to_string(),
-            None => format!("orientation {}", self.orientation_id),
-        };
-
-        write!(f, "{orientation_name}")
+        match orientation_name_from_id(self.orientation_id) {
+            Some(name) => write!(f, "{name}"),
+            None => write!(f, "orientation {}", self.orientation_id),
+        }
     }
 }
 

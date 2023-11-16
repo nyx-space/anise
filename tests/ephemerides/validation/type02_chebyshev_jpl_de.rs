@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2022 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -12,7 +12,7 @@ use super::{compare::*, validate::Validation};
 
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
-fn validate_de440_full() {
+fn validate_jplde_de440_full() {
     let file_name = "spk-type2-validation-de440".to_string();
     let comparator =
         CompareEphem::new(vec!["data/de440.bsp".to_string()], file_name.clone(), 1_000);
@@ -31,7 +31,7 @@ fn validate_de440_full() {
 
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
-fn validate_de440s() {
+fn validate_jplde_de440s() {
     let output_file_name = "spk-type2-validation-de440s".to_string();
     let comparator = CompareEphem::new(
         vec!["data/de440s.bsp".to_string()],

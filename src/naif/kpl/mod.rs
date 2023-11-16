@@ -41,7 +41,14 @@ impl KPLValue {
     pub fn to_vec_f64(&self) -> Result<Vec<f64>, Whatever> {
         match self {
             KPLValue::Matrix(data) => Ok(data.clone()),
-            _ => whatever!("can only convert matrices to vec of f64"),
+            _ => whatever!("can only convert matrices to vec of f64 but this is {self:?}"),
+        }
+    }
+
+    pub fn to_i32(&self) -> Result<i32, Whatever> {
+        match self {
+            KPLValue::Integer(data) => Ok(*data),
+            _ => whatever!("can only convert Integer to i32 but this is {self:?}"),
         }
     }
 }
@@ -64,6 +71,17 @@ impl From<String> for KPLValue {
     }
 }
 
+impl TryFrom<&KPLValue> for f64 {
+    type Error = Whatever;
+
+    fn try_from(value: &KPLValue) -> Result<Self, Self::Error> {
+        match value {
+            KPLValue::Float(data) => Ok(*data),
+            _ => whatever!("can only convert float to f64 but this is {value:?}"),
+        }
+    }
+}
+
 /// Known KPL parameters
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum Parameter {
@@ -71,6 +89,7 @@ pub enum Parameter {
     NutPrecDec,
     NutPrecPm,
     NutPrecAngles,
+    MaxPhaseDegree,
     LongAxis,
     PoleRa,
     PoleDec,
@@ -114,6 +133,7 @@ impl FromStr for Parameter {
             "MATRIX" => Ok(Self::Matrix),
             "UNITS" => Ok(Self::Units),
             "AXES" => Ok(Self::Axes),
+            "MAX_PHASE_DEGREE" => Ok(Self::MaxPhaseDegree),
             "GMLIST" | "NAME" | "SPEC" => {
                 whatever!("unsupported parameter `{s}`")
             }

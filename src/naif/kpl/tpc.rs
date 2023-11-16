@@ -115,6 +115,13 @@ fn test_parse_pck() {
         assignments[&5].data[&Parameter::NutPrecAngles],
         KPLValue::Matrix(expt_nutprec.into())
     );
+
+    // Check for Neptune which has the NUT_PREC_PM
+    let expt_nut_prec_pm = [-0.48, 0., 0., 0., 0., 0., 0., 0.];
+    assert_eq!(
+        assignments[&899].data[&Parameter::NutPrecPm],
+        KPLValue::Matrix(expt_nut_prec_pm.into())
+    );
 }
 
 #[test]
@@ -140,30 +147,32 @@ fn test_anise_conversion() {
     use crate::naif::kpl::parser::convert_tpc;
     use crate::{file2heap, file_mmap, structure::dataset::DataSet};
     use std::fs::File;
+    use std::path::PathBuf;
 
     let dataset = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
 
-    assert_eq!(dataset.lut.by_id.len(), 47);
+    assert!(!dataset.is_empty(), "should not be empty");
+    assert_eq!(dataset.lut.by_id.len(), 49);
 
     let path = "target/gm_pck_08.anise";
 
     // Test saving
-    dataset.save_as(path.into(), true).unwrap();
+    dataset.save_as(&PathBuf::from(path), true).unwrap();
 
     // Test reloading
     let bytes = file2heap!(path).unwrap();
-    let reloaded = DataSet::from_bytes(&bytes);
+    let reloaded = DataSet::from_bytes(bytes);
 
     assert_eq!(reloaded, dataset);
 
     // Test loading from file loaded on heap
     use std::fs;
     let data = fs::read(path).unwrap();
-    let reloaded = DataSet::from_bytes(&data);
+    let reloaded = DataSet::from_bytes(data);
     assert_eq!(reloaded, dataset);
 
     // Test reloading with real mmap
     let mmap = file_mmap!(path).unwrap();
-    let reloaded = DataSet::from_bytes(&mmap);
+    let reloaded = DataSet::from_bytes(mmap);
     assert_eq!(reloaded, dataset);
 }

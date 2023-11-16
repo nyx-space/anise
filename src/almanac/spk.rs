@@ -18,15 +18,15 @@ use log::error;
 
 use super::{Almanac, MAX_LOADED_SPKS};
 
-impl<'a: 'b, 'b> Almanac<'a> {
-    pub fn from_spk(spk: SPK) -> Result<Almanac<'a>, EphemerisError> {
+impl Almanac {
+    pub fn from_spk(spk: SPK) -> Result<Almanac, EphemerisError> {
         let me = Self::default();
-        me.load_spk(spk)
+        me.with_spk(spk)
     }
 
     /// Loads a new SPK file into a new context.
     /// This new context is needed to satisfy the unloading of files. In fact, to unload a file, simply let the newly loaded context drop out of scope and Rust will clean it up.
-    pub fn load_spk(&self, spk: SPK) -> Result<Almanac<'b>, EphemerisError> {
+    pub fn with_spk(&self, spk: SPK) -> Result<Self, EphemerisError> {
         // This is just a bunch of pointers so it doesn't use much memory.
         let mut me = self.clone();
         // Parse as SPK and place into the SPK list if there is room
@@ -218,7 +218,7 @@ mod ut_almanac_spk {
         let e = Epoch::now().unwrap();
 
         assert!(
-            almanac.try_find_context_center().is_err(),
+            almanac.try_find_ephemeris_root().is_err(),
             "empty Almanac should report an error"
         );
 

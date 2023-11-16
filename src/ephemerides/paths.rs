@@ -20,14 +20,14 @@ use crate::NaifId;
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
 pub const MAX_TREE_DEPTH: usize = 8;
 
-impl<'a> Almanac<'a> {
-    /// Returns the center of all of the loaded ephemerides, typically this should be the Solar System Barycenter.
+impl Almanac {
+    /// Returns the root of all of the loaded ephemerides, typically this should be the Solar System Barycenter.
     ///
     /// # Algorithm
     ///
     /// 1. For each loaded SPK, iterated in reverse order (to mimic SPICE behavior)
     /// 2. For each summary record in each SPK, follow the ephemeris branch all the way up until the end of this SPK or until the SSB.
-    pub fn try_find_context_center(&self) -> Result<NaifId, EphemerisError> {
+    pub fn try_find_ephemeris_root(&self) -> Result<NaifId, EphemerisError> {
         ensure!(self.num_loaded_spk() > 0, NoEphemerisLoadedSnafu);
 
         // The common center is the absolute minimum of all centers due to the NAIF numbering.
@@ -58,7 +58,7 @@ impl<'a> Almanac<'a> {
         source: Frame,
         epoch: Epoch,
     ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH]), EphemerisError> {
-        let common_center = self.try_find_context_center()?;
+        let common_center = self.try_find_ephemeris_root()?;
         // Build a tree, set a fixed depth to avoid allocations
         let mut of_path = [None; MAX_TREE_DEPTH];
         let mut of_path_len = 0;

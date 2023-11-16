@@ -10,11 +10,12 @@
 
 use super::file_record::FileRecordError;
 use super::{
-    DAFError, DecodingNameSnafu, DecodingSummarySnafu, FileRecordSnafu, NAIFDataSet, NAIFRecord,
-    NAIFSummaryRecord,
+    DAFError, DecodingNameSnafu, DecodingSummarySnafu, FileRecordSnafu, IOSnafu, NAIFDataSet,
+    NAIFRecord, NAIFSummaryRecord,
 };
 pub use super::{FileRecord, NameRecord, SummaryRecord};
-use crate::errors::DecodingError;
+use crate::errors::{DecodingError, InputOutputError};
+use crate::file2heap;
 use crate::naif::daf::DecodingDataSnafu;
 use crate::{errors::IntegrityError, DBL_SIZE};
 use bytes::Bytes;
@@ -84,26 +85,12 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         Self::parse(bytes)
     }
 
-    pub fn load<P: AsRef<Path> + Debug>(path: P) -> Result<Self, DAFError> {
-        match File::open(&path) {
-            Err(source) => Err(DAFError::IO {
-                action: format!("loading {path:?}"),
-                source,
-            }),
-            Ok(file) => unsafe {
-                use memmap2::MmapOptions;
-                match MmapOptions::new().map(&file) {
-                    Err(source) => Err(DAFError::IO {
-                        action: format!("mmap of {path:?}"),
-                        source,
-                    }),
-                    Ok(mmap) => {
-                        let bytes = Bytes::copy_from_slice(&mmap);
-                        Self::parse(bytes)
-                    }
-                }
-            },
-        }
+    pub fn load(path: &str) -> Result<Self, DAFError> {
+        let bytes = file2heap!(path).with_context(|_| IOSnafu {
+            action: format!("loading {path:?}"),
+        })?;
+
+        Self::parse(bytes)
     }
 
     /// Parse the provided static byte array as a SPICE Double Array File
@@ -411,7 +398,8 @@ mod daf_ut {
     use crate::{
         errors::{InputOutputError, IntegrityError},
         file2heap,
-        naif::{daf::DAFError, spk::datatypes::HermiteSetType13, SPK},
+        naif::daf::{datatypes::HermiteSetType13, DAFError},
+        prelude::SPK,
     };
 
     use std::fs::File;

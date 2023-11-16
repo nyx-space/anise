@@ -46,7 +46,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
     let ctx = Almanac::from_spk(spk)
         .unwrap()
-        .load_spk(spacecraft)
+        .with_spk(spacecraft)
         .unwrap();
 
     // Load SPICE data
