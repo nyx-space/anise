@@ -178,7 +178,7 @@ Creation date: {}
     #[test]
     fn meta_with_orig() {
         let repr = Metadata {
-            originator: "Nyx Space Origin".into(),
+            originator: "Nyx Space Origin".try_into().unwrap(),
             ..Default::default()
         };
 

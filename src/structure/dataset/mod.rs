@@ -353,7 +353,7 @@ mod dataset_ut {
     fn spacecraft_constants_lookup() {
         // Build some data first.
         let full_sc = SpacecraftData {
-            name: "full spacecraft".into(),
+            name: "full spacecraft".try_into().unwrap(),
             srp_data: Some(SRPData {
                 area_m2: 2.0,
                 coeff_reflectivity: 1.8,
@@ -371,7 +371,7 @@ mod dataset_ut {
             drag_data: Some(DragData::default()),
         };
         let srp_sc = SpacecraftData {
-            name: "SRP only spacecraft".into(),
+            name: "SRP only spacecraft".try_into().unwrap(),
             srp_data: Some(SRPData::default()),
             ..Default::default()
         };
@@ -446,7 +446,7 @@ mod dataset_ut {
     fn spacecraft_constants_lookup_builder() {
         // Build some data first.
         let full_sc = SpacecraftData {
-            name: "full spacecraft".into(),
+            name: "full spacecraft".try_into().unwrap(),
             srp_data: Some(SRPData {
                 area_m2: 2.0,
                 coeff_reflectivity: 1.8,
@@ -464,7 +464,7 @@ mod dataset_ut {
             drag_data: Some(DragData::default()),
         };
         let srp_sc = SpacecraftData {
-            name: "SRP only spacecraft".into(),
+            name: "SRP only spacecraft".try_into().unwrap(),
             srp_data: Some(SRPData::default()),
             ..Default::default()
         };

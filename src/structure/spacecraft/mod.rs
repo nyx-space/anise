@@ -136,7 +136,7 @@ mod spacecraft_constants_ut {
     #[test]
     fn sc_min_repr() {
         let repr = SpacecraftData {
-            name: "demo spacecraft".into(),
+            name: "demo spacecraft".try_into().unwrap(),
             ..Default::default()
         };
 
@@ -151,7 +151,7 @@ mod spacecraft_constants_ut {
     #[test]
     fn sc_with_srp_only() {
         let repr = SpacecraftData {
-            name: "demo spacecraft".into(),
+            name: "demo spacecraft".try_into().unwrap(),
             srp_data: Some(SRPData::default()),
             ..Default::default()
         };
@@ -167,7 +167,7 @@ mod spacecraft_constants_ut {
     #[test]
     fn sc_with_drag_only() {
         let repr = SpacecraftData {
-            name: "demo spacecraft".into(),
+            name: "demo spacecraft".try_into().unwrap(),
             drag_data: Some(DragData::default()),
             ..Default::default()
         };
@@ -183,7 +183,7 @@ mod spacecraft_constants_ut {
     #[test]
     fn sc_with_mass_only() {
         let repr = SpacecraftData {
-            name: "demo spacecraft".into(),
+            name: "demo spacecraft".try_into().unwrap(),
             mass_kg: Some(Mass::default()),
             ..Default::default()
         };
@@ -199,7 +199,7 @@ mod spacecraft_constants_ut {
     #[test]
     fn sc_with_inertial_only() {
         let repr = SpacecraftData {
-            name: "demo spacecraft".into(),
+            name: "demo spacecraft".try_into().unwrap(),
             inertia: Some(Inertia::default()),
             ..Default::default()
         };
@@ -215,7 +215,7 @@ mod spacecraft_constants_ut {
     #[test]
     fn sc_with_srp_mass_inertia() {
         let repr = SpacecraftData {
-            name: "demo spacecraft".into(),
+            name: "demo spacecraft".try_into().unwrap(),
             srp_data: Some(SRPData {
                 area_m2: 2.0,
                 coeff_reflectivity: 1.8,
@@ -244,7 +244,7 @@ mod spacecraft_constants_ut {
     #[test]
     fn sc_full() {
         let repr = SpacecraftData {
-            name: "demo spacecraft".into(),
+            name: "demo spacecraft".try_into().unwrap(),
             srp_data: Some(SRPData {
                 area_m2: 2.0,
                 coeff_reflectivity: 1.8,
