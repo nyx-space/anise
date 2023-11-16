@@ -28,8 +28,7 @@ fn de440s_translation_verif_venus2emb() {
 
     // "Load" the file via a memory map (avoids allocations)
     let path = "./data/de440s.bsp";
-    let buf = file2heap!(path).unwrap();
-    let spk = SPK::parse(buf).unwrap();
+    let spk = SPK::load(path).unwrap();
     let ctx = Almanac::from_spk(spk).unwrap();
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);

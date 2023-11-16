@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 /*
  * ANISE Toolkit
  * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
@@ -26,12 +27,13 @@ pub mod structure;
 
 /// Re-export of hifitime
 pub mod time {
+    pub use core::str::FromStr;
     pub use hifitime::*;
 }
 
 pub mod prelude {
     pub use crate::almanac::Almanac;
-    pub use crate::astro::Aberration;
+    pub use crate::astro::{orbit::Orbit, Aberration};
     pub use crate::errors::InputOutputError;
     pub use crate::frames::*;
     pub use crate::math::units::*;

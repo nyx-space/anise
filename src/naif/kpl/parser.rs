@@ -268,7 +268,6 @@ pub fn convert_tpc<P: AsRef<Path>>(pck: P, gm: P) -> Result<PlanetaryDataSet, Da
                             let mut coeffs = [PhaseAngle::<0>::default(); MAX_NUT_PREC_ANGLES];
                             let mut num = 0;
                             for (i, nut_prec) in nut_prec_data.chunks(phase_deg).enumerate() {
-                                // TODO: Convert to PhaseAngle without any nut prec angles ... or move the nut prec angles into its own field?
                                 coeffs[i] = PhaseAngle::<0> {
                                     offset_deg: nut_prec[0],
                                     rate_deg: nut_prec[1],
@@ -281,7 +280,6 @@ pub fn convert_tpc<P: AsRef<Path>>(pck: P, gm: P) -> Result<PlanetaryDataSet, Da
                             constant.nut_prec_angles = coeffs;
                         };
 
-                        // Todo: Switch this to a Map of ID -> constant, and another map of Name -> ID.
                         // Skip the DER serialization in full.
                         dataset_builder.push_into(&mut buf, &constant, Some(object_id), None)?;
                         info!("Added {object_id}");
