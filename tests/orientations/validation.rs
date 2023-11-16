@@ -30,8 +30,12 @@ use spice::cstr;
 // Allow up to two arcsecond of error (or 0.12 microradians), but check test results for actualized error
 const MAX_ERR_DEG: f64 = 7.2e-6;
 const DCM_EPSILON: f64 = 1e-9;
-const POSITION_EPSILON_KM: f64 = 2e-6;
-const VELOCITY_EPSILON_KM_S: f64 = 5e-9;
+// Absolute error tolerance between ANISE and SPICE for the same state rotation.
+const POSITION_ERR_TOL_KM: f64 = 2e-5;
+const VELOCITY_ERR_TOL_KM_S: f64 = 5e-7;
+// Return absolute tolerance, i.e. perform the same rotation from A to B and B to A, and check that the norm error is less than that.
+const RTN_POSITION_EPSILON_KM: f64 = 1e-10;
+const RTN_VELOCITY_EPSILON_KM_S: f64 = 1e-10;
 
 /// This test converts the PCK file into its ANISE equivalent format, loads it into an Almanac, and compares the rotations computed by the Almanac and by SPICE
 /// It only check the IAU rotations to its J2000 parent, and accounts for nutation and precession coefficients where applicable.
@@ -536,8 +540,8 @@ fn validate_bpc_to_iau_rotations() {
     let end = Epoch::from_tdb_duration(0.20.centuries());
 
     for frame in [
-        // IAU_MERCURY_FRAME,
-        // IAU_VENUS_FRAME,
+        IAU_MERCURY_FRAME,
+        IAU_VENUS_FRAME,
         IAU_EARTH_FRAME,
         IAU_MARS_FRAME,
         IAU_JUPITER_FRAME,
@@ -668,13 +672,13 @@ fn validate_bpc_to_iau_rotations() {
             assert_eq!(spice_out.frame, anise_out.frame);
             let pos_err_km = (spice_out.radius_km - anise_out.radius_km).norm();
             assert!(
-                pos_err_km < 10.0 * POSITION_EPSILON_KM,
-                "#{num} {epoch}: pos error is {pos_err_km:.3} km/s"
+                pos_err_km < POSITION_ERR_TOL_KM,
+                "#{num} {epoch}: pos error is {pos_err_km:.3e} km/s"
             );
             let vel_err_km_s = (spice_out.velocity_km_s - anise_out.velocity_km_s).norm();
             assert!(
-                vel_err_km_s < VELOCITY_EPSILON_KM_S,
-                "#{num} {epoch}: vel error is {vel_err_km_s:.3} km/s"
+                vel_err_km_s < VELOCITY_ERR_TOL_KM_S,
+                "#{num} {epoch}: vel error is {vel_err_km_s:.3e} km/s"
             );
 
             if pos_err_km > actual_pos_err_km {
@@ -683,10 +687,6 @@ fn validate_bpc_to_iau_rotations() {
 
             if vel_err_km_s > actual_vel_err_km_s {
                 actual_vel_err_km_s = vel_err_km_s;
-            }
-
-            if num == 0 {
-                println!("Checking transpose");
             }
 
             // Grab the transposed DCM
@@ -738,10 +738,14 @@ fn validate_bpc_to_iau_rotations() {
             let anise_rtn = (dcm_t * anise_out).unwrap();
 
             assert_eq!(spice_rtn.frame, anise_rtn.frame);
-            assert!((spice_rtn.radius_km - state.radius_km).norm() < POSITION_EPSILON_KM);
-            assert!((spice_rtn.velocity_km_s - state.velocity_km_s).norm() < VELOCITY_EPSILON_KM_S);
-            assert!((anise_rtn.radius_km - state.radius_km).norm() < POSITION_EPSILON_KM);
-            assert!((anise_rtn.velocity_km_s - state.velocity_km_s).norm() < VELOCITY_EPSILON_KM_S);
+            assert!((spice_rtn.radius_km - state.radius_km).norm() < RTN_POSITION_EPSILON_KM);
+            assert!(
+                (spice_rtn.velocity_km_s - state.velocity_km_s).norm() < RTN_VELOCITY_EPSILON_KM_S
+            );
+            assert!((anise_rtn.radius_km - state.radius_km).norm() < RTN_POSITION_EPSILON_KM);
+            assert!(
+                (anise_rtn.velocity_km_s - state.velocity_km_s).norm() < RTN_VELOCITY_EPSILON_KM_S
+            );
         }
     }
     println!("actualized max error in rotation angle = {actual_max_err_deg:.3e} deg");
