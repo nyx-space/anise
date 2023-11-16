@@ -102,7 +102,7 @@ impl<const ENTRIES: usize> LookUpTable<ENTRIES> {
             .insert(id, entry)
             .map_err(|_| LutError::IdLutFull { max_slots: ENTRIES })?;
         self.by_name
-            .insert(name.into(), entry)
+            .insert(name.try_into().unwrap(), entry)
             .map_err(|_| LutError::NameLutFull { max_slots: ENTRIES })?;
         Ok(())
     }
@@ -116,7 +116,7 @@ impl<const ENTRIES: usize> LookUpTable<ENTRIES> {
 
     pub fn append_name(&mut self, name: &str, entry: Entry) -> Result<(), LutError> {
         self.by_name
-            .insert(name.into(), entry)
+            .insert(name.try_into().unwrap(), entry)
             .map_err(|_| LutError::NameLutFull { max_slots: ENTRIES })?;
         Ok(())
     }
@@ -211,7 +211,10 @@ impl<'a, const ENTRIES: usize> Decode<'a> for LookUpTable<ENTRIES> {
         for (name, entry) in names.iter().zip(name_entries.iter()) {
             let key = core::str::from_utf8(name.as_bytes()).unwrap();
             lut.by_name
-                .insert(key[..KEY_NAME_LEN.min(key.len())].into(), *entry)
+                .insert(
+                    key[..KEY_NAME_LEN.min(key.len())].try_into().unwrap(),
+                    *entry,
+                )
                 .unwrap();
         }
 

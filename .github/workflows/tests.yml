@@ -128,7 +128,7 @@ jobs:
       - name: Rust-SPICE BPC validation
         run: | 
           RUST_BACKTRACE=1 RUST_LOG=debug cargo test validate_bpc_ --release -- --nocapture --include-ignored --test-threads 1
-          RUST_BACKTRACE=1 RUST_LOG=debug cargo test de440s_translation_verif_venus2emb --release -- --nocapture --ignored --include-ignored --test-threads 1
+          RUST_BACKTRACE=1 RUST_LOG=debug cargo test de440s_translation_verif_venus2emb --release -- --nocapture --include-ignored --test-threads 1
 
       # Now analyze the results and create pretty plots
       - uses: actions/setup-python@v4

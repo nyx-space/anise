@@ -187,7 +187,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
     }
 
     pub fn get_by_name(&self, name: &str) -> Result<T, DataSetError> {
-        if let Some(entry) = self.lut.by_name.get(&name.into()) {
+        if let Some(entry) = self.lut.by_name.get(&name.try_into().unwrap()) {
             // Found the name
             let bytes = self
                 .bytes
@@ -204,7 +204,9 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
         } else {
             Err(DataSetError::DataSetLut {
                 action: "fetching by ID",
-                source: LutError::UnknownName { name: name.into() },
+                source: LutError::UnknownName {
+                    name: name.try_into().unwrap(),
+                },
             })
         }
     }

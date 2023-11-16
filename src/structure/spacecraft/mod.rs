@@ -120,7 +120,7 @@ impl<'a> Decode<'a> for SpacecraftData {
         };
 
         Ok(Self {
-            name: name[..name.len().min(32)].into(),
+            name: name[..name.len().min(32)].try_into().unwrap(),
             mass_kg,
             srp_data,
             drag_data,
