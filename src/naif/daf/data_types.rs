@@ -8,6 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 
+use core::fmt;
+
 use snafu::ensure;
 
 use crate::naif::daf::DatatypeSnafu;
@@ -68,6 +70,34 @@ impl TryFrom<i32> for DataType {
                 kind: "unknown data type",
             }),
         }
+    }
+}
+
+impl fmt::Display for DataType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                DataType::Type1ModifiedDifferenceArray => "Modified differences",
+                DataType::Type2ChebyshevTriplet => "Chebyshev Triplet",
+                DataType::Type3ChebyshevSextuplet => "Chebyshev Sextuplet",
+                DataType::Type5DiscreteStates => "Discrete States",
+                DataType::Type8LagrangeEqualStep => "Lagrange EqualStep",
+                DataType::Type9LagrangeUnequalStep => "Lagrange UnequalStep",
+                DataType::Type10SpaceCommandTLE => "Space Command TLE",
+                DataType::Type12HermiteEqualStep => "Hermite Equal Step",
+                DataType::Type13HermiteUnequalStep => "Hermite Unequal Step",
+                DataType::Type14ChebyshevUnequalStep => "Chebyshev UnequalStep",
+                DataType::Type15PrecessingConics => "Precessing Conics",
+                DataType::Type17Equinoctial => "Equinoctial",
+                DataType::Type18ESOCHermiteLagrange => "ESOC Hermite Lagrange",
+                DataType::Type19ESOCPiecewise => "ESOC Piecewise",
+                DataType::Type20ChebyshevDerivative => "Chebyshev Derivative",
+                DataType::Type21ExtendedModifiedDifferenceArray =>
+                    "Extended Modified Difference Array",
+            }
+        )
     }
 }
 

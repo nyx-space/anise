@@ -1,6 +1,10 @@
-use anise::almanac::Almanac;
+use anise::{
+    almanac::Almanac, constants::orientations::orientation_name_from_id,
+    naif::daf::NAIFSummaryRecord,
+};
 use eframe::egui;
 use egui::Align2;
+use egui_extras::{Column, TableBuilder};
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
 #[derive(Default)]
@@ -41,74 +45,206 @@ impl eframe::App for UiApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            match &self.path {
-                None => {
-                    // Show the open file dialog
-                    if ui.button("Open file to inspect...").clicked() {
-                        if let Some(path) = rfd::FileDialog::new().pick_file() {
-                            // Try to load this file
-                            match self.almanac.load(path.to_str().unwrap()) {
-                                Ok(almanac) => {
-                                    toasts.add(Toast {
-                                        text: format!("Loaded {path:?}").into(),
-                                        kind: ToastKind::Success,
-                                        options: ToastOptions::default()
-                                            .duration_in_seconds(15.0)
-                                            .show_progress(true),
-                                    });
-                                    self.almanac = almanac;
-                                    self.path = Some(path.to_str().unwrap().to_string());
-                                }
-                                Err(e) => {
-                                    toasts.add(Toast {
-                                        text: format!("{e}").into(),
-                                        kind: ToastKind::Error,
-                                        options: ToastOptions::default()
-                                            .duration_in_seconds(15.0)
-                                            .show_progress(true),
-                                    });
+            egui::ScrollArea::both().show(ui, |ui| {
+                ui.horizontal_centered(|ui| {
+                    ui.vertical_centered(|ui| {
+                        match &self.path {
+                            None => {
+                                // Show the open file dialog
+                                if ui.button("Open file to inspect...").clicked() {
+                                    if let Some(path) = rfd::FileDialog::new().pick_file() {
+                                        // Try to load this file
+                                        match self.almanac.load(path.to_str().unwrap()) {
+                                            Ok(almanac) => {
+                                                toasts.add(Toast {
+                                                    text: format!("Loaded {path:?}").into(),
+                                                    kind: ToastKind::Success,
+                                                    options: ToastOptions::default()
+                                                        .duration_in_seconds(15.0)
+                                                        .show_progress(true),
+                                                });
+                                                self.almanac = almanac;
+                                                self.path =
+                                                    Some(path.to_str().unwrap().to_string());
+                                            }
+                                            Err(e) => {
+                                                toasts.add(Toast {
+                                                    text: format!("{e}").into(),
+                                                    kind: ToastKind::Error,
+                                                    options: ToastOptions::default()
+                                                        .duration_in_seconds(15.0)
+                                                        .show_progress(true),
+                                                });
+                                            }
+                                        }
+                                    }
                                 }
                             }
-                        }
-                    }
-                }
-                Some(path) => {
-                    // Grab generic data
-                    let (label, crc) = if self.almanac.num_loaded_spk() == 1 {
-                        (
-                            "DAF/SPK",
-                            self.almanac.spk_data[0].as_ref().unwrap().crc32(),
-                        )
-                    } else if self.almanac.num_loaded_bpc() == 1 {
-                        (
-                            "DAF/BPC",
-                            self.almanac.bpc_data[0].as_ref().unwrap().crc32(),
-                        )
-                    } else if !self.almanac.planetary_data.is_empty() {
-                        ("ANISE/PCK", self.almanac.planetary_data.crc32())
-                    } else if !self.almanac.spacecraft_data.is_empty() {
-                        ("ANISE/SC", self.almanac.spacecraft_data.crc32())
-                    } else if !self.almanac.euler_param_data.is_empty() {
-                        ("ANISE/EP", self.almanac.euler_param_data.crc32())
-                    } else {
-                        ("UNKNOWN", 0)
-                    };
+                            Some(path) => {
+                                // Grab generic data
+                                let (label, crc) = if self.almanac.num_loaded_spk() == 1 {
+                                    (
+                                        "DAF/SPK",
+                                        self.almanac.spk_data[0].as_ref().unwrap().crc32(),
+                                    )
+                                } else if self.almanac.num_loaded_bpc() == 1 {
+                                    (
+                                        "DAF/PCK",
+                                        self.almanac.bpc_data[0].as_ref().unwrap().crc32(),
+                                    )
+                                } else if !self.almanac.planetary_data.is_empty() {
+                                    ("ANISE/PCK", self.almanac.planetary_data.crc32())
+                                } else if !self.almanac.spacecraft_data.is_empty() {
+                                    ("ANISE/SC", self.almanac.spacecraft_data.crc32())
+                                } else if !self.almanac.euler_param_data.is_empty() {
+                                    ("ANISE/EP", self.almanac.euler_param_data.crc32())
+                                } else {
+                                    ("UNKNOWN", 0)
+                                };
 
-                    ui.vertical(|ui| {
-                        ui.label(format!("Inspecting {path}"));
-                        ui.horizontal(|ui| {
-                            ui.label("File type");
-                            ui.label(label);
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("CRC32");
-                            ui.text_edit_singleline(&mut format!("{crc}"));
-                        });
+                                ui.vertical(|ui| {
+                                    ui.label(format!("Inspecting {path}"));
+                                    ui.horizontal(|ui| {
+                                        ui.label("File type");
+                                        ui.label(label);
+                                    });
+                                    ui.horizontal(|ui| {
+                                        ui.label("CRC32");
+                                        ui.text_edit_singleline(&mut format!("{crc}"));
+                                    });
+
+                                    // Now diplay the data
+                                    if label == "DAF/PCK" {
+                                        // We can use the summary
+                                        TableBuilder::new(ui)
+                                            .column(Column::auto().at_least(125.0).resizable(true))
+                                            .column(Column::auto().at_least(225.0).resizable(true))
+                                            .column(Column::auto().at_least(225.0).resizable(true))
+                                            .column(Column::auto().at_least(150.0).resizable(true))
+                                            .column(Column::auto().at_least(50.0).resizable(true))
+                                            .column(Column::auto().at_least(50.0).resizable(true))
+                                            .column(Column::remainder())
+                                            .header(20.0, |mut header| {
+                                                header.col(|ui| {
+                                                    ui.heading("Segment name");
+                                                });
+                                                header.col(|ui| {
+                                                    ui.heading("Start epoch");
+                                                });
+                                                header.col(|ui| {
+                                                    ui.heading("End epoch");
+                                                });
+                                                header.col(|ui| {
+                                                    ui.heading("Validity");
+                                                });
+                                                header.col(|ui| {
+                                                    ui.heading("Kind");
+                                                });
+                                                header.col(|ui| {
+                                                    ui.heading("Frame");
+                                                });
+                                                header.col(|ui| {
+                                                    ui.heading("Inertial frame");
+                                                });
+                                            })
+                                            .body(|mut body| {
+                                                let pck =
+                                                    self.almanac.bpc_data[0].as_ref().unwrap();
+
+                                                for (sno, summary) in
+                                                    pck.data_summaries().unwrap().iter().enumerate()
+                                                {
+                                                    let name_rcrd = pck.name_record().unwrap();
+                                                    let name = name_rcrd.nth_name(
+                                                        sno,
+                                                        pck.file_record().unwrap().summary_size(),
+                                                    );
+                                                    if summary.is_empty() {
+                                                        continue;
+                                                    }
+
+                                                    body.row(30.0, |mut row| {
+                                                        row.col(|ui| {
+                                                            ui.label(name);
+                                                        });
+                                                        row.col(|ui| {
+                                                            ui.label(format!(
+                                                                "{:E}",
+                                                                summary.start_epoch()
+                                                            ));
+                                                        });
+
+                                                        row.col(|ui| {
+                                                            ui.label(format!(
+                                                                "{:E}",
+                                                                summary.end_epoch()
+                                                            ));
+                                                        });
+
+                                                        row.col(|ui| {
+                                                            ui.label(format!(
+                                                                "{}",
+                                                                summary.end_epoch()
+                                                                    - summary.start_epoch()
+                                                            ));
+                                                        });
+
+                                                        row.col(|ui| {
+                                                            ui.label(format!(
+                                                                "{}",
+                                                                summary.data_type().unwrap()
+                                                            ));
+                                                        });
+
+                                                        row.col(
+                                                            |ui| match orientation_name_from_id(
+                                                                summary.frame_id,
+                                                            ) {
+                                                                Some(name) => {
+                                                                    ui.label(format!(
+                                                                        "{name} ({})",
+                                                                        summary.frame_id
+                                                                    ));
+                                                                }
+                                                                None => {
+                                                                    ui.label(format!(
+                                                                        "{}",
+                                                                        summary.frame_id
+                                                                    ));
+                                                                }
+                                                            },
+                                                        );
+
+                                                        row.col(
+                                                            |ui| match orientation_name_from_id(
+                                                                summary.inertial_frame_id,
+                                                            ) {
+                                                                Some(name) => {
+                                                                    ui.label(format!(
+                                                                        "{name} ({})",
+                                                                        summary.inertial_frame_id
+                                                                    ));
+                                                                }
+                                                                None => {
+                                                                    ui.label(format!(
+                                                                        "{}",
+                                                                        summary.inertial_frame_id
+                                                                    ));
+                                                                }
+                                                            },
+                                                        );
+                                                    });
+                                                }
+                                            });
+                                    }
+                                });
+                            }
+                        };
                     });
-                }
-            };
+                });
 
-            // Show and update all toasts
+                // Show and update all toasts
+            });
             toasts.show(ctx);
         });
     }

@@ -15,11 +15,8 @@ fn main() {
     let _ = pretty_env_logger::try_init_custom_env(LOG_VAR).is_err();
 
     let _ = eframe::run_native(
-        "ANISE Gui",
+        "ANISE by Nyx Space",
         eframe::NativeOptions::default(),
-        Box::new(|cc| {
-            egui_extras::install_image_loaders(&cc.egui_ctx);
-            Box::new(UiApp::new(cc))
-        }),
+        Box::new(|cc| Box::new(UiApp::new(cc))),
     );
 }
