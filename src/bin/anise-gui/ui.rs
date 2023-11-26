@@ -6,9 +6,11 @@ use eframe::egui;
 use egui::Align2;
 use egui_extras::{Column, TableBuilder};
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
+use hifitime::TimeScale;
 
 #[derive(Default)]
 pub struct UiApp {
+    pub selected_time_scale: TimeScale,
     almanac: Almanac,
     path: Option<String>,
 }
@@ -108,10 +110,33 @@ impl eframe::App for UiApp {
                                         ui.label("File type");
                                         ui.label(label);
                                     });
+                                    ui.spacing();
                                     ui.horizontal(|ui| {
                                         ui.label("CRC32");
                                         ui.text_edit_singleline(&mut format!("{crc}"));
                                     });
+                                    ui.spacing();
+                                    ui.horizontal(|ui| {
+                                        ui.label("Time scale");
+                                        egui::ComboBox::new("attention", "")
+                                            .selected_text(format!("{}", self.selected_time_scale))
+                                            .show_ui(ui, |ui| {
+                                                for ts in [
+                                                    TimeScale::UTC,
+                                                    TimeScale::ET,
+                                                    TimeScale::TDB,
+                                                    TimeScale::TAI,
+                                                    TimeScale::TT,
+                                                ] {
+                                                    ui.selectable_value(
+                                                        &mut self.selected_time_scale,
+                                                        ts,
+                                                        format!("{ts}"),
+                                                    );
+                                                }
+                                            })
+                                    });
+                                    ui.spacing();
 
                                     // Now diplay the data
                                     if label == "DAF/PCK" {
@@ -167,18 +192,25 @@ impl eframe::App for UiApp {
                                                         row.col(|ui| {
                                                             ui.label(name);
                                                         });
+
                                                         row.col(|ui| {
-                                                            ui.label(format!(
-                                                                "{:E}",
-                                                                summary.start_epoch()
-                                                            ));
+                                                            ui.label(
+                                                                summary
+                                                                    .start_epoch()
+                                                                    .to_gregorian_str(
+                                                                        self.selected_time_scale,
+                                                                    ),
+                                                            );
                                                         });
 
                                                         row.col(|ui| {
-                                                            ui.label(format!(
-                                                                "{:E}",
-                                                                summary.end_epoch()
-                                                            ));
+                                                            ui.label(
+                                                                summary
+                                                                    .end_epoch()
+                                                                    .to_gregorian_str(
+                                                                        self.selected_time_scale,
+                                                                    ),
+                                                            );
                                                         });
 
                                                         row.col(|ui| {
@@ -289,18 +321,25 @@ impl eframe::App for UiApp {
                                                         row.col(|ui| {
                                                             ui.label(name);
                                                         });
+
                                                         row.col(|ui| {
-                                                            ui.label(format!(
-                                                                "{:E}",
-                                                                summary.start_epoch()
-                                                            ));
+                                                            ui.label(
+                                                                summary
+                                                                    .start_epoch()
+                                                                    .to_gregorian_str(
+                                                                        self.selected_time_scale,
+                                                                    ),
+                                                            );
                                                         });
 
                                                         row.col(|ui| {
-                                                            ui.label(format!(
-                                                                "{:E}",
-                                                                summary.end_epoch()
-                                                            ));
+                                                            ui.label(
+                                                                summary
+                                                                    .end_epoch()
+                                                                    .to_gregorian_str(
+                                                                        self.selected_time_scale,
+                                                                    ),
+                                                            );
                                                         });
 
                                                         row.col(|ui| {
