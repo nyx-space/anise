@@ -10,7 +10,8 @@ use hifitime::TimeScale;
 
 #[derive(Default)]
 pub struct UiApp {
-    pub selected_time_scale: TimeScale,
+    selected_time_scale: TimeScale,
+    show_unix: bool,
     almanac: Almanac,
     path: Option<String>,
 }
@@ -110,12 +111,11 @@ impl eframe::App for UiApp {
                                         ui.label("File type");
                                         ui.label(label);
                                     });
-                                    ui.spacing();
                                     ui.horizontal(|ui| {
                                         ui.label("CRC32");
                                         ui.text_edit_singleline(&mut format!("{crc}"));
                                     });
-                                    ui.spacing();
+
                                     ui.horizontal(|ui| {
                                         ui.label("Time scale");
                                         egui::ComboBox::new("attention", "")
@@ -134,9 +134,13 @@ impl eframe::App for UiApp {
                                                         format!("{ts}"),
                                                     );
                                                 }
-                                            })
+                                            });
+
+                                        ui.checkbox(
+                                            &mut self.show_unix,
+                                            "Show UNIX timestamps (in seconds)",
+                                        );
                                     });
-                                    ui.spacing();
 
                                     // Now diplay the data
                                     if label == "DAF/PCK" {
@@ -145,9 +149,9 @@ impl eframe::App for UiApp {
                                             .column(Column::auto().at_least(125.0).resizable(true))
                                             .column(Column::auto().at_least(225.0).resizable(true))
                                             .column(Column::auto().at_least(225.0).resizable(true))
+                                            .column(Column::auto().at_least(50.0).resizable(true))
+                                            .column(Column::auto().at_least(200.0).resizable(true))
                                             .column(Column::auto().at_least(150.0).resizable(true))
-                                            .column(Column::auto().at_least(50.0).resizable(true))
-                                            .column(Column::auto().at_least(50.0).resizable(true))
                                             .column(Column::remainder())
                                             .header(20.0, |mut header| {
                                                 header.col(|ui| {
@@ -160,16 +164,16 @@ impl eframe::App for UiApp {
                                                     ui.heading("End epoch");
                                                 });
                                                 header.col(|ui| {
-                                                    ui.heading("Validity");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("Kind");
-                                                });
-                                                header.col(|ui| {
                                                     ui.heading("Frame");
                                                 });
                                                 header.col(|ui| {
                                                     ui.heading("Inertial frame");
+                                                });
+                                                header.col(|ui| {
+                                                    ui.heading("Validity");
+                                                });
+                                                header.col(|ui| {
+                                                    ui.heading("Kind");
                                                 });
                                             })
                                             .body(|mut body| {
@@ -194,38 +198,45 @@ impl eframe::App for UiApp {
                                                         });
 
                                                         row.col(|ui| {
-                                                            ui.label(
-                                                                summary
-                                                                    .start_epoch()
-                                                                    .to_gregorian_str(
+                                                            if self.show_unix {
+                                                                ui.text_edit_singleline(
+                                                                    &mut format!(
+                                                                        "{}",
+                                                                        summary
+                                                                            .start_epoch()
+                                                                            .to_unix_seconds()
+                                                                    ),
+                                                                );
+                                                            } else {
+                                                                ui.label(
+                                                                    summary
+                                                                        .start_epoch()
+                                                                        .to_gregorian_str(
                                                                         self.selected_time_scale,
                                                                     ),
-                                                            );
+                                                                );
+                                                            };
                                                         });
 
                                                         row.col(|ui| {
-                                                            ui.label(
-                                                                summary
-                                                                    .end_epoch()
-                                                                    .to_gregorian_str(
+                                                            if self.show_unix {
+                                                                ui.text_edit_singleline(
+                                                                    &mut format!(
+                                                                        "{}",
+                                                                        summary
+                                                                            .end_epoch()
+                                                                            .to_unix_seconds()
+                                                                    ),
+                                                                );
+                                                            } else {
+                                                                ui.label(
+                                                                    summary
+                                                                        .end_epoch()
+                                                                        .to_gregorian_str(
                                                                         self.selected_time_scale,
                                                                     ),
-                                                            );
-                                                        });
-
-                                                        row.col(|ui| {
-                                                            ui.label(format!(
-                                                                "{}",
-                                                                summary.end_epoch()
-                                                                    - summary.start_epoch()
-                                                            ));
-                                                        });
-
-                                                        row.col(|ui| {
-                                                            ui.label(format!(
-                                                                "{}",
-                                                                summary.data_type().unwrap()
-                                                            ));
+                                                                );
+                                                            };
                                                         });
 
                                                         row.col(
@@ -265,6 +276,21 @@ impl eframe::App for UiApp {
                                                                 }
                                                             },
                                                         );
+
+                                                        row.col(|ui| {
+                                                            ui.label(format!(
+                                                                "{}",
+                                                                summary.end_epoch()
+                                                                    - summary.start_epoch()
+                                                            ));
+                                                        });
+
+                                                        row.col(|ui| {
+                                                            ui.label(format!(
+                                                                "{}",
+                                                                summary.data_type().unwrap()
+                                                            ));
+                                                        });
                                                     });
                                                 }
                                             });
@@ -275,8 +301,8 @@ impl eframe::App for UiApp {
                                             .column(Column::auto().at_least(225.0).resizable(true))
                                             .column(Column::auto().at_least(225.0).resizable(true))
                                             .column(Column::auto().at_least(150.0).resizable(true))
-                                            .column(Column::auto().at_least(50.0).resizable(true))
-                                            .column(Column::auto().at_least(50.0).resizable(true))
+                                            .column(Column::auto().at_least(200.0).resizable(true))
+                                            .column(Column::auto().at_least(150.0).resizable(true))
                                             .column(Column::remainder())
                                             .header(20.0, |mut header| {
                                                 header.col(|ui| {
@@ -288,17 +314,18 @@ impl eframe::App for UiApp {
                                                 header.col(|ui| {
                                                     ui.heading("End epoch");
                                                 });
-                                                header.col(|ui| {
-                                                    ui.heading("Validity");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("Kind");
-                                                });
+
                                                 header.col(|ui| {
                                                     ui.heading("Target");
                                                 });
                                                 header.col(|ui| {
                                                     ui.heading("Center");
+                                                });
+                                                header.col(|ui| {
+                                                    ui.heading("Validity");
+                                                });
+                                                header.col(|ui| {
+                                                    ui.heading("Kind");
                                                 });
                                             })
                                             .body(|mut body| {
@@ -323,38 +350,45 @@ impl eframe::App for UiApp {
                                                         });
 
                                                         row.col(|ui| {
-                                                            ui.label(
-                                                                summary
-                                                                    .start_epoch()
-                                                                    .to_gregorian_str(
+                                                            if self.show_unix {
+                                                                ui.text_edit_singleline(
+                                                                    &mut format!(
+                                                                        "{}",
+                                                                        summary
+                                                                            .start_epoch()
+                                                                            .to_unix_seconds()
+                                                                    ),
+                                                                );
+                                                            } else {
+                                                                ui.label(
+                                                                    summary
+                                                                        .start_epoch()
+                                                                        .to_gregorian_str(
                                                                         self.selected_time_scale,
                                                                     ),
-                                                            );
+                                                                );
+                                                            };
                                                         });
 
                                                         row.col(|ui| {
-                                                            ui.label(
-                                                                summary
-                                                                    .end_epoch()
-                                                                    .to_gregorian_str(
+                                                            if self.show_unix {
+                                                                ui.text_edit_singleline(
+                                                                    &mut format!(
+                                                                        "{}",
+                                                                        summary
+                                                                            .end_epoch()
+                                                                            .to_unix_seconds()
+                                                                    ),
+                                                                );
+                                                            } else {
+                                                                ui.label(
+                                                                    summary
+                                                                        .end_epoch()
+                                                                        .to_gregorian_str(
                                                                         self.selected_time_scale,
                                                                     ),
-                                                            );
-                                                        });
-
-                                                        row.col(|ui| {
-                                                            ui.label(format!(
-                                                                "{}",
-                                                                summary.end_epoch()
-                                                                    - summary.start_epoch()
-                                                            ));
-                                                        });
-
-                                                        row.col(|ui| {
-                                                            ui.label(format!(
-                                                                "{}",
-                                                                summary.data_type().unwrap()
-                                                            ));
+                                                                );
+                                                            };
                                                         });
 
                                                         row.col(|ui| {
@@ -370,6 +404,21 @@ impl eframe::App for UiApp {
                                                                 "{} ({})",
                                                                 summary.center_frame(),
                                                                 summary.center_id
+                                                            ));
+                                                        });
+
+                                                        row.col(|ui| {
+                                                            ui.label(format!(
+                                                                "{}",
+                                                                summary.end_epoch()
+                                                                    - summary.start_epoch()
+                                                            ));
+                                                        });
+
+                                                        row.col(|ui| {
+                                                            ui.label(format!(
+                                                                "{}",
+                                                                summary.data_type().unwrap()
                                                             ));
                                                         });
                                                     });
