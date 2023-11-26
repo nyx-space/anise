@@ -8,3 +8,6 @@ perf.data*
 analysis/.venv
 cspice.tar.Z
 .venv
+*.pca
+*.sca
+*.epa

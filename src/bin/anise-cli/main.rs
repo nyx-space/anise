@@ -123,7 +123,7 @@ fn main() -> Result<(), CliErrors> {
                             start_epoch: format!("{:E}", summary.start_epoch()),
                             end_epoch: format!("{:E}", summary.end_epoch()),
                             duration: summary.end_epoch() - summary.start_epoch(),
-                            interpolation_kind: format!("{}", summary.data_type_i),
+                            interpolation_kind: summary.data_type().unwrap().to_string(),
                             frame: format!("{}", summary.frame_id),
                             inertial_frame: format!("{}", summary.inertial_frame_id),
                         });
@@ -158,13 +158,12 @@ fn main() -> Result<(), CliErrors> {
 
                         rows.push(SpkRow {
                             name: name.to_string(),
-                            center: summary.center_id,
+                            center: summary.center_frame_uid().to_string(),
                             start_epoch: format!("{:E}", summary.start_epoch()),
                             end_epoch: format!("{:E}", summary.end_epoch()),
                             duration: summary.end_epoch() - summary.start_epoch(),
-                            interpolation_kind: format!("{}", summary.data_type_i),
-                            frame: format!("{}", summary.frame_id),
-                            target: format!("{}", summary.target_id),
+                            interpolation_kind: summary.data_type().unwrap().to_string(),
+                            target: summary.target_frame_uid().to_string(),
                         });
                     }
 

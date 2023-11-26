@@ -44,7 +44,7 @@ pub enum LutError {
 /// # Implementation note
 /// This data is stored as a u32 to ensure that the same binary representation works on all platforms.
 /// In fact, the size of the usize type varies based on whether this is a 32 or 64 bit platform.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Entry {
     pub start_idx: u32,
     pub end_idx: u32,
@@ -119,6 +119,28 @@ impl<const ENTRIES: usize> LookUpTable<ENTRIES> {
             .insert(name.try_into().unwrap(), entry)
             .map_err(|_| LutError::NameLutFull { max_slots: ENTRIES })?;
         Ok(())
+    }
+
+    /// Returns the list of entries of this LUT
+    pub fn entries(&self) -> FnvIndexMap<Entry, (Option<NaifId>, Option<String<32>>), ENTRIES> {
+        let mut rtn = FnvIndexMap::default();
+
+        for (id, entry) in &self.by_id {
+            // IDs are unique, and this is the first iteration, so we can't be overwritting anything
+            rtn.insert(*entry, (Some(*id), None)).unwrap();
+        }
+
+        // Now map to the names
+        for (name, entry) in &self.by_name {
+            if !rtn.contains_key(entry) {
+                rtn.insert(*entry, (None, Some(name.clone()))).unwrap();
+            } else {
+                let val = rtn.get_mut(entry).unwrap();
+                val.1 = Some(name.clone());
+            }
+        }
+
+        rtn
     }
 
     pub(crate) fn check_integrity(&self) -> bool {

@@ -10,7 +10,7 @@
 				"--nocapture",
 				"--include-ignored",
 				"--test-threads",
-				"1",
+				"1"
 			],
 			"problemMatcher": [
 				"$rustc"
@@ -30,7 +30,7 @@
 				"--nocapture",
 				"--include-ignored",
 				"--test-threads",
-				"1",
+				"1"
 			],
 			"problemMatcher": [
 				"$rustc"
@@ -50,13 +50,31 @@
 				"--nocapture",
 				"--include-ignored",
 				"--test-threads",
-				"1",
+				"1"
 			],
 			"problemMatcher": [
 				"$rustc"
 			],
 			"group": "none",
 			"label": "ANISE: SPK Chebyshev validation"
+		},
+		{
+			"type": "cargo",
+			"command": "build",
+			"args": [
+				"--bin",
+				"anise-gui",
+				"--features",
+				"gui",
+			],
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"label": "ANISE: Build GUI"
 		}
 	]
 }

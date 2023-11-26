@@ -22,17 +22,38 @@ ANISE stands validated against the traditional SPICE toolkit, ensuring accuracy 
 + **Multi-threaded:** Yup! Forget about mutexes and race conditions you're used to in SPICE, ANISE _guarantees_ that you won't have any race conditions.
 + **Frame safety**: ANISE checks all frames translations or rotations are physically valid before performing any computation, even internally.
 
-## Getting Started
+## Resources / Assets
 
-## Installation
+For convenience, Nyx Space provides a few important SPICE files on a public bucket:
+
++ [de440s.bsp](http://public-data.nyxspace.com/anise/de440s.bsp): JPL's latest ephemeris dataset from 1900 until 20250
++ [de440.bsp](http://public-data.nyxspace.com/anise/de440.bsp): JPL's latest long-term ephemeris dataset
++ [pck08.pca](http://public-data.nyxspace.com/anise/pck08.pca): planetary constants ANISE (`pca`) kernel, built from the JPL gravitational data [gm_de431.tpc](http://public-data.nyxspace.com/anise/gm_de431.tpc) and JPL's plantary constants file [pck00008.tpc](http://public-data.nyxspace.com/anise/pck00008.tpc)
+
+You may load any of these using the `load()` shortcut that will determine the file type upon loading, e.g. `let almanac = Almanac::default().load("pck08.pca").unwrap();`.
+
+
+## GUI
+
+ANISE comes with a GUI to inspect files. Allows you to check the start/end times of the segments (shown in whichever time scale you want, including UNIX UTC seconds)
+
+### Demos
+
+Inspect an SPK file ([video link](https://public-data.nyxspace.com/anise/demo/ANISE-SPK.webm)):
+
+![Inspect an SPK file](http://public-data.nyxspace.com/anise/demo/ANISE-SPK.gif)
+
+Inspect an Binary PCK file (BPC) ([video link](https://public-data.nyxspace.com/anise/demo/ANISE-BPC.webm)):
+
+![Inspect an SPK file](http://public-data.nyxspace.com/anise/demo/ANISE-BPC.gif)
+
+## Usage
+
+Usage as a library is currently only available in Rust. Start using it by adding to your Rust project:
 
 ```sh
 cargo add anise
 ```
-
-## Usage
-
-Please refer to the [test suite](./tests/) for comprehensive examples until I write better documentation.
 
 ### Full example
 

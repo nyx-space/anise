@@ -449,7 +449,7 @@ mod planetary_constants_ut {
         assert_eq!(repr, repr_dec);
         assert_eq!(
             format!("{repr}"),
-            "planetary data 1234 (μ = 12345.6789 km3/s) RA = 270 + 0.003 x"
+            "planetary data 1234 (μ = 12345.6789 km3/s) RA = 270 + 0.003 t"
         );
     }
 
@@ -475,7 +475,7 @@ mod planetary_constants_ut {
         assert_eq!(repr, repr_dec);
         assert_eq!(
             format!("{repr}"),
-            "planetary data 1234 (μ = 12345.6789 km3/s) Dec = 66.541 + 0.013 x"
+            "planetary data 1234 (μ = 12345.6789 km3/s) Dec = 66.541 + 0.013 t"
         );
     }
 
@@ -501,7 +501,7 @@ mod planetary_constants_ut {
         assert_eq!(repr, min_repr_dec);
         assert_eq!(
             format!("{repr}"),
-            "planetary data 1234 (μ = 12345.6789 km3/s) PM = 38.317 + 13.1763582 x"
+            "planetary data 1234 (μ = 12345.6789 km3/s) PM = 38.317 + 13.1763582 t"
         );
     }
 
@@ -535,7 +535,7 @@ mod planetary_constants_ut {
 
         assert_eq!(core::mem::size_of::<PlanetaryData>(), 1984);
 
-        assert_eq!(format!("{repr}"), "planetary data 1234 (μ = 12345.6789 km3/s) Dec = 66.541 + 0.013 x PM = 38.317 + 13.1763582 x");
+        assert_eq!(format!("{repr}"), "planetary data 1234 (μ = 12345.6789 km3/s) Dec = 66.541 + 0.013 t PM = 38.317 + 13.1763582 t");
     }
 
     #[test]
@@ -613,6 +613,6 @@ mod planetary_constants_ut {
 
         assert_eq!(moon, moon_dec);
 
-        assert_eq!(format!("{moon}"), "planetary data 301 (μ = 4902.800066163796 km3/s) RA = 269.9949 + 0.0031 x Dec = 66.5392 + 0.013 x PM = 38.3213 + 13.17635815 x + -0.0000000000014 x^2");
+        assert_eq!(format!("{moon}"), "planetary data 301 (μ = 4902.800066163796 km3/s) RA = 269.9949 + 0.0031 t Dec = 66.5392 + 0.013 t PM = 38.3213 + 13.17635815 t + -0.0000000000014 t^2");
     }
 }

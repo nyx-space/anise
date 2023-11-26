@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anise::constants::frames::{EARTH_ITRF93, EME2000};
 use anise::constants::orientations::{ECLIPJ2000, ITRF93, J2000};
 use anise::math::rotation::DCM;
@@ -10,11 +12,13 @@ mod validation;
 
 #[test]
 fn test_find_root() {
-    // try_find_orientation_root
-    let almanac = Almanac {
-        planetary_data: convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap(),
-        ..Default::default()
-    };
+    let planetary_data = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
+    // Serialize to disk
+    planetary_data
+        .save_as(&PathBuf::from_str("pck08.pca").unwrap(), true)
+        .unwrap();
+
+    let almanac = Almanac::default().load("pck08.pca").unwrap();
 
     assert_eq!(almanac.try_find_orientation_root(), Ok(J2000));
 }

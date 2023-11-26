@@ -31,7 +31,7 @@ pub struct SPKSummaryRecord {
     pub end_idx: i32,
 }
 
-impl<'a> SPKSummaryRecord {
+impl SPKSummaryRecord {
     pub fn data_type(&self) -> Result<DafDataType, EphemerisError> {
         DafDataType::try_from(self.data_type_i).map_err(|source| EphemerisError::SPK {
             action: "converting data type from i32",
@@ -66,14 +66,14 @@ impl<'a> SPKSummaryRecord {
     }
 
     #[cfg(feature = "spkezr_validation")]
-    pub fn spice_name(&self) -> Result<&'a str, EphemerisError> {
+    pub fn spice_name(&self) -> Result<&'static str, EphemerisError> {
         Self::id_to_spice_name(self.target_id)
     }
 
     /// Converts the provided ID to its human name.
     /// Only works for the common celestial bodies
     #[cfg(feature = "spkezr_validation")]
-    pub fn id_to_spice_name(id: i32) -> Result<&'a str, EphemerisError> {
+    pub fn id_to_spice_name(id: i32) -> Result<&'static str, EphemerisError> {
         if id % 100 == 99 {
             // This is the planet itself
             match id / 100 {
@@ -114,7 +114,7 @@ impl<'a> SPKSummaryRecord {
     /// Converts the provided ID to its human name.
     /// Only works for the common celestial bodies
     #[cfg(feature = "spkezr_validation")]
-    pub fn spice_name_to_id(name: &'a str) -> Result<i32, EphemerisError> {
+    pub fn spice_name_to_id(name: &str) -> Result<i32, EphemerisError> {
         match name {
             "Mercury" => Ok(1),
             "Venus" => Ok(2),
