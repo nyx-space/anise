@@ -35,7 +35,7 @@ impl eframe::App for UiApp {
         egui::TopBottomPanel::top("header").show(ctx, |ui| {
             ui.horizontal_centered(|ui| {
                 ui.vertical_centered(|ui| {
-                    ui.heading("ANISE");
+                    ui.heading("ANISE v0.1");
                     ui.label("A modern rewrite of NAIF SPICE");
                     ui.hyperlink_to(
                         "Take the user survey!",
@@ -54,7 +54,7 @@ impl eframe::App for UiApp {
                         match &self.path {
                             None => {
                                 // Show the open file dialog
-                                if ui.button("Open file to inspect...").clicked() {
+                                if ui.button("Select file to inspect...").clicked() {
                                     if let Some(path) = rfd::FileDialog::new().pick_file() {
                                         // Try to load this file
                                         match self.almanac.load(path.to_str().unwrap()) {

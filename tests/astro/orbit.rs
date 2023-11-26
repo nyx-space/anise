@@ -11,10 +11,8 @@ use rstest::*;
 
 #[fixture]
 fn almanac() -> Almanac {
-    Almanac {
-        planetary_data: convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap(),
-        ..Default::default()
-    }
+    Almanac::default()
+        .with_planetary_data(convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap())
 }
 
 macro_rules! f64_eq {

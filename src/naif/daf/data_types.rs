@@ -186,4 +186,49 @@ mod ut_datatype {
             }
         }
     }
+
+    #[test]
+    fn trivial_display() {
+        for data_type in [
+            DataType::Type1ModifiedDifferenceArray,
+            DataType::Type2ChebyshevTriplet,
+            DataType::Type3ChebyshevSextuplet,
+            DataType::Type5DiscreteStates,
+            DataType::Type8LagrangeEqualStep,
+            DataType::Type9LagrangeUnequalStep,
+            DataType::Type10SpaceCommandTLE,
+            DataType::Type12HermiteEqualStep,
+            DataType::Type13HermiteUnequalStep,
+            DataType::Type14ChebyshevUnequalStep,
+            DataType::Type15PrecessingConics,
+            DataType::Type17Equinoctial,
+            DataType::Type18ESOCHermiteLagrange,
+            DataType::Type19ESOCPiecewise,
+            DataType::Type20ChebyshevDerivative,
+            DataType::Type21ExtendedModifiedDifferenceArray,
+        ] {
+            let expected = match data_type {
+                DataType::Type1ModifiedDifferenceArray => "Modified differences",
+                DataType::Type2ChebyshevTriplet => "Chebyshev Triplet",
+                DataType::Type3ChebyshevSextuplet => "Chebyshev Sextuplet",
+                DataType::Type5DiscreteStates => "Discrete States",
+                DataType::Type8LagrangeEqualStep => "Lagrange EqualStep",
+                DataType::Type9LagrangeUnequalStep => "Lagrange UnequalStep",
+                DataType::Type10SpaceCommandTLE => "Space Command TLE",
+                DataType::Type12HermiteEqualStep => "Hermite Equal Step",
+                DataType::Type13HermiteUnequalStep => "Hermite Unequal Step",
+                DataType::Type14ChebyshevUnequalStep => "Chebyshev UnequalStep",
+                DataType::Type15PrecessingConics => "Precessing Conics",
+                DataType::Type17Equinoctial => "Equinoctial",
+                DataType::Type18ESOCHermiteLagrange => "ESOC Hermite Lagrange",
+                DataType::Type19ESOCPiecewise => "ESOC Piecewise",
+                DataType::Type20ChebyshevDerivative => "Chebyshev Derivative",
+                DataType::Type21ExtendedModifiedDifferenceArray => {
+                    "Extended Modified Difference Array"
+                }
+            };
+
+            assert_eq!(data_type.to_string(), expected);
+        }
+    }
 }

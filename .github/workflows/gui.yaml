@@ -14,7 +14,7 @@ env:
 
 jobs:
     build-linux:
-        name: Format + check + test
+        name: Build Linux GUI
         runs-on: ubuntu-22.04
         steps:
             - uses: actions/checkout@v4
@@ -39,15 +39,16 @@ jobs:
               with:
                 name: anise-gui-linux
                 path: target/release/anise-gui
+                if-no-files-found: error
 
     windows:
-        name: Build Windows
+        name: Build Windows GUI
         runs-on: windows-latest
         steps:
             - uses: actions/checkout@v4
             - uses: dtolnay/rust-toolchain@master
               with:
-                toolchain: 1.72.0
+                toolchain: 1.74.0
     
             - name: Set up cargo cache
               uses: Swatinem/rust-cache@v2
@@ -59,4 +60,5 @@ jobs:
               uses: actions/upload-artifact@v3
               with:
                 name: anise-gui-windows
-                path: target/release/anise-gui
+                path: target\release\anise-gui
+                if-no-files-found: error

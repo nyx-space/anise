@@ -16,8 +16,7 @@ pub struct BpcRow {
 pub struct SpkRow {
     pub name: String,
     pub target: String,
-    pub frame: String,
-    pub center: i32,
+    pub center: String,
     pub start_epoch: String,
     pub end_epoch: String,
     pub duration: Duration,
