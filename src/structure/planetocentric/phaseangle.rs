@@ -89,11 +89,11 @@ impl<const N: usize> fmt::Display for PhaseAngle<N> {
         if self.accel_deg.abs() > 0.0 {
             write!(
                 f,
-                "{} + {} x + {} x^2",
+                "{} + {} t + {} t^2",
                 self.offset_deg, self.rate_deg, self.accel_deg
             )
         } else {
-            write!(f, "{} + {} x", self.offset_deg, self.rate_deg)
+            write!(f, "{} + {} t", self.offset_deg, self.rate_deg)
         }
     }
 }
