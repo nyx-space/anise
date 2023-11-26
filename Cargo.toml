@@ -62,7 +62,7 @@ polars = { version = "0.35.0", features = ["lazy", "parquet"] }
 rayon = "1.7"
 
 [features]
-default = ["gui"]
+default = []
 # Enabling this flag significantly increases compilation times due to Arrow and Polars.
 spkezr_validation = []
 gui = ["dep:eframe", "dep:egui", "dep:egui_extras", "dep:egui-toast", "dep:rfd"]
