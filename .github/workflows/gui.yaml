@@ -1,0 +1,62 @@
+on:
+    pull_request:
+    push:
+        branches:
+        - master
+
+name: ANISE GUI
+
+env:
+    RUST_BACKTRACE: 1
+    RUST_LOG: info
+
+# Source: https://github.com/emilk/egui/blob/23732be0e5b9a977afb08a2e7cb23c31955abe43/.github/workflows/rust.yml
+
+jobs:
+    build-linux:
+        name: Format + check + test
+        runs-on: ubuntu-22.04
+        steps:
+            - uses: actions/checkout@v4
+        
+            - uses: dtolnay/rust-toolchain@master
+              with:
+                toolchain: 1.74.0
+        
+            - name: Install packages (Linux)
+              if: runner.os == 'Linux'
+              uses: rerun-io/cache-apt-pkgs-action@59534850182063abf1b2c11bb3686722a12a8397
+              with:
+                packages: libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libgtk-3-dev # libgtk-3-dev is used by rfd
+                version: 1.0
+                execute_install_scripts: true
+            
+            - name: Build Linux executable
+              run: cargo build --release --bin anise-gui --features=gui
+            
+            - name: Save executable
+              uses: actions/upload-artifact@v3
+              with:
+                name: anise-gui-linux
+                path: target/release/anise-gui
+
+    windows:
+        name: Build Windows
+        runs-on: windows-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: dtolnay/rust-toolchain@master
+              with:
+                toolchain: 1.72.0
+    
+            - name: Set up cargo cache
+              uses: Swatinem/rust-cache@v2
+    
+            - name: Build Windows executable
+              run: cargo build --release --bin anise-gui --features=gui
+
+            - name: Save executable
+              uses: actions/upload-artifact@v3
+              with:
+                name: anise-gui-windows
+                path: target/release/anise-gui
