@@ -42,6 +42,15 @@ snafu = { version = "0.7.5", features = ["backtrace"] }
 lexical-core = "0.8.5"
 heapless = "0.8.0"
 rstest = "0.18.2"
+eframe = { version = "0.23.0", optional = true }
+egui = { version = "0.23.0", optional = true }
+egui_extras = { version = "0.23.0", features = [
+    "datepicker",
+    "http",
+    "image",
+], optional = true }
+egui-toast = { version = "0.9.0", optional = true }
+rfd = { version = "0.12.1", optional = true }
 
 [dev-dependencies]
 rust-spice = "0.7.6"
@@ -53,9 +62,10 @@ polars = { version = "0.35.0", features = ["lazy", "parquet"] }
 rayon = "1.7"
 
 [features]
-default = ["spkezr_validation"]
-# Enabling this flag significantly reduces compilation times due to Arrow and Polars.
+default = ["gui"]
+# Enabling this flag significantly increases compilation times due to Arrow and Polars.
 spkezr_validation = []
+gui = ["dep:eframe", "dep:egui", "dep:egui_extras", "dep:egui-toast", "dep:rfd"]
 
 [profile.bench]
 debug = true
@@ -75,3 +85,8 @@ harness = false
 [[bench]]
 name = "crit_bpc_rotation"
 harness = false
+
+[[bin]]
+name = "anise-gui"
+path = "src/bin/anise-gui/main.rs"
+required-features = ["gui"]

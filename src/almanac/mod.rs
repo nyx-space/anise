@@ -8,7 +8,21 @@
  * Documentation: https://nyxspace.com/
  */
 
+use log::info;
+use snafu::ResultExt;
+use std::fs::File;
+use zerocopy::FromBytes;
+
+use crate::ephemerides::SPKSnafu;
+use crate::errors::{
+    AlmanacError, EphemerisSnafu, InputOutputError, LoadingSnafu, OrientationSnafu, TLDataSetSnafu,
+};
+use crate::file2heap;
+use crate::naif::daf::{FileRecord, NAIFRecord};
 use crate::naif::{BPC, SPK};
+use crate::orientations::BPCSnafu;
+use crate::structure::dataset::DataSetType;
+use crate::structure::metadata::Metadata;
 use crate::structure::{EulerParameterDataSet, PlanetaryDataSet, SpacecraftDataSet};
 use core::fmt;
 
@@ -56,5 +70,105 @@ impl fmt::Display for Almanac {
             write!(f, "\t{}", self.spacecraft_data)?;
         }
         Ok(())
+    }
+}
+
+impl Almanac {
+    /// Loads the provided spacecraft data into a clone of this original Almanac.
+    pub fn with_spacecraft_data(&self, spacecraft_data: SpacecraftDataSet) -> Self {
+        let mut me = self.clone();
+        me.spacecraft_data = spacecraft_data;
+        me
+    }
+
+    /// Loads the provided Euler parameter data into a clone of this original Almanac.
+    pub fn with_euler_parameters(&self, ep_dataset: EulerParameterDataSet) -> Self {
+        let mut me = self.clone();
+        me.euler_param_data = ep_dataset;
+        me
+    }
+
+    /// Generic function that tries to load whichever path is provided, guessing to the type.
+    pub fn load(&self, path: &str) -> Result<Self, AlmanacError> {
+        // Load the data onto the heap
+        let bytes = file2heap!(path).with_context(|_| LoadingSnafu {
+            path: path.to_string(),
+        })?;
+
+        // Try to load as a SPICE DAF first (likely the most typical use case)
+
+        // Load the header only
+        let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
+
+        if let Ok(fileid) = file_record.identification() {
+            match fileid {
+                "PCK" => {
+                    info!("Loading {path} as DAF/PCK");
+                    let bpc = BPC::parse(bytes)
+                        .with_context(|_| BPCSnafu {
+                            action: "parsing bytes",
+                        })
+                        .with_context(|_| OrientationSnafu {
+                            action: "from generic loading",
+                        })?;
+                    self.with_bpc(bpc).with_context(|_| OrientationSnafu {
+                        action: "adding BPC file to context",
+                    })
+                }
+                "SPK" => {
+                    info!("Loading {path:?} as DAF/SPK");
+                    let spk = SPK::parse(bytes)
+                        .with_context(|_| SPKSnafu {
+                            action: "parsing bytes",
+                        })
+                        .with_context(|_| EphemerisSnafu {
+                            action: "from generic loading",
+                        })?;
+                    self.with_spk(spk).with_context(|_| EphemerisSnafu {
+                        action: "adding SPK file to context",
+                    })
+                }
+                fileid => Err(AlmanacError::GenericError {
+                    err: format!("DAF/{fileid} is not yet supported"),
+                }),
+            }
+        } else if let Ok(metadata) = Metadata::decode_header(&bytes) {
+            // Now, we can load this depending on the kind of data that it is
+            match metadata.dataset_type {
+                DataSetType::NotApplicable => unreachable!("no such ANISE data yet"),
+                DataSetType::SpacecraftData => {
+                    // Decode as spacecraft data
+                    let dataset = SpacecraftDataSet::try_from_bytes(bytes).with_context(|_| {
+                        TLDataSetSnafu {
+                            action: "loading as spacecraft data",
+                        }
+                    })?;
+                    Ok(self.with_spacecraft_data(dataset))
+                }
+                DataSetType::PlanetaryData => {
+                    // Decode as planetary data
+                    let dataset = PlanetaryDataSet::try_from_bytes(bytes).with_context(|_| {
+                        TLDataSetSnafu {
+                            action: "loading as planetary data",
+                        }
+                    })?;
+                    Ok(self.with_planetary_data(dataset))
+                }
+                DataSetType::EulerParameterData => {
+                    // Decode as euler paramater data
+                    let dataset =
+                        EulerParameterDataSet::try_from_bytes(bytes).with_context(|_| {
+                            TLDataSetSnafu {
+                                action: "loading Euler parameters",
+                            }
+                        })?;
+                    Ok(self.with_euler_parameters(dataset))
+                }
+            }
+        } else {
+            Err(AlmanacError::GenericError {
+                err: format!("Provided file cannot be inspected loaded directly in ANISE and may need a conversion first"),
+            })
+        }
     }
 }

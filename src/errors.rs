@@ -14,6 +14,7 @@ use snafu::prelude::*;
 use crate::ephemerides::EphemerisError;
 use crate::orientations::OrientationError;
 use crate::prelude::FrameUid;
+use crate::structure::dataset::DataSetError;
 use crate::structure::semver::Semver;
 use crate::NaifId;
 use core::convert::From;
@@ -33,6 +34,18 @@ pub enum AlmanacError {
         action: &'static str,
         source: OrientationError,
     },
+    #[snafu(display("{source} encountered when loading {path}"))]
+    Loading {
+        path: String,
+        source: InputOutputError,
+    },
+    #[snafu(display("{source} encountered when {action}"))]
+    TLDataSet {
+        action: &'static str,
+        source: DataSetError,
+    },
+    #[snafu(display("{err}"))]
+    GenericError { err: String },
 }
 
 #[derive(Debug, Snafu)]

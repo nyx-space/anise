@@ -1,8 +1,3 @@
-use crate::{
-    prelude::{Frame, FrameUid},
-    structure::{dataset::DataSetError, PlanetaryDataSet},
-};
-
 /*
  * ANISE Toolkit
  * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
@@ -14,6 +9,11 @@ use crate::{
  */
 use super::Almanac;
 use snafu::prelude::*;
+
+use crate::{
+    prelude::{Frame, FrameUid},
+    structure::{dataset::DataSetError, PlanetaryDataSet},
+};
 
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
