@@ -17,9 +17,12 @@ fn test_load_ctx() {
     let ctx = Almanac::default();
 
     let spk = SPK::load("data/de440.bsp").unwrap();
-    let bpc = BPC::load("data/earth_latest_high_prec.bpc").unwrap();
 
-    let mut loaded_ctx = ctx.with_spk(spk).unwrap().with_bpc(bpc).unwrap();
+    let mut loaded_ctx = ctx
+        .with_spk(spk)
+        .unwrap()
+        .load("data/earth_latest_high_prec.bpc")
+        .unwrap();
 
     loaded_ctx.planetary_data = dataset;
 
