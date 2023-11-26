@@ -508,7 +508,6 @@ impl eframe::App for UiApp {
                                                                 "{}",
                                                                 data.mu_km3_s2
                                                             ));
-                                                            
                                                         });
 
                                                         match data.shape {

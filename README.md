@@ -41,11 +41,11 @@ ANISE comes with a GUI to inspect files. Allows you to check the start/end times
 
 Inspect an SPK file ([video link](https://public-data.nyxspace.com/anise/demo/ANISE-SPK.webm)):
 
-<video src="https://public-data.nyxspace.com/anise/demo/ANISE-SPK.webm"></video>
+![Inspect an SPK file](http://public-data.nyxspace.com/anise/demo/ANISE-SPK.gif)
 
 Inspect an Binary PCK file (BPC) ([video link](https://public-data.nyxspace.com/anise/demo/ANISE-BPC.webm)):
 
-<video src="https://public-data.nyxspace.com/anise/demo/ANISE-BPC.webm"></video>
+![Inspect an SPK file](http://public-data.nyxspace.com/anise/demo/ANISE-BPC.gif)
 
 ## Usage
 
