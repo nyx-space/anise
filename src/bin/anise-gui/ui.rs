@@ -236,6 +236,106 @@ impl eframe::App for UiApp {
                                                     });
                                                 }
                                             });
+                                    } else if label == "DAF/SPK" {
+                                        // We can use the summary
+                                        TableBuilder::new(ui)
+                                            .column(Column::auto().at_least(125.0).resizable(true))
+                                            .column(Column::auto().at_least(225.0).resizable(true))
+                                            .column(Column::auto().at_least(225.0).resizable(true))
+                                            .column(Column::auto().at_least(150.0).resizable(true))
+                                            .column(Column::auto().at_least(50.0).resizable(true))
+                                            .column(Column::auto().at_least(50.0).resizable(true))
+                                            .column(Column::remainder())
+                                            .header(20.0, |mut header| {
+                                                header.col(|ui| {
+                                                    ui.heading("Segment name");
+                                                });
+                                                header.col(|ui| {
+                                                    ui.heading("Start epoch");
+                                                });
+                                                header.col(|ui| {
+                                                    ui.heading("End epoch");
+                                                });
+                                                header.col(|ui| {
+                                                    ui.heading("Validity");
+                                                });
+                                                header.col(|ui| {
+                                                    ui.heading("Kind");
+                                                });
+                                                header.col(|ui| {
+                                                    ui.heading("Target");
+                                                });
+                                                header.col(|ui| {
+                                                    ui.heading("Center");
+                                                });
+                                            })
+                                            .body(|mut body| {
+                                                let spk =
+                                                    self.almanac.spk_data[0].as_ref().unwrap();
+
+                                                for (sno, summary) in
+                                                    spk.data_summaries().unwrap().iter().enumerate()
+                                                {
+                                                    let name_rcrd = spk.name_record().unwrap();
+                                                    let name = name_rcrd.nth_name(
+                                                        sno,
+                                                        spk.file_record().unwrap().summary_size(),
+                                                    );
+                                                    if summary.is_empty() {
+                                                        continue;
+                                                    }
+
+                                                    body.row(30.0, |mut row| {
+                                                        row.col(|ui| {
+                                                            ui.label(name);
+                                                        });
+                                                        row.col(|ui| {
+                                                            ui.label(format!(
+                                                                "{:E}",
+                                                                summary.start_epoch()
+                                                            ));
+                                                        });
+
+                                                        row.col(|ui| {
+                                                            ui.label(format!(
+                                                                "{:E}",
+                                                                summary.end_epoch()
+                                                            ));
+                                                        });
+
+                                                        row.col(|ui| {
+                                                            ui.label(format!(
+                                                                "{}",
+                                                                summary.end_epoch()
+                                                                    - summary.start_epoch()
+                                                            ));
+                                                        });
+
+                                                        row.col(|ui| {
+                                                            ui.label(format!(
+                                                                "{}",
+                                                                summary.data_type().unwrap()
+                                                            ));
+                                                        });
+
+                                                        row.col(|ui| {
+                                                            ui.label(format!(
+                                                                "{} ({})",
+                                                                summary.target_frame(),
+                                                                summary.target_id
+                                                            ));
+                                                        });
+
+                                                        row.col(|ui| {
+                                                            ui.label(format!(
+                                                                "{} ({})",
+                                                                summary.center_frame(),
+                                                                summary.center_id
+                                                            ));
+                                                        });
+                                                    });
+                                                }
+                                            });
                                     }
                                 });
                             }
