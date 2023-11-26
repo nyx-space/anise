@@ -31,7 +31,7 @@ pub struct SPKSummaryRecord {
     pub end_idx: i32,
 }
 
-impl<'a> SPKSummaryRecord {
+impl SPKSummaryRecord {
     pub fn data_type(&self) -> Result<DafDataType, EphemerisError> {
         DafDataType::try_from(self.data_type_i).map_err(|source| EphemerisError::SPK {
             action: "converting data type from i32",

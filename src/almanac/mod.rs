@@ -167,7 +167,7 @@ impl Almanac {
             }
         } else {
             Err(AlmanacError::GenericError {
-                err: format!("Provided file cannot be inspected loaded directly in ANISE and may need a conversion first"),
+                err: "Provided file cannot be inspected loaded directly in ANISE and may need a conversion first".to_string(),
             })
         }
     }
