@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+use bytes::Bytes;
 use log::info;
 use snafu::ResultExt;
 use std::fs::File;
@@ -94,7 +95,11 @@ impl Almanac {
         let bytes = file2heap!(path).with_context(|_| LoadingSnafu {
             path: path.to_string(),
         })?;
+        info!("Loading almanac from {path}");
+        self.load_from_bytes(bytes)
+    }
 
+    pub fn load_from_bytes(&self, bytes: Bytes) -> Result<Self, AlmanacError> {
         // Try to load as a SPICE DAF first (likely the most typical use case)
 
         // Load the header only
@@ -103,7 +108,7 @@ impl Almanac {
         if let Ok(fileid) = file_record.identification() {
             match fileid {
                 "PCK" => {
-                    info!("Loading {path} as DAF/PCK");
+                    info!("Loading as DAF/PCK");
                     let bpc = BPC::parse(bytes)
                         .with_context(|_| BPCSnafu {
                             action: "parsing bytes",
@@ -116,7 +121,7 @@ impl Almanac {
                     })
                 }
                 "SPK" => {
-                    info!("Loading {path:?} as DAF/SPK");
+                    info!("Loading as DAF/SPK");
                     let spk = SPK::parse(bytes)
                         .with_context(|_| SPKSnafu {
                             action: "parsing bytes",
