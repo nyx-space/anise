@@ -52,6 +52,10 @@ egui_extras = { version = "0.24.0", features = [
 egui-toast = { version = "0.10.0", optional = true }
 rfd = { version = "0.12.1", optional = true }
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-futures = "0.4"
+poll-promise = { version = "0.3.0", features = ["web"] }
+
 [dev-dependencies]
 rust-spice = "0.7.6"
 parquet = "49.0.0"
