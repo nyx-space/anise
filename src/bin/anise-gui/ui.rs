@@ -1,5 +1,5 @@
 use anise::{
-    almanac::Almanac, constants::orientations::orientation_name_from_id,
+    almanac::Almanac, constants::orientations::orientation_name_from_id, errors::AlmanacError,
     naif::daf::NAIFSummaryRecord,
 };
 use eframe::egui;
@@ -8,12 +8,26 @@ use egui_extras::{Column, TableBuilder};
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 use hifitime::TimeScale;
 
+#[cfg(target_arch = "wasm32")]
+use poll_promise::Promise;
+
+#[cfg(target_arch = "wasm32")]
+type AlmanacFile = Option<(String, Vec<u8>)>;
+
 #[derive(Default)]
 pub struct UiApp {
     selected_time_scale: TimeScale,
     show_unix: bool,
     almanac: Almanac,
     path: Option<String>,
+    #[cfg(target_arch = "wasm32")]
+    promise: Option<Promise<AlmanacFile>>,
+}
+
+enum FileLoadResult {
+    NoFileSelectedYet,
+    Ok((String, Almanac)),
+    Error(AlmanacError),
 }
 
 impl UiApp {
@@ -23,6 +37,43 @@ impl UiApp {
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
         Self::default()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn load_almanac(&mut self) -> FileLoadResult {
+        if let Some(promise) = self.promise.as_ref() {
+            // We are already waiting for a file, so we don't need to show the dialog again
+            if let Some(result) = promise.ready() {
+                let (file_name, data) = result.as_ref().map(|x| x.clone()).unwrap();
+                self.promise = None;
+                match self.almanac.load_from_bytes(bytes::Bytes::from(data)) {
+                    Ok(almanac) => FileLoadResult::Ok((file_name, almanac)),
+                    Err(e) => FileLoadResult::Error(e),
+                }
+            } else {
+                FileLoadResult::NoFileSelectedYet
+            }
+        } else {
+            // Show the dialog and start loading the file
+            self.promise = Some(Promise::spawn_local(async move {
+                let fh = rfd::AsyncFileDialog::new().pick_file().await?;
+                Some((fh.file_name(), fh.read().await))
+            }));
+            FileLoadResult::NoFileSelectedYet
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn load_almanac(&mut self) -> FileLoadResult {
+        if let Some(path_buf) = rfd::FileDialog::new().pick_file() {
+            let path = path_buf.to_str().unwrap().to_string();
+            match self.almanac.load(&path) {
+                Ok(almanac) => FileLoadResult::Ok((path, almanac)),
+                Err(e) => FileLoadResult::Error(e),
+            }
+        } else {
+            FileLoadResult::NoFileSelectedYet
+        }
     }
 }
 
@@ -53,12 +104,24 @@ impl eframe::App for UiApp {
                     ui.vertical_centered(|ui| {
                         match &self.path {
                             None => {
+                                let mut trigger_file_load = false;
+                                trigger_file_load |= ui.button("Select file to inspect...").clicked();
+
+                                // If we are in the browser, we need to also check if the file
+                                // is ready to be loaded instead of just checking if the button
+                                // was clicked
+                                #[cfg(target_arch = "wasm32")]
+                                {
+                                    trigger_file_load |= self.promise.is_some();
+                                }
+
                                 // Show the open file dialog
-                                if ui.button("Select file to inspect...").clicked() {
-                                    if let Some(path) = rfd::FileDialog::new().pick_file() {
+                                if trigger_file_load {
                                         // Try to load this file
-                                        match self.almanac.load(path.to_str().unwrap()) {
-                                            Ok(almanac) => {
+                                        match self.load_almanac() {
+                                            FileLoadResult::NoFileSelectedYet => {
+                                            }
+                                            FileLoadResult::Ok((path, almanac)) => {
                                                 toasts.add(Toast {
                                                     text: format!("Loaded {path:?}").into(),
                                                     kind: ToastKind::Success,
@@ -67,10 +130,9 @@ impl eframe::App for UiApp {
                                                         .show_progress(true),
                                                 });
                                                 self.almanac = almanac;
-                                                self.path =
-                                                    Some(path.to_str().unwrap().to_string());
+                                                self.path = Some(path);
                                             }
-                                            Err(e) => {
+                                            FileLoadResult::Error(e) => {
                                                 toasts.add(Toast {
                                                     text: format!("{e}").into(),
                                                     kind: ToastKind::Error,
@@ -80,7 +142,6 @@ impl eframe::App for UiApp {
                                                 });
                                             }
                                         }
-                                    }
                                 }
                             }
                             Some(path) => {
