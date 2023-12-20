@@ -32,7 +32,7 @@ der = { version = "0.7.8", features = ["derive", "alloc", "real"] }
 clap = { version = "4", features = ["derive"] }
 log = "=0.4"
 pretty_env_logger = "=0.5"
-tabled = "=0.14"
+tabled = "=0.15"
 const_format = "0.2"
 nalgebra = "0.32"
 approx = "=0.5.1"
