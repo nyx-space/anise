@@ -27,7 +27,11 @@ fn common_root_verif() {
 
     // Load the context
     // Check that this test works for DE430, DE438s (short), and DE440
-    for path in ["./data/de430.bsp", "./data/de440s.bsp", "./data/de440.bsp"] {
+    for path in [
+        "../data/de430.bsp",
+        "../data/de440s.bsp",
+        "../data/de440.bsp",
+    ] {
         let buf = file2heap!(path).unwrap();
         let spk = SPK::parse(buf).unwrap();
         let ctx = Almanac::from_spk(spk).unwrap();

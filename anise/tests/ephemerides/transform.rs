@@ -24,8 +24,8 @@ fn de440s_transform_verif_venus2emb() {
         println!("could not init env_logger");
     }
 
-    let spk_path = "./data/de440s.bsp";
-    let bpc_path = "./data/earth_latest_high_prec.bpc";
+    let spk_path = "../data/de440s.bsp";
+    let bpc_path = "../data/earth_latest_high_prec.bpc";
 
     // Load into ANISE
     let spk = SPK::load(spk_path).unwrap();

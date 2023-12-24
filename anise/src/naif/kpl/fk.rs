@@ -97,7 +97,7 @@ mod fk_ut {
         In other words, if the class is 2 then it's a PCK based frame, else it's a TPC frame.
           */
         use crate::naif::kpl::parser::parse_file;
-        let assignments = parse_file::<_, FKItem>("data/moon_080317.txt", false).unwrap();
+        let assignments = parse_file::<_, FKItem>("../data/moon_080317.txt", false).unwrap();
 
         // One of the `begindata` sections has two entries
         assert_eq!(assignments.len(), 5);
@@ -194,7 +194,7 @@ mod fk_ut {
     #[test]
     fn test_convert_fk() {
         use crate::math::rotation::{r1, r2, r3, DCM};
-        let dataset = convert_fk("data/moon_080317.txt", false).unwrap();
+        let dataset = convert_fk("../data/moon_080317.txt", false).unwrap();
 
         assert_eq!(dataset.len(), 3, "expected three items");
 

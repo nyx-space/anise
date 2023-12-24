@@ -12,7 +12,7 @@ mod validation;
 
 #[test]
 fn test_find_root() {
-    let planetary_data = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
+    let planetary_data = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
     // Serialize to disk
     planetary_data
         .save_as(&PathBuf::from_str("pck08.pca").unwrap(), true)
@@ -26,7 +26,7 @@ fn test_find_root() {
 #[test]
 fn test_single_bpc() {
     use core::str::FromStr;
-    let bpc = BPC::load("data/earth_latest_high_prec.bpc").unwrap();
+    let bpc = BPC::load("../data/earth_latest_high_prec.bpc").unwrap();
     let almanac = Almanac::from_bpc(bpc).unwrap();
 
     let epoch = Epoch::from_str("2019-03-01T04:02:51.0 ET").unwrap();
@@ -86,7 +86,7 @@ fn test_single_bpc() {
 #[test]
 fn test_itrf93_to_j2k() {
     use core::str::FromStr;
-    let bpc = BPC::load("data/earth_latest_high_prec.bpc").unwrap();
+    let bpc = BPC::load("../data/earth_latest_high_prec.bpc").unwrap();
     let almanac = Almanac::from_bpc(bpc).unwrap();
 
     let epoch = Epoch::from_str("2019-03-01T04:02:51.0 ET").unwrap();
@@ -148,7 +148,7 @@ fn test_itrf93_to_j2k() {
 #[test]
 fn test_j2k_to_itrf93() {
     use core::str::FromStr;
-    let bpc = BPC::load("data/earth_latest_high_prec.bpc").unwrap();
+    let bpc = BPC::load("../data/earth_latest_high_prec.bpc").unwrap();
     let almanac = Almanac::from_bpc(bpc).unwrap();
 
     let epoch = Epoch::from_str("2019-03-01T04:02:51.0 ET").unwrap();

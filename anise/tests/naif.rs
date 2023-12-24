@@ -28,7 +28,7 @@ fn test_binary_pck_load() {
     }
 
     // Using the DE421 as demo because the correct data is in the DAF documentation
-    let filename = "data/earth_latest_high_prec.bpc";
+    let filename = "../data/earth_latest_high_prec.bpc";
     let bytes = file2heap!(filename).unwrap();
 
     let high_prec = DAF::<BPCSummaryRecord>::parse(bytes).unwrap();
@@ -55,7 +55,7 @@ fn test_spk_load_bytes() {
     }
 
     // Using the DE421 as demo because the correct data is in the DAF documentation
-    let bytes = file2heap!("data/de421.bsp").unwrap();
+    let bytes = file2heap!("../data/de421.bsp").unwrap();
 
     let de421 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
 
@@ -144,12 +144,12 @@ fn test_spk_load_bytes() {
     // Now load another DE file
     // NOTE: Rust has strict lifetime requirements, and the Spice Context is set up such that loading another dataset will return a new context with that data set loaded in it.
     {
-        let bytes = file2heap!("data/de440.bsp").unwrap();
+        let bytes = file2heap!("../data/de440.bsp").unwrap();
         let de440 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
         let spice = spice.with_spk(de440).unwrap();
 
         // And another
-        let bytes = file2heap!("data/de440s.bsp").unwrap();
+        let bytes = file2heap!("../data/de440s.bsp").unwrap();
         let de440 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
         let spice = spice.with_spk(de440).unwrap();
 
@@ -171,7 +171,7 @@ fn test_spk_rename_summary() {
         println!("could not init env_logger");
     }
 
-    let path = "data/variable-seg-size-hermite.bsp";
+    let path = "../data/variable-seg-size-hermite.bsp";
 
     let example_data = SPK::load(path).unwrap();
 
@@ -186,5 +186,5 @@ fn test_spk_rename_summary() {
         .unwrap()
         .nth_name(0, example_data.file_record().unwrap().summary_size()));
 
-    example_data.persist("target/rename-test.bsp").unwrap();
+    example_data.persist("../target/rename-test.bsp").unwrap();
 }

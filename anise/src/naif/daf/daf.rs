@@ -406,12 +406,12 @@ mod daf_ut {
 
     #[test]
     fn crc32_errors() {
-        let mut traj = SPK::load("./data/gmat-hermite.bsp").unwrap();
+        let mut traj = SPK::load("../data/gmat-hermite.bsp").unwrap();
         let nominal_crc = traj.crc32();
 
         assert_eq!(
             SPK::check_then_parse(
-                file2heap!("./data/gmat-hermite.bsp").unwrap(),
+                file2heap!("../data/gmat-hermite.bsp").unwrap(),
                 nominal_crc + 1
             ),
             Err(DAFError::DAFIntegrity {
@@ -436,7 +436,7 @@ mod daf_ut {
     #[test]
     fn summary_from_name() {
         let epoch = Epoch::now().unwrap();
-        let traj = SPK::load("./data/gmat-hermite.bsp").unwrap();
+        let traj = SPK::load("../data/gmat-hermite.bsp").unwrap();
 
         assert_eq!(
             traj.summary_from_name_at_epoch("name", epoch),

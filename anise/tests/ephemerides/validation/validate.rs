@@ -23,7 +23,7 @@ impl Validation {
     pub fn validate(&self) {
         // Open the parquet file with all the data
         let df = LazyFrame::scan_parquet(
-            format!("target/{}.parquet", self.file_name),
+            format!("../target/{}.parquet", self.file_name),
             Default::default(),
         )
         .unwrap();

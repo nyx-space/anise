@@ -27,7 +27,7 @@ fn de440s_translation_verif_venus2emb() {
     }
 
     // "Load" the file via a memory map (avoids allocations)
-    let path = "./data/de440s.bsp";
+    let path = "../data/de440s.bsp";
     let spk = SPK::load(path).unwrap();
     let ctx = Almanac::from_spk(spk).unwrap();
 
@@ -112,7 +112,7 @@ fn de438s_translation_verif_venus2luna() {
     }
 
     // "Load" the file via a memory map (avoids allocations)
-    let path = "./data/de440s.bsp";
+    let path = "../data/de440s.bsp";
     let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
     let ctx = Almanac::from_spk(spk).unwrap();
@@ -204,7 +204,7 @@ fn de438s_translation_verif_emb2luna() {
     }
 
     // "Load" the file via a memory map (avoids allocations)
-    let path = "./data/de440s.bsp";
+    let path = "../data/de440s.bsp";
     let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
     let ctx = Almanac::from_spk(spk).unwrap();
@@ -306,11 +306,11 @@ fn spk_hermite_type13_verif() {
     let _ = pretty_env_logger::try_init().is_err();
 
     // "Load" the file via a memory map (avoids allocations)
-    // let path = "./data/de440s.bsp";
+    // let path = "../data/de440s.bsp";
     // let buf = file2heap!(path).unwrap();
     // let spk = SPK::parse(buf).unwrap();
 
-    // let buf = file2heap!("data/gmat-hermite.bsp").unwrap();
+    // let buf = file2heap!("../data/gmat-hermite.bsp").unwrap();
     // let spacecraft = SPK::parse(buf).unwrap();
 
     // let ctx = Almanac::from_spk(spk)
@@ -319,8 +319,8 @@ fn spk_hermite_type13_verif() {
     //     .unwrap();
 
     let ctx = Almanac::default()
-        .load("./data/de440s.bsp")
-        .and_then(|ctx| ctx.load("data/gmat-hermite.bsp"))
+        .load("../data/de440s.bsp")
+        .and_then(|ctx| ctx.load("../data/gmat-hermite.bsp"))
         .unwrap();
 
     let epoch = Epoch::from_gregorian_hms(2000, 1, 1, 14, 0, 0, TimeScale::UTC);
@@ -371,7 +371,7 @@ fn multithread_query() {
     use core::str::FromStr;
     use rayon::prelude::*;
     // "Load" the file via a memory map (avoids allocations)
-    let path = "./data/de440s.bsp";
+    let path = "../data/de440s.bsp";
     let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
     let ctx = Almanac::from_spk(spk).unwrap();
@@ -400,13 +400,13 @@ fn multithread_query() {
 fn hermite_query() {
     use anise::naif::kpl::parser::convert_tpc;
 
-    let traj = SPK::load("./data/gmat-hermite.bsp").unwrap();
+    let traj = SPK::load("../data/gmat-hermite.bsp").unwrap();
     let summary = traj.data_summaries().unwrap()[0];
     println!("{}", summary);
 
     let mut ctx = Almanac::from_spk(traj).unwrap();
     // Also load the plantery data
-    ctx.planetary_data = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
+    ctx.planetary_data = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
 
     let summary_from_ctx = ctx.spk_summary_from_name("SPK_SEGMENT").unwrap().0;
 

@@ -68,13 +68,13 @@ use anise::constants::frames::{EARTH_ITRF93, EARTH_J2000};
 let ctx = Almanac::default();
 
 // Load a SPK/BSP file
-let spk = SPK::load("data/de440.bsp").unwrap();
+let spk = SPK::load("../data/de440.bsp").unwrap();
 // Load the high precision ITRF93 kernel
-let bpc = BPC::load("data/earth_latest_high_prec.bpc").unwrap();
+let bpc = BPC::load("../data/earth_latest_high_prec.bpc").unwrap();
 // Build the planetary constants file, which includes the gravitational parameters and the IAU low fidelity rotations
 use anise::naif::kpl::parser::convert_tpc;
 // Note that the PCK variable can also be serialized to disk to avoid having to rebuild it next time.
-let pck = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
+let pck = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
 
 // And add all of these to the Almanac context
 let almanac = ctx
@@ -124,7 +124,7 @@ assert_eq!(orig_state, from_state_itrf93_to_eme2k);
 use anise::prelude::*;
 use anise::constants::frames::{EARTH_ITRF93, EME2000};
 
-let pck = "data/earth_latest_high_prec.bpc";
+let pck = "../data/earth_latest_high_prec.bpc";
 
 let bpc = BPC::load(pck).unwrap();
 let almanac = Almanac::from_bpc(bpc).unwrap();
@@ -149,7 +149,7 @@ use anise::prelude::*;
 use anise::naif::kpl::parser::convert_tpc;
 
 // Note that the ASN1 ANISE format for planetary data also stores the gravity parameters, so we must convert both at once into a single ANISE file.
-let planetary_data = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
+let planetary_data = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
 
 let almanac = Almanac {
     planetary_data,
@@ -174,7 +174,7 @@ println!("{dcm}");
 use anise::prelude::*;
 use anise::constants::frames::*;
 
-let spk = SPK::load("./data/de440s.bsp").unwrap();
+let spk = SPK::load("../data/de440s.bsp").unwrap();
 let ctx = Almanac::from_spk(spk).unwrap();
 
 // Define an Epoch in the dynamical barycentric time scale

@@ -15,7 +15,7 @@ use super::{compare::*, validate::Validation};
 fn validate_hermite_type13_from_gmat() {
     let file_name = "spk-type13-validation-even-seg-size".to_string();
     let comparator = CompareEphem::new(
-        vec!["data/gmat-hermite.bsp".to_string()],
+        vec!["../data/gmat-hermite.bsp".to_string()],
         file_name.clone(),
         10_000,
     );
@@ -38,7 +38,7 @@ fn validate_hermite_type13_with_varying_segment_sizes() {
     // ISSUE: This file is corrupt. I messed up the rewrite.
     let file_name = "spk-type13-validation-variable-seg-size".to_string();
     let comparator = CompareEphem::new(
-        vec!["data/variable-seg-size-hermite.bsp".to_string()],
+        vec!["../data/variable-seg-size-hermite.bsp".to_string()],
         file_name.clone(),
         10_000,
     );

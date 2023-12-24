@@ -10,6 +10,7 @@
 
 // Credit: ChatGPT for 80% of the code to parse the file from the SPICE docs.
 
+use core::fmt;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -79,11 +80,11 @@ impl Assignment {
     }
 }
 
-pub fn parse_file<P: AsRef<Path>, I: KPLItem>(
+pub fn parse_file<P: AsRef<Path> + fmt::Display, I: KPLItem>(
     file_path: P,
     show_comments: bool,
 ) -> Result<HashMap<i32, I>, DataSetError> {
-    let file = File::open(file_path).expect("Failed to open file");
+    let file = File::open(&file_path).expect(&format!("Failed to open file {file_path}"));
     let reader = BufReader::new(file);
 
     let mut block_type = BlockType::Comment;
@@ -136,7 +137,10 @@ pub fn parse_file<P: AsRef<Path>, I: KPLItem>(
     Ok(map)
 }
 
-pub fn convert_tpc<P: AsRef<Path>>(pck: P, gm: P) -> Result<PlanetaryDataSet, DataSetError> {
+pub fn convert_tpc<P: AsRef<Path> + fmt::Display>(
+    pck: P,
+    gm: P,
+) -> Result<PlanetaryDataSet, DataSetError> {
     let mut buf = vec![];
     let mut dataset_builder = DataSetBuilder::default();
 
@@ -304,7 +308,7 @@ pub fn convert_tpc<P: AsRef<Path>>(pck: P, gm: P) -> Result<PlanetaryDataSet, Da
     Ok(dataset)
 }
 
-pub fn convert_fk<P: AsRef<Path>>(
+pub fn convert_fk<P: AsRef<Path> + fmt::Display>(
     fk_file_path: P,
     show_comments: bool,
 ) -> Result<EulerParameterDataSet, DataSetError> {

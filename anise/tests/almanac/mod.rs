@@ -36,9 +36,9 @@ fn test_state_transformation() {
     // Load BSP and BPC
     let ctx = Almanac::default();
 
-    let spk = SPK::load("data/de440.bsp").unwrap();
-    let bpc = BPC::load("data/earth_latest_high_prec.bpc").unwrap();
-    let pck = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
+    let spk = SPK::load("../data/de440.bsp").unwrap();
+    let bpc = BPC::load("../data/earth_latest_high_prec.bpc").unwrap();
+    let pck = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
 
     let almanac = ctx
         .with_spk(spk)

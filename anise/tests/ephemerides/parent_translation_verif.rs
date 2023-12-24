@@ -28,7 +28,7 @@ fn de438s_parent_translation_verif() {
         println!("could not init env_logger");
     }
 
-    let bytes = file2heap!("data/de440s.bsp").unwrap();
+    let bytes = file2heap!("../data/de440s.bsp").unwrap();
     let de438s = SPK::parse(bytes).unwrap();
     let ctx = Almanac::from_spk(de438s).unwrap();
 

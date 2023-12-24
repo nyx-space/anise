@@ -14,8 +14,11 @@ use super::{compare::*, validate::Validation};
 #[test]
 fn validate_jplde_de440_full() {
     let file_name = "spk-type2-validation-de440".to_string();
-    let comparator =
-        CompareEphem::new(vec!["data/de440.bsp".to_string()], file_name.clone(), 1_000);
+    let comparator = CompareEphem::new(
+        vec!["../data/de440.bsp".to_string()],
+        file_name.clone(),
+        1_000,
+    );
 
     let err_count = comparator.run();
 
@@ -34,7 +37,7 @@ fn validate_jplde_de440_full() {
 fn validate_jplde_de440s() {
     let output_file_name = "spk-type2-validation-de440s".to_string();
     let comparator = CompareEphem::new(
-        vec!["data/de440s.bsp".to_string()],
+        vec!["../data/de440s.bsp".to_string()],
         output_file_name.clone(),
         1_000,
     );

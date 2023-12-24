@@ -58,7 +58,7 @@ impl KPLItem for TPCItem {
 #[test]
 fn test_parse_pck() {
     use crate::naif::kpl::parser::parse_file;
-    let assignments = parse_file::<_, TPCItem>("data/pck00008.tpc", false).unwrap();
+    let assignments = parse_file::<_, TPCItem>("../data/pck00008.tpc", false).unwrap();
 
     // Tests that we can parse single and multi-line data for Earth related info
     let expt_nutprec = [
@@ -127,7 +127,7 @@ fn test_parse_pck() {
 #[test]
 fn test_parse_gm() {
     use crate::naif::kpl::parser::parse_file;
-    let assignments = parse_file::<_, TPCItem>("data/gm_de431.tpc", false).unwrap();
+    let assignments = parse_file::<_, TPCItem>("../data/gm_de431.tpc", false).unwrap();
 
     // Basic values testing
     assert_eq!(
@@ -149,12 +149,12 @@ fn test_anise_conversion() {
     use std::fs::File;
     use std::path::PathBuf;
 
-    let dataset = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
+    let dataset = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
 
     assert!(!dataset.is_empty(), "should not be empty");
     assert_eq!(dataset.lut.by_id.len(), 49);
 
-    let path = "target/gm_pck_08.anise";
+    let path = "../target/gm_pck_08.anise";
 
     // Test saving
     dataset.save_as(&PathBuf::from(path), true).unwrap();

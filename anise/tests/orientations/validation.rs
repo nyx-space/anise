@@ -43,9 +43,9 @@ const RTN_VELOCITY_EPSILON_KM_S: f64 = 1e-10;
 #[test]
 fn validate_iau_rotation_to_parent() {
     // Known bug with nutation and precession angles: https://github.com/nyx-space/anise/issues/122
-    let pck = "data/pck00008.tpc";
+    let pck = "../data/pck00008.tpc";
     spice::furnsh(pck);
-    let planetary_data = convert_tpc(pck, "data/gm_de431.tpc").unwrap();
+    let planetary_data = convert_tpc(pck, "../data/gm_de431.tpc").unwrap();
 
     let almanac = Almanac {
         planetary_data,
@@ -179,7 +179,7 @@ fn validate_iau_rotation_to_parent() {
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
 fn validate_bpc_rotation_to_parent() {
-    let pck = "data/earth_latest_high_prec.bpc";
+    let pck = "../data/earth_latest_high_prec.bpc";
     spice::furnsh(pck);
 
     let bpc = BPC::load(pck).unwrap();
@@ -384,7 +384,7 @@ fn validate_j2000_ecliptic() {
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
 fn validate_bpc_rotations() {
-    let pck = "data/earth_latest_high_prec.bpc";
+    let pck = "../data/earth_latest_high_prec.bpc";
     spice::furnsh(pck);
 
     let bpc = BPC::load(pck).unwrap();
@@ -517,11 +517,11 @@ fn validate_bpc_rotations() {
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
 fn validate_bpc_to_iau_rotations() {
-    let pck = "data/pck00008.tpc";
-    let bpc = "data/earth_latest_high_prec.bpc";
+    let pck = "../data/pck00008.tpc";
+    let bpc = "../data/earth_latest_high_prec.bpc";
     spice::furnsh(bpc);
     spice::furnsh(pck);
-    let planetary_data = convert_tpc(pck, "data/gm_de431.tpc").unwrap();
+    let planetary_data = convert_tpc(pck, "../data/gm_de431.tpc").unwrap();
 
     let almanac = Almanac {
         planetary_data,

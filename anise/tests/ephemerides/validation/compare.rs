@@ -102,7 +102,7 @@ impl CompareEphem {
             Field::new("Absolute difference", DataType::Float64, false),
         ]);
 
-        let file = File::create(format!("target/{}.parquet", output_file_name)).unwrap();
+        let file = File::create(format!("../target/{}.parquet", output_file_name)).unwrap();
 
         // Default writer properties
         let props = WriterProperties::builder().build();
