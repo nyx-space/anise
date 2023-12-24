@@ -6,7 +6,7 @@ const NUM_QUERIES: f64 = 100.0;
 
 fn benchmark_spice_single_hop_type13_hermite(time_it: TimeSeries) {
     // SPICE load
-    spice::furnsh("data/gmat-hermite.bsp");
+    spice::furnsh("../data/gmat-hermite.bsp");
 
     for epoch in time_it {
         black_box(spice::spkezr(
