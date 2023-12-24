@@ -6,7 +6,7 @@ fn benchmark_spice_single_hop_type13_hermite() {
     let epoch = Epoch::from_gregorian_hms(2000, 1, 1, 14, 0, 0, TimeScale::UTC);
 
     // SPICE load
-    spice::furnsh("data/gmat-hermite.bsp");
+    spice::furnsh("../data/gmat-hermite.bsp");
 
     black_box(spice::spkezr(
         "-10000001",
@@ -16,17 +16,17 @@ fn benchmark_spice_single_hop_type13_hermite() {
         "EARTH",
     ));
 
-    spice::unload("data/gmat-hermite.bsp");
+    spice::unload("../data/gmat-hermite.bsp");
 }
 
 fn benchmark_anise_single_hop_type13_hermite() {
     let epoch = Epoch::from_gregorian_hms(2000, 1, 1, 14, 0, 0, TimeScale::UTC);
 
-    let path = "./data/de440s.bsp";
+    let path = "../data/de440s.bsp";
     let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
 
-    let buf = file2heap!("data/gmat-hermite.bsp").unwrap();
+    let buf = file2heap!("../data/gmat-hermite.bsp").unwrap();
     let spacecraft = SPK::parse(buf).unwrap();
 
     let ctx = Almanac::from_spk(spk)

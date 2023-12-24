@@ -15,7 +15,7 @@ fn benchmark_spice_single_hop_type2_cheby() {
     let time_it = TimeSeries::exclusive(start_epoch, end_epoch - time_step, time_step);
 
     // SPICE load
-    spice::furnsh("data/de440s.bsp");
+    spice::furnsh("../data/de440s.bsp");
 
     for epoch in time_it {
         black_box(spice::spkezr(
@@ -27,7 +27,7 @@ fn benchmark_spice_single_hop_type2_cheby() {
         ));
     }
 
-    spice::unload("data/de440s.bsp");
+    spice::unload("../data/de440s.bsp");
 }
 
 fn benchmark_anise_single_hop_type2_cheby() {
@@ -36,7 +36,7 @@ fn benchmark_anise_single_hop_type2_cheby() {
     let time_step = ((end_epoch - start_epoch).to_seconds() / NUM_QUERIES_PER_PAIR).seconds();
     let time_it = TimeSeries::exclusive(start_epoch, end_epoch - time_step, time_step);
 
-    let path = "./data/de440s.bsp";
+    let path = "../data/de440s.bsp";
     let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
     let ctx = Almanac::from_spk(spk).unwrap();

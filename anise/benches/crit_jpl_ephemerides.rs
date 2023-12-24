@@ -35,13 +35,13 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let time_it = TimeSeries::exclusive(start_epoch, end_epoch - time_step, time_step);
 
     // Load ANISE data
-    let path = "./data/de440s.bsp";
+    let path = "../data/de440s.bsp";
     let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
     let ctx = Almanac::from_spk(spk).unwrap();
 
     // Load SPICE data
-    spice::furnsh("data/de440s.bsp");
+    spice::furnsh("../data/de440s.bsp");
 
     c.bench_function("ANISE ephemerides single hop", |b| {
         b.iter(|| benchmark_anise_single_hop_type2_cheby(&ctx, time_it.clone()))

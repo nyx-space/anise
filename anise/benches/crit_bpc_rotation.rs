@@ -28,7 +28,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let time_step = ((end_epoch - start_epoch).to_seconds() / NUM_QUERIES_PER_PAIR).seconds();
     let time_it = TimeSeries::exclusive(start_epoch, end_epoch - time_step, time_step);
 
-    let pck = "data/earth_latest_high_prec.bpc";
+    let pck = "../data/earth_latest_high_prec.bpc";
     spice::furnsh(pck);
     let bpc = BPC::load(pck).unwrap();
     let almanac = Almanac::from_bpc(bpc).unwrap();
