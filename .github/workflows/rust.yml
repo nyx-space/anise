@@ -32,6 +32,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
+          args: --workspace --exclude anise-gui
 
   test:
     name: Run tests
@@ -53,10 +54,10 @@ jobs:
         run: sh dev-env-setup.sh && cd .. # Return to root
 
       - name: Test debug
-        run: cargo test --exclude anise-gui
+        run: cargo test --workspace --exclude anise-gui
 
       - name: Test release
-        run: cargo test --release --exclude anise-gui
+        run: cargo test --release --workspace --exclude anise-gui
 
   lints:
     name: Lints
@@ -83,7 +84,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -- -p anise -D warnings
+          args: -p anise -- -D warnings
 
   validation:
     name: Validation
@@ -168,12 +169,12 @@ jobs:
       - name: Generate coverage report
         run: |
           cargo llvm-cov clean --workspace
-          cargo llvm-cov test --no-report -- --test-threads=1
-          cargo llvm-cov test --no-report --tests -- compile_fail
-          cargo llvm-cov test --no-report validate_iau_rotation_to_parent -- --nocapture --ignored
-          cargo llvm-cov test --no-report validate_bpc_to_iau_rotations -- --nocapture --ignored
-          cargo llvm-cov test --no-report validate_jplde_de440s --features spkezr_validation -- --nocapture --ignored
-          cargo llvm-cov test --no-report validate_hermite_type13_from_gmat --features spkezr_validation -- --nocapture --ignored
+          cargo llvm-cov test --workspace --exclude anise-gui --no-report -- --test-threads=1
+          cargo llvm-cov test --workspace --exclude anise-gui --no-report --tests -- compile_fail
+          cargo llvm-cov test --workspace --exclude anise-gui --no-report validate_iau_rotation_to_parent -- --nocapture --ignored
+          cargo llvm-cov test --workspace --exclude anise-gui --no-report validate_bpc_to_iau_rotations -- --nocapture --ignored
+          cargo llvm-cov test --workspace --exclude anise-gui --no-report validate_jplde_de440s --features spkezr_validation -- --nocapture --ignored
+          cargo llvm-cov test --workspace --exclude anise-gui --no-report validate_hermite_type13_from_gmat --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov report --lcov > lcov.txt
         env:
           RUSTFLAGS: --cfg __ui_tests
