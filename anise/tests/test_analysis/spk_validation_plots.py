@@ -14,7 +14,7 @@ def is_on_github_actions():
 
 if __name__ == '__main__':
 
-    target_folder = join(abspath(dirname(__file__)), '..', '..', 'target')
+    target_folder = join(abspath(dirname(__file__)), '..', '..', '..', 'target')
 
     plotted_anything = False
 
