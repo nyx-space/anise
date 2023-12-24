@@ -1,9 +1,9 @@
 [workspace]
+resolver = "2"
 # members = ["anise", "anise-gui", "anise-cli"]
 members = ["anise"]
 
 [workspace.package]
-name = "anise"
 version = "0.1.0"
 edition = "2021"
 authors = ["Christopher Rabotin <christopher.rabotin@gmail.com>"]
@@ -60,25 +60,16 @@ rstest = "0.18.2"
 # wasm-bindgen-futures = "0.4"
 # poll-promise = { version = "0.3.0", features = ["web"] }
 
-[workspace.dev-dependencies]
-rust-spice = "0.7.6"
-parquet = "49.0.0"
-arrow = "49.0.0"
-criterion = "0.5"
-iai = "0.1"
-polars = { version = "0.35.0", features = ["lazy", "parquet"] }
-rayon = "1.7"
+# [workspace.features]
+# default = []
+# # Enabling this flag significantly increases compilation times due to Arrow and Polars.
+# spkezr_validation = []
+# gui = ["dep:eframe", "dep:egui", "dep:egui_extras", "dep:egui-toast", "dep:rfd"]
 
-[workspace.features]
-default = []
-# Enabling this flag significantly increases compilation times due to Arrow and Polars.
-spkezr_validation = []
-gui = ["dep:eframe", "dep:egui", "dep:egui_extras", "dep:egui-toast", "dep:rfd"]
 
-[workspace.profile.bench]
+[profile.bench]
 debug = true
 
-# [[bin]]
-# name = "anise-gui"
-# path = "src/bin/anise-gui/main.rs"
-# required-features = ["gui"]
+[profile.release]
+codegen-units = 1
+lto = "thin"
