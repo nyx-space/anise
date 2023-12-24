@@ -15,7 +15,6 @@ extern crate log;
 
 pub mod almanac;
 pub mod astro;
-pub mod cli;
 pub mod constants;
 pub mod ephemerides;
 pub mod errors;

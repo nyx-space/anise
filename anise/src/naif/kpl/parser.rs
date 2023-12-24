@@ -80,11 +80,11 @@ impl Assignment {
     }
 }
 
-pub fn parse_file<P: AsRef<Path> + fmt::Display, I: KPLItem>(
+pub fn parse_file<P: AsRef<Path> + fmt::Debug, I: KPLItem>(
     file_path: P,
     show_comments: bool,
 ) -> Result<HashMap<i32, I>, DataSetError> {
-    let file = File::open(&file_path).expect(&format!("Failed to open file {file_path}"));
+    let file = File::open(&file_path).expect(&format!("Failed to open file {file_path:?}"));
     let reader = BufReader::new(file);
 
     let mut block_type = BlockType::Comment;
@@ -137,7 +137,7 @@ pub fn parse_file<P: AsRef<Path> + fmt::Display, I: KPLItem>(
     Ok(map)
 }
 
-pub fn convert_tpc<P: AsRef<Path> + fmt::Display>(
+pub fn convert_tpc<P: AsRef<Path> + fmt::Debug>(
     pck: P,
     gm: P,
 ) -> Result<PlanetaryDataSet, DataSetError> {
@@ -308,7 +308,7 @@ pub fn convert_tpc<P: AsRef<Path> + fmt::Display>(
     Ok(dataset)
 }
 
-pub fn convert_fk<P: AsRef<Path> + fmt::Display>(
+pub fn convert_fk<P: AsRef<Path> + fmt::Debug>(
     fk_file_path: P,
     show_comments: bool,
 ) -> Result<EulerParameterDataSet, DataSetError> {

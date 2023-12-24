@@ -14,10 +14,9 @@ hifitime = { workspace = true }
 memmap2 = { workspace = true }
 crc32fast = { workspace = true }
 der = { workspace = true }
-clap = { workspace = true }
 log = { workspace = true }
 pretty_env_logger = { workspace = true }
-tabled = { workspace = true }
+# tabled = { workspace = true }
 const_format = { workspace = true }
 nalgebra = { workspace = true }
 approx = { workspace = true }

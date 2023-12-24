@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use super::clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[clap(name="ANISE", author="Rabotin and ANISE contributors", version, about, long_about = None)]

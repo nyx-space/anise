@@ -1,24 +1,55 @@
 extern crate pretty_env_logger;
 use std::env::{set_var, var};
+use std::io;
 
-use anise::structure::{EulerParameterDataSet, PlanetaryDataSet, SpacecraftDataSet};
-use snafu::prelude::*;
-
-use anise::cli::args::{Actions, Args};
-use anise::cli::inspect::{BpcRow, SpkRow};
-use anise::cli::{AniseSnafu, CliDAFSnafu, CliDataSetSnafu, CliErrors, CliFileRecordSnafu};
-use anise::file2heap;
-use anise::naif::daf::{FileRecord, NAIFRecord, NAIFSummaryRecord};
-use anise::naif::kpl::parser::{convert_fk, convert_tpc};
-use anise::prelude::*;
-use anise::structure::dataset::DataSetType;
-use anise::structure::metadata::Metadata;
 use clap::Parser;
 use log::info;
+use snafu::prelude::*;
 use tabled::{settings::Style, Table};
 use zerocopy::FromBytes;
 
+use anise::file2heap;
+use anise::naif::daf::{
+    file_record::FileRecordError, DAFError, FileRecord, NAIFRecord, NAIFSummaryRecord,
+};
+use anise::naif::kpl::parser::{convert_fk, convert_tpc};
+use anise::prelude::*;
+use anise::structure::dataset::{DataSetError, DataSetType};
+use anise::structure::metadata::Metadata;
+use anise::structure::{EulerParameterDataSet, PlanetaryDataSet, SpacecraftDataSet};
+
+mod args;
+use args::{Actions, Args};
+
+mod inspect;
+use inspect::{BpcRow, SpkRow};
+
 const LOG_VAR: &str = "ANISE_LOG";
+
+#[derive(Debug, Snafu)]
+#[snafu(visibility(pub))]
+pub enum CliErrors {
+    /// File not found or unreadable
+    FileNotFound {
+        source: io::Error,
+    },
+    /// ANISE error encountered"
+    CliDAF {
+        source: DAFError,
+    },
+    CliFileRecord {
+        source: FileRecordError,
+    },
+    ArgumentError {
+        arg: String,
+    },
+    CliDataSet {
+        source: DataSetError,
+    },
+    AniseError {
+        source: InputOutputError,
+    },
+}
 
 fn main() -> Result<(), CliErrors> {
     if var(LOG_VAR).is_err() {
