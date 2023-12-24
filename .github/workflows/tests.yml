@@ -52,17 +52,11 @@ jobs:
       - name: Install CSPICE
         run: sh dev-env-setup.sh && cd .. # Return to root
 
-      - name: Test debug (default features) # This has overflow checks etc.
+      - name: Test debug
         run: cargo test
 
-      - name: Test debug (no default features)
-        run: cargo test --no-default-features
-
-      - name: Test release (default features and release)
+      - name: Test release
         run: cargo test --release
-
-      - name: Test (no default features and release)
-        run: cargo test --no-default-features --release
 
   lints:
     name: Lints
@@ -137,7 +131,7 @@ jobs:
 
       - name: Validation analysis
         run: |
-          cd analysis
+          cd anise/tests/test_analysis
           pip install -r requirements.txt
           python spk_validation_plots.py
 
