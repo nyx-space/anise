@@ -11,17 +11,17 @@ use hifitime::Epoch;
 fn test_load_ctx() {
     dbg!(core::mem::size_of::<Almanac>());
 
-    let dataset = convert_tpc("data/pck00008.tpc", "data/gm_de431.tpc").unwrap();
+    let dataset = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
 
     // Load BSP and BPC
     let ctx = Almanac::default();
 
-    let spk = SPK::load("data/de440.bsp").unwrap();
+    let spk = SPK::load("../data/de440.bsp").unwrap();
 
     let mut loaded_ctx = ctx
         .with_spk(spk)
         .unwrap()
-        .load("data/earth_latest_high_prec.bpc")
+        .load("../data/earth_latest_high_prec.bpc")
         .unwrap();
 
     loaded_ctx.planetary_data = dataset;
