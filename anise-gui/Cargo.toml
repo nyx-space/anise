@@ -11,8 +11,10 @@ description = "A graphical user interface for ANISE"
 [dependencies]
 anise = { workspace = true }
 hifitime = { workspace = true }
-egui-toast = "0.10.0"
+log = { workspace = true }
+bytes = { workspace = true }
 pretty_env_logger = { workspace = true }
+egui-toast = "0.10.0"
 eframe = { version = "0.24.0" }
 egui = { version = "0.24.0" }
 egui_extras = { version = "0.24.0", features = ["datepicker", "http", "image"] }
