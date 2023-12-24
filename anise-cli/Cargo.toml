@@ -1,0 +1,26 @@
+[package]
+name = "anise-cli"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = "A command line interface for ANISE"
+
+[dependencies]
+anise = { workspace = true }
+clap = { version = "4", features = ["derive"] }
+pretty_env_logger = { workspace = true }
+tabled = { workspace = true }
+bytes = { workspace = true }
+memmap2 = { workspace = true }
+snafu = { workspace = true }
+log = { workspace = true }
+zerocopy = { workspace = true }
+hifitime = { workspace = true }
+
+
+[[bin]]
+name = "anise-cli"
+path = "src/main.rs"

@@ -1,0 +1,70 @@
+[package]
+name = "anise"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = "Core of the ANISE library"
+
+[dependencies]
+lexical-core = { workspace = true }
+hifitime = { workspace = true }
+memmap2 = { workspace = true }
+crc32fast = { workspace = true }
+der = { workspace = true }
+log = { workspace = true }
+pretty_env_logger = { workspace = true }
+# tabled = { workspace = true }
+const_format = { workspace = true }
+nalgebra = { workspace = true }
+approx = { workspace = true }
+zerocopy = { workspace = true }
+bytes = { workspace = true }
+snafu = { workspace = true }
+heapless = { workspace = true }
+rstest = { workspace = true }
+# eframe = { version = "0.24.0", optional = true }
+# egui = { version = "0.24.0", optional = true }
+# egui_extras = { version = "0.24.0", features = [
+#     "datepicker",
+#     "http",
+#     "image",
+# ], optional = true }
+# egui-toast = { version = "0.10.0", optional = true }
+# rfd = { version = "0.12.1", optional = true }
+
+# [target.'cfg(target_arch = "wasm32")'.dependencies]
+# wasm-bindgen-futures = "0.4"
+# poll-promise = { version = "0.3.0", features = ["web"] }
+
+[dev-dependencies]
+rust-spice = "0.7.6"
+parquet = "49.0.0"
+arrow = "49.0.0"
+criterion = "0.5"
+iai = "0.1"
+polars = { version = "0.35.0", features = ["lazy", "parquet"] }
+rayon = "1.7"
+
+[features]
+default = []
+# Enabling this flag significantly increases compilation times due to Arrow and Polars.
+spkezr_validation = []
+
+[[bench]]
+name = "iai_jpl_ephemerides"
+harness = false
+
+[[bench]]
+name = "crit_jpl_ephemerides"
+harness = false
+
+[[bench]]
+name = "crit_spacecraft_ephemeris"
+harness = false
+
+[[bench]]
+name = "crit_bpc_rotation"
+harness = false
