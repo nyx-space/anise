@@ -22,8 +22,9 @@ fn anise(py: Python, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
-/// Reexport hifitime as nyx_space.time
+/// Reexport hifitime as anise.time
 fn register_time_module(py: Python<'_>, parent_module: &PyModule) -> PyResult<()> {
+    pyo3_log::init();
     let sm = PyModule::new(py, "_anise.time")?;
 
     sm.add_class::<Epoch>()?;

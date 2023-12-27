@@ -24,6 +24,8 @@ bytes = { workspace = true }
 snafu = { workspace = true }
 heapless = { workspace = true }
 rstest = { workspace = true }
+pyo3 = { workspace = true, optional = true }
+pyo3-log = { workspace = true, optional = true }
 
 [dev-dependencies]
 rust-spice = "0.7.6"
@@ -38,6 +40,7 @@ rayon = "1.7"
 default = []
 # Enabling this flag significantly increases compilation times due to Arrow and Polars.
 spkezr_validation = []
+python = ["pyo3", "pyo3-log"]
 
 [[bench]]
 name = "iai_jpl_ephemerides"
