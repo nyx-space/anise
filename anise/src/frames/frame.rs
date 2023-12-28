@@ -11,6 +11,7 @@
 use core::fmt;
 use core::fmt::Debug;
 
+use crate::astro::PhysicsResult;
 use crate::constants::celestial_objects::{celestial_name_from_id, SOLAR_SYSTEM_BARYCENTER};
 use crate::constants::orientations::{orientation_name_from_id, J2000};
 use crate::errors::PhysicsError;
@@ -18,8 +19,14 @@ use crate::prelude::FrameUid;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
 use crate::NaifId;
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 /// A Frame uniquely defined by its ephemeris center and orientation. Refer to FrameDetail for frames combined with parameters.
 #[derive(Copy, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(get_all, set_all))]
+#[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Frame {
     pub ephemeris_id: NaifId,
     pub orientation_id: NaifId,
@@ -31,7 +38,7 @@ pub struct Frame {
 
 impl Frame {
     /// Constructs a new frame given its ephemeris and orientations IDs, without defining anything else (so this is not a valid celestial frame, although the data could be populated later).
-    pub const fn from_ephem_orient(ephemeris_id: NaifId, orientation_id: NaifId) -> Self {
+    pub const fn new(ephemeris_id: NaifId, orientation_id: NaifId) -> Self {
         Self {
             ephemeris_id,
             orientation_id,
@@ -41,11 +48,36 @@ impl Frame {
     }
 
     pub const fn from_ephem_j2000(ephemeris_id: NaifId) -> Self {
-        Self::from_ephem_orient(ephemeris_id, J2000)
+        Self::new(ephemeris_id, J2000)
     }
 
     pub const fn from_orient_ssb(orientation_id: NaifId) -> Self {
-        Self::from_ephem_orient(SOLAR_SYSTEM_BARYCENTER, orientation_id)
+        Self::new(SOLAR_SYSTEM_BARYCENTER, orientation_id)
+    }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl Frame {
+    /// Initializes a new [Frame] provided its ephemeris and orientation identifiers, and optionally its gravitational parameter (in km^3/s^2) and optionally its shape (cf. [Ellipsoid]).
+    #[cfg(feature = "python")]
+    #[new]
+    pub fn py_new(
+        ephemeris_id: NaifId,
+        orientation_id: NaifId,
+        mu_km3_s2: Option<f64>,
+        shape: Option<Ellipsoid>,
+    ) -> Self {
+        Self {
+            ephemeris_id,
+            orientation_id,
+            mu_km3_s2,
+            shape,
+        }
+    }
+
+    #[cfg(feature = "python")]
+    fn __str__(&self) -> String {
+        format!("{self}")
     }
 
     /// Returns a copy of this Frame whose ephemeris ID is set to the provided ID
@@ -90,7 +122,7 @@ impl Frame {
     }
 
     /// Returns the gravitational parameters of this frame, if defined
-    pub fn mu_km3_s2(&self) -> Result<f64, PhysicsError> {
+    pub fn mu_km3_s2(&self) -> PhysicsResult<f64> {
         self.mu_km3_s2.ok_or(PhysicsError::MissingFrameData {
             action: "retrieving mean equatorial radius",
             data: "shape",
@@ -99,7 +131,7 @@ impl Frame {
     }
 
     /// Returns the mean equatorial radius in km, if defined
-    pub fn mean_equatorial_radius_km(&self) -> Result<f64, PhysicsError> {
+    pub fn mean_equatorial_radius_km(&self) -> PhysicsResult<f64> {
         Ok(self
             .shape
             .ok_or(PhysicsError::MissingFrameData {
@@ -111,7 +143,7 @@ impl Frame {
     }
 
     /// Returns the semi major radius of the tri-axial ellipoid shape of this frame, if defined
-    pub fn semi_major_radius_km(&self) -> Result<f64, PhysicsError> {
+    pub fn semi_major_radius_km(&self) -> PhysicsResult<f64> {
         Ok(self
             .shape
             .ok_or(PhysicsError::MissingFrameData {
@@ -122,7 +154,7 @@ impl Frame {
             .semi_major_equatorial_radius_km)
     }
 
-    pub fn flattening(&self) -> Result<f64, PhysicsError> {
+    pub fn flattening(&self) -> PhysicsResult<f64> {
         Ok(self
             .shape
             .ok_or(PhysicsError::MissingFrameData {

@@ -49,13 +49,13 @@ impl From<&Frame> for FrameUid {
 
 impl From<FrameUid> for Frame {
     fn from(uid: FrameUid) -> Self {
-        Self::from_ephem_orient(uid.ephemeris_id, uid.orientation_id)
+        Self::new(uid.ephemeris_id, uid.orientation_id)
     }
 }
 
 impl From<&FrameUid> for Frame {
     fn from(uid: &FrameUid) -> Self {
-        Self::from_ephem_orient(uid.ephemeris_id, uid.orientation_id)
+        Self::new(uid.ephemeris_id, uid.orientation_id)
     }
 }
 

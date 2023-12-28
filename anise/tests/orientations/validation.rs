@@ -390,7 +390,7 @@ fn validate_bpc_rotations() {
     let bpc = BPC::load(pck).unwrap();
     let almanac = Almanac::from_bpc(bpc).unwrap();
 
-    let frame = Frame::from_ephem_orient(EARTH, ITRF93);
+    let frame = Frame::new(EARTH, ITRF93);
 
     let mut actual_max_uvec_err_deg = 0.0;
     let mut actual_max_err_deg = 0.0;

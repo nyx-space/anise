@@ -10,6 +10,10 @@
 use core::f64::EPSILON;
 use core::fmt;
 use der::{Decode, Encode, Reader, Writer};
+
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 /// Only the tri-axial Ellipsoid shape model is currently supported by ANISE.
 /// This is directly inspired from SPICE PCK.
 /// > For each body, three radii are listed: The first number is
@@ -21,6 +25,9 @@ use der::{Decode, Encode, Reader, Writer};
 ///
 ///    BODY399_RADII     = ( 6378.1366   6378.1366   6356.7519 )
 #[derive(Copy, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(get_all, set_all))]
+#[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Ellipsoid {
     pub semi_major_equatorial_radius_km: f64,
     pub semi_minor_equatorial_radius_km: f64,
@@ -44,6 +51,37 @@ impl Ellipsoid {
             semi_minor_equatorial_radius_km: equatorial_radius_km,
             polar_radius_km,
         }
+    }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl Ellipsoid {
+    /// Initializes a new [Ellipsoid] shape provided at least its semi major equatorial radius, optionally its semi minor equatorial radius, and optionally its polar radius.
+    /// All units are in kilometers. If the semi minor equatorial radius is not provided, a bi-axial spheroid will be created using the semi major equatorial radius as
+    /// the equatorial radius and using the provided polar axis radius. If only the semi major equatorial radius is provided, a perfect sphere will be built.
+    #[cfg(feature = "python")]
+    #[new]
+    fn py_new(
+        semi_major_equatorial_radius_km: f64,
+        polar_radius_km: Option<f64>,
+        semi_minor_equatorial_radius_km: Option<f64>,
+    ) -> Self {
+        match polar_radius_km {
+            Some(polar_radius_km) => match semi_minor_equatorial_radius_km {
+                Some(semi_minor_equatorial_radius_km) => Self {
+                    semi_major_equatorial_radius_km,
+                    semi_minor_equatorial_radius_km,
+                    polar_radius_km,
+                },
+                None => Self::from_spheroid(semi_major_equatorial_radius_km, polar_radius_km),
+            },
+            None => Self::from_sphere(semi_major_equatorial_radius_km),
+        }
+    }
+
+    #[cfg(feature = "python")]
+    fn __str__(&self) -> String {
+        format!("{self}")
     }
 
     /// Returns the mean equatorial radius in kilometers
