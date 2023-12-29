@@ -17,10 +17,9 @@ use pyo3::prelude::*;
 /// **WARNING:** This enum is a placeholder until [https://github.com/anise-toolkit/anise.rs/issues/26] is implemented.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "python", pyclass)]
-#[cfg_attr(feature = "python", pyo3(module = "anise"))]
+#[cfg_attr(feature = "python", pyo3(module = "anise."))]
 pub enum Aberration {
-    #[pyo3(name = "NoAberration")]
-    None,
+    NotSet,
 }
 
 pub mod orbit;

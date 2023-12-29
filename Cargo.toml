@@ -26,7 +26,7 @@ exclude = [
 ]
 
 [workspace.dependencies]
-hifitime = { version = "3.8.6", default-features = true, features = ["python"] }
+hifitime = { version = "3.8.6", default-features = true }
 memmap2 = "=0.9.3"
 crc32fast = "=1.3.2"
 der = { version = "0.7.8", features = ["derive", "alloc", "real"] }

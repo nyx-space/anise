@@ -47,7 +47,7 @@ fn de438s_parent_translation_verif() {
     */
 
     let state = ctx
-        .translate_to_parent(VENUS_J2000, epoch, Aberration::None)
+        .translate_to_parent(VENUS_J2000, epoch, Aberration::NotSet)
         .unwrap();
 
     let pos_km = state.radius_km;

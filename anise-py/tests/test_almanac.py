@@ -43,7 +43,7 @@ def test_state_transformation():
     assert orig_state.tlong_deg() == 0.6916999999999689
 
     state_itrf93 = ctx.transform_to(
-        orig_state, Frames.EARTH_ITRF93, Aberration.NoAberration
+        orig_state, Frames.EARTH_ITRF93, Aberration.NotSet
     )
 
     print(orig_state)
@@ -55,7 +55,7 @@ def test_state_transformation():
 
     # Convert back
     from_state_itrf93_to_eme2k = ctx.transform_to(
-        state_itrf93, Frames.EARTH_J2000, Aberration.NoAberration
+        state_itrf93, Frames.EARTH_J2000, Aberration.NotSet
     )
 
     print(from_state_itrf93_to_eme2k)
