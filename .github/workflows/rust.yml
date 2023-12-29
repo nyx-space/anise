@@ -108,8 +108,8 @@ jobs:
 
       - name: CLI SPK
         run: |
-          cargo run --bin anise-cli -- inspect data/gmat-hermite.bsp
-          cargo run --bin anise-cli -- inspect data/de440.bsp
+          cargo run --bin anise-cli --workspace --exclude anise-py -- inspect data/gmat-hermite.bsp
+          cargo run --bin anise-cli --workspace --exclude anise-py -- inspect data/de440.bsp
 
       - name: Rust-SPICE JPL DE validation
         run: RUST_BACKTRACE=1 cargo test validate_jplde --features spkezr_validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
