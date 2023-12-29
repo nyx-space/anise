@@ -461,6 +461,22 @@ fn verif_geodetic_vallado(almanac: Almanac) {
     f64_eq!(r.geodetic_latitude_deg().unwrap(), lat, "latitude (φ)");
     f64_eq!(r.geodetic_longitude_deg(), long, "longitude (λ)");
     f64_eq!(r.geodetic_height_km().unwrap(), height, "height");
+    // Check that we can compute orbital parameters here, although these will be odd since it's a ground station
+    f64_eq!(
+        r.sma_altitude_km().unwrap(),
+        -649.854_189_724_88,
+        "SMA altitude"
+    );
+    f64_eq!(
+        r.apoapsis_altitude_km().unwrap(),
+        5_078.431_620_550_23,
+        "Apoapsis altitude"
+    );
+    f64_eq!(
+        r.periapsis_altitude_km().unwrap(),
+        -6378.14,
+        "Periapsis altitude"
+    );
     let mean_earth_angular_velocity_deg_s = 0.004178079012116429;
     let r = Orbit::try_from_latlongalt(
         lat,

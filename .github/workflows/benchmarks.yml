@@ -29,13 +29,13 @@ jobs:
         run: sh dev-env-setup.sh && cd .. # Return to root
 
       - name: Bench JPL Ephemerides
-        run: cargo bench --bench "*_jpl_ephemerides" --exclude anise-py
+        run: cargo bench --bench "*_jpl_ephemerides" --workspace --exclude anise-py
       
       - name: Bench Spacecraft (Hermite type 13)
-        run: cargo bench --bench "*_spacecraft_ephemeris" --exclude anise-py
+        run: cargo bench --bench "*_spacecraft_ephemeris" --workspace --exclude anise-py
       
       - name: Bench Binary planetary constants
-        run: cargo bench --bench "crit_bpc_rotation" --exclude anise-py
+        run: cargo bench --bench "crit_bpc_rotation" --workspace --exclude anise-py
 
       - name: Save benchmark artifacts
         uses: actions/upload-artifact@v3

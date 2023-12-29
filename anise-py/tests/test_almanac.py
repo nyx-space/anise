@@ -1,9 +1,9 @@
-from anise import Almanac, Aberration
-from anise.astro.constants import Frames
-from anise.astro import Orbit
-from anise.time import Epoch
-
 from pathlib import Path
+
+from anise import Aberration, Almanac
+from anise.astro import *
+from anise.astro.constants import Frames
+from anise.time import Epoch
 
 
 def test_state_transformation():
@@ -42,9 +42,7 @@ def test_state_transformation():
     assert orig_state.raan_deg() == 306.614
     assert orig_state.tlong_deg() == 0.6916999999999689
 
-    state_itrf93 = ctx.transform_to(
-        orig_state, Frames.EARTH_ITRF93, Aberration.NotSet
-    )
+    state_itrf93 = ctx.transform_to(orig_state, Frames.EARTH_ITRF93, Aberration.NotSet)
 
     print(orig_state)
     print(state_itrf93)
@@ -80,5 +78,20 @@ def test_state_transformation():
     assert abs(paris.geodetic_height_km() - 0.4) < 1e-3
 
 
+def test_exports():
+    for cls in [Frame, Ellipsoid, Orbit]:
+        print(f"{cls} OK")
+
+
+def test_frame_defs():
+    print(f"{Frames.SSB_J2000}")
+    print(dir(Frames))
+    assert Frames.EME2000 == Frames.EME2000
+    assert Frames.EME2000 == Frames.EARTH_J2000
+    assert Frames.EME2000 != Frames.SSB_J2000
+
+
 if __name__ == "__main__":
+    test_exports()
+    test_frame_defs()
     test_state_transformation()
