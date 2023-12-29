@@ -22,9 +22,7 @@ const VELOCITY_EPSILON_KM_S: f64 = 5e-9;
 
 #[test]
 fn de440s_translation_verif_venus2emb() {
-    if pretty_env_logger::try_init().is_err() {
-        println!("could not init env_logger");
-    }
+    let _ = pretty_env_logger::try_init();
 
     // "Load" the file via a memory map (avoids allocations)
     let path = "../data/de440s.bsp";
@@ -107,9 +105,7 @@ fn de440s_translation_verif_venus2emb() {
 
 #[test]
 fn de438s_translation_verif_venus2luna() {
-    if pretty_env_logger::try_init().is_err() {
-        println!("could not init env_logger");
-    }
+    let _ = pretty_env_logger::try_init();
 
     // "Load" the file via a memory map (avoids allocations)
     let path = "../data/de440s.bsp";
@@ -199,9 +195,7 @@ fn de438s_translation_verif_venus2luna() {
 
 #[test]
 fn de438s_translation_verif_emb2luna() {
-    if pretty_env_logger::try_init().is_err() {
-        println!("could not init env_logger");
-    }
+    let _ = pretty_env_logger::try_init();
 
     // "Load" the file via a memory map (avoids allocations)
     let path = "../data/de440s.bsp";

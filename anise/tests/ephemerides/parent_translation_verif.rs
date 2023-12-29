@@ -24,9 +24,7 @@ fn invalid_load_from_static() {
 
 #[test]
 fn de438s_parent_translation_verif() {
-    if pretty_env_logger::try_init().is_err() {
-        println!("could not init env_logger");
-    }
+    let _ = pretty_env_logger::try_init();
 
     let bytes = file2heap!("../data/de440s.bsp").unwrap();
     let de438s = SPK::parse(bytes).unwrap();

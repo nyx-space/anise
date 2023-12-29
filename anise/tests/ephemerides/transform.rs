@@ -20,9 +20,7 @@ const VELOCITY_EPSILON_KM_S: f64 = 5e-10;
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
 fn de440s_transform_verif_venus2emb() {
-    if pretty_env_logger::try_init().is_err() {
-        println!("could not init env_logger");
-    }
+    let _ = pretty_env_logger::try_init();
 
     let spk_path = "../data/de440s.bsp";
     let bpc_path = "../data/earth_latest_high_prec.bpc";

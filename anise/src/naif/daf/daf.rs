@@ -113,7 +113,20 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     pub fn file_record(&self) -> Result<FileRecord, DAFError> {
-        let file_record = FileRecord::read_from(&self.bytes[..FileRecord::SIZE]).unwrap();
+        let file_record = FileRecord::read_from(
+            self.bytes
+                .get(..FileRecord::SIZE)
+                .ok_or_else(|| DecodingError::InaccessibleBytes {
+                    start: 0,
+                    end: FileRecord::SIZE,
+                    size: self.bytes.len(),
+                })
+                .with_context(|_| DecodingDataSnafu {
+                    idx: 0_usize,
+                    kind: R::NAME,
+                })?,
+        )
+        .unwrap();
         // Check that the endian-ness is compatible with this platform.
         file_record
             .endianness()
@@ -355,7 +368,6 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     /// Writes the contents of this DAF file to a new location.
-
     pub fn persist<P: AsRef<Path>>(&self, path: P) -> IoResult<()> {
         let mut fs = File::create(path)?;
 

@@ -28,6 +28,7 @@ venv/
 *.egg-info/
 .installed.cfg
 *.egg
+.ruff_cache
 
 # Installer logs
 pip-log.txt

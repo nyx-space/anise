@@ -18,9 +18,7 @@ use anise::prelude::*;
 /// Tests that direct path computations match what SPICE returned to within good precision.
 #[test]
 fn common_root_verif() {
-    if pretty_env_logger::try_init().is_err() {
-        println!("could not init env_logger");
-    }
+    let _ = pretty_env_logger::try_init();
 
     // SLS Launch epoch!!! IT'S LIIIIVEE!!
     let epoch = Epoch::from_str("2022-11-15T23:47:36+06:00").unwrap();
