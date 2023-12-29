@@ -26,9 +26,14 @@ jobs:
         target: [x86_64, x86, aarch64, armv7, s390x, ppc64le]
     steps:
       - uses: actions/checkout@v3
+
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: "3.11"
+
+      - name: Install openssl (for IPC Perl bug)
+        run: apt update -y && apt-get install -y libssl-dev openssl pkg-config
+
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -36,7 +41,8 @@ jobs:
           args: --release --out dist --find-interpreter
           sccache: 'true'
           manylinux: auto
-          working-directory: anise-py 
+          working-directory: anise-py
+
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
@@ -50,17 +56,20 @@ jobs:
         target: [x64, x86]
     steps:
       - uses: actions/checkout@v3
+
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: "3.11"
           architecture: ${{ matrix.target }}
+
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
           sccache: 'true'
-          working-directory: anise-py 
+          working-directory: anise-py
+
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
@@ -74,17 +83,19 @@ jobs:
         target: [x86_64, aarch64]
     steps:
       - uses: actions/checkout@v3
+
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
-      - name: Jump into anise-py
-        run: cd anise-py
+          python-version: "3.11"
+
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
           sccache: 'true'
+          working-directory: anise-py
+
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
@@ -95,12 +106,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
       - name: Build sdist
         uses: PyO3/maturin-action@v1
         with:
           command: sdist
           args: --out dist
-          working-directory: anise-py 
+          working-directory: anise-py
+
       - name: Upload sdist
         uses: actions/upload-artifact@v3
         with:
@@ -116,6 +129,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: wheels
+
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
         env:
