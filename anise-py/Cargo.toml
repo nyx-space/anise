@@ -12,5 +12,5 @@ crate-type = ["cdylib"]
 anise = { workspace = true, features = ["python"] }
 snafu = { workspace = true }
 hifitime = { workspace = true, features = ["python"] }
-pyo3 = { workspace = true }
+pyo3 = { workspace = true, features = ["extension-module"] }
 pyo3-log = { workspace = true }
