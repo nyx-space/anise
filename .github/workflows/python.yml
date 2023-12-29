@@ -107,8 +107,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        # target: [x86_64, aarch64]
-        target: [x86_64, ]
+        target: [x86_64, aarch64]
     steps:
       - uses: actions/checkout@v3
 
@@ -121,7 +120,6 @@ jobs:
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
-          sccache: 'true'
           working-directory: anise-py
 
       - name: Upload wheels
