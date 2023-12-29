@@ -31,9 +31,6 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install openssl (for IPC Perl bug)
-        run: apt update -y && apt-get install -y libssl-dev openssl pkg-config
-
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -42,6 +39,7 @@ jobs:
           sccache: 'true'
           manylinux: auto
           working-directory: anise-py
+          before-script-linux: apt-get update -y && apt-get install -y libssl-dev openssl pkg-config
 
       - name: Upload wheels
         uses: actions/upload-artifact@v3
