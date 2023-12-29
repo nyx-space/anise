@@ -20,7 +20,11 @@ use crate::structure::planetocentric::ellipsoid::Ellipsoid;
 use crate::NaifId;
 
 #[cfg(feature = "python")]
+use pyo3::exceptions::PyTypeError;
+#[cfg(feature = "python")]
 use pyo3::prelude::*;
+#[cfg(feature = "python")]
+use pyo3::pyclass::CompareOp;
 
 /// A Frame uniquely defined by its ephemeris center and orientation. Refer to FrameDetail for frames combined with parameters.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -78,6 +82,17 @@ impl Frame {
     #[cfg(feature = "python")]
     fn __str__(&self) -> String {
         format!("{self}")
+    }
+
+    #[cfg(feature = "python")]
+    fn __richcmp__(&self, other: &Self, op: CompareOp) -> Result<bool, PyErr> {
+        match op {
+            CompareOp::Eq => Ok(self == other),
+            CompareOp::Ne => Ok(self != other),
+            _ => Err(PyErr::new::<PyTypeError, _>(format!(
+                "{op:?} not available"
+            ))),
+        }
     }
 
     /// Returns a copy of this Frame whose ephemeris ID is set to the provided ID

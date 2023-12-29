@@ -20,6 +20,9 @@ use crate::{
 use hifitime::Epoch;
 use log::error;
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 impl CartesianState {
     /// Creates a new Orbit from the provided semi-major axis altitude in kilometers
     #[allow(clippy::too_many_arguments)]
@@ -105,7 +108,10 @@ impl CartesianState {
             frame,
         ))
     }
+}
 
+#[cfg_attr(feature = "python", pymethods)]
+impl CartesianState {
     /// Returns the SMA altitude in km
     pub fn sma_altitude(&self) -> PhysicsResult<f64> {
         Ok(self.sma_km()? - self.frame.mean_equatorial_radius_km()?)

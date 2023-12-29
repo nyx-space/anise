@@ -17,6 +17,8 @@ pub type Matrix6 = nalgebra::Matrix6<f64>;
 
 pub mod angles;
 pub mod cartesian;
+#[cfg(feature = "python")]
+mod cartesian_py;
 pub mod interpolation;
 pub mod rotation;
 pub mod units;
