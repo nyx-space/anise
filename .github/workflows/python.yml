@@ -63,8 +63,8 @@ jobs:
       - name: pytest
         shell: bash
         run: |
-          set -e && pwd && ls -lh
-          pip install anise --find-links anise-py/dist --force-reinstall
+          set -e && pwd && ls -lh anise-py
+          pip install anise --find-links anise-py/dist --force-reinstall -vvv
           pip install pytest
           pytest
 
@@ -132,8 +132,8 @@ jobs:
       - name: pytest
         shell: bash
         run: |
-          set -e
-          pip install anise --find-links anise-py/dist --force-reinstall
+          set -e && pwd && ls -lh anise-py
+          pip install anise --find-links anise-py/dist --force-reinstall -vvv
           pip install pytest
           pytest
 
