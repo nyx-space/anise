@@ -22,6 +22,8 @@ use log::error;
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
+#[cfg(feature = "python")]
+use pyo3::types::PyType;
 
 impl CartesianState {
     /// Creates a new Orbit from the provided semi-major axis altitude in kilometers
@@ -51,8 +53,8 @@ impl CartesianState {
     /// Creates a new Orbit from the provided altitudes of apoapsis and periapsis, in kilometers
     #[allow(clippy::too_many_arguments)]
     pub fn try_keplerian_apsis_altitude(
-        a_a: f64,
-        a_p: f64,
+        apo_alt: f64,
+        peri_alt: f64,
         inc: f64,
         raan: f64,
         aop: f64,
@@ -61,8 +63,8 @@ impl CartesianState {
         frame: Frame,
     ) -> PhysicsResult<Self> {
         Self::try_keplerian_apsis_radii(
-            a_a + frame.mean_equatorial_radius_km()?,
-            a_p + frame.mean_equatorial_radius_km()?,
+            apo_alt + frame.mean_equatorial_radius_km()?,
+            peri_alt + frame.mean_equatorial_radius_km()?,
             inc,
             raan,
             aop,
@@ -77,7 +79,7 @@ impl CartesianState {
     /// **Units:** degrees, degrees, km, rad/s
     /// NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
     /// Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016
-    pub fn from_altlatlong(
+    pub fn try_from_latlongalt(
         latitude_deg: f64,
         longitude_deg: f64,
         height_km: f64,
@@ -112,6 +114,66 @@ impl CartesianState {
 
 #[cfg_attr(feature = "python", pymethods)]
 impl CartesianState {
+    /// Creates a new Orbit from the provided semi-major axis altitude in kilometers
+    #[cfg(feature = "python")]
+    #[classmethod]
+    pub fn from_keplerian_altitude(
+        _cls: &PyType,
+        sma_altitude: f64,
+        ecc: f64,
+        inc: f64,
+        raan: f64,
+        aop: f64,
+        ta: f64,
+        epoch: Epoch,
+        frame: Frame,
+    ) -> PhysicsResult<Self> {
+        Self::try_keplerian_altitude(sma_altitude, ecc, inc, raan, aop, ta, epoch, frame)
+    }
+
+    /// Creates a new Orbit from the provided altitudes of apoapsis and periapsis, in kilometers
+    #[cfg(feature = "python")]
+    #[classmethod]
+    pub fn from_keplerian_apsis_altitude(
+        _cls: &PyType,
+        apo_alt: f64,
+        peri_alt: f64,
+        inc: f64,
+        raan: f64,
+        aop: f64,
+        ta: f64,
+        epoch: Epoch,
+        frame: Frame,
+    ) -> PhysicsResult<Self> {
+        Self::try_keplerian_apsis_altitude(apo_alt, peri_alt, inc, raan, aop, ta, epoch, frame)
+    }
+
+    /// Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid given the angular velocity.
+    ///
+    /// **Units:** degrees, degrees, km, rad/s
+    /// NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
+    /// Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016
+    #[cfg(feature = "python")]
+    #[classmethod]
+    pub fn from_latlongalt(
+        _cls: &PyType,
+        latitude_deg: f64,
+        longitude_deg: f64,
+        height_km: f64,
+        angular_velocity: f64,
+        epoch: Epoch,
+        frame: Frame,
+    ) -> PhysicsResult<Self> {
+        Self::try_from_latlongalt(
+            latitude_deg,
+            longitude_deg,
+            height_km,
+            angular_velocity,
+            epoch,
+            frame,
+        )
+    }
+
     /// Returns the SMA altitude in km
     pub fn sma_altitude_km(&self) -> PhysicsResult<f64> {
         Ok(self.sma_km()? - self.frame.mean_equatorial_radius_km()?)

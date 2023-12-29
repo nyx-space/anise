@@ -462,7 +462,7 @@ fn verif_geodetic_vallado(almanac: Almanac) {
     f64_eq!(r.geodetic_longitude_deg(), long, "longitude (λ)");
     f64_eq!(r.geodetic_height_km().unwrap(), height, "height");
     let mean_earth_angular_velocity_deg_s = 0.004178079012116429;
-    let r = Orbit::from_altlatlong(
+    let r = Orbit::try_from_latlongalt(
         lat,
         long,
         height,
@@ -484,7 +484,7 @@ fn verif_geodetic_vallado(almanac: Almanac) {
     let ri = 6_119.403_233_271_109;
     let rj = -1_571.480_316_600_378_3;
     let rk = -871.560_226_712_024_7;
-    let r = Orbit::from_altlatlong(
+    let r = Orbit::try_from_latlongalt(
         lat,
         long,
         height,
@@ -502,7 +502,7 @@ fn verif_geodetic_vallado(almanac: Almanac) {
     f64_eq!(r.geodetic_height_km().unwrap(), height_val, "height");
 
     // Check reciprocity near poles
-    let r = Orbit::from_altlatlong(
+    let r = Orbit::try_from_latlongalt(
         0.1,
         long,
         height_val,

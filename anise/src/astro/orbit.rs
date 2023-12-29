@@ -300,6 +300,23 @@ impl CartesianState {
         Self::try_keplerian(sma, ecc, inc, raan, aop, ta, epoch, frame)
     }
 
+    /// Attempts to create a new Orbit from the provided radii of apoapsis and periapsis, in kilometers
+    #[cfg(feature = "python")]
+    #[classmethod]
+    pub fn from_keplerian_apsis_radii(
+        _cls: &PyType,
+        r_a: f64,
+        r_p: f64,
+        inc: f64,
+        raan: f64,
+        aop: f64,
+        ta: f64,
+        epoch: Epoch,
+        frame: Frame,
+    ) -> PhysicsResult<Self> {
+        Self::try_keplerian_apsis_radii(r_a, r_p, inc, raan, aop, ta, epoch, frame)
+    }
+
     /// Returns the orbital momentum value on the X axis
     pub fn hx(&self) -> PhysicsResult<f64> {
         Ok(self.hvec()?[0])
