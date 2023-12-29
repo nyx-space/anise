@@ -351,6 +351,8 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             ) {
                 Ok(s) => rslt += s.replace('\u{0}', "\n").trim(),
                 Err(e) => {
+                    // At this point, we know that the bytes are accessible because the embedded `match`
+                    // did not fail, so we can perform a direct access.
                     let valid_s = core::str::from_utf8(
                         &self.bytes[rid * RCRD_LEN..(rid * RCRD_LEN + e.valid_up_to())],
                     )
