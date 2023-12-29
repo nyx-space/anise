@@ -113,17 +113,17 @@ impl CartesianState {
 #[cfg_attr(feature = "python", pymethods)]
 impl CartesianState {
     /// Returns the SMA altitude in km
-    pub fn sma_altitude(&self) -> PhysicsResult<f64> {
+    pub fn sma_altitude_km(&self) -> PhysicsResult<f64> {
         Ok(self.sma_km()? - self.frame.mean_equatorial_radius_km()?)
     }
 
     /// Returns the altitude of periapsis (or perigee around Earth), in kilometers.
-    pub fn periapsis_altitude(&self) -> PhysicsResult<f64> {
+    pub fn periapsis_altitude_km(&self) -> PhysicsResult<f64> {
         Ok(self.periapsis_km()? - self.frame.mean_equatorial_radius_km()?)
     }
 
     /// Returns the altitude of apoapsis (or apogee around Earth), in kilometers.
-    pub fn apoapsis_altitude(&self) -> PhysicsResult<f64> {
+    pub fn apoapsis_altitude_km(&self) -> PhysicsResult<f64> {
         Ok(self.apoapsis_km()? - self.frame.mean_equatorial_radius_km()?)
     }
 
@@ -131,14 +131,14 @@ impl CartesianState {
     ///
     /// Although the reference is not Vallado, the math from Vallado proves to be equivalent.
     /// Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016
-    pub fn geodetic_longitude(&self) -> f64 {
+    pub fn geodetic_longitude_deg(&self) -> f64 {
         between_0_360(self.radius_km.y.atan2(self.radius_km.x).to_degrees())
     }
 
     /// Returns the geodetic latitude (φ) in degrees. Value is between -180 and +180 degrees.
     ///
     /// Reference: Vallado, 4th Ed., Algorithm 12 page 172.
-    pub fn geodetic_latitude(&self) -> PhysicsResult<f64> {
+    pub fn geodetic_latitude_deg(&self) -> PhysicsResult<f64> {
         let eps = 1e-12;
         let max_attempts = 20;
         let mut attempt_no = 0;
@@ -166,9 +166,9 @@ impl CartesianState {
     /// Returns the geodetic height in km.
     ///
     /// Reference: Vallado, 4th Ed., Algorithm 12 page 172.
-    pub fn geodetic_height(&self) -> PhysicsResult<f64> {
+    pub fn geodetic_height_km(&self) -> PhysicsResult<f64> {
         let e2 = self.frame.flattening()? * (2.0 - self.frame.flattening()?);
-        let latitude = self.geodetic_latitude()?.to_radians();
+        let latitude = self.geodetic_latitude_deg()?.to_radians();
         let sin_lat = latitude.sin();
         if (latitude - 1.0).abs() < 0.1 {
             // We are near poles, let's use another formulation.

@@ -10,10 +10,15 @@
 
 use crate::errors::PhysicsError;
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
 /// Defines the aberration corrections to the state of the target body to account for one-way light time and stellar aberration.
 /// **WARNING:** This enum is a placeholder until [https://github.com/anise-toolkit/anise.rs/issues/26] is implemented.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub enum Aberration {
+    #[pyo3(name = "NoAberration")]
     None,
 }
 

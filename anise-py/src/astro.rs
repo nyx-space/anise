@@ -81,6 +81,8 @@ impl Frames {
     const IAU_NEPTUNE_FRAME: Frame = IAU_NEPTUNE_FRAME;
     #[classattr]
     const IAU_URANUS_FRAME: Frame = IAU_URANUS_FRAME;
+    #[classattr]
+    const EARTH_ITRF93: Frame = EARTH_ITRF93;
 }
 
 pub(crate) fn register_constants(py: Python<'_>, parent_module: &PyModule) -> PyResult<()> {

@@ -21,6 +21,56 @@ use crate::{
 
 use super::Almanac;
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
+impl Almanac {
+    /// Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame
+    ///
+    /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_state_to` function instead to include rotations.
+    #[allow(clippy::too_many_arguments)]
+    pub fn transform_state_to(
+        &self,
+        position: Vector3,
+        velocity: Vector3,
+        from_frame: Frame,
+        to_frame: Frame,
+        epoch: Epoch,
+        ab_corr: Aberration,
+        distance_unit: LengthUnit,
+        time_unit: TimeUnit,
+    ) -> Result<CartesianState, AlmanacError> {
+        let state = self
+            .translate_state_to(
+                position,
+                velocity,
+                from_frame,
+                to_frame,
+                epoch,
+                ab_corr,
+                distance_unit,
+                time_unit,
+            )
+            .with_context(|_| EphemerisSnafu {
+                action: "transform provided state",
+            })?;
+
+        // Compute the frame rotation
+        let dcm = self
+            .rotate_from_to(from_frame, to_frame, epoch)
+            .with_context(|_| OrientationSnafu {
+                action: "transform provided state dcm",
+            })?;
+
+        (dcm * state)
+            .with_context(|_| OrientationPhysicsSnafu {})
+            .with_context(|_| OrientationSnafu {
+                action: "transform provided state",
+            })
+    }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
     /// Returns the Cartesian state needed to transform the `from_frame` to the `to_frame`.
     ///
@@ -80,50 +130,6 @@ impl Almanac {
             .with_context(|_| OrientationPhysicsSnafu {})
             .with_context(|_| OrientationSnafu {
                 action: "transform state",
-            })
-    }
-
-    /// Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame
-    ///
-    /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_state_to` function instead to include rotations.
-    #[allow(clippy::too_many_arguments)]
-    pub fn transform_state_to(
-        &self,
-        position: Vector3,
-        velocity: Vector3,
-        from_frame: Frame,
-        to_frame: Frame,
-        epoch: Epoch,
-        ab_corr: Aberration,
-        distance_unit: LengthUnit,
-        time_unit: TimeUnit,
-    ) -> Result<CartesianState, AlmanacError> {
-        let state = self
-            .translate_state_to(
-                position,
-                velocity,
-                from_frame,
-                to_frame,
-                epoch,
-                ab_corr,
-                distance_unit,
-                time_unit,
-            )
-            .with_context(|_| EphemerisSnafu {
-                action: "transform provided state",
-            })?;
-
-        // Compute the frame rotation
-        let dcm = self
-            .rotate_from_to(from_frame, to_frame, epoch)
-            .with_context(|_| OrientationSnafu {
-                action: "transform provided state dcm",
-            })?;
-
-        (dcm * state)
-            .with_context(|_| OrientationPhysicsSnafu {})
-            .with_context(|_| OrientationSnafu {
-                action: "transform provided state",
             })
     }
 

@@ -851,7 +851,7 @@ impl fmt::UpperHex for Orbit {
                 format!(
                     "{:.*}",
                     decimals,
-                    self.geodetic_height().map_err(|err| {
+                    self.geodetic_height_km().map_err(|err| {
                         error!("{err}");
                         fmt::Error
                     })?
@@ -859,12 +859,12 @@ impl fmt::UpperHex for Orbit {
                 format!(
                     "{:.*}",
                     decimals,
-                    self.geodetic_latitude().map_err(|err| {
+                    self.geodetic_latitude_deg().map_err(|err| {
                         error!("{err}");
                         fmt::Error
                     })?
                 ),
-                format!("{:.*}", decimals, self.geodetic_longitude()),
+                format!("{:.*}", decimals, self.geodetic_longitude_deg()),
             )
         }
     }

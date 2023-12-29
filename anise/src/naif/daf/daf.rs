@@ -22,7 +22,7 @@ use bytes::Bytes;
 use core::hash::Hash;
 use core::ops::Deref;
 use hifitime::Epoch;
-use log::{error, trace, warn};
+use log::{debug, error, trace};
 use snafu::ResultExt;
 use std::fmt::Debug;
 use std::marker::PhantomData;
@@ -237,7 +237,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                     trace!("Found {id} in position {idx}: {summary:?}");
                     return Ok((summary, idx));
                 } else {
-                    warn!(
+                    debug!(
                         "Summary {id} not valid at {epoch:?} (only from {:?} to {:?}, offset of {} - {})",
                         summary.start_epoch(),
                         summary.end_epoch(),

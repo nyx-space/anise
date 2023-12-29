@@ -9,6 +9,7 @@
  */
 
 use ::anise::almanac::Almanac;
+use ::anise::astro::Aberration;
 use hifitime::leap_seconds::{LatestLeapSeconds, LeapSecondsFile};
 use hifitime::prelude::*;
 use hifitime::ut1::Ut1Provider;
@@ -24,6 +25,7 @@ fn anise(py: Python, m: &PyModule) -> PyResult<()> {
     register_time_module(py, m)?;
     astro::register_astro(py, m)?;
     m.add_class::<Almanac>()?;
+    m.add_class::<Aberration>()?;
     Ok(())
 }
 
