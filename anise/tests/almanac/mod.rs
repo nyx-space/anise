@@ -38,14 +38,14 @@ fn test_state_transformation() {
 
     let spk = SPK::load("../data/de440.bsp").unwrap();
     let bpc = BPC::load("../data/earth_latest_high_prec.bpc").unwrap();
-    let pck = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
 
     let almanac = ctx
         .with_spk(spk)
         .unwrap()
         .with_bpc(bpc)
         .unwrap()
-        .with_planetary_data(pck);
+        .load("../data/pck08.pca")
+        .unwrap();
 
     // Let's build an orbit
     // Start by grabbing a copy of the frame.

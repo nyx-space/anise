@@ -122,6 +122,11 @@ impl CartesianState {
         format!("{self}")
     }
 
+    #[cfg(feature = "python")]
+    fn __repr__(&self) -> String {
+        format!("{self} (@{self:p})")
+    }
+
     fn __richcmp__(&self, other: &Self, op: CompareOp) -> Result<bool, PyErr> {
         match op {
             CompareOp::Eq => Ok(self == other),

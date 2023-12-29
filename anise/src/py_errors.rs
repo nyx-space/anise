@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+use crate::almanac::planetary::PlanetaryDataError;
 use crate::ephemerides::EphemerisError;
 use crate::errors::{AlmanacError, DecodingError, InputOutputError, IntegrityError, PhysicsError};
 use crate::orientations::OrientationError;
@@ -48,6 +49,12 @@ impl From<EphemerisError> for PyErr {
 }
 impl From<OrientationError> for PyErr {
     fn from(err: OrientationError) -> PyErr {
+        PyException::new_err(err.to_string())
+    }
+}
+
+impl From<PlanetaryDataError> for PyErr {
+    fn from(err: PlanetaryDataError) -> PyErr {
         PyException::new_err(err.to_string())
     }
 }

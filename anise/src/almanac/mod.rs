@@ -35,14 +35,21 @@ pub const MAX_PLANETARY_DATA: usize = 64;
 
 pub mod bpc;
 pub mod planetary;
+#[cfg(feature = "python")]
+mod python;
 pub mod spk;
 pub mod transform;
+
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
 
 /// An Almanac contains all of the loaded SPICE and ANISE data.
 ///
 /// # Limitations
 /// The stack space required depends on the maximum number of each type that can be loaded.
 #[derive(Clone, Default)]
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct Almanac {
     /// NAIF SPK is kept unchanged
     pub spk_data: [Option<SPK>; MAX_LOADED_SPKS],
@@ -75,6 +82,11 @@ impl fmt::Display for Almanac {
 }
 
 impl Almanac {
+    /// Initializes a new Almanac from the provided file path, guessing at the file type
+    pub fn new(path: &str) -> Result<Self, AlmanacError> {
+        Self::default().load(path)
+    }
+
     /// Loads the provided spacecraft data into a clone of this original Almanac.
     pub fn with_spacecraft_data(&self, spacecraft_data: SpacecraftDataSet) -> Self {
         let mut me = self.clone();
@@ -87,16 +99,6 @@ impl Almanac {
         let mut me = self.clone();
         me.euler_param_data = ep_dataset;
         me
-    }
-
-    /// Generic function that tries to load whichever path is provided, guessing to the type.
-    pub fn load(&self, path: &str) -> Result<Self, AlmanacError> {
-        // Load the data onto the heap
-        let bytes = file2heap!(path).with_context(|_| LoadingSnafu {
-            path: path.to_string(),
-        })?;
-        info!("Loading almanac from {path}");
-        self.load_from_bytes(bytes)
     }
 
     pub fn load_from_bytes(&self, bytes: Bytes) -> Result<Self, AlmanacError> {
@@ -175,5 +177,25 @@ impl Almanac {
                 err: "Provided file cannot be inspected loaded directly in ANISE and may need a conversion first".to_string(),
             })
         }
+    }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl Almanac {
+    /// Generic function that tries to load the provided path guessing to the file type.
+    pub fn load(&self, path: &str) -> Result<Self, AlmanacError> {
+        // Load the data onto the heap
+        let bytes = file2heap!(path).with_context(|_| LoadingSnafu {
+            path: path.to_string(),
+        })?;
+        info!("Loading almanac from {path}");
+        self.load_from_bytes(bytes)
+    }
+
+    /// Initializes a new Almanac from the provided file path, guessing at the file type
+    #[cfg(feature = "python")]
+    #[new]
+    pub fn py_new(path: &str) -> Result<Self, AlmanacError> {
+        Self::new(path)
     }
 }

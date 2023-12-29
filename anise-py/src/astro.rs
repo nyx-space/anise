@@ -30,6 +30,7 @@ pub(crate) fn register_astro(py: Python<'_>, parent_module: &PyModule) -> PyResu
 }
 
 #[pyclass]
+#[pyo3(module = "anise.astro.constants")]
 struct Frames {}
 
 #[pymethods]

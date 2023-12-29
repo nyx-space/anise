@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+use ::anise::almanac::Almanac;
 use hifitime::leap_seconds::{LatestLeapSeconds, LeapSecondsFile};
 use hifitime::prelude::*;
 use hifitime::ut1::Ut1Provider;
@@ -22,6 +23,7 @@ mod astro;
 fn anise(py: Python, m: &PyModule) -> PyResult<()> {
     register_time_module(py, m)?;
     astro::register_astro(py, m)?;
+    m.add_class::<Almanac>()?;
     Ok(())
 }
 

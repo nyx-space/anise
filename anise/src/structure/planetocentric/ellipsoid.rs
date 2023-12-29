@@ -84,6 +84,11 @@ impl Ellipsoid {
         format!("{self}")
     }
 
+    #[cfg(feature = "python")]
+    fn __repr__(&self) -> String {
+        format!("{self} (@{self:p})")
+    }
+
     /// Returns the mean equatorial radius in kilometers
     pub fn mean_equatorial_radius_km(&self) -> f64 {
         (self.semi_major_equatorial_radius_km + self.semi_minor_equatorial_radius_km) / 2.0
