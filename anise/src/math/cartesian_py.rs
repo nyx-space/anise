@@ -136,4 +136,18 @@ impl CartesianState {
             ))),
         }
     }
+
+    #[cfg(feature = "python")]
+    fn __getnewargs__(&self) -> Result<(f64, f64, f64, f64, f64, f64, Epoch, Frame), PyErr> {
+        Ok((
+            self.radius_km[0],
+            self.radius_km[1],
+            self.radius_km[2],
+            self.velocity_km_s[0],
+            self.velocity_km_s[1],
+            self.velocity_km_s[2],
+            self.epoch,
+            self.frame,
+        ))
+    }
 }

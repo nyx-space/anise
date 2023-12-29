@@ -60,6 +60,14 @@ jobs:
           name: wheels
           path: dist
 
+      - name: pytest
+        shell: bash
+        run: |
+          set -e
+          pip install anise --find-links dist --force-reinstall
+          pip install pytest
+          pytest
+
   windows:
     runs-on: windows-latest
     strategy:
@@ -86,12 +94,21 @@ jobs:
         with:
           name: wheels
           path: dist
+      
+      - name: pytest
+        shell: bash
+        run: |
+          set -e
+          pip install anise --find-links dist --force-reinstall
+          pip install pytest
+          pytest
 
   macos:
     runs-on: macos-latest
     strategy:
       matrix:
-        target: [x86_64, aarch64]
+        # target: [x86_64, aarch64]
+        target: [x86_64, ]
     steps:
       - uses: actions/checkout@v3
 
@@ -112,6 +129,14 @@ jobs:
         with:
           name: wheels
           path: dist
+      
+      - name: pytest
+        shell: bash
+        run: |
+          set -e
+          pip install anise --find-links dist --force-reinstall
+          pip install pytest
+          pytest
 
   sdist:
     runs-on: ubuntu-latest

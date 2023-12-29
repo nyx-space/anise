@@ -1,4 +1,5 @@
 from pathlib import Path
+import pickle
 
 from anise import Aberration, Almanac
 from anise.astro import *
@@ -76,6 +77,12 @@ def test_state_transformation():
     assert abs(paris.geodetic_latitude_deg() - 48.8566) < 1e-3
     assert abs(paris.geodetic_longitude_deg() - 2.3522) < 1e-3
     assert abs(paris.geodetic_height_km() - 0.4) < 1e-3
+
+    # Pickling test
+    pickle.loads(pickle.dumps(eme2k)) == eme2k
+    pickle.loads(pickle.dumps(eme2k.shape)) == eme2k.shape
+    # Cannot yet pickle Epoch, so we can't pickle an Orbit yet
+    # cf. https://github.com/nyx-space/hifitime/issues/270
 
 
 def test_exports():

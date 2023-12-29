@@ -100,6 +100,17 @@ impl Frame {
         }
     }
 
+    /// Allows for pickling the object
+    #[cfg(feature = "python")]
+    fn __getnewargs__(&self) -> Result<(NaifId, NaifId, Option<f64>, Option<Ellipsoid>), PyErr> {
+        Ok((
+            self.ephemeris_id,
+            self.orientation_id,
+            self.mu_km3_s2,
+            self.shape,
+        ))
+    }
+
     /// Returns a copy of this Frame whose ephemeris ID is set to the provided ID
     pub const fn with_ephem(&self, new_ephem_id: NaifId) -> Self {
         let mut me = *self;

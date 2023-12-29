@@ -12,7 +12,11 @@ use core::fmt;
 use der::{Decode, Encode, Reader, Writer};
 
 #[cfg(feature = "python")]
+use pyo3::exceptions::PyTypeError;
+#[cfg(feature = "python")]
 use pyo3::prelude::*;
+#[cfg(feature = "python")]
+use pyo3::pyclass::CompareOp;
 
 /// Only the tri-axial Ellipsoid shape model is currently supported by ANISE.
 /// This is directly inspired from SPICE PCK.
@@ -87,6 +91,27 @@ impl Ellipsoid {
     #[cfg(feature = "python")]
     fn __repr__(&self) -> String {
         format!("{self} (@{self:p})")
+    }
+
+    #[cfg(feature = "python")]
+    fn __richcmp__(&self, other: &Self, op: CompareOp) -> Result<bool, PyErr> {
+        match op {
+            CompareOp::Eq => Ok(self == other),
+            CompareOp::Ne => Ok(self != other),
+            _ => Err(PyErr::new::<PyTypeError, _>(format!(
+                "{op:?} not available"
+            ))),
+        }
+    }
+
+    /// Allows for pickling the object
+    #[cfg(feature = "python")]
+    fn __getnewargs__(&self) -> Result<(f64, Option<f64>, Option<f64>), PyErr> {
+        Ok((
+            self.semi_major_equatorial_radius_km,
+            Some(self.polar_radius_km),
+            Some(self.semi_minor_equatorial_radius_km),
+        ))
     }
 
     /// Returns the mean equatorial radius in kilometers
