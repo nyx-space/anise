@@ -58,7 +58,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: wheels
-          path: dist
+          path: anise-py/dist
 
       - name: pytest
         shell: bash
@@ -93,7 +93,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: wheels
-          path: dist
+          path: anise-py/dist
       
       - name: pytest
         shell: bash
@@ -127,7 +127,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: wheels
-          path: dist
+          path: anise-py/dist
       
       - name: pytest
         shell: bash
@@ -153,7 +153,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: wheels
-          path: dist
+          path: anise-py/dist
 
   release:
     name: Release
