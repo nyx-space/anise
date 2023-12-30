@@ -21,6 +21,9 @@ use core::convert::From;
 use der::Error as DerError;
 use std::io::ErrorKind as IOErrorKind;
 
+#[cfg(feature = "metaload")]
+use crate::almanac::meta::MetaAlmanacError;
+
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
 pub enum AlmanacError {
@@ -46,9 +49,12 @@ pub enum AlmanacError {
     },
     #[snafu(display("{err}"))]
     GenericError { err: String },
+    #[cfg(feature = "metaload")]
+    Meta { source: MetaAlmanacError },
 }
 
 #[derive(Debug, Snafu)]
+#[snafu(visibility(pub(crate)))]
 pub enum InputOutputError {
     /// Raised for an error in reading or writing the file(s)
     IOError { kind: IOErrorKind },

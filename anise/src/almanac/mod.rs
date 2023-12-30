@@ -35,10 +35,14 @@ pub const MAX_PLANETARY_DATA: usize = 64;
 
 pub mod bpc;
 pub mod planetary;
-#[cfg(feature = "python")]
-mod python;
 pub mod spk;
 pub mod transform;
+
+#[cfg(feature = "metaload")]
+pub mod meta;
+
+#[cfg(feature = "python")]
+mod python;
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
@@ -105,41 +109,45 @@ impl Almanac {
         // Try to load as a SPICE DAF first (likely the most typical use case)
 
         // Load the header only
-        let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
-
-        if let Ok(fileid) = file_record.identification() {
-            match fileid {
-                "PCK" => {
-                    info!("Loading as DAF/PCK");
-                    let bpc = BPC::parse(bytes)
-                        .with_context(|_| BPCSnafu {
-                            action: "parsing bytes",
+        if let Some(file_record_bytes) = bytes.get(..FileRecord::SIZE) {
+            let file_record = FileRecord::read_from(file_record_bytes).unwrap();
+            if let Ok(fileid) = file_record.identification() {
+                return match fileid {
+                    "PCK" => {
+                        info!("Loading as DAF/PCK");
+                        let bpc = BPC::parse(bytes)
+                            .with_context(|_| BPCSnafu {
+                                action: "parsing bytes",
+                            })
+                            .with_context(|_| OrientationSnafu {
+                                action: "from generic loading",
+                            })?;
+                        self.with_bpc(bpc).with_context(|_| OrientationSnafu {
+                            action: "adding BPC file to context",
                         })
-                        .with_context(|_| OrientationSnafu {
-                            action: "from generic loading",
-                        })?;
-                    self.with_bpc(bpc).with_context(|_| OrientationSnafu {
-                        action: "adding BPC file to context",
-                    })
-                }
-                "SPK" => {
-                    info!("Loading as DAF/SPK");
-                    let spk = SPK::parse(bytes)
-                        .with_context(|_| SPKSnafu {
-                            action: "parsing bytes",
+                    }
+                    "SPK" => {
+                        info!("Loading as DAF/SPK");
+                        let spk = SPK::parse(bytes)
+                            .with_context(|_| SPKSnafu {
+                                action: "parsing bytes",
+                            })
+                            .with_context(|_| EphemerisSnafu {
+                                action: "from generic loading",
+                            })?;
+                        self.with_spk(spk).with_context(|_| EphemerisSnafu {
+                            action: "adding SPK file to context",
                         })
-                        .with_context(|_| EphemerisSnafu {
-                            action: "from generic loading",
-                        })?;
-                    self.with_spk(spk).with_context(|_| EphemerisSnafu {
-                        action: "adding SPK file to context",
-                    })
-                }
-                fileid => Err(AlmanacError::GenericError {
-                    err: format!("DAF/{fileid} is not yet supported"),
-                }),
+                    }
+                    fileid => Err(AlmanacError::GenericError {
+                        err: format!("DAF/{fileid} is not yet supported"),
+                    }),
+                };
             }
-        } else if let Ok(metadata) = Metadata::decode_header(&bytes) {
+            // Fall through to try to load as an ANISE file
+        }
+
+        if let Ok(metadata) = Metadata::decode_header(&bytes) {
             // Now, we can load this depending on the kind of data that it is
             match metadata.dataset_type {
                 DataSetType::NotApplicable => unreachable!("no such ANISE data yet"),
