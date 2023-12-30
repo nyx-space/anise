@@ -12,6 +12,7 @@ use log::{debug, info};
 use platform_dirs::AppDirs;
 use reqwest::StatusCode;
 use serde_derive::{Deserialize, Serialize};
+use serde_dhall::{SimpleType, StaticType};
 use snafu::prelude::*;
 use std::fs::{create_dir_all, File};
 use std::io::Write;
@@ -42,7 +43,9 @@ pub enum MetaAlmanacError {
     #[snafu(display("connection {uri} returned {error}"))]
     CnxError { uri: String, error: String },
     #[snafu(display("error parsing {path} as Dhall config: {err}"))]
-    Dhall { path: String, err: String },
+    ParseDhall { path: String, err: String },
+    #[snafu(display("error exporting as Dhall config: {err}"))]
+    ExportDhall { err: String },
 }
 
 /// A structure to set up an Almanac, with automatic downloading, local storage, checksum checking, and more.
@@ -52,7 +55,7 @@ pub enum MetaAlmanacError {
 /// If the URI is a remote path, the MetaAlmanac will first check if the file exists locally. If it exists, it will check that the CRC32 checksum of this file matches that of the specs.
 /// If it does not match, the file will be downloaded again. If no CRC32 is provided but the file exists, then the MetaAlmanac will fetch the remote file and overwrite the existing file.
 /// The downloaded path will be stored in the "AppData" folder.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct MetaAlmanac {
     files: Vec<MetaFile>,
 }
@@ -61,7 +64,7 @@ impl MetaAlmanac {
     /// Loads the provided path as a Dhall file and processes each file.
     pub fn new(path: String) -> Result<Self, MetaAlmanacError> {
         match serde_dhall::from_file(&path).parse::<Self>() {
-            Err(e) => Err(MetaAlmanacError::Dhall {
+            Err(e) => Err(MetaAlmanacError::ParseDhall {
                 path,
                 err: format!("{e}"),
             }),
@@ -70,7 +73,7 @@ impl MetaAlmanac {
     }
 
     /// Fetch all of the data and return a loaded Almanac
-    pub fn load(&mut self) -> Result<Almanac, AlmanacError> {
+    pub fn process(&mut self) -> Result<Almanac, AlmanacError> {
         for uri in &mut self.files {
             uri.process().with_context(|_| MetaSnafu)?;
         }
@@ -80,6 +83,22 @@ impl MetaAlmanac {
             ctx = ctx.load(&uri.uri)?;
         }
         Ok(ctx)
+    }
+
+    /// Dumps the configured Meta Almanac into a Dhall string
+    pub fn dump(&self) -> Result<String, MetaAlmanacError> {
+        // Define the Dhall type
+        let dhall_type: SimpleType =
+            serde_dhall::from_str("{ files : List { uri : Text, crc32 : Optional Natural } }")
+                .parse()
+                .unwrap();
+
+        serde_dhall::serialize(&self)
+            .type_annotation(&dhall_type)
+            .to_string()
+            .map_err(|e| MetaAlmanacError::ExportDhall {
+                err: format!("{e}"),
+            })
     }
 }
 
@@ -123,7 +142,7 @@ impl Default for MetaAlmanac {
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, StaticType)]
 pub struct MetaFile {
     pub uri: String,
     /// Optionally specify the CRC32 of this file, which will be checked prior to loading.
@@ -252,8 +271,8 @@ impl MetaFile {
 
 #[cfg(test)]
 mod meta_test {
-
-    use super::MetaAlmanac;
+    use super::{MetaAlmanac, Path};
+    use std::env;
 
     #[test]
     fn test_meta_almanac() {
@@ -261,7 +280,19 @@ mod meta_test {
         let mut meta = MetaAlmanac::default();
         println!("{meta:?}");
 
-        let almanac = meta.load().unwrap();
+        let almanac = meta.process().unwrap();
         println!("{almanac}");
+    }
+
+    #[test]
+    fn test_from_dhall() {
+        let default = MetaAlmanac::default();
+
+        println!("{}", default.dump().unwrap());
+
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../data/default_meta.dhall");
+        let dhall = MetaAlmanac::new(path.to_str().unwrap().to_string()).unwrap();
+
+        assert_eq!(dhall, default);
     }
 }
