@@ -69,11 +69,8 @@ pub struct MetaAlmanac {
     files: Vec<MetaFile>,
 }
 
-#[cfg_attr(feature = "python", pymethods)]
 impl MetaAlmanac {
     /// Loads the provided path as a Dhall file and processes each file.
-    #[cfg(feature = "python")]
-    #[new]
     pub fn new(path: String) -> Result<Self, MetaAlmanacError> {
         match serde_dhall::from_file(&path).parse::<Self>() {
             Err(e) => Err(MetaAlmanacError::ParseDhall {
@@ -82,6 +79,16 @@ impl MetaAlmanac {
             }),
             Ok(me) => Ok(me),
         }
+    }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl MetaAlmanac {
+    /// Loads the provided path as a Dhall file and processes each file.
+    #[cfg(feature = "python")]
+    #[new]
+    pub fn py_new(path: String) -> Result<Self, MetaAlmanacError> {
+        Self::new(path)
     }
 
     /// Fetch all of the data and return a loaded Almanac
@@ -315,6 +322,9 @@ mod meta_test {
 
         let almanac = meta.process().unwrap();
         println!("{almanac}");
+
+        // Process again to confirm that the CRC check works
+        assert!(meta.process().is_ok());
     }
 
     #[test]
