@@ -67,8 +67,9 @@ jobs:
         env:
           RUST_BACKTRACE: 1
         run: |
-          set -e && pwd && ls -lh anise-py
-          pip install anise --find-links anise-py/dist --force-reinstall -vvv
+          set -e
+          pip debug --verbose
+          pip install anise --find-links anise-py/dist --force-reinstall -vv
           pip install pytest
           pytest
 
@@ -144,8 +145,8 @@ jobs:
         env:
           RUST_BACKTRACE: 1
         run: |
-          set -e && pwd && ls -lh anise-py
-          pip install anise --find-links anise-py/dist --force-reinstall -vvv
+          set -e
+          pip install anise --find-links anise-py/dist --force-reinstall -vv
           pip install pytest
           pytest
 

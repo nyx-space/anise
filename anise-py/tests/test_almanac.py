@@ -37,11 +37,11 @@ def test_state_transformation():
         eme2k,
     )
 
-    assert orig_state.sma_km() == 8191.93
-    assert orig_state.ecc() == 1.000000000361619e-06
-    assert orig_state.inc_deg() == 12.849999999999987
-    assert orig_state.raan_deg() == 306.614
-    assert orig_state.tlong_deg() == 0.6916999999999689
+    assert abs(orig_state.sma_km() - 8191.93) < 1e-10
+    assert abs(orig_state.ecc() - 1.000000000361619e-06) < 1e-10
+    assert abs(orig_state.inc_deg() - 12.849999999999987) < 1e-10
+    assert abs(orig_state.raan_deg() - 306.614) < 1e-10
+    assert abs(orig_state.tlong_deg() - 0.6916999999999689) < 1e-10
 
     state_itrf93 = ctx.transform_to(orig_state, Frames.EARTH_ITRF93, Aberration.NotSet)
 
