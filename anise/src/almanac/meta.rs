@@ -169,14 +169,14 @@ impl MetaFile {
 
                                         if !app_dir.data_dir.exists() {
                                             // Create the folders
-                                            create_dir_all(app_dir.data_dir).or_else(|e| {
-                                                Err(MetaAlmanacError::MetaIO {
+                                            create_dir_all(app_dir.data_dir).map_err(|e| {
+                                                MetaAlmanacError::MetaIO {
                                                     path: dest_path.to_str().unwrap().into(),
                                                     what: "creating directories for storage",
                                                     source: InputOutputError::IOError {
                                                         kind: e.kind(),
                                                     },
-                                                })
+                                                }
                                             })?;
                                         }
 
