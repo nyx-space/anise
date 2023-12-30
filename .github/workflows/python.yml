@@ -63,7 +63,7 @@ jobs:
           path: anise-py/dist
 
       - name: pytest
-        if: ${{ startsWith(matrix.target, 'x86') }}
+        if: ${{ startsWith(matrix.target, 'x86_64') }}
         shell: bash
         run: |
           set -e
