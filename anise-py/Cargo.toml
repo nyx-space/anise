@@ -9,7 +9,7 @@ name = "anise"
 crate-type = ["cdylib"]
 
 [dependencies]
-anise = { workspace = true, features = ["python"] }
+anise = { workspace = true, features = ["python", "metaload"] }
 snafu = { workspace = true }
 hifitime = { workspace = true, features = ["python"] }
 pyo3 = { workspace = true, features = ["extension-module"] }

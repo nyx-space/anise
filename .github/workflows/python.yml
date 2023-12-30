@@ -63,15 +63,32 @@ jobs:
           path: anise-py/dist
 
       - name: pytest
+        if: ${{ startsWith(matrix.target, 'x86') }}
         shell: bash
-        env:
-          RUST_BACKTRACE: 1
         run: |
           set -e
           pip debug --verbose
           pip install anise --find-links anise-py/dist --force-reinstall -vv
           pip install pytest
           pytest
+
+      - name: pytest
+        if: ${{ !startsWith(matrix.target, 'x86') && matrix.target != 'ppc64' }}
+        uses: uraimo/run-on-arch-action@v2
+        with:
+          arch: ${{ matrix.target }}
+          distro: ubuntu22.04
+          githubToken: ${{ github.token }}
+          install: |
+            apt-get update
+            apt-get install -y --no-install-recommends python3 python3-pip
+            pip3 install -U pip pytest
+          run: |
+            set -e
+            pip debug --verbose
+            pip install anise --find-links anise-py/dist --force-reinstall -vv
+            pip install pytest
+            pytest
 
   windows:
     runs-on: windows-latest
@@ -141,6 +158,7 @@ jobs:
           path: anise-py/dist
       
       - name: pytest
+        if: ${{ !startsWith(matrix.target, 'aarch64') }}
         shell: bash
         env:
           RUST_BACKTRACE: 1

@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+use ::anise::almanac::meta::MetaAlmanac;
 use ::anise::almanac::Almanac;
 use ::anise::astro::Aberration;
 use hifitime::leap_seconds::{LatestLeapSeconds, LeapSecondsFile};
@@ -26,6 +27,7 @@ fn anise(py: Python, m: &PyModule) -> PyResult<()> {
     astro::register_astro(py, m)?;
     m.add_class::<Almanac>()?;
     m.add_class::<Aberration>()?;
+    m.add_class::<MetaAlmanac>()?;
     Ok(())
 }
 

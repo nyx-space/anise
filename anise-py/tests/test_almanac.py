@@ -1,7 +1,7 @@
 from pathlib import Path
 import pickle
 
-from anise import Aberration, Almanac
+from anise import Aberration, Almanac, MetaAlmanac
 from anise.astro import *
 from anise.astro.constants import Frames
 from anise.time import Epoch
@@ -85,6 +85,18 @@ def test_state_transformation():
     # cf. https://github.com/nyx-space/hifitime/issues/270
 
 
+def test_meta_load():
+    data_path = Path(__file__).parent.joinpath("..", "..", "data", "local.dhall")
+    meta = MetaAlmanac(str(data_path))
+    print(meta)
+    # Process the files to be loaded
+    almanac = meta.process()
+    # And check that everything is loaded
+    eme2k = almanac.frame_info(Frames.EME2000)
+    assert eme2k.mu_km3_s2() == 398600.435436096
+    assert eme2k.shape.polar_radius_km == 6356.75
+    assert abs(eme2k.shape.flattening() - 0.0033536422844278) < 2e-16
+
 def test_exports():
     for cls in [Frame, Ellipsoid, Orbit]:
         print(f"{cls} OK")
@@ -99,6 +111,7 @@ def test_frame_defs():
 
 
 if __name__ == "__main__":
+    test_meta_load()
     test_exports()
     test_frame_defs()
     test_state_transformation()

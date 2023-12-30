@@ -19,6 +19,13 @@ use std::io::Write;
 use std::path::Path;
 use url::Url;
 
+#[cfg(feature = "python")]
+use pyo3::exceptions::PyTypeError;
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+#[cfg(feature = "python")]
+use pyo3::pyclass::CompareOp;
+
 use crate::errors::{AlmanacError, MetaSnafu};
 use crate::file2heap;
 use crate::prelude::InputOutputError;
@@ -56,12 +63,17 @@ pub enum MetaAlmanacError {
 /// If it does not match, the file will be downloaded again. If no CRC32 is provided but the file exists, then the MetaAlmanac will fetch the remote file and overwrite the existing file.
 /// The downloaded path will be stored in the "AppData" folder.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct MetaAlmanac {
     files: Vec<MetaFile>,
 }
 
+#[cfg_attr(feature = "python", pymethods)]
 impl MetaAlmanac {
     /// Loads the provided path as a Dhall file and processes each file.
+    #[cfg(feature = "python")]
+    #[new]
     pub fn new(path: String) -> Result<Self, MetaAlmanacError> {
         match serde_dhall::from_file(&path).parse::<Self>() {
             Err(e) => Err(MetaAlmanacError::ParseDhall {
@@ -99,6 +111,27 @@ impl MetaAlmanac {
             .map_err(|e| MetaAlmanacError::ExportDhall {
                 err: format!("{e}"),
             })
+    }
+
+    #[cfg(feature = "python")]
+    fn __str__(&self) -> String {
+        format!("{self:?}")
+    }
+
+    #[cfg(feature = "python")]
+    fn __repr__(&self) -> String {
+        format!("{self:?} (@{self:p})")
+    }
+
+    #[cfg(feature = "python")]
+    fn __richcmp__(&self, other: &Self, op: CompareOp) -> Result<bool, PyErr> {
+        match op {
+            CompareOp::Eq => Ok(self == other),
+            CompareOp::Ne => Ok(self != other),
+            _ => Err(PyErr::new::<PyTypeError, _>(format!(
+                "{op:?} not available"
+            ))),
+        }
     }
 }
 
