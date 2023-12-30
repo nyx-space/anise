@@ -20,9 +20,7 @@ const VELOCITY_EPSILON_KM_S: f64 = 5e-10;
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
 fn de440s_transform_verif_venus2emb() {
-    if pretty_env_logger::try_init().is_err() {
-        println!("could not init env_logger");
-    }
+    let _ = pretty_env_logger::try_init();
 
     let spk_path = "../data/de440s.bsp";
     let bpc_path = "../data/earth_latest_high_prec.bpc";
@@ -44,7 +42,7 @@ fn de440s_transform_verif_venus2emb() {
     let epoch = Epoch::from_gregorian_utc_at_midnight(2020, 2, 7);
 
     let state = almanac
-        .transform_from_to(VENUS_J2000, EARTH_ITRF93, epoch, Aberration::None)
+        .transform_from_to(VENUS_J2000, EARTH_ITRF93, epoch, Aberration::NotSet)
         .unwrap();
 
     let (spice_state, _) = spice::spkezr("VENUS", epoch.to_et_seconds(), "ITRF93", "NONE", "EARTH");

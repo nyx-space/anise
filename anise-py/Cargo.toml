@@ -1,0 +1,16 @@
+[package]
+name = "anise-py"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "anise"
+crate-type = ["cdylib"]
+
+[dependencies]
+anise = { workspace = true, features = ["python", "metaload"] }
+snafu = { workspace = true }
+hifitime = { workspace = true, features = ["python"] }
+pyo3 = { workspace = true, features = ["extension-module"] }
+pyo3-log = { workspace = true }

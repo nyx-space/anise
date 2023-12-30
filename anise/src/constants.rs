@@ -226,35 +226,34 @@ pub mod frames {
 
     use super::{celestial_objects::*, orientations::*};
 
-    pub const SSB_J2000: Frame = Frame::from_ephem_orient(SOLAR_SYSTEM_BARYCENTER, J2000);
-    pub const MERCURY_J2000: Frame = Frame::from_ephem_orient(MERCURY, J2000);
-    pub const VENUS_J2000: Frame = Frame::from_ephem_orient(VENUS, J2000);
-    pub const EARTH_MOON_BARYCENTER_J2000: Frame =
-        Frame::from_ephem_orient(EARTH_MOON_BARYCENTER, J2000);
-    pub const MARS_BARYCENTER_J2000: Frame = Frame::from_ephem_orient(MARS_BARYCENTER, J2000);
-    pub const JUPITER_BARYCENTER_J2000: Frame = Frame::from_ephem_orient(JUPITER_BARYCENTER, J2000);
-    pub const SATURN_BARYCENTER_J2000: Frame = Frame::from_ephem_orient(SATURN_BARYCENTER, J2000);
-    pub const URANUS_BARYCENTER_J2000: Frame = Frame::from_ephem_orient(URANUS_BARYCENTER, J2000);
-    pub const NEPTUNE_BARYCENTER_J2000: Frame = Frame::from_ephem_orient(NEPTUNE_BARYCENTER, J2000);
-    pub const PLUTO_BARYCENTER_J2000: Frame = Frame::from_ephem_orient(PLUTO_BARYCENTER, J2000);
-    pub const SUN_J2000: Frame = Frame::from_ephem_orient(SUN, J2000);
-    pub const LUNA_J2000: Frame = Frame::from_ephem_orient(LUNA, J2000);
-    pub const EARTH_J2000: Frame = Frame::from_ephem_orient(EARTH, J2000);
-    pub const EME2000: Frame = Frame::from_ephem_orient(EARTH, J2000);
-    pub const EARTH_ECLIPJ2000: Frame = Frame::from_ephem_orient(EARTH, ECLIPJ2000);
+    pub const SSB_J2000: Frame = Frame::new(SOLAR_SYSTEM_BARYCENTER, J2000);
+    pub const MERCURY_J2000: Frame = Frame::new(MERCURY, J2000);
+    pub const VENUS_J2000: Frame = Frame::new(VENUS, J2000);
+    pub const EARTH_MOON_BARYCENTER_J2000: Frame = Frame::new(EARTH_MOON_BARYCENTER, J2000);
+    pub const MARS_BARYCENTER_J2000: Frame = Frame::new(MARS_BARYCENTER, J2000);
+    pub const JUPITER_BARYCENTER_J2000: Frame = Frame::new(JUPITER_BARYCENTER, J2000);
+    pub const SATURN_BARYCENTER_J2000: Frame = Frame::new(SATURN_BARYCENTER, J2000);
+    pub const URANUS_BARYCENTER_J2000: Frame = Frame::new(URANUS_BARYCENTER, J2000);
+    pub const NEPTUNE_BARYCENTER_J2000: Frame = Frame::new(NEPTUNE_BARYCENTER, J2000);
+    pub const PLUTO_BARYCENTER_J2000: Frame = Frame::new(PLUTO_BARYCENTER, J2000);
+    pub const SUN_J2000: Frame = Frame::new(SUN, J2000);
+    pub const LUNA_J2000: Frame = Frame::new(LUNA, J2000);
+    pub const EARTH_J2000: Frame = Frame::new(EARTH, J2000);
+    pub const EME2000: Frame = Frame::new(EARTH, J2000);
+    pub const EARTH_ECLIPJ2000: Frame = Frame::new(EARTH, ECLIPJ2000);
 
     /// Body fixed IAU rotation
-    pub const IAU_MERCURY_FRAME: Frame = Frame::from_ephem_orient(MERCURY, IAU_MERCURY);
-    pub const IAU_VENUS_FRAME: Frame = Frame::from_ephem_orient(VENUS, IAU_VENUS);
-    pub const IAU_EARTH_FRAME: Frame = Frame::from_ephem_orient(EARTH, IAU_EARTH);
-    pub const IAU_MARS_FRAME: Frame = Frame::from_ephem_orient(MARS, IAU_MARS);
-    pub const IAU_JUPITER_FRAME: Frame = Frame::from_ephem_orient(JUPITER, IAU_JUPITER);
-    pub const IAU_SATURN_FRAME: Frame = Frame::from_ephem_orient(SATURN, IAU_SATURN);
-    pub const IAU_NEPTUNE_FRAME: Frame = Frame::from_ephem_orient(NEPTUNE, IAU_NEPTUNE);
-    pub const IAU_URANUS_FRAME: Frame = Frame::from_ephem_orient(URANUS, IAU_URANUS);
+    pub const IAU_MERCURY_FRAME: Frame = Frame::new(MERCURY, IAU_MERCURY);
+    pub const IAU_VENUS_FRAME: Frame = Frame::new(VENUS, IAU_VENUS);
+    pub const IAU_EARTH_FRAME: Frame = Frame::new(EARTH, IAU_EARTH);
+    pub const IAU_MARS_FRAME: Frame = Frame::new(MARS, IAU_MARS);
+    pub const IAU_JUPITER_FRAME: Frame = Frame::new(JUPITER, IAU_JUPITER);
+    pub const IAU_SATURN_FRAME: Frame = Frame::new(SATURN, IAU_SATURN);
+    pub const IAU_NEPTUNE_FRAME: Frame = Frame::new(NEPTUNE, IAU_NEPTUNE);
+    pub const IAU_URANUS_FRAME: Frame = Frame::new(URANUS, IAU_URANUS);
 
     /// Common high precision frame
-    pub const EARTH_ITRF93: Frame = Frame::from_ephem_orient(EARTH, ITRF93);
+    pub const EARTH_ITRF93: Frame = Frame::new(EARTH, ITRF93);
 }
 
 #[cfg(test)]

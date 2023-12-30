@@ -42,6 +42,9 @@ pub mod prelude {
     pub use std::fs::File;
 }
 
+#[cfg(feature = "python")]
+mod py_errors;
+
 /// Defines the number of bytes in a double (prevents magic numbers)
 pub(crate) const DBL_SIZE: usize = 8;
 

@@ -38,11 +38,22 @@ pub mod planetary;
 pub mod spk;
 pub mod transform;
 
+#[cfg(feature = "metaload")]
+pub mod meta;
+
+#[cfg(feature = "python")]
+mod python;
+
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 /// An Almanac contains all of the loaded SPICE and ANISE data.
 ///
 /// # Limitations
 /// The stack space required depends on the maximum number of each type that can be loaded.
 #[derive(Clone, Default)]
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct Almanac {
     /// NAIF SPK is kept unchanged
     pub spk_data: [Option<SPK>; MAX_LOADED_SPKS],
@@ -75,6 +86,11 @@ impl fmt::Display for Almanac {
 }
 
 impl Almanac {
+    /// Initializes a new Almanac from the provided file path, guessing at the file type
+    pub fn new(path: &str) -> Result<Self, AlmanacError> {
+        Self::default().load(path)
+    }
+
     /// Loads the provided spacecraft data into a clone of this original Almanac.
     pub fn with_spacecraft_data(&self, spacecraft_data: SpacecraftDataSet) -> Self {
         let mut me = self.clone();
@@ -89,55 +105,49 @@ impl Almanac {
         me
     }
 
-    /// Generic function that tries to load whichever path is provided, guessing to the type.
-    pub fn load(&self, path: &str) -> Result<Self, AlmanacError> {
-        // Load the data onto the heap
-        let bytes = file2heap!(path).with_context(|_| LoadingSnafu {
-            path: path.to_string(),
-        })?;
-        info!("Loading almanac from {path}");
-        self.load_from_bytes(bytes)
-    }
-
     pub fn load_from_bytes(&self, bytes: Bytes) -> Result<Self, AlmanacError> {
         // Try to load as a SPICE DAF first (likely the most typical use case)
 
         // Load the header only
-        let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
-
-        if let Ok(fileid) = file_record.identification() {
-            match fileid {
-                "PCK" => {
-                    info!("Loading as DAF/PCK");
-                    let bpc = BPC::parse(bytes)
-                        .with_context(|_| BPCSnafu {
-                            action: "parsing bytes",
+        if let Some(file_record_bytes) = bytes.get(..FileRecord::SIZE) {
+            let file_record = FileRecord::read_from(file_record_bytes).unwrap();
+            if let Ok(fileid) = file_record.identification() {
+                return match fileid {
+                    "PCK" => {
+                        info!("Loading as DAF/PCK");
+                        let bpc = BPC::parse(bytes)
+                            .with_context(|_| BPCSnafu {
+                                action: "parsing bytes",
+                            })
+                            .with_context(|_| OrientationSnafu {
+                                action: "from generic loading",
+                            })?;
+                        self.with_bpc(bpc).with_context(|_| OrientationSnafu {
+                            action: "adding BPC file to context",
                         })
-                        .with_context(|_| OrientationSnafu {
-                            action: "from generic loading",
-                        })?;
-                    self.with_bpc(bpc).with_context(|_| OrientationSnafu {
-                        action: "adding BPC file to context",
-                    })
-                }
-                "SPK" => {
-                    info!("Loading as DAF/SPK");
-                    let spk = SPK::parse(bytes)
-                        .with_context(|_| SPKSnafu {
-                            action: "parsing bytes",
+                    }
+                    "SPK" => {
+                        info!("Loading as DAF/SPK");
+                        let spk = SPK::parse(bytes)
+                            .with_context(|_| SPKSnafu {
+                                action: "parsing bytes",
+                            })
+                            .with_context(|_| EphemerisSnafu {
+                                action: "from generic loading",
+                            })?;
+                        self.with_spk(spk).with_context(|_| EphemerisSnafu {
+                            action: "adding SPK file to context",
                         })
-                        .with_context(|_| EphemerisSnafu {
-                            action: "from generic loading",
-                        })?;
-                    self.with_spk(spk).with_context(|_| EphemerisSnafu {
-                        action: "adding SPK file to context",
-                    })
-                }
-                fileid => Err(AlmanacError::GenericError {
-                    err: format!("DAF/{fileid} is not yet supported"),
-                }),
+                    }
+                    fileid => Err(AlmanacError::GenericError {
+                        err: format!("DAF/{fileid} is not yet supported"),
+                    }),
+                };
             }
-        } else if let Ok(metadata) = Metadata::decode_header(&bytes) {
+            // Fall through to try to load as an ANISE file
+        }
+
+        if let Ok(metadata) = Metadata::decode_header(&bytes) {
             // Now, we can load this depending on the kind of data that it is
             match metadata.dataset_type {
                 DataSetType::NotApplicable => unreachable!("no such ANISE data yet"),
@@ -175,5 +185,25 @@ impl Almanac {
                 err: "Provided file cannot be inspected loaded directly in ANISE and may need a conversion first".to_string(),
             })
         }
+    }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl Almanac {
+    /// Generic function that tries to load the provided path guessing to the file type.
+    pub fn load(&self, path: &str) -> Result<Self, AlmanacError> {
+        // Load the data onto the heap
+        let bytes = file2heap!(path).with_context(|_| LoadingSnafu {
+            path: path.to_string(),
+        })?;
+        info!("Loading almanac from {path}");
+        self.load_from_bytes(bytes)
+    }
+
+    /// Initializes a new Almanac from the provided file path, guessing at the file type
+    #[cfg(feature = "python")]
+    #[new]
+    pub fn py_new(path: &str) -> Result<Self, AlmanacError> {
+        Self::new(path)
     }
 }

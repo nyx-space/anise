@@ -23,9 +23,7 @@ use anise::{
 
 #[test]
 fn test_binary_pck_load() {
-    if pretty_env_logger::try_init().is_err() {
-        println!("could not init env_logger");
-    }
+    let _ = pretty_env_logger::try_init();
 
     // Using the DE421 as demo because the correct data is in the DAF documentation
     let filename = "../data/earth_latest_high_prec.bpc";
@@ -50,9 +48,7 @@ fn test_binary_pck_load() {
 
 #[test]
 fn test_spk_load_bytes() {
-    if pretty_env_logger::try_init().is_err() {
-        println!("could not init env_logger");
-    }
+    let _ = pretty_env_logger::try_init();
 
     // Using the DE421 as demo because the correct data is in the DAF documentation
     let bytes = file2heap!("../data/de421.bsp").unwrap();
@@ -167,9 +163,7 @@ fn test_spk_load_bytes() {
 
 #[test]
 fn test_spk_rename_summary() {
-    if pretty_env_logger::try_init().is_err() {
-        println!("could not init env_logger");
-    }
+    let _ = pretty_env_logger::try_init();
 
     let path = "../data/variable-seg-size-hermite.bsp";
 
@@ -187,4 +181,14 @@ fn test_spk_rename_summary() {
         .nth_name(0, example_data.file_record().unwrap().summary_size()));
 
     example_data.persist("../target/rename-test.bsp").unwrap();
+}
+
+#[test]
+fn test_invalid_load() {
+    let _ = pretty_env_logger::try_init();
+
+    // Check that it doesn't fail if the file does not exist
+    assert!(BPC::load("i_dont_exist.bpc").is_err());
+    // Check that a file that's too small does not panic
+    assert!(BPC::load("../.gitattributes").is_err());
 }

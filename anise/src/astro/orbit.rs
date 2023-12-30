@@ -28,6 +28,11 @@ use hifitime::{Duration, Epoch, TimeUnits};
 use log::{error, info, warn};
 use snafu::ensure;
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+#[cfg(feature = "python")]
+use pyo3::types::PyType;
+
 /// If an orbit has an eccentricity below the following value, it is considered circular (only affects warning messages)
 pub const ECC_EPSILON: f64 = 1e-11;
 
@@ -253,6 +258,65 @@ impl CartesianState {
         Ok(self.radius_km.cross(&self.velocity_km_s))
     }
 
+    /// Returns the eccentricity vector (no unit)
+    pub fn evec(&self) -> Result<Vector3, PhysicsError> {
+        let r = self.radius_km;
+        ensure!(
+            self.rmag_km() > EPSILON,
+            RadiusSnafu {
+                action: "cannot compute eccentricity vector with zero radial state"
+            }
+        );
+        let v = self.velocity_km_s;
+        Ok(
+            ((v.norm().powi(2) - self.frame.mu_km3_s2()? / r.norm()) * r - (r.dot(&v)) * v)
+                / self.frame.mu_km3_s2()?,
+        )
+    }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl CartesianState {
+    /// Creates a new Orbit around the provided Celestial or Geoid frame from the Keplerian orbital elements.
+    ///
+    /// **Units:** km, none, degrees, degrees, degrees, degrees
+    ///
+    /// NOTE: The state is defined in Cartesian coordinates as they are non-singular. This causes rounding
+    /// errors when creating a state from its Keplerian orbital elements (cf. the state tests).
+    /// One should expect these errors to be on the order of 1e-12.
+    #[cfg(feature = "python")]
+    #[classmethod]
+    pub fn from_keplerian(
+        _cls: &PyType,
+        sma: f64,
+        ecc: f64,
+        inc: f64,
+        raan: f64,
+        aop: f64,
+        ta: f64,
+        epoch: Epoch,
+        frame: Frame,
+    ) -> PhysicsResult<Self> {
+        Self::try_keplerian(sma, ecc, inc, raan, aop, ta, epoch, frame)
+    }
+
+    /// Attempts to create a new Orbit from the provided radii of apoapsis and periapsis, in kilometers
+    #[cfg(feature = "python")]
+    #[classmethod]
+    pub fn from_keplerian_apsis_radii(
+        _cls: &PyType,
+        r_a: f64,
+        r_p: f64,
+        inc: f64,
+        raan: f64,
+        aop: f64,
+        ta: f64,
+        epoch: Epoch,
+        frame: Frame,
+    ) -> PhysicsResult<Self> {
+        Self::try_keplerian_apsis_radii(r_a, r_p, inc, raan, aop, ta, epoch, frame)
+    }
+
     /// Returns the orbital momentum value on the X axis
     pub fn hx(&self) -> PhysicsResult<f64> {
         Ok(self.hvec()?[0])
@@ -309,15 +373,15 @@ impl CartesianState {
     }
 
     /// Returns a copy of the state with a new SMA
-    pub fn with_sma(self, new_sma_km: f64) -> PhysicsResult<Self> {
-        let mut me = self;
+    pub fn with_sma(&self, new_sma_km: f64) -> PhysicsResult<Self> {
+        let mut me = *self;
         me.set_sma(new_sma_km)?;
         Ok(me)
     }
 
     /// Returns a copy of the state with a provided SMA added to the current one
-    pub fn add_sma(self, delta_sma: f64) -> PhysicsResult<Self> {
-        let mut me = self;
+    pub fn add_sma(&self, delta_sma: f64) -> PhysicsResult<Self> {
+        let mut me = *self;
         me.set_sma(me.sma_km()? + delta_sma)?;
         Ok(me)
     }
@@ -329,22 +393,6 @@ impl CartesianState {
             * (self.sma_km()?.powi(3) / self.frame.mu_km3_s2()?)
                 .sqrt()
                 .seconds())
-    }
-
-    /// Returns the eccentricity vector (no unit)
-    pub fn evec(&self) -> Result<Vector3, PhysicsError> {
-        let r = self.radius_km;
-        ensure!(
-            self.rmag_km() > EPSILON,
-            RadiusSnafu {
-                action: "cannot compute eccentricity vector with zero radial state"
-            }
-        );
-        let v = self.velocity_km_s;
-        Ok(
-            ((v.norm().powi(2) - self.frame.mu_km3_s2()? / r.norm()) * r - (r.dot(&v)) * v)
-                / self.frame.mu_km3_s2()?,
-        )
     }
 
     /// Returns the eccentricity (no unit)
@@ -371,15 +419,15 @@ impl CartesianState {
     }
 
     /// Returns a copy of the state with a new ECC
-    pub fn with_ecc(self, new_ecc: f64) -> PhysicsResult<Self> {
-        let mut me = self;
+    pub fn with_ecc(&self, new_ecc: f64) -> PhysicsResult<Self> {
+        let mut me = *self;
         me.set_ecc(new_ecc)?;
         Ok(me)
     }
 
     /// Returns a copy of the state with a provided ECC added to the current one
-    pub fn add_ecc(self, delta_ecc: f64) -> PhysicsResult<Self> {
-        let mut me = self;
+    pub fn add_ecc(&self, delta_ecc: f64) -> PhysicsResult<Self> {
+        let mut me = *self;
         me.set_ecc(me.ecc()? + delta_ecc)?;
         Ok(me)
     }
@@ -408,15 +456,15 @@ impl CartesianState {
     }
 
     /// Returns a copy of the state with a new INC
-    pub fn with_inc_deg(self, new_inc_deg: f64) -> PhysicsResult<Self> {
-        let mut me = self;
+    pub fn with_inc_deg(&self, new_inc_deg: f64) -> PhysicsResult<Self> {
+        let mut me = *self;
         me.set_inc_deg(new_inc_deg)?;
         Ok(me)
     }
 
     /// Returns a copy of the state with a provided INC added to the current one
-    pub fn add_inc_deg(self, delta_inc_deg: f64) -> PhysicsResult<Self> {
-        let mut me = self;
+    pub fn add_inc_deg(&self, delta_inc_deg: f64) -> PhysicsResult<Self> {
+        let mut me = *self;
         me.set_inc_deg(me.inc_deg()? + delta_inc_deg)?;
         Ok(me)
     }
@@ -458,15 +506,15 @@ impl CartesianState {
     }
 
     /// Returns a copy of the state with a new AOP
-    pub fn with_aop_deg(self, new_aop_deg: f64) -> PhysicsResult<Self> {
-        let mut me = self;
+    pub fn with_aop_deg(&self, new_aop_deg: f64) -> PhysicsResult<Self> {
+        let mut me = *self;
         me.set_aop_deg(new_aop_deg)?;
         Ok(me)
     }
 
     /// Returns a copy of the state with a provided AOP added to the current one
-    pub fn add_aop_deg(self, delta_aop_deg: f64) -> PhysicsResult<Self> {
-        let mut me = self;
+    pub fn add_aop_deg(&self, delta_aop_deg: f64) -> PhysicsResult<Self> {
+        let mut me = *self;
         me.set_aop_deg(me.aop_deg()? + delta_aop_deg)?;
         Ok(me)
     }
@@ -508,15 +556,15 @@ impl CartesianState {
     }
 
     /// Returns a copy of the state with a new RAAN
-    pub fn with_raan_deg(self, new_raan_deg: f64) -> PhysicsResult<Self> {
-        let mut me = self;
+    pub fn with_raan_deg(&self, new_raan_deg: f64) -> PhysicsResult<Self> {
+        let mut me = *self;
         me.set_raan_deg(new_raan_deg)?;
         Ok(me)
     }
 
     /// Returns a copy of the state with a provided RAAN added to the current one
-    pub fn add_raan_deg(self, delta_raan_deg: f64) -> PhysicsResult<Self> {
-        let mut me = self;
+    pub fn add_raan_deg(&self, delta_raan_deg: f64) -> PhysicsResult<Self> {
+        let mut me = *self;
         me.set_raan_deg(me.raan_deg()? + delta_raan_deg)?;
         Ok(me)
     }
@@ -571,21 +619,25 @@ impl CartesianState {
     }
 
     /// Returns a copy of the state with a new TA
-    pub fn with_ta_deg(self, new_ta_deg: f64) -> PhysicsResult<Self> {
-        let mut me = self;
+    pub fn with_ta_deg(&self, new_ta_deg: f64) -> PhysicsResult<Self> {
+        let mut me = *self;
         me.set_ta_deg(new_ta_deg)?;
         Ok(me)
     }
 
     /// Returns a copy of the state with a provided TA added to the current one
-    pub fn add_ta_deg(self, delta_ta_deg: f64) -> PhysicsResult<Self> {
-        let mut me = self;
+    pub fn add_ta_deg(&self, delta_ta_deg: f64) -> PhysicsResult<Self> {
+        let mut me = *self;
         me.set_ta_deg(me.ta_deg()? + delta_ta_deg)?;
         Ok(me)
     }
 
     /// Returns a copy of this state with the provided apoasis and periapsis
-    pub fn with_apoapsis_periapsis_km(self, new_ra_km: f64, new_rp_km: f64) -> PhysicsResult<Self> {
+    pub fn with_apoapsis_periapsis_km(
+        &self,
+        new_ra_km: f64,
+        new_rp_km: f64,
+    ) -> PhysicsResult<Self> {
         Self::try_keplerian_apsis_radii(
             new_ra_km,
             new_rp_km,
@@ -600,7 +652,7 @@ impl CartesianState {
 
     /// Returns a copy of this state with the provided apoasis and periapsis added to the current values
     pub fn add_apoapsis_periapsis_km(
-        self,
+        &self,
         delta_ra_km: f64,
         delta_rp_km: f64,
     ) -> PhysicsResult<Self> {
@@ -816,7 +868,7 @@ impl fmt::UpperHex for Orbit {
                 format!(
                     "{:.*}",
                     decimals,
-                    self.geodetic_height().map_err(|err| {
+                    self.geodetic_height_km().map_err(|err| {
                         error!("{err}");
                         fmt::Error
                     })?
@@ -824,12 +876,12 @@ impl fmt::UpperHex for Orbit {
                 format!(
                     "{:.*}",
                     decimals,
-                    self.geodetic_latitude().map_err(|err| {
+                    self.geodetic_latitude_deg().map_err(|err| {
                         error!("{err}");
                         fmt::Error
                     })?
                 ),
-                format!("{:.*}", decimals, self.geodetic_longitude()),
+                format!("{:.*}", decimals, self.geodetic_longitude_deg()),
             )
         }
     }

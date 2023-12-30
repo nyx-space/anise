@@ -22,7 +22,7 @@ use bytes::Bytes;
 use core::hash::Hash;
 use core::ops::Deref;
 use hifitime::Epoch;
-use log::{error, trace, warn};
+use log::{debug, error, trace};
 use snafu::ResultExt;
 use std::fmt::Debug;
 use std::marker::PhantomData;
@@ -113,7 +113,20 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     pub fn file_record(&self) -> Result<FileRecord, DAFError> {
-        let file_record = FileRecord::read_from(&self.bytes[..FileRecord::SIZE]).unwrap();
+        let file_record = FileRecord::read_from(
+            self.bytes
+                .get(..FileRecord::SIZE)
+                .ok_or_else(|| DecodingError::InaccessibleBytes {
+                    start: 0,
+                    end: FileRecord::SIZE,
+                    size: self.bytes.len(),
+                })
+                .with_context(|_| DecodingDataSnafu {
+                    idx: 0_usize,
+                    kind: R::NAME,
+                })?,
+        )
+        .unwrap();
         // Check that the endian-ness is compatible with this platform.
         file_record
             .endianness()
@@ -237,7 +250,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                     trace!("Found {id} in position {idx}: {summary:?}");
                     return Ok((summary, idx));
                 } else {
-                    warn!(
+                    debug!(
                         "Summary {id} not valid at {epoch:?} (only from {:?} to {:?}, offset of {} - {})",
                         summary.start_epoch(),
                         summary.end_epoch(),
@@ -338,6 +351,8 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             ) {
                 Ok(s) => rslt += s.replace('\u{0}', "\n").trim(),
                 Err(e) => {
+                    // At this point, we know that the bytes are accessible because the embedded `match`
+                    // did not fail, so we can perform a direct access.
                     let valid_s = core::str::from_utf8(
                         &self.bytes[rid * RCRD_LEN..(rid * RCRD_LEN + e.valid_up_to())],
                     )
@@ -355,7 +370,6 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     /// Writes the contents of this DAF file to a new location.
-
     pub fn persist<P: AsRef<Path>>(&self, path: P) -> IoResult<()> {
         let mut fs = File::create(path)?;
 

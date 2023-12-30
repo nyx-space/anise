@@ -22,9 +22,7 @@ const VELOCITY_EPSILON_KM_S: f64 = 5e-9;
 
 #[test]
 fn de440s_translation_verif_venus2emb() {
-    if pretty_env_logger::try_init().is_err() {
-        println!("could not init env_logger");
-    }
+    let _ = pretty_env_logger::try_init();
 
     // "Load" the file via a memory map (avoids allocations)
     let path = "../data/de440s.bsp";
@@ -53,7 +51,7 @@ fn de440s_translation_verif_venus2emb() {
             VENUS_J2000,
             EARTH_MOON_BARYCENTER_J2000,
             epoch,
-            Aberration::None,
+            Aberration::NotSet,
         )
         .unwrap();
 
@@ -107,9 +105,7 @@ fn de440s_translation_verif_venus2emb() {
 
 #[test]
 fn de438s_translation_verif_venus2luna() {
-    if pretty_env_logger::try_init().is_err() {
-        println!("could not init env_logger");
-    }
+    let _ = pretty_env_logger::try_init();
 
     // "Load" the file via a memory map (avoids allocations)
     let path = "../data/de440s.bsp";
@@ -138,7 +134,7 @@ fn de438s_translation_verif_venus2luna() {
     */
 
     let state = ctx
-        .translate_from_to(VENUS_J2000, LUNA_J2000, epoch, Aberration::None)
+        .translate_from_to(VENUS_J2000, LUNA_J2000, epoch, Aberration::NotSet)
         .unwrap();
 
     let pos_expct_km = Vector3::new(
@@ -199,9 +195,7 @@ fn de438s_translation_verif_venus2luna() {
 
 #[test]
 fn de438s_translation_verif_emb2luna() {
-    if pretty_env_logger::try_init().is_err() {
-        println!("could not init env_logger");
-    }
+    let _ = pretty_env_logger::try_init();
 
     // "Load" the file via a memory map (avoids allocations)
     let path = "../data/de440s.bsp";
@@ -233,7 +227,7 @@ fn de438s_translation_verif_emb2luna() {
             EARTH_MOON_BARYCENTER_J2000,
             LUNA_J2000,
             epoch,
-            Aberration::None,
+            Aberration::NotSet,
         )
         .unwrap();
 
@@ -277,7 +271,7 @@ fn de438s_translation_verif_emb2luna() {
             LUNA_J2000,
             EARTH_MOON_BARYCENTER_J2000,
             epoch,
-            Aberration::None,
+            Aberration::NotSet,
         )
         .unwrap();
 
@@ -427,7 +421,7 @@ fn hermite_query() {
             summary.target_frame(),
             summary.center_frame(),
             summary.start_epoch() + summary_duration * 0.5,
-            Aberration::None,
+            Aberration::NotSet,
         )
         .unwrap();
 
@@ -440,7 +434,7 @@ fn hermite_query() {
             summary.target_frame(),
             summary.center_frame(),
             summary.start_epoch(),
-            Aberration::None,
+            Aberration::NotSet,
         )
         .is_ok());
 

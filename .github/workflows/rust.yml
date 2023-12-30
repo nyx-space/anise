@@ -32,7 +32,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --workspace --exclude anise-gui
+          args: --workspace --exclude anise-gui --exclude anise-py
 
   test:
     name: Run tests
@@ -54,10 +54,10 @@ jobs:
         run: sh dev-env-setup.sh && cd .. # Return to root
 
       - name: Test debug
-        run: cargo test --workspace --exclude anise-gui
+        run: cargo test --workspace --exclude anise-gui --exclude anise-py
 
       - name: Test release
-        run: cargo test --release --workspace --exclude anise-gui
+        run: cargo test --release --workspace --exclude anise-gui --exclude anise-py
 
   lints:
     name: Lints
@@ -108,22 +108,23 @@ jobs:
 
       - name: CLI SPK
         run: |
-          cargo run --bin anise-cli -- inspect data/gmat-hermite.bsp
-          cargo run --bin anise-cli -- inspect data/de440.bsp
+          cargo build --bin anise-cli --workspace --exclude anise-py
+          ./target/debug/anise-cli inspect data/gmat-hermite.bsp
+          ./target/debug/anise-cli inspect data/de440.bsp
 
       - name: Rust-SPICE JPL DE validation
-        run: RUST_BACKTRACE=1 cargo test validate_jplde --features spkezr_validation --release --workspace --exclude anise-gui -- --nocapture --include-ignored --test-threads 1
+        run: RUST_BACKTRACE=1 cargo test validate_jplde --features spkezr_validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
 
       - name: Rust-SPICE hermite validation
-        run: RUST_BACKTRACE=1 cargo test validate_hermite_type13_ --features spkezr_validation --release --workspace --exclude anise-gui -- --nocapture --include-ignored --test-threads 1
+        run: RUST_BACKTRACE=1 cargo test validate_hermite_type13_ --features spkezr_validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
       
       - name: Rust-SPICE PCK validation
-        run: RUST_BACKTRACE=1 cargo test validate_iau_rotation_to_parent --release --workspace --exclude anise-gui -- --nocapture --ignored
+        run: RUST_BACKTRACE=1 cargo test validate_iau_rotation_to_parent --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --ignored
       
       - name: Rust-SPICE BPC validation
         run: | 
-          RUST_BACKTRACE=1 cargo test validate_bpc_ --release --workspace --exclude anise-gui -- --nocapture --include-ignored --test-threads 1
-          RUST_BACKTRACE=1 cargo test de440s_translation_verif_venus2emb --release --workspace --exclude anise-gui -- --nocapture --include-ignored --test-threads 1
+          RUST_BACKTRACE=1 cargo test validate_bpc_ --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
+          RUST_BACKTRACE=1 cargo test de440s_translation_verif_venus2emb --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
 
       # Now analyze the results and create pretty plots
       - uses: actions/setup-python@v4
@@ -169,12 +170,12 @@ jobs:
       - name: Generate coverage report
         run: |
           cargo llvm-cov clean --workspace
-          cargo llvm-cov test --workspace --exclude anise-gui --no-report -- --test-threads=1
-          cargo llvm-cov test --workspace --exclude anise-gui --no-report --tests -- compile_fail
-          cargo llvm-cov test --workspace --exclude anise-gui --no-report validate_iau_rotation_to_parent -- --nocapture --ignored
-          cargo llvm-cov test --workspace --exclude anise-gui --no-report validate_bpc_to_iau_rotations -- --nocapture --ignored
-          cargo llvm-cov test --workspace --exclude anise-gui --no-report validate_jplde_de440s --features spkezr_validation -- --nocapture --ignored
-          cargo llvm-cov test --workspace --exclude anise-gui --no-report validate_hermite_type13_from_gmat --features spkezr_validation -- --nocapture --ignored
+          cargo llvm-cov test --workspace --exclude anise-gui --exclude anise-py --no-report -- --test-threads=1
+          cargo llvm-cov test --workspace --exclude anise-gui --exclude anise-py --no-report --tests -- compile_fail
+          cargo llvm-cov test --workspace --exclude anise-gui --exclude anise-py --no-report validate_iau_rotation_to_parent -- --nocapture --ignored
+          cargo llvm-cov test --workspace --exclude anise-gui --exclude anise-py --no-report validate_bpc_to_iau_rotations -- --nocapture --ignored
+          cargo llvm-cov test --workspace --exclude anise-gui --exclude anise-py --no-report validate_jplde_de440s --features spkezr_validation -- --nocapture --ignored
+          cargo llvm-cov test --workspace --exclude anise-gui --exclude anise-py --no-report validate_hermite_type13_from_gmat --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov report --lcov > lcov.txt
         env:
           RUSTFLAGS: --cfg __ui_tests

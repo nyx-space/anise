@@ -14,15 +14,9 @@ fn test_load_ctx() {
     let dataset = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
 
     // Load BSP and BPC
-    let ctx = Almanac::default();
+    let ctx = Almanac::new("../data/de440.bsp").unwrap();
 
-    let spk = SPK::load("../data/de440.bsp").unwrap();
-
-    let mut loaded_ctx = ctx
-        .with_spk(spk)
-        .unwrap()
-        .load("../data/earth_latest_high_prec.bpc")
-        .unwrap();
+    let mut loaded_ctx = ctx.load("../data/earth_latest_high_prec.bpc").unwrap();
 
     loaded_ctx.planetary_data = dataset;
 
@@ -38,14 +32,14 @@ fn test_state_transformation() {
 
     let spk = SPK::load("../data/de440.bsp").unwrap();
     let bpc = BPC::load("../data/earth_latest_high_prec.bpc").unwrap();
-    let pck = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
 
     let almanac = ctx
         .with_spk(spk)
         .unwrap()
         .with_bpc(bpc)
         .unwrap()
-        .with_planetary_data(pck);
+        .load("../data/pck08.pca")
+        .unwrap();
 
     // Let's build an orbit
     // Start by grabbing a copy of the frame.
@@ -59,7 +53,7 @@ fn test_state_transformation() {
 
     // Transform that into another frame.
     let state_itrf93 = almanac
-        .transform_to(orig_state, EARTH_ITRF93, Aberration::None)
+        .transform_to(orig_state, EARTH_ITRF93, Aberration::NotSet)
         .unwrap();
 
     println!("{orig_state:x}");
@@ -67,7 +61,7 @@ fn test_state_transformation() {
 
     // Convert back
     let from_state_itrf93_to_eme2k = almanac
-        .transform_to(state_itrf93, EARTH_J2000, Aberration::None)
+        .transform_to(state_itrf93, EARTH_J2000, Aberration::NotSet)
         .unwrap();
 
     println!("{from_state_itrf93_to_eme2k}");

@@ -20,11 +20,16 @@ use hifitime::Epoch;
 use nalgebra::Vector6;
 use snafu::ensure;
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 /// Defines a Cartesian state in a given frame at a given epoch in a given time scale. Radius data is expressed in kilometers. Velocity data is expressed in kilometers per second.
 /// Regardless of the constructor used, this struct stores all the state information in Cartesian coordinates as these are always non singular.
 ///
 /// Unless noted otherwise, algorithms are from GMAT 2016a [StateConversionUtil.cpp](https://github.com/ChristopherRabotin/GMAT/blob/37201a6290e7f7b941bc98ee973a527a5857104b/src/base/util/StateConversionUtil.cpp).
 #[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "python", pyclass(name = "Orbit"))]
+#[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct CartesianState {
     /// Position radius in kilometers
     pub radius_km: Vector3,
@@ -98,16 +103,6 @@ impl CartesianState {
         )
     }
 
-    /// Returns the magnitude of the radius vector in km
-    pub fn rmag_km(&self) -> f64 {
-        self.radius_km.norm()
-    }
-
-    /// Returns the magnitude of the velocity vector in km/s
-    pub fn vmag_km_s(&self) -> f64 {
-        self.velocity_km_s.norm()
-    }
-
     /// Returns a copy of the state with a new radius
     pub fn with_radius_km(self, new_radius_km: Vector3) -> Self {
         let mut me = self;
@@ -134,20 +129,6 @@ impl CartesianState {
         )
     }
 
-    /// Returns the distance in kilometers between this state and another state, if both frame match (epoch does not need to match).
-    pub fn distance_to(&self, other: &Self) -> PhysicsResult<f64> {
-        ensure!(
-            self.frame == other.frame,
-            FrameMismatchSnafu {
-                action: "translating states",
-                frame1: self.frame,
-                frame2: other.frame
-            }
-        );
-
-        Ok(self.distance_to_point_km(&other.radius_km))
-    }
-
     /// Returns the distance in kilometers between this state and a point assumed to be in the same frame.
     pub fn distance_to_point_km(&self, other_km: &Vector3) -> f64 {
         (self.radius_km - other_km).norm()
@@ -163,6 +144,54 @@ impl CartesianState {
         perpv(&self.velocity_km_s, &self.r_hat()) / self.rmag_km()
     }
 
+    /// Adds the other state to this state WITHOUT checking if the frames match.
+    pub(crate) fn add_unchecked(&self, other: &Self) -> Self {
+        Self {
+            radius_km: self.radius_km + other.radius_km,
+            velocity_km_s: self.velocity_km_s + other.velocity_km_s,
+            epoch: self.epoch,
+            frame: self.frame,
+        }
+    }
+
+    /// Subs the other state to this state WITHOUT checking if the frames match.
+    pub(crate) fn sub_unchecked(&self, other: &Self) -> Self {
+        Self {
+            radius_km: self.radius_km - other.radius_km,
+            velocity_km_s: self.velocity_km_s - other.velocity_km_s,
+            epoch: self.epoch,
+            frame: self.frame,
+        }
+    }
+}
+
+// Methods shared with Python
+#[cfg_attr(feature = "python", pymethods)]
+impl CartesianState {
+    /// Returns the magnitude of the radius vector in km
+    pub fn rmag_km(&self) -> f64 {
+        self.radius_km.norm()
+    }
+
+    /// Returns the magnitude of the velocity vector in km/s
+    pub fn vmag_km_s(&self) -> f64 {
+        self.velocity_km_s.norm()
+    }
+
+    /// Returns the distance in kilometers between this state and another state, if both frame match (epoch does not need to match).
+    pub fn distance_to(&self, other: &Self) -> PhysicsResult<f64> {
+        ensure!(
+            self.frame == other.frame,
+            FrameMismatchSnafu {
+                action: "computing distance between states",
+                frame1: self.frame,
+                frame2: other.frame
+            }
+        );
+
+        Ok(self.distance_to_point_km(&other.radius_km))
+    }
+
     /// Returns whether this orbit and another are equal within the specified radial and velocity absolute tolerances
     pub fn eq_within(&self, other: &Self, radial_tol_km: f64, velocity_tol_km_s: f64) -> bool {
         self.epoch == other.epoch
@@ -174,26 +203,6 @@ impl CartesianState {
             && (self.velocity_km_s.z - other.velocity_km_s.z).abs() < velocity_tol_km_s
             && self.frame == other.frame
     }
-
-    /// Adds the other state to this state WITHOUT checking if the frames match.
-    pub(crate) fn add_unchecked(&self, other: Self) -> Self {
-        Self {
-            radius_km: self.radius_km + other.radius_km,
-            velocity_km_s: self.velocity_km_s + other.velocity_km_s,
-            epoch: self.epoch,
-            frame: self.frame,
-        }
-    }
-
-    /// Subs the other state to this state WITHOUT checking if the frames match.
-    pub(crate) fn sub_unchecked(&self, other: Self) -> Self {
-        Self {
-            radius_km: self.radius_km - other.radius_km,
-            velocity_km_s: self.velocity_km_s - other.velocity_km_s,
-            epoch: self.epoch,
-            frame: self.frame,
-        }
-    }
 }
 
 impl Add for CartesianState {
@@ -204,7 +213,7 @@ impl Add for CartesianState {
         ensure!(
             self.epoch == other.epoch,
             EpochMismatchSnafu {
-                action: "translating states",
+                action: "adding states",
                 epoch1: self.epoch,
                 epoch2: other.epoch
             }
@@ -213,13 +222,13 @@ impl Add for CartesianState {
         ensure!(
             self.frame.ephemeris_id == other.frame.ephemeris_id,
             FrameMismatchSnafu {
-                action: "translating states",
+                action: "adding states",
                 frame1: self.frame,
                 frame2: other.frame
             }
         );
 
-        Ok(self.add_unchecked(other))
+        Ok(self.add_unchecked(&other))
     }
 }
 
@@ -240,7 +249,7 @@ impl Sub for CartesianState {
         ensure!(
             self.epoch == other.epoch,
             EpochMismatchSnafu {
-                action: "translating states",
+                action: "subtracting states",
                 epoch1: self.epoch,
                 epoch2: other.epoch
             }
@@ -249,13 +258,13 @@ impl Sub for CartesianState {
         ensure!(
             self.frame.ephemeris_id == other.frame.ephemeris_id,
             FrameMismatchSnafu {
-                action: "translating states",
+                action: "subtracting states",
                 frame1: self.frame,
                 frame2: other.frame
             }
         );
 
-        Ok(self.sub_unchecked(other))
+        Ok(self.sub_unchecked(&other))
     }
 }
 
@@ -333,7 +342,7 @@ mod cartesian_state_ut {
         assert_eq!(
             s1 + s2,
             Err(PhysicsError::EpochMismatch {
-                action: "translating states",
+                action: "adding states",
                 epoch1: e,
                 epoch2: e2,
             })
@@ -351,7 +360,7 @@ mod cartesian_state_ut {
         assert_eq!(
             s1 + s2,
             Err(PhysicsError::FrameMismatch {
-                action: "translating states",
+                action: "adding states",
                 frame1: frame.into(),
                 frame2: frame2.into(),
             })

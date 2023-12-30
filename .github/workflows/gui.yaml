@@ -32,7 +32,7 @@ jobs:
                 execute_install_scripts: true
             
             - name: Build Linux executable
-              run: cargo build --release --bin anise-gui
+              run: cargo build --release --bin anise-gui --workspace --exclude anise-py
             
             - name: Save executable
               uses: actions/upload-artifact@v3
@@ -54,7 +54,7 @@ jobs:
               uses: Swatinem/rust-cache@v2
     
             - name: Build Windows executable
-              run: cargo build --release --bin anise-gui
+              run: cargo build --release --bin anise-gui --workspace --exclude anise-py
 
             - name: Save executable
               uses: actions/upload-artifact@v3

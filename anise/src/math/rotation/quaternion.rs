@@ -18,8 +18,6 @@ use der::{Decode, Encode, Reader, Writer};
 use nalgebra::Matrix4x3;
 use snafu::ensure;
 
-pub use core::f64::consts::{FRAC_PI_2, FRAC_PI_3, FRAC_PI_4, PI, TAU};
-
 use super::EPSILON_RAD;
 
 /// Quaternion will always be a unit quaternion in ANISE, cf. [EulerParameter].
@@ -380,8 +378,7 @@ mod ut_quaternion {
     };
 
     use super::{EulerParameter, Quaternion, Vector3, EPSILON};
-    use core::f64::consts::FRAC_PI_2;
-    use std::f64::consts::PI;
+    use core::f64::consts::{FRAC_PI_2, PI};
 
     #[test]
     fn test_quat_frames() {
