@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::{perpv, Vector3};
+use super::{perp_vector, Vector3};
 use crate::{
     astro::PhysicsResult,
     errors::{EpochMismatchSnafu, FrameMismatchSnafu, PhysicsError},
@@ -141,7 +141,7 @@ impl CartesianState {
 
     /// Returns the unit vector in the direction of the state velocity
     pub fn v_hat(&self) -> Vector3 {
-        perpv(&self.velocity_km_s, &self.r_hat()) / self.rmag_km()
+        perp_vector(&self.velocity_km_s, &self.r_hat()) / self.rmag_km()
     }
 
     /// Adds the other state to this state WITHOUT checking if the frames match.

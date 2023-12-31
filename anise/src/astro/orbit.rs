@@ -12,7 +12,7 @@ use super::PhysicsResult;
 use crate::{
     errors::{
         HyperbolicTrueAnomalySnafu, InfiniteValueSnafu, ParabolicEccentricitySnafu,
-        ParabolicSemiParamSnafu, PhysicsError, RadiusSnafu,
+        ParabolicSemiParamSnafu, PhysicsError, RadiusSnafu, VelocitySnafu,
     },
     math::{
         angles::{between_0_360, between_pm_180},
@@ -251,7 +251,7 @@ impl CartesianState {
         );
         ensure!(
             self.vmag_km_s() > EPSILON,
-            RadiusSnafu {
+            VelocitySnafu {
                 action: "cannot compute orbital momentum vector with zero velocity"
             }
         );

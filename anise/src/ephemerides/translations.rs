@@ -114,7 +114,7 @@ impl Almanac {
         to_frame: Frame,
         epoch: Epoch,
     ) -> Result<CartesianState, EphemerisError> {
-        self.translate_from_to(from_frame, to_frame, epoch, Aberration::NotSet)
+        self.translate_from_to(from_frame, to_frame, epoch, Aberration::NoCorrection)
     }
 
     /// Translates the provided Cartesian state into the requested frame
