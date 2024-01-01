@@ -8,69 +8,125 @@
  * Documentation: https://nyxspace.com/
  */
 
-use core::f64::EPSILON;
-
 use crate::{
     constants::SPEED_OF_LIGHT_KM_S,
     errors::{AberrationSnafu, VelocitySnafu},
     math::{rotate_vector, Vector3},
 };
+use core::f64::EPSILON;
+use core::fmt;
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 use snafu::ensure;
 
 use super::PhysicsResult;
+use crate::errors::PhysicsError;
 
 /// Defines the available aberration corrections.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "python", pyclass)]
-#[cfg_attr(feature = "python", pyo3(module = "anise."))]
-pub enum Aberration {
-    NoCorrection,
-    LightTime,
-    ConvergedLightTime,
-    LightTimeStellar,
-    ConvergedLightTimeStellar,
-    TxLightTime,
-    TxConvergedLightTime,
-    TxLightTimeStellar,
-    TxConvergedLightTimeStellar,
+#[cfg_attr(feature = "python", pyo3(module = "anise"))]
+#[cfg_attr(feature = "python", pyo3(get_all, set_all))]
+pub struct Aberration {
+    pub converged: bool,
+    pub stellar: bool,
+    pub transmit_mode: bool,
+}
+
+impl Aberration {
+    pub const NONE: Option<Self> = None;
+    pub const LT: Option<Self> = Some(Self {
+        converged: false,
+        stellar: false,
+        transmit_mode: false,
+    });
+    pub const LT_S: Option<Self> = Some(Self {
+        converged: false,
+        stellar: true,
+        transmit_mode: false,
+    });
+    pub const CN: Option<Self> = Some(Self {
+        converged: true,
+        stellar: false,
+        transmit_mode: false,
+    });
+    pub const CN_S: Option<Self> = Some(Self {
+        converged: true,
+        stellar: true,
+        transmit_mode: false,
+    });
+    pub const XLT: Option<Self> = Some(Self {
+        converged: false,
+        stellar: false,
+        transmit_mode: true,
+    });
+    pub const XLT_S: Option<Self> = Some(Self {
+        converged: false,
+        stellar: true,
+        transmit_mode: true,
+    });
+    pub const XCN: Option<Self> = Some(Self {
+        converged: true,
+        stellar: false,
+        transmit_mode: true,
+    });
+    pub const XCN_S: Option<Self> = Some(Self {
+        converged: true,
+        stellar: true,
+        transmit_mode: true,
+    });
+
+    pub fn new(flag: &str) -> PhysicsResult<Option<Self>> {
+        match flag.trim() {
+            "NONE" => Ok(Self::NONE),
+            "LT" => Ok(Self::LT),
+            "LT+S" => Ok(Self::LT_S),
+            "CN" => Ok(Self::CN),
+            "CN+S" => Ok(Self::CN_S),
+            "XLT" => Ok(Self::XLT),
+            "XLT+S" => Ok(Self::XLT_S),
+            "XCN" => Ok(Self::XCN),
+            "XCN+S" => Ok(Self::XCN_S),
+            _ => Err(PhysicsError::AberrationError {
+                action: "unknown aberration configuration name",
+            }),
+        }
+    }
 }
 
 #[cfg_attr(feature = "python", pymethods)]
 impl Aberration {
-    /// Returns whether this Aberration setting uses a Newtonian convergence criteria.
-    pub const fn is_converged(&self) -> bool {
-        matches!(
-            self,
-            Self::ConvergedLightTime
-                | Self::ConvergedLightTimeStellar
-                | Self::TxConvergedLightTime
-                | Self::TxConvergedLightTimeStellar
-        )
+    #[cfg(feature = "python")]
+    #[new]
+    fn py_new(name: String) -> PhysicsResult<Self> {
+        match Self::new(&name)? {
+            Some(ab_corr) => Ok(ab_corr),
+            None => Err(PhysicsError::AberrationError {
+                action: "just uses `None` in Python instead",
+            }),
+        }
     }
 
-    /// Returns whether this Aberration setting computes the transmittion case.
-    pub const fn is_transmit(&self) -> bool {
-        matches!(
-            self,
-            Self::TxLightTime
-                | Self::TxConvergedLightTime
-                | Self::TxLightTimeStellar
-                | Self::TxConvergedLightTimeStellar
-        )
+    #[cfg(feature = "python")]
+    fn __eq__(&self, other: &Self) -> bool {
+        self == other
     }
 
-    /// Returns whether this Aberration setting computes stellar corrections.
-    pub const fn has_stellar(&self) -> bool {
-        matches!(
-            self,
-            Self::LightTimeStellar
-                | Self::ConvergedLightTimeStellar
-                | Self::TxLightTimeStellar
-                | Self::TxConvergedLightTimeStellar
-        )
+    #[cfg(feature = "python")]
+    fn __str__(&self) -> String {
+        format!("{self}")
+    }
+
+    #[cfg(feature = "python")]
+    fn __repr__(&self) -> String {
+        format!("{self:?} (@{self:p})")
+    }
+}
+
+impl fmt::Display for Aberration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{self:?}")
     }
 }
 
@@ -109,7 +165,7 @@ pub fn stellar_aberration(
     ab_corr: Aberration,
 ) -> PhysicsResult<Vector3> {
     ensure!(
-        ab_corr.has_stellar(),
+        ab_corr.stellar,
         AberrationSnafu {
             action: "stellar correction not available for this aberration"
         }
@@ -119,7 +175,7 @@ pub fn stellar_aberration(
     // with the target's position, will yield the inverse of the usual stellar
     // aberration correction, which is exactly what we seek.
 
-    let obs_velocity_km_s = if ab_corr.is_transmit() {
+    let obs_velocity_km_s = if ab_corr.transmit_mode {
         -obs_wrt_ssb_vel_km_s
     } else {
         obs_wrt_ssb_vel_km_s

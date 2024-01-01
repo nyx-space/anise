@@ -40,7 +40,7 @@ impl Almanac {
         from_frame: Frame,
         to_frame: Frame,
         epoch: Epoch,
-        ab_corr: Aberration,
+        ab_corr: Option<Aberration>,
     ) -> Result<CartesianState, EphemerisError> {
         let mut to_frame: Frame = to_frame;
 
@@ -114,7 +114,7 @@ impl Almanac {
         to_frame: Frame,
         epoch: Epoch,
     ) -> Result<CartesianState, EphemerisError> {
-        self.translate_from_to(from_frame, to_frame, epoch, Aberration::NoCorrection)
+        self.translate_from_to(from_frame, to_frame, epoch, Aberration::NONE)
     }
 
     /// Translates the provided Cartesian state into the requested frame
@@ -125,7 +125,7 @@ impl Almanac {
         &self,
         state: CartesianState,
         to_frame: Frame,
-        ab_corr: Aberration,
+        ab_corr: Option<Aberration>,
     ) -> Result<CartesianState, EphemerisError> {
         let frame_state = self.translate_from_to(state.frame, to_frame, state.epoch, ab_corr)?;
 
@@ -145,7 +145,7 @@ impl Almanac {
         from_frame: Frame,
         to_frame: Frame,
         epoch: Epoch,
-        ab_corr: Aberration,
+        ab_corr: Option<Aberration>,
         distance_unit: LengthUnit,
         time_unit: TimeUnit,
     ) -> Result<CartesianState, EphemerisError> {

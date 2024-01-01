@@ -51,7 +51,7 @@ fn de440s_translation_verif_venus2emb() {
             VENUS_J2000,
             EARTH_MOON_BARYCENTER_J2000,
             epoch,
-            Aberration::NoCorrection,
+            Aberration::NONE,
         )
         .unwrap();
 
@@ -134,7 +134,7 @@ fn de438s_translation_verif_venus2luna() {
     */
 
     let state = ctx
-        .translate_from_to(VENUS_J2000, LUNA_J2000, epoch, Aberration::NoCorrection)
+        .translate_from_to(VENUS_J2000, LUNA_J2000, epoch, Aberration::NONE)
         .unwrap();
 
     let pos_expct_km = Vector3::new(
@@ -227,7 +227,7 @@ fn de438s_translation_verif_emb2luna() {
             EARTH_MOON_BARYCENTER_J2000,
             LUNA_J2000,
             epoch,
-            Aberration::NoCorrection,
+            Aberration::NONE,
         )
         .unwrap();
 
@@ -271,7 +271,7 @@ fn de438s_translation_verif_emb2luna() {
             LUNA_J2000,
             EARTH_MOON_BARYCENTER_J2000,
             epoch,
-            Aberration::NoCorrection,
+            Aberration::NONE,
         )
         .unwrap();
 
@@ -421,7 +421,7 @@ fn hermite_query() {
             summary.target_frame(),
             summary.center_frame(),
             summary.start_epoch() + summary_duration * 0.5,
-            Aberration::NoCorrection,
+            Aberration::NONE,
         )
         .unwrap();
 
@@ -434,7 +434,7 @@ fn hermite_query() {
             summary.target_frame(),
             summary.center_frame(),
             summary.start_epoch(),
-            Aberration::NoCorrection,
+            Aberration::NONE,
         )
         .is_ok());
 
