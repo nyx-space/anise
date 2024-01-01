@@ -38,7 +38,7 @@ nalgebra = "0.32"
 approx = "=0.5.1"
 zerocopy = { version = "0.7.26", features = ["derive"] }
 bytes = "=1.5.0"
-snafu = { version = "0.7.5", features = ["backtrace"] }
+snafu = { version = "0.8.0", features = ["backtrace"] }
 lexical-core = "0.8.5"
 heapless = "0.8.0"
 rstest = "0.18.2"
