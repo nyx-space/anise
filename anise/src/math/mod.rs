@@ -53,7 +53,7 @@ pub fn rotate_vector(a: &Vector3, axis: &Vector3, theta: f64) -> Vector3 {
     let x = axis.normalize();
 
     // Compute the projection of V onto AXIS.
-    let p = project_vector(&a, &x);
+    let p = project_vector(a, &x);
 
     // Compute the component of V orthogonal to the AXIS.
     let v1 = a - p;

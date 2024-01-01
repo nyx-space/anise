@@ -11,16 +11,16 @@
 use core::f64::EPSILON;
 
 use crate::{
-    constants::{celestial_objects::SOLAR_SYSTEM_BARYCENTER, SPEED_OF_LIGHT_KM_S},
+    constants::SPEED_OF_LIGHT_KM_S,
     errors::{AberrationSnafu, VelocitySnafu},
-    math::rotate_vector,
+    math::{rotate_vector, Vector3},
 };
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 use snafu::ensure;
 
-use super::{orbit::Orbit, PhysicsResult};
+use super::PhysicsResult;
 
 /// Defines the available aberration corrections.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -78,15 +78,14 @@ impl Aberration {
 ///
 /// # Arguments
 ///
-/// + `target`: the Cartesian state of a target object with respect to the observer
-/// + `obs_wrt_ssb`: the Cartesian state of the observer with respect to the Solar System Barycenter
-/// + `aberration`: the [Aberration] configuration
+/// + `target_pos_km`: the position of a target object with respect to the observer in kilometers
+/// + `obs_wrt_ssb_vel_km_s`: the velocity of the observer with respect to the Solar System Barycenter in kilometers per second
+/// + `ab_corr`: the [Aberration] correction
 ///
 /// # Errors
 ///
 /// This function will return an error in the following cases:
 /// 1. the aberration is not set to include stellar corrections;
-/// 1. the `obs_wrt_ssb` argument is not in the solar system barycenter frame;
 /// 1. the `target` is moving faster than the speed of light.
 ///
 /// # Algorithm
@@ -105,23 +104,14 @@ impl Aberration {
 ///
 ///
 pub fn stellar_aberration(
-    target: Orbit,
-    obs_wrt_ssb: Orbit,
-    aberration: Aberration,
-) -> PhysicsResult<Orbit> {
+    target_pos_km: Vector3,
+    obs_wrt_ssb_vel_km_s: Vector3,
+    ab_corr: Aberration,
+) -> PhysicsResult<Vector3> {
     ensure!(
-        aberration.has_stellar(),
+        ab_corr.has_stellar(),
         AberrationSnafu {
             action: "stellar correction not available for this aberration"
-        }
-    );
-
-    ensure!(
-        obs_wrt_ssb
-            .frame
-            .ephem_origin_id_match(SOLAR_SYSTEM_BARYCENTER),
-        AberrationSnafu {
-            action: "observer for stellar correction not in SSB frame"
         }
     );
 
@@ -129,14 +119,14 @@ pub fn stellar_aberration(
     // with the target's position, will yield the inverse of the usual stellar
     // aberration correction, which is exactly what we seek.
 
-    let obs_velocity_km_s = if aberration.is_transmit() {
-        -obs_wrt_ssb.velocity_km_s
+    let obs_velocity_km_s = if ab_corr.is_transmit() {
+        -obs_wrt_ssb_vel_km_s
     } else {
-        obs_wrt_ssb.velocity_km_s
+        obs_wrt_ssb_vel_km_s
     };
 
     // Get a unit vector that points in the direction of the object (u_obj)
-    let u = target.radius_km.normalize();
+    let u = target_pos_km.normalize();
     // Get the velocity vector scaled with respect to the speed of light (v/c)
     let onebyc = 1.0 / SPEED_OF_LIGHT_KM_S;
     let vbyc = onebyc * obs_velocity_km_s;
@@ -152,12 +142,12 @@ pub fn stellar_aberration(
     let h = u.cross(&vbyc);
 
     // Correct for stellar aberration
-    let mut apparent_target = target;
+    let mut app_target_pos_km = target_pos_km;
     let sin_phi = h.norm().abs();
     if sin_phi > EPSILON {
         let phi = sin_phi.asin();
-        apparent_target.radius_km = rotate_vector(&target.radius_km, &h, phi);
+        app_target_pos_km = rotate_vector(&target_pos_km, &h, phi);
     }
 
-    Ok(apparent_target)
+    Ok(app_target_pos_km)
 }

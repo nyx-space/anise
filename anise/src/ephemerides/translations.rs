@@ -162,6 +162,8 @@ impl Almanac {
             frame: from_frame,
         };
 
-        (input_state + frame_state).with_context(|_| EphemerisPhysicsSnafu {})
+        (input_state + frame_state).with_context(|_| EphemerisPhysicsSnafu {
+            action: "translating states (likely a bug!)",
+        })
     }
 }
