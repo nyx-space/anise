@@ -450,3 +450,179 @@ fn hermite_query() {
     //     )
     //     .is_ok());
 }
+
+/// This tests that the rotation from Moon to Earth matches SPICE with different aberration corrections.
+/// We test Moon->Earth Moon Barycenter (instead of Venus->SSB as above) because there is no stellar correction possible
+/// when the parent is the solar system barycenter.
+#[test]
+fn de440s_translation_verif_aberrations() {
+    let _ = pretty_env_logger::try_init();
+
+    let bytes = file2heap!("../data/de440s.bsp").unwrap();
+    let de438s = SPK::parse(bytes).unwrap();
+    let ctx = Almanac::from_spk(de438s).unwrap();
+
+    let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
+
+    /*
+    Python code:
+    >>> import spiceypy as sp
+    >>> sp.furnsh('data/de440s.bsp')
+    >>> et = 66312064.18493876
+    >>> ['{:.16e}'.format(x) for x in sp.spkez(301, et, "J2000", "LT", 3)[0]]:
+    ['-8.1551741540104151e+04',
+    '-3.4544933489888906e+05',
+    '-1.4438031089871377e+05',
+    '9.6070843890026225e-01',
+    '-2.0357817054602378e-01',
+    '-1.8380326019667059e-01']
+    */
+
+    struct TestCase {
+        correction: Option<Aberration>,
+        pos_expct_km: Vector3,
+        vel_expct_km_s: Vector3,
+    }
+
+    let cases = [
+        TestCase {
+            correction: Aberration::LT,
+            pos_expct_km: Vector3::new(
+                -8.1551741540104151e+04,
+                -3.4544933489888906e+05,
+                -1.4438031089871377e+05,
+            ),
+            vel_expct_km_s: Vector3::new(
+                9.6070843890026225e-01,
+                -2.0357817054602378e-01,
+                -1.8380326019667059e-01,
+            ),
+        },
+        TestCase {
+            correction: Aberration::LT_S,
+            pos_expct_km: Vector3::new(
+                -8.1570721849324545e+04,
+                -3.4544537500374130e+05,
+                -1.4437906334030110e+05,
+            ),
+            vel_expct_km_s: Vector3::new(
+                9.6061748706693784e-01,
+                -2.0361038608395909e-01,
+                -1.8380826287127400e-01,
+            ),
+        },
+        TestCase {
+            correction: Aberration::CN,
+            pos_expct_km: Vector3::new(
+                -8.1551743705525994e+04,
+                -3.4544933719548583e+05,
+                -1.4438031190508604e+05,
+            ),
+            vel_expct_km_s: Vector3::new(
+                9.6070843946986884e-01,
+                -2.0357817069716688e-01,
+                -1.8380326026637128e-01,
+            ),
+        },
+        TestCase {
+            correction: Aberration::CN_S,
+            pos_expct_km: Vector3::new(
+                -8.1570724014738982e+04,
+                -3.4544537730026408e+05,
+                -1.4437906434664151e+05,
+            ),
+            vel_expct_km_s: Vector3::new(
+                9.6061748763649357e-01,
+                -2.0361038623448113e-01,
+                -1.8380826294069577e-01,
+            ),
+        },
+        TestCase {
+            correction: Aberration::XLT,
+            pos_expct_km: Vector3::new(
+                -8.1601439447537065e+04,
+                -3.4550204350015521e+05,
+                -1.4440340782643855e+05,
+            ),
+            vel_expct_km_s: Vector3::new(
+                9.6071525662101465e-01,
+                -2.0358827342129260e-01,
+                -1.8380776693460277e-01,
+            ),
+        },
+        TestCase {
+            correction: Aberration::XLT_S,
+            pos_expct_km: Vector3::new(
+                -8.1582459098574356e+04,
+                -3.4550600420432026e+05,
+                -1.4440465574480488e+05,
+            ),
+            vel_expct_km_s: Vector3::new(
+                9.6080620884495171e-01,
+                -2.0355606455727215e-01,
+                -1.8380276724235226e-01,
+            ),
+        },
+        TestCase {
+            correction: Aberration::XCN,
+            pos_expct_km: Vector3::new(
+                -8.1601441613525152e+04,
+                -3.4550204579737782e+05,
+                -1.4440340883307904e+05,
+            ),
+            vel_expct_km_s: Vector3::new(
+                9.6071525719129625e-01,
+                -2.0358827357191700e-01,
+                -1.8380776700407786e-01,
+            ),
+        },
+        TestCase {
+            correction: Aberration::XCN_S,
+            pos_expct_km: Vector3::new(
+                -8.1582461264569836e+04,
+                -3.4550600650161679e+05,
+                -1.4440465675147722e+05,
+            ),
+            vel_expct_km_s: Vector3::new(
+                9.6080620941528405e-01,
+                -2.0355606470851764e-01,
+                -1.8380276731210626e-01,
+            ),
+        },
+    ];
+
+    for case in cases {
+        let state = ctx
+            .translate_from_to(
+                LUNA_J2000,
+                EARTH_MOON_BARYCENTER_J2000,
+                epoch,
+                case.correction,
+            )
+            .unwrap();
+
+        let pos_km = state.radius_km;
+        let vel_km_s = state.velocity_km_s;
+
+        println!("{state}");
+
+        // We expect exactly the same output as SPICE to machine precision.
+        assert!(
+            (pos_km - case.pos_expct_km).norm() < EPSILON,
+            "got {} but want {} with {} => err = {} km",
+            pos_km,
+            case.pos_expct_km,
+            case.correction.unwrap(),
+            (pos_km - case.pos_expct_km).norm()
+        );
+
+        assert!(
+            (vel_km_s - case.vel_expct_km_s).norm() < EPSILON,
+            "got {} but want {} with {} => err = {} km/s",
+            vel_km_s,
+            case.vel_expct_km_s,
+            case.correction.unwrap(),
+            (vel_km_s - case.vel_expct_km_s).norm()
+        );
+    }
+}

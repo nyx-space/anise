@@ -126,7 +126,21 @@ impl Aberration {
 
 impl fmt::Display for Aberration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{self:?}")
+        if self.converged {
+            write!(f, "converged ")?;
+        } else {
+            write!(f, "unconverged ")?;
+        }
+        write!(f, "light-time ")?;
+        if self.stellar {
+            write!(f, "and stellar aberration")?;
+        } else {
+            write!(f, "aberration")?;
+        }
+        if self.transmit_mode {
+            write!(f, " in transmit mode")?;
+        }
+        Ok(())
     }
 }
 

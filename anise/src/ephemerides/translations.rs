@@ -13,7 +13,10 @@ use snafu::ResultExt;
 use super::EphemerisError;
 use super::EphemerisPhysicsSnafu;
 use crate::almanac::Almanac;
+use crate::astro::aberration::stellar_aberration;
 use crate::astro::Aberration;
+use crate::constants::frames::SSB_J2000;
+use crate::constants::SPEED_OF_LIGHT_KM_S;
 use crate::hifitime::Epoch;
 use crate::math::cartesian::CartesianState;
 use crate::math::units::*;
@@ -29,6 +32,14 @@ use pyo3::prelude::*;
 #[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
     /// Returns the Cartesian state needed to translate the `from_frame` to the `to_frame`.
+    ///
+    /// # SPICE Compatibility
+    /// This function is the SPICE equivalent of spkezr: `spkezr(TARGET_ID, EPOCH_TDB_S, ORIENTATION, ABERRATION, OBSERVER)`
+    /// In ANISE, the TARGET_ID and ORIENTATION are provided in the first argument (FROM_FRAME), as that frame includes BOTH
+    /// the target ID and the orientation of that target. The EPOCH_TDB_S is the epoch in the TDB time system, which is computed
+    /// in ANISE using Hifitime. THe ABERRATION is computed by providing the optional Aberration flag. Finally, the OBSERVER
+    /// argument is replaced by TO_FRAME: if the TO_FRAME argument has the same orientation as the FROM_FRAME, then this call
+    /// will return exactly the same data as the spkerz SPICE call.
     ///
     /// # Warning
     /// This function only performs the translation and no rotation whatsoever. Use the `transform_from_to` function instead to include rotations.
@@ -55,56 +66,112 @@ impl Almanac {
             return Ok(CartesianState::zero(from_frame));
         }
 
-        let (node_count, path, common_node) =
-            self.common_ephemeris_path(from_frame, to_frame, epoch)?;
+        match ab_corr {
+            None => {
+                let (node_count, path, common_node) =
+                    self.common_ephemeris_path(from_frame, to_frame, epoch)?;
 
-        // The fwrd variables are the states from the `from frame` to the common node
-        let (mut pos_fwrd, mut vel_fwrd, mut frame_fwrd) =
-            if from_frame.ephem_origin_id_match(common_node) {
-                (Vector3::zeros(), Vector3::zeros(), from_frame)
-            } else {
-                self.translation_parts_to_parent(from_frame, epoch, ab_corr)?
-            };
+                // The fwrd variables are the states from the `from frame` to the common node
+                let (mut pos_fwrd, mut vel_fwrd, mut frame_fwrd) =
+                    if from_frame.ephem_origin_id_match(common_node) {
+                        (Vector3::zeros(), Vector3::zeros(), from_frame)
+                    } else {
+                        self.translation_parts_to_parent(from_frame, epoch)?
+                    };
 
-        // The bwrd variables are the states from the `to frame` back to the common node
-        let (mut pos_bwrd, mut vel_bwrd, mut frame_bwrd) =
-            if to_frame.ephem_origin_id_match(common_node) {
-                (Vector3::zeros(), Vector3::zeros(), to_frame)
-            } else {
-                self.translation_parts_to_parent(to_frame, epoch, ab_corr)?
-            };
+                // The bwrd variables are the states from the `to frame` back to the common node
+                let (mut pos_bwrd, mut vel_bwrd, mut frame_bwrd) =
+                    if to_frame.ephem_origin_id_match(common_node) {
+                        (Vector3::zeros(), Vector3::zeros(), to_frame)
+                    } else {
+                        self.translation_parts_to_parent(to_frame, epoch)?
+                    };
 
-        for cur_node_id in path.iter().take(node_count) {
-            if !frame_fwrd.ephem_origin_id_match(common_node) {
-                let (cur_pos_fwrd, cur_vel_fwrd, cur_frame_fwrd) =
-                    self.translation_parts_to_parent(frame_fwrd, epoch, ab_corr)?;
+                for cur_node_id in path.iter().take(node_count) {
+                    if !frame_fwrd.ephem_origin_id_match(common_node) {
+                        let (cur_pos_fwrd, cur_vel_fwrd, cur_frame_fwrd) =
+                            self.translation_parts_to_parent(frame_fwrd, epoch)?;
 
-                pos_fwrd += cur_pos_fwrd;
-                vel_fwrd += cur_vel_fwrd;
-                frame_fwrd = cur_frame_fwrd;
+                        pos_fwrd += cur_pos_fwrd;
+                        vel_fwrd += cur_vel_fwrd;
+                        frame_fwrd = cur_frame_fwrd;
+                    }
+
+                    if !frame_bwrd.ephem_origin_id_match(common_node) {
+                        let (cur_pos_bwrd, cur_vel_bwrd, cur_frame_bwrd) =
+                            self.translation_parts_to_parent(frame_bwrd, epoch)?;
+
+                        pos_bwrd += cur_pos_bwrd;
+                        vel_bwrd += cur_vel_bwrd;
+                        frame_bwrd = cur_frame_bwrd;
+                    }
+
+                    // We know this exist, so we can safely unwrap it
+                    if cur_node_id.unwrap() == common_node {
+                        break;
+                    }
+                }
+
+                Ok(CartesianState {
+                    radius_km: pos_fwrd - pos_bwrd,
+                    velocity_km_s: vel_fwrd - vel_bwrd,
+                    epoch,
+                    frame: to_frame.with_orient(from_frame.orientation_id),
+                })
             }
+            Some(ab_corr) => {
+                // This is a rewrite of NAIF SPICE's `spkapo`
 
-            if !frame_bwrd.ephem_origin_id_match(common_node) {
-                let (cur_pos_bwrd, cur_vel_bwrd, cur_frame_bwrd) =
-                    self.translation_parts_to_parent(frame_bwrd, epoch, ab_corr)?;
+                // Find the geometric position of the target body with respect to the solar system barycenter.
+                let tgt_ssb = self.translate_from_to(from_frame, SSB_J2000, epoch, None)?;
+                let tgt_ssb_pos_km = tgt_ssb.radius_km;
+                let tgt_ssb_vel_km_s = tgt_ssb.velocity_km_s;
 
-                pos_bwrd += cur_pos_bwrd;
-                vel_bwrd += cur_vel_bwrd;
-                frame_bwrd = cur_frame_bwrd;
-            }
+                // Find the geometric position of the observer body with respect to the solar system barycenter.
+                let obs_ssb = self.translate_from_to(to_frame, SSB_J2000, epoch, None)?;
+                let obs_ssb_pos_km = obs_ssb.radius_km;
+                let obs_ssb_vel_km_s = obs_ssb.velocity_km_s;
 
-            // We know this exist, so we can safely unwrap it
-            if cur_node_id.unwrap() == common_node {
-                break;
+                // Subtract the position of the observer to get the relative position.
+                let mut rel_pos_km = tgt_ssb_pos_km - obs_ssb_pos_km;
+                // NOTE: We never correct the velocity, so the geometric velocity is what we're seeking.
+                let vel_km_s = tgt_ssb_vel_km_s - obs_ssb_vel_km_s;
+
+                // Use this to compute the one-way light time.
+                let mut one_way_lt = rel_pos_km.norm() / SPEED_OF_LIGHT_KM_S;
+
+                // To correct for light time, find the position of the target body at the current epoch
+                // minus the one-way light time. Note that the observer remains where he is.
+
+                let num_it = if ab_corr.converged { 3 } else { 1 };
+                let lt_sign = if ab_corr.transmit_mode { -1.0 } else { 1.0 };
+
+                for _ in 0..num_it {
+                    let epoch_lt = epoch + lt_sign * one_way_lt * TimeUnit::Second;
+                    let tgt_ssb = self.translate_from_to(from_frame, SSB_J2000, epoch_lt, None)?;
+                    let tgt_ssb_pos_km = tgt_ssb.radius_km;
+
+                    rel_pos_km = tgt_ssb_pos_km - obs_ssb_pos_km;
+                    one_way_lt = rel_pos_km.norm() / SPEED_OF_LIGHT_KM_S;
+                }
+
+                // If stellar aberration correction is requested, perform it now.
+                if ab_corr.stellar {
+                    // Modifications based on transmission versus reception case is done in the function directly.
+                    rel_pos_km = stellar_aberration(rel_pos_km, obs_ssb_vel_km_s, ab_corr)
+                        .with_context(|_| EphemerisPhysicsSnafu {
+                            action: "computing stellar aberration",
+                        })?;
+                }
+
+                Ok(CartesianState {
+                    radius_km: rel_pos_km,
+                    velocity_km_s: vel_km_s,
+                    epoch,
+                    frame: to_frame.with_orient(from_frame.orientation_id),
+                })
             }
         }
-
-        Ok(CartesianState {
-            radius_km: pos_fwrd - pos_bwrd,
-            velocity_km_s: vel_fwrd - vel_bwrd,
-            epoch,
-            frame: to_frame.with_orient(from_frame.orientation_id),
-        })
     }
 
     /// Returns the geometric position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in km, the velocity in km/s, and the acceleration in km/s^2.
