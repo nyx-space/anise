@@ -39,7 +39,7 @@ impl Almanac {
     ) -> Result<CartesianState, AlmanacError> {
         // Translate
         let state = self
-            .translate_from_to(from_frame, to_frame, epoch, ab_corr)
+            .translate(from_frame, to_frame, epoch, ab_corr)
             .with_context(|_| EphemerisSnafu {
                 action: "transform from/to",
             })?;

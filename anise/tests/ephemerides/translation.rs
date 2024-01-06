@@ -47,7 +47,7 @@ fn de440s_translation_verif_venus2emb() {
     */
 
     let state = ctx
-        .translate_from_to(
+        .translate(
             VENUS_J2000,
             EARTH_MOON_BARYCENTER_J2000,
             epoch,
@@ -84,7 +84,7 @@ fn de440s_translation_verif_venus2emb() {
 
     // Test the opposite translation
     let state = ctx
-        .translate_from_to_geometric(EARTH_MOON_BARYCENTER_J2000, VENUS_J2000, epoch)
+        .translate_geometric(EARTH_MOON_BARYCENTER_J2000, VENUS_J2000, epoch)
         .unwrap();
 
     // We expect exactly the same output as SPICE to machine precision.
@@ -134,7 +134,7 @@ fn de438s_translation_verif_venus2luna() {
     */
 
     let state = ctx
-        .translate_from_to(VENUS_J2000, LUNA_J2000, epoch, Aberration::NONE)
+        .translate(VENUS_J2000, LUNA_J2000, epoch, Aberration::NONE)
         .unwrap();
 
     let pos_expct_km = Vector3::new(
@@ -170,7 +170,7 @@ fn de438s_translation_verif_venus2luna() {
 
     // Test the opposite translation
     let state = ctx
-        .translate_from_to_geometric(LUNA_J2000, VENUS_J2000, epoch)
+        .translate_geometric(LUNA_J2000, VENUS_J2000, epoch)
         .unwrap();
 
     // We expect exactly the same output as SPICE to machine precision.
@@ -223,7 +223,7 @@ fn de438s_translation_verif_emb2luna() {
     */
 
     let state = ctx
-        .translate_from_to(
+        .translate(
             EARTH_MOON_BARYCENTER_J2000,
             LUNA_J2000,
             epoch,
@@ -267,7 +267,7 @@ fn de438s_translation_verif_emb2luna() {
 
     // Try the opposite
     let state = ctx
-        .translate_from_to(
+        .translate(
             LUNA_J2000,
             EARTH_MOON_BARYCENTER_J2000,
             epoch,
@@ -322,7 +322,7 @@ fn spk_hermite_type13_verif() {
     let my_sc_j2k = Frame::from_ephem_j2000(-10000001);
 
     let state = ctx
-        .translate_from_to_geometric(my_sc_j2k, EARTH_J2000, epoch)
+        .translate_geometric(my_sc_j2k, EARTH_J2000, epoch)
         .unwrap();
     println!("{state:?}");
 
@@ -381,7 +381,7 @@ fn multithread_query() {
     let epochs: Vec<Epoch> = time_it.collect();
     epochs.into_par_iter().for_each(|epoch| {
         let state = ctx
-            .translate_from_to_geometric(LUNA_J2000, EARTH_MOON_BARYCENTER_J2000, epoch)
+            .translate_geometric(LUNA_J2000, EARTH_MOON_BARYCENTER_J2000, epoch)
             .unwrap();
         println!("{state:?}");
     });
@@ -417,7 +417,7 @@ fn hermite_query() {
 
     // Query in the middle to the parent, since we don't have anything else loaded.
     let state = ctx
-        .translate_from_to(
+        .translate(
             summary.target_frame(),
             summary.center_frame(),
             summary.start_epoch() + summary_duration * 0.5,
@@ -430,7 +430,7 @@ fn hermite_query() {
 
     // Fetch the state at the start of this spline to make sure we don't glitch.
     assert!(ctx
-        .translate_from_to(
+        .translate(
             summary.target_frame(),
             summary.center_frame(),
             summary.start_epoch(),
@@ -593,7 +593,7 @@ fn de440s_translation_verif_aberrations() {
 
     for case in cases {
         let state = ctx
-            .translate_from_to(
+            .translate(
                 LUNA_J2000,
                 EARTH_MOON_BARYCENTER_J2000,
                 epoch,

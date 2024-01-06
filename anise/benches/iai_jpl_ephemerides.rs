@@ -43,7 +43,7 @@ fn benchmark_anise_single_hop_type2_cheby() {
 
     for epoch in time_it {
         black_box(
-            ctx.translate_from_to_geometric(EARTH_J2000, LUNA_J2000, epoch)
+            ctx.translate_geometric(EARTH_J2000, LUNA_J2000, epoch)
                 .unwrap(),
         );
     }
