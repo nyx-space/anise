@@ -43,7 +43,10 @@ def test_state_transformation():
     assert abs(orig_state.raan_deg() - 306.614) < 1e-10
     assert abs(orig_state.tlong_deg() - 0.6916999999999689) < 1e-10
 
-    state_itrf93 = ctx.transform_to(orig_state, Frames.EARTH_ITRF93, Aberration.NotSet)
+    # In Python, we can set the aberration to None
+    aberration = None
+
+    state_itrf93 = ctx.transform_to(orig_state, Frames.EARTH_ITRF93, aberration)
 
     print(orig_state)
     print(state_itrf93)
@@ -54,7 +57,7 @@ def test_state_transformation():
 
     # Convert back
     from_state_itrf93_to_eme2k = ctx.transform_to(
-        state_itrf93, Frames.EARTH_J2000, Aberration.NotSet
+        state_itrf93, Frames.EARTH_J2000, aberration
     )
 
     print(from_state_itrf93_to_eme2k)
@@ -101,6 +104,7 @@ def test_meta_load():
         assert eme2k.mu_km3_s2() == 398600.435436096
         assert eme2k.shape.polar_radius_km == 6356.75
         assert abs(eme2k.shape.flattening() - 0.0033536422844278) < 2e-16
+
 
 def test_exports():
     for cls in [Frame, Ellipsoid, Orbit]:

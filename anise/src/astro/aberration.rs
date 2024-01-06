@@ -95,9 +95,9 @@ impl Aberration {
     }
 }
 
-#[cfg_attr(feature = "python", pymethods)]
+#[cfg(feature = "python")]
+#[pymethods]
 impl Aberration {
-    #[cfg(feature = "python")]
     #[new]
     fn py_new(name: String) -> PhysicsResult<Self> {
         match Self::new(&name)? {
@@ -108,17 +108,14 @@ impl Aberration {
         }
     }
 
-    #[cfg(feature = "python")]
     fn __eq__(&self, other: &Self) -> bool {
         self == other
     }
 
-    #[cfg(feature = "python")]
     fn __str__(&self) -> String {
         format!("{self}")
     }
 
-    #[cfg(feature = "python")]
     fn __repr__(&self) -> String {
         format!("{self:?} (@{self:p})")
     }
