@@ -1,24 +1,37 @@
 from pathlib import Path
 import pickle
 
-from anise import Aberration, Almanac, MetaAlmanac
+from anise import Almanac, MetaAlmanac
 from anise.astro import *
 from anise.astro.constants import Frames
 from anise.time import Epoch
+
+from os import env
 
 
 def test_state_transformation():
     """
     This is the Python equivalent to anise/tests/almanac/mod.rs
+    but the data is loaded from the remote servers
     """
-    data_path = Path(__file__).parent.joinpath("..", "..", "data")
-    # Must ensure that the path is a string
-    ctx = Almanac(str(data_path.joinpath("de440s.bsp")))
-    # Let's add another file here -- note that the Almanac will load into a NEW variable, so we must overwrite it!
-    # This prevents memory leaks (yes, I promise)
-    ctx = ctx.load(str(data_path.joinpath("pck08.pca"))).load(
-        str(data_path.joinpath("earth_latest_high_prec.bpc"))
-    )
+
+    if env.get("CI", False):
+        # Load from meta kernel to not use Git LFS quota
+        data_path = Path(__file__).parent.joinpath("..", "..", "data", "default_meta.dhall")
+        meta = MetaAlmanac(str(data_path))
+        print(meta)
+        # Process the files to be loaded
+        ctx = meta.process()
+    else:
+        data_path = Path(__file__).parent.joinpath("..", "..", "data")
+        # Must ensure that the path is a string
+        ctx = Almanac(str(data_path.joinpath("de440s.bsp")))
+        # Let's add another file here -- note that the Almanac will load into a NEW variable, so we must overwrite it!
+        # This prevents memory leaks (yes, I promise)
+        ctx = ctx.load(str(data_path.joinpath("pck08.pca"))).load(
+            str(data_path.joinpath("earth_latest_high_prec.bpc"))
+        )
+
     eme2k = ctx.frame_info(Frames.EME2000)
     assert eme2k.mu_km3_s2() == 398600.435436096
     assert eme2k.shape.polar_radius_km == 6356.75

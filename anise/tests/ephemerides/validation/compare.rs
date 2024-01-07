@@ -71,6 +71,7 @@ pub struct CompareEphem {
     pub output_file_name: String,
     pub num_queries_per_pair: usize,
     pub dry_run: bool,
+    pub aberration: Option<Aberration>,
     pub writer: ArrowWriter<File>,
     pub batch_src_frame: Vec<String>,
     pub batch_dst_frame: Vec<String>,
@@ -86,6 +87,7 @@ impl CompareEphem {
         input_file_names: Vec<String>,
         output_file_name: String,
         num_queries_per_pair: usize,
+        aberration: Option<Aberration>,
     ) -> Self {
         let _ = pretty_env_logger::try_init();
 
@@ -110,6 +112,7 @@ impl CompareEphem {
             output_file_name,
             input_file_names,
             num_queries_per_pair,
+            aberration,
             writer,
             dry_run: false,
             batch_src_frame: Vec::new(),
@@ -228,7 +231,7 @@ impl CompareEphem {
             }
 
             for epoch in time_it {
-                let data = match ctx.translate_geometric(*from_frame, *to_frame, epoch) {
+                let data = match ctx.translate(*from_frame, *to_frame, epoch, self.aberration) {
                     Ok(state) => {
                         // Find the SPICE names
                         let targ =
