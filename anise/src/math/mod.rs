@@ -48,7 +48,7 @@ pub fn perp_vector(a: &Vector3, b: &Vector3) -> Vector3 {
 
 /// Rotate the vector a around the provided axis by angle theta.
 /// Converted from NAIF SPICE's `vrotv`
-pub fn rotate_vector(a: &Vector3, axis: &Vector3, theta: f64) -> Vector3 {
+pub fn rotate_vector(a: &Vector3, axis: &Vector3, theta_rad: f64) -> Vector3 {
     // Compute the unit vector that lies in the direction of the AXIS.
     let x = axis.normalize();
 
@@ -62,7 +62,7 @@ pub fn rotate_vector(a: &Vector3, axis: &Vector3, theta: f64) -> Vector3 {
     let v2 = a.cross(&v1);
 
     // Compute COS(THETA)*V1 + SIN(THETA)*V2. This is V1 rotated about the AXIS in the plane normal to the axis.
-    let r_plane = v1 * theta.cos() + v2 * theta.sin();
+    let r_plane = v1 * theta_rad.cos() + v2 * theta_rad.sin();
 
     // Add the rotated component in the normal plane to AXIS to the projection of V onto AXIS (P) to obtain R.
     r_plane + p
