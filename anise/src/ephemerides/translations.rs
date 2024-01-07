@@ -135,7 +135,7 @@ impl Almanac {
                 // Subtract the position of the observer to get the relative position.
                 let mut rel_pos_km = tgt_ssb_pos_km - obs_ssb_pos_km;
                 // NOTE: We never correct the velocity, so the geometric velocity is what we're seeking.
-                let vel_km_s = tgt_ssb_vel_km_s - obs_ssb_vel_km_s;
+                let mut rel_vel_km_s = tgt_ssb_vel_km_s - obs_ssb_vel_km_s;
 
                 // Use this to compute the one-way light time.
                 let mut one_way_lt = rel_pos_km.norm() / SPEED_OF_LIGHT_KM_S;
@@ -150,8 +150,10 @@ impl Almanac {
                     let epoch_lt = epoch + lt_sign * one_way_lt * TimeUnit::Second;
                     let tgt_ssb = self.translate(target_frame, SSB_J2000, epoch_lt, None)?;
                     let tgt_ssb_pos_km = tgt_ssb.radius_km;
+                    let tgt_ssb_vel_km_s = tgt_ssb.velocity_km_s;
 
                     rel_pos_km = tgt_ssb_pos_km - obs_ssb_pos_km;
+                    rel_vel_km_s = tgt_ssb_vel_km_s - obs_ssb_vel_km_s;
                     one_way_lt = rel_pos_km.norm() / SPEED_OF_LIGHT_KM_S;
                 }
 
@@ -166,7 +168,7 @@ impl Almanac {
 
                 Ok(CartesianState {
                     radius_km: rel_pos_km,
-                    velocity_km_s: vel_km_s,
+                    velocity_km_s: rel_vel_km_s,
                     epoch,
                     frame: observer_frame.with_orient(target_frame.orientation_id),
                 })

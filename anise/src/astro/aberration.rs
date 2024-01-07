@@ -192,25 +192,25 @@ pub fn stellar_aberration(
         obs_wrt_ssb_vel_km_s
     };
 
-    // Get a unit vector that points in the direction of the object (u_obj)
-    let u = target_pos_km.normalize();
     // Get the velocity vector scaled with respect to the speed of light (v/c)
-    let onebyc = 1.0 / SPEED_OF_LIGHT_KM_S;
-    let vbyc = onebyc * obs_velocity_km_s;
+    let vbyc = obs_velocity_km_s / SPEED_OF_LIGHT_KM_S;
 
     ensure!(
         vbyc.dot(&vbyc) < 1.0,
         VelocitySnafu {
-            action: "observer moving faster than light, cannot compute stellar aberration"
+            action: "observer moving at or faster than light, cannot compute stellar aberration"
         }
     );
+
+    // Get a unit vector that points in the direction of the object
+    let u = target_pos_km.normalize();
 
     // Compute u_obj x (v/c)
     let h = u.cross(&vbyc);
 
     // Correct for stellar aberration
     let mut app_target_pos_km = target_pos_km;
-    let sin_phi = h.norm().abs();
+    let sin_phi = h.norm();
     if sin_phi > EPSILON {
         let phi = sin_phi.asin();
         app_target_pos_km = rotate_vector(&target_pos_km, &h, phi);

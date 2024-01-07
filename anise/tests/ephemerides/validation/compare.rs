@@ -228,7 +228,7 @@ impl CompareEphem {
             }
 
             for epoch in time_it {
-                let data = match ctx.translate_from_to_geometric(*from_frame, *to_frame, epoch) {
+                let data = match ctx.translate_geometric(*from_frame, *to_frame, epoch) {
                     Ok(state) => {
                         // Find the SPICE names
                         let targ =
