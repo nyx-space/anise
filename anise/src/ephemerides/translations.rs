@@ -144,7 +144,7 @@ impl Almanac {
                 // minus the one-way light time. Note that the observer remains where he is.
 
                 let num_it = if ab_corr.converged { 3 } else { 1 };
-                let lt_sign = if ab_corr.transmit_mode { -1.0 } else { 1.0 };
+                let lt_sign = if ab_corr.transmit_mode { 1.0 } else { -1.0 };
 
                 for _ in 0..num_it {
                     let epoch_lt = epoch + lt_sign * one_way_lt * TimeUnit::Second;
