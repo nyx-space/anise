@@ -23,60 +23,93 @@ use snafu::ensure;
 use super::PhysicsResult;
 use crate::errors::PhysicsError;
 
-/// Defines the available aberration corrections.
+/// Represents the aberration correction options in ANISE.
+///
+/// In space science and engineering, accurately pointing instruments (like optical cameras or radio antennas) at a target is crucial. This task is complicated by the finite speed of light, necessitating corrections for the apparent position of the target.
+///
+/// This structure holds parameters for aberration corrections applied to a target's position or state vector. These corrections account for the difference between the target's geometric (true) position and its apparent position as observed.
+///
+/// # Rule of tumb
+/// In most Earth orbits, one does _not_ need to provide any aberration corrections. Light time to the target is less than one second (the Moon is about one second away).
+/// In near Earth orbits, e.g. inner solar system, preliminary analysis can benefit from enabling unconverged light time correction. Stellar aberration is probably not required.
+/// For deep space missions, preliminary analysis would likely require both light time correction and stellar aberration. Mission planning and operations will definitely need converged light-time calculations.
+///
+/// For more details, <https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/abcorr.html>.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 #[cfg_attr(feature = "python", pyo3(get_all, set_all))]
 pub struct Aberration {
+    /// Indicates whether the light time calculations should be iterated upon (more precise but three times as many CPU cycles).
     pub converged: bool,
+    /// Flag to denote if stellar aberration correction is applied. Stellar aberration is due to the motion of the observer (caused by Earth's orbit around the Sun).
     pub stellar: bool,
+    /// Specifies whether in reception or transmission mode. True for 'transmit' mode, indicating the correction is applied to the transmitted signal from the observer to the target. False for 'receive' mode, for signals received from the target.
     pub transmit_mode: bool,
 }
 
 impl Aberration {
+    /// Disables aberration corrections, e.g. all translations are geometric only (typical use case).
     pub const NONE: Option<Self> = None;
+    /// Unconverged light time correction in reception mode without stellar aberration (e.g. a ground station targeting a spacecraft near the Moon)
     pub const LT: Option<Self> = Some(Self {
         converged: false,
         stellar: false,
         transmit_mode: false,
     });
+    /// Unconverged light time correction in reception mode with stellar aberration
     pub const LT_S: Option<Self> = Some(Self {
         converged: false,
         stellar: true,
         transmit_mode: false,
     });
+    /// Converged light time correction in reception mode without stellar aberration
     pub const CN: Option<Self> = Some(Self {
         converged: true,
         stellar: false,
         transmit_mode: false,
     });
+    /// Converged light time correction in reception mode with stellar aberration
     pub const CN_S: Option<Self> = Some(Self {
         converged: true,
         stellar: true,
         transmit_mode: false,
     });
+    /// Unconverged light time correction in transmission mode without stellar aberration (e.g. a Moon orbiter contacting a ground station)
     pub const XLT: Option<Self> = Some(Self {
         converged: false,
         stellar: false,
         transmit_mode: true,
     });
+    /// Unconverged light time correction in transmission mode with stellar aberration
     pub const XLT_S: Option<Self> = Some(Self {
         converged: false,
         stellar: true,
         transmit_mode: true,
     });
+    /// Converged light time correction in transmission mode without stellar aberration
     pub const XCN: Option<Self> = Some(Self {
         converged: true,
         stellar: false,
         transmit_mode: true,
     });
+    /// Converged light time correction in transmission mode with stellar aberration
     pub const XCN_S: Option<Self> = Some(Self {
         converged: true,
         stellar: true,
         transmit_mode: true,
     });
 
+    /// Initializes a new Aberration structure from one of the following (SPICE compatibility):
+    /// + `NONE`: No correction
+    /// + `LT`: unconverged light time, no stellar aberration, reception mode
+    /// + `LT+S`: unconverged light time, with stellar aberration, reception mode
+    /// + `CN`: converged light time, no stellar aberration, reception mode
+    /// + `CN+S`: converged light time, with stellar aberration, reception mode
+    /// + `XLT`: unconverged light time, no stellar aberration, transmission mode
+    /// + `XLT+S`: unconverged light time, with stellar aberration, transmission mode
+    /// + `XCN`: converged light time, no stellar aberration, transmission mode
+    /// + `XCN+S`: converged light time, with stellar aberration, transmission mode
     pub fn new(flag: &str) -> PhysicsResult<Option<Self>> {
         match flag.trim() {
             "NONE" => Ok(Self::NONE),
@@ -98,6 +131,16 @@ impl Aberration {
 #[cfg(feature = "python")]
 #[pymethods]
 impl Aberration {
+    /// Initializes a new Aberration structure from one of the following (SPICE compatibility):
+    /// + `NONE`: No correction
+    /// + `LT`: unconverged light time, no stellar aberration, reception mode
+    /// + `LT+S`: unconverged light time, with stellar aberration, reception mode
+    /// + `CN`: converged light time, no stellar aberration, reception mode
+    /// + `CN+S`: converged light time, with stellar aberration, reception mode
+    /// + `XLT`: unconverged light time, no stellar aberration, transmission mode
+    /// + `XLT+S`: unconverged light time, with stellar aberration, transmission mode
+    /// + `XCN`: converged light time, no stellar aberration, transmission mode
+    /// + `XCN+S`: converged light time, with stellar aberration, transmission mode
     #[new]
     fn py_new(name: String) -> PhysicsResult<Self> {
         match Self::new(&name)? {
