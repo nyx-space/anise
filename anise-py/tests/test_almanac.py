@@ -6,7 +6,7 @@ from anise.astro import *
 from anise.astro.constants import Frames
 from anise.time import Epoch
 
-from os import env
+from os import environ
 
 
 def test_state_transformation():
@@ -15,7 +15,7 @@ def test_state_transformation():
     but the data is loaded from the remote servers
     """
 
-    if env.get("CI", False):
+    if environ.get("CI", False):
         # Load from meta kernel to not use Git LFS quota
         data_path = Path(__file__).parent.joinpath("..", "..", "data", "default_meta.dhall")
         meta = MetaAlmanac(str(data_path))

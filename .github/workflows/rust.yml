@@ -175,6 +175,7 @@ jobs:
           cargo llvm-cov test --workspace --exclude anise-gui --exclude anise-py --no-report validate_iau_rotation_to_parent -- --nocapture --ignored
           cargo llvm-cov test --workspace --exclude anise-gui --exclude anise-py --no-report validate_bpc_to_iau_rotations -- --nocapture --ignored
           cargo llvm-cov test --workspace --exclude anise-gui --exclude anise-py --no-report validate_jplde_de440s --features spkezr_validation -- --nocapture --ignored
+          cargo llvm-cov test --workspace --exclude anise-gui --exclude anise-py --no-report validate_jplde_de440s_aberration_lt --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov test --workspace --exclude anise-gui --exclude anise-py --no-report validate_hermite_type13_from_gmat --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov report --lcov > lcov.txt
         env:
