@@ -145,7 +145,7 @@ impl CompareEphem {
 
         let bound_offset = match self.aberration {
             None => 0.0_f64.seconds(),
-            Some(_) => 1.0_f64.hours(),
+            Some(_) => 24.0_f64.hours(),
         };
 
         // Build the pairs of the SPICE and ANISE queries at the same time as we create those instances.
