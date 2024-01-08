@@ -19,6 +19,8 @@ use anise::prelude::*;
 const POSITION_EPSILON_KM: f64 = 2e-8;
 // Corresponds to an error of 5e-6 meters per second, or 5.0 micrometers per second
 const VELOCITY_EPSILON_KM_S: f64 = 5e-9;
+// Light time velocity error is too large! Cf. https://github.com/nyx-space/anise/issues/157
+const ABERRATION_VELOCITY_EPSILON_KM_S: f64 = 1e-4;
 
 #[test]
 fn de440s_translation_verif_venus2emb() {
@@ -618,7 +620,7 @@ fn de440s_translation_verif_aberrations() {
             relative_eq!(
                 vel_km_s,
                 case.vel_expct_km_s,
-                epsilon = VELOCITY_EPSILON_KM_S * 1e5 // TODO: Create a ticket for this
+                epsilon = ABERRATION_VELOCITY_EPSILON_KM_S
             ),
             "got {} but want {} with {} (#{cno}) => err = {:.3e} km/s",
             vel_km_s,

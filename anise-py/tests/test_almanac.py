@@ -15,7 +15,7 @@ def test_state_transformation():
     but the data is loaded from the remote servers
     """
 
-    if environ.get("CI", False):
+    if False and environ.get("CI", False):
         # Load from meta kernel to not use Git LFS quota
         data_path = Path(__file__).parent.joinpath("..", "..", "data", "default_meta.dhall")
         meta = MetaAlmanac(str(data_path))
