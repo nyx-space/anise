@@ -35,7 +35,7 @@ use crate::errors::PhysicsError;
 /// For deep space missions, preliminary analysis would likely require both light time correction and stellar aberration. Mission planning and operations will definitely need converged light-time calculations.
 ///
 /// For more details, <https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/abcorr.html>.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 #[cfg_attr(feature = "python", pyo3(get_all, set_all))]
@@ -164,6 +164,24 @@ impl Aberration {
     }
 }
 
+impl fmt::Debug for Aberration {
+    /// Prints this configuration as the SPICE name.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.transmit_mode {
+            write!(f, "X")?;
+        }
+        if self.converged {
+            write!(f, "CN")?;
+        } else {
+            write!(f, "LT")?;
+        }
+        if self.stellar {
+            write!(f, "+S")?;
+        }
+        Ok(())
+    }
+}
+
 impl fmt::Display for Aberration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.converged {
@@ -260,4 +278,22 @@ pub fn stellar_aberration(
     }
 
     Ok(app_target_pos_km)
+}
+
+#[cfg(test)]
+mod ut_aberration {
+    #[test]
+    fn test_display() {
+        use super::Aberration;
+
+        assert_eq!(format!("{:?}", Aberration::LT.unwrap()), "LT");
+        assert_eq!(format!("{:?}", Aberration::LT_S.unwrap()), "LT+S");
+        assert_eq!(format!("{:?}", Aberration::CN.unwrap()), "CN");
+        assert_eq!(format!("{:?}", Aberration::CN_S.unwrap()), "CN+S");
+
+        assert_eq!(format!("{:?}", Aberration::XLT.unwrap()), "XLT");
+        assert_eq!(format!("{:?}", Aberration::XLT_S.unwrap()), "XLT+S");
+        assert_eq!(format!("{:?}", Aberration::XCN.unwrap()), "XCN");
+        assert_eq!(format!("{:?}", Aberration::XCN_S.unwrap()), "XCN+S");
+    }
 }

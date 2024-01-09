@@ -257,8 +257,18 @@ impl CompareEphem {
                         };
 
                         // Perform the same query in SPICE
-                        let (spice_state, _) =
-                            spice::spkezr(&targ, epoch.to_et_seconds(), "J2000", "NONE", &obs);
+                        let spice_ab_corr = match self.aberration {
+                            None => "NONE".to_string(),
+                            Some(corr) => format!("{corr:?}"),
+                        };
+
+                        let (spice_state, _) = spice::spkezr(
+                            &targ,
+                            epoch.to_et_seconds(),
+                            "J2000",
+                            &spice_ab_corr,
+                            &obs,
+                        );
 
                         EphemValData {
                             src_frame: format!("{from_frame:e}"),

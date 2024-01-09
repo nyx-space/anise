@@ -17,6 +17,7 @@ use snafu::prelude::*;
 use std::fs::{create_dir_all, File};
 use std::io::Write;
 use std::path::Path;
+use std::time::Duration;
 use url::Url;
 
 #[cfg(feature = "python")]
@@ -65,12 +66,13 @@ pub enum MetaAlmanacError {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
+#[cfg_attr(feature = "python", pyo3(get_all, set_all))]
 pub struct MetaAlmanac {
-    files: Vec<MetaFile>,
+    pub files: Vec<MetaFile>,
 }
 
 impl MetaAlmanac {
-    /// Loads the provided path as a Dhall file and processes each file.
+    /// Loads the provided path as a Dhall configuration file and processes each file.
     pub fn new(path: String) -> Result<Self, MetaAlmanacError> {
         match serde_dhall::from_file(&path).parse::<Self>() {
             Err(e) => Err(MetaAlmanacError::ParseDhall {
@@ -84,11 +86,14 @@ impl MetaAlmanac {
 
 #[cfg_attr(feature = "python", pymethods)]
 impl MetaAlmanac {
-    /// Loads the provided path as a Dhall file and processes each file.
+    /// Loads the provided path as a Dhall file. If no path is provided, creates an empty MetaAlmanac that can store MetaFiles.
     #[cfg(feature = "python")]
     #[new]
-    pub fn py_new(path: String) -> Result<Self, MetaAlmanacError> {
-        Self::new(path)
+    pub fn py_new(maybe_path: Option<String>) -> Result<Self, MetaAlmanacError> {
+        match maybe_path {
+            Some(path) => Self::new(path),
+            None => Ok(Self { files: Vec::new() }),
+        }
     }
 
     /// Fetch all of the data and return a loaded Almanac
@@ -182,14 +187,50 @@ impl Default for MetaAlmanac {
     }
 }
 
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise"))]
+#[cfg_attr(feature = "python", pyo3(get_all, set_all))]
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, StaticType)]
 pub struct MetaFile {
+    /// URI of this meta file
     pub uri: String,
     /// Optionally specify the CRC32 of this file, which will be checked prior to loading.
     pub crc32: Option<u32>,
 }
 
+#[cfg_attr(feature = "python", pymethods)]
 impl MetaFile {
+    /// Builds a new MetaFile from the provided URI and optionally its CRC32 checksum.
+    #[cfg(feature = "python")]
+    #[new]
+    pub fn py_new(uri: String, crc32: Option<u32>) -> Self {
+        Self { uri, crc32 }
+    }
+
+    #[cfg(feature = "python")]
+    fn __str__(&self) -> String {
+        format!("{self:?}")
+    }
+
+    #[cfg(feature = "python")]
+    fn __repr__(&self) -> String {
+        format!("{self:?} (@{self:p})")
+    }
+
+    #[cfg(feature = "python")]
+    fn __richcmp__(&self, other: &Self, op: CompareOp) -> Result<bool, PyErr> {
+        match op {
+            CompareOp::Eq => Ok(self == other),
+            CompareOp::Ne => Ok(self != other),
+            _ => Err(PyErr::new::<PyTypeError, _>(format!(
+                "{op:?} not available"
+            ))),
+        }
+    }
+
+    /// Processes this MetaFile by downloading it if it's a URL.
+    ///
+    /// This function modified `self` and changes the URI to be the path to the downloaded file.
     fn process(&mut self) -> Result<(), MetaAlmanacError> {
         match Url::parse(&self.uri) {
             Err(e) => {
@@ -240,7 +281,13 @@ impl MetaFile {
                                         }
 
                                         // At this stage, either the dest path does not exist, or the CRC32 check failed.
-                                        match reqwest::blocking::get(url.clone()) {
+                                        let client = reqwest::blocking::Client::builder()
+                                            .connect_timeout(Duration::from_secs(30))
+                                            .timeout(Duration::from_secs(30))
+                                            .build()
+                                            .unwrap();
+
+                                        match client.get(url.clone()).send() {
                                             Ok(resp) => {
                                                 if resp.status().is_success() {
                                                     // Downloaded the file, let's store it locally.
@@ -279,6 +326,7 @@ impl MetaFile {
                                                         }
                                                     }
                                                 } else {
+                                                    println!("err");
                                                     let err = resp.error_for_status().unwrap();
                                                     Err(MetaAlmanacError::FetchError {
                                                         status: err.status(),

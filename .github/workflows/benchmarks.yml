@@ -16,8 +16,14 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
-        with:
-          lfs: true
+        
+      - name: Download data
+        run: |
+          wget -O data/de421.bsp http://public-data.nyxspace.com/anise/de421.bsp
+          wget -O data/de430.bsp http://public-data.nyxspace.com/anise/de430.bsp
+          wget -O data/de440s.bsp http://public-data.nyxspace.com/anise/de440s.bsp
+          wget -O data/de440.bsp http://public-data.nyxspace.com/anise/de440.bsp
+          wget -O data/pck08.pca http://public-data.nyxspace.com/anise/pck08.pca
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
