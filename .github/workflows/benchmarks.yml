@@ -24,6 +24,8 @@ jobs:
           wget -O data/de440s.bsp http://public-data.nyxspace.com/anise/de440s.bsp
           wget -O data/de440.bsp http://public-data.nyxspace.com/anise/de440.bsp
           wget -O data/pck08.pca http://public-data.nyxspace.com/anise/pck08.pca
+          wget -O data/gmat-hermite.bsp http://public-data.nyxspace.com/anise/ci/gmat-hermite.bsp
+          wget -O data/variable-seg-size-hermite.bsp http://public-data.nyxspace.com/anise/ci/variable-seg-size-hermite.bsp
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
