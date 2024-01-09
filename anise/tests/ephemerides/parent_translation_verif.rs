@@ -23,7 +23,7 @@ fn invalid_load_from_static() {
 }
 
 #[test]
-fn de438s_parent_translation_verif() {
+fn de440s_parent_translation_verif() {
     let _ = pretty_env_logger::try_init();
 
     let bytes = file2heap!("../data/de440s.bsp").unwrap();
@@ -44,9 +44,7 @@ fn de438s_parent_translation_verif() {
     ['9.5205530594596043e+07', '-4.6160758818180226e+07', '-2.6779476581501361e+07', '1.6612048969243794e+01', '2.8272067093941200e+01', '1.1668575714409423e+01']
     */
 
-    let state = ctx
-        .translate_to_parent(VENUS_J2000, epoch, Aberration::NotSet)
-        .unwrap();
+    let state = ctx.translate_to_parent(VENUS_J2000, epoch).unwrap();
 
     let pos_km = state.radius_km;
     let vel_km_s = state.velocity_km_s;
@@ -62,10 +60,6 @@ fn de438s_parent_translation_verif() {
         2.827_206_709_394_12e1,
         1.166_857_571_440_942_3e1,
     );
-
-    // We expect exactly the same output as SPICE to machine precision.
-    assert!((pos_km - pos_expct_km).norm() < EPSILON);
-    assert!((vel_km_s - vel_expct_km_s).norm() < EPSILON);
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(

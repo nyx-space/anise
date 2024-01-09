@@ -18,6 +18,7 @@ fn validate_hermite_type13_from_gmat() {
         vec!["../data/gmat-hermite.bsp".to_string()],
         file_name.clone(),
         10_000,
+        None,
     );
 
     let err_count = comparator.run();
@@ -41,6 +42,7 @@ fn validate_hermite_type13_with_varying_segment_sizes() {
         vec!["../data/variable-seg-size-hermite.bsp".to_string()],
         file_name.clone(),
         10_000,
+        None,
     );
 
     let err_count = comparator.run();

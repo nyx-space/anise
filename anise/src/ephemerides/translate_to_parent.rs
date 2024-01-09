@@ -13,7 +13,6 @@ use snafu::ResultExt;
 
 use super::{EphemerisError, SPKSnafu};
 use crate::almanac::Almanac;
-use crate::astro::Aberration;
 use crate::ephemerides::EphemInterpolationSnafu;
 use crate::hifitime::Epoch;
 use crate::math::cartesian::CartesianState;
@@ -35,7 +34,6 @@ impl Almanac {
         &self,
         source: Frame,
         epoch: Epoch,
-        _ab_corr: Aberration,
     ) -> Result<(Vector3, Vector3, Frame), EphemerisError> {
         // First, let's find the SPK summary for this frame.
         let (summary, spk_no, idx_in_spk) =
@@ -51,6 +49,7 @@ impl Almanac {
             .ok_or(EphemerisError::Unreachable)?;
 
         // Now let's simply evaluate the data
+
         let (pos_km, vel_km_s) = match summary.data_type()? {
             DafDataType::Type2ChebyshevTriplet => {
                 let data = spk_data
@@ -93,14 +92,13 @@ impl Almanac {
         Ok((pos_km, vel_km_s, new_frame))
     }
 
+    /// Performs the GEOMETRIC translation to the parent. Use translate_from_to for aberration.
     pub fn translate_to_parent(
         &self,
         source: Frame,
         epoch: Epoch,
-        ab_corr: Aberration,
     ) -> Result<CartesianState, EphemerisError> {
-        let (radius_km, velocity_km_s, frame) =
-            self.translation_parts_to_parent(source, epoch, ab_corr)?;
+        let (radius_km, velocity_km_s, frame) = self.translation_parts_to_parent(source, epoch)?;
 
         Ok(CartesianState {
             radius_km,

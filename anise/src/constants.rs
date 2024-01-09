@@ -8,6 +8,9 @@
  * Documentation: https://nyxspace.com/
  */
 
+/// Speed of light in kilometers per second (km/s)
+pub const SPEED_OF_LIGHT_KM_S: f64 = 299_792.458;
+
 pub mod celestial_objects {
     use crate::NaifId;
 

@@ -71,6 +71,7 @@ pub struct CompareEphem {
     pub output_file_name: String,
     pub num_queries_per_pair: usize,
     pub dry_run: bool,
+    pub aberration: Option<Aberration>,
     pub writer: ArrowWriter<File>,
     pub batch_src_frame: Vec<String>,
     pub batch_dst_frame: Vec<String>,
@@ -86,6 +87,7 @@ impl CompareEphem {
         input_file_names: Vec<String>,
         output_file_name: String,
         num_queries_per_pair: usize,
+        aberration: Option<Aberration>,
     ) -> Self {
         let _ = pretty_env_logger::try_init();
 
@@ -110,6 +112,7 @@ impl CompareEphem {
             output_file_name,
             input_file_names,
             num_queries_per_pair,
+            aberration,
             writer,
             dry_run: false,
             batch_src_frame: Vec::new(),
@@ -136,6 +139,14 @@ impl CompareEphem {
             // Load the SPICE data too
             spice::furnsh(path);
         }
+
+        // If there is a light time correction, start after the epoch because the light time correction
+        // will cause us to seek out of the definition bounds.
+
+        let bound_offset = match self.aberration {
+            None => 0.0_f64.seconds(),
+            Some(_) => 36.0_f64.hours(),
+        };
 
         // Build the pairs of the SPICE and ANISE queries at the same time as we create those instances.
         let mut pairs: HashMap<(i32, i32), (Frame, Frame, Epoch, Epoch)> = HashMap::new();
@@ -173,9 +184,9 @@ impl CompareEphem {
                     let to_frame = Frame::from_ephem_j2000(ephem2.target_id);
 
                     // Query the ephemeris data for a bunch of different times.
-                    let start_epoch = ephem1.start_epoch().max(ephem2.start_epoch());
+                    let start_epoch = ephem1.start_epoch().max(ephem2.start_epoch()) + bound_offset;
 
-                    let end_epoch = ephem1.end_epoch().min(ephem2.end_epoch());
+                    let end_epoch = ephem1.end_epoch().min(ephem2.end_epoch()) - bound_offset;
 
                     pairs.insert(key, (from_frame, to_frame, start_epoch, end_epoch));
                 }
@@ -228,7 +239,7 @@ impl CompareEphem {
             }
 
             for epoch in time_it {
-                let data = match ctx.translate_from_to_geometric(*from_frame, *to_frame, epoch) {
+                let data = match ctx.translate(*from_frame, *to_frame, epoch, self.aberration) {
                     Ok(state) => {
                         // Find the SPICE names
                         let targ =
@@ -246,8 +257,18 @@ impl CompareEphem {
                         };
 
                         // Perform the same query in SPICE
-                        let (spice_state, _) =
-                            spice::spkezr(&targ, epoch.to_et_seconds(), "J2000", "NONE", &obs);
+                        let spice_ab_corr = match self.aberration {
+                            None => "NONE".to_string(),
+                            Some(corr) => format!("{corr:?}"),
+                        };
+
+                        let (spice_state, _) = spice::spkezr(
+                            &targ,
+                            epoch.to_et_seconds(),
+                            "J2000",
+                            &spice_ab_corr,
+                            &obs,
+                        );
 
                         EphemValData {
                             src_frame: format!("{from_frame:e}"),

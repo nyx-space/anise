@@ -35,11 +35,11 @@ impl Almanac {
         from_frame: Frame,
         to_frame: Frame,
         epoch: Epoch,
-        ab_corr: Aberration,
+        ab_corr: Option<Aberration>,
     ) -> Result<CartesianState, AlmanacError> {
         // Translate
         let state = self
-            .translate_from_to(from_frame, to_frame, epoch, ab_corr)
+            .translate(from_frame, to_frame, epoch, ab_corr)
             .with_context(|_| EphemerisSnafu {
                 action: "transform from/to",
             })?;
@@ -65,7 +65,7 @@ impl Almanac {
         &self,
         state: CartesianState,
         to_frame: Frame,
-        ab_corr: Aberration,
+        ab_corr: Option<Aberration>,
     ) -> Result<CartesianState, AlmanacError> {
         let state = self
             .translate_to(state, to_frame, ab_corr)
@@ -96,7 +96,7 @@ impl Almanac {
         object: NaifId,
         observer: Frame,
         epoch: Epoch,
-        ab_corr: Aberration,
+        ab_corr: Option<Aberration>,
     ) -> Result<CartesianState, AlmanacError> {
         self.transform_from_to(Frame::from_ephem_j2000(object), observer, epoch, ab_corr)
     }
@@ -114,7 +114,7 @@ impl Almanac {
         from_frame: Frame,
         to_frame: Frame,
         epoch: Epoch,
-        ab_corr: Aberration,
+        ab_corr: Option<Aberration>,
         distance_unit: LengthUnit,
         time_unit: TimeUnit,
     ) -> Result<CartesianState, AlmanacError> {

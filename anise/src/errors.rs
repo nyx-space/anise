@@ -186,10 +186,12 @@ pub enum PhysicsError {
     InfiniteValue { action: &'static str },
     #[snafu(display("{source}"))]
     AppliedMath { source: MathError },
-    #[snafu(display("invalid radius {action}"))]
+    #[snafu(display("invalid radius: {action}"))]
     RadiusError { action: &'static str },
-    #[snafu(display("invalid velocity {action}"))]
+    #[snafu(display("invalid velocity: {action}"))]
     VelocityError { action: &'static str },
+    #[snafu(display("invalid aberration: {action}"))]
+    AberrationError { action: &'static str },
 }
 
 impl From<IOErrorKind> for InputOutputError {

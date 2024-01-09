@@ -3,7 +3,7 @@ resolver = "2"
 members = ["anise", "anise-cli", "anise-gui", "anise-py"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Christopher Rabotin <christopher.rabotin@gmail.com>"]
 description = "ANISE provides a toolkit and files for Attitude, Navigation, Instrument, Spacecraft, and Ephemeris data. It's a modern replacement of NAIF SPICE file."
@@ -26,7 +26,7 @@ exclude = [
 ]
 
 [workspace.dependencies]
-hifitime = { version = "3.8.6", default-features = true }
+hifitime = { version = "3.9.0", default-features = true }
 memmap2 = "=0.9.3"
 crc32fast = "=1.3.2"
 der = { version = "0.7.8", features = ["derive", "alloc", "real"] }
@@ -45,7 +45,7 @@ rstest = "0.18.2"
 pyo3 = { version = "0.20.0", features = ["multiple-pymethods"] }
 pyo3-log = "0.9.0"
 
-anise = { version = "0.1.0", path = "anise", default-features = false }
+anise = { version = "0.2.0", path = "anise", default-features = false }
 
 [profile.bench]
 debug = true

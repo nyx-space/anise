@@ -99,7 +99,7 @@ let orig_state = Orbit::keplerian(
 
 // Transform that orbit into another frame.
 let state_itrf93 = almanac
-    .transform_to(orig_state, EARTH_ITRF93, Aberration::NotSet)
+    .transform_to(orig_state, EARTH_ITRF93, None)
     .unwrap();
 
 // The `:x` prints this orbit's Keplerian elements
@@ -109,7 +109,7 @@ println!("{state_itrf93:X}");
 
 // Convert back
 let from_state_itrf93_to_eme2k = almanac
-    .transform_to(state_itrf93, EARTH_J2000, Aberration::NotSet)
+    .transform_to(state_itrf93, EARTH_J2000, Aberration::NONE)
     .unwrap();
 
 println!("{from_state_itrf93_to_eme2k}");
@@ -181,11 +181,11 @@ let ctx = Almanac::from_spk(spk).unwrap();
 let epoch = Epoch::from_str("2020-11-15 12:34:56.789 TDB").unwrap();
 
 let state = ctx
-    .translate_from_to(
-        VENUS_J2000,
-        EARTH_MOON_BARYCENTER_J2000,
+    .translate(
+        VENUS_J2000, // Target
+        EARTH_MOON_BARYCENTER_J2000, // Observer
         epoch,
-        Aberration::NotSet,
+        None,
     )
     .unwrap();
 
@@ -242,7 +242,7 @@ def test_state_transformation():
     assert orig_state.tlong_deg() == 0.6916999999999689
 
     state_itrf93 = ctx.transform_to(
-        orig_state, Frames.EARTH_ITRF93, Aberration.NotSet
+        orig_state, Frames.EARTH_ITRF93, None
     )
 
     print(orig_state)
@@ -254,7 +254,7 @@ def test_state_transformation():
 
     # Convert back
     from_state_itrf93_to_eme2k = ctx.transform_to(
-        state_itrf93, Frames.EARTH_J2000, Aberration.NotSet
+        state_itrf93, Frames.EARTH_J2000, None
     )
 
     print(from_state_itrf93_to_eme2k)
