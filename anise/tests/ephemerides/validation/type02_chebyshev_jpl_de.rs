@@ -74,6 +74,9 @@ fn validate_jplde_de440s_aberration_lt() {
 
     let validator = Validation {
         file_name: output_file_name,
+        max_q75_err: 1e-3,
+        max_q99_err: 5e-3,
+        max_abs_err: 0.09,
         ..Default::default()
     };
 
