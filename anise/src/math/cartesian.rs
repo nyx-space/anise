@@ -11,12 +11,13 @@
 use super::{perp_vector, Vector3};
 use crate::{
     astro::PhysicsResult,
+    constants::SPEED_OF_LIGHT_KM_S,
     errors::{EpochMismatchSnafu, FrameMismatchSnafu, PhysicsError},
     prelude::Frame,
 };
 use core::fmt;
 use core::ops::{Add, Neg, Sub};
-use hifitime::Epoch;
+use hifitime::{Duration, Epoch, TimeUnits};
 use nalgebra::Vector6;
 use snafu::ensure;
 
@@ -179,7 +180,7 @@ impl CartesianState {
     }
 
     /// Returns the distance in kilometers between this state and another state, if both frame match (epoch does not need to match).
-    pub fn distance_to(&self, other: &Self) -> PhysicsResult<f64> {
+    pub fn distance_to_km(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
             self.frame == other.frame,
             FrameMismatchSnafu {
@@ -202,6 +203,11 @@ impl CartesianState {
             && (self.velocity_km_s.y - other.velocity_km_s.y).abs() < velocity_tol_km_s
             && (self.velocity_km_s.z - other.velocity_km_s.z).abs() < velocity_tol_km_s
             && self.frame == other.frame
+    }
+
+    /// Returns the light time duration between this object and the origin of its reference frame.
+    pub fn light_time(&self) -> Duration {
+        (self.radius_km.norm() / SPEED_OF_LIGHT_KM_S).seconds()
     }
 }
 
@@ -323,7 +329,7 @@ impl fmt::LowerExp for CartesianState {
 mod cartesian_state_ut {
     use std::f64::EPSILON;
 
-    use hifitime::{Epoch, TimeUnits};
+    use hifitime::{Duration, Epoch, TimeUnits};
 
     use crate::constants::frames::{EARTH_J2000, VENUS_J2000};
     use crate::errors::PhysicsError;
@@ -388,7 +394,7 @@ mod cartesian_state_ut {
         let s1 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
         let s2 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
 
-        assert!(s1.distance_to(&s2).unwrap().abs() < EPSILON);
+        assert!(s1.distance_to_km(&s2).unwrap().abs() < EPSILON);
 
         let as_vec6 = Vector6::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0);
         assert_eq!(s1.to_cartesian_pos_vel(), as_vec6);
@@ -410,5 +416,7 @@ mod cartesian_state_ut {
 
         let s = CartesianState::zero_at_epoch(e, frame);
         assert!(s.hmag().is_err());
+
+        assert_eq!(s.light_time(), Duration::ZERO);
     }
 }
