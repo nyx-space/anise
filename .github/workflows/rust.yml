@@ -50,6 +50,7 @@ jobs:
           wget -O data/pck08.pca http://public-data.nyxspace.com/anise/pck08.pca
           wget -O data/gmat-hermite.bsp http://public-data.nyxspace.com/anise/ci/gmat-hermite.bsp
           wget -O data/variable-seg-size-hermite.bsp http://public-data.nyxspace.com/anise/ci/variable-seg-size-hermite.bsp
+          wget -O data/earth_latest_high_prec.bpc https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -111,6 +112,7 @@ jobs:
           wget -O data/pck08.pca http://public-data.nyxspace.com/anise/pck08.pca
           wget -O data/gmat-hermite.bsp http://public-data.nyxspace.com/anise/ci/gmat-hermite.bsp
           wget -O data/variable-seg-size-hermite.bsp http://public-data.nyxspace.com/anise/ci/variable-seg-size-hermite.bsp
+          wget -O data/earth_latest_high_prec.bpc https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -176,6 +178,7 @@ jobs:
           wget -O data/pck08.pca http://public-data.nyxspace.com/anise/pck08.pca
           wget -O data/gmat-hermite.bsp http://public-data.nyxspace.com/anise/ci/gmat-hermite.bsp
           wget -O data/variable-seg-size-hermite.bsp http://public-data.nyxspace.com/anise/ci/variable-seg-size-hermite.bsp
+          wget -O data/earth_latest_high_prec.bpc https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
