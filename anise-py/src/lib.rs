@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use ::anise::almanac::meta::{MetaAlmanac, MetaFile};
+use ::anise::almanac::metaload::{MetaAlmanac, MetaFile};
 use ::anise::almanac::Almanac;
 use ::anise::astro::Aberration;
 use hifitime::leap_seconds::{LatestLeapSeconds, LeapSecondsFile};

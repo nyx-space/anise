@@ -15,10 +15,12 @@ use crate::{
     errors::{EpochMismatchSnafu, FrameMismatchSnafu, PhysicsError},
     prelude::Frame,
 };
+
 use core::fmt;
 use core::ops::{Add, Neg, Sub};
 use hifitime::{Duration, Epoch, TimeUnits};
 use nalgebra::Vector6;
+use serde_derive::{Deserialize, Serialize};
 use snafu::ensure;
 
 #[cfg(feature = "python")]
@@ -28,7 +30,7 @@ use pyo3::prelude::*;
 /// Regardless of the constructor used, this struct stores all the state information in Cartesian coordinates as these are always non singular.
 ///
 /// Unless noted otherwise, algorithms are from GMAT 2016a [StateConversionUtil.cpp](https://github.com/ChristopherRabotin/GMAT/blob/37201a6290e7f7b941bc98ee973a527a5857104b/src/base/util/StateConversionUtil.cpp).
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "python", pyclass(name = "Orbit"))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct CartesianState {
@@ -418,5 +420,17 @@ mod cartesian_state_ut {
         assert!(s.hmag().is_err());
 
         assert_eq!(s.light_time(), Duration::ZERO);
+    }
+
+    #[test]
+    fn test_serde() {
+        let e = Epoch::now().unwrap();
+        let frame = EARTH_J2000;
+        let state = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
+
+        let serialized = serde_yaml::to_string(&state).unwrap();
+        let rtn: CartesianState = serde_yaml::from_str(&serialized).unwrap();
+
+        assert_eq!(rtn, state);
     }
 }

@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::almanac::meta::MetaAlmanacError;
+use crate::almanac::metaload::MetaAlmanacError;
 use crate::almanac::planetary::PlanetaryDataError;
 use crate::ephemerides::EphemerisError;
 use crate::errors::{AlmanacError, DecodingError, InputOutputError, IntegrityError, PhysicsError};

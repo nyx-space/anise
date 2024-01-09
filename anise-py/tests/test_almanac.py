@@ -16,15 +16,12 @@ def test_state_transformation():
     """
 
     if environ.get("CI", False):
-        # # Load from meta kernel to not use Git LFS quota
-        # data_path = Path(__file__).parent.joinpath("..", "..", "data", "default_meta.dhall")
-        # meta = MetaAlmanac(str(data_path))
-        # print(meta)
-        # # Process the files to be loaded
-        # ctx = meta.process()
-        print("I don't know where the files are in the Python CI")
-
-        return
+        # Load from meta kernel to not use Git LFS quota
+        data_path = Path(__file__).parent.joinpath("..", "..", "data", "default_meta.dhall")
+        meta = MetaAlmanac(str(data_path))
+        print(meta)
+        # Process the files to be loaded
+        ctx = meta.process()
     else:
         data_path = Path(__file__).parent.joinpath("..", "..", "data")
         # Must ensure that the path is a string

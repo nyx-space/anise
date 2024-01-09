@@ -1,6 +1,128 @@
-# ANISE Python
+# ANISE (Attitude, Navigation, Instrument, Spacecraft, Ephemeris)
 
-The Python interface to ANISE, a modern rewrite of NAIF SPICE.
+ANISE is a rewrite of the core functionalities of the NAIF SPICE toolkit with enhanced performance, and ease of use, while leveraging Rust's safety and speed.
+
+[**Please fill out our user survey**](https://7ug5imdtt8v.typeform.com/to/qYDB14Hj)
+
+## Introduction
+
+In the realm of space exploration, navigation, and astrophysics, precise and efficient computation of spacecraft position, orientation, and time is critical. ANISE, standing for "Attitude, Navigation, Instrument, Spacecraft, Ephemeris," offers a Rust-native approach to these challenges. This toolkit provides a suite of functionalities including but not limited to:
+
++ Loading SPK, BPC, PCK, FK, and TPC files.
++ High-precision translations, rotations, and their combination (rigid body transformations).
++ Comprehensive time system conversions using the hifitime library (including TT, TAI, ET, TDB, UTC, GPS time, and more).
+
+ANISE stands validated against the traditional SPICE toolkit, ensuring accuracy and reliability, with translations achieving machine precision (2e-16) and rotations presenting minimal error (less than two arcseconds in the pointing of the rotation axis and less than one arcsecond in the angle about this rotation axis).
+
+## Features
+
++ **High Precision**: Matches SPICE to machine precision in translations and minimal errors in rotations.
++ **Time System Conversions**: Extensive support for various time systems crucial in astrodynamics.
++ **Rust Efficiency**: Harnesses the speed and safety of Rust for space computations.
++ **Multi-threaded:** Yup! Forget about mutexes and race conditions you're used to in SPICE, ANISE _guarantees_ that you won't have any race conditions.
++ **Frame safety**: ANISE checks all frames translations or rotations are physically valid before performing any computation, even internally.
+
+## Resources / Assets
+
+For convenience, Nyx Space provides a few important SPICE files on a public bucket:
+
++ [de440s.bsp](http://public-data.nyxspace.com/anise/de440s.bsp): JPL's latest ephemeris dataset from 1900 until 20250
++ [de440.bsp](http://public-data.nyxspace.com/anise/de440.bsp): JPL's latest long-term ephemeris dataset
++ [pck08.pca](http://public-data.nyxspace.com/anise/pck08.pca): planetary constants ANISE (`pca`) kernel, built from the JPL gravitational data [gm_de431.tpc](http://public-data.nyxspace.com/anise/gm_de431.tpc) and JPL's plantary constants file [pck00008.tpc](http://public-data.nyxspace.com/anise/pck00008.tpc)
+
+You may load any of these using the `load()` shortcut that will determine the file type upon loading, e.g. `let almanac = Almanac::default().load("pck08.pca").unwrap();`.
+
+## Python Usage
+
+In Python, start by adding anise to your project: `pip install anise`.
+
+```python
+from anise import Almanac, Aberration
+from anise.astro.constants import Frames
+from anise.astro import Orbit
+from anise.time import Epoch
+
+from pathlib import Path
+
+
+def test_state_transformation():
+    """
+    This is the Python equivalent to anise/tests/almanac/mod.rs
+    """
+    data_path = Path(__file__).parent.joinpath("..", "..", "data")
+    # Must ensure that the path is a string
+    ctx = Almanac(str(data_path.joinpath("de440s.bsp")))
+    # Let's add another file here -- note that the Almanac will load into a NEW variable, so we must overwrite it!
+    # This prevents memory leaks (yes, I promise)
+    ctx = ctx.load(str(data_path.joinpath("pck08.pca"))).load(
+        str(data_path.joinpath("earth_latest_high_prec.bpc"))
+    )
+    eme2k = ctx.frame_info(Frames.EME2000)
+    assert eme2k.mu_km3_s2() == 398600.435436096
+    assert eme2k.shape.polar_radius_km == 6356.75
+    assert abs(eme2k.shape.flattening() - 0.0033536422844278) < 2e-16
+
+    epoch = Epoch("2021-10-29 12:34:56 TDB")
+
+    orig_state = Orbit.from_keplerian(
+        8_191.93,
+        1e-6,
+        12.85,
+        306.614,
+        314.19,
+        99.887_7,
+        epoch,
+        eme2k,
+    )
+
+    assert orig_state.sma_km() == 8191.93
+    assert orig_state.ecc() == 1.000000000361619e-06
+    assert orig_state.inc_deg() == 12.849999999999987
+    assert orig_state.raan_deg() == 306.614
+    assert orig_state.tlong_deg() == 0.6916999999999689
+
+    state_itrf93 = ctx.transform_to(
+        orig_state, Frames.EARTH_ITRF93, None
+    )
+
+    print(orig_state)
+    print(state_itrf93)
+
+    assert state_itrf93.geodetic_latitude_deg() == 10.549246868302738
+    assert state_itrf93.geodetic_longitude_deg() == 133.76889100913047
+    assert state_itrf93.geodetic_height_km() == 1814.503598063825
+
+    # Convert back
+    from_state_itrf93_to_eme2k = ctx.transform_to(
+        state_itrf93, Frames.EARTH_J2000, None
+    )
+
+    print(from_state_itrf93_to_eme2k)
+
+    assert orig_state == from_state_itrf93_to_eme2k
+
+    # Demo creation of a ground station
+    mean_earth_angular_velocity_deg_s = 0.004178079012116429
+    # Grab the loaded frame info
+    itrf93 = ctx.frame_info(Frames.EARTH_ITRF93)
+    paris = Orbit.from_latlongalt(
+        48.8566,
+        2.3522,
+        0.4,
+        mean_earth_angular_velocity_deg_s,
+        epoch,
+        itrf93,
+    )
+
+    assert abs(paris.geodetic_latitude_deg() - 48.8566) < 1e-3
+    assert abs(paris.geodetic_longitude_deg() - 2.3522) < 1e-3
+    assert abs(paris.geodetic_height_km() - 0.4) < 1e-3
+
+
+if __name__ == "__main__":
+    test_state_transformation()
+
+```
 
 ## Getting started as a developer
  

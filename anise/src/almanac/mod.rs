@@ -39,7 +39,7 @@ pub mod spk;
 pub mod transform;
 
 #[cfg(feature = "metaload")]
-pub mod meta;
+pub mod metaload;
 
 #[cfg(feature = "python")]
 mod python;

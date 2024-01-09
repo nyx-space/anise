@@ -10,6 +10,7 @@
 
 use core::fmt;
 use core::fmt::Debug;
+use serde_derive::{Deserialize, Serialize};
 
 use crate::astro::PhysicsResult;
 use crate::constants::celestial_objects::{celestial_name_from_id, SOLAR_SYSTEM_BARYCENTER};
@@ -27,7 +28,7 @@ use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
 
 /// A Frame uniquely defined by its ephemeris center and orientation. Refer to FrameDetail for frames combined with parameters.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(get_all, set_all))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
