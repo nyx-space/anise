@@ -27,9 +27,9 @@ rstest = { workspace = true }
 pyo3 = { workspace = true, optional = true }
 pyo3-log = { workspace = true, optional = true }
 url = { version = "2.5.0", optional = true }
-serde = { version = "1", optional = true }
-serde_derive = { version = "1", optional = true }
-serde_dhall = { version = "0.12", optional = true }
+serde = { workspace = true }
+serde_derive = { workspace = true }
+serde_dhall = { workspace = true, optional = true }
 reqwest = { version = "0.11.23", optional = true, features = ["blocking"] }
 platform-dirs = { version = "0.3.0", optional = true }
 
@@ -41,20 +41,14 @@ criterion = "0.5"
 iai = "0.1"
 polars = { version = "0.36.2", features = ["lazy", "parquet"] }
 rayon = "1.7"
+serde_yaml = "0.9.30"
 
 [features]
 default = ["metaload"]
 # Enabling this flag significantly increases compilation times due to Arrow and Polars.
 spkezr_validation = []
 python = ["pyo3", "pyo3-log"]
-metaload = [
-    "url",
-    "serde",
-    "serde_derive",
-    "serde_dhall",
-    "reqwest/blocking",
-    "platform-dirs",
-]
+metaload = ["serde_dhall", "url", "reqwest/blocking", "platform-dirs"]
 
 [[bench]]
 name = "iai_jpl_ephemerides"

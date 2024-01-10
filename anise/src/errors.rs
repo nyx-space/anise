@@ -22,7 +22,7 @@ use der::Error as DerError;
 use std::io::ErrorKind as IOErrorKind;
 
 #[cfg(feature = "metaload")]
-use crate::almanac::meta::MetaAlmanacError;
+use crate::almanac::metaload::MetaAlmanacError;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]

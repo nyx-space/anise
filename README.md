@@ -1,6 +1,6 @@
 # ANISE (Attitude, Navigation, Instrument, Spacecraft, Ephemeris)
 
-ANISE, inspired by the iconic Dune universe, reimagines the functionalities of the NAIF SPICE toolkit with enhanced performance, precision, and ease of use, leveraging Rust's safety and speed.
+ANISE is a rewrite of the core functionalities of the NAIF SPICE toolkit with enhanced performance, and ease of use, while leveraging Rust's safety and speed.
 
 [**Please fill out our user survey**](https://7ug5imdtt8v.typeform.com/to/qYDB14Hj)
 
@@ -296,7 +296,7 @@ For more details, please see the [full text of the license](./LICENSE) or read [
 
 ## Acknowledgements
 
-ANISE is heavily inspired by the NAIF SPICE toolkit and its excellent documentation
+ANISE is heavily inspired by the NAIF SPICE toolkit and its excellent documentation.
 
 
 ## Contact

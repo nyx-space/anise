@@ -138,6 +138,8 @@ pub fn parse_file<P: AsRef<Path> + fmt::Debug, I: KPLItem>(
     Ok(map)
 }
 
+/// Converts two KPL/TPC files, one defining the planetary constants as text, and the other defining the gravity parameters, into the PlanetaryDataSet equivalent ANISE file.
+/// KPL/TPC files must be converted into "PCA" (Planetary Constant ANISE) files before being loaded into ANISE.
 pub fn convert_tpc<P: AsRef<Path> + fmt::Debug>(
     pck: P,
     gm: P,
@@ -309,6 +311,8 @@ pub fn convert_tpc<P: AsRef<Path> + fmt::Debug>(
     Ok(dataset)
 }
 
+/// Converts a KPL/FK file, that defines frame constants like fixed rotations, and frame name to ID mappings into the EulerParameterDataSet equivalent ANISE file.
+/// KPL/FK files must be converted into "PCA" (Planetary Constant ANISE) files before being loaded into ANISE.
 pub fn convert_fk<P: AsRef<Path> + fmt::Debug>(
     fk_file_path: P,
     show_comments: bool,

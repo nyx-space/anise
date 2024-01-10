@@ -8,11 +8,12 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::almanac::meta::MetaAlmanacError;
+use crate::almanac::metaload::MetaAlmanacError;
 use crate::almanac::planetary::PlanetaryDataError;
 use crate::ephemerides::EphemerisError;
 use crate::errors::{AlmanacError, DecodingError, InputOutputError, IntegrityError, PhysicsError};
 use crate::orientations::OrientationError;
+use crate::structure::dataset::DataSetError;
 use core::convert::From;
 
 use pyo3::{exceptions::PyException, prelude::*};
@@ -62,6 +63,11 @@ impl From<PlanetaryDataError> for PyErr {
 
 impl From<MetaAlmanacError> for PyErr {
     fn from(err: MetaAlmanacError) -> PyErr {
+        PyException::new_err(err.to_string())
+    }
+}
+impl From<DataSetError> for PyErr {
+    fn from(err: DataSetError) -> PyErr {
         PyException::new_err(err.to_string())
     }
 }
