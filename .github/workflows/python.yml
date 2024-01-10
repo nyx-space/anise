@@ -74,7 +74,7 @@ jobs:
         run: |
           set -e
           pip debug --verbose
-          pip install anise --find-links anise-py/dist --force-reinstall -vv
+          pip install anise --find-links anise-py/dist --force-reinstall
           pip install pytest
           pytest
 
@@ -92,7 +92,7 @@ jobs:
           run: |
             set -e
             pip debug --verbose
-            pip install anise --find-links anise-py/dist --force-reinstall -vv
+            pip install anise --find-links anise-py/dist --force-reinstall
             pip install pytest
             pytest
 
@@ -102,7 +102,7 @@ jobs:
         run: |
           set -e
           pip debug --verbose
-          pip install anise --find-links anise-py/dist --force-reinstall -vv
+          pip install anise --find-links anise-py/dist --force-reinstall
           pip install pytest-notebook
           pytest
 
@@ -180,7 +180,7 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           set -e
-          pip install anise --find-links anise-py/dist --force-reinstall -vv
+          pip install anise --find-links anise-py/dist --force-reinstall
           pip install pytest
           pytest
 
