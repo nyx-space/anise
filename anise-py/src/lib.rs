@@ -19,12 +19,14 @@ use pyo3::prelude::*;
 use pyo3::py_run;
 
 mod astro;
+mod utils;
 
 /// A Python module implemented in Rust.
 #[pymodule]
 fn anise(py: Python, m: &PyModule) -> PyResult<()> {
     register_time_module(py, m)?;
     astro::register_astro(py, m)?;
+    utils::register_utils(py, m)?;
     m.add_class::<Almanac>()?;
     m.add_class::<Aberration>()?;
     m.add_class::<MetaAlmanac>()?;
