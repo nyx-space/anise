@@ -17,7 +17,7 @@ def test_state_transformation():
 
     if environ.get("CI", False):
         # Load from meta kernel to not use Git LFS quota
-        data_path = Path(__file__).parent.joinpath("..", "..", "data", "default_meta.dhall")
+        data_path = Path(__file__).parent.joinpath("..", "..", "data", "ci_config.dhall")
         meta = MetaAlmanac(str(data_path))
         print(meta)
         # Process the files to be loaded

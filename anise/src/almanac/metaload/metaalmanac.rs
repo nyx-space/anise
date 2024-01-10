@@ -78,7 +78,7 @@ impl FromStr for MetaAlmanac {
     type Err = MetaAlmanacError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match serde_dhall::from_str(&s).parse::<Self>() {
+        match serde_dhall::from_str(s).parse::<Self>() {
             Err(e) => Err(MetaAlmanacError::ParseDhall {
                 path: s.to_string(),
                 err: format!("{e}"),
