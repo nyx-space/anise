@@ -214,12 +214,12 @@ impl fmt::Display for Frame {
         if self.is_geodetic() {
             write!(
                 f,
-                " (μ = {} km3/s, {})",
+                " (μ = {} km^3/s^2, {})",
                 self.mu_km3_s2.unwrap(),
                 self.shape.unwrap()
             )?;
         } else if self.is_celestial() {
-            write!(f, " (μ = {} km3/s)", self.mu_km3_s2.unwrap())?;
+            write!(f, " (μ = {} km^3/s^2)", self.mu_km3_s2.unwrap())?;
         }
         Ok(())
     }

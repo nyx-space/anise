@@ -32,6 +32,10 @@ For convenience, Nyx Space provides a few important SPICE files on a public buck
 
 You may load any of these using the `load()` shortcut that will determine the file type upon loading, e.g. `let almanac = Almanac::default().load("pck08.pca").unwrap();`.
 
+## Python tutorials
+
+- [ANISE Tutorial for querying SPK files.ipynb](./notebooks/ANISE%20Tutorial%20for%20querying%20SPK%20files.ipynb)
+
 ## Python Usage
 
 In Python, start by adding anise to your project: `pip install anise`.
@@ -131,3 +135,10 @@ if __name__ == "__main__":
 1. Jump into the vitual environment and install `patchelf` for faster builds: `pip install patchelf`, and `pytest` for the test suite: `pip install pytest`
 1. Run `maturin develop` to build the development package and install it in the virtual environment
 1. Finally, run the tests `python -m pytest`
+
+To run the development version of ANISE in a Jupyter Notebook, install ipykernels in your virtual environment.
+
+1. `pip install ipykernel`
+1. Now, build the local kernel: `python -m ipykernel install --user --name=.venv`
+1. Then, start jupyter notebook: `jupyter notebook`
+1. Open the notebook, click on the top right and make sure to choose the environment you created just a few steps above.

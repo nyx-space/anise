@@ -206,4 +206,14 @@ impl Almanac {
     pub fn py_new(path: &str) -> Result<Self, AlmanacError> {
         Self::new(path)
     }
+
+    #[cfg(feature = "python")]
+    fn __str__(&self) -> String {
+        format!("{self}")
+    }
+
+    #[cfg(feature = "python")]
+    fn __repr__(&self) -> String {
+        format!("{self} (@{self:p})")
+    }
 }

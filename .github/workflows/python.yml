@@ -96,6 +96,16 @@ jobs:
             pip install pytest
             pytest
 
+      - name: Notebook Regression tests
+        if: ${{ startsWith(matrix.target, 'x86_64') }}
+        shell: bash
+        run: |
+          set -e
+          pip debug --verbose
+          pip install anise --find-links anise-py/dist --force-reinstall -vv
+          pip install pytest-notebook
+          pytest
+
   windows:
     runs-on: windows-latest
     strategy:
