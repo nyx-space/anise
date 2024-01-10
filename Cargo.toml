@@ -34,7 +34,9 @@ log = "=0.4"
 pretty_env_logger = "=0.5"
 tabled = "=0.15"
 const_format = "0.2"
-nalgebra = "0.32"
+nalgebra = { version = "0.32", default-features = true, features = [
+    "serde-serialize",
+] }
 approx = "=0.5.1"
 zerocopy = { version = "0.7.26", features = ["derive"] }
 bytes = "=1.5.0"
@@ -44,6 +46,9 @@ heapless = "0.8.0"
 rstest = "0.18.2"
 pyo3 = { version = "0.20.0", features = ["multiple-pymethods"] }
 pyo3-log = "0.9.0"
+serde = "1"
+serde_derive = "1"
+serde_dhall = "0.12"
 
 anise = { version = "0.2.1", path = "anise", default-features = false }
 
