@@ -80,7 +80,7 @@ impl CartesianState {
     ///
     /// NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
     /// Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016
-    pub fn try_from_latlongalt(
+    pub fn try_latlongalt(
         latitude_deg: f64,
         longitude_deg: f64,
         height_km: f64,
@@ -165,7 +165,7 @@ impl CartesianState {
         epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
-        Self::try_from_latlongalt(
+        Self::try_latlongalt(
             latitude_deg,
             longitude_deg,
             height_km,
