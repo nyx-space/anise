@@ -23,7 +23,7 @@ use pyo3::pyclass::CompareOp;
 #[cfg(feature = "python")]
 use pyo3::types::PyType;
 
-use crate::errors::{AlmanacError, MetaSnafu};
+use crate::errors::{AlmanacResult, MetaSnafu};
 
 use super::{Almanac, MetaAlmanacError, MetaFile};
 
@@ -55,9 +55,12 @@ impl MetaAlmanac {
     }
 
     /// Fetch all of the URIs and return a loaded Almanac
-    pub(crate) fn _process(&mut self) -> Result<Almanac, AlmanacError> {
-        for uri in &mut self.files {
-            uri._process().with_context(|_| MetaSnafu)?;
+    pub(crate) fn _process(&mut self) -> AlmanacResult<Almanac> {
+        for (fno, file) in self.files.iter_mut().enumerate() {
+            file._process().with_context(|_| MetaSnafu {
+                fno,
+                file: file.clone(),
+            })?;
         }
         // At this stage, all of the files are local files, so we can load them as is.
         let mut ctx = Almanac::default();
@@ -69,7 +72,7 @@ impl MetaAlmanac {
 
     /// Fetch all of the URIs and return a loaded Almanac
     #[cfg(not(feature = "python"))]
-    pub fn process(&mut self) -> Result<Almanac, AlmanacError> {
+    pub fn process(&mut self) -> AlmanacResult<Almanac> {
         self._process()
     }
 }
@@ -128,8 +131,11 @@ impl MetaAlmanac {
     }
 
     /// Fetch all of the URIs and return a loaded Almanac
-    pub fn process(&mut self, py: Python) -> Result<Almanac, AlmanacError> {
-        py.allow_threads(|| self._process())
+    pub fn process(&mut self, py: Python) -> AlmanacResult<Almanac> {
+        py.allow_threads(|| match self._process() {
+            Ok(almanac) => Ok(almanac),
+            Err(e) => Err(e),
+        })
     }
 
     fn __str__(&self) -> String {

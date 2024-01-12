@@ -2,8 +2,8 @@ extern crate pretty_env_logger as pel;
 
 use anise::astro::orbit::Orbit;
 use anise::constants::frames::EARTH_J2000;
+use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
 use anise::math::angles::{between_0_360, between_pm_180};
-use anise::naif::kpl::parser::convert_tpc;
 use anise::prelude::*;
 use anise::time::{Epoch, Unit};
 
@@ -11,14 +11,19 @@ use rstest::*;
 
 #[fixture]
 fn almanac() -> Almanac {
-    Almanac::default()
-        .with_planetary_data(convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap())
+    Almanac::new("../data/pck08.pca").unwrap()
 }
 
 macro_rules! f64_eq {
     ($x:expr, $val:expr, $msg:expr) => {
+        f64_eq_tol!($x, $val, 1e-10, $msg)
+    };
+}
+
+macro_rules! f64_eq_tol {
+    ($x:expr, $val:expr, $tol:expr, $msg:expr) => {
         assert!(
-            ($x - $val).abs() < 1e-10,
+            ($x - $val).abs() < $tol,
             "{}: {:.2e}\tgot: {}\twant: {}",
             $msg,
             ($x - $val).abs(),
@@ -477,12 +482,12 @@ fn verif_geodetic_vallado(almanac: Almanac) {
         -6378.14,
         "Periapsis altitude"
     );
-    let mean_earth_angular_velocity_deg_s = 0.004178079012116429;
-    let r = Orbit::try_from_latlongalt(
+
+    let r = Orbit::try_latlongalt(
         lat,
         long,
         height,
-        mean_earth_angular_velocity_deg_s,
+        MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
         epoch,
         eme2k,
     )
@@ -500,11 +505,11 @@ fn verif_geodetic_vallado(almanac: Almanac) {
     let ri = 6_119.403_233_271_109;
     let rj = -1_571.480_316_600_378_3;
     let rk = -871.560_226_712_024_7;
-    let r = Orbit::try_from_latlongalt(
+    let r = Orbit::try_latlongalt(
         lat,
         long,
         height,
-        mean_earth_angular_velocity_deg_s,
+        MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
         epoch,
         eme2k,
     )
@@ -518,11 +523,11 @@ fn verif_geodetic_vallado(almanac: Almanac) {
     f64_eq!(r.geodetic_height_km().unwrap(), height_val, "height");
 
     // Check reciprocity near poles
-    let r = Orbit::try_from_latlongalt(
+    let r = Orbit::try_latlongalt(
         0.1,
         long,
         height_val,
-        mean_earth_angular_velocity_deg_s,
+        MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
         epoch,
         eme2k,
     )
@@ -618,5 +623,57 @@ fn verif_with_init(almanac: Almanac) {
         let new_orbit = kep.with_apoapsis_periapsis_km(new_ra, new_rp).unwrap();
         f64_eq!(new_orbit.apoapsis_km().unwrap(), new_ra, "wrong ra");
         f64_eq!(new_orbit.periapsis_km().unwrap(), new_rp, "wrong rp");
+    }
+}
+
+#[rstest]
+fn verif_orbit_at_epoch(almanac: Almanac) {
+    let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
+    let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 01, 10);
+    let circ_incl = Orbit::keplerian(
+        8_191.93, 1e-8, 12.85, 306.614, 314.19, 99.887_7, epoch, eme2k,
+    );
+
+    let elliptical = Orbit::keplerian(
+        8_191.93, 0.2, 12.85, 306.614, 314.19, -99.887_7, epoch, eme2k,
+    );
+
+    let circ_equa = Orbit::keplerian(
+        8_191.93, 1e-8, 1e-5, 306.614, 314.19, -99.887_7, epoch, eme2k,
+    );
+
+    for (ono, orbit) in [circ_incl, elliptical, circ_equa].iter().enumerate() {
+        let future_orbit = orbit
+            .at_epoch(epoch + 0.5 * orbit.period().unwrap())
+            .unwrap();
+        // Check that only the true anomaly has changed
+        f64_eq!(
+            orbit.sma_km().unwrap(),
+            future_orbit.sma_km().unwrap(),
+            format!("#{ono}: SMA changed")
+        );
+        f64_eq_tol!(
+            orbit.ecc().unwrap(),
+            future_orbit.ecc().unwrap(),
+            1e-7,
+            format!("#{ono}: ECC changed ")
+        );
+        f64_eq_tol!(
+            orbit.inc_deg().unwrap(),
+            future_orbit.inc_deg().unwrap(),
+            1e-7,
+            format!("#{ono}: INC changed")
+        );
+        f64_eq!(
+            orbit.raan_deg().unwrap(),
+            future_orbit.raan_deg().unwrap(),
+            format!("#{ono}: RAAN changed")
+        );
+        f64_eq_tol!(
+            orbit.aop_deg().unwrap(),
+            future_orbit.aop_deg().unwrap(),
+            2e-6,
+            format!("#{ono}: AOP changed")
+        );
     }
 }

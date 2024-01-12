@@ -22,17 +22,12 @@ ANISE stands validated against the traditional SPICE toolkit, ensuring accuracy 
 + **Multi-threaded:** Yup! Forget about mutexes and race conditions you're used to in SPICE, ANISE _guarantees_ that you won't have any race conditions.
 + **Frame safety**: ANISE checks all frames translations or rotations are physically valid before performing any computation, even internally.
 
-## Resources / Assets
+## Tutorials
 
-For convenience, Nyx Space provides a few important SPICE files on a public bucket:
+- [01 - Querying SPK files](./notebooks/01%20-%20Tutorial%20on%20querying%20SPK%20files.ipynb)
+- [02 - Loading remote and local files (MetaAlmanac)](./notebooks/02%20-%20Tutorial%20on%20loading%20remote%20SPICE%20and%20ANISE%20files%20(meta%20almanac).ipynb)
 
-+ [de440s.bsp](http://public-data.nyxspace.com/anise/de440s.bsp): JPL's latest ephemeris dataset from 1900 until 20250
-+ [de440.bsp](http://public-data.nyxspace.com/anise/de440.bsp): JPL's latest long-term ephemeris dataset
-+ [pck08.pca](http://public-data.nyxspace.com/anise/pck08.pca): planetary constants ANISE (`pca`) kernel, built from the JPL gravitational data [gm_de431.tpc](http://public-data.nyxspace.com/anise/gm_de431.tpc) and JPL's plantary constants file [pck00008.tpc](http://public-data.nyxspace.com/anise/pck00008.tpc)
-
-You may load any of these using the `load()` shortcut that will determine the file type upon loading, e.g. `let almanac = Almanac::default().load("pck08.pca").unwrap();`.
-
-## Python Usage
+## Usage
 
 In Python, start by adding anise to your project: `pip install anise`.
 
@@ -131,3 +126,10 @@ if __name__ == "__main__":
 1. Jump into the vitual environment and install `patchelf` for faster builds: `pip install patchelf`, and `pytest` for the test suite: `pip install pytest`
 1. Run `maturin develop` to build the development package and install it in the virtual environment
 1. Finally, run the tests `python -m pytest`
+
+To run the development version of ANISE in a Jupyter Notebook, install ipykernels in your virtual environment.
+
+1. `pip install ipykernel`
+1. Now, build the local kernel: `python -m ipykernel install --user --name=.venv`
+1. Then, start jupyter notebook: `jupyter notebook`
+1. Open the notebook, click on the top right and make sure to choose the environment you created just a few steps above.

@@ -8,7 +8,9 @@
  * Documentation: https://nyxspace.com/
  */
 
+use super::utils::compute_mean_to_true_anomaly_rad;
 use super::PhysicsResult;
+
 use crate::{
     errors::{
         HyperbolicTrueAnomalySnafu, InfiniteValueSnafu, ParabolicEccentricitySnafu,
@@ -17,9 +19,11 @@ use crate::{
     math::{
         angles::{between_0_360, between_pm_180},
         cartesian::CartesianState,
-        Vector3, Vector6,
+        rotation::DCM,
+        Matrix3, Vector3, Vector6,
     },
     prelude::Frame,
+    NaifId,
 };
 use core::f64::consts::PI;
 use core::f64::EPSILON;
@@ -39,7 +43,7 @@ pub const ECC_EPSILON: f64 = 1e-11;
 /// A helper type alias, but no assumptions are made on the underlying validity of the frame.
 pub type Orbit = CartesianState;
 
-impl CartesianState {
+impl Orbit {
     /// Attempts to create a new Orbit around the provided Celestial or Geoid frame from the Keplerian orbital elements.
     ///
     /// **Units:** km, none, degrees, degrees, degrees, degrees
@@ -219,6 +223,38 @@ impl CartesianState {
         Self::try_keplerian_apsis_radii(r_a, r_p, inc, raan, aop, ta, epoch, frame).unwrap()
     }
 
+    /// Initializes a new orbit from the Keplerian orbital elements using the mean anomaly instead of the true anomaly.
+    ///
+    /// # Implementation notes
+    /// This function starts by converting the mean anomaly to true anomaly, and then it initializes the orbit
+    /// using the keplerian(..) method.
+    /// The conversion is from GMAT's MeanToTrueAnomaly function, transliterated originally by Claude and GPT4 with human adjustments.
+    #[allow(clippy::too_many_arguments)]
+    pub fn try_keplerian_mean_anomaly(
+        sma_km: f64,
+        ecc: f64,
+        inc_deg: f64,
+        raan_deg: f64,
+        aop_deg: f64,
+        ma_deg: f64,
+        epoch: Epoch,
+        frame: Frame,
+    ) -> PhysicsResult<Self> {
+        // Start by computing the true anomaly
+        let ta_rad = compute_mean_to_true_anomaly_rad(ma_deg.to_radians(), ecc)?;
+
+        Self::try_keplerian(
+            sma_km,
+            ecc,
+            inc_deg,
+            raan_deg,
+            aop_deg,
+            ta_rad.to_degrees(),
+            epoch,
+            frame,
+        )
+    }
+
     /// Creates a new Orbit around the provided frame from the borrowed state vector
     ///
     /// The state vector **must** be sma, ecc, inc, raan, aop, ta. This function is a shortcut to `cartesian`
@@ -273,10 +309,53 @@ impl CartesianState {
                 / self.frame.mu_km3_s2()?,
         )
     }
+
+    /// Builds the rotation matrix that rotates from the topocentric frame (SEZ) into the body fixed frame of this state.
+    ///
+    /// # Frame warning
+    /// If the state is NOT in a body fixed frame (i.e. ITRF93), then this computation is INVALID.
+    ///
+    /// # Arguments:
+    /// + `state`: the cartesian state which is at the origin of the SEZ frame to build
+    /// + `from`: ID of this new frame, must be unique if it'll be added to the Almanac. Only used to set the "from" frame of the DCM.
+    ///
+    /// # Source
+    /// From the GMAT MathSpec, page 30 section 2.6.9 and from `Calculate_RFT` in `TopocentricAxes.cpp`, this returns the
+    /// rotation matrix from the topocentric frame (SEZ) to body fixed frame.
+    /// In the GMAT MathSpec notation, R_{IF} is the DCM from body fixed to inertial. Similarly, R{FT} is from topocentric
+    /// to body fixed.
+    pub fn dcm_from_topocentric_to_body_fixed(&self, from: NaifId) -> PhysicsResult<DCM> {
+        if (self.radius_km.x.powi(2) + self.radius_km.y.powi(2)).sqrt() < 1e-3 {
+            warn!("SEZ frame ill-defined when close to the poles");
+        }
+        let phi = self.geodetic_latitude_deg()?.to_radians();
+        let lambda = self.geodetic_longitude_deg().to_radians();
+        let z_hat = Vector3::new(
+            phi.cos() * lambda.cos(),
+            phi.cos() * lambda.sin(),
+            phi.sin(),
+        );
+        // y_hat MUST be renormalized otherwise it's about 0.76 and therefore the rotation looses the norms conservation property.
+        let mut y_hat = Vector3::new(0.0, 0.0, 1.0).cross(&z_hat);
+        y_hat /= y_hat.norm();
+        let x_hat = y_hat.cross(&z_hat);
+
+        let rot_mat = Matrix3::new(
+            x_hat[0], y_hat[0], z_hat[0], x_hat[1], y_hat[1], z_hat[1], x_hat[2], y_hat[2],
+            z_hat[2],
+        );
+
+        Ok(DCM {
+            rot_mat,
+            rot_mat_dt: None,
+            from,
+            to: self.frame.orientation_id,
+        })
+    }
 }
 
 #[cfg_attr(feature = "python", pymethods)]
-impl CartesianState {
+impl Orbit {
     /// Creates a new Orbit around the provided Celestial or Geoid frame from the Keplerian orbital elements.
     ///
     /// **Units:** km, none, degrees, degrees, degrees, degrees
@@ -315,6 +394,30 @@ impl CartesianState {
         frame: Frame,
     ) -> PhysicsResult<Self> {
         Self::try_keplerian_apsis_radii(r_a, r_p, inc, raan, aop, ta, epoch, frame)
+    }
+
+    /// Initializes a new orbit from the Keplerian orbital elements using the mean anomaly instead of the true anomaly.
+    ///
+    /// # Implementation notes
+    /// This function starts by converting the mean anomaly to true anomaly, and then it initializes the orbit
+    /// using the keplerian(..) method.
+    /// The conversion is from GMAT's MeanToTrueAnomaly function, transliterated originally by Claude and GPT4 with human adjustments.
+    #[cfg(feature = "python")]
+    #[classmethod]
+    pub fn from_keplerian_mean_anomaly(
+        _cls: &PyType,
+        sma_km: f64,
+        ecc: f64,
+        inc_deg: f64,
+        raan_deg: f64,
+        aop_deg: f64,
+        ma_deg: f64,
+        epoch: Epoch,
+        frame: Frame,
+    ) -> PhysicsResult<Self> {
+        Self::try_keplerian_mean_anomaly(
+            sma_km, ecc, inc_deg, raan_deg, aop_deg, ma_deg, epoch, frame,
+        )
     }
 
     /// Returns the orbital momentum value on the X axis
@@ -802,6 +905,30 @@ impl CartesianState {
     /// Returns the $C_3$ of this orbit in km^2/s^2
     pub fn c3_km2_s2(&self) -> PhysicsResult<f64> {
         Ok(-self.frame.mu_km3_s2()? / self.sma_km()?)
+    }
+
+    /// Adjusts the true anomaly of this orbit using the mean anomaly.
+    ///
+    /// # Astrodynamics note
+    /// This is not a true propagation of the orbit. This is akin to a two body propagation ONLY without any other force models applied.
+    /// Use Nyx for high fidelity propagation.
+    ///
+    pub fn at_epoch(&self, new_epoch: Epoch) -> PhysicsResult<Self> {
+        let m0_rad = self.ma_deg()?.to_radians();
+        let mt_rad = m0_rad
+            + (self.frame.mu_km3_s2()? / self.sma_km()?.powi(3)).sqrt()
+                * (new_epoch - self.epoch).to_seconds();
+
+        Self::try_keplerian_mean_anomaly(
+            self.sma_km()?,
+            self.ecc()?,
+            self.inc_deg()?,
+            self.raan_deg()?,
+            self.aop_deg()?,
+            mt_rad.to_degrees(),
+            new_epoch,
+            self.frame,
+        )
     }
 }
 

@@ -22,30 +22,11 @@ ANISE stands validated against the traditional SPICE toolkit, ensuring accuracy 
 + **Multi-threaded:** Yup! Forget about mutexes and race conditions you're used to in SPICE, ANISE _guarantees_ that you won't have any race conditions.
 + **Frame safety**: ANISE checks all frames translations or rotations are physically valid before performing any computation, even internally.
 
-## Resources / Assets
+## Tutorials
 
-For convenience, Nyx Space provides a few important SPICE files on a public bucket:
+### Python
 
-+ [de440s.bsp](http://public-data.nyxspace.com/anise/de440s.bsp): JPL's latest ephemeris dataset from 1900 until 20250
-+ [de440.bsp](http://public-data.nyxspace.com/anise/de440.bsp): JPL's latest long-term ephemeris dataset
-+ [pck08.pca](http://public-data.nyxspace.com/anise/pck08.pca): planetary constants ANISE (`pca`) kernel, built from the JPL gravitational data [gm_de431.tpc](http://public-data.nyxspace.com/anise/gm_de431.tpc) and JPL's plantary constants file [pck00008.tpc](http://public-data.nyxspace.com/anise/pck00008.tpc)
-
-You may load any of these using the `load()` shortcut that will determine the file type upon loading, e.g. `let almanac = Almanac::default().load("pck08.pca").unwrap();`.
-
-
-## GUI
-
-ANISE comes with a GUI to inspect files. Allows you to check the start/end times of the segments (shown in whichever time scale you want, including UNIX UTC seconds)
-
-### Demos
-
-Inspect an SPK file ([video link](http://public-data.nyxspace.com/anise/demo/ANISE-SPK.webm)):
-
-![Inspect an SPK file](http://public-data.nyxspace.com/anise/demo/ANISE-SPK.gif)
-
-Inspect an Binary PCK file (BPC) ([video link](http://public-data.nyxspace.com/anise/demo/ANISE-BPC.webm)):
-
-![Inspect an SPK file](http://public-data.nyxspace.com/anise/demo/ANISE-BPC.gif)
+Refer to [Python README](./anise-py/README.md) for Juyter notebook tutorials in Python
 
 ## Rust Usage
 
@@ -55,7 +36,7 @@ Start using it by adding to your Rust project:
 cargo add anise
 ```
 
-### Full example
+### Frame Transformation of an Orbit
 
 ANISE provides the ability to create Cartesian states (also simply called `Orbit`s), calculate orbital elements from them in an error free way (computations that may fail return a `Result` type), and transform these states into other frames via the loaded context, called `Almanac`, which stores all of the SPICE and ANISE files you need.
 
@@ -118,7 +99,7 @@ println!("{from_state_itrf93_to_eme2k}");
 assert_eq!(orig_state, from_state_itrf93_to_eme2k);
 ```
 
-### Loading and querying a PCK/BPC file (high fidelity rotation)
+### Load and query a PCK/BPC file (high fidelity rotation)
 
 ```rust
 use anise::prelude::*;
@@ -141,7 +122,7 @@ let dcm = almanac.rotate_from_to(EARTH_ITRF93, EME2000, epoch).unwrap();
 println!("{dcm}");
 ```
 
-### Loading and querying a text PCK/KPL file (low fidelity rotation)
+### Load and query a text PCK/KPL file (low fidelity rotation)
 
 ```rust
 use anise::prelude::*;
@@ -168,7 +149,7 @@ let dcm = almanac.rotation_to_parent(IAU_VENUS_FRAME, epoch).unwrap();
 println!("{dcm}");
 ```
 
-### Loading and querying an SPK/BSP file (ephemeris)
+### Load and query an SPK/BSP file (ephemeris)
 
 ```rust
 use anise::prelude::*;
@@ -192,97 +173,29 @@ let state = ctx
 println!("{state}");
 ```
 
-## Python Usage
+## GUI
 
-In Python, start by adding anise to your project: `pip install anise`.
+ANISE comes with a GUI to inspect files. Allows you to check the start/end times of the segments (shown in whichever time scale you want, including UNIX UTC seconds)
 
-```python
-from anise import Almanac, Aberration
-from anise.astro.constants import Frames
-from anise.astro import Orbit
-from anise.time import Epoch
+### Demos
 
-from pathlib import Path
+Inspect an SPK file ([video link](http://public-data.nyxspace.com/anise/demo/ANISE-SPK.webm)):
 
+![Inspect an SPK file](http://public-data.nyxspace.com/anise/demo/ANISE-SPK.gif)
 
-def test_state_transformation():
-    """
-    This is the Python equivalent to anise/tests/almanac/mod.rs
-    """
-    data_path = Path(__file__).parent.joinpath("..", "..", "data")
-    # Must ensure that the path is a string
-    ctx = Almanac(str(data_path.joinpath("de440s.bsp")))
-    # Let's add another file here -- note that the Almanac will load into a NEW variable, so we must overwrite it!
-    # This prevents memory leaks (yes, I promise)
-    ctx = ctx.load(str(data_path.joinpath("pck08.pca"))).load(
-        str(data_path.joinpath("earth_latest_high_prec.bpc"))
-    )
-    eme2k = ctx.frame_info(Frames.EME2000)
-    assert eme2k.mu_km3_s2() == 398600.435436096
-    assert eme2k.shape.polar_radius_km == 6356.75
-    assert abs(eme2k.shape.flattening() - 0.0033536422844278) < 2e-16
+Inspect an Binary PCK file (BPC) ([video link](http://public-data.nyxspace.com/anise/demo/ANISE-BPC.webm)):
 
-    epoch = Epoch("2021-10-29 12:34:56 TDB")
+![Inspect an SPK file](http://public-data.nyxspace.com/anise/demo/ANISE-BPC.gif)
 
-    orig_state = Orbit.from_keplerian(
-        8_191.93,
-        1e-6,
-        12.85,
-        306.614,
-        314.19,
-        99.887_7,
-        epoch,
-        eme2k,
-    )
+## Resources / Assets
 
-    assert orig_state.sma_km() == 8191.93
-    assert orig_state.ecc() == 1.000000000361619e-06
-    assert orig_state.inc_deg() == 12.849999999999987
-    assert orig_state.raan_deg() == 306.614
-    assert orig_state.tlong_deg() == 0.6916999999999689
+For convenience, Nyx Space provides a few important SPICE files on a public bucket:
 
-    state_itrf93 = ctx.transform_to(
-        orig_state, Frames.EARTH_ITRF93, None
-    )
++ [de440s.bsp](http://public-data.nyxspace.com/anise/de440s.bsp): JPL's latest ephemeris dataset from 1900 until 20250
++ [de440.bsp](http://public-data.nyxspace.com/anise/de440.bsp): JPL's latest long-term ephemeris dataset
++ [pck08.pca](http://public-data.nyxspace.com/anise/pck08.pca): planetary constants ANISE (`pca`) kernel, built from the JPL gravitational data [gm_de431.tpc](http://public-data.nyxspace.com/anise/gm_de431.tpc) and JPL's plantary constants file [pck00008.tpc](http://public-data.nyxspace.com/anise/pck00008.tpc)
 
-    print(orig_state)
-    print(state_itrf93)
-
-    assert state_itrf93.geodetic_latitude_deg() == 10.549246868302738
-    assert state_itrf93.geodetic_longitude_deg() == 133.76889100913047
-    assert state_itrf93.geodetic_height_km() == 1814.503598063825
-
-    # Convert back
-    from_state_itrf93_to_eme2k = ctx.transform_to(
-        state_itrf93, Frames.EARTH_J2000, None
-    )
-
-    print(from_state_itrf93_to_eme2k)
-
-    assert orig_state == from_state_itrf93_to_eme2k
-
-    # Demo creation of a ground station
-    mean_earth_angular_velocity_deg_s = 0.004178079012116429
-    # Grab the loaded frame info
-    itrf93 = ctx.frame_info(Frames.EARTH_ITRF93)
-    paris = Orbit.from_latlongalt(
-        48.8566,
-        2.3522,
-        0.4,
-        mean_earth_angular_velocity_deg_s,
-        epoch,
-        itrf93,
-    )
-
-    assert abs(paris.geodetic_latitude_deg() - 48.8566) < 1e-3
-    assert abs(paris.geodetic_longitude_deg() - 2.3522) < 1e-3
-    assert abs(paris.geodetic_height_km() - 0.4) < 1e-3
-
-
-if __name__ == "__main__":
-    test_state_transformation()
-
-```
+You may load any of these using the `load()` shortcut that will determine the file type upon loading, e.g. `let almanac = Almanac::new("pck08.pca").unwrap();` or in Python `almanac = Almanac("pck08.pca")`. To automatically download remote assets, from the Nyx Cloud or elsewhere, use the MetaAlmanac: `almanac = MetaAlmanac("ci_config.dhall").process()` in Python.
 
 ## Contributing
 

@@ -39,7 +39,7 @@ pub enum MetaAlmanacError {
     CnxError { uri: String, error: String },
     #[snafu(display("error parsing `{path}` as Dhall config: {err}"))]
     ParseDhall { path: String, err: String },
-    #[snafu(display("error exporting as Dhall config: {err}"))]
+    #[snafu(display("error exporting as Dhall config (please file a bug): {err}"))]
     ExportDhall { err: String },
 }
 
