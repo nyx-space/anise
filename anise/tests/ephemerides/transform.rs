@@ -42,7 +42,7 @@ fn de440s_transform_verif_venus2emb() {
     let epoch = Epoch::from_gregorian_utc_at_midnight(2020, 2, 7);
 
     let state = almanac
-        .transform_from_to(VENUS_J2000, EARTH_ITRF93, epoch, Aberration::NONE)
+        .transform(VENUS_J2000, EARTH_ITRF93, epoch, Aberration::NONE)
         .unwrap();
 
     let (spice_state, _) = spice::spkezr("VENUS", epoch.to_et_seconds(), "ITRF93", "NONE", "EARTH");

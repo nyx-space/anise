@@ -76,14 +76,15 @@ impl CartesianState {
 
     /// Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid given the angular velocity.
     ///
-    /// **Units:** degrees, degrees, km, rad/s
+    /// **Note:** The mean Earth angular velocity is `0.004178079012116429` deg/s.
+    ///
     /// NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
     /// Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016
     pub fn try_from_latlongalt(
         latitude_deg: f64,
         longitude_deg: f64,
         height_km: f64,
-        angular_velocity: f64,
+        angular_velocity_deg_s: f64,
         epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
@@ -98,7 +99,7 @@ impl CartesianState {
         let rj = (c_body + height_km) * cos_lat * sin_long;
         let rk = (s_body + height_km) * sin_lat;
         let radius = Vector3::new(ri, rj, rk);
-        let velocity = Vector3::new(0.0, 0.0, angular_velocity).cross(&radius);
+        let velocity = Vector3::new(0.0, 0.0, angular_velocity_deg_s).cross(&radius);
         Ok(Self::new(
             radius[0],
             radius[1],
@@ -191,6 +192,9 @@ impl CartesianState {
 
     /// Returns the geodetic longitude (λ) in degrees. Value is between 0 and 360 degrees.
     ///
+    /// # Frame warning
+    /// If the state is NOT in a body fixed frame (i.e. ITRF93), then this computation is INVALID.
+    ///
     /// Although the reference is not Vallado, the math from Vallado proves to be equivalent.
     /// Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016
     pub fn geodetic_longitude_deg(&self) -> f64 {
@@ -198,6 +202,9 @@ impl CartesianState {
     }
 
     /// Returns the geodetic latitude (φ) in degrees. Value is between -180 and +180 degrees.
+    ///
+    /// # Frame warning
+    /// If the state is NOT in a body fixed frame (i.e. ITRF93), then this computation is INVALID.
     ///
     /// Reference: Vallado, 4th Ed., Algorithm 12 page 172.
     pub fn geodetic_latitude_deg(&self) -> PhysicsResult<f64> {

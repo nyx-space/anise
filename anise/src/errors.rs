@@ -23,6 +23,8 @@ use std::io::ErrorKind as IOErrorKind;
 
 #[cfg(feature = "metaload")]
 use crate::almanac::metaload::MetaAlmanacError;
+#[cfg(feature = "metaload")]
+use crate::almanac::metaload::MetaFile;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
@@ -50,8 +52,15 @@ pub enum AlmanacError {
     #[snafu(display("{err}"))]
     GenericError { err: String },
     #[cfg(feature = "metaload")]
-    Meta { source: MetaAlmanacError },
+    #[snafu(display("processing file #{fno} ({file:?}) caused an error: {source}"))]
+    Meta {
+        fno: usize,
+        file: MetaFile,
+        source: MetaAlmanacError,
+    },
 }
+
+pub type AlmanacResult<T> = Result<T, AlmanacError>;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
@@ -126,13 +135,15 @@ pub enum IntegrityError {
     },
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Snafu)]
+#[derive(Clone, PartialEq, Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub enum MathError {
     #[snafu(display("prevented a division by zero when {action}"))]
     DivisionByZero { action: &'static str },
-    #[snafu(display("could"))]
-    InvalidInterpolationData,
+    #[snafu(display("{msg}: {value}"))]
+    DomainError { value: f64, msg: &'static str },
+    #[snafu(display("max iterations reached ({iter}) when {action}"))]
+    MaxIterationsReached { iter: usize, action: &'static str },
 }
 
 #[derive(Debug, Snafu, PartialEq)]

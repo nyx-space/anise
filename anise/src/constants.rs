@@ -259,6 +259,13 @@ pub mod frames {
     pub const EARTH_ITRF93: Frame = Frame::new(EARTH, ITRF93);
 }
 
+/// Typical planetary constants that aren't found in SPICE input files.
+pub mod usual_planetary_constants {
+    /// Mean angular velocity of the Earth in deg/s
+    /// Source for Earth: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016 (confirmed by https://hpiers.obspm.fr/eop-pc/models/constants.html)
+    pub const MEAN_EARTH_ANGULAR_VELOCITY_DEG_S: f64 = 0.004178079012116429;
+}
+
 #[cfg(test)]
 mod constants_ut {
     use crate::constants::orientations::{

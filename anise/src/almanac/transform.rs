@@ -12,7 +12,7 @@ use hifitime::{Epoch, Unit as TimeUnit};
 use snafu::ResultExt;
 
 use crate::{
-    errors::{AlmanacError, EphemerisSnafu, OrientationSnafu},
+    errors::{AlmanacResult, EphemerisSnafu, OrientationSnafu},
     math::{cartesian::CartesianState, units::LengthUnit, Vector3},
     orientations::OrientationPhysicsSnafu,
     prelude::{Aberration, Frame},
@@ -28,24 +28,32 @@ use pyo3::prelude::*;
 impl Almanac {
     /// Returns the Cartesian state needed to transform the `from_frame` to the `to_frame`.
     ///
+    /// # SPICE Compatibility
+    /// This function is the SPICE equivalent of spkezr: `spkezr(TARGET_ID, EPOCH_TDB_S, ORIENTATION_ID, ABERRATION, OBSERVER_ID)`
+    /// In ANISE, the TARGET_ID and ORIENTATION are provided in the first argument (TARGET_FRAME), as that frame includes BOTH
+    /// the target ID and the orientation of that target. The EPOCH_TDB_S is the epoch in the TDB time system, which is computed
+    /// in ANISE using Hifitime. THe ABERRATION is computed by providing the optional Aberration flag. Finally, the OBSERVER
+    /// argument is replaced by OBSERVER_FRAME: if the OBSERVER_FRAME argument has the same orientation as the TARGET_FRAME, then this call
+    /// will return exactly the same data as the spkerz SPICE call.
+    ///
     /// # Note
     /// The units will be those of the underlying ephemeris data (typically km and km/s)
-    pub fn transform_from_to(
+    pub fn transform(
         &self,
-        from_frame: Frame,
-        to_frame: Frame,
+        target_frame: Frame,
+        observer_frame: Frame,
         epoch: Epoch,
         ab_corr: Option<Aberration>,
-    ) -> Result<CartesianState, AlmanacError> {
+    ) -> AlmanacResult<CartesianState> {
         // Translate
         let state = self
-            .translate(from_frame, to_frame, epoch, ab_corr)
+            .translate(target_frame, observer_frame, epoch, ab_corr)
             .with_context(|_| EphemerisSnafu {
                 action: "transform from/to",
             })?;
         // Rotate
         let dcm = self
-            .rotate_from_to(from_frame, to_frame, epoch)
+            .rotate_from_to(target_frame, observer_frame, epoch)
             .with_context(|_| OrientationSnafu {
                 action: "transform from/to",
             })?;
@@ -64,18 +72,18 @@ impl Almanac {
     pub fn transform_to(
         &self,
         state: CartesianState,
-        to_frame: Frame,
+        observer_frame: Frame,
         ab_corr: Option<Aberration>,
-    ) -> Result<CartesianState, AlmanacError> {
+    ) -> AlmanacResult<CartesianState> {
         let state = self
-            .translate_to(state, to_frame, ab_corr)
+            .translate_to(state, observer_frame, ab_corr)
             .with_context(|_| EphemerisSnafu {
                 action: "transform state",
             })?;
 
         // Compute the frame rotation
         let dcm = self
-            .rotate_from_to(state.frame, to_frame, state.epoch)
+            .rotate_from_to(state.frame, observer_frame, state.epoch)
             .with_context(|_| OrientationSnafu {
                 action: "transform state dcm",
             })?;
@@ -97,8 +105,8 @@ impl Almanac {
         observer: Frame,
         epoch: Epoch,
         ab_corr: Option<Aberration>,
-    ) -> Result<CartesianState, AlmanacError> {
-        self.transform_from_to(Frame::from_ephem_j2000(object), observer, epoch, ab_corr)
+    ) -> AlmanacResult<CartesianState> {
+        self.transform(Frame::from_ephem_j2000(object), observer, epoch, ab_corr)
     }
 }
 
@@ -117,7 +125,7 @@ impl Almanac {
         ab_corr: Option<Aberration>,
         distance_unit: LengthUnit,
         time_unit: TimeUnit,
-    ) -> Result<CartesianState, AlmanacError> {
+    ) -> AlmanacResult<CartesianState> {
         let state = self
             .translate_state_to(
                 position,

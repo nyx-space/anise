@@ -31,6 +31,9 @@ pub mod time {
 }
 
 pub mod prelude {
+    #[cfg(feature = "metaload")]
+    pub use crate::almanac::metaload::MetaAlmanac;
+
     pub use crate::almanac::Almanac;
     pub use crate::astro::{orbit::Orbit, Aberration};
     pub use crate::errors::InputOutputError;

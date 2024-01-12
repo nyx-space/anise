@@ -16,7 +16,8 @@ use zerocopy::FromBytes;
 
 use crate::ephemerides::SPKSnafu;
 use crate::errors::{
-    AlmanacError, EphemerisSnafu, InputOutputError, LoadingSnafu, OrientationSnafu, TLDataSetSnafu,
+    AlmanacError, AlmanacResult, EphemerisSnafu, InputOutputError, LoadingSnafu, OrientationSnafu,
+    TLDataSetSnafu,
 };
 use crate::file2heap;
 use crate::naif::daf::{FileRecord, NAIFRecord};
@@ -33,6 +34,7 @@ pub const MAX_LOADED_BPCS: usize = 8;
 pub const MAX_SPACECRAFT_DATA: usize = 16;
 pub const MAX_PLANETARY_DATA: usize = 64;
 
+pub mod aer;
 pub mod bpc;
 pub mod planetary;
 pub mod spk;
@@ -87,7 +89,7 @@ impl fmt::Display for Almanac {
 
 impl Almanac {
     /// Initializes a new Almanac from the provided file path, guessing at the file type
-    pub fn new(path: &str) -> Result<Self, AlmanacError> {
+    pub fn new(path: &str) -> AlmanacResult<Self> {
         Self::default().load(path)
     }
 
@@ -105,7 +107,7 @@ impl Almanac {
         me
     }
 
-    pub fn load_from_bytes(&self, bytes: Bytes) -> Result<Self, AlmanacError> {
+    pub fn load_from_bytes(&self, bytes: Bytes) -> AlmanacResult<Self> {
         // Try to load as a SPICE DAF first (likely the most typical use case)
 
         // Load the header only
@@ -191,7 +193,7 @@ impl Almanac {
 #[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
     /// Generic function that tries to load the provided path guessing to the file type.
-    pub fn load(&self, path: &str) -> Result<Self, AlmanacError> {
+    pub fn load(&self, path: &str) -> AlmanacResult<Self> {
         // Load the data onto the heap
         let bytes = file2heap!(path).with_context(|_| LoadingSnafu {
             path: path.to_string(),
@@ -203,7 +205,7 @@ impl Almanac {
     /// Initializes a new Almanac from the provided file path, guessing at the file type
     #[cfg(feature = "python")]
     #[new]
-    pub fn py_new(path: &str) -> Result<Self, AlmanacError> {
+    pub fn py_new(path: &str) -> AlmanacResult<Self> {
         Self::new(path)
     }
 

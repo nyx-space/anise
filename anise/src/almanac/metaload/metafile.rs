@@ -42,44 +42,7 @@ pub struct MetaFile {
     pub crc32: Option<u32>,
 }
 
-#[cfg_attr(feature = "python", pymethods)]
 impl MetaFile {
-    /// Builds a new MetaFile from the provided URI and optionally its CRC32 checksum.
-    #[cfg(feature = "python")]
-    #[new]
-    pub fn py_new(uri: String, crc32: Option<u32>) -> Self {
-        Self { uri, crc32 }
-    }
-
-    #[cfg(feature = "python")]
-    fn __str__(&self) -> String {
-        format!("{self:?}")
-    }
-
-    #[cfg(feature = "python")]
-    fn __repr__(&self) -> String {
-        format!("{self:?} (@{self:p})")
-    }
-
-    #[cfg(feature = "python")]
-    fn __richcmp__(&self, other: &Self, op: CompareOp) -> Result<bool, PyErr> {
-        match op {
-            CompareOp::Eq => Ok(self == other),
-            CompareOp::Ne => Ok(self != other),
-            _ => Err(PyErr::new::<PyTypeError, _>(format!(
-                "{op:?} not available"
-            ))),
-        }
-    }
-
-    /// Processes this MetaFile by downloading it if it's a URL.
-    ///
-    /// This function modified `self` and changes the URI to be the path to the downloaded file.
-    #[cfg(feature = "python")]
-    pub fn py_process(&mut self, py: Python) -> Result<(), MetaAlmanacError> {
-        py.allow_threads(|| self._process())
-    }
-
     /// Processes this MetaFile by downloading it if it's a URL.
     ///
     /// This function modified `self` and changes the URI to be the path to the downloaded file.
@@ -183,10 +146,8 @@ impl MetaFile {
                                                         }
                                                     }
                                                 } else {
-                                                    println!("err");
-                                                    let err = resp.error_for_status().unwrap();
                                                     Err(MetaAlmanacError::FetchError {
-                                                        status: err.status(),
+                                                        status: resp.status(),
                                                         uri: self.uri.clone(),
                                                     })
                                                 }
@@ -211,5 +172,40 @@ impl MetaFile {
                 }
             }
         }
+    }
+}
+
+#[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pymethods)]
+impl MetaFile {
+    /// Builds a new MetaFile from the provided URI and optionally its CRC32 checksum.
+    #[new]
+    pub fn py_new(uri: String, crc32: Option<u32>) -> Self {
+        Self { uri, crc32 }
+    }
+
+    fn __str__(&self) -> String {
+        format!("{self:?}")
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{self:?} (@{self:p})")
+    }
+
+    fn __richcmp__(&self, other: &Self, op: CompareOp) -> Result<bool, PyErr> {
+        match op {
+            CompareOp::Eq => Ok(self == other),
+            CompareOp::Ne => Ok(self != other),
+            _ => Err(PyErr::new::<PyTypeError, _>(format!(
+                "{op:?} not available"
+            ))),
+        }
+    }
+
+    /// Processes this MetaFile by downloading it if it's a URL.
+    ///
+    /// This function modified `self` and changes the URI to be the path to the downloaded file.
+    pub fn process(&mut self, py: Python) -> Result<(), MetaAlmanacError> {
+        py.allow_threads(|| self._process())
     }
 }

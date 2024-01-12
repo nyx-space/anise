@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+use anise::astro::AzElRange;
 use anise::structure::planetocentric::ellipsoid::Ellipsoid;
 use pyo3::prelude::*;
 use pyo3::py_run;
@@ -21,6 +22,7 @@ pub(crate) fn register_astro(py: Python<'_>, parent_module: &PyModule) -> PyResu
     sm.add_class::<Ellipsoid>()?;
     sm.add_class::<Frame>()?;
     sm.add_class::<Orbit>()?;
+    sm.add_class::<AzElRange>()?;
 
     register_constants(py, sm)?;
 
