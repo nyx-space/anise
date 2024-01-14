@@ -123,7 +123,7 @@ if __name__ == "__main__":
  
 1. Install `maturin`, e.g. via `pipx` as `pipx install maturin`
 1. Create a virtual environment: `cd anise/anise-py && python3 -m venv .venv`
-1. Jump into the vitual environment and install `patchelf` for faster builds: `pip install patchelf`, and `pytest` for the test suite: `pip install pytest`
+1. Jump into the virtual environment and install `patchelf` for faster builds: `pip install patchelf`, and `pytest` for the test suite: `pip install pytest`
 1. Run `maturin develop` to build the development package and install it in the virtual environment
 1. Finally, run the tests `python -m pytest`
 

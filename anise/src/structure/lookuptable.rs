@@ -126,7 +126,7 @@ impl<const ENTRIES: usize> LookUpTable<ENTRIES> {
         let mut rtn = FnvIndexMap::default();
 
         for (id, entry) in &self.by_id {
-            // IDs are unique, and this is the first iteration, so we can't be overwritting anything
+            // IDs are unique, and this is the first iteration, so we can't be overwriting anything
             rtn.insert(*entry, (Some(*id), None)).unwrap();
         }
 
