@@ -16,30 +16,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install CSPICE
         run: sh dev-env-setup.sh
 
       - name: Run cargo check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --workspace --exclude anise-gui --exclude anise-py
+        run: cargo check --workspace --exclude anise-gui --exclude anise-py
 
   test:
     name: Run tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Download data
         run: |
@@ -53,11 +46,7 @@ jobs:
           wget -O data/earth_latest_high_prec.bpc http://public-data.nyxspace.com/anise/ci/earth_latest_high_prec-2023-09-08.bpc
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install CSPICE
         run: sh dev-env-setup.sh && cd .. # Return to root
@@ -73,27 +62,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
           components: rustfmt, clippy
 
       - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all -- --check
 
       - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -p anise -- -D warnings
+        run: cargo clippy -p anise -- -D warnings
 
   validation:
     name: Validation
@@ -101,7 +81,7 @@ jobs:
     needs: [check, test, lints]
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         
       - name: Download data
         run: |
@@ -115,11 +95,7 @@ jobs:
           wget -O data/earth_latest_high_prec.bpc http://public-data.nyxspace.com/anise/ci/earth_latest_high_prec-2023-09-08.bpc
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install CSPICE
         run: sh dev-env-setup.sh && cd .. # Return to root
@@ -167,7 +143,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       - name: Download data
         run: |
@@ -181,11 +157,8 @@ jobs:
           wget -O data/earth_latest_high_prec.bpc http://public-data.nyxspace.com/anise/ci/earth_latest_high_prec-2023-09-08.bpc
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
           components: rustfmt, clippy
 
       - name: Install CSPICE
