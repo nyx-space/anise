@@ -77,13 +77,15 @@ mod meta_test {
 
         let from_str = MetaAlmanac::from_str(
             r#"
-             -- Default Almanac
  { files =
    [ { crc32 = Some 1921414410
      , uri = "http://public-data.nyxspace.com/anise/de440s.bsp"
      }
    , { crc32 = Some 1216081528
      , uri = "http://public-data.nyxspace.com/anise/pck08.pca"
+     }
+   , { crc32 = Some 1817759242
+     , uri = "http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc"
      }
    , { crc32 = None Natural
      , uri =

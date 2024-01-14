@@ -1,4 +1,4 @@
--- Latest
+-- Latest planetary ephemerides, planetary constants, high precision Moon rotation, and daily Earth orientation parameter
 { files =
   [ { crc32 = Some 1921414410
     , uri = "http://public-data.nyxspace.com/anise/de440s.bsp"

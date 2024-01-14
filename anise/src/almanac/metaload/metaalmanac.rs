@@ -186,6 +186,13 @@ impl Default for MetaAlmanac {
                     crc32: Some(0x487bee78),
                 },
                 MetaFile {
+                    uri: nyx_cloud_stor
+                        .join("moon_pa_de440_200625.bpc")
+                        .unwrap()
+                        .to_string(),
+                    crc32: Some(0x6c58ce0a),
+                },
+                MetaFile {
                     uri: jpl_cloud_stor
                         .join("pck/earth_latest_high_prec.bpc")
                         .unwrap()
