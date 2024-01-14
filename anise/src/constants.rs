@@ -262,8 +262,16 @@ pub mod frames {
 /// Typical planetary constants that aren't found in SPICE input files.
 pub mod usual_planetary_constants {
     /// Mean angular velocity of the Earth in deg/s
-    /// Source for Earth: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016 (confirmed by https://hpiers.obspm.fr/eop-pc/models/constants.html)
+    /// Source: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016 (confirmed by https://hpiers.obspm.fr/eop-pc/models/constants.html)
     pub const MEAN_EARTH_ANGULAR_VELOCITY_DEG_S: f64 = 0.004178079012116429;
+    /// Mean angular velocity of the Moon in deg/s, computed from hifitime:
+    /// ```py
+    /// >>> luna_period = Unit.Day*27+Unit.Hour*7+Unit.Minute*43+Unit.Second*12
+    /// >>> tau/luna_period.to_seconds()
+    /// 2.661698975163682e-06
+    /// ```
+    /// Source: https://www.britannica.com/science/month#ref225844 via https://en.wikipedia.org/w/index.php?title=Lunar_day&oldid=1180701337
+    pub const MEAN_LUNA_ANGULAR_VELOCITY_DEG_S: f64 = 2.661698975163682e-06;
 }
 
 #[cfg(test)]

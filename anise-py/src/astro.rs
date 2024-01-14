@@ -9,6 +9,9 @@
  */
 
 use anise::astro::AzElRange;
+use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
+use anise::constants::usual_planetary_constants::MEAN_LUNA_ANGULAR_VELOCITY_DEG_S;
+use anise::constants::SPEED_OF_LIGHT_KM_S;
 use anise::structure::planetocentric::ellipsoid::Ellipsoid;
 use pyo3::prelude::*;
 use pyo3::py_run;
@@ -87,9 +90,34 @@ impl Frames {
     const EARTH_ITRF93: Frame = EARTH_ITRF93;
 }
 
+#[pyclass]
+#[pyo3(module = "anise.astro.constants")]
+struct UsualConstants {}
+
+#[pymethods]
+impl UsualConstants {
+    #[classattr]
+    /// Mean angular velocity of the Earth in deg/s
+    /// Source: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016 (confirmed by https://hpiers.obspm.fr/eop-pc/models/constants.html)
+    const MEAN_EARTH_ANGULAR_VELOCITY_DEG_S: f64 = MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
+    #[classattr]
+    /// Mean angular velocity of the Moon in deg/s, computed from hifitime:
+    /// ```py
+    /// >>> luna_period = Unit.Day*27+Unit.Hour*7+Unit.Minute*43+Unit.Second*12
+    /// >>> tau/luna_period.to_seconds()
+    /// 2.661698975163682e-06
+    /// ```
+    /// Source: https://www.britannica.com/science/month#ref225844 via https://en.wikipedia.org/w/index.php?title=Lunar_day&oldid=1180701337
+    const MEAN_LUNA_ANGULAR_VELOCITY_DEG_S: f64 = MEAN_LUNA_ANGULAR_VELOCITY_DEG_S;
+    #[classattr]
+    /// Speed of light in kilometers per second (km/s)
+    const SPEED_OF_LIGHT_KM_S: f64 = SPEED_OF_LIGHT_KM_S;
+}
+
 pub(crate) fn register_constants(py: Python<'_>, parent_module: &PyModule) -> PyResult<()> {
     let sm = PyModule::new(py, "_anise.astro.constants")?;
     sm.add_class::<Frames>()?;
+    sm.add_class::<UsualConstants>()?;
 
     py_run!(
         py,
