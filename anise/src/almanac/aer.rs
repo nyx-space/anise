@@ -86,6 +86,7 @@ impl Almanac {
         let azimuth_deg = between_0_360((-rho_sez.y.atan2(rho_sez.x)).to_degrees());
 
         Ok(AzElRange {
+            epoch: tx.epoch,
             azimuth_deg,
             elevation_deg,
             range_km: rho_sez.norm(),
@@ -224,6 +225,16 @@ mod ut_aer {
             .unwrap();
 
             let aer = almanac.azimuth_elevation_range_sez(*state, madrid).unwrap();
+
+            if sno == 0 {
+                assert_eq!(
+                    format!("{aer}"),
+                    format!(
+                        "{}: az.: 313.599987 deg    el.: 7.237567 deg    range: 91457.268016 km",
+                        state.epoch
+                    )
+                );
+            }
 
             let expect = gmat_ranges_km[sno];
 
