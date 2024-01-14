@@ -141,7 +141,7 @@ mod ut_aer {
         let longitude_deg = 4.250_556;
         let height_km = 0.834_939;
 
-        let almanac = MetaAlmanac::new("../data/default_meta.dhall".to_string())
+        let almanac = MetaAlmanac::new("../data/latest.dhall".to_string())
             .unwrap()
             .process()
             .unwrap();
