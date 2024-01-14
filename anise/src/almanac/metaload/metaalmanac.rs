@@ -166,7 +166,7 @@ impl MetaAlmanac {
 ///
 /// # Reproducibility
 ///
-/// Note that the `earth_latest_high_prec.bpc` file is regularily updated daily (or so). As such,
+/// Note that the `earth_latest_high_prec.bpc` file is regularly updated daily (or so). As such,
 /// if queried at some future time, the Earth rotation parameters may have changed between two queries.
 ///
 impl Default for MetaAlmanac {

@@ -88,7 +88,7 @@ fn main() -> Result<(), CliErrors> {
                         Ok(())
                     }
                     DataSetType::EulerParameterData => {
-                        // Decode as euler paramater data
+                        // Decode as euler parameter data
                         let dataset = EulerParameterDataSet::try_from_bytes(bytes)
                             .with_context(|_| CliDataSetSnafu)?;
                         println!("{dataset}");

@@ -622,7 +622,7 @@ impl Orbit {
         Ok(me)
     }
 
-    /// Returns the right ascension of ther ascending node in degrees
+    /// Returns the right ascension of the ascending node in degrees
     pub fn raan_deg(&self) -> PhysicsResult<f64> {
         let n = Vector3::new(0.0, 0.0, 1.0).cross(&self.hvec()?);
         let cos_raan = n[0] / n.norm();

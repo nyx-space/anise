@@ -208,7 +208,7 @@ impl eframe::App for UiApp {
                                         });
                                     }
 
-                                    // Now diplay the data
+                                    // Now display the data
                                     if label == "DAF/PCK" {
                                         // We can use the summary
                                         TableBuilder::new(ui)
