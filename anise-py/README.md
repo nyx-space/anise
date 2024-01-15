@@ -24,8 +24,12 @@ ANISE stands validated against the traditional SPICE toolkit, ensuring accuracy 
 
 ## Tutorials
 
-- [01 - Querying SPK files](./notebooks/01%20-%20Tutorial%20on%20querying%20SPK%20files.ipynb)
-- [02 - Loading remote and local files (MetaAlmanac)](./notebooks/02%20-%20Tutorial%20on%20loading%20remote%20SPICE%20and%20ANISE%20files%20(meta%20almanac).ipynb)
+- [01 - Querying SPK files](./notebooks/Tutorial%2001%20-%20Querying%20SPK%20files.ipynb)
+- [02 - Loading remote and local files (MetaAlmanac)](./notebooks/Tutorial%2002%20-%20Loading%20remote%20SPICE%20and%20ANISE%20files%20(meta%20almanac).ipynb)
+- [03 - Defining and working with the orbit structure](./notebooks/Tutorial%2003%20-%20Defining%20and%20working%20with%20the%20Orbit%20structure.ipynb)
+- [04 - Computing azimuth, elevation, and range data (AER)](./notebooks/Tutorial%2004%20-%20Computing%20Azimuth%20Elevation%20and%20Range%20data.ipynb)
+
+Note: The tutorials can be viewed in read-only form on [the Github repo](https://github.com/nyx-space/anise/tree/master/anise-py/notebooks).
 
 ## Usage
 
