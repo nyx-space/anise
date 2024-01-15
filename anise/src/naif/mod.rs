@@ -14,6 +14,8 @@ pub mod kpl;
 pub mod pck;
 pub mod spk;
 
+pub mod pretty_print;
+
 use self::{daf::DAF, pck::BPCSummaryRecord, spk::summary::SPKSummaryRecord};
 
 pub type SPK = DAF<SPKSummaryRecord>;

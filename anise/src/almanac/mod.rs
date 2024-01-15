@@ -218,4 +218,9 @@ impl Almanac {
     fn __repr__(&self) -> String {
         format!("{self} (@{self:p})")
     }
+
+    /// Describes all of the loaded data in one giant string
+    fn describe(&self) -> String {
+        todo!()
+    }
 }

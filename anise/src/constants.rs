@@ -271,7 +271,7 @@ pub mod usual_planetary_constants {
     /// 2.661698975163682e-06
     /// ```
     /// Source: https://www.britannica.com/science/month#ref225844 via https://en.wikipedia.org/w/index.php?title=Lunar_day&oldid=1180701337
-    pub const MEAN_LUNA_ANGULAR_VELOCITY_DEG_S: f64 = 2.661698975163682e-06;
+    pub const MEAN_LUNA_ANGULAR_VELOCITY_DEG_S: f64 = 2.661_698_975_163_682e-6;
 }
 
 #[cfg(test)]
