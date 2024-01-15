@@ -18,7 +18,7 @@ egui-toast = "0.10.2"
 eframe = { version = "0.25.0" }
 egui = { version = "0.25.0" }
 egui_extras = { version = "0.25.0", features = ["datepicker", "http", "image"] }
-rfd = { version = "0.12.1" }
+rfd = { version = "0.13.0" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4"
