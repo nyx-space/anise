@@ -56,7 +56,8 @@ mod meta_test {
         println!("{meta:?}");
 
         let almanac = meta._process().unwrap();
-        println!("{almanac}");
+        // Shows everything in this Almanac
+        almanac.describe(None, None, None, None);
 
         // Process again to confirm that the CRC check works
         assert!(meta._process().is_ok());
@@ -68,7 +69,7 @@ mod meta_test {
 
         println!("{}", default.dump().unwrap());
 
-        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../data/default_meta.dhall");
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../data/latest.dhall");
         let dhall = MetaAlmanac::new(path.to_str().unwrap().to_string()).unwrap();
 
         assert_eq!(dhall, default);
@@ -77,13 +78,15 @@ mod meta_test {
 
         let from_str = MetaAlmanac::from_str(
             r#"
-             -- Default Almanac
  { files =
    [ { crc32 = Some 1921414410
      , uri = "http://public-data.nyxspace.com/anise/de440s.bsp"
      }
    , { crc32 = Some 1216081528
      , uri = "http://public-data.nyxspace.com/anise/pck08.pca"
+     }
+   , { crc32 = Some 1817759242
+     , uri = "http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc"
      }
    , { crc32 = None Natural
      , uri =

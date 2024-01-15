@@ -5,13 +5,10 @@ use std::io;
 use clap::Parser;
 use log::info;
 use snafu::prelude::*;
-use tabled::{settings::Style, Table};
 use zerocopy::FromBytes;
 
 use anise::file2heap;
-use anise::naif::daf::{
-    file_record::FileRecordError, DAFError, FileRecord, NAIFRecord, NAIFSummaryRecord,
-};
+use anise::naif::daf::{file_record::FileRecordError, DAFError, FileRecord, NAIFRecord};
 use anise::naif::kpl::parser::{convert_fk, convert_tpc};
 use anise::prelude::*;
 use anise::structure::dataset::{DataSetError, DataSetType};
@@ -20,9 +17,6 @@ use anise::structure::{EulerParameterDataSet, PlanetaryDataSet, SpacecraftDataSe
 
 mod args;
 use args::{Actions, Args};
-
-mod inspect;
-use inspect::{BpcRow, SpkRow};
 
 const LOG_VAR: &str = "ANISE_LOG";
 
@@ -139,31 +133,7 @@ fn main() -> Result<(), CliErrors> {
                     } else {
                         println!("(File has no comments)");
                     }
-                    // Build the rows of the table
-                    let mut rows = Vec::new();
-
-                    for (sno, summary) in pck.data_summaries().unwrap().iter().enumerate() {
-                        let name_rcrd = pck.name_record().unwrap();
-                        let name =
-                            name_rcrd.nth_name(sno, pck.file_record().unwrap().summary_size());
-                        if summary.is_empty() {
-                            continue;
-                        }
-                        rows.push(BpcRow {
-                            name: name.to_string(),
-                            start_epoch: format!("{:E}", summary.start_epoch()),
-                            end_epoch: format!("{:E}", summary.end_epoch()),
-                            duration: summary.end_epoch() - summary.start_epoch(),
-                            interpolation_kind: summary.data_type().unwrap().to_string(),
-                            frame: format!("{}", summary.frame_id),
-                            inertial_frame: format!("{}", summary.inertial_frame_id),
-                        });
-                    }
-
-                    let mut tbl = Table::new(rows);
-                    tbl.with(Style::modern());
-                    println!("{tbl}");
-
+                    println!("{}", pck.describe());
                     Ok(())
                 }
                 "SPK" => {
@@ -176,32 +146,7 @@ fn main() -> Result<(), CliErrors> {
                     } else {
                         println!("(File has no comments)");
                     }
-                    // Build the rows of the table
-                    let mut rows = Vec::new();
-
-                    for (sno, summary) in spk.data_summaries().unwrap().iter().enumerate() {
-                        let name_rcrd = spk.name_record().unwrap();
-                        let name =
-                            name_rcrd.nth_name(sno, spk.file_record().unwrap().summary_size());
-                        if summary.is_empty() {
-                            continue;
-                        }
-
-                        rows.push(SpkRow {
-                            name: name.to_string(),
-                            center: summary.center_frame_uid().to_string(),
-                            start_epoch: format!("{:E}", summary.start_epoch()),
-                            end_epoch: format!("{:E}", summary.end_epoch()),
-                            duration: summary.end_epoch() - summary.start_epoch(),
-                            interpolation_kind: summary.data_type().unwrap().to_string(),
-                            target: summary.target_frame_uid().to_string(),
-                        });
-                    }
-
-                    let mut tbl = Table::new(rows);
-                    tbl.with(Style::modern());
-                    println!("{tbl}");
-
+                    println!("{}", spk.describe());
                     Ok(())
                 }
                 fileid => Err(CliErrors::ArgumentError {

@@ -9,6 +9,7 @@
  */
 
 use bytes::Bytes;
+use hifitime::TimeScale;
 use log::info;
 use snafu::ResultExt;
 use std::fs::File;
@@ -217,5 +218,50 @@ impl Almanac {
     #[cfg(feature = "python")]
     fn __repr__(&self) -> String {
         format!("{self} (@{self:p})")
+    }
+
+    /// _Prints_ the description of this Almanac, showing everything by default.
+    pub fn describe(
+        &self,
+        show_spk: Option<bool>,
+        show_bpc: Option<bool>,
+        show_planetary: Option<bool>,
+        time_scale: Option<TimeScale>,
+    ) {
+        if show_spk.unwrap_or(true) {
+            for (spk_no, maybe_spk) in self
+                .spk_data
+                .iter()
+                .take(self.num_loaded_spk())
+                .rev()
+                .enumerate()
+            {
+                let spk = maybe_spk.as_ref().unwrap();
+                println!(
+                    "=== SPK #{spk_no} ===\n{}",
+                    spk.describe_in(time_scale.unwrap_or(TimeScale::TDB))
+                );
+            }
+        }
+
+        if show_bpc.unwrap_or(true) {
+            for (bpc_no, maybe_bpc) in self
+                .bpc_data
+                .iter()
+                .take(self.num_loaded_bpc())
+                .rev()
+                .enumerate()
+            {
+                let bpc = maybe_bpc.as_ref().unwrap();
+                println!(
+                    "=== BPC #{bpc_no} ===\n{}",
+                    bpc.describe_in(time_scale.unwrap_or(TimeScale::TDB))
+                );
+            }
+        }
+
+        if show_planetary.unwrap_or(true) {
+            println!("=== PLANETARY DATA ==\n{}", self.planetary_data.describe());
+        }
     }
 }

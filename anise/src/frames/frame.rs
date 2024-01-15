@@ -156,8 +156,8 @@ impl Frame {
     /// Returns the gravitational parameters of this frame, if defined
     pub fn mu_km3_s2(&self) -> PhysicsResult<f64> {
         self.mu_km3_s2.ok_or(PhysicsError::MissingFrameData {
-            action: "retrieving mean equatorial radius",
-            data: "shape",
+            action: "retrieving gravitational parameter",
+            data: "mu_km3_s2",
             frame: self.into(),
         })
     }
