@@ -56,7 +56,8 @@ mod meta_test {
         println!("{meta:?}");
 
         let almanac = meta._process().unwrap();
-        println!("{almanac}");
+        // Shows everything in this Almanac
+        almanac.describe(None, None, None, None);
 
         // Process again to confirm that the CRC check works
         assert!(meta._process().is_ok());

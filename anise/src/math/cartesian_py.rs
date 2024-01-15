@@ -45,7 +45,6 @@ impl CartesianState {
 
     #[new]
     pub fn py_new(
-        _cls: &PyType,
         x_km: f64,
         y_km: f64,
         z_km: f64,
@@ -116,6 +115,16 @@ impl CartesianState {
     fn set_z_km(&mut self, z_km: f64) -> PyResult<()> {
         self.radius_km[2] = z_km;
         Ok(())
+    }
+
+    #[getter]
+    fn get_epoch(&self) -> PyResult<Epoch> {
+        Ok(self.epoch)
+    }
+
+    #[getter]
+    fn get_frame(&self) -> PyResult<Frame> {
+        Ok(self.frame)
     }
 
     fn __str__(&self) -> String {

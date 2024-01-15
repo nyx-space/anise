@@ -7,23 +7,37 @@ use super::{BPC, SPK};
 
 #[derive(Tabled)]
 pub struct BpcRow {
+    #[tabled(rename = "Name")]
     pub name: String,
+    #[tabled(rename = "Start epoch")]
     pub start_epoch: String,
+    #[tabled(rename = "End epoch")]
     pub end_epoch: String,
+    #[tabled(rename = "Duration")]
     pub duration: Duration,
+    #[tabled(rename = "Interpolation kind")]
     pub interpolation_kind: String,
+    #[tabled(rename = "Frame")]
     pub frame: String,
+    #[tabled(rename = "Inertial frame")]
     pub inertial_frame: String,
 }
 
 #[derive(Tabled)]
 pub struct SpkRow {
+    #[tabled(rename = "Name")]
     pub name: String,
+    #[tabled(rename = "Target")]
     pub target: String,
+    #[tabled(rename = "Center")]
     pub center: String,
+    #[tabled(rename = "Start epoch")]
     pub start_epoch: String,
+    #[tabled(rename = "End epoch")]
     pub end_epoch: String,
+    #[tabled(rename = "Duration")]
     pub duration: Duration,
+    #[tabled(rename = "Interpolation kind")]
     pub interpolation_kind: String,
 }
 
@@ -46,8 +60,11 @@ impl BPC {
             }
             rows.push(BpcRow {
                 name: name.to_string(),
-                start_epoch: format!("{}", summary.start_epoch().to_gregorian_str(time_scale)),
-                end_epoch: format!("{}", summary.end_epoch().to_gregorian_str(time_scale)),
+                start_epoch: summary
+                    .start_epoch()
+                    .to_gregorian_str(time_scale)
+                    .to_string(),
+                end_epoch: summary.end_epoch().to_gregorian_str(time_scale).to_string(),
                 duration: summary.end_epoch() - summary.start_epoch(),
                 interpolation_kind: summary.data_type().unwrap().to_string(),
                 frame: format!("{}", summary.frame_id),
@@ -82,8 +99,11 @@ impl SPK {
             rows.push(SpkRow {
                 name: name.to_string(),
                 center: summary.center_frame_uid().to_string(),
-                start_epoch: format!("{}", summary.start_epoch().to_gregorian_str(time_scale)),
-                end_epoch: format!("{}", summary.end_epoch().to_gregorian_str(time_scale)),
+                start_epoch: summary
+                    .start_epoch()
+                    .to_gregorian_str(time_scale)
+                    .to_string(),
+                end_epoch: summary.end_epoch().to_gregorian_str(time_scale).to_string(),
                 duration: summary.end_epoch() - summary.start_epoch(),
                 interpolation_kind: summary.data_type().unwrap().to_string(),
                 target: summary.target_frame_uid().to_string(),

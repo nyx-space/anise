@@ -553,14 +553,14 @@ impl eframe::App for UiApp {
                                                         row.col(|ui| {
                                                             ui.label(match opt_name {
                                                                 Some(name) => format!("{name}"),
-                                                                None => format!("Unset"),
+                                                                None => "Unset".to_string(),
                                                             });
                                                         });
 
                                                         row.col(|ui| {
                                                             ui.label(match opt_id {
                                                                 Some(id) => format!("{id}"),
-                                                                None => format!("Unset"),
+                                                                None => "Unset".to_string(),
                                                             });
                                                         });
 
