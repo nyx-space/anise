@@ -220,15 +220,19 @@ impl Almanac {
         format!("{self} (@{self:p})")
     }
 
-    /// _Prints_ the description of this Almanac, showing everything by default.
+    /// Pretty prints the description of this Almanac, showing everything by default. Default time scale is TDB.
+    /// If any parameter is set to true, then nothing other than that will be printed.
     pub fn describe(
         &self,
-        show_spk: Option<bool>,
-        show_bpc: Option<bool>,
-        show_planetary: Option<bool>,
+        spk: Option<bool>,
+        bpc: Option<bool>,
+        planetary: Option<bool>,
         time_scale: Option<TimeScale>,
+        round_time: Option<bool>,
     ) {
-        if show_spk.unwrap_or(true) {
+        let print_any = spk.unwrap_or(false) || bpc.unwrap_or(false) || planetary.unwrap_or(false);
+
+        if spk.unwrap_or(!print_any) {
             for (spk_no, maybe_spk) in self
                 .spk_data
                 .iter()
@@ -239,12 +243,12 @@ impl Almanac {
                 let spk = maybe_spk.as_ref().unwrap();
                 println!(
                     "=== SPK #{spk_no} ===\n{}",
-                    spk.describe_in(time_scale.unwrap_or(TimeScale::TDB))
+                    spk.describe_in(time_scale.unwrap_or(TimeScale::TDB), round_time)
                 );
             }
         }
 
-        if show_bpc.unwrap_or(true) {
+        if bpc.unwrap_or(!print_any) {
             for (bpc_no, maybe_bpc) in self
                 .bpc_data
                 .iter()
@@ -255,12 +259,12 @@ impl Almanac {
                 let bpc = maybe_bpc.as_ref().unwrap();
                 println!(
                     "=== BPC #{bpc_no} ===\n{}",
-                    bpc.describe_in(time_scale.unwrap_or(TimeScale::TDB))
+                    bpc.describe_in(time_scale.unwrap_or(TimeScale::TDB), round_time)
                 );
             }
         }
 
-        if show_planetary.unwrap_or(true) {
+        if planetary.unwrap_or(!print_any) {
             println!("=== PLANETARY DATA ==\n{}", self.planetary_data.describe());
         }
     }

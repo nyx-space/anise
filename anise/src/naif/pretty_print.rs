@@ -1,4 +1,4 @@
-use hifitime::{Duration, TimeScale};
+use hifitime::{Duration, TimeScale, Unit};
 use tabled::{settings::Style, Table, Tabled};
 
 use crate::naif::daf::NAIFSummaryRecord;
@@ -44,13 +44,20 @@ pub struct SpkRow {
 impl BPC {
     /// Returns a string of a table representing this BPC where the epochs are printed in the TDB time scale
     pub fn describe(&self) -> String {
-        self.describe_in(TimeScale::TDB)
+        self.describe_in(TimeScale::TDB, None)
     }
 
     /// Returns a string of a table representing this BPC where the epochs are printed in the provided time scale
-    pub fn describe_in(&self, time_scale: TimeScale) -> String {
+    /// Set `round` to Some(false) to _not_ round the durations. By default, the durations will be rounded to the nearest second.
+    pub fn describe_in(&self, time_scale: TimeScale, round: Option<bool>) -> String {
         // Build the rows of the table
         let mut rows = Vec::new();
+
+        let round_value = if round.unwrap_or(true) {
+            Unit::Second * 1.0_f64
+        } else {
+            Unit::Second * 0
+        };
 
         for (sno, summary) in self.data_summaries().unwrap().iter().enumerate() {
             let name_rcrd = self.name_record().unwrap();
@@ -65,7 +72,7 @@ impl BPC {
                     .to_gregorian_str(time_scale)
                     .to_string(),
                 end_epoch: summary.end_epoch().to_gregorian_str(time_scale).to_string(),
-                duration: summary.end_epoch() - summary.start_epoch(),
+                duration: (summary.end_epoch() - summary.start_epoch()).round(round_value),
                 interpolation_kind: summary.data_type().unwrap().to_string(),
                 frame: format!("{}", summary.frame_id),
                 inertial_frame: format!("{}", summary.inertial_frame_id),
@@ -81,13 +88,20 @@ impl BPC {
 impl SPK {
     /// Returns a string of a table representing this SPK where the epochs are printed in the TDB time scale
     pub fn describe(&self) -> String {
-        self.describe_in(TimeScale::TDB)
+        self.describe_in(TimeScale::TDB, None)
     }
 
     /// Returns a string of a table representing this SPK where the epochs are printed in the provided time scale
-    pub fn describe_in(&self, time_scale: TimeScale) -> String {
+    /// Set `round` to Some(false) to _not_ round the duration. By default, the durations will be rounded to the nearest second.
+    pub fn describe_in(&self, time_scale: TimeScale, round: Option<bool>) -> String {
         // Build the rows of the table
         let mut rows = Vec::new();
+
+        let round_value = if round.unwrap_or(true) {
+            Unit::Second * 1.0_f64
+        } else {
+            Unit::Second * 0
+        };
 
         for (sno, summary) in self.data_summaries().unwrap().iter().enumerate() {
             let name_rcrd = self.name_record().unwrap();
@@ -104,14 +118,14 @@ impl SPK {
                     .to_gregorian_str(time_scale)
                     .to_string(),
                 end_epoch: summary.end_epoch().to_gregorian_str(time_scale).to_string(),
-                duration: summary.end_epoch() - summary.start_epoch(),
+                duration: (summary.end_epoch() - summary.start_epoch()).round(round_value),
                 interpolation_kind: summary.data_type().unwrap().to_string(),
                 target: summary.target_frame_uid().to_string(),
             });
         }
 
         let mut tbl = Table::new(rows);
-        tbl.with(Style::modern());
+        tbl.with(Style::sharp());
         format!("{tbl}")
     }
 }

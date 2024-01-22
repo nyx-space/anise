@@ -75,6 +75,25 @@ impl MetaAlmanac {
     pub fn process(&mut self) -> AlmanacResult<Almanac> {
         self._process()
     }
+
+    /// Returns an Almanac loaded from the latest NAIF data via the `default` MetaAlmanac.
+    /// The MetaAlmanac will download the DE440s.bsp file, the PCK0008.PCA, the full Moon Principal Axis BPC (moon_pa_de440_200625) and the latest high precision Earth kernel from JPL.
+    ///
+    /// # File list
+    /// - <http://public-data.nyxspace.com/anise/de440s.bsp>
+    /// - <http://public-data.nyxspace.com/anise/pck08.pca>
+    /// - <http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc>
+    /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc>
+    ///
+    /// # Reproducibility
+    ///
+    /// Note that the `earth_latest_high_prec.bpc` file is regularly updated daily (or so). As such,
+    /// if queried at some future time, the Earth rotation parameters may have changed between two queries.
+    ///
+    #[cfg(not(feature = "python"))]
+    pub fn latest(&mut self) -> AlmanacResult<Almanac> {
+        Self::default().process()
+    }
 }
 
 impl FromStr for MetaAlmanac {
@@ -130,6 +149,29 @@ impl MetaAlmanac {
         Self::from_str(&s)
     }
 
+    /// Returns an Almanac loaded from the latest NAIF data via the `default` MetaAlmanac.
+    /// The MetaAlmanac will download the DE440s.bsp file, the PCK0008.PCA, the full Moon Principal Axis BPC (moon_pa_de440_200625) and the latest high precision Earth kernel from JPL.
+    ///
+    /// # File list
+    /// - <http://public-data.nyxspace.com/anise/de440s.bsp>
+    /// - <http://public-data.nyxspace.com/anise/pck08.pca>
+    /// - <http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc>
+    /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc>
+    ///
+    /// # Reproducibility
+    ///
+    /// Note that the `earth_latest_high_prec.bpc` file is regularly updated daily (or so). As such,
+    /// if queried at some future time, the Earth rotation parameters may have changed between two queries.
+    ///
+    #[classmethod]
+    fn latest(_cls: &PyType, py: Python) -> AlmanacResult<Almanac> {
+        let mut meta = Self::default();
+        py.allow_threads(|| match meta._process() {
+            Ok(almanac) => Ok(almanac),
+            Err(e) => Err(e),
+        })
+    }
+
     /// Fetch all of the URIs and return a loaded Almanac
     pub fn process(&mut self, py: Python) -> AlmanacResult<Almanac> {
         py.allow_threads(|| match self._process() {
@@ -157,11 +199,12 @@ impl MetaAlmanac {
     }
 }
 
-/// By default, the MetaAlmanac will download the DE440s.bsp file, the PCK0008.PCA, and the latest high precision Earth kernel from JPL.
+/// By default, the MetaAlmanac will download the DE440s.bsp file, the PCK0008.PCA, the full Moon Principal Axis BPC (moon_pa_de440_200625) and the latest high precision Earth kernel from JPL.
 ///
 /// # File list
 /// - <http://public-data.nyxspace.com/anise/de440s.bsp>
 /// - <http://public-data.nyxspace.com/anise/pck08.pca>
+/// - <http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc>
 /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc>
 ///
 /// # Reproducibility
