@@ -69,7 +69,9 @@ fn validate_iau_rotation_to_parent() {
         )
         .enumerate()
         {
-            let dcm = almanac.rotation_to_parent(frame, epoch).unwrap();
+            let dcm = almanac
+                .rotate_from_to(frame.with_orient(J2000), frame, epoch)
+                .unwrap();
 
             let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];
             unsafe {
@@ -172,6 +174,12 @@ fn validate_iau_rotation_to_parent() {
                 (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm(),
                 dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()
             );
+
+            // Check the transpose
+            let dcm_t = almanac
+                .rotate_from_to(frame, frame.with_orient(J2000), epoch)
+                .unwrap();
+            assert_eq!(dcm.transpose(), dcm_t);
         }
     }
 }
