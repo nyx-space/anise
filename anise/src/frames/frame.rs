@@ -186,6 +186,7 @@ impl Frame {
             .semi_major_equatorial_radius_km)
     }
 
+    /// Returns the flattening ratio (unitless)
     pub fn flattening(&self) -> PhysicsResult<f64> {
         Ok(self
             .shape
@@ -195,6 +196,18 @@ impl Frame {
                 frame: self.into(),
             })?
             .flattening())
+    }
+
+    /// Returns the polar radius in km, if defined
+    pub fn polar_radius_km(&self) -> PhysicsResult<f64> {
+        Ok(self
+            .shape
+            .ok_or(PhysicsError::MissingFrameData {
+                action: "retrieving polar radius",
+                data: "shape",
+                frame: self.into(),
+            })?
+            .polar_radius_km)
     }
 }
 
