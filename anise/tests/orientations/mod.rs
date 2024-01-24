@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-use anise::constants::frames::{EARTH_ITRF93, EME2000};
-use anise::constants::orientations::{ECLIPJ2000, ITRF93, J2000};
+use anise::constants::frames::{EARTH_ITRF93, EME2000, IAU_MOON_FRAME, LUNA_J2000};
+use anise::constants::orientations::{ECLIPJ2000, IAU_MOON, ITRF93, J2000};
 use anise::math::rotation::DCM;
 use anise::math::Matrix3;
 use anise::naif::kpl::parser::convert_tpc;
@@ -206,5 +206,47 @@ fn test_j2k_to_itrf93() {
         spice_dcm.rot_mat_dt.unwrap(),
         (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm(),
         dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()
+    );
+}
+
+#[test]
+fn regression_test_issue_112_test_iau_moon() {
+    use core::str::FromStr;
+
+    let almanac = Almanac::new("../data/pck08.pca").unwrap();
+
+    let epoch = Epoch::from_str("2030-01-01 00:00:00").unwrap();
+
+    let dcm = almanac
+        .rotate_from_to(LUNA_J2000, IAU_MOON_FRAME, epoch)
+        .unwrap();
+
+    let spice_dcm = DCM {
+        from: J2000,
+        to: IAU_MOON,
+        rot_mat: Matrix3::new(
+            0.52570174,
+            0.78498788,
+            0.32776777,
+            -0.85026245,
+            0.4729696,
+            0.23098379,
+            0.02629529,
+            -0.40011721,
+            0.91608666,
+        ),
+        rot_mat_dt: None,
+    };
+
+    assert_eq!(dcm.to, IAU_MOON);
+    assert_eq!(dcm.from, J2000);
+
+    assert!(
+        (dcm.rot_mat - spice_dcm.rot_mat).norm() < 1e-9,
+        "dcm error! got: {}want:{}err = {:.3e}: {:.3e}",
+        dcm.rot_mat,
+        spice_dcm.rot_mat,
+        (dcm.rot_mat - spice_dcm.rot_mat).norm(),
+        dcm.rot_mat - spice_dcm.rot_mat
     );
 }

@@ -158,7 +158,7 @@ impl PlanetaryData {
         {
             Ok(Matrix3::identity())
         } else {
-            let mut variable_angles_deg = [0.0_f64; MAX_NUT_PREC_ANGLES];
+            let mut variable_angles_rad = [0.0_f64; MAX_NUT_PREC_ANGLES];
             // Skip the computation of the nutation and precession angles of the system if we won't be using them.
             if self.uses_trig_polynomial() {
                 for (ii, nut_prec_angle) in system
@@ -167,15 +167,17 @@ impl PlanetaryData {
                     .enumerate()
                     .take(system.num_nut_prec_angles.into())
                 {
-                    variable_angles_deg[ii] = nut_prec_angle.evaluate_deg(epoch, Unit::Century);
+                    variable_angles_rad[ii] = nut_prec_angle
+                        .evaluate_deg(epoch, Unit::Century)
+                        .to_radians();
                 }
             }
 
             let right_asc_rad = match self.pole_right_ascension {
                 Some(right_asc_deg) => {
-                    let mut angle_rad = right_asc_deg
-                        .evaluate_deg(epoch, Unit::Century)
-                        .to_radians();
+                    let angle_deg = right_asc_deg.evaluate_deg(epoch, Unit::Century);
+                    println!("RA_Poly = {angle_deg}");
+                    let mut angle_trig = 0.0;
                     // Add the nutation and precession angles for this phase angle
                     for (ii, coeff) in right_asc_deg
                         .coeffs
@@ -183,16 +185,19 @@ impl PlanetaryData {
                         .enumerate()
                         .take(right_asc_deg.coeffs_count as usize)
                     {
-                        angle_rad += coeff * variable_angles_deg[ii].to_radians().sin();
+                        angle_trig += coeff * variable_angles_rad[ii].sin();
                     }
-                    angle_rad + FRAC_PI_2
+                    println!("RA_Trig = {angle_trig}");
+                    (angle_deg + angle_trig).to_radians() + FRAC_PI_2
                 }
                 None => 0.0,
             };
 
             let dec_rad = match self.pole_declination {
                 Some(decl_deg) => {
-                    let mut angle_rad = decl_deg.evaluate_deg(epoch, Unit::Century).to_radians();
+                    let angle_deg = decl_deg.evaluate_deg(epoch, Unit::Century);
+                    println!("DEC_Poly = {angle_deg}");
+                    let mut angle_trig = 0.0;
                     // Add the nutation and precession angles for this phase angle
                     for (ii, coeff) in decl_deg
                         .coeffs
@@ -200,16 +205,19 @@ impl PlanetaryData {
                         .enumerate()
                         .take(decl_deg.coeffs_count as usize)
                     {
-                        angle_rad += coeff * variable_angles_deg[ii].to_radians().cos();
+                        angle_trig += coeff * variable_angles_rad[ii].cos();
                     }
-                    FRAC_PI_2 - angle_rad
+                    println!("DEC_Trig = {angle_trig}");
+                    FRAC_PI_2 - (angle_deg + angle_trig).to_radians()
                 }
                 None => 0.0,
             };
 
             let twist_rad = match self.prime_meridian {
                 Some(twist_deg) => {
-                    let mut angle_rad = twist_deg.evaluate_deg(epoch, Unit::Day).to_radians();
+                    let angle_deg = twist_deg.evaluate_deg(epoch, Unit::Day);
+                    println!("PM_Poly = {angle_deg}");
+                    let mut angle_trig = 0.0;
                     // Add the nutation and precession angles for this phase angle
                     for (ii, coeff) in twist_deg
                         .coeffs
@@ -217,9 +225,9 @@ impl PlanetaryData {
                         .enumerate()
                         .take(twist_deg.coeffs_count as usize)
                     {
-                        angle_rad += coeff * variable_angles_deg[ii].to_radians().sin();
+                        angle_trig += coeff * variable_angles_rad[ii].sin();
                     }
-                    angle_rad
+                    (angle_deg + angle_trig).to_radians()
                 }
                 None => 0.0,
             };
