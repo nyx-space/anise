@@ -12,13 +12,13 @@ mod validation;
 
 #[test]
 fn test_find_root() {
-    let planetary_data = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
+    let planetary_data = convert_tpc("../data/pck00011.tpc", "../data/gm_de431.tpc").unwrap();
     // Serialize to disk
     planetary_data
-        .save_as(&PathBuf::from_str("pck08.pca").unwrap(), true)
+        .save_as(&PathBuf::from_str("pck11.pca").unwrap(), true)
         .unwrap();
 
-    let almanac = Almanac::default().load("pck08.pca").unwrap();
+    let almanac = Almanac::default().load("pck11.pca").unwrap();
 
     assert_eq!(almanac.try_find_orientation_root(), Ok(J2000));
 }

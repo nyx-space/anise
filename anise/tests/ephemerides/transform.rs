@@ -9,7 +9,7 @@
  */
 
 use anise::constants::frames::{EARTH_ITRF93, IAU_MOON_FRAME, LUNA_J2000, VENUS_J2000};
-use anise::math::{Matrix3, Vector3};
+use anise::math::Vector3;
 use anise::prelude::*;
 
 // Corresponds to an error of 2e-2 meters, or 20 millimeters
@@ -147,8 +147,6 @@ fn specific_test() {
 
     let almanac = MetaAlmanac::default().process().unwrap();
 
-    // [Luna J2000] 2024-09-22T08:45:22 UTC	position = [638.053603, -1776.813629, 195.147575] km	velocity = [-0.017910, -0.181449, -1.584180] km/s
-
     let epoch = Epoch::from_str("2024-09-22T08:45:22 UTC").unwrap();
     // This state is identical in ANISE and SPICE, queried from a BSP.
     let orbit_moon_j2k = Orbit::new(
@@ -162,6 +160,10 @@ fn specific_test() {
         LUNA_J2000,
     );
 
+    let anise_iau_moon = almanac
+        .transform_to(orbit_moon_j2k, IAU_MOON_FRAME, None)
+        .unwrap();
+
     // We know from the other tests that the Moon IAU rotation is the same in ANISE and SPICE.
     // However, when queried using the `transform` function in ANISE v0.2.1, there is a difference.
     let spice_iau_moon = Orbit::new(
@@ -172,80 +174,15 @@ fn specific_test() {
         4.46032072e-01,
         -1.40193607e+00,
         epoch,
-        LUNA_J2000,
+        IAU_MOON_FRAME,
     );
 
-    // Expected rotation matrix
-    let rot_data = [
-        [
-            -6.12817863e-01,
-            -7.32495428e-01,
-            -2.96487292e-01,
-            0.00000000e+00,
-            0.00000000e+00,
-            0.00000000e+00,
-        ],
-        [
-            7.90219432e-01,
-            -5.69347499e-01,
-            -2.26708345e-01,
-            0.00000000e+00,
-            0.00000000e+00,
-            0.00000000e+00,
-        ],
-        [
-            -2.74147191e-03,
-            -3.73220943e-01,
-            9.27738439e-01,
-            0.00000000e+00,
-            0.00000000e+00,
-            0.00000000e+00,
-        ],
-        [
-            2.10320098e-06,
-            -1.51584874e-06,
-            -6.02140019e-07,
-            -6.12817863e-01,
-            -7.32495428e-01,
-            -2.96487292e-01,
-        ],
-        [
-            1.63104266e-06,
-            1.94960401e-06,
-            7.89028888e-07,
-            7.90219432e-01,
-            -5.69347499e-01,
-            -2.26708345e-01,
-        ],
-        [
-            9.01406584e-10,
-            9.38047187e-10,
-            3.80031722e-10,
-            -2.74147191e-03,
-            -3.73220943e-01,
-            9.27738439e-01,
-        ],
-    ];
-    let rot_mat = Matrix3::new(
-        rot_data[0][0],
-        rot_data[0][1],
-        rot_data[0][2],
-        rot_data[1][0],
-        rot_data[1][1],
-        rot_data[1][2],
-        rot_data[2][0],
-        rot_data[2][1],
-        rot_data[2][2],
-    );
+    println!("ANISE\n{anise_iau_moon}\nSPICE\n{spice_iau_moon}");
+    let rss_pos_km = anise_iau_moon.rss_radius_km(&spice_iau_moon).unwrap();
+    let rss_vel_km_s = anise_iau_moon.rss_velocity_km_s(&spice_iau_moon).unwrap();
 
-    // Check that's the rotation matrix we get in ANISE.
-    // let dcm = almanac
-    //     .rotate_from_to(LUNA_J2000, IAU_MOON_FRAME, epoch)
-    //     .unwrap();
-    let dcm = almanac
-        .rotate_from_to(LUNA_J2000, IAU_MOON_FRAME, epoch)
-        .unwrap();
+    dbg!(rss_pos_km, rss_vel_km_s);
 
-    println!("{dcm}");
-    println!("{rot_mat}");
+    assert!(rss_pos_km < 0.01);
+    assert!(rss_vel_km_s < 1e-5);
 }

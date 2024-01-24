@@ -42,7 +42,6 @@ const RTN_VELOCITY_EPSILON_KM_S: f64 = 1e-10;
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
 fn validate_iau_rotation_to_parent() {
-    // Known bug with nutation and precession angles: https://github.com/nyx-space/anise/issues/122
     let pck = "../data/pck00008.tpc";
     spice::furnsh(pck);
     let planetary_data = convert_tpc(pck, "../data/gm_de431.tpc").unwrap();
@@ -56,11 +55,12 @@ fn validate_iau_rotation_to_parent() {
         IAU_MERCURY_FRAME,
         IAU_VENUS_FRAME,
         IAU_EARTH_FRAME,
+        IAU_MOON_FRAME,
         IAU_MARS_FRAME,
         IAU_JUPITER_FRAME,
         IAU_SATURN_FRAME,
-        // IAU_NEPTUNE_FRAME, // Bug: https://github.com/nyx-space/anise/issues/122
-        // IAU_URANUS_FRAME,
+        IAU_NEPTUNE_FRAME,
+        IAU_URANUS_FRAME,
     ] {
         for (num, epoch) in TimeSeries::inclusive(
             Epoch::from_tdb_duration(Duration::ZERO),

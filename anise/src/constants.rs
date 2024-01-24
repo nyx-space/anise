@@ -214,6 +214,7 @@ pub mod orientations {
             IAU_MERCURY => Some("IAU_MERCURY"),
             IAU_VENUS => Some("IAU_VENUS"),
             IAU_EARTH => Some("IAU_EARTH"),
+            IAU_MOON => Some("IAU_MOON"),
             ITRF93 => Some("ITRF93"),
             IAU_MARS => Some("IAU_MARS"),
             IAU_JUPITER => Some("IAU_JUPITER"),
