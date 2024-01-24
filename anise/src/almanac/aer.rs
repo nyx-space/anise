@@ -142,10 +142,7 @@ mod ut_aer {
         let longitude_deg = 4.250_556;
         let height_km = 0.834_939;
 
-        let almanac = MetaAlmanac::new("../data/latest.dhall".to_string())
-            .unwrap()
-            .process()
-            .unwrap();
+        let almanac = MetaAlmanac::latest().unwrap();
 
         let iau_earth = almanac.frame_from_uid(IAU_EARTH_FRAME).unwrap();
         let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
