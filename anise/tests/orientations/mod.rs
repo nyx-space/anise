@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
-use anise::constants::frames::{EARTH_ITRF93, EME2000, IAU_MOON_FRAME, LUNA_J2000};
-use anise::constants::orientations::{ECLIPJ2000, IAU_MOON, ITRF93, J2000};
+use anise::constants::frames::{
+    EARTH_ITRF93, EME2000, IAU_JUPITER_FRAME, IAU_MOON_FRAME, JUPITER_BARYCENTER_J2000, LUNA_J2000,
+};
+use anise::constants::orientations::{ECLIPJ2000, IAU_JUPITER, IAU_MOON, ITRF93, J2000};
 use anise::math::rotation::DCM;
 use anise::math::Matrix3;
 use anise::naif::kpl::parser::convert_tpc;
@@ -209,11 +211,17 @@ fn test_j2k_to_itrf93() {
     );
 }
 
+/// The IAU_MOON frame rotation differs from SPICE by a norm of 4.1e-6.
+/// Although this looks like a lot, the computation is identical to that of the other IAU frames.
+/// For the IAU frames, the data in the PCK files comes from the IAU Report publications.
+/// SPICE uses floating point values for time and a rounding error shows up when computing the angular rate per centuries.
+/// ANISE uses Hifitime, which does not exhibit this rounding error.
+/// As such, after discussion with Greg Henry's coworkers, I've decided that SPICE is in error here, and not ANISE.
 #[test]
 fn regression_test_issue_112_test_iau_moon() {
     use core::str::FromStr;
 
-    let almanac = Almanac::new("../data/pck08.pca").unwrap();
+    let almanac = Almanac::new("../data/pck11.pca").unwrap();
 
     let epoch = Epoch::from_str("2030-01-01 00:00:00").unwrap();
 
@@ -225,20 +233,62 @@ fn regression_test_issue_112_test_iau_moon() {
         from: J2000,
         to: IAU_MOON,
         rot_mat: Matrix3::new(
-            0.52570174,
-            0.78498788,
-            0.32776777,
-            -0.85026245,
-            0.4729696,
-            0.23098379,
-            0.02629529,
-            -0.40011721,
-            0.91608666,
+            0.5256992783481783,
+            0.7849985804883132,
+            0.327746086743286,
+            -0.8502641586573962,
+            0.4729767092674251,
+            0.2309629688785363,
+            0.0262893371319015,
+            -0.4000878167626341,
+            0.9160996723235273,
         ),
         rot_mat_dt: None,
     };
 
     assert_eq!(dcm.to, IAU_MOON);
+    assert_eq!(dcm.from, J2000);
+
+    assert!(
+        (dcm.rot_mat - spice_dcm.rot_mat).norm() < 1e-5,
+        "dcm error! got: {}want:{}err = {:.3e}: {:.3e}",
+        dcm.rot_mat,
+        spice_dcm.rot_mat,
+        (dcm.rot_mat - spice_dcm.rot_mat).norm(),
+        dcm.rot_mat - spice_dcm.rot_mat
+    );
+}
+
+#[test]
+fn regression_test_issue_112_test_iau_jupiter() {
+    use core::str::FromStr;
+
+    let almanac = Almanac::new("../data/pck11.pca").unwrap();
+
+    let epoch = Epoch::from_str("2030-01-01 00:00:00").unwrap();
+
+    let dcm = almanac
+        .rotate_from_to(JUPITER_BARYCENTER_J2000, IAU_JUPITER_FRAME, epoch)
+        .unwrap();
+
+    let spice_dcm = DCM {
+        from: J2000,
+        to: IAU_JUPITER,
+        rot_mat: Matrix3::new(
+            -0.1371949263739366,
+            -0.893256221707872,
+            -0.4281014769390864,
+            0.9904365275051731,
+            -0.130075026655604,
+            -0.0459997002603103,
+            -0.0145957925699357,
+            -0.4303182657298211,
+            0.9025592241058392,
+        ),
+        rot_mat_dt: None,
+    };
+
+    assert_eq!(dcm.to, IAU_JUPITER);
     assert_eq!(dcm.from, J2000);
 
     assert!(
