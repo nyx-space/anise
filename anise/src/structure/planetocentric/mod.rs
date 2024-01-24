@@ -613,6 +613,6 @@ mod planetary_constants_ut {
 
         assert_eq!(moon, moon_dec);
 
-        assert_eq!(format!("{moon}"), "planetary data 301 (μ = 4902.800066163796 km^3/s^2) RA = 269.9949 + 0.0031 t Dec = 66.5392 + 0.013 t PM = 38.3213 + 13.17635815 t + -0.0000000000014 t^2");
+        assert_eq!(format!("{moon}"), "IAU_MOON (μ = 4902.800066163796 km^3/s^2) RA = 269.9949 + 0.0031 t Dec = 66.5392 + 0.013 t PM = 38.3213 + 13.17635815 t + -0.0000000000014 t^2");
     }
 }
