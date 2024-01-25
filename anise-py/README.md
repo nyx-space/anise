@@ -87,9 +87,9 @@ def test_state_transformation():
     print(orig_state)
     print(state_itrf93)
 
-    assert state_itrf93.geodetic_latitude_deg() == 10.549246868302738
-    assert state_itrf93.geodetic_longitude_deg() == 133.76889100913047
-    assert state_itrf93.geodetic_height_km() == 1814.503598063825
+    assert state_itrf93.latitude_deg() == 10.549246868302738
+    assert state_itrf93.longitude_deg() == 133.76889100913047
+    assert state_itrf93.height_km() == 1814.503598063825
 
     # Convert back
     from_state_itrf93_to_eme2k = ctx.transform_to(
@@ -113,9 +113,9 @@ def test_state_transformation():
         itrf93,
     )
 
-    assert abs(paris.geodetic_latitude_deg() - 48.8566) < 1e-3
-    assert abs(paris.geodetic_longitude_deg() - 2.3522) < 1e-3
-    assert abs(paris.geodetic_height_km() - 0.4) < 1e-3
+    assert abs(paris.latitude_deg() - 48.8566) < 1e-3
+    assert abs(paris.longitude_deg() - 2.3522) < 1e-3
+    assert abs(paris.height_km() - 0.4) < 1e-3
 
 
 if __name__ == "__main__":

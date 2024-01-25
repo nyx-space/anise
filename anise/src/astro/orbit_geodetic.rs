@@ -229,7 +229,7 @@ impl CartesianState {
     ///
     /// # Frame warning
     /// This state MUST be in the body fixed frame (e.g. ITRF93) prior to calling this function, or the computation is **invalid**.
-    pub fn geodetic_longitude_deg(&self) -> f64 {
+    pub fn longitude_deg(&self) -> f64 {
         between_0_360(self.radius_km.y.atan2(self.radius_km.x).to_degrees())
     }
 
@@ -237,14 +237,14 @@ impl CartesianState {
     ///
     /// # Frame warning
     /// This state MUST be in the body fixed frame (e.g. ITRF93) prior to calling this function, or the computation is **invalid**.
-    pub fn geodetic_latitude_deg(&self) -> PhysicsResult<f64> {
+    pub fn latitude_deg(&self) -> PhysicsResult<f64> {
         Ok(self.latlongalt()?.0)
     }
 
     /// Returns the geodetic height in km.
     ///
     /// Reference: Vallado, 4th Ed., Algorithm 12 page 172.
-    pub fn geodetic_height_km(&self) -> PhysicsResult<f64> {
+    pub fn height_km(&self) -> PhysicsResult<f64> {
         Ok(self.latlongalt()?.2)
     }
 }

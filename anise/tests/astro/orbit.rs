@@ -463,9 +463,9 @@ fn verif_geodetic_vallado(almanac: Almanac) {
     let long = 46.446_416_856_789_96; // Vallado 46.4464
     let height = 5_085.217_419_357_936; // Vallado: 5085.22
     let r = Orbit::from_position(ri, rj, rk, epoch, eme2k);
-    f64_eq!(r.geodetic_latitude_deg().unwrap(), lat, "latitude (φ)");
-    f64_eq!(r.geodetic_longitude_deg(), long, "longitude (λ)");
-    f64_eq!(r.geodetic_height_km().unwrap(), height, "height");
+    f64_eq!(r.latitude_deg().unwrap(), lat, "latitude (φ)");
+    f64_eq!(r.longitude_deg(), long, "longitude (λ)");
+    f64_eq!(r.height_km().unwrap(), height, "height");
     // Check that we can compute orbital parameters here, although these will be odd since it's a ground station
     f64_eq!(
         r.sma_altitude_km().unwrap(),
@@ -518,9 +518,9 @@ fn verif_geodetic_vallado(almanac: Almanac) {
     f64_eq!(r.radius_km.y, rj, "r_j");
     f64_eq!(r.radius_km.z, rk, "r_k");
     let r = Orbit::from_position(ri, rj, rk, epoch, eme2k);
-    f64_eq!(r.geodetic_latitude_deg().unwrap(), lat_val, "latitude (φ)");
-    f64_eq!(r.geodetic_longitude_deg(), long, "longitude (λ)");
-    f64_eq!(r.geodetic_height_km().unwrap(), height_val, "height");
+    f64_eq!(r.latitude_deg().unwrap(), lat_val, "latitude (φ)");
+    f64_eq!(r.longitude_deg(), long, "longitude (λ)");
+    f64_eq!(r.height_km().unwrap(), height_val, "height");
 
     // Check reciprocity near poles
     let r = Orbit::try_latlongalt(
@@ -532,7 +532,7 @@ fn verif_geodetic_vallado(almanac: Almanac) {
         eme2k,
     )
     .unwrap();
-    f64_eq!(r.geodetic_latitude_deg().unwrap(), 0.1, "latitude (φ)");
+    f64_eq!(r.latitude_deg().unwrap(), 0.1, "latitude (φ)");
 }
 
 #[rstest]

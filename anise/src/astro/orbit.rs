@@ -328,8 +328,8 @@ impl Orbit {
         if (self.radius_km.x.powi(2) + self.radius_km.y.powi(2)).sqrt() < 1e-3 {
             warn!("SEZ frame ill-defined when close to the poles");
         }
-        let phi = self.geodetic_latitude_deg()?.to_radians();
-        let lambda = self.geodetic_longitude_deg().to_radians();
+        let phi = self.latitude_deg()?.to_radians();
+        let lambda = self.longitude_deg().to_radians();
         let z_hat = Vector3::new(
             phi.cos() * lambda.cos(),
             phi.cos() * lambda.sin(),
@@ -995,7 +995,7 @@ impl fmt::UpperHex for Orbit {
                 format!(
                     "{:.*}",
                     decimals,
-                    self.geodetic_height_km().map_err(|err| {
+                    self.height_km().map_err(|err| {
                         error!("{err}");
                         fmt::Error
                     })?
@@ -1003,12 +1003,12 @@ impl fmt::UpperHex for Orbit {
                 format!(
                     "{:.*}",
                     decimals,
-                    self.geodetic_latitude_deg().map_err(|err| {
+                    self.latitude_deg().map_err(|err| {
                         error!("{err}");
                         fmt::Error
                     })?
                 ),
-                format!("{:.*}", decimals, self.geodetic_longitude_deg()),
+                format!("{:.*}", decimals, self.longitude_deg()),
             )
         }
     }
