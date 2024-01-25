@@ -128,7 +128,7 @@ fn validate_iau_rotation_to_parent() {
                 rot_mat_dt,
             };
 
-            // Print out the error at its greatest.
+            // Print out the error at its greatest, since we're the furthest away from J2000 reference epoch.
             if epoch == Epoch::from_tdb_duration(0.2.centuries()) {
                 println!("ANISE: {dcm}{}", dcm.rot_mat_dt.unwrap());
                 println!("SPICE: {spice_dcm}{}", spice_dcm.rot_mat_dt.unwrap());

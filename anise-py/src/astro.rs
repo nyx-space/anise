@@ -9,6 +9,8 @@
  */
 
 use anise::astro::AzElRange;
+use anise::constants::celestial_objects::*;
+use anise::constants::orientations::*;
 use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
 use anise::constants::usual_planetary_constants::MEAN_LUNA_ANGULAR_VELOCITY_DEG_S;
 use anise::constants::SPEED_OF_LIGHT_KM_S;
@@ -77,6 +79,8 @@ impl Frames {
     #[classattr]
     const IAU_EARTH_FRAME: Frame = IAU_EARTH_FRAME;
     #[classattr]
+    const IAU_MOON_FRAME: Frame = IAU_MOON_FRAME;
+    #[classattr]
     const IAU_MARS_FRAME: Frame = IAU_MARS_FRAME;
     #[classattr]
     const IAU_JUPITER_FRAME: Frame = IAU_JUPITER_FRAME;
@@ -88,6 +92,82 @@ impl Frames {
     const IAU_URANUS_FRAME: Frame = IAU_URANUS_FRAME;
     #[classattr]
     const EARTH_ITRF93: Frame = EARTH_ITRF93;
+}
+
+#[pyclass]
+#[pyo3(module = "anise.astro.constants")]
+struct Orientations {}
+
+#[pymethods]
+impl Orientations {
+    #[classattr]
+    const J2000: i32 = J2000;
+    #[classattr]
+    const ECLIPJ2000: i32 = ECLIPJ2000;
+    #[classattr]
+    const IAU_MERCURY: i32 = IAU_MERCURY;
+    #[classattr]
+    const IAU_VENUS: i32 = IAU_VENUS;
+    #[classattr]
+    const IAU_EARTH: i32 = IAU_EARTH;
+    #[classattr]
+    const IAU_MOON: i32 = IAU_MOON;
+    #[classattr]
+    const ITRF93: i32 = ITRF93;
+    #[classattr]
+    const IAU_MARS: i32 = IAU_MARS;
+    #[classattr]
+    const IAU_JUPITER: i32 = IAU_JUPITER;
+    #[classattr]
+    const IAU_SATURN: i32 = IAU_SATURN;
+    #[classattr]
+    const IAU_NEPTUNE: i32 = IAU_NEPTUNE;
+    #[classattr]
+    const IAU_URANUS: i32 = IAU_URANUS;
+}
+
+#[pyclass]
+#[pyo3(module = "anise.astro.constants")]
+struct CelestialObjects {}
+
+#[pymethods]
+impl CelestialObjects {
+    #[classattr]
+    const SOLAR_SYSTEM_BARYCENTER: i32 = SOLAR_SYSTEM_BARYCENTER;
+    #[classattr]
+    const MERCURY: i32 = MERCURY;
+    #[classattr]
+    const VENUS: i32 = VENUS;
+    #[classattr]
+    const EARTH_MOON_BARYCENTER: i32 = EARTH_MOON_BARYCENTER;
+    #[classattr]
+    const MARS_BARYCENTER: i32 = MARS_BARYCENTER;
+    #[classattr]
+    const JUPITER_BARYCENTER: i32 = JUPITER_BARYCENTER;
+    #[classattr]
+    const SATURN_BARYCENTER: i32 = SATURN_BARYCENTER;
+    #[classattr]
+    const URANUS_BARYCENTER: i32 = URANUS_BARYCENTER;
+    #[classattr]
+    const NEPTUNE_BARYCENTER: i32 = NEPTUNE_BARYCENTER;
+    #[classattr]
+    const PLUTO_BARYCENTER: i32 = PLUTO_BARYCENTER;
+    #[classattr]
+    const SUN: i32 = SUN;
+    #[classattr]
+    const LUNA: i32 = LUNA;
+    #[classattr]
+    const EARTH: i32 = EARTH;
+    #[classattr]
+    const MARS: i32 = MARS;
+    #[classattr]
+    const JUPITER: i32 = JUPITER;
+    #[classattr]
+    const SATURN: i32 = SATURN;
+    #[classattr]
+    const URANUS: i32 = URANUS;
+    #[classattr]
+    const NEPTUNE: i32 = NEPTUNE;
 }
 
 #[pyclass]
@@ -116,7 +196,9 @@ impl UsualConstants {
 
 pub(crate) fn register_constants(py: Python<'_>, parent_module: &PyModule) -> PyResult<()> {
     let sm = PyModule::new(py, "_anise.astro.constants")?;
+    sm.add_class::<CelestialObjects>()?;
     sm.add_class::<Frames>()?;
+    sm.add_class::<Orientations>()?;
     sm.add_class::<UsualConstants>()?;
 
     py_run!(

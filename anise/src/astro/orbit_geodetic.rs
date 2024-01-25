@@ -195,29 +195,29 @@ impl CartesianState {
     /// This uses the Heikkinen procedure, which is not iterative. The results match Vallado and GMAT.
     ///
     pub fn latlongalt(&self) -> PhysicsResult<(f64, f64, f64)> {
-        let a = self.frame.mean_equatorial_radius_km()?;
-        let b = self.frame.shape.unwrap().polar_radius_km;
-        let e2 = (a.powi(2) - b.powi(2)) / a.powi(2);
-        let e_prime2 = (a.powi(2) - b.powi(2)) / b.powi(2);
+        let a_km = self.frame.mean_equatorial_radius_km()?;
+        let b_km = self.frame.shape.unwrap().polar_radius_km;
+        let e2 = (a_km.powi(2) - b_km.powi(2)) / a_km.powi(2);
+        let e_prime2 = (a_km.powi(2) - b_km.powi(2)) / b_km.powi(2);
         let p = (self.radius_km.x.powi(2) + self.radius_km.y.powi(2)).sqrt();
-        let big_f = 54.0 * b.powi(2) * self.radius_km.z.powi(2);
+        let big_f = 54.0 * b_km.powi(2) * self.radius_km.z.powi(2);
         let big_g =
-            p.powi(2) + (1.0 - e2) * self.radius_km.z.powi(2) - e2 * (a.powi(2) - b.powi(2));
+            p.powi(2) + (1.0 - e2) * self.radius_km.z.powi(2) - e2 * (a_km.powi(2) - b_km.powi(2));
         let c = (e2.powi(2) * big_f * p.powi(2)) / big_g.powi(3);
         let s = (1.0 + c + (c.powi(2) + 2.0 * c).sqrt()).powf(1.0 / 3.0);
         let k = s + 1.0 + 1.0 / s;
         let big_p = big_f / (3.0 * k.powi(2) * big_g.powi(2));
         let big_q = (1.0 + 2.0 * e2.powi(2) * big_p).sqrt();
         let r0 = (-big_p * e2 * p) / (1.0 + big_q)
-            + (0.5 * a.powi(2) * (1.0 + 1.0 / big_q)
+            + (0.5 * a_km.powi(2) * (1.0 + 1.0 / big_q)
                 - (big_p * (1.0 - e2) * self.radius_km.z.powi(2)) / (big_q * (1.0 + big_q))
                 - 0.5 * big_p * p.powi(2))
             .sqrt();
         let big_u = ((p - e2 * r0).powi(2) + self.radius_km.z.powi(2)).sqrt();
         let big_v = ((p - e2 * r0).powi(2) + (1.0 - e2) * self.radius_km.z.powi(2)).sqrt();
-        let z0 = b.powi(2) * self.radius_km.z / (a * big_v);
+        let z0 = b_km.powi(2) * self.radius_km.z / (a_km * big_v);
 
-        let alt_km = big_u * (1.0 - b.powi(2) / (a * big_v));
+        let alt_km = big_u * (1.0 - b_km.powi(2) / (a_km * big_v));
         let lat_deg =
             between_pm_180((((self.radius_km.z + e_prime2 * z0) / p).atan()).to_degrees());
         let long_deg = between_0_360(self.radius_km.y.atan2(self.radius_km.x).to_degrees());

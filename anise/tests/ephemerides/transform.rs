@@ -74,7 +74,7 @@ fn de440s_transform_verif_venus2emb() {
     // TODO https://github.com/nyx-space/anise/issues/130
     // Test the opposite translation
     // let state_rtn = almanac
-    //     .transform_from_to(EARTH_ITRF93, VENUS_J2000, epoch, Aberration::None)
+    //     .transform(EARTH_ITRF93, VENUS_J2000, epoch, None)
     //     .unwrap();
 
     // println!("state = {state}");
@@ -117,7 +117,11 @@ fn de440s_transform_verif_venus2emb() {
 
     // // Check that the return state is exactly opposite to the forward state
     // assert!(
-    //     relative_eq!(state_rtn.radius_km, -state.radius_km, epsilon = EPSILON),
+    //     relative_eq!(
+    //         state_rtn.radius_km,
+    //         -state.radius_km,
+    //         epsilon = core::f64::EPSILON
+    //     ),
     //     "pos = {}\nexp = {}\nerr = {:e}",
     //     state_rtn.radius_km,
     //     -state.radius_km,
@@ -128,7 +132,7 @@ fn de440s_transform_verif_venus2emb() {
     //     relative_eq!(
     //         state_rtn.velocity_km_s,
     //         -state.velocity_km_s,
-    //         epsilon = EPSILON
+    //         epsilon = core::f64::EPSILON
     //     ),
     //     "vel = {}\nexp = {}\nerr = {:e}",
     //     state.velocity_km_s,
@@ -142,7 +146,7 @@ fn de440s_transform_verif_venus2emb() {
 }
 
 #[test]
-fn specific_test() {
+fn spice_verif_iau_moon() {
     let _ = pretty_env_logger::try_init();
 
     let almanac = MetaAlmanac::default().process().unwrap();
@@ -183,6 +187,8 @@ fn specific_test() {
 
     dbg!(rss_pos_km, rss_vel_km_s);
 
-    assert!(rss_pos_km < 0.01);
+    // ANISE uses hifitime which is more precise than SPICE at time computations.
+    // The Moon angular acceleration is expressed in centuries sicne J2000, where Hifitime does not suffer from rounding errors.
+    assert!(rss_pos_km < 0.004);
     assert!(rss_vel_km_s < 1e-5);
 }
