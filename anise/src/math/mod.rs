@@ -23,6 +23,22 @@ pub mod interpolation;
 pub mod rotation;
 pub mod units;
 
+use nalgebra::allocator::Allocator;
+use nalgebra::{DefaultAllocator, DimName, OVector};
+
+/// Returns the root mean squared (RSS) between two vectors of any dimension N.
+pub fn root_mean_squared<N: DimName>(vec_a: &OVector<f64, N>, vec_b: &OVector<f64, N>) -> f64
+where
+    DefaultAllocator: Allocator<f64, N>,
+{
+    vec_a
+        .iter()
+        .zip(vec_b.iter())
+        .map(|(&x, &y)| (x - y).powi(2))
+        .sum::<f64>()
+        .sqrt()
+}
+
 /// Returns the projection of a onto b
 /// Converted from NAIF SPICE's `projv`
 pub fn project_vector(a: &Vector3, b: &Vector3) -> Vector3 {

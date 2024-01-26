@@ -91,7 +91,7 @@ impl MetaAlmanac {
     /// if queried at some future time, the Earth rotation parameters may have changed between two queries.
     ///
     #[cfg(not(feature = "python"))]
-    pub fn latest(&mut self) -> AlmanacResult<Almanac> {
+    pub fn latest() -> AlmanacResult<Almanac> {
         Self::default().process()
     }
 }

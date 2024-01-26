@@ -30,6 +30,11 @@ use spice::cstr;
 // Allow up to two arcsecond of error (or 0.12 microradians), but check test results for actualized error
 const MAX_ERR_DEG: f64 = 7.2e-6;
 const DCM_EPSILON: f64 = 1e-9;
+
+// IAU Moon rotates fast. This shows the difference between SPICE's and Hifitime's implementation of time because SPICE has a rounding error
+// when computing the centuries past J2000 ET.
+const IAU_MOON_DCM_EPSILON: f64 = 1e-5;
+const IAU_MOON_MAX_ERR_DEG: f64 = 1e-3;
 // Absolute error tolerance between ANISE and SPICE for the same state rotation.
 const POSITION_ERR_TOL_KM: f64 = 2e-5;
 const VELOCITY_ERR_TOL_KM_S: f64 = 5e-7;
@@ -42,7 +47,6 @@ const RTN_VELOCITY_EPSILON_KM_S: f64 = 1e-10;
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
 fn validate_iau_rotation_to_parent() {
-    // Known bug with nutation and precession angles: https://github.com/nyx-space/anise/issues/122
     let pck = "../data/pck00008.tpc";
     spice::furnsh(pck);
     let planetary_data = convert_tpc(pck, "../data/gm_de431.tpc").unwrap();
@@ -56,11 +60,12 @@ fn validate_iau_rotation_to_parent() {
         IAU_MERCURY_FRAME,
         IAU_VENUS_FRAME,
         IAU_EARTH_FRAME,
+        IAU_MOON_FRAME,
         IAU_MARS_FRAME,
         IAU_JUPITER_FRAME,
         IAU_SATURN_FRAME,
-        // IAU_NEPTUNE_FRAME, // Bug: https://github.com/nyx-space/anise/issues/122
-        // IAU_URANUS_FRAME,
+        // IAU_URANUS_FRAME, // TODO: https://github.com/nyx-space/anise/issues/185
+        // IAU_NEPTUNE_FRAME,
     ] {
         for (num, epoch) in TimeSeries::inclusive(
             Epoch::from_tdb_duration(Duration::ZERO),
@@ -69,7 +74,9 @@ fn validate_iau_rotation_to_parent() {
         )
         .enumerate()
         {
-            let dcm = almanac.rotation_to_parent(frame, epoch).unwrap();
+            let dcm = almanac
+                .rotate_from_to(frame.with_orient(J2000), frame, epoch)
+                .unwrap();
 
             let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];
             unsafe {
@@ -121,7 +128,8 @@ fn validate_iau_rotation_to_parent() {
                 rot_mat_dt,
             };
 
-            if num == 0 {
+            // Print out the error at its greatest, since we're the furthest away from J2000 reference epoch.
+            if epoch == Epoch::from_tdb_duration(0.2.centuries()) {
                 println!("ANISE: {dcm}{}", dcm.rot_mat_dt.unwrap());
                 println!("SPICE: {spice_dcm}{}", spice_dcm.rot_mat_dt.unwrap());
 
@@ -146,17 +154,29 @@ fn validate_iau_rotation_to_parent() {
             // In some cases, the arc cos of the angle between the unit vectors is NaN (because the dot product is rounded just past -1 or +1)
             // so we allow NaN.
             // However, we also check the rotation about that unit vector AND we check that the DCMs match too.
+            let angular_err = if frame == IAU_MOON_FRAME {
+                IAU_MOON_MAX_ERR_DEG
+            } else {
+                MAX_ERR_DEG
+            };
+
             assert!(
-                uvec_angle_deg_err.abs() < MAX_ERR_DEG || uvec_angle_deg_err.is_nan(),
+                uvec_angle_deg_err.abs() < angular_err || uvec_angle_deg_err.is_nan(),
                 "#{num} @ {epoch} unit vector angle error for {frame}: {uvec_angle_deg_err:e} deg"
             );
             assert!(
-                deg_err.abs() < MAX_ERR_DEG,
+                deg_err.abs() < angular_err,
                 "#{num} @ {epoch} rotation error for {frame}: {deg_err:e} deg"
             );
 
+            let dcm_err = if frame == IAU_MOON_FRAME {
+                IAU_MOON_DCM_EPSILON
+            } else {
+                DCM_EPSILON
+            };
+
             assert!(
-                (dcm.rot_mat - spice_mat).norm() < DCM_EPSILON,
+                (dcm.rot_mat - spice_mat).norm() < dcm_err,
                 "#{num} {epoch}\ngot: {}want:{spice_mat}err = {:.3e}: {:.3e}",
                 dcm.rot_mat,
                 (dcm.rot_mat - spice_mat).norm(),
@@ -172,6 +192,12 @@ fn validate_iau_rotation_to_parent() {
                 (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm(),
                 dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()
             );
+
+            // Check the transpose
+            let dcm_t = almanac
+                .rotate_from_to(frame, frame.with_orient(J2000), epoch)
+                .unwrap();
+            assert_eq!(dcm.transpose(), dcm_t);
         }
     }
 }

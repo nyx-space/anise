@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::{perp_vector, Vector3};
+use super::{perp_vector, root_mean_squared, Vector3};
 use crate::{
     astro::PhysicsResult,
     constants::SPEED_OF_LIGHT_KM_S,
@@ -193,6 +193,32 @@ impl CartesianState {
         );
 
         Ok(self.distance_to_point_km(&other.radius_km))
+    }
+
+    /// Returns the root mean squared (RSS) radius difference between this state and another state, if both frames match (epoch does not need to match)
+    pub fn rss_radius_km(&self, other: &Self) -> PhysicsResult<f64> {
+        ensure!(
+            self.frame == other.frame,
+            FrameMismatchSnafu {
+                action: "computing radius RSS",
+                frame1: self.frame,
+                frame2: other.frame
+            }
+        );
+        Ok(root_mean_squared(&self.radius_km, &other.radius_km))
+    }
+
+    /// Returns the root mean squared (RSS) velocity difference between this state and another state, if both frames match (epoch does not need to match)
+    pub fn rss_velocity_km_s(&self, other: &Self) -> PhysicsResult<f64> {
+        ensure!(
+            self.frame == other.frame,
+            FrameMismatchSnafu {
+                action: "computing velocity RSS",
+                frame1: self.frame,
+                frame2: other.frame
+            }
+        );
+        Ok(root_mean_squared(&self.velocity_km_s, &other.velocity_km_s))
     }
 
     /// Returns whether this orbit and another are equal within the specified radial and velocity absolute tolerances

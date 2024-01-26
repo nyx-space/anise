@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use anise::constants::frames::{EARTH_ITRF93, VENUS_J2000};
+use anise::constants::frames::{EARTH_ITRF93, IAU_MOON_FRAME, LUNA_J2000, VENUS_J2000};
 use anise::math::Vector3;
 use anise::prelude::*;
 
@@ -74,7 +74,7 @@ fn de440s_transform_verif_venus2emb() {
     // TODO https://github.com/nyx-space/anise/issues/130
     // Test the opposite translation
     // let state_rtn = almanac
-    //     .transform_from_to(EARTH_ITRF93, VENUS_J2000, epoch, Aberration::None)
+    //     .transform(EARTH_ITRF93, VENUS_J2000, epoch, None)
     //     .unwrap();
 
     // println!("state = {state}");
@@ -117,7 +117,11 @@ fn de440s_transform_verif_venus2emb() {
 
     // // Check that the return state is exactly opposite to the forward state
     // assert!(
-    //     relative_eq!(state_rtn.radius_km, -state.radius_km, epsilon = EPSILON),
+    //     relative_eq!(
+    //         state_rtn.radius_km,
+    //         -state.radius_km,
+    //         epsilon = core::f64::EPSILON
+    //     ),
     //     "pos = {}\nexp = {}\nerr = {:e}",
     //     state_rtn.radius_km,
     //     -state.radius_km,
@@ -128,7 +132,7 @@ fn de440s_transform_verif_venus2emb() {
     //     relative_eq!(
     //         state_rtn.velocity_km_s,
     //         -state.velocity_km_s,
-    //         epsilon = EPSILON
+    //         epsilon = core::f64::EPSILON
     //     ),
     //     "vel = {}\nexp = {}\nerr = {:e}",
     //     state.velocity_km_s,
@@ -139,4 +143,52 @@ fn de440s_transform_verif_venus2emb() {
     // Unload spice
     spice::unload(bpc_path);
     spice::unload(spk_path);
+}
+
+#[test]
+fn spice_verif_iau_moon() {
+    let _ = pretty_env_logger::try_init();
+
+    let almanac = MetaAlmanac::default().process().unwrap();
+
+    let epoch = Epoch::from_str("2024-09-22T08:45:22 UTC").unwrap();
+    // This state is identical in ANISE and SPICE, queried from a BSP.
+    let orbit_moon_j2k = Orbit::new(
+        638.053603,
+        -1776.813629,
+        195.147575,
+        -0.017910,
+        -0.181449,
+        -1.584180,
+        epoch,
+        LUNA_J2000,
+    );
+
+    let anise_iau_moon = almanac
+        .transform_to(orbit_moon_j2k, IAU_MOON_FRAME, None)
+        .unwrap();
+
+    // We know from the other tests that the Moon IAU rotation is the same in ANISE and SPICE.
+    // However, when queried using the `transform` function in ANISE v0.2.1, there is a difference.
+    let spice_iau_moon = Orbit::new(
+        8.52638439e+02,
+        1.47158517e+03,
+        8.42440758e+02,
+        6.17492780e-01,
+        4.46032072e-01,
+        -1.40193607e+00,
+        epoch,
+        IAU_MOON_FRAME,
+    );
+
+    println!("ANISE\n{anise_iau_moon}\nSPICE\n{spice_iau_moon}");
+    let rss_pos_km = anise_iau_moon.rss_radius_km(&spice_iau_moon).unwrap();
+    let rss_vel_km_s = anise_iau_moon.rss_velocity_km_s(&spice_iau_moon).unwrap();
+
+    dbg!(rss_pos_km, rss_vel_km_s);
+
+    // ANISE uses hifitime which is more precise than SPICE at time computations.
+    // The Moon angular acceleration is expressed in centuries sicne J2000, where Hifitime does not suffer from rounding errors.
+    assert!(rss_pos_km < 0.004);
+    assert!(rss_vel_km_s < 1e-5);
 }

@@ -18,7 +18,6 @@ use crate::{
     prelude::Frame,
 };
 use hifitime::Epoch;
-use log::error;
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
@@ -190,66 +189,62 @@ impl CartesianState {
         Ok(self.apoapsis_km()? - self.frame.mean_equatorial_radius_km()?)
     }
 
+    /// Returns the geodetic latitude, geodetic longitude, and geodetic height, respectively in degrees, degrees, and kilometers.
+    ///
+    /// # Algorithm
+    /// This uses the Heikkinen procedure, which is not iterative. The results match Vallado and GMAT.
+    ///
+    pub fn latlongalt(&self) -> PhysicsResult<(f64, f64, f64)> {
+        let a_km = self.frame.mean_equatorial_radius_km()?;
+        let b_km = self.frame.shape.unwrap().polar_radius_km;
+        let e2 = (a_km.powi(2) - b_km.powi(2)) / a_km.powi(2);
+        let e_prime2 = (a_km.powi(2) - b_km.powi(2)) / b_km.powi(2);
+        let p = (self.radius_km.x.powi(2) + self.radius_km.y.powi(2)).sqrt();
+        let big_f = 54.0 * b_km.powi(2) * self.radius_km.z.powi(2);
+        let big_g =
+            p.powi(2) + (1.0 - e2) * self.radius_km.z.powi(2) - e2 * (a_km.powi(2) - b_km.powi(2));
+        let c = (e2.powi(2) * big_f * p.powi(2)) / big_g.powi(3);
+        let s = (1.0 + c + (c.powi(2) + 2.0 * c).sqrt()).powf(1.0 / 3.0);
+        let k = s + 1.0 + 1.0 / s;
+        let big_p = big_f / (3.0 * k.powi(2) * big_g.powi(2));
+        let big_q = (1.0 + 2.0 * e2.powi(2) * big_p).sqrt();
+        let r0 = (-big_p * e2 * p) / (1.0 + big_q)
+            + (0.5 * a_km.powi(2) * (1.0 + 1.0 / big_q)
+                - (big_p * (1.0 - e2) * self.radius_km.z.powi(2)) / (big_q * (1.0 + big_q))
+                - 0.5 * big_p * p.powi(2))
+            .sqrt();
+        let big_u = ((p - e2 * r0).powi(2) + self.radius_km.z.powi(2)).sqrt();
+        let big_v = ((p - e2 * r0).powi(2) + (1.0 - e2) * self.radius_km.z.powi(2)).sqrt();
+        let z0 = b_km.powi(2) * self.radius_km.z / (a_km * big_v);
+
+        let alt_km = big_u * (1.0 - b_km.powi(2) / (a_km * big_v));
+        let lat_deg =
+            between_pm_180((((self.radius_km.z + e_prime2 * z0) / p).atan()).to_degrees());
+        let long_deg = between_0_360(self.radius_km.y.atan2(self.radius_km.x).to_degrees());
+
+        Ok((lat_deg, long_deg, alt_km))
+    }
+
     /// Returns the geodetic longitude (λ) in degrees. Value is between 0 and 360 degrees.
     ///
     /// # Frame warning
-    /// If the state is NOT in a body fixed frame (i.e. ITRF93), then this computation is INVALID.
-    ///
-    /// Although the reference is not Vallado, the math from Vallado proves to be equivalent.
-    /// Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016
-    pub fn geodetic_longitude_deg(&self) -> f64 {
+    /// This state MUST be in the body fixed frame (e.g. ITRF93) prior to calling this function, or the computation is **invalid**.
+    pub fn longitude_deg(&self) -> f64 {
         between_0_360(self.radius_km.y.atan2(self.radius_km.x).to_degrees())
     }
 
     /// Returns the geodetic latitude (φ) in degrees. Value is between -180 and +180 degrees.
     ///
     /// # Frame warning
-    /// If the state is NOT in a body fixed frame (i.e. ITRF93), then this computation is INVALID.
-    ///
-    /// Reference: Vallado, 4th Ed., Algorithm 12 page 172.
-    pub fn geodetic_latitude_deg(&self) -> PhysicsResult<f64> {
-        let eps = 1e-12;
-        let max_attempts = 20;
-        let mut attempt_no = 0;
-        let r_delta = (self.radius_km.x.powi(2) + self.radius_km.y.powi(2)).sqrt();
-        let mut latitude = (self.radius_km.z / self.rmag_km()).asin();
-        let e2 = self.frame.flattening()? * (2.0 - self.frame.flattening()?);
-        loop {
-            attempt_no += 1;
-            let c_earth =
-                self.frame.semi_major_radius_km()? / ((1.0 - e2 * (latitude).sin().powi(2)).sqrt());
-            let new_latitude = (self.radius_km.z + c_earth * e2 * (latitude).sin()).atan2(r_delta);
-            if (latitude - new_latitude).abs() < eps {
-                return Ok(between_pm_180(new_latitude.to_degrees()));
-            } else if attempt_no >= max_attempts {
-                error!(
-                    "geodetic latitude failed to converge -- error = {}",
-                    (latitude - new_latitude).abs()
-                );
-                return Ok(between_pm_180(new_latitude.to_degrees()));
-            }
-            latitude = new_latitude;
-        }
+    /// This state MUST be in the body fixed frame (e.g. ITRF93) prior to calling this function, or the computation is **invalid**.
+    pub fn latitude_deg(&self) -> PhysicsResult<f64> {
+        Ok(self.latlongalt()?.0)
     }
 
     /// Returns the geodetic height in km.
     ///
     /// Reference: Vallado, 4th Ed., Algorithm 12 page 172.
-    pub fn geodetic_height_km(&self) -> PhysicsResult<f64> {
-        let e2 = self.frame.flattening()? * (2.0 - self.frame.flattening()?);
-        let latitude = self.geodetic_latitude_deg()?.to_radians();
-        let sin_lat = latitude.sin();
-        if (latitude - 1.0).abs() < 0.1 {
-            // We are near poles, let's use another formulation.
-            let s_earth = (self.frame.semi_major_radius_km()?
-                * (1.0 - self.frame.flattening()?).powi(2))
-                / ((1.0 - e2 * sin_lat.powi(2)).sqrt());
-            Ok(self.radius_km.z / latitude.sin() - s_earth)
-        } else {
-            let c_earth =
-                self.frame.semi_major_radius_km()? / ((1.0 - e2 * sin_lat.powi(2)).sqrt());
-            let r_delta = (self.radius_km.x.powi(2) + self.radius_km.y.powi(2)).sqrt();
-            Ok(r_delta / latitude.cos() - c_earth)
-        }
+    pub fn height_km(&self) -> PhysicsResult<f64> {
+        Ok(self.latlongalt()?.2)
     }
 }
