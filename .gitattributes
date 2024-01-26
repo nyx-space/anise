@@ -1,3 +1,4 @@
 data/*.bsp filter=lfs diff=lfs merge=lfs -text
 data/*.bpc filter=lfs diff=lfs merge=lfs -text
 data/*.pca filter=lfs diff=lfs merge=lfs -text
+*.ipynb linguist-documentation=true
