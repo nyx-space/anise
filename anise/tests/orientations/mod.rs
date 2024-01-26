@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anise::constants::frames::{
-    EARTH_ITRF93, EME2000, IAU_JUPITER_FRAME, IAU_MOON_FRAME, JUPITER_BARYCENTER_J2000, LUNA_J2000,
+    EARTH_ITRF93, EME2000, IAU_JUPITER_FRAME, IAU_MOON_FRAME, JUPITER_BARYCENTER_J2000, MOON_J2000,
 };
 use anise::constants::orientations::{ECLIPJ2000, IAU_JUPITER, IAU_MOON, ITRF93, J2000};
 use anise::math::rotation::DCM;
@@ -226,7 +226,7 @@ fn regression_test_issue_112_test_iau_moon() {
     let epoch = Epoch::from_str("2030-01-01 00:00:00").unwrap();
 
     let dcm = almanac
-        .rotate_from_to(LUNA_J2000, IAU_MOON_FRAME, epoch)
+        .rotate_from_to(MOON_J2000, IAU_MOON_FRAME, epoch)
         .unwrap();
 
     let spice_dcm = DCM {

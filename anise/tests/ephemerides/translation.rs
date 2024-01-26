@@ -10,7 +10,7 @@
 
 use core::f64::EPSILON;
 
-use anise::constants::frames::{EARTH_J2000, EARTH_MOON_BARYCENTER_J2000, LUNA_J2000, VENUS_J2000};
+use anise::constants::frames::{EARTH_J2000, EARTH_MOON_BARYCENTER_J2000, MOON_J2000, VENUS_J2000};
 use anise::file2heap;
 use anise::math::Vector3;
 use anise::prelude::*;
@@ -136,7 +136,7 @@ fn de438s_translation_verif_venus2luna() {
     */
 
     let state = ctx
-        .translate(VENUS_J2000, LUNA_J2000, epoch, Aberration::NONE)
+        .translate(VENUS_J2000, MOON_J2000, epoch, Aberration::NONE)
         .unwrap();
 
     let pos_expct_km = Vector3::new(
@@ -172,7 +172,7 @@ fn de438s_translation_verif_venus2luna() {
 
     // Test the opposite translation
     let state = ctx
-        .translate_geometric(LUNA_J2000, VENUS_J2000, epoch)
+        .translate_geometric(MOON_J2000, VENUS_J2000, epoch)
         .unwrap();
 
     // We expect exactly the same output as SPICE to machine precision.
@@ -227,14 +227,14 @@ fn de438s_translation_verif_emb2luna() {
     let state = ctx
         .translate(
             EARTH_MOON_BARYCENTER_J2000,
-            LUNA_J2000,
+            MOON_J2000,
             epoch,
             Aberration::NONE,
         )
         .unwrap();
 
     // Check that we correctly set the output frame
-    assert_eq!(state.frame, LUNA_J2000);
+    assert_eq!(state.frame, MOON_J2000);
 
     let pos_expct_km = Vector3::new(
         8.157_659_049_800_408e4,
@@ -270,7 +270,7 @@ fn de438s_translation_verif_emb2luna() {
     // Try the opposite
     let state = ctx
         .translate(
-            LUNA_J2000,
+            MOON_J2000,
             EARTH_MOON_BARYCENTER_J2000,
             epoch,
             Aberration::NONE,
@@ -383,7 +383,7 @@ fn multithread_query() {
     let epochs: Vec<Epoch> = time_it.collect();
     epochs.into_par_iter().for_each(|epoch| {
         let state = ctx
-            .translate_geometric(LUNA_J2000, EARTH_MOON_BARYCENTER_J2000, epoch)
+            .translate_geometric(MOON_J2000, EARTH_MOON_BARYCENTER_J2000, epoch)
             .unwrap();
         println!("{state:?}");
     });
@@ -594,7 +594,7 @@ fn de440s_translation_verif_aberrations() {
     for (cno, case) in cases.iter().enumerate() {
         let state = ctx
             .translate(
-                LUNA_J2000,
+                MOON_J2000,
                 EARTH_MOON_BARYCENTER_J2000,
                 epoch,
                 case.correction,

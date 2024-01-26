@@ -25,7 +25,7 @@ pub mod celestial_objects {
     pub const NEPTUNE_BARYCENTER: NaifId = 8;
     pub const PLUTO_BARYCENTER: NaifId = 9;
     pub const SUN: NaifId = 10;
-    pub const LUNA: NaifId = 301;
+    pub const MOON: NaifId = 301;
     pub const EARTH: NaifId = 399;
     pub const MARS: NaifId = 499;
     pub const JUPITER: NaifId = 599;
@@ -46,7 +46,7 @@ pub mod celestial_objects {
             NEPTUNE_BARYCENTER => Some("Neptune Barycenter"),
             PLUTO_BARYCENTER => Some("Pluto Barycenter"),
             SUN => Some("Sun"),
-            LUNA => Some("Luna"),
+            MOON => Some("Moon"),
             EARTH => Some("Earth"),
             _ => None,
         }
@@ -242,7 +242,7 @@ pub mod frames {
     pub const NEPTUNE_BARYCENTER_J2000: Frame = Frame::new(NEPTUNE_BARYCENTER, J2000);
     pub const PLUTO_BARYCENTER_J2000: Frame = Frame::new(PLUTO_BARYCENTER, J2000);
     pub const SUN_J2000: Frame = Frame::new(SUN, J2000);
-    pub const LUNA_J2000: Frame = Frame::new(LUNA, J2000);
+    pub const MOON_J2000: Frame = Frame::new(MOON, J2000);
     pub const EARTH_J2000: Frame = Frame::new(EARTH, J2000);
     pub const EME2000: Frame = Frame::new(EARTH, J2000);
     pub const EARTH_ECLIPJ2000: Frame = Frame::new(EARTH, ECLIPJ2000);
@@ -251,7 +251,7 @@ pub mod frames {
     pub const IAU_MERCURY_FRAME: Frame = Frame::new(MERCURY, IAU_MERCURY);
     pub const IAU_VENUS_FRAME: Frame = Frame::new(VENUS, IAU_VENUS);
     pub const IAU_EARTH_FRAME: Frame = Frame::new(EARTH, IAU_EARTH);
-    pub const IAU_MOON_FRAME: Frame = Frame::new(LUNA, IAU_MOON);
+    pub const IAU_MOON_FRAME: Frame = Frame::new(MOON, IAU_MOON);
     pub const IAU_MARS_FRAME: Frame = Frame::new(MARS, IAU_MARS);
     pub const IAU_JUPITER_FRAME: Frame = Frame::new(JUPITER, IAU_JUPITER);
     pub const IAU_SATURN_FRAME: Frame = Frame::new(SATURN, IAU_SATURN);
@@ -269,12 +269,12 @@ pub mod usual_planetary_constants {
     pub const MEAN_EARTH_ANGULAR_VELOCITY_DEG_S: f64 = 0.004178079012116429;
     /// Mean angular velocity of the Moon in deg/s, computed from hifitime:
     /// ```py
-    /// >>> luna_period = Unit.Day*27+Unit.Hour*7+Unit.Minute*43+Unit.Second*12
-    /// >>> tau/luna_period.to_seconds()
+    /// >>> moon_period = Unit.Day*27+Unit.Hour*7+Unit.Minute*43+Unit.Second*12
+    /// >>> tau/moon_period.to_seconds()
     /// 2.661698975163682e-06
     /// ```
     /// Source: https://www.britannica.com/science/month#ref225844 via https://en.wikipedia.org/w/index.php?title=Lunar_day&oldid=1180701337
-    pub const MEAN_LUNA_ANGULAR_VELOCITY_DEG_S: f64 = 2.661_698_975_163_682e-6;
+    pub const MEAN_MOON_ANGULAR_VELOCITY_DEG_S: f64 = 2.661_698_975_163_682e-6;
 }
 
 #[cfg(test)]
@@ -333,7 +333,7 @@ mod constants_ut {
             "Pluto Barycenter"
         );
         assert_eq!(celestial_name_from_id(SUN).unwrap(), "Sun");
-        assert_eq!(celestial_name_from_id(LUNA).unwrap(), "Luna");
+        assert_eq!(celestial_name_from_id(MOON).unwrap(), "Moon");
         assert_eq!(celestial_name_from_id(EARTH).unwrap(), "Earth");
         assert!(celestial_name_from_id(-1).is_none());
     }

@@ -109,11 +109,11 @@ impl Almanac {
     ///     ╰─> Earth
     /// ```
     ///
-    /// And the "to" frame is _Luna_, whose path is:
+    /// And the "to" frame is _Moon_, whose path is:
     /// ```text
     /// Solar System barycenter
     /// ╰─> Earth Moon Barycenter
-    ///     ╰─> Luna
+    ///     ╰─> Moon
     ///         ╰─> LRO
     /// ```
     ///

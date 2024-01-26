@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use anise::constants::frames::{EARTH_ITRF93, IAU_MOON_FRAME, LUNA_J2000, VENUS_J2000};
+use anise::constants::frames::{EARTH_ITRF93, IAU_MOON_FRAME, MOON_J2000, VENUS_J2000};
 use anise::math::Vector3;
 use anise::prelude::*;
 
@@ -161,7 +161,7 @@ fn spice_verif_iau_moon() {
         -0.181449,
         -1.584180,
         epoch,
-        LUNA_J2000,
+        MOON_J2000,
     );
 
     let anise_iau_moon = almanac
