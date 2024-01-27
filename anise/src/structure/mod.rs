@@ -30,8 +30,8 @@ use crate::{
 /// The current version of ANISE
 pub const ANISE_VERSION: Semver = Semver {
     major: 0,
-    minor: 0,
-    patch: 1,
+    minor: 3,
+    patch: 0,
 };
 
 /// Spacecraft Data Set allow mapping an ID and/or name to spacecraft data, optionally including mass, drag, SRP, an inertia information

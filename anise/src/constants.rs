@@ -188,9 +188,16 @@ pub mod orientations {
     /// Body fixed IAU rotation
     pub const IAU_MERCURY: NaifId = 199;
     pub const IAU_VENUS: NaifId = 299;
+    /// Low fidelity Earth frame orientation by the International Astronomical Union (IAU)
     pub const IAU_EARTH: NaifId = 399;
-    pub const IAU_MOON: NaifId = 301;
+    /// High fidelity Earth frame orientation by the NAIF, requires the "Earth high prec" BPC kernel
     pub const ITRF93: NaifId = 3000;
+    /// Low fidelity Moon frame orientation by the International Astronomical Union (IAU)
+    pub const IAU_MOON: NaifId = 301;
+    /// High fidelity Moon Mean Earth equator orientation frame (used for cartography), requires the Moon PA BPC kernel
+    pub const MOON_ME: NaifId = 31001;
+    /// High fidelity Moon Principal Axes orientation frame (used for gravity field and mass concentrations), requires the Moon PA BPC kernel
+    pub const MOON_PA: NaifId = 31000;
     pub const IAU_MARS: NaifId = 499;
     pub const IAU_JUPITER: NaifId = 599;
     pub const IAU_SATURN: NaifId = 699;
@@ -215,6 +222,8 @@ pub mod orientations {
             IAU_VENUS => Some("IAU_VENUS"),
             IAU_EARTH => Some("IAU_EARTH"),
             IAU_MOON => Some("IAU_MOON"),
+            MOON_ME => Some("MOON_ME"),
+            MOON_PA => Some("MOON_PA"),
             ITRF93 => Some("ITRF93"),
             IAU_MARS => Some("IAU_MARS"),
             IAU_JUPITER => Some("IAU_JUPITER"),
@@ -250,15 +259,21 @@ pub mod frames {
     /// Body fixed IAU rotation
     pub const IAU_MERCURY_FRAME: Frame = Frame::new(MERCURY, IAU_MERCURY);
     pub const IAU_VENUS_FRAME: Frame = Frame::new(VENUS, IAU_VENUS);
+    /// Low fidelity Earth centered body fixed frame by the International Astronomical Union (IAU)
     pub const IAU_EARTH_FRAME: Frame = Frame::new(EARTH, IAU_EARTH);
+    /// Low fidelity Moon centered body fixed frame by the International Astronomical Union (IAU)
     pub const IAU_MOON_FRAME: Frame = Frame::new(MOON, IAU_MOON);
+    /// High fidelity Moon Mean Earth equator body fixed frame (used for cartography), requires the Moon PA BPC kernel
+    pub const MOON_ME_FRAME: Frame = Frame::new(MOON, MOON_ME);
+    /// High fidelity Moon Principal Axes body fixed frame (used for gravity field and mass concentrations), requires the Moon PA BPC kernel
+    pub const MOON_PA_FRAME: Frame = Frame::new(MOON, MOON_PA);
     pub const IAU_MARS_FRAME: Frame = Frame::new(MARS, IAU_MARS);
     pub const IAU_JUPITER_FRAME: Frame = Frame::new(JUPITER, IAU_JUPITER);
     pub const IAU_SATURN_FRAME: Frame = Frame::new(SATURN, IAU_SATURN);
     pub const IAU_NEPTUNE_FRAME: Frame = Frame::new(NEPTUNE, IAU_NEPTUNE);
     pub const IAU_URANUS_FRAME: Frame = Frame::new(URANUS, IAU_URANUS);
 
-    /// Common high precision frame
+    /// High fidelity Earth centered body fixed frame by the NAIF, requires the "Earth high prec" BPC kernel
     pub const EARTH_ITRF93: Frame = Frame::new(EARTH, ITRF93);
 }
 

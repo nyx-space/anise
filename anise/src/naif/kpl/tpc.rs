@@ -175,4 +175,16 @@ fn test_anise_conversion() {
     let mmap = file_mmap!(path).unwrap();
     let reloaded = DataSet::from_bytes(mmap);
     assert_eq!(reloaded, dataset);
+
+    // If all of these work, update the "official" PCA files.
+    let pck08 = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
+    println!("PCK08 checksum = {}", pck08.crc32());
+    pck08
+        .save_as(&PathBuf::from("../data/pck08.pca"), true)
+        .unwrap();
+    let pck11 = convert_tpc("../data/pck00011.tpc", "../data/gm_de431.tpc").unwrap();
+    println!("PCK11 checksum = {}", pck11.crc32());
+    pck11
+        .save_as(&PathBuf::from("../data/pck11.pca"), true)
+        .unwrap();
 }

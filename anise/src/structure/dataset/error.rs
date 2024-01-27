@@ -9,17 +9,17 @@ use std::io::Error as IOError;
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub enum DataSetError {
-    #[snafu(display("when {action} {source}"))]
+    #[snafu(display("when {action}, {source}"))]
     DataSetLut {
         action: &'static str,
         source: LutError,
     },
-    #[snafu(display("when {action} {source}"))]
+    #[snafu(display("when {action}, {source}"))]
     DataSetIntegrity {
         action: &'static str,
         source: IntegrityError,
     },
-    #[snafu(display("when {action} {source}"))]
+    #[snafu(display("when {action}, {source}"))]
     DataDecoding {
         action: &'static str,
         source: DecodingError,

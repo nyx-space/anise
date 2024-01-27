@@ -16,9 +16,15 @@ pub use metafile::MetaFile;
 
 use super::Almanac;
 
-use crate::prelude::InputOutputError;
+use crate::{
+    errors::{AlmanacResult, MetaSnafu},
+    prelude::InputOutputError,
+};
 use reqwest::StatusCode;
 use snafu::prelude::*;
+
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
@@ -43,8 +49,34 @@ pub enum MetaAlmanacError {
     ExportDhall { err: String },
 }
 
+#[cfg_attr(feature = "python", pymethods)]
+impl Almanac {
+    /// Load from the provided MetaFile.
+    fn _load_from_metafile(&self, mut metafile: MetaFile) -> AlmanacResult<Self> {
+        metafile._process().with_context(|_| MetaSnafu {
+            fno: 0_usize,
+            file: metafile.clone(),
+        })?;
+        self.load(&metafile.uri)
+    }
+
+    /// Load from the provided MetaFile, downloading it if necessary.
+    #[cfg(not(feature = "python"))]
+    pub fn load_from_metafile(&self, metafile: MetaFile) -> AlmanacResult<Self> {
+        self._load_from_metafile(metafile)
+    }
+
+    #[cfg(feature = "python")]
+    /// Load from the provided MetaFile, downloading it if necessary.
+    pub fn load_from_metafile(&mut self, py: Python, metafile: MetaFile) -> AlmanacResult<Self> {
+        py.allow_threads(|| self._load_from_metafile(metafile))
+    }
+}
+
 #[cfg(test)]
 mod meta_test {
+    use crate::almanac::metaload::MetaFile;
+
     use super::MetaAlmanac;
     use std::path::Path;
     use std::{env, str::FromStr};
@@ -61,6 +93,13 @@ mod meta_test {
 
         // Process again to confirm that the CRC check works
         assert!(meta._process().is_ok());
+        // Test that loading from an invalid URI reports an error
+        assert!(almanac
+            ._load_from_metafile(MetaFile {
+                uri: "http://example.com/non/existing.pca".to_string(),
+                crc32: None
+            })
+            .is_err());
     }
 
     #[test]
@@ -78,22 +117,25 @@ mod meta_test {
 
         let from_str = MetaAlmanac::from_str(
             r#"
- { files =
-   [ { crc32 = Some 1921414410
-     , uri = "http://public-data.nyxspace.com/anise/de440s.bsp"
-     }
-   , { crc32 = Some 1216081528
-     , uri = "http://public-data.nyxspace.com/anise/pck08.pca"
-     }
-   , { crc32 = Some 1817759242
-     , uri = "http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc"
-     }
-   , { crc32 = None Natural
-     , uri =
-         "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc"
-     }
-   ]
- }
+{ files =
+  [ { crc32 = Some 1921414410
+    , uri = "http://public-data.nyxspace.com/anise/de440s.bsp"
+    }
+  , { crc32 = Some 2899443223
+    , uri = "http://public-data.nyxspace.com/anise/v0.3/pck11.pca"
+    }
+  , { crc32 = Some 2133296540
+    , uri = "http://public-data.nyxspace.com/anise/v0.3/moon_fk.epa"
+    }
+  , { crc32 = Some 1817759242
+    , uri = "http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc"
+    }
+  , { crc32 = None Natural
+    , uri =
+        "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc"
+    }
+  ]
+}
              "#,
         )
         .unwrap();

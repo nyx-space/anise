@@ -62,6 +62,12 @@ impl Frames {
     #[classattr]
     const IAU_EARTH_FRAME: Frame = IAU_EARTH_FRAME;
     #[classattr]
+    const EARTH_ITRF93: Frame = EARTH_ITRF93;
+    #[classattr]
+    const MOON_ME_FRAME: Frame = MOON_ME_FRAME;
+    #[classattr]
+    const MOON_PA_FRAME: Frame = MOON_PA_FRAME;
+    #[classattr]
     const IAU_MOON_FRAME: Frame = IAU_MOON_FRAME;
     #[classattr]
     const IAU_MARS_FRAME: Frame = IAU_MARS_FRAME;
@@ -73,8 +79,6 @@ impl Frames {
     const IAU_NEPTUNE_FRAME: Frame = IAU_NEPTUNE_FRAME;
     #[classattr]
     const IAU_URANUS_FRAME: Frame = IAU_URANUS_FRAME;
-    #[classattr]
-    const EARTH_ITRF93: Frame = EARTH_ITRF93;
 }
 
 #[pyclass]
@@ -95,6 +99,10 @@ impl Orientations {
     const IAU_EARTH: i32 = IAU_EARTH;
     #[classattr]
     const IAU_MOON: i32 = IAU_MOON;
+    #[classattr]
+    const MOON_ME: i32 = MOON_ME;
+    #[classattr]
+    const MOON_PA: i32 = MOON_PA;
     #[classattr]
     const ITRF93: i32 = ITRF93;
     #[classattr]
