@@ -33,8 +33,8 @@ jobs:
           wget -O data/de430.bsp http://public-data.nyxspace.com/anise/de430.bsp
           wget -O data/de440s.bsp http://public-data.nyxspace.com/anise/de440s.bsp
           wget -O data/de440.bsp http://public-data.nyxspace.com/anise/de440.bsp
-          wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v3.0/pck08.pca
-          wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v3.0/pck11.pca
+          wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v0.3/pck08.pca
+          wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v0.3/pck11.pca
 
       - uses: actions/setup-python@v4
         with:
@@ -196,8 +196,8 @@ jobs:
           wget -O data/de430.bsp http://public-data.nyxspace.com/anise/de430.bsp
           wget -O data/de440s.bsp http://public-data.nyxspace.com/anise/de440s.bsp
           wget -O data/de440.bsp http://public-data.nyxspace.com/anise/de440.bsp
-          wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v3.0/pck08.pca
-          wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v3.0/pck11.pca
+          wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v0.3/pck08.pca
+          wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v0.3/pck11.pca
 
       - name: Build sdist
         uses: PyO3/maturin-action@v1
