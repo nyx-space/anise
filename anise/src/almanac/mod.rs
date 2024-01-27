@@ -38,6 +38,7 @@ pub const MAX_PLANETARY_DATA: usize = 64;
 pub mod aer;
 pub mod bpc;
 pub mod planetary;
+pub mod solar;
 pub mod spk;
 pub mod transform;
 
