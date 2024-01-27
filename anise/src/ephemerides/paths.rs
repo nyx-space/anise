@@ -109,15 +109,15 @@ impl Almanac {
     ///     ╰─> Earth
     /// ```
     ///
-    /// And the "to" frame is _Luna_, whose path is:
+    /// And the "to" frame is _Moon_, whose path is:
     /// ```text
     /// Solar System barycenter
     /// ╰─> Earth Moon Barycenter
-    ///     ╰─> Luna
+    ///     ╰─> Moon
     ///         ╰─> LRO
     /// ```
     ///
-    /// Then this function will return the path an array of hashes of up to [MAX_TREE_DEPTH] items. In this example, the array with the hashes of the "Earth Moon Barycenter" and "Luna".
+    /// Then this function will return the path an array of hashes of up to [MAX_TREE_DEPTH] items. In this example, the array with the hashes of the "Earth Moon Barycenter" and "Moon".
     ///
     /// # Note
     /// A proper ANISE file should only have a single root and if two paths are empty, then they should be the same frame.

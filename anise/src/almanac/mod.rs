@@ -84,6 +84,9 @@ impl fmt::Display for Almanac {
         if !self.spacecraft_data.lut.by_id.is_empty() {
             write!(f, "\t{}", self.spacecraft_data)?;
         }
+        if !self.euler_param_data.lut.by_id.is_empty() {
+            write!(f, "\t{}", self.euler_param_data)?;
+        }
         Ok(())
     }
 }

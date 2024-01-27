@@ -13,13 +13,15 @@ use std::path::PathBuf;
 use anise::naif::kpl::parser::{convert_fk as convert_fk_rs, convert_tpc as convert_tpc_rs};
 use anise::structure::dataset::DataSetError;
 use anise::structure::planetocentric::ellipsoid::Ellipsoid;
-use pyo3::prelude::*;
+use pyo3::{prelude::*, py_run};
 
 pub(crate) fn register_utils(py: Python<'_>, parent_module: &PyModule) -> PyResult<()> {
     let sm = PyModule::new(py, "_anise.utils")?;
     sm.add_class::<Ellipsoid>()?;
     sm.add_function(wrap_pyfunction!(convert_fk, sm)?)?;
     sm.add_function(wrap_pyfunction!(convert_tpc, sm)?)?;
+
+    py_run!(py, sm, "import sys; sys.modules['anise.utils'] = sm");
     parent_module.add_submodule(sm)?;
     Ok(())
 }

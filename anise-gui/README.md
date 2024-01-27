@@ -1,10 +1,20 @@
 # ANISE GUI
 
-ANISE provides a graphical interface to inspect SPK, BPC, and PCA (Planetary Constant ANISE) files.
+ANISE provides a graphical interface to inspect SPK, BPC, and PCA (Planetary Constant ANISE) files. Allows you to check the start/end times of the segments (shown in whichever time scale you want, including UNIX UTC seconds).
 
-## Running
+**Latest binaries:** <https://github.com/nyx-space/anise/discussions/138>
 
-Best bet is to visit the [Discussions](https://github.com/nyx-space/anise/discussions) on ANISE and find the latest release for binaries for Linux, MacOS, and Windows.
+When updates are published, they'll be announced in the [Discussions](https://github.com/nyx-space/anise/discussions).
+
+## Demos
+
+Inspect an SPK file ([video link](http://public-data.nyxspace.com/anise/demo/ANISE-SPK.webm)):
+
+![Inspect an SPK file](http://public-data.nyxspace.com/anise/demo/ANISE-SPK.gif)
+
+Inspect an Binary PCK file (BPC) ([video link](http://public-data.nyxspace.com/anise/demo/ANISE-BPC.webm)):
+
+![Inspect an SPK file](http://public-data.nyxspace.com/anise/demo/ANISE-BPC.gif)
 
 ## Building
 

@@ -19,7 +19,7 @@ use crate::{
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
 pub enum PlanetaryDataError {
-    #[snafu(display("when {action} {source}"))]
+    #[snafu(display("when {action}, {source}"))]
     PlanetaryDataSet {
         action: &'static str,
         source: DataSetError,

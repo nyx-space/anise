@@ -183,7 +183,7 @@ impl Almanac {
 #[cfg(test)]
 mod ut_almanac_spk {
     use crate::{
-        constants::frames::{EARTH_J2000, LUNA_J2000},
+        constants::frames::{EARTH_J2000, MOON_J2000},
         prelude::{Almanac, Epoch},
     };
 
@@ -223,13 +223,13 @@ mod ut_almanac_spk {
         );
 
         assert!(
-            almanac.ephemeris_path_to_root(LUNA_J2000, e).is_err(),
+            almanac.ephemeris_path_to_root(MOON_J2000, e).is_err(),
             "empty Almanac should report an error"
         );
 
         assert!(
             almanac
-                .common_ephemeris_path(LUNA_J2000, EARTH_J2000, e)
+                .common_ephemeris_path(MOON_J2000, EARTH_J2000, e)
                 .is_err(),
             "empty Almanac should report an error"
         );

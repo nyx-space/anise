@@ -77,6 +77,7 @@ impl KPLItem for FKItem {
 
 #[cfg(test)]
 mod fk_ut {
+
     use crate::naif::kpl::parser::convert_fk;
 
     use super::{FKItem, KPLValue, Parameter};
@@ -193,6 +194,9 @@ mod fk_ut {
 
     #[test]
     fn test_convert_fk() {
+        use std::path::PathBuf;
+        use std::str::FromStr;
+
         use crate::math::rotation::{r1, r2, r3, DCM};
         let dataset = convert_fk("../data/moon_080317.txt", false).unwrap();
 
@@ -208,5 +212,9 @@ mod fk_ut {
             * r2((78.56 / 3600.0_f64).to_radians())
             * r1((0.30 / 3600.0_f64).to_radians());
         assert!((DCM::from(moon_me).rot_mat - expected).norm() < 1e-10);
+        println!("{}", dataset.crc32());
+        dataset
+            .save_as(&PathBuf::from_str("../data/moon_fk.epa").unwrap(), true)
+            .unwrap();
     }
 }

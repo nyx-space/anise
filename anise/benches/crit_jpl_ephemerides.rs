@@ -1,5 +1,5 @@
 use anise::{
-    constants::frames::{EARTH_J2000, LUNA_J2000},
+    constants::frames::{EARTH_J2000, MOON_J2000},
     file2heap,
     prelude::*,
 };
@@ -22,7 +22,7 @@ fn benchmark_spice_single_hop_type2_cheby(time_it: TimeSeries) {
 fn benchmark_anise_single_hop_type2_cheby(ctx: &Almanac, time_it: TimeSeries) {
     for epoch in time_it {
         black_box(
-            ctx.translate_geometric(EARTH_J2000, LUNA_J2000, epoch)
+            ctx.translate_geometric(EARTH_J2000, MOON_J2000, epoch)
                 .unwrap(),
         );
     }

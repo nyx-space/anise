@@ -11,7 +11,7 @@
 use anise::constants::celestial_objects::*;
 use anise::constants::orientations::*;
 use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
-use anise::constants::usual_planetary_constants::MEAN_LUNA_ANGULAR_VELOCITY_DEG_S;
+use anise::constants::usual_planetary_constants::MEAN_MOON_ANGULAR_VELOCITY_DEG_S;
 use anise::constants::SPEED_OF_LIGHT_KM_S;
 use pyo3::prelude::*;
 use pyo3::py_run;
@@ -48,7 +48,7 @@ impl Frames {
     #[classattr]
     const SUN_J2000: Frame = SUN_J2000;
     #[classattr]
-    const LUNA_J2000: Frame = LUNA_J2000;
+    const MOON_J2000: Frame = MOON_J2000;
     #[classattr]
     const EARTH_J2000: Frame = EARTH_J2000;
     #[classattr]
@@ -62,6 +62,12 @@ impl Frames {
     #[classattr]
     const IAU_EARTH_FRAME: Frame = IAU_EARTH_FRAME;
     #[classattr]
+    const EARTH_ITRF93: Frame = EARTH_ITRF93;
+    #[classattr]
+    const MOON_ME_FRAME: Frame = MOON_ME_FRAME;
+    #[classattr]
+    const MOON_PA_FRAME: Frame = MOON_PA_FRAME;
+    #[classattr]
     const IAU_MOON_FRAME: Frame = IAU_MOON_FRAME;
     #[classattr]
     const IAU_MARS_FRAME: Frame = IAU_MARS_FRAME;
@@ -73,8 +79,6 @@ impl Frames {
     const IAU_NEPTUNE_FRAME: Frame = IAU_NEPTUNE_FRAME;
     #[classattr]
     const IAU_URANUS_FRAME: Frame = IAU_URANUS_FRAME;
-    #[classattr]
-    const EARTH_ITRF93: Frame = EARTH_ITRF93;
 }
 
 #[pyclass]
@@ -95,6 +99,10 @@ impl Orientations {
     const IAU_EARTH: i32 = IAU_EARTH;
     #[classattr]
     const IAU_MOON: i32 = IAU_MOON;
+    #[classattr]
+    const MOON_ME: i32 = MOON_ME;
+    #[classattr]
+    const MOON_PA: i32 = MOON_PA;
     #[classattr]
     const ITRF93: i32 = ITRF93;
     #[classattr]
@@ -138,7 +146,7 @@ impl CelestialObjects {
     #[classattr]
     const SUN: i32 = SUN;
     #[classattr]
-    const LUNA: i32 = LUNA;
+    const MOON: i32 = MOON;
     #[classattr]
     const EARTH: i32 = EARTH;
     #[classattr]
@@ -166,12 +174,12 @@ impl UsualConstants {
     #[classattr]
     /// Mean angular velocity of the Moon in deg/s, computed from hifitime:
     /// ```py
-    /// >>> luna_period = Unit.Day*27+Unit.Hour*7+Unit.Minute*43+Unit.Second*12
-    /// >>> tau/luna_period.to_seconds()
+    /// >>> moon_period = Unit.Day*27+Unit.Hour*7+Unit.Minute*43+Unit.Second*12
+    /// >>> tau/moon_period.to_seconds()
     /// 2.661698975163682e-06
     /// ```
     /// Source: https://www.britannica.com/science/month#ref225844 via https://en.wikipedia.org/w/index.php?title=Lunar_day&oldid=1180701337
-    const MEAN_LUNA_ANGULAR_VELOCITY_DEG_S: f64 = MEAN_LUNA_ANGULAR_VELOCITY_DEG_S;
+    const MEAN_MOON_ANGULAR_VELOCITY_DEG_S: f64 = MEAN_MOON_ANGULAR_VELOCITY_DEG_S;
     #[classattr]
     /// Speed of light in kilometers per second (km/s)
     const SPEED_OF_LIGHT_KM_S: f64 = SPEED_OF_LIGHT_KM_S;
