@@ -106,7 +106,7 @@ fn de440s_translation_verif_venus2emb() {
 }
 
 #[test]
-fn de438s_translation_verif_venus2luna() {
+fn de438s_translation_verif_venus2moon() {
     let _ = pretty_env_logger::try_init();
 
     // "Load" the file via a memory map (avoids allocations)
@@ -196,7 +196,7 @@ fn de438s_translation_verif_venus2luna() {
 }
 
 #[test]
-fn de438s_translation_verif_emb2luna() {
+fn de438s_translation_verif_emb2moon() {
     let _ = pretty_env_logger::try_init();
 
     // "Load" the file via a memory map (avoids allocations)

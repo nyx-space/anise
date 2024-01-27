@@ -146,7 +146,7 @@ impl CelestialObjects {
     #[classattr]
     const SUN: i32 = SUN;
     #[classattr]
-    const LUNA: i32 = MOON;
+    const MOON: i32 = MOON;
     #[classattr]
     const EARTH: i32 = EARTH;
     #[classattr]

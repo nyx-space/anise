@@ -125,7 +125,7 @@ impl SPKSummaryRecord {
             "Uranus" => Ok(799),
             "Neptune" => Ok(899),
             "Pluto" => Ok(999),
-            "Luna" => Ok(301),
+            "Moon" => Ok(301),
             "Sun" => Ok(10),
             "Earth-Moon Barycenter" => Ok(3),
             "Mars Barycenter" => Ok(4),
