@@ -23,22 +23,7 @@ ANISE stands validated against the traditional SPICE toolkit, ensuring accuracy 
 + **Frame safety**: ANISE checks all frames translations or rotations are physically valid before performing any computation, even internally.
 + **Auto-downloading capability**: ANISE simplifies your workflow by automatically downloading the latest Earth orientation parameters, or any other SPICE or ANISE file from a remote location, seamlessly integrating them into the `Almanac` for immediate use.
 
-## Validation
-
-[![ANISE Validation](https://github.com/nyx-space/anise/actions/workflows/rust.yml/badge.svg)](https://github.com/nyx-space/anise/actions/workflows/rust.yml)
-
-ANISE is validated by running the same queries in ANISE and in SPICE (single threaded) in the _Validation_ step linked above. This workflow validates 101,000 BSP queries in the DE440.BSP file, and 7305 queries each frame in the PCK08 file (every day for 20 years), along with thousands of rotations from Earth high precision BPC file.
-
-**Note:** The PCK data comes from the IAU Reports, which publishes angle, angle rate, and angle acceleration data, expressed in centuries past the J2000 reference epoch.
-ANISE uses Hifitime for time conversions. Hifitime's reliance solely on integers for all time computations eliminates the risk of rounding errors. In contrast, SPICE utilizes floating-point values, which introduces rounding errors in calculations like centuries past J2000. Consequently, you might observe a discrepancy of up to 1 millidegree in rotation angles between SPICE and ANISE. However, this difference is a testament to ANISE's superior precision.
-
-## Tutorials
-
-### Python
-
-Refer to [Python README](./anise-py/README.md) for Juyter notebook tutorials in Python
-
-## Rust Usage
+## Usage
 
 Start using it by adding to your Rust project:
 
@@ -183,19 +168,14 @@ let state = ctx
 println!("{state}");
 ```
 
-## GUI
+## Validation
 
-ANISE comes with a GUI to inspect files. Allows you to check the start/end times of the segments (shown in whichever time scale you want, including UNIX UTC seconds)
+[![ANISE Validation](https://github.com/nyx-space/anise/actions/workflows/rust.yml/badge.svg)](https://github.com/nyx-space/anise/actions/workflows/rust.yml)
 
-### Demos
+ANISE is validated by running the same queries in ANISE and in SPICE (single threaded) in the _Validation_ step linked above. This workflow validates 101,000 BSP queries in the DE440.BSP file, and 7305 queries each frame in the PCK08 file (every day for 20 years), along with thousands of rotations from Earth high precision BPC file.
 
-Inspect an SPK file ([video link](http://public-data.nyxspace.com/anise/demo/ANISE-SPK.webm)):
-
-![Inspect an SPK file](http://public-data.nyxspace.com/anise/demo/ANISE-SPK.gif)
-
-Inspect an Binary PCK file (BPC) ([video link](http://public-data.nyxspace.com/anise/demo/ANISE-BPC.webm)):
-
-![Inspect an SPK file](http://public-data.nyxspace.com/anise/demo/ANISE-BPC.gif)
+**Note:** The PCK data comes from the IAU Reports, which publishes angle, angle rate, and angle acceleration data, expressed in centuries past the J2000 reference epoch.
+ANISE uses Hifitime for time conversions. Hifitime's reliance solely on integers for all time computations eliminates the risk of rounding errors. In contrast, SPICE utilizes floating-point values, which introduces rounding errors in calculations like centuries past J2000. Consequently, you might observe a discrepancy of up to 1 millidegree in rotation angles between SPICE and ANISE. However, this difference is a testament to ANISE's superior precision.
 
 ## Resources / Assets
 

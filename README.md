@@ -23,6 +23,26 @@ ANISE stands validated against the traditional SPICE toolkit, ensuring accuracy 
 + **Frame safety**: ANISE checks all frames translations or rotations are physically valid before performing any computation, even internally.
 + **Auto-downloading capability**: ANISE simplifies your workflow by automatically downloading the latest Earth orientation parameters, or any other SPICE or ANISE file from a remote location, seamlessly integrating them into the `Almanac` for immediate use.
 
+## Interfaces
+
+### Rust
+
+ANISE is developed in Rust, leveraging Rust's robust features such as memory safety, efficient concurrency handling, a superb test framework, and excellent error management. These capabilities ensure that all ANISE features are highly reliable and secure from the outset. Being native to Rust, these features are available first within the Rust ecosystem, offering cutting-edge functionality to Rust developers. They are then integrated into other interfaces. If there is a feature in Rust that has yet to be ported into the language of your choice, please open a Github issue.
+
+Refer to the [Rust README](./anise/README.md) for further details. The Rust API documentation is available on <https://docs.rs/anise/latest/anise/>.
+
+### Python
+
+Although ANISE is primarily developed in Rust, it offers first-class support for Python, recognizing that many users will interact with ANISE through its Python interface. This integration ensures that Python users can leverage most of ANISE's capabilities without compromise. If you encounter any limitations or missing features in the Python support, we encourage you to open a GitHub issue to help us improve the interface.
+
+For Python-specific tutorials and resources, please refer to the [Python README](./anise-py/README.md), which includes Jupyter notebook tutorials tailored for Python users.
+
+### GUI
+
+ANISE provides a graphical interface to inspect SPK, BPC, and PCA (Planetary Constant ANISE) files. Allows you to check the start/end times of the segments (shown in whichever time scale you want, including UNIX UTC seconds).
+
+Refer to the [GUI](./anise-gui/README.md) README for details.
+
 ## Validation
 
 [![ANISE Validation](https://github.com/nyx-space/anise/actions/workflows/rust.yml/badge.svg)](https://github.com/nyx-space/anise/actions/workflows/rust.yml)
@@ -31,171 +51,6 @@ ANISE is validated by running the same queries in ANISE and in SPICE (single thr
 
 **Note:** The PCK data comes from the IAU Reports, which publishes angle, angle rate, and angle acceleration data, expressed in centuries past the J2000 reference epoch.
 ANISE uses Hifitime for time conversions. Hifitime's reliance solely on integers for all time computations eliminates the risk of rounding errors. In contrast, SPICE utilizes floating-point values, which introduces rounding errors in calculations like centuries past J2000. Consequently, you might observe a discrepancy of up to 1 millidegree in rotation angles between SPICE and ANISE. However, this difference is a testament to ANISE's superior precision.
-
-## Tutorials
-
-### Python
-
-Refer to [Python README](./anise-py/README.md) for Juyter notebook tutorials in Python
-
-## Rust Usage
-
-Start using it by adding to your Rust project:
-
-```sh
-cargo add anise
-```
-
-### Frame Transformation of an Orbit
-
-ANISE provides the ability to create Cartesian states (also simply called `Orbit`s), calculate orbital elements from them in an error free way (computations that may fail return a `Result` type), and transform these states into other frames via the loaded context, called `Almanac`, which stores all of the SPICE and ANISE files you need.
-
-```rust
-use anise::prelude::*;
-// ANISE provides pre-built frames, but examples below show how to build them from their NAIF IDs.
-use anise::constants::frames::{EARTH_ITRF93, EARTH_J2000};
-
-// Initialize an empty Almanac
-let ctx = Almanac::default();
-
-// Load a SPK/BSP file
-let spk = SPK::load("../data/de440.bsp").unwrap();
-// Load the high precision ITRF93 kernel
-let bpc = BPC::load("../data/earth_latest_high_prec.bpc").unwrap();
-// Build the planetary constants file, which includes the gravitational parameters and the IAU low fidelity rotations
-use anise::naif::kpl::parser::convert_tpc;
-// Note that the PCK variable can also be serialized to disk to avoid having to rebuild it next time.
-let pck = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
-
-// And add all of these to the Almanac context
-let almanac = ctx
-    .with_spk(spk)
-    .unwrap()
-    .with_bpc(bpc)
-    .unwrap()
-    .with_planetary_data(pck);
-
-// Let's build an orbit
-// Start by grabbing a copy of the frame.
-let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
-
-// Define an epoch, in TDB, but you may specify UTC, TT, TAI, GPST, and more.
-let epoch = Epoch::from_str("2021-10-29 12:34:56 TDB").unwrap();
-
-// Define the orbit from its Keplerian orbital elements.
-// Note that we must specify the frame of this orbit: ANISE checks all frames are valid before any translation or rotation, even internally.
-let orig_state = Orbit::keplerian(
-    8_191.93, 1e-6, 12.85, 306.614, 314.19, 99.887_7, epoch, eme2k,
-);
-
-// Transform that orbit into another frame.
-let state_itrf93 = almanac
-    .transform_to(orig_state, EARTH_ITRF93, None)
-    .unwrap();
-
-// The `:x` prints this orbit's Keplerian elements
-println!("{orig_state:x}");
-// The `:X` prints the prints the range, altitude, latitude, and longitude with respect to the planetocentric frame in floating point with units if frame is celestial,
-println!("{state_itrf93:X}");
-
-// Convert back
-let from_state_itrf93_to_eme2k = almanac
-    .transform_to(state_itrf93, EARTH_J2000, Aberration::NONE)
-    .unwrap();
-
-println!("{from_state_itrf93_to_eme2k}");
-
-// Check that our return data matches the original one exactly
-assert_eq!(orig_state, from_state_itrf93_to_eme2k);
-```
-
-### Load and query a PCK/BPC file (high fidelity rotation)
-
-```rust
-use anise::prelude::*;
-use anise::constants::frames::{EARTH_ITRF93, EME2000};
-
-let pck = "../data/earth_latest_high_prec.bpc";
-
-let bpc = BPC::load(pck).unwrap();
-let almanac = Almanac::from_bpc(bpc).unwrap();
-
-// Load the useful frame constants
-use anise::constants::frames::*;
-
-// Define an Epoch in the dynamical barycentric time scale
-let epoch = Epoch::from_str("2020-11-15 12:34:56.789 TDB").unwrap();
-
-// Query for the DCM
-let dcm = almanac.rotate_from_to(EARTH_ITRF93, EME2000, epoch).unwrap();
-
-println!("{dcm}");
-```
-
-### Load and query a text PCK/KPL file (low fidelity rotation)
-
-```rust
-use anise::prelude::*;
-// Load the TPC converter, which will create the ANISE representation too, in ASN1 format, that you may reuse.
-use anise::naif::kpl::parser::convert_tpc;
-
-// Note that the ASN1 ANISE format for planetary data also stores the gravity parameters, so we must convert both at once into a single ANISE file.
-let planetary_data = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
-
-let almanac = Almanac {
-    planetary_data,
-    ..Default::default()
-};
-
-// Load the useful frame constants
-use anise::constants::frames::*;
-
-// Define an Epoch in the dynamical barycentric time scale
-let epoch = Epoch::from_str("2020-11-15 12:34:56.789 TDB").unwrap();
-
-// Query for the DCM to the immediate parent
-let dcm = almanac.rotation_to_parent(IAU_VENUS_FRAME, epoch).unwrap();
-
-println!("{dcm}");
-```
-
-### Load and query an SPK/BSP file (ephemeris)
-
-```rust
-use anise::prelude::*;
-use anise::constants::frames::*;
-
-let spk = SPK::load("../data/de440s.bsp").unwrap();
-let ctx = Almanac::from_spk(spk).unwrap();
-
-// Define an Epoch in the dynamical barycentric time scale
-let epoch = Epoch::from_str("2020-11-15 12:34:56.789 TDB").unwrap();
-
-let state = ctx
-    .translate(
-        VENUS_J2000, // Target
-        EARTH_MOON_BARYCENTER_J2000, // Observer
-        epoch,
-        None,
-    )
-    .unwrap();
-
-println!("{state}");
-```
-
-## GUI
-
-ANISE comes with a GUI to inspect files. Allows you to check the start/end times of the segments (shown in whichever time scale you want, including UNIX UTC seconds)
-
-### Demos
-
-Inspect an SPK file ([video link](http://public-data.nyxspace.com/anise/demo/ANISE-SPK.webm)):
-
-![Inspect an SPK file](http://public-data.nyxspace.com/anise/demo/ANISE-SPK.gif)
-
-Inspect an Binary PCK file (BPC) ([video link](http://public-data.nyxspace.com/anise/demo/ANISE-BPC.webm)):
-
-![Inspect an SPK file](http://public-data.nyxspace.com/anise/demo/ANISE-BPC.gif)
 
 ## Resources / Assets
 
