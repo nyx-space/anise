@@ -188,7 +188,7 @@ impl Almanac {
 
     /// Translates the provided Cartesian state into the requested observer frame
     ///
-    /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the [transform_to] function instead to include rotations.
+    /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_to` function instead to include rotations.
     #[allow(clippy::too_many_arguments)]
     pub fn translate_to(
         &self,
@@ -205,7 +205,7 @@ impl Almanac {
 impl Almanac {
     /// Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame
     ///
-    /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the [transform_state_to] function instead to include rotations.
+    /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_state_to` function instead to include rotations.
     #[allow(clippy::too_many_arguments)]
     pub fn translate_state_to(
         &self,

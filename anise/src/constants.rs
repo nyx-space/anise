@@ -89,7 +89,7 @@ pub mod orientations {
     /// The rotation from B1950 to J2000 is
     /// \[ -z \]  \[ theta \]  \[ -zeta \]
     ///         3            2            3
-    /// The values for z, theta, and zeta are computed from the formulas given in table 5 of [5].
+    /// The values for z, theta, and zeta are computed from the formulas given in table 5 of \[5\].
     /// z     =  1153.04066200330"
     /// theta =  1002.26108439117"
     /// zeta  =  1152.84248596724"
@@ -105,7 +105,7 @@ pub mod orientations {
     ///  \[ 0.53155" \]
     ///                3
     ///
-    /// In [2], Standish uses two separate rotations,
+    /// In \[2\], Standish uses two separate rotations,
     ///
     ///   \[ 0.00073" \]  P \[ 0.5316" \]
     ///                 3                3
@@ -204,7 +204,7 @@ pub mod orientations {
     pub const IAU_NEPTUNE: NaifId = 799;
     pub const IAU_URANUS: NaifId = 899;
 
-    /// Angle between J2000 to solar system ecliptic J2000 ([ECLIPJ2000]), in radians (about 23.43929 degrees). Apply this rotation about the X axis ([r1])
+    /// Angle between J2000 to solar system ecliptic J2000 ([ECLIPJ2000]), in radians (about 23.43929 degrees). Apply this rotation about the X axis (R1)
     pub const J2000_TO_ECLIPJ2000_ANGLE_RAD: f64 = 0.40909280422232897;
 
     /// Given the frame ID, try to return a human name
@@ -280,7 +280,7 @@ pub mod frames {
 /// Typical planetary constants that aren't found in SPICE input files.
 pub mod usual_planetary_constants {
     /// Mean angular velocity of the Earth in deg/s
-    /// Source: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016 (confirmed by https://hpiers.obspm.fr/eop-pc/models/constants.html)
+    /// Source: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016 (confirmed by <https://hpiers.obspm.fr/eop-pc/models/constants.html>)
     pub const MEAN_EARTH_ANGULAR_VELOCITY_DEG_S: f64 = 0.004178079012116429;
     /// Mean angular velocity of the Moon in deg/s, computed from hifitime:
     /// ```py
@@ -288,7 +288,7 @@ pub mod usual_planetary_constants {
     /// >>> tau/moon_period.to_seconds()
     /// 2.661698975163682e-06
     /// ```
-    /// Source: https://www.britannica.com/science/month#ref225844 via https://en.wikipedia.org/w/index.php?title=Lunar_day&oldid=1180701337
+    /// Source: <https://www.britannica.com/science/month#ref225844> via <https://en.wikipedia.org/w/index.php?title=Lunar_day&oldid=1180701337>
     pub const MEAN_MOON_ANGULAR_VELOCITY_DEG_S: f64 = 2.661_698_975_163_682e-6;
 }
 

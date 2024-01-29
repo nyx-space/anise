@@ -15,11 +15,23 @@ use anise::file2heap;
 use anise::math::Vector3;
 use anise::prelude::*;
 
-const ZEROS: &[u8] = &[0; 2048];
-/// Test that we can load data from a static pointer to it.
+const ZEROS: &[u8] = &[0; 256];
+/// Test that we can load data from a static pointer to it, even if there is less than one record length
 #[test]
 fn invalid_load_from_static() {
     assert!(SPK::from_static(&ZEROS).is_err());
+}
+
+#[test]
+fn de400_domain() {
+    let almanac = Almanac::new("../data/de440s.bsp").unwrap();
+
+    assert!(almanac.spk_domain(-1012).is_err());
+    assert!(almanac.spk_domain(399).is_ok());
+
+    // No BPC loaded, so it should error.
+    assert!(almanac.bpc_domain(-1).is_err());
+    assert!(almanac.bpc_domain(399).is_err());
 }
 
 #[test]
