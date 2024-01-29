@@ -13,6 +13,7 @@ use hifitime::Epoch;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
+#[cfg(not(feature = "python"))]
 use crate::naif::daf::NAIFSummaryRecord;
 use crate::naif::pck::BPCSummaryRecord;
 use crate::naif::BPC;

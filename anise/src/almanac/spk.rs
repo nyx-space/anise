@@ -14,6 +14,7 @@ use hifitime::Epoch;
 use pyo3::prelude::*;
 
 use crate::naif::daf::DAFError;
+#[cfg(not(feature = "python"))]
 use crate::naif::daf::NAIFSummaryRecord;
 use crate::naif::spk::summary::SPKSummaryRecord;
 use crate::naif::SPK;

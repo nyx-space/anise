@@ -20,7 +20,7 @@ use pyo3::prelude::*;
 #[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
     /// Returns the angle (between 0 and 180 degrees) between the observer and the Sun, and the observer and the target body ID.
-    /// This computes the Sun Probe Earth angle (SPE) if the probe is in a loaded, its ID is the "observer_id", and the target is set to its central body.
+    /// This computes the Sun Probe Earth angle (SPE) if the probe is in a loaded SPK, its ID is the "observer_id", and the target is set to its central body.
     ///
     /// # Geometry
     /// If the SPE is greater than 90 degrees, then the celestial object below the probe is in sunlight.
