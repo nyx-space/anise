@@ -20,7 +20,7 @@ use snafu::ensure;
 
 use super::EPSILON_RAD;
 
-/// Quaternion will always be a unit quaternion in ANISE, cf. [EulerParameter].
+/// Quaternion will always be a unit quaternion in ANISE, cf. EulerParameter.
 ///
 /// In ANISE, Quaternions use exclusively the Hamiltonian convenstion.
 pub type Quaternion = EulerParameter;

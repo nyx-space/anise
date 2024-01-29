@@ -15,8 +15,13 @@ use crate::{
 use hifitime::Epoch;
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 use super::daf::DafDataType;
 
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise.internals"))]
 #[derive(Clone, Copy, Debug, Default, AsBytes, FromZeroes, FromBytes)]
 #[repr(C)]
 pub struct BPCSummaryRecord {
@@ -36,6 +41,21 @@ impl BPCSummaryRecord {
             action: "converting data type from i32",
             source,
         })
+    }
+}
+
+#[cfg(feature = "python")]
+#[pymethods]
+impl BPCSummaryRecord {
+    /// Returns the start epoch of this BPC Summary
+    pub fn start_epoch(&self) -> Epoch {
+        <Self as NAIFSummaryRecord>::start_epoch(self)
+    }
+
+    /// Returns the start epoch of this BPC Summary
+
+    pub fn end_epoch(&self) -> Epoch {
+        <Self as NAIFSummaryRecord>::end_epoch(self)
     }
 }
 

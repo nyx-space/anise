@@ -16,8 +16,13 @@ use crate::naif::daf::DatatypeSnafu;
 
 use super::DAFError;
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
+#[cfg_attr(feature = "python", pyclass)]
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(u8)]
+
 pub enum DataType {
     Type1ModifiedDifferenceArray = 1,
     Type2ChebyshevTriplet = 2,

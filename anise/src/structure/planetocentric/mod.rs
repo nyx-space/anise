@@ -234,7 +234,7 @@ impl PlanetaryData {
 
     /// Computes the rotation to the parent frame, including its time derivative.
     ///
-    /// Source: https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/rotation.html#Working%20with%20RA,%20Dec%20and%20Twist
+    /// Source: <https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/rotation.html#Working%20with%20RA,%20Dec%20and%20Twist>
     pub fn rotation_to_parent(&self, epoch: Epoch, system: &Self) -> PhysicsResult<DCM> {
         if self.pole_declination.is_none()
             && self.prime_meridian.is_none()

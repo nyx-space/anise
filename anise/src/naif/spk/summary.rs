@@ -12,12 +12,17 @@ use core::fmt;
 use hifitime::Epoch;
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 use crate::{
     ephemerides::EphemerisError,
     naif::daf::{DafDataType, NAIFRecord, NAIFSummaryRecord},
     prelude::{Frame, FrameUid},
 };
 
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise.internals"))]
 #[derive(Clone, Copy, Debug, Default, AsBytes, FromZeroes, FromBytes, PartialEq)]
 #[repr(C)]
 pub struct SPKSummaryRecord {
@@ -32,13 +37,6 @@ pub struct SPKSummaryRecord {
 }
 
 impl SPKSummaryRecord {
-    pub fn data_type(&self) -> Result<DafDataType, EphemerisError> {
-        DafDataType::try_from(self.data_type_i).map_err(|source| EphemerisError::SPK {
-            action: "converting data type from i32",
-            source,
-        })
-    }
-
     /// Returns the target frame UID of this summary
     pub fn target_frame_uid(&self) -> FrameUid {
         FrameUid {
@@ -54,6 +52,16 @@ impl SPKSummaryRecord {
             orientation_id: self.frame_id,
         }
     }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl SPKSummaryRecord {
+    pub fn data_type(&self) -> Result<DafDataType, EphemerisError> {
+        DafDataType::try_from(self.data_type_i).map_err(|source| EphemerisError::SPK {
+            action: "converting data type from i32",
+            source,
+        })
+    }
 
     /// Returns the target frame UID of this summary
     pub fn target_frame(&self) -> Frame {
@@ -65,9 +73,16 @@ impl SPKSummaryRecord {
         Frame::from(self.center_frame_uid())
     }
 
-    #[cfg(feature = "spkezr_validation")]
-    pub fn spice_name(&self) -> Result<&'static str, EphemerisError> {
-        Self::id_to_spice_name(self.target_id)
+    /// Returns the start epoch of this SPK Summary
+    #[cfg(feature = "python")]
+    pub fn start_epoch(&self) -> Epoch {
+        <Self as NAIFSummaryRecord>::start_epoch(self)
+    }
+
+    /// Returns the start epoch of this SPK Summary
+    #[cfg(feature = "python")]
+    pub fn end_epoch(&self) -> Epoch {
+        <Self as NAIFSummaryRecord>::end_epoch(self)
     }
 
     /// Converts the provided ID to its human name.

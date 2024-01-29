@@ -10,10 +10,15 @@
 
 use hifitime::Epoch;
 
-use crate::ephemerides::EphemerisError;
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 use crate::naif::daf::DAFError;
+#[cfg(not(feature = "python"))]
+use crate::naif::daf::NAIFSummaryRecord;
 use crate::naif::spk::summary::SPKSummaryRecord;
 use crate::naif::SPK;
+use crate::{ephemerides::EphemerisError, NaifId};
 use log::error;
 
 use super::{Almanac, MAX_LOADED_SPKS};
@@ -45,7 +50,9 @@ impl Almanac {
         me.spk_data[data_idx] = Some(spk);
         Ok(me)
     }
+}
 
+impl Almanac {
     pub fn num_loaded_spk(&self) -> usize {
         let mut count = 0;
         for maybe in &self.spk_data {
@@ -122,7 +129,7 @@ impl Almanac {
         })
     }
 
-    /// Returns the summary given the name of the summary record.
+    /// Returns the most recently loaded summary by its name, if any with that ID are available
     pub fn spk_summary_from_name(
         &self,
         name: &str,
@@ -152,7 +159,7 @@ impl Almanac {
         })
     }
 
-    /// Returns the summary given the name of the summary record if that summary has data defined at the requested epoch
+    /// Returns the most recently loaded summary by its ID, if any with that ID are available
     pub fn spk_summary(
         &self,
         id: i32,
@@ -177,6 +184,52 @@ impl Almanac {
             action: "searching for SPK summary",
             source: DAFError::SummaryIdError { kind: "SPK", id },
         })
+    }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl Almanac {
+    /// Returns a vector of the summaries whose ID matches the desired `id`, in the order in which they will be used, i.e. in reverse loading order.
+    pub fn spk_summaries(&self, id: NaifId) -> Result<Vec<SPKSummaryRecord>, EphemerisError> {
+        let mut summaries = vec![];
+        for maybe_spk in self.spk_data.iter().take(self.num_loaded_spk()).rev() {
+            let spk = maybe_spk.as_ref().unwrap();
+            if let Ok((summary, _)) = spk.summary_from_id(id) {
+                // NOTE: We're iterating backward, so the correct SPK number is "total loaded" minus "current iteration".
+                summaries.push(*summary);
+            }
+        }
+
+        if summaries.is_empty() {
+            error!("Almanac: No summary {id} valid");
+            // If we're reached this point, there is no relevant summary
+            Err(EphemerisError::SPK {
+                action: "searching for SPK summary",
+                source: DAFError::SummaryIdError { kind: "SPK", id },
+            })
+        } else {
+            Ok(summaries)
+        }
+    }
+
+    /// Returns the applicable domain of the request id, i.e. start and end epoch that the provided id has loaded data.
+    pub fn spk_domain(&self, id: NaifId) -> Result<(Epoch, Epoch), EphemerisError> {
+        let summaries = self.spk_summaries(id)?;
+
+        // We know that the summaries is non-empty because if it is, the previous function call returns an error.
+        let start = summaries
+            .iter()
+            .min_by_key(|summary| summary.start_epoch())
+            .unwrap()
+            .start_epoch();
+
+        let end = summaries
+            .iter()
+            .max_by_key(|summary| summary.end_epoch())
+            .unwrap()
+            .end_epoch();
+
+        Ok((start, end))
     }
 }
 

@@ -10,10 +10,15 @@
 
 use hifitime::Epoch;
 
-use crate::naif::daf::DAFError;
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
+#[cfg(not(feature = "python"))]
+use crate::naif::daf::NAIFSummaryRecord;
 use crate::naif::pck::BPCSummaryRecord;
 use crate::naif::BPC;
 use crate::orientations::OrientationError;
+use crate::{naif::daf::DAFError, NaifId};
 
 use super::{Almanac, MAX_LOADED_BPCS};
 
@@ -169,6 +174,52 @@ impl Almanac {
             action: "searching for BPC summary",
             source: DAFError::SummaryIdError { kind: "BPC", id },
         })
+    }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl Almanac {
+    /// Returns a vector of the summaries whose ID matches the desired `id`, in the order in which they will be used, i.e. in reverse loading order.
+    pub fn bpc_summaries(&self, id: NaifId) -> Result<Vec<BPCSummaryRecord>, OrientationError> {
+        let mut summaries = vec![];
+
+        for maybe_bpc in self.bpc_data.iter().take(self.num_loaded_bpc()).rev() {
+            let bpc = maybe_bpc.as_ref().unwrap();
+            if let Ok((summary, _)) = bpc.summary_from_id(id) {
+                // NOTE: We're iterating backward, so the correct BPC number is "total loaded" minus "current iteration".
+                summaries.push(*summary);
+            }
+        }
+
+        if summaries.is_empty() {
+            // If we're reached this point, there is no relevant summary
+            Err(OrientationError::BPC {
+                action: "searching for BPC summary",
+                source: DAFError::SummaryIdError { kind: "BPC", id },
+            })
+        } else {
+            Ok(summaries)
+        }
+    }
+
+    /// Returns the applicable domain of the request id, i.e. start and end epoch that the provided id has loaded data.
+    pub fn bpc_domain(&self, id: NaifId) -> Result<(Epoch, Epoch), OrientationError> {
+        let summaries = self.bpc_summaries(id)?;
+
+        // We know that the summaries is non-empty because if it is, the previous function call returns an error.
+        let start = summaries
+            .iter()
+            .min_by_key(|summary| summary.start_epoch())
+            .unwrap()
+            .start_epoch();
+
+        let end = summaries
+            .iter()
+            .max_by_key(|summary| summary.end_epoch())
+            .unwrap()
+            .end_epoch();
+
+        Ok((start, end))
     }
 }
 

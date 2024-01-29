@@ -28,7 +28,7 @@ impl Almanac {
     /// This function only performs the rotation and no translation whatsoever. Use the `transform_from_to` function instead to include rotations.
     ///
     /// # Note
-    /// This function performs a recursion of no more than twice the [MAX_TREE_DEPTH].
+    /// This function performs a recursion of no more than twice the MAX_TREE_DEPTH.
     pub fn rotate_from_to(
         &self,
         from_frame: Frame,
