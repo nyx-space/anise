@@ -106,7 +106,7 @@ mod meta_test {
     fn test_from_dhall() {
         let default = MetaAlmanac::default();
 
-        println!("{}", default.dump().unwrap());
+        println!("{}", default.dumps().unwrap());
 
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../data/latest.dhall");
         let dhall = MetaAlmanac::new(path.to_str().unwrap().to_string()).unwrap();

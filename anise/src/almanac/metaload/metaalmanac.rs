@@ -112,9 +112,14 @@ impl FromStr for MetaAlmanac {
 
 // Methods shared between Rust and Python
 #[cfg_attr(feature = "python", pymethods)]
+#[allow(deprecated_in_future)]
 impl MetaAlmanac {
-    /// Dumps the configured Meta Almanac into a Dhall string.
+    #[deprecated(note = "use dumps instead, function was incorrectly named, will be removed in 0.4", since="0.3.1")]
     pub fn dump(&self) -> Result<String, MetaAlmanacError> {
+        self.dumps()
+    }
+    /// Dumps the configured Meta Almanac into a Dhall string.
+    pub fn dumps(&self) -> Result<String, MetaAlmanacError> {
         // Define the Dhall type
         let dhall_type: SimpleType =
             serde_dhall::from_str("{ files : List { uri : Text, crc32 : Optional Natural } }")
@@ -144,6 +149,13 @@ impl MetaAlmanac {
     }
 
     /// Loads the provided string as a Dhall configuration to build a MetaAlmanac
+    #[classmethod]
+    fn loads(_cls: &PyType, s: String) -> Result<Self, MetaAlmanacError> {
+        Self::from_str(&s)
+    }
+
+    /// DEPRECATED: use loads instead, function was incorrectly named, will be removed in 0.4
+    /// -- Loads the provided string as a Dhall configuration to build a MetaAlmanac
     #[classmethod]
     fn load(_cls: &PyType, s: String) -> Result<Self, MetaAlmanacError> {
         Self::from_str(&s)

@@ -11,6 +11,7 @@ use core::f64::EPSILON;
 use core::fmt;
 use der::{Decode, Encode, Reader, Writer};
 use serde_derive::{Deserialize, Serialize};
+use serde_dhall::StaticType;
 
 #[cfg(feature = "python")]
 use pyo3::exceptions::PyTypeError;
@@ -29,7 +30,7 @@ use pyo3::pyclass::CompareOp;
 /// Example: Radii of the Earth.
 ///
 ///    BODY399_RADII     = ( 6378.1366   6378.1366   6356.7519 )
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, StaticType)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(get_all, set_all))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
