@@ -354,6 +354,7 @@ impl Orbit {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 #[cfg_attr(feature = "python", pymethods)]
 impl Orbit {
     /// Creates a new Orbit around the provided Celestial or Geoid frame from the Keplerian orbital elements.
@@ -458,7 +459,7 @@ impl Orbit {
     }
 
     /// Mutates this orbit to change the SMA
-    pub fn set_sma(&mut self, new_sma_km: f64) -> PhysicsResult<()> {
+    pub fn set_sma_km(&mut self, new_sma_km: f64) -> PhysicsResult<()> {
         let me = Self::keplerian(
             new_sma_km,
             self.ecc()?,
@@ -476,16 +477,16 @@ impl Orbit {
     }
 
     /// Returns a copy of the state with a new SMA
-    pub fn with_sma(&self, new_sma_km: f64) -> PhysicsResult<Self> {
+    pub fn with_sma_km(&self, new_sma_km: f64) -> PhysicsResult<Self> {
         let mut me = *self;
-        me.set_sma(new_sma_km)?;
+        me.set_sma_km(new_sma_km)?;
         Ok(me)
     }
 
     /// Returns a copy of the state with a provided SMA added to the current one
     pub fn add_sma(&self, delta_sma: f64) -> PhysicsResult<Self> {
         let mut me = *self;
-        me.set_sma(me.sma_km()? + delta_sma)?;
+        me.set_sma_km(me.sma_km()? + delta_sma)?;
         Ok(me)
     }
 
@@ -905,6 +906,49 @@ impl Orbit {
     /// Returns the $C_3$ of this orbit in km^2/s^2
     pub fn c3_km2_s2(&self) -> PhysicsResult<f64> {
         Ok(-self.frame.mu_km3_s2()? / self.sma_km()?)
+    }
+
+    /// Returns the radius of periapse in kilometers for the provided turn angle of this hyperbolic orbit.
+    pub fn vinf_periapsis_km(&self, turn_angle_degrees: f64) -> PhysicsResult<f64> {
+        let ecc = self.ecc()?;
+        if ecc <= 1.0 {
+            Err(PhysicsError::NotHyperbolic {
+                ecc: self.ecc().unwrap(),
+            })
+        } else {
+            let cos_rho = (0.5 * (PI - turn_angle_degrees.to_radians())).cos();
+
+            Ok((1.0 / cos_rho - 1.0) * self.frame.mu_km3_s2()? / self.vmag_km_s().powi(2))
+        }
+    }
+
+    /// Returns the turn angle in degrees for the provided radius of periapse passage of this hyperbolic orbit
+    pub fn vinf_turn_angle_deg(&self, periapsis_km: f64) -> PhysicsResult<f64> {
+        let ecc = self.ecc()?;
+        if ecc <= 1.0 {
+            Err(PhysicsError::NotHyperbolic {
+                ecc: self.ecc().unwrap(),
+            })
+        } else {
+            let rho = (1.0
+                / (1.0 + self.vmag_km_s().powi(2) * (periapsis_km / self.frame.mu_km3_s2()?)))
+            .acos();
+            Ok(between_0_360((PI - 2.0 * rho).to_degrees()))
+        }
+    }
+
+    /// Returns the hyperbolic anomaly in degrees between 0 and 360.0
+    pub fn hyperbolic_anomaly_deg(&self) -> PhysicsResult<f64> {
+        let ecc = self.ecc()?;
+        if ecc <= 1.0 {
+            Err(PhysicsError::NotHyperbolic {
+                ecc: self.ecc().unwrap(),
+            })
+        } else {
+            let (sin_ta, cos_ta) = self.ta_deg()?.to_radians().sin_cos();
+            let sinh_h = (sin_ta * (ecc.powi(2) - 1.0).sqrt()) / (1.0 + ecc * cos_ta);
+            Ok(between_0_360(sinh_h.asinh().to_degrees()))
+        }
     }
 
     /// Adjusts the true anomaly of this orbit using the mean anomaly.

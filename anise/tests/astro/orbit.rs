@@ -546,7 +546,7 @@ fn verif_with_init(almanac: Almanac) {
     for sma_incr in 100..1000 {
         let new_sma = kep.sma_km().unwrap() + f64::from(sma_incr);
         f64_eq!(
-            kep.with_sma(new_sma).expect("with_*").sma_km().unwrap(),
+            kep.with_sma_km(new_sma).expect("with_*").sma_km().unwrap(),
             new_sma,
             "wrong sma"
         );
@@ -676,4 +676,36 @@ fn verif_orbit_at_epoch(almanac: Almanac) {
             format!("#{ono}: AOP changed")
         );
     }
+}
+
+#[rstest]
+fn b_plane_davis(almanac: Almanac) {
+    // This is a simple test from Dr. Davis' IMD class at CU Boulder.
+    let mut eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
+    // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
+    eme2k.mu_km3_s2 = Some(398_600.441_5);
+
+    // Hyperbolic orbit
+    let orbit = Orbit::new(
+        546507.344255845,
+        -527978.380486028,
+        531109.066836708,
+        -4.9220589268733,
+        5.36316523097915,
+        -5.22166308425181,
+        Epoch::from_gregorian_utc_at_midnight(2016, 1, 1),
+        eme2k,
+    );
+
+    // Check reciprocity between the gravity assist functions.
+    let phi = orbit.vinf_turn_angle_deg(300.0).unwrap();
+    let rp = orbit.vinf_periapsis_km(phi).unwrap();
+
+    assert!(
+        (300.0 - rp).abs() < 1e-10,
+        "turn angle to rp reciprocity failed"
+    );
+
+    // The following is a regression test.
+    assert!((orbit.hyperbolic_anomaly_deg().unwrap() - 149.610128737).abs() < 1e-10);
 }

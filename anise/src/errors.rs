@@ -193,6 +193,8 @@ pub enum PhysicsError {
     ParabolicSemiParam { p: f64 },
     #[snafu(display("hyperbolic true anomaly is physically impossible: {ta_deg} deg"))]
     HyperbolicTrueAnomaly { ta_deg: f64 },
+    #[snafu(display("calculation requires hyperbolic orbit, but its eccentricity is {ecc}"))]
+    NotHyperbolic { ecc: f64 },
     #[snafu(display("infinite value encountered when {action}"))]
     InfiniteValue { action: &'static str },
     #[snafu(display("{source}"))]

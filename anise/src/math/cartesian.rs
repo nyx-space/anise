@@ -166,6 +166,18 @@ impl CartesianState {
             frame: self.frame,
         }
     }
+
+    /// Apply the provided delta-v (in km/s)
+    pub fn apply_dv_km_s(&mut self, dv_km_s: Vector3) {
+        self.velocity_km_s += dv_km_s;
+    }
+
+    /// Copies this orbit after applying the provided delta-v (in km/s)
+    pub fn with_dv_km_s(&self, dv_km_s: Vector3) -> Self {
+        let mut me = *self;
+        me.apply_dv_km_s(dv_km_s);
+        me
+    }
 }
 
 // Methods shared with Python
