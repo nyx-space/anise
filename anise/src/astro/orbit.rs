@@ -19,10 +19,10 @@ use crate::{
     math::{
         angles::{between_0_360, between_pm_180},
         cartesian::CartesianState,
-        rotation::DCM,
+        rotation::{r1, r1_dot, r3, r3_dot, DCM},
         Matrix3, Vector3, Vector6,
     },
-    prelude::Frame,
+    prelude::{uuid_from_epoch, Frame},
     NaifId,
 };
 use core::f64::consts::PI;
@@ -315,8 +315,7 @@ impl Orbit {
     /// # Frame warning
     /// If the state is NOT in a body fixed frame (i.e. ITRF93), then this computation is INVALID.
     ///
-    /// # Arguments:
-    /// + `state`: the cartesian state which is at the origin of the SEZ frame to build
+    /// # Arguments
     /// + `from`: ID of this new frame, must be unique if it'll be added to the Almanac. Only used to set the "from" frame of the DCM.
     ///
     /// # Source
@@ -349,6 +348,85 @@ impl Orbit {
             rot_mat,
             rot_mat_dt: None,
             from,
+            to: self.frame.orientation_id,
+        })
+    }
+
+    /// Builds the rotation matrix that rotations from this state's inertial frame to this state's RIC frame
+    ///
+    /// # Frame warning
+    /// If the stattion is NOT in an inertial frame, then this computation is INVALID.
+    ///
+    /// # Algorithm
+    /// 1. Compute this state's RAAN, Inclination, and Argument of Latitude.
+    /// 2. Build the DCM as R3(-RAAN) * R1(-INC) * R3(-AoL)
+    /// 3. Build the DCM derivative by \dot{R3(-RAAN)} * \dot{R1(-INC)} * \dot{R3(-AoL)}
+    /// 4. Return the DCM structure
+    pub fn dcm_from_ric_to_inertial(&self) -> PhysicsResult<DCM> {
+        let rot_mat = r3(-self.raan_deg()?.to_radians())
+            * r1(-self.inc_deg()?.to_radians())
+            * r3(-self.aol_deg()?.to_radians());
+
+        let rot_mat_dt = Some(
+            r3_dot(-self.raan_deg()?.to_radians())
+                * r1_dot(-self.inc_deg()?.to_radians())
+                * r3_dot(-self.aol_deg()?.to_radians()),
+        );
+
+        Ok(DCM {
+            rot_mat,
+            rot_mat_dt,
+            from: uuid_from_epoch(self.frame.orientation_id, self.epoch),
+            to: self.frame.orientation_id,
+        })
+    }
+
+    /// Builds the rotation matrix that rotations from this state's inertial frame to this state's RCN frame (radial, cross, normal)
+    ///
+    /// # Frame warning
+    /// If the stattion is NOT in an inertial frame, then this computation is INVALID.
+    ///
+    /// # Algorithm
+    /// 1. Compute \hat{r}, \hat{h}, the unit vectors of the radius and orbital momentum.
+    /// 2. Compute the cross product of these
+    /// 3. Build the DCM with these unit vectors
+    /// 4. Return the DCM structure
+    pub fn dcm_from_rcn_to_inertial(&self) -> PhysicsResult<DCM> {
+        let r = self.r_hat();
+        let n = self.hvec()? / self.hmag()?;
+        let c = n.cross(&r);
+        let rot_mat =
+            Matrix3::new(r[0], r[1], r[2], c[0], c[1], c[2], n[0], n[1], n[2]).transpose();
+
+        Ok(DCM {
+            rot_mat,
+            rot_mat_dt: None,
+            from: uuid_from_epoch(self.frame.orientation_id, self.epoch),
+            to: self.frame.orientation_id,
+        })
+    }
+
+    /// Builds the rotation matrix that rotations from this state's inertial frame to this state's RCN frame (radial, cross, normal)
+    ///
+    /// # Frame warning
+    /// If the stattion is NOT in an inertial frame, then this computation is INVALID.
+    ///
+    /// # Algorithm
+    /// 1. Compute \hat{v}, \hat{h}, the unit vectors of the radius and orbital momentum.
+    /// 2. Compute the cross product of these
+    /// 3. Build the DCM with these unit vectors
+    /// 4. Return the DCM structure
+    pub fn dcm_from_vnc_to_inertial(&self) -> PhysicsResult<DCM> {
+        let v = self.velocity_km_s / self.vmag_km_s();
+        let n = self.hvec()? / self.hmag()?;
+        let c = v.cross(&n);
+        let rot_mat =
+            Matrix3::new(v[0], v[1], v[2], n[0], n[1], n[2], c[0], c[1], c[2]).transpose();
+
+        Ok(DCM {
+            rot_mat,
+            rot_mat_dt: None,
+            from: uuid_from_epoch(self.frame.orientation_id, self.epoch),
             to: self.frame.orientation_id,
         })
     }

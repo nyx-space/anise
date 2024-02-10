@@ -629,7 +629,7 @@ fn verif_with_init(almanac: Almanac) {
 #[rstest]
 fn verif_orbit_at_epoch(almanac: Almanac) {
     let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
-    let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 01, 10);
+    let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 1, 10);
     let circ_incl = Orbit::keplerian(
         8_191.93, 1e-8, 12.85, 306.614, 314.19, 99.887_7, epoch, eme2k,
     );

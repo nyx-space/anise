@@ -182,7 +182,7 @@ impl Frame {
     }
 
     /// Returns a copy of this frame with the graviational parameter set to the new value.
-    pub fn with_with_mu_km3_s2(&self, mu_km3_s2: f64) -> Self {
+    pub fn with_mu_km3_s2(&self, mu_km3_s2: f64) -> Self {
         let mut me = *self;
         me.mu_km3_s2 = Some(mu_km3_s2);
         me
