@@ -11,8 +11,8 @@
 mod chebyshev;
 mod hermite;
 
-pub(crate) use chebyshev::chebyshev_eval;
-pub(crate) use hermite::hermite_eval;
+pub use chebyshev::chebyshev_eval;
+pub use hermite::hermite_eval;
 use hifitime::Epoch;
 use snafu::Snafu;
 

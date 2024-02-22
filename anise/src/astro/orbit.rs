@@ -19,10 +19,10 @@ use crate::{
     math::{
         angles::{between_0_360, between_pm_180},
         cartesian::CartesianState,
-        rotation::DCM,
+        rotation::{r1, r1_dot, r3, r3_dot, DCM},
         Matrix3, Vector3, Vector6,
     },
-    prelude::Frame,
+    prelude::{uuid_from_epoch, Frame},
     NaifId,
 };
 use core::f64::consts::PI;
@@ -315,8 +315,7 @@ impl Orbit {
     /// # Frame warning
     /// If the state is NOT in a body fixed frame (i.e. ITRF93), then this computation is INVALID.
     ///
-    /// # Arguments:
-    /// + `state`: the cartesian state which is at the origin of the SEZ frame to build
+    /// # Arguments
     /// + `from`: ID of this new frame, must be unique if it'll be added to the Almanac. Only used to set the "from" frame of the DCM.
     ///
     /// # Source
@@ -352,8 +351,88 @@ impl Orbit {
             to: self.frame.orientation_id,
         })
     }
+
+    /// Builds the rotation matrix that rotates from this state's inertial frame to this state's RIC frame
+    ///
+    /// # Frame warning
+    /// If the stattion is NOT in an inertial frame, then this computation is INVALID.
+    ///
+    /// # Algorithm
+    /// 1. Compute this state's RAAN, Inclination, and Argument of Latitude.
+    /// 2. Build the DCM as R3(-RAAN) * R1(-INC) * R3(-AoL)
+    /// 3. Build the DCM derivative by \dot{R3(-RAAN)} * \dot{R1(-INC)} * \dot{R3(-AoL)}
+    /// 4. Return the DCM structure
+    pub fn dcm_from_ric_to_inertial(&self) -> PhysicsResult<DCM> {
+        let rot_mat = r3(-self.raan_deg()?.to_radians())
+            * r1(-self.inc_deg()?.to_radians())
+            * r3(-self.aol_deg()?.to_radians());
+
+        let rot_mat_dt = Some(
+            r3_dot(-self.raan_deg()?.to_radians())
+                * r1_dot(-self.inc_deg()?.to_radians())
+                * r3_dot(-self.aol_deg()?.to_radians()),
+        );
+
+        Ok(DCM {
+            rot_mat,
+            rot_mat_dt,
+            from: uuid_from_epoch(self.frame.orientation_id, self.epoch),
+            to: self.frame.orientation_id,
+        })
+    }
+
+    /// Builds the rotation matrix that rotates from this state's inertial frame to this state's RCN frame (radial, cross, normal)
+    ///
+    /// # Frame warning
+    /// If the stattion is NOT in an inertial frame, then this computation is INVALID.
+    ///
+    /// # Algorithm
+    /// 1. Compute \hat{r}, \hat{h}, the unit vectors of the radius and orbital momentum.
+    /// 2. Compute the cross product of these
+    /// 3. Build the DCM with these unit vectors
+    /// 4. Return the DCM structure
+    pub fn dcm_from_rcn_to_inertial(&self) -> PhysicsResult<DCM> {
+        let r = self.r_hat();
+        let n = self.hvec()? / self.hmag()?;
+        let c = n.cross(&r);
+        let rot_mat =
+            Matrix3::new(r[0], r[1], r[2], c[0], c[1], c[2], n[0], n[1], n[2]).transpose();
+
+        Ok(DCM {
+            rot_mat,
+            rot_mat_dt: None,
+            from: uuid_from_epoch(self.frame.orientation_id, self.epoch),
+            to: self.frame.orientation_id,
+        })
+    }
+
+    /// Builds the rotation matrix that rotates from this state's inertial frame to this state's VNC frame (velocity, normal, cross)
+    ///
+    /// # Frame warning
+    /// If the stattion is NOT in an inertial frame, then this computation is INVALID.
+    ///
+    /// # Algorithm
+    /// 1. Compute \hat{v}, \hat{h}, the unit vectors of the radius and orbital momentum.
+    /// 2. Compute the cross product of these
+    /// 3. Build the DCM with these unit vectors
+    /// 4. Return the DCM structure
+    pub fn dcm_from_vnc_to_inertial(&self) -> PhysicsResult<DCM> {
+        let v = self.velocity_km_s / self.vmag_km_s();
+        let n = self.hvec()? / self.hmag()?;
+        let c = v.cross(&n);
+        let rot_mat =
+            Matrix3::new(v[0], v[1], v[2], n[0], n[1], n[2], c[0], c[1], c[2]).transpose();
+
+        Ok(DCM {
+            rot_mat,
+            rot_mat_dt: None,
+            from: uuid_from_epoch(self.frame.orientation_id, self.epoch),
+            to: self.frame.orientation_id,
+        })
+    }
 }
 
+#[allow(clippy::too_many_arguments)]
 #[cfg_attr(feature = "python", pymethods)]
 impl Orbit {
     /// Creates a new Orbit around the provided Celestial or Geoid frame from the Keplerian orbital elements.
@@ -458,7 +537,7 @@ impl Orbit {
     }
 
     /// Mutates this orbit to change the SMA
-    pub fn set_sma(&mut self, new_sma_km: f64) -> PhysicsResult<()> {
+    pub fn set_sma_km(&mut self, new_sma_km: f64) -> PhysicsResult<()> {
         let me = Self::keplerian(
             new_sma_km,
             self.ecc()?,
@@ -476,16 +555,16 @@ impl Orbit {
     }
 
     /// Returns a copy of the state with a new SMA
-    pub fn with_sma(&self, new_sma_km: f64) -> PhysicsResult<Self> {
+    pub fn with_sma_km(&self, new_sma_km: f64) -> PhysicsResult<Self> {
         let mut me = *self;
-        me.set_sma(new_sma_km)?;
+        me.set_sma_km(new_sma_km)?;
         Ok(me)
     }
 
     /// Returns a copy of the state with a provided SMA added to the current one
-    pub fn add_sma(&self, delta_sma: f64) -> PhysicsResult<Self> {
+    pub fn add_sma_km(&self, delta_sma: f64) -> PhysicsResult<Self> {
         let mut me = *self;
-        me.set_sma(me.sma_km()? + delta_sma)?;
+        me.set_sma_km(me.sma_km()? + delta_sma)?;
         Ok(me)
     }
 
@@ -907,6 +986,51 @@ impl Orbit {
         Ok(-self.frame.mu_km3_s2()? / self.sma_km()?)
     }
 
+    /// Returns the radius of periapse in kilometers for the provided turn angle of this hyperbolic orbit.
+    /// Returns an error if the orbit is not hyperbolic.
+    pub fn vinf_periapsis_km(&self, turn_angle_degrees: f64) -> PhysicsResult<f64> {
+        let ecc = self.ecc()?;
+        if ecc <= 1.0 {
+            Err(PhysicsError::NotHyperbolic {
+                ecc: self.ecc().unwrap(),
+            })
+        } else {
+            let cos_rho = (0.5 * (PI - turn_angle_degrees.to_radians())).cos();
+            Ok((1.0 / cos_rho - 1.0) * self.frame.mu_km3_s2()? / self.vmag_km_s().powi(2))
+        }
+    }
+
+    /// Returns the turn angle in degrees for the provided radius of periapse passage of this hyperbolic orbit
+    /// Returns an error if the orbit is not hyperbolic.
+    pub fn vinf_turn_angle_deg(&self, periapsis_km: f64) -> PhysicsResult<f64> {
+        let ecc = self.ecc()?;
+        if ecc <= 1.0 {
+            Err(PhysicsError::NotHyperbolic {
+                ecc: self.ecc().unwrap(),
+            })
+        } else {
+            let rho = (1.0
+                / (1.0 + self.vmag_km_s().powi(2) * (periapsis_km / self.frame.mu_km3_s2()?)))
+            .acos();
+            Ok(between_0_360((PI - 2.0 * rho).to_degrees()))
+        }
+    }
+
+    /// Returns the hyperbolic anomaly in degrees between 0 and 360.0
+    /// Returns an error if the orbit is not hyperbolic.
+    pub fn hyperbolic_anomaly_deg(&self) -> PhysicsResult<f64> {
+        let ecc = self.ecc()?;
+        if ecc <= 1.0 {
+            Err(PhysicsError::NotHyperbolic {
+                ecc: self.ecc().unwrap(),
+            })
+        } else {
+            let (sin_ta, cos_ta) = self.ta_deg()?.to_radians().sin_cos();
+            let sinh_h = (sin_ta * (ecc.powi(2) - 1.0).sqrt()) / (1.0 + ecc * cos_ta);
+            Ok(between_0_360(sinh_h.asinh().to_degrees()))
+        }
+    }
+
     /// Adjusts the true anomaly of this orbit using the mean anomaly.
     ///
     /// # Astrodynamics note
@@ -929,6 +1053,23 @@ impl Orbit {
             new_epoch,
             self.frame,
         )
+    }
+
+    /// Returns a Cartesian state representing the RIC difference between self and other, in position and velocity (with transport theorem).
+    /// Refer to dcm_from_ric_to_inertial for details on the RIC frame.
+    ///
+    /// # Algorithm
+    /// 1. Compute the RIC DCM of self
+    /// 2. Rotate self into the RIC frame
+    /// 3. Rotation other into the RIC frame
+    /// 4. Compute the difference between these two states
+    /// 5. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`
+    pub fn ric_difference(&self, other: &Self) -> PhysicsResult<Self> {
+        let self_in_ric = (self.dcm_from_ric_to_inertial()?.transpose() * self)?;
+        let other_in_ric = (self.dcm_from_ric_to_inertial()?.transpose() * other)?;
+        let mut rslt = (self_in_ric - other_in_ric)?;
+        rslt.frame.strip();
+        Ok(rslt)
     }
 }
 

@@ -21,7 +21,7 @@ pub mod translate_to_parent;
 pub mod translations;
 
 #[derive(Debug, Snafu, PartialEq)]
-#[snafu(visibility(pub(crate)))]
+#[snafu(visibility(pub))]
 pub enum EphemerisError {
     /// Somehow you've entered code that should not be reachable, please file a bug.
     Unreachable,

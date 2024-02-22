@@ -11,11 +11,15 @@
 use core::fmt;
 use core::fmt::Debug;
 use serde_derive::{Deserialize, Serialize};
+use serde_dhall::StaticType;
+use snafu::ResultExt;
 
 use crate::astro::PhysicsResult;
-use crate::constants::celestial_objects::{celestial_name_from_id, SOLAR_SYSTEM_BARYCENTER};
-use crate::constants::orientations::{orientation_name_from_id, J2000};
-use crate::errors::PhysicsError;
+use crate::constants::celestial_objects::{
+    celestial_name_from_id, id_to_celestial_name, SOLAR_SYSTEM_BARYCENTER,
+};
+use crate::constants::orientations::{id_to_orientation_name, orientation_name_from_id, J2000};
+use crate::errors::{AlmanacError, EphemerisSnafu, OrientationSnafu, PhysicsError};
 use crate::prelude::FrameUid;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
 use crate::NaifId;
@@ -28,7 +32,7 @@ use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
 
 /// A Frame uniquely defined by its ephemeris center and orientation. Refer to FrameDetail for frames combined with parameters.
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, StaticType)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(get_all, set_all))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
@@ -58,6 +62,21 @@ impl Frame {
 
     pub const fn from_orient_ssb(orientation_id: NaifId) -> Self {
         Self::new(SOLAR_SYSTEM_BARYCENTER, orientation_id)
+    }
+
+    /// Attempts to create a new frame from its center and reference frame name.
+    /// This function is compatible with the CCSDS OEM names.
+    pub fn from_name(center: &str, ref_frame: &str) -> Result<Self, AlmanacError> {
+        let ephemeris_id = id_to_celestial_name(center).with_context(|_| EphemerisSnafu {
+            action: "converting center name to its ID",
+        })?;
+
+        let orientation_id =
+            id_to_orientation_name(ref_frame).with_context(|_| OrientationSnafu {
+                action: "converting reference frame to its ID",
+            })?;
+
+        Ok(Self::new(ephemeris_id, orientation_id))
     }
 }
 
@@ -153,6 +172,13 @@ impl Frame {
         self.orient_origin_id_match(other.orientation_id)
     }
 
+    /// Removes the graviational parameter and the shape information from this frame.
+    /// Use this to prevent astrodynamical computations.
+    pub(crate) fn strip(&mut self) {
+        self.mu_km3_s2 = None;
+        self.shape = None;
+    }
+
     /// Returns the gravitational parameters of this frame, if defined
     pub fn mu_km3_s2(&self) -> PhysicsResult<f64> {
         self.mu_km3_s2.ok_or(PhysicsError::MissingFrameData {
@@ -160,6 +186,13 @@ impl Frame {
             data: "mu_km3_s2",
             frame: self.into(),
         })
+    }
+
+    /// Returns a copy of this frame with the graviational parameter set to the new value.
+    pub fn with_mu_km3_s2(&self, mu_km3_s2: f64) -> Self {
+        let mut me = *self;
+        me.mu_km3_s2 = Some(mu_km3_s2);
+        me
     }
 
     /// Returns the mean equatorial radius in km, if defined
@@ -268,7 +301,8 @@ impl fmt::LowerHex for Frame {
 
 #[cfg(test)]
 mod frame_ut {
-    use crate::constants::frames::EME2000;
+    use super::Frame;
+    use crate::constants::frames::{EARTH_J2000, EME2000};
 
     #[test]
     fn format_frame() {
@@ -276,5 +310,23 @@ mod frame_ut {
         assert_eq!(format!("{EME2000:x}"), "Earth J2000");
         assert_eq!(format!("{EME2000:o}"), "J2000");
         assert_eq!(format!("{EME2000:e}"), "Earth");
+    }
+
+    #[test]
+    fn dhall_serde() {
+        let serialized = serde_dhall::serialize(&EME2000)
+            .static_type_annotation()
+            .to_string()
+            .unwrap();
+        assert_eq!(serialized, "{ ephemeris_id = +399, mu_km3_s2 = None Double, orientation_id = +1, shape = None { polar_radius_km : Double, semi_major_equatorial_radius_km : Double, semi_minor_equatorial_radius_km : Double } }");
+        assert_eq!(
+            serde_dhall::from_str(&serialized).parse::<Frame>().unwrap(),
+            EME2000
+        );
+    }
+
+    #[test]
+    fn ccsds_name_to_frame() {
+        assert_eq!(Frame::from_name("Earth", "ICRF").unwrap(), EARTH_J2000);
     }
 }

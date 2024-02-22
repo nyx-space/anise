@@ -132,6 +132,16 @@ impl CartesianState {
         )
     }
 
+    /// Returns a copy of this state where the position and velocity are set to the input vector whose units must be [km, km, km, km/s, km/s, km/s]
+    pub fn with_cartesian_pos_vel(self, pos_vel: Vector6<f64>) -> Self {
+        let mut me = self;
+        let radius_km = pos_vel.fixed_rows::<3>(0).into_owned();
+        let velocity_km_s = pos_vel.fixed_rows::<3>(3).into_owned();
+        me.radius_km = radius_km;
+        me.velocity_km_s = velocity_km_s;
+        me
+    }
+
     /// Returns the distance in kilometers between this state and a point assumed to be in the same frame.
     pub fn distance_to_point_km(&self, other_km: &Vector3) -> f64 {
         (self.radius_km - other_km).norm()
@@ -165,6 +175,18 @@ impl CartesianState {
             epoch: self.epoch,
             frame: self.frame,
         }
+    }
+
+    /// Adds the provided delta-v (in km/s) to the current velocity vector, mimicking an impulsive maneuver.
+    pub fn apply_dv_km_s(&mut self, dv_km_s: Vector3) {
+        self.velocity_km_s += dv_km_s;
+    }
+
+    /// Copies this orbit after adding the provided delta-v (in km/s) to the velocity vector, mimicking an impulsive maneuver.
+    pub fn with_dv_km_s(&self, dv_km_s: Vector3) -> Self {
+        let mut me = *self;
+        me.apply_dv_km_s(dv_km_s);
+        me
     }
 }
 

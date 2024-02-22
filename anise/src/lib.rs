@@ -28,6 +28,17 @@ pub mod structure;
 pub mod time {
     pub use core::str::FromStr;
     pub use hifitime::*;
+
+    // Stupid but safe algo to find a new frame ID that only collides on the same microsecond
+    pub(crate) fn uuid_from_epoch(id: i32, epoch: Epoch) -> i32 {
+        let wrapped_days = epoch
+            .to_tdb_duration()
+            .to_unit(hifitime::Unit::Microsecond)
+            .floor()
+            .rem_euclid(f64::from(i32::MAX)) as i32;
+
+        (id * 10_000).wrapping_add(wrapped_days)
+    }
 }
 
 pub mod prelude {

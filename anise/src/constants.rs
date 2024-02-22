@@ -12,7 +12,7 @@
 pub const SPEED_OF_LIGHT_KM_S: f64 = 299_792.458;
 
 pub mod celestial_objects {
-    use crate::NaifId;
+    use crate::{ephemerides::EphemerisError, NaifId};
 
     pub const SOLAR_SYSTEM_BARYCENTER: NaifId = 0;
     pub const MERCURY: NaifId = 1;
@@ -32,6 +32,7 @@ pub mod celestial_objects {
     pub const SATURN: NaifId = 699;
     pub const URANUS: NaifId = 799;
     pub const NEPTUNE: NaifId = 899;
+    pub const PLUTO: NaifId = 999;
 
     pub const fn celestial_name_from_id(id: NaifId) -> Option<&'static str> {
         match id {
@@ -49,6 +50,33 @@ pub mod celestial_objects {
             MOON => Some("Moon"),
             EARTH => Some("Earth"),
             _ => None,
+        }
+    }
+
+    /// Converts the provided ID to its human name. Only works for the common celestial bodies. Should be compatible with CCSDS OEM names
+    pub fn id_to_celestial_name(name: &str) -> Result<NaifId, EphemerisError> {
+        match name {
+            "Mercury" => Ok(MERCURY),
+            "Venus" => Ok(VENUS),
+            "Earth" => Ok(EARTH),
+            "Mars" => Ok(MARS),
+            "Jupiter" => Ok(JUPITER),
+            "Saturn" => Ok(SATURN),
+            "Uranus" => Ok(URANUS),
+            "Neptune" => Ok(NEPTUNE),
+            "Pluto" => Ok(PLUTO),
+            "Moon" => Ok(MOON),
+            "Sun" => Ok(SUN),
+            "Earth-Moon Barycenter" => Ok(EARTH_MOON_BARYCENTER),
+            "Mars Barycenter" => Ok(MARS_BARYCENTER),
+            "Jupiter Barycenter" => Ok(JUPITER_BARYCENTER),
+            "Saturn Barycenter" => Ok(SATURN_BARYCENTER),
+            "Uranus Barycenter" => Ok(URANUS_BARYCENTER),
+            "Neptune Barycenter" => Ok(NEPTUNE_BARYCENTER),
+            "Pluto Barycenter" => Ok(PLUTO_BARYCENTER),
+            _ => Err(EphemerisError::NameToId {
+                name: name.to_string(),
+            }),
         }
     }
 }
@@ -81,7 +109,7 @@ pub mod celestial_objects {
 ///  edited by P. Kenneth Seidelmann. University Science
 ///  Books, 20 Edgehill Road, Mill Valley, CA 94941 (1992)
 pub mod orientations {
-    use crate::NaifId;
+    use crate::{orientations::OrientationError, NaifId};
     /// Earth mean equator, dynamical equinox of J2000. The root reference frame for SPICE.
     pub const J2000: NaifId = 1;
     /// Earth mean equator, dynamical equinox of B1950.
@@ -231,6 +259,34 @@ pub mod orientations {
             IAU_NEPTUNE => Some("IAU_NEPTUNE"),
             IAU_URANUS => Some("IAU_URANUS"),
             _ => None,
+        }
+    }
+
+    /// Converts the provided ID to its human name. Only works for the common celestial bodies. Should be compatible with CCSDS OEM names
+    pub fn id_to_orientation_name(name: &str) -> Result<NaifId, OrientationError> {
+        match name {
+            "J2000" | "ICRF" => Ok(J2000),
+            "B1950" => Ok(B1950),
+            "FK4" => Ok(FK4),
+            "Galactic" => Ok(GALACTIC),
+            "Mars IAU" => Ok(MARSIAU),
+            "ECLIPJ2000" => Ok(ECLIPJ2000),
+            "ECLIPB1950" => Ok(ECLIPB1950),
+            "IAU_MERCURY" => Ok(IAU_MERCURY),
+            "IAU_VENUS" => Ok(IAU_VENUS),
+            "IAU_EARTH" => Ok(IAU_EARTH),
+            "IAU_MOON" => Ok(IAU_MOON),
+            "MOON_ME" => Ok(MOON_ME),
+            "MOON_PA" => Ok(MOON_PA),
+            "ITRF93" => Ok(ITRF93),
+            "IAU_MARS" => Ok(IAU_MARS),
+            "IAU_JUPITER" => Ok(IAU_JUPITER),
+            "IAU_SATURN" => Ok(IAU_SATURN),
+            "IAU_NEPTUNE" => Ok(IAU_NEPTUNE),
+            "IAU_URANUS" => Ok(IAU_URANUS),
+            _ => Err(OrientationError::OrientationNameToId {
+                name: name.to_string(),
+            }),
         }
     }
 }

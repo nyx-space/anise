@@ -13,7 +13,6 @@ use hifitime::Epoch;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
-#[cfg(not(feature = "python"))]
 use crate::naif::daf::NAIFSummaryRecord;
 use crate::naif::pck::BPCSummaryRecord;
 use crate::naif::BPC;
@@ -185,9 +184,12 @@ impl Almanac {
 
         for maybe_bpc in self.bpc_data.iter().take(self.num_loaded_bpc()).rev() {
             let bpc = maybe_bpc.as_ref().unwrap();
-            if let Ok((summary, _)) = bpc.summary_from_id(id) {
-                // NOTE: We're iterating backward, so the correct BPC number is "total loaded" minus "current iteration".
-                summaries.push(*summary);
+            if let Ok(these_summaries) = bpc.data_summaries() {
+                for summary in these_summaries {
+                    if summary.id() == id {
+                        summaries.push(*summary);
+                    }
+                }
             }
         }
 

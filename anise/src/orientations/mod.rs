@@ -60,4 +60,6 @@ pub enum OrientationError {
         #[snafu(backtrace)]
         source: DataSetError,
     },
+    #[snafu(display("unknown orientation ID associated with `{name}`"))]
+    OrientationNameToId { name: String },
 }

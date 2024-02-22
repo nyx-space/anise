@@ -135,7 +135,7 @@ pub enum IntegrityError {
     },
 }
 
-#[derive(Clone, PartialEq, Debug, Snafu)]
+#[derive(Copy, Clone, PartialEq, Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub enum MathError {
     #[snafu(display("prevented a division by zero when {action}"))]
@@ -146,7 +146,7 @@ pub enum MathError {
     MaxIterationsReached { iter: usize, action: &'static str },
 }
 
-#[derive(Debug, Snafu, PartialEq)]
+#[derive(Copy, Clone, Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
 pub enum PhysicsError {
     /// Somehow you've entered code that should not be reachable, please file a bug.
@@ -193,6 +193,8 @@ pub enum PhysicsError {
     ParabolicSemiParam { p: f64 },
     #[snafu(display("hyperbolic true anomaly is physically impossible: {ta_deg} deg"))]
     HyperbolicTrueAnomaly { ta_deg: f64 },
+    #[snafu(display("calculation requires hyperbolic orbit, but its eccentricity is {ecc}"))]
+    NotHyperbolic { ecc: f64 },
     #[snafu(display("infinite value encountered when {action}"))]
     InfiniteValue { action: &'static str },
     #[snafu(display("{source}"))]
