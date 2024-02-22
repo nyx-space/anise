@@ -308,7 +308,6 @@ mod frame_ut {
     #[test]
     fn dhall_serde() {
         let serialized = serde_dhall::serialize(&EME2000)
-            // .type_annotation(&dhall_type)
             .static_type_annotation()
             .to_string()
             .unwrap();

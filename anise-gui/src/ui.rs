@@ -166,8 +166,14 @@ impl eframe::App for UiApp {
                                     ("UNKNOWN", 0)
                                 };
 
+                                let mut unload_file = false;
                                 ui.vertical(|ui| {
-                                    ui.label(format!("Inspecting {path}"));
+                                    ui.horizontal(|ui|{
+                                        ui.label(format!("Inspecting {path}"));
+                                        if ui.button("Close").clicked() {
+                                            unload_file = true;
+                                        }
+                                    });
                                     ui.horizontal(|ui| {
                                         ui.label("File type");
                                         ui.label(label);
@@ -649,6 +655,11 @@ impl eframe::App for UiApp {
                                             });
                                     }
                                 });
+
+                                if unload_file {
+                                    self.almanac = Almanac::default();
+                                    self.path = None;
+                                }
                             }
                         };
                     });

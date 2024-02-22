@@ -352,7 +352,7 @@ impl Orbit {
         })
     }
 
-    /// Builds the rotation matrix that rotations from this state's inertial frame to this state's RIC frame
+    /// Builds the rotation matrix that rotates from this state's inertial frame to this state's RIC frame
     ///
     /// # Frame warning
     /// If the stattion is NOT in an inertial frame, then this computation is INVALID.
@@ -381,7 +381,7 @@ impl Orbit {
         })
     }
 
-    /// Builds the rotation matrix that rotations from this state's inertial frame to this state's RCN frame (radial, cross, normal)
+    /// Builds the rotation matrix that rotates from this state's inertial frame to this state's RCN frame (radial, cross, normal)
     ///
     /// # Frame warning
     /// If the stattion is NOT in an inertial frame, then this computation is INVALID.
@@ -406,7 +406,7 @@ impl Orbit {
         })
     }
 
-    /// Builds the rotation matrix that rotations from this state's inertial frame to this state's RCN frame (radial, cross, normal)
+    /// Builds the rotation matrix that rotates from this state's inertial frame to this state's VNC frame (velocity, normal, cross)
     ///
     /// # Frame warning
     /// If the stattion is NOT in an inertial frame, then this computation is INVALID.
@@ -987,6 +987,7 @@ impl Orbit {
     }
 
     /// Returns the radius of periapse in kilometers for the provided turn angle of this hyperbolic orbit.
+    /// Returns an error if the orbit is not hyperbolic.
     pub fn vinf_periapsis_km(&self, turn_angle_degrees: f64) -> PhysicsResult<f64> {
         let ecc = self.ecc()?;
         if ecc <= 1.0 {
@@ -995,12 +996,12 @@ impl Orbit {
             })
         } else {
             let cos_rho = (0.5 * (PI - turn_angle_degrees.to_radians())).cos();
-
             Ok((1.0 / cos_rho - 1.0) * self.frame.mu_km3_s2()? / self.vmag_km_s().powi(2))
         }
     }
 
     /// Returns the turn angle in degrees for the provided radius of periapse passage of this hyperbolic orbit
+    /// Returns an error if the orbit is not hyperbolic.
     pub fn vinf_turn_angle_deg(&self, periapsis_km: f64) -> PhysicsResult<f64> {
         let ecc = self.ecc()?;
         if ecc <= 1.0 {
@@ -1016,6 +1017,7 @@ impl Orbit {
     }
 
     /// Returns the hyperbolic anomaly in degrees between 0 and 360.0
+    /// Returns an error if the orbit is not hyperbolic.
     pub fn hyperbolic_anomaly_deg(&self) -> PhysicsResult<f64> {
         let ecc = self.ecc()?;
         if ecc <= 1.0 {

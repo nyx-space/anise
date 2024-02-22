@@ -177,12 +177,12 @@ impl CartesianState {
         }
     }
 
-    /// Apply the provided delta-v (in km/s)
+    /// Adds the provided delta-v (in km/s) to the current velocity vector, mimicking an impulsive maneuver.
     pub fn apply_dv_km_s(&mut self, dv_km_s: Vector3) {
         self.velocity_km_s += dv_km_s;
     }
 
-    /// Copies this orbit after applying the provided delta-v (in km/s)
+    /// Copies this orbit after adding the provided delta-v (in km/s) to the velocity vector, mimicking an impulsive maneuver.
     pub fn with_dv_km_s(&self, dv_km_s: Vector3) -> Self {
         let mut me = *self;
         me.apply_dv_km_s(dv_km_s);

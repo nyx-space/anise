@@ -114,13 +114,6 @@ impl FromStr for MetaAlmanac {
 #[cfg_attr(feature = "python", pymethods)]
 #[allow(deprecated_in_future)]
 impl MetaAlmanac {
-    #[deprecated(
-        note = "use dumps instead, function was incorrectly named, will be removed in 0.4",
-        since = "0.3.1"
-    )]
-    pub fn dump(&self) -> Result<String, MetaAlmanacError> {
-        self.dumps()
-    }
     /// Dumps the configured Meta Almanac into a Dhall string.
     pub fn dumps(&self) -> Result<String, MetaAlmanacError> {
         // Define the Dhall type
@@ -154,13 +147,6 @@ impl MetaAlmanac {
     /// Loads the provided string as a Dhall configuration to build a MetaAlmanac
     #[classmethod]
     fn loads(_cls: &PyType, s: String) -> Result<Self, MetaAlmanacError> {
-        Self::from_str(&s)
-    }
-
-    /// DEPRECATED: use loads instead, function was incorrectly named, will be removed in 0.4
-    /// -- Loads the provided string as a Dhall configuration to build a MetaAlmanac
-    #[classmethod]
-    fn load(_cls: &PyType, s: String) -> Result<Self, MetaAlmanacError> {
         Self::from_str(&s)
     }
 

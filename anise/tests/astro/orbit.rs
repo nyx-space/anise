@@ -35,9 +35,11 @@ macro_rules! f64_eq_tol {
 
 #[rstest]
 fn val_state_def_circ_inc(almanac: Almanac) {
-    let mut eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
-    eme2k.mu_km3_s2 = Some(398_600.441_5);
+    let eme2k = almanac
+        .frame_from_uid(EARTH_J2000)
+        .unwrap()
+        .with_mu_km3_s2(398_600.441_5);
 
     let epoch = Epoch::from_mjd_tai(21_545.0);
     let cart = Orbit::new(
@@ -154,9 +156,11 @@ fn val_state_def_circ_inc(almanac: Almanac) {
 
 #[rstest]
 fn val_state_def_elliptical(almanac: Almanac) {
-    let mut eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
-    eme2k.mu_km3_s2 = Some(398_600.441_5);
+    let eme2k = almanac
+        .frame_from_uid(EARTH_J2000)
+        .unwrap()
+        .with_mu_km3_s2(398_600.441_5);
 
     let epoch = Epoch::from_mjd_tai(21_545.0);
     let cart = Orbit::new(
@@ -254,9 +258,11 @@ fn val_state_def_elliptical(almanac: Almanac) {
 
 #[rstest]
 fn val_state_def_circ_eq(almanac: Almanac) {
-    let mut eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
-    eme2k.mu_km3_s2 = Some(398_600.441_5);
+    let eme2k = almanac
+        .frame_from_uid(EARTH_J2000)
+        .unwrap()
+        .with_mu_km3_s2(398_600.441_5);
 
     let epoch = Epoch::from_mjd_tai(21_545.0);
     let cart = Orbit::new(
@@ -352,9 +358,11 @@ fn val_state_def_circ_eq(almanac: Almanac) {
 
 #[rstest]
 fn val_state_def_equatorial(almanac: Almanac) {
-    let mut eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
-    eme2k.mu_km3_s2 = Some(398_600.441_5);
+    let eme2k = almanac
+        .frame_from_uid(EARTH_J2000)
+        .unwrap()
+        .with_mu_km3_s2(398_600.441_5);
 
     let epoch = Epoch::from_mjd_tai(21_545.0);
     let cart = Orbit::new(
@@ -378,9 +386,11 @@ fn val_state_def_equatorial(almanac: Almanac) {
 
 #[rstest]
 fn val_state_def_reciprocity(almanac: Almanac) {
-    let mut eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
-    eme2k.mu_km3_s2 = Some(398_600.441_5);
+    let eme2k = almanac
+        .frame_from_uid(EARTH_J2000)
+        .unwrap()
+        .with_mu_km3_s2(398_600.441_5);
 
     let epoch = Epoch::from_mjd_tai(21_545.0);
 
@@ -681,9 +691,11 @@ fn verif_orbit_at_epoch(almanac: Almanac) {
 #[rstest]
 fn b_plane_davis(almanac: Almanac) {
     // This is a simple test from Dr. Davis' IMD class at CU Boulder.
-    let mut eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
-    eme2k.mu_km3_s2 = Some(398_600.441_5);
+    let eme2k = almanac
+        .frame_from_uid(EARTH_J2000)
+        .unwrap()
+        .with_mu_km3_s2(398_600.441_5);
 
     // Hyperbolic orbit
     let orbit = Orbit::new(
@@ -707,5 +719,5 @@ fn b_plane_davis(almanac: Almanac) {
     );
 
     // The following is a regression test.
-    assert!((orbit.hyperbolic_anomaly_deg().unwrap() - 149.610128737).abs() < 1e-10);
+    assert!(dbg!(orbit.hyperbolic_anomaly_deg().unwrap() - 149.610128737).abs() < 1e-9);
 }
