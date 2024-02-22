@@ -172,6 +172,13 @@ impl Frame {
         self.orient_origin_id_match(other.orientation_id)
     }
 
+    /// Removes the graviational parameter and the shape information from this frame.
+    /// Use this to prevent astrodynamical computations.
+    pub(crate) fn strip(&mut self) {
+        self.mu_km3_s2 = None;
+        self.shape = None;
+    }
+
     /// Returns the gravitational parameters of this frame, if defined
     pub fn mu_km3_s2(&self) -> PhysicsResult<f64> {
         self.mu_km3_s2.ok_or(PhysicsError::MissingFrameData {

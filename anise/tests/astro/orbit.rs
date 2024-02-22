@@ -135,6 +135,14 @@ fn val_state_def_circ_inc(almanac: Almanac) {
         "semi parameter"
     );
 
+    let ric_delta = kep.ric_difference(&kep).unwrap();
+    // Check that the frame is stripped
+    assert!(ric_delta.frame.mu_km3_s2.is_none());
+    assert!(ric_delta.frame.shape.is_none());
+    // Check that the difference in radius magnitude and velocity are both zero
+    assert_eq!(ric_delta.rmag_km(), 0.0);
+    assert_eq!(ric_delta.vmag_km_s(), 0.0);
+
     let kep = Orbit::keplerian(
         8_191.93, 0.2, 12.85, 306.614, 314.19, -99.887_7, epoch, eme2k,
     );

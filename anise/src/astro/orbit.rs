@@ -1054,6 +1054,23 @@ impl Orbit {
             self.frame,
         )
     }
+
+    /// Returns a Cartesian state representing the RIC difference between self and other, in position and velocity (with transport theorem).
+    /// Refer to dcm_from_ric_to_inertial for details on the RIC frame.
+    ///
+    /// # Algorithm
+    /// 1. Compute the RIC DCM of self
+    /// 2. Rotate self into the RIC frame
+    /// 3. Rotation other into the RIC frame
+    /// 4. Compute the difference between these two states
+    /// 5. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`
+    pub fn ric_difference(&self, other: &Self) -> PhysicsResult<Self> {
+        let self_in_ric = (self.dcm_from_ric_to_inertial()?.transpose() * self)?;
+        let other_in_ric = (self.dcm_from_ric_to_inertial()?.transpose() * other)?;
+        let mut rslt = (self_in_ric - other_in_ric)?;
+        rslt.frame.strip();
+        Ok(rslt)
+    }
 }
 
 #[allow(clippy::format_in_format_args)]

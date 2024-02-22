@@ -241,6 +241,14 @@ impl Mul<CartesianState> for DCM {
     type Output = PhysicsResult<CartesianState>;
 
     fn mul(self, rhs: CartesianState) -> Self::Output {
+        self * &rhs
+    }
+}
+
+impl Mul<&CartesianState> for DCM {
+    type Output = PhysicsResult<CartesianState>;
+
+    fn mul(self, rhs: &CartesianState) -> Self::Output {
         ensure!(
             self.from == rhs.frame.orientation_id,
             InvalidStateRotationSnafu {
@@ -251,7 +259,7 @@ impl Mul<CartesianState> for DCM {
         );
         let new_state = self.state_dcm() * rhs.to_cartesian_pos_vel();
 
-        let mut rslt = rhs;
+        let mut rslt = *rhs;
         rslt.radius_km = new_state.fixed_rows::<3>(0).to_owned().into();
         rslt.velocity_km_s = new_state.fixed_rows::<3>(3).to_owned().into();
         rslt.frame.orientation_id = self.to;
