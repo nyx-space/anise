@@ -86,14 +86,14 @@ impl eframe::App for UiApp {
         egui::TopBottomPanel::top("header").show(ctx, |ui| {
             ui.horizontal_centered(|ui| {
                 ui.vertical_centered(|ui| {
-                    ui.heading("ANISE v0.1");
+                    ui.heading("ANISE v0.3");
                     ui.label("A modern rewrite of NAIF SPICE");
                     ui.hyperlink_to(
                         "Take the user survey!",
                         "https://7ug5imdtt8v.typeform.com/to/qYDB14Hj",
                     );
                     ui.hyperlink("https://www.nyxspace.com");
-                    ui.label("ANISE is open-sourced under the Mozilla Public License");
+                    ui.label("ANISE is open-sourced under the Mozilla Public License 2.0");
                 });
             });
         });

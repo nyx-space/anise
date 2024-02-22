@@ -31,6 +31,17 @@ fn test_single_bpc() {
     let bpc = BPC::load("../data/earth_latest_high_prec.bpc").unwrap();
     let almanac = Almanac::from_bpc(bpc).unwrap();
 
+    // Test the BPC domain since a BPC is loaded here.
+    let (start, end) = almanac.bpc_domain(3000).unwrap();
+    assert!(
+        (start - Epoch::from_gregorian_utc_at_midnight(2000, 1, 1)).abs() < 1.0_f64.microseconds(),
+        "wrong start epoch"
+    );
+    assert!(
+        (end - Epoch::from_gregorian_utc_at_midnight(2023, 1, 11)).abs() < 50.0_f64.microseconds(),
+        "wrong end epoch"
+    );
+
     let epoch = Epoch::from_str("2019-03-01T04:02:51.0 ET").unwrap();
 
     let dcm = almanac.rotation_to_parent(EARTH_ITRF93, epoch).unwrap();

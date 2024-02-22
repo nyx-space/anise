@@ -114,7 +114,10 @@ impl FromStr for MetaAlmanac {
 #[cfg_attr(feature = "python", pymethods)]
 #[allow(deprecated_in_future)]
 impl MetaAlmanac {
-    #[deprecated(note = "use dumps instead, function was incorrectly named, will be removed in 0.4", since="0.3.1")]
+    #[deprecated(
+        note = "use dumps instead, function was incorrectly named, will be removed in 0.4",
+        since = "0.3.1"
+    )]
     pub fn dump(&self) -> Result<String, MetaAlmanacError> {
         self.dumps()
     }

@@ -14,7 +14,6 @@ use hifitime::Epoch;
 use pyo3::prelude::*;
 
 use crate::naif::daf::DAFError;
-#[cfg(not(feature = "python"))]
 use crate::naif::daf::NAIFSummaryRecord;
 use crate::naif::spk::summary::SPKSummaryRecord;
 use crate::naif::SPK;
@@ -194,9 +193,12 @@ impl Almanac {
         let mut summaries = vec![];
         for maybe_spk in self.spk_data.iter().take(self.num_loaded_spk()).rev() {
             let spk = maybe_spk.as_ref().unwrap();
-            if let Ok((summary, _)) = spk.summary_from_id(id) {
-                // NOTE: We're iterating backward, so the correct SPK number is "total loaded" minus "current iteration".
-                summaries.push(*summary);
+            if let Ok(these_summaries) = spk.data_summaries() {
+                for summary in these_summaries {
+                    if summary.id() == id {
+                        summaries.push(*summary);
+                    }
+                }
             }
         }
 
