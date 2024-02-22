@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anise::{
     almanac::Almanac, constants::orientations::orientation_name_from_id, errors::AlmanacError,
     naif::daf::NAIFSummaryRecord,
@@ -10,6 +12,8 @@ use hifitime::TimeScale;
 
 #[cfg(target_arch = "wasm32")]
 use poll_promise::Promise;
+
+use crate::aesthetix::{Aesthetix, StandardDark};
 
 #[cfg(target_arch = "wasm32")]
 type AlmanacFile = Option<(String, Vec<u8>)>;
@@ -36,6 +40,8 @@ impl UiApp {
         // Restore app state using cc.storage (requires the "persistence" feature).
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
+        _cc.egui_ctx
+            .set_style(Arc::new(StandardDark.custom_style()));
         Self::default()
     }
 

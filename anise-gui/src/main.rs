@@ -1,8 +1,8 @@
 #[allow(dead_code)]
 const LOG_VAR: &str = "ANISE_LOG";
 
+mod aesthetix;
 mod ui;
-
 use ui::UiApp;
 
 #[cfg(not(target_arch = "wasm32"))]

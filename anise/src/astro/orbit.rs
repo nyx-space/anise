@@ -562,7 +562,7 @@ impl Orbit {
     }
 
     /// Returns a copy of the state with a provided SMA added to the current one
-    pub fn add_sma(&self, delta_sma: f64) -> PhysicsResult<Self> {
+    pub fn add_sma_km(&self, delta_sma: f64) -> PhysicsResult<Self> {
         let mut me = *self;
         me.set_sma_km(me.sma_km()? + delta_sma)?;
         Ok(me)
