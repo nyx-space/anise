@@ -13,7 +13,7 @@ use hifitime::TimeScale;
 #[cfg(target_arch = "wasm32")]
 use poll_promise::Promise;
 
-use crate::aesthetix::{Aesthetix, StandardDark};
+use egui_aesthetix::{themes::StandardDark, Aesthetix};
 
 #[cfg(target_arch = "wasm32")]
 type AlmanacFile = Option<(String, Vec<u8>)>;
