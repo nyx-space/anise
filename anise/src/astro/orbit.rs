@@ -19,7 +19,7 @@ use crate::{
     math::{
         angles::{between_0_360, between_pm_180},
         cartesian::CartesianState,
-        rotation::{r1, r1_dot, r3, r3_dot, DCM},
+        rotation::{r1, r3, r3_dot, DCM},
         Matrix3, Vector3, Vector6,
     },
     prelude::{uuid_from_epoch, Frame},
@@ -360,17 +360,38 @@ impl Orbit {
     /// # Algorithm
     /// 1. Compute this state's RAAN, Inclination, and Argument of Latitude.
     /// 2. Build the DCM as R3(-RAAN) * R1(-INC) * R3(-AoL)
-    /// 3. Build the DCM derivative by \dot{R3(-RAAN)} * \dot{R1(-INC)} * \dot{R3(-AoL)}
+    /// 3. Build the DCM derivative by R3(-RAAN) * R1(-INC) * (\dot{ta} * \dot{R3(-AoL)})
     /// 4. Return the DCM structure
+    ///
+    /// ## Derivation for step 3
+    /// TL;DR: RAAN and INC are assumed constant for an infinitesimal time step, AoL is not.
+    ///
+    /// The time derivative of the product of the three matrices is the sum
+    /// of the derivative of each angle used for the rotation times the time derivative
+    /// of that rotation matrix.
+    /// Id est, item 3 can be written as:
+    /// ```text
+    /// \dot{RAAN} * \dot{R3(-RAAN)} * R1(-INC) * R3(-AoL) +
+    /// R3(-RAAN) * (\dot{INC} * \dot{R1(-INC)}) * R3(-AoL) +
+    /// R3(-RAAN) * R1(-INC) * (\dot{ta} * \dot{R3(-AoL)})
+    /// ```
+    /// However, for a small enough `dt`, `\dot{RAAN} = \dot{INC} = \dot{AoP} = 0 deg/s`.
+    /// That's effectively the raison d'être of Keplerian orbital elements: only the true anomaly varies.
+    /// In a small enough time step, the forces due to anything other than the central body can be safely ignored.
+    ///
+    /// Further,
+    /// ```text
+    /// \dot{AoL} = \dot{AoP + TA} = \dot{AoP} + \dot{TA} = \dot{TA}
+    /// ```
     pub fn dcm_from_ric_to_inertial(&self) -> PhysicsResult<DCM> {
         let rot_mat = r3(-self.raan_deg()?.to_radians())
             * r1(-self.inc_deg()?.to_radians())
             * r3(-self.aol_deg()?.to_radians());
 
         let rot_mat_dt = Some(
-            r3_dot(-self.raan_deg()?.to_radians())
-                * r1_dot(-self.inc_deg()?.to_radians())
-                * r3_dot(-self.aol_deg()?.to_radians()),
+            r3(-self.raan_deg()?.to_radians())
+                * r1(-self.inc_deg()?.to_radians())
+                * (self.ta_dot_deg_s()? * r3_dot(-self.aol_deg()?.to_radians())),
         );
 
         Ok(DCM {
@@ -798,6 +819,11 @@ impl Orbit {
         *self = me;
 
         Ok(())
+    }
+
+    /// Returns the time derivative of the true anomaly computed as the 360.0 degrees divided by the orbital period (in seconds).
+    pub fn ta_dot_deg_s(&self) -> PhysicsResult<f64> {
+        Ok(360.0 / self.period()?.to_seconds())
     }
 
     /// Returns a copy of the state with a new TA
