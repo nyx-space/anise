@@ -143,23 +143,21 @@ fn val_state_def_circ_inc(almanac: Almanac) {
     assert_eq!(ric_delta.rmag_km(), 0.0);
     assert_eq!(ric_delta.vmag_km_s(), 0.0);
 
+    // Check that the RIC computation is reciprocal.
+    let dcm = kep.dcm_from_ric_to_inertial().unwrap();
+    let kep_ric = (dcm.transpose() * kep).unwrap();
+    let kep_rtn = (dcm * kep_ric).unwrap();
+    f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
+    f64_eq!(
+        kep_rtn.rss_velocity_km_s(&kep).unwrap(),
+        0.0,
+        "RIC RSS velocity"
+    );
+
     let kep = Orbit::keplerian(
         8_191.93, 0.2, 12.85, 306.614, 314.19, -99.887_7, epoch, eme2k,
     );
     f64_eq!(kep.ta_deg().unwrap(), 260.1123, "ta");
-
-    // // Test that DCMs are valid
-    // let dcm = kep.dcm_from_traj_frame(Frame::VNC).unwrap();
-    // assert!(((dcm * dcm.transpose()).determinant() - 1.0).abs() < 1e-12);
-    // assert!(((dcm.transpose() * dcm).determinant() - 1.0).abs() < 1e-12);
-
-    // let dcm = kep.dcm_from_traj_frame(Frame::RCN).unwrap();
-    // assert!(((dcm * dcm.transpose()).determinant() - 1.0).abs() < 1e-12);
-    // assert!(((dcm.transpose() * dcm).determinant() - 1.0).abs() < 1e-12);
-
-    // let dcm = kep.dcm_from_traj_frame(Frame::RIC).unwrap();
-    // assert!(((dcm * dcm.transpose()).determinant() - 1.0).abs() < 1e-12);
-    // assert!(((dcm.transpose() * dcm).determinant() - 1.0).abs() < 1e-12);
 }
 
 #[rstest]
@@ -250,18 +248,24 @@ fn val_state_def_elliptical(almanac: Almanac) {
         "semi parameter"
     );
 
-    // Test that DCMs are valid
-    // let dcm = kep.dcm_from_traj_frame(Frame::VNC).unwrap();
-    // assert!(((dcm * dcm.transpose()).determinant() - 1.0).abs() < 1e-12);
-    // assert!(((dcm.transpose() * dcm).determinant() - 1.0).abs() < 1e-12);
+    let ric_delta = kep.ric_difference(&kep).unwrap();
+    // Check that the frame is stripped
+    assert!(ric_delta.frame.mu_km3_s2.is_none());
+    assert!(ric_delta.frame.shape.is_none());
+    // Check that the difference in radius magnitude and velocity are both zero
+    assert_eq!(ric_delta.rmag_km(), 0.0);
+    assert_eq!(ric_delta.vmag_km_s(), 0.0);
 
-    // let dcm = kep.dcm_from_traj_frame(Frame::RCN).unwrap();
-    // assert!(((dcm * dcm.transpose()).determinant() - 1.0).abs() < 1e-12);
-    // assert!(((dcm.transpose() * dcm).determinant() - 1.0).abs() < 1e-12);
-
-    // let dcm = kep.dcm_from_traj_frame(Frame::RIC).unwrap();
-    // assert!(((dcm * dcm.transpose()).determinant() - 1.0).abs() < 1e-12);
-    // assert!(((dcm.transpose() * dcm).determinant() - 1.0).abs() < 1e-12);
+    // Check that the RIC computation is reciprocal.
+    let dcm = kep.dcm_from_ric_to_inertial().unwrap();
+    let kep_ric = (dcm.transpose() * kep).unwrap();
+    let kep_rtn = (dcm * kep_ric).unwrap();
+    f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
+    f64_eq!(
+        kep_rtn.rss_velocity_km_s(&kep).unwrap(),
+        0.0,
+        "RIC RSS velocity"
+    );
 }
 
 #[rstest]
@@ -350,18 +354,24 @@ fn val_state_def_circ_eq(almanac: Almanac) {
         "semi parameter"
     );
 
-    // Test that DCMs are valid
-    // let dcm = kep.dcm_from_traj_frame(Frame::VNC).unwrap();
-    // assert!(((dcm * dcm.transpose()).determinant() - 1.0).abs() < 1e-12);
-    // assert!(((dcm.transpose() * dcm).determinant() - 1.0).abs() < 1e-12);
+    let ric_delta = kep.ric_difference(&kep).unwrap();
+    // Check that the frame is stripped
+    assert!(ric_delta.frame.mu_km3_s2.is_none());
+    assert!(ric_delta.frame.shape.is_none());
+    // Check that the difference in radius magnitude and velocity are both zero
+    assert_eq!(ric_delta.rmag_km(), 0.0);
+    assert_eq!(ric_delta.vmag_km_s(), 0.0);
 
-    // let dcm = kep.dcm_from_traj_frame(Frame::RCN).unwrap();
-    // assert!(((dcm * dcm.transpose()).determinant() - 1.0).abs() < 1e-12);
-    // assert!(((dcm.transpose() * dcm).determinant() - 1.0).abs() < 1e-12);
-
-    // let dcm = kep.dcm_from_traj_frame(Frame::RIC).unwrap();
-    // assert!(((dcm * dcm.transpose()).determinant() - 1.0).abs() < 1e-12);
-    // assert!(((dcm.transpose() * dcm).determinant() - 1.0).abs() < 1e-12);
+    // Check that the RIC computation is reciprocal.
+    let dcm = kep.dcm_from_ric_to_inertial().unwrap();
+    let kep_ric = (dcm.transpose() * kep).unwrap();
+    let kep_rtn = (dcm * kep_ric).unwrap();
+    f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
+    f64_eq!(
+        kep_rtn.rss_velocity_km_s(&kep).unwrap(),
+        0.0,
+        "RIC RSS velocity"
+    );
 }
 
 #[rstest]
@@ -390,6 +400,29 @@ fn val_state_def_equatorial(almanac: Almanac) {
     f64_eq!(cart.raan_deg().unwrap(), 360.0, "raan");
     f64_eq!(cart.aop_deg().unwrap(), 177.9999736473912, "aop");
     f64_eq!(cart.ta_deg().unwrap(), 2.650_826_247_094_554e-5, "ta");
+
+    let ric_delta = cart.ric_difference(&cart).unwrap();
+    // Check that the frame is stripped
+    assert!(ric_delta.frame.mu_km3_s2.is_none());
+    assert!(ric_delta.frame.shape.is_none());
+    // Check that the difference in radius magnitude and velocity are both zero
+    assert_eq!(ric_delta.rmag_km(), 0.0);
+    assert_eq!(ric_delta.vmag_km_s(), 0.0);
+
+    // Check that the RIC computation is reciprocal.
+    let dcm = cart.dcm_from_ric_to_inertial().unwrap();
+    let cart_ric = (dcm.transpose() * cart).unwrap();
+    let cart_rtn = (dcm * cart_ric).unwrap();
+    f64_eq!(
+        cart_rtn.rss_radius_km(&cart).unwrap(),
+        0.0,
+        "RIC RSS radius"
+    );
+    f64_eq!(
+        cart_rtn.rss_velocity_km_s(&cart).unwrap(),
+        0.0,
+        "RIC RSS velocity"
+    );
 }
 
 #[rstest]
