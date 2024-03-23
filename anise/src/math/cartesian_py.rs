@@ -24,6 +24,7 @@ impl CartesianState {
     ///
     /// **Units:** km, km, km, km/s, km/s, km/s
 
+    #[allow(clippy::too_many_arguments)]
     #[classmethod]
     pub fn from_cartesian(
         _cls: &PyType,
@@ -43,6 +44,7 @@ impl CartesianState {
     ///
     /// **Units:** km, km, km, km/s, km/s, km/s
 
+    #[allow(clippy::too_many_arguments)]
     #[new]
     pub fn py_new(
         x_km: f64,
@@ -146,6 +148,7 @@ impl CartesianState {
         }
     }
 
+    #[allow(clippy::type_complexity)]
     #[cfg(feature = "python")]
     fn __getnewargs__(&self) -> Result<(f64, f64, f64, f64, f64, f64, Epoch, Frame), PyErr> {
         Ok((
