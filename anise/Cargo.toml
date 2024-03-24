@@ -36,8 +36,8 @@ tabled = { workspace = true }
 
 [dev-dependencies]
 rust-spice = "0.7.6"
-parquet = "50.0.0"
-arrow = "50.0.0"
+parquet = "51.0.0"
+arrow = "51.0.0"
 criterion = "0.5"
 iai = "0.1"
 polars = { version = "0.38.1", features = ["lazy", "parquet"] }
