@@ -19,9 +19,7 @@ jobs:
         steps:
             - uses: actions/checkout@v4
         
-            - uses: dtolnay/rust-toolchain@master
-              with:
-                toolchain: 1.74.0
+            - uses: dtolnay/rust-toolchain@stable
         
             - name: Install packages (Linux)
               if: runner.os == 'Linux'
@@ -46,9 +44,7 @@ jobs:
         runs-on: windows-latest
         steps:
             - uses: actions/checkout@v4
-            - uses: dtolnay/rust-toolchain@master
-              with:
-                toolchain: 1.74.0
+            - uses: dtolnay/rust-toolchain@stable
     
             - name: Set up cargo cache
               uses: Swatinem/rust-cache@v2
