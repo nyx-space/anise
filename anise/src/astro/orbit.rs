@@ -370,8 +370,8 @@ impl Orbit {
     /// If the pre or post states cannot be computed, then the time derivative of the DCM will _not_ be set.
     /// Further note that most astrodynamics tools do *not* account for the time derivative in the RIC frame.
     pub fn dcm_from_ric_to_inertial(&self) -> PhysicsResult<DCM> {
-        let rot_mat_dt = if let Ok(pre) = self.at_epoch(self.epoch - Unit::Second * 1) {
-            if let Ok(post) = self.at_epoch(self.epoch + Unit::Second * 1) {
+        let rot_mat_dt = if let Ok(pre) = self.at_epoch(self.epoch - Unit::Millisecond * 1) {
+            if let Ok(post) = self.at_epoch(self.epoch + Unit::Millisecond * 1) {
                 let dcm_pre = pre.dcm3x3_from_ric_to_inertial()?;
                 let dcm_post = post.dcm3x3_from_ric_to_inertial()?;
                 Some(0.5 * dcm_post.rot_mat - 0.5 * dcm_pre.rot_mat)
