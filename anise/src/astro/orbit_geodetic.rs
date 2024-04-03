@@ -115,6 +115,7 @@ impl CartesianState {
 #[cfg_attr(feature = "python", pymethods)]
 impl CartesianState {
     /// Creates a new Orbit from the provided semi-major axis altitude in kilometers
+    #[allow(clippy::too_many_arguments)]
     #[cfg(feature = "python")]
     #[classmethod]
     pub fn from_keplerian_altitude(
@@ -132,6 +133,7 @@ impl CartesianState {
     }
 
     /// Creates a new Orbit from the provided altitudes of apoapsis and periapsis, in kilometers
+    #[allow(clippy::too_many_arguments)]
     #[cfg(feature = "python")]
     #[classmethod]
     pub fn from_keplerian_apsis_altitude(

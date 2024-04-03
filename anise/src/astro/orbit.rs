@@ -19,7 +19,7 @@ use crate::{
     math::{
         angles::{between_0_360, between_pm_180},
         cartesian::CartesianState,
-        rotation::{r1, r3, r3_dot, DCM},
+        rotation::DCM,
         Matrix3, Vector3, Vector6,
     },
     prelude::{uuid_from_epoch, Frame},
@@ -28,7 +28,7 @@ use crate::{
 use core::f64::consts::PI;
 use core::f64::EPSILON;
 use core::fmt;
-use hifitime::{Duration, Epoch, TimeUnits};
+use hifitime::{Duration, Epoch, TimeUnits, Unit};
 use log::{error, info, warn};
 use snafu::ensure;
 
@@ -355,48 +355,61 @@ impl Orbit {
     /// Builds the rotation matrix that rotates from this state's inertial frame to this state's RIC frame
     ///
     /// # Frame warning
-    /// If the stattion is NOT in an inertial frame, then this computation is INVALID.
+    /// If the state is NOT in an inertial frame, then this computation is INVALID.
     ///
     /// # Algorithm
-    /// 1. Compute this state's RAAN, Inclination, and Argument of Latitude.
-    /// 2. Build the DCM as R3(-RAAN) * R1(-INC) * R3(-AoL)
-    /// 3. Build the DCM derivative by R3(-RAAN) * R1(-INC) * (\dot{ta} * \dot{R3(-AoL)})
-    /// 4. Return the DCM structure
+    /// 1. Compute the state data one millisecond before and one millisecond assuming two body dynamics
+    /// 2. Compute the DCM for this state, and the pre and post states
+    /// 3. Build the c vector as the normalized orbital momentum vector
+    /// 4. Build the i vector as the cross product of \hat{r} and c
+    /// 5. Build the RIC DCM as a 3x3 of the columns [\hat{r}, \hat{i}, \hat{c}], for the post, post, and current states
+    /// 6. Compute the difference between the DCMs of the pre and post states, to build the DCM time derivative
+    /// 7. Return the DCM structure with a 6x6 state DCM.
     ///
-    /// ## Derivation for step 3
-    /// TL;DR: RAAN and INC are assumed constant for an infinitesimal time step, AoL is not.
-    ///
-    /// The time derivative of the product of the three matrices is the sum
-    /// of the derivative of each angle used for the rotation times the time derivative
-    /// of that rotation matrix.
-    /// Id est, item 3 can be written as:
-    /// ```text
-    /// \dot{RAAN} * \dot{R3(-RAAN)} * R1(-INC) * R3(-AoL) +
-    /// R3(-RAAN) * (\dot{INC} * \dot{R1(-INC)}) * R3(-AoL) +
-    /// R3(-RAAN) * R1(-INC) * (\dot{ta} * \dot{R3(-AoL)})
-    /// ```
-    /// However, for a small enough `dt`, `\dot{RAAN} = \dot{INC} = \dot{AoP} = 0 deg/s`.
-    /// That's effectively the raison d'être of Keplerian orbital elements: only the true anomaly varies.
-    /// In a small enough time step, the forces due to anything other than the central body can be safely ignored.
-    ///
-    /// Further,
-    /// ```text
-    /// \dot{AoL} = \dot{AoP + TA} = \dot{AoP} + \dot{TA} = \dot{TA}
-    /// ```
+    /// # Note on the time derivative
+    /// If the pre or post states cannot be computed, then the time derivative of the DCM will _not_ be set.
+    /// Further note that most astrodynamics tools do *not* account for the time derivative in the RIC frame.
     pub fn dcm_from_ric_to_inertial(&self) -> PhysicsResult<DCM> {
-        let rot_mat = r3(-self.raan_deg()?.to_radians())
-            * r1(-self.inc_deg()?.to_radians())
-            * r3(-self.aol_deg()?.to_radians());
+        let rot_mat_dt = if let Ok(pre) = self.at_epoch(self.epoch - Unit::Millisecond * 1) {
+            if let Ok(post) = self.at_epoch(self.epoch + Unit::Millisecond * 1) {
+                let dcm_pre = pre.dcm3x3_from_ric_to_inertial()?;
+                let dcm_post = post.dcm3x3_from_ric_to_inertial()?;
+                Some(0.5 * dcm_post.rot_mat - 0.5 * dcm_pre.rot_mat)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
 
-        let rot_mat_dt = Some(
-            r3(-self.raan_deg()?.to_radians())
-                * r1(-self.inc_deg()?.to_radians())
-                * (self.ta_dot_deg_s()? * r3_dot(-self.aol_deg()?.to_radians())),
-        );
+        Ok(DCM {
+            rot_mat: self.dcm3x3_from_ric_to_inertial()?.rot_mat,
+            rot_mat_dt,
+            from: uuid_from_epoch(self.frame.orientation_id, self.epoch),
+            to: self.frame.orientation_id,
+        })
+    }
+
+    /// Builds the rotation matrix that rotates from this state's inertial frame to this state's RIC frame
+    ///
+    /// # Frame warning
+    /// If the state is NOT in an inertial frame, then this computation is INVALID.
+    ///
+    /// # Algorithm
+    /// 1. Build the c vector as the normalized orbital momentum vector
+    /// 2. Build the i vector as the cross product of \hat{r} and c
+    /// 3. Build the RIC DCM as a 3x3 of the columns [\hat{r}, \hat{i}, \hat{c}]
+    /// 4. Return the DCM structure **without** accounting for the transport theorem.
+    pub fn dcm3x3_from_ric_to_inertial(&self) -> PhysicsResult<DCM> {
+        let r_hat = self.r_hat();
+        let c_hat = self.hvec()? / self.hmag()?;
+        let i_hat = r_hat.cross(&c_hat);
+
+        let rot_mat = Matrix3::from_columns(&[r_hat, i_hat, c_hat]);
 
         Ok(DCM {
             rot_mat,
-            rot_mat_dt,
+            rot_mat_dt: None,
             from: uuid_from_epoch(self.frame.orientation_id, self.epoch),
             to: self.frame.orientation_id,
         })
