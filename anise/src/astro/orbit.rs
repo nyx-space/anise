@@ -358,7 +358,7 @@ impl Orbit {
     /// If the state is NOT in an inertial frame, then this computation is INVALID.
     ///
     /// # Algorithm
-    /// 1. Compute the state data one second before and one second assuming two body dynamics
+    /// 1. Compute the state data one millisecond before and one millisecond assuming two body dynamics
     /// 2. Compute the DCM for this state, and the pre and post states
     /// 3. Build the c vector as the normalized orbital momentum vector
     /// 4. Build the i vector as the cross product of \hat{r} and c
