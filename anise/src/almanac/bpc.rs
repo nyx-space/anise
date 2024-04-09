@@ -8,15 +8,18 @@
  * Documentation: https://nyxspace.com/
  */
 
+use std::collections::HashMap;
+
 use hifitime::Epoch;
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
+use snafu::ensure;
 
 use crate::naif::daf::NAIFSummaryRecord;
 use crate::naif::pck::BPCSummaryRecord;
 use crate::naif::BPC;
-use crate::orientations::OrientationError;
+use crate::orientations::{NoOrientationsLoadedSnafu, OrientationError};
 use crate::{naif::daf::DAFError, NaifId};
 
 use super::{Almanac, MAX_LOADED_BPCS};
@@ -222,6 +225,39 @@ impl Almanac {
             .end_epoch();
 
         Ok((start, end))
+    }
+
+    /// Returns a map of each loaded BPC ID to its domain validity.
+    ///
+    /// # Warning
+    /// This function performs a memory allocation.
+    pub fn bpc_domains(&self) -> Result<HashMap<NaifId, (Epoch, Epoch)>, OrientationError> {
+        ensure!(self.num_loaded_bpc() > 0, NoOrientationsLoadedSnafu);
+
+        let mut domains = HashMap::new();
+        for maybe_bpc in self.bpc_data.iter().take(self.num_loaded_bpc()).rev() {
+            let bpc = maybe_bpc.as_ref().unwrap();
+            if let Ok(these_summaries) = bpc.data_summaries() {
+                for summary in these_summaries {
+                    let this_id = summary.id();
+                    match domains.get_mut(&this_id) {
+                        Some((ref mut cur_start, ref mut cur_end)) => {
+                            if *cur_start > summary.start_epoch() {
+                                *cur_start = summary.start_epoch();
+                            }
+                            if *cur_end < summary.end_epoch() {
+                                *cur_end = summary.end_epoch();
+                            }
+                        }
+                        None => {
+                            domains.insert(this_id, (summary.start_epoch(), summary.end_epoch()));
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(domains)
     }
 }
 
