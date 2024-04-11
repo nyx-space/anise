@@ -8,11 +8,15 @@
  * Documentation: https://nyxspace.com/
  */
 
+use std::collections::HashMap;
+
 use hifitime::Epoch;
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
+use snafu::ensure;
 
+use crate::ephemerides::NoEphemerisLoadedSnafu;
 use crate::naif::daf::DAFError;
 use crate::naif::daf::NAIFSummaryRecord;
 use crate::naif::spk::summary::SPKSummaryRecord;
@@ -189,6 +193,9 @@ impl Almanac {
 #[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
     /// Returns a vector of the summaries whose ID matches the desired `id`, in the order in which they will be used, i.e. in reverse loading order.
+    ///
+    /// # Warning
+    /// This function performs a memory allocation.
     pub fn spk_summaries(&self, id: NaifId) -> Result<Vec<SPKSummaryRecord>, EphemerisError> {
         let mut summaries = vec![];
         for maybe_spk in self.spk_data.iter().take(self.num_loaded_spk()).rev() {
@@ -232,6 +239,39 @@ impl Almanac {
             .end_epoch();
 
         Ok((start, end))
+    }
+
+    /// Returns a map of each loaded SPK ID to its domain validity.
+    ///
+    /// # Warning
+    /// This function performs a memory allocation.
+    pub fn spk_domains(&self) -> Result<HashMap<NaifId, (Epoch, Epoch)>, EphemerisError> {
+        ensure!(self.num_loaded_spk() > 0, NoEphemerisLoadedSnafu);
+
+        let mut domains = HashMap::new();
+        for maybe_spk in self.spk_data.iter().take(self.num_loaded_spk()).rev() {
+            let spk = maybe_spk.as_ref().unwrap();
+            if let Ok(these_summaries) = spk.data_summaries() {
+                for summary in these_summaries {
+                    let this_id = summary.id();
+                    match domains.get_mut(&this_id) {
+                        Some((ref mut cur_start, ref mut cur_end)) => {
+                            if *cur_start > summary.start_epoch() {
+                                *cur_start = summary.start_epoch();
+                            }
+                            if *cur_end < summary.end_epoch() {
+                                *cur_end = summary.end_epoch();
+                            }
+                        }
+                        None => {
+                            domains.insert(this_id, (summary.start_epoch(), summary.end_epoch()));
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(domains)
     }
 }
 

@@ -21,6 +21,9 @@ use crate::naif::daf::datatypes::{HermiteSetType13, LagrangeSetType9, Type2Cheby
 use crate::naif::daf::{DAFError, DafDataType, NAIFDataSet};
 use crate::prelude::Frame;
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 impl Almanac {
     /// Returns the position vector and velocity vector of the `source` with respect to its parent in the ephemeris at the provided epoch,
     /// Units are those used in the SPK, typically distances are in kilometers and velocities in kilometers per second.
@@ -91,7 +94,10 @@ impl Almanac {
 
         Ok((pos_km, vel_km_s, new_frame))
     }
+}
 
+#[cfg_attr(feature = "python", pymethods)]
+impl Almanac {
     /// Performs the GEOMETRIC translation to the parent. Use translate_from_to for aberration.
     pub fn translate_to_parent(
         &self,

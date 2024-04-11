@@ -28,10 +28,13 @@ fn de400_domain() {
 
     assert!(almanac.spk_domain(-1012).is_err());
     assert!(almanac.spk_domain(399).is_ok());
+    assert!(almanac.spk_domains().is_ok());
 
     // No BPC loaded, so it should error.
     assert!(almanac.bpc_domain(-1).is_err());
     assert!(almanac.bpc_domain(399).is_err());
+
+    assert!(almanac.bpc_domains().is_err());
 }
 
 #[test]
