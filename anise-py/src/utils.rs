@@ -16,7 +16,7 @@ use anise::structure::planetocentric::ellipsoid::Ellipsoid;
 use pyo3::{prelude::*, py_run};
 
 pub(crate) fn register_utils(py: Python<'_>, parent_module: &PyModule) -> PyResult<()> {
-    let sm = PyModule::new(py, "_anise.utils")?;
+    let sm = PyModule::new(py, "utils")?;
     sm.add_class::<Ellipsoid>()?;
     sm.add_function(wrap_pyfunction!(convert_fk, sm)?)?;
     sm.add_function(wrap_pyfunction!(convert_tpc, sm)?)?;
