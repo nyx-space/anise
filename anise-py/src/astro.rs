@@ -19,7 +19,7 @@ use anise::frames::Frame;
 use super::constants::register_constants;
 
 pub(crate) fn register_astro(py: Python<'_>, parent_module: &PyModule) -> PyResult<()> {
-    let sm = PyModule::new(py, "_anise.astro")?;
+    let sm = PyModule::new(py, "astro")?;
     sm.add_class::<Ellipsoid>()?;
     sm.add_class::<Frame>()?;
     sm.add_class::<Orbit>()?;

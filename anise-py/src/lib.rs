@@ -38,7 +38,8 @@ fn anise(py: Python, m: &PyModule) -> PyResult<()> {
 /// Reexport hifitime as anise.time
 fn register_time_module(py: Python<'_>, parent_module: &PyModule) -> PyResult<()> {
     pyo3_log::init();
-    let sm = PyModule::new(py, "_anise.time")?;
+
+    let sm = PyModule::new(parent_module.py(), "time")?;
 
     sm.add_class::<Epoch>()?;
     sm.add_class::<TimeScale>()?;

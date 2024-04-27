@@ -64,15 +64,27 @@ impl Almanac {
                 action: "computing SEZ DCM for AER",
             })?;
 
-        let tx_sez = sez_dcm.transpose() * tx.radius_km;
+        let tx_sez = (sez_dcm.transpose() * tx)
+            .with_context(|_| EphemerisPhysicsSnafu { action: "" })
+            .with_context(|_| EphemerisSnafu {
+                action: "transforming transmitter to SEZ",
+            })?;
 
         // Convert the receiver into the transmitter frame.
         let rx_in_tx_frame = self.transform_to(rx, tx.frame, None)?;
         // Convert into SEZ frame
-        let rx_sez = sez_dcm.transpose() * rx_in_tx_frame.radius_km;
+        let rx_sez = (sez_dcm.transpose() * rx_in_tx_frame)
+            .with_context(|_| EphemerisPhysicsSnafu { action: "" })
+            .with_context(|_| EphemerisSnafu {
+                action: "transforming received to SEZ",
+            })?;
 
         // Compute the range ρ.
-        let rho_sez = rx_sez - tx_sez;
+        let rho_sez = rx_sez.radius_km - tx_sez.radius_km;
+
+        // Compute the range-rate \dot ρ
+        let range_rate_km_s =
+            rho_sez.dot(&(rx_sez.velocity_km_s - tx_sez.velocity_km_s)) / rho_sez.norm();
 
         // Finally, compute the elevation (math is the same as declination)
         // Source: Vallado, section 4.4.3
@@ -90,6 +102,7 @@ impl Almanac {
             azimuth_deg,
             elevation_deg,
             range_km: rho_sez.norm(),
+            range_rate_km_s,
         })
     }
 }
@@ -227,7 +240,7 @@ mod ut_aer {
                 assert_eq!(
                     format!("{aer}"),
                     format!(
-                        "{}: az.: 313.599990 deg    el.: 7.237568 deg    range: 91457.271742 km",
+                        "{}: az.: 313.599990 deg    el.: 7.237568 deg    range: 91457.271742 km    range-rate: -12.396849 km/s",
                         state.epoch
                     )
                 );
