@@ -31,7 +31,9 @@ pub mod orbit_geodetic;
 
 pub type PhysicsResult<T> = Result<T, PhysicsError>;
 
-/// A structure that stores the result of Azimuth, Elevation, and Range calculation.
+/// A structure that stores the result of Azimuth, Elevation, Range, Range rate calculation.
+///
+/// # Algorithm
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(get_all, set_all))]
@@ -41,6 +43,7 @@ pub struct AzElRange {
     pub azimuth_deg: f64,
     pub elevation_deg: f64,
     pub range_km: f64,
+    pub range_rate_km_s: f64,
 }
 
 #[cfg_attr(feature = "python", pymethods)]
@@ -53,12 +56,19 @@ impl AzElRange {
     /// Initializes a new AzElRange instance
     #[cfg(feature = "python")]
     #[new]
-    pub fn py_new(epoch: Epoch, azimuth_deg: f64, elevation_deg: f64, range_km: f64) -> Self {
+    pub fn py_new(
+        epoch: Epoch,
+        azimuth_deg: f64,
+        elevation_deg: f64,
+        range_km: f64,
+        range_rate_km_s: f64,
+    ) -> Self {
         Self {
             epoch,
             azimuth_deg,
             elevation_deg,
             range_km,
+            range_rate_km_s,
         }
     }
 
@@ -88,8 +98,8 @@ impl Display for AzElRange {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{}: az.: {:.6} deg    el.: {:.6} deg    range: {:.6} km",
-            self.epoch, self.azimuth_deg, self.elevation_deg, self.range_km
+            "{}: az.: {:.6} deg    el.: {:.6} deg    range: {:.6} km    range-rate: {:.6} km/s",
+            self.epoch, self.azimuth_deg, self.elevation_deg, self.range_km, self.range_rate_km_s
         )
     }
 }
