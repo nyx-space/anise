@@ -143,6 +143,60 @@ impl<const ENTRIES: usize> LookUpTable<ENTRIES> {
         rtn
     }
 
+    /// Change the ID of a given entry to the new ID
+    ///
+    /// This will return an error if the current ID is not in the LUT, or if the new ID is already in the LUT.
+    pub fn reid(&mut self, current_id: i32, new_id: i32) -> Result<(), LutError> {
+        if let Some(entry) = self.by_id.swap_remove(&current_id) {
+            // We can unwrap the insertion because we just removed something.
+            self.by_id.insert(new_id, entry).unwrap();
+            Ok(())
+        } else {
+            Err(LutError::UnknownId { id: current_id })
+        }
+    }
+
+    /// Removes this ID from the LUT if it's present.
+    ///
+    /// If this item was inserted with a name, it will rename accessible by the name.
+    pub fn rmid(&mut self, id: i32) -> Result<(), LutError> {
+        if self.by_id.remove(&id).is_none() {
+            Err(LutError::UnknownId { id })
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Change the ID of a given entry to the new ID
+    ///
+    /// This will return an error if the current ID is not in the LUT, or if the new ID is already in the LUT.
+    pub fn rename(&mut self, current_name: &str, new_name: &str) -> Result<(), LutError> {
+        if let Some(entry) = self.by_name.swap_remove(&current_name.try_into().unwrap()) {
+            // We can unwrap the insertion because we just removed something.
+            self.by_name
+                .insert(new_name.try_into().unwrap(), entry)
+                .unwrap();
+            Ok(())
+        } else {
+            Err(LutError::UnknownName {
+                name: current_name.try_into().unwrap(),
+            })
+        }
+    }
+
+    /// Removes this ID from the LUT if it's present.
+    ///
+    /// If this item was inserted with a name, it will rename accessible by the name.
+    pub fn rmname(&mut self, name: &str) -> Result<(), LutError> {
+        if self.by_name.remove(&name.try_into().unwrap()).is_none() {
+            Err(LutError::UnknownName {
+                name: name.try_into().unwrap(),
+            })
+        } else {
+            Ok(())
+        }
+    }
+
     pub(crate) fn check_integrity(&self) -> bool {
         if self.by_id.is_empty() || self.by_name.is_empty() {
             // If either map is empty, the LUT is integral because there cannot be
