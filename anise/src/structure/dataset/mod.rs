@@ -163,6 +163,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
         }
     }
 
+    /// Get a copy of the data with that ID, if that ID is in the lookup table
     pub fn get_by_id(&self, id: NaifId) -> Result<T, DataSetError> {
         if let Some(entry) = self.lut.by_id.get(&id) {
             // Found the ID
@@ -186,6 +187,39 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
         }
     }
 
+    /// Mutates this dataset to change the value of the entry with that ID to the new provided value.
+    /// This will return an error if the name is not in the lookup table.
+    /// Note that this function requires a new heap allocation to change the underlying dataset
+    pub fn set_by_id(&mut self, id: NaifId, new_value: &T) -> Result<(), DataSetError> {
+        if let Some(entry) = self.lut.by_id.get(&id) {
+            let mut bytes = self.bytes.to_vec();
+
+            let these_bytes = bytes
+                .get_mut(entry.start_idx as usize..)
+                .ok_or_else(|| entry.decoding_error())
+                .with_context(|_| DataDecodingSnafu {
+                    action: "setting by ID",
+                })?;
+
+            if let Err(err) = new_value.encode_to_slice(these_bytes) {
+                return Err(DataSetError::DataDecoding {
+                    action: "encoding data set when setting by ID",
+                    source: DecodingError::DecodingDer { err },
+                });
+            }
+
+            self.bytes = Bytes::from(bytes);
+
+            Ok(())
+        } else {
+            Err(DataSetError::DataSetLut {
+                action: "setting by ID",
+                source: LutError::UnknownId { id },
+            })
+        }
+    }
+
+    /// Get a copy of the data with that name, if that name is in the lookup table
     pub fn get_by_name(&self, name: &str) -> Result<T, DataSetError> {
         if let Some(entry) = self.lut.by_name.get(&name.try_into().unwrap()) {
             // Found the name
@@ -203,7 +237,41 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
                 })
         } else {
             Err(DataSetError::DataSetLut {
-                action: "fetching by ID",
+                action: "fetching by name",
+                source: LutError::UnknownName {
+                    name: name.try_into().unwrap(),
+                },
+            })
+        }
+    }
+
+    /// Mutates this dataset to change the value of the entry with that name to the new provided value.
+    /// This will return an error if the name is not in the lookup table.
+    /// Note that this function requires a new heap allocation to change the underlying dataset
+    pub fn set_by_name(&mut self, name: &str, new_value: &T) -> Result<(), DataSetError> {
+        if let Some(entry) = self.lut.by_name.get(&name.try_into().unwrap()) {
+            let mut bytes = self.bytes.to_vec();
+
+            let these_bytes = bytes
+                .get_mut(entry.start_idx as usize..)
+                .ok_or_else(|| entry.decoding_error())
+                .with_context(|_| DataDecodingSnafu {
+                    action: "setting by name",
+                })?;
+
+            if let Err(err) = new_value.encode_to_slice(these_bytes) {
+                return Err(DataSetError::DataDecoding {
+                    action: "encoding data set when setting by name",
+                    source: DecodingError::DecodingDer { err },
+                });
+            }
+
+            self.bytes = Bytes::from(bytes);
+
+            Ok(())
+        } else {
+            Err(DataSetError::DataSetLut {
+                action: "setting by name",
                 source: LutError::UnknownName {
                     name: name.try_into().unwrap(),
                 },
@@ -419,8 +487,8 @@ mod dataset_ut {
             ..Default::default()
         };
         dataset.set_crc32();
-        // And encode it.
 
+        // And encode it.
         let mut buf = vec![];
         dataset.encode_to_vec(&mut buf).unwrap();
 
@@ -439,7 +507,33 @@ mod dataset_ut {
         assert_eq!(srp_repr, srp_sc);
 
         // And check that we get an error if the data is wrong.
-        assert!(repr_dec.get_by_id(0).is_err())
+        assert!(repr_dec.get_by_id(0).is_err());
+
+        // Check that we can modify it.
+        let orig_dataset = dataset.clone();
+
+        // Grab a copy of the original data
+        let mut sc = dataset.get_by_name("SRP spacecraft").unwrap();
+        sc.srp_data.as_mut().unwrap().coeff_reflectivity = 1.1;
+        dataset.set_by_name("SRP spacecraft", &sc).unwrap();
+        // Ensure that we've modified only that entry
+        assert_eq!(
+            dataset.get_by_name("Full spacecraft").unwrap(),
+            orig_dataset.get_by_name("Full spacecraft").unwrap(),
+            "immutable value was modified"
+        );
+        // Ensure that we've modified the entry we wanted to modify
+        assert_eq!(
+            dataset
+                .get_by_name("SRP spacecraft")
+                .unwrap()
+                .srp_data
+                .unwrap()
+                .coeff_reflectivity,
+            1.1,
+            "value was not modified"
+        );
+        assert!(dataset.set_by_name("Unavailable SC", &sc).is_err());
     }
 
     #[test]
@@ -490,7 +584,7 @@ mod dataset_ut {
             .push_into(&mut buf, &srp_sc, None, Some("ID less SRP spacecraft"))
             .unwrap();
 
-        let dataset = builder.finalize(buf).unwrap();
+        let mut dataset = builder.finalize(buf).unwrap();
 
         // And encode it.
 
@@ -515,5 +609,16 @@ mod dataset_ut {
 
         // And check that we get an error if the data is wrong.
         assert!(repr_dec.get_by_id(0).is_err());
+
+        // Check that we can set by ID
+        let mut repr = dataset.get_by_id(-50).unwrap();
+        repr.mass_kg.as_mut().unwrap().dry_mass_kg = 100.5;
+        dataset.set_by_id(-50, &repr).unwrap();
+        assert_eq!(
+            dataset.get_by_id(-50).unwrap().mass_kg.unwrap().dry_mass_kg,
+            100.5,
+            "value was not modified"
+        );
+        assert!(dataset.set_by_id(111, &repr).is_err());
     }
 }
