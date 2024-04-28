@@ -243,7 +243,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
             // Search the names for that same entry.
             for (name, name_entry) in &self.lut.by_name.clone() {
                 if name_entry == &entry {
-                    self.lut.rmname(&name).with_context(|_| DataSetLutSnafu {
+                    self.lut.rmname(name).with_context(|_| DataSetLutSnafu {
                         action: "removing by ID",
                     })?;
                     break;
