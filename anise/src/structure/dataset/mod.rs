@@ -7,7 +7,7 @@
  *
  * Documentation: https://nyxspace.com/
  */
-use self::error::DataDecodingSnafu;
+use self::error::{DataDecodingSnafu, DataSetLutSnafu};
 use super::{
     lookuptable::{LookUpTable, LutError},
     metadata::Metadata,
@@ -47,7 +47,7 @@ pub use datatype::DataSetType;
 pub use error::DataSetError;
 
 /// The kind of data that can be encoded in a dataset
-pub trait DataSetT: Encode + for<'a> Decode<'a> {
+pub trait DataSetT: Default + Encode + for<'a> Decode<'a> {
     const NAME: &'static str;
 }
 
@@ -188,7 +188,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
     }
 
     /// Mutates this dataset to change the value of the entry with that ID to the new provided value.
-    /// This will return an error if the name is not in the lookup table.
+    /// This will return an error if the ID is not in the lookup table.
     /// Note that this function requires a new heap allocation to change the underlying dataset
     pub fn set_by_id(&mut self, id: NaifId, new_value: &T) -> Result<(), DataSetError> {
         if let Some(entry) = self.lut.by_id.get(&id) {
@@ -214,6 +214,48 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
         } else {
             Err(DataSetError::DataSetLut {
                 action: "setting by ID",
+                source: LutError::UnknownId { id },
+            })
+        }
+    }
+
+    /// Mutates this dataset to remove the provided ID from the LUT and the dataset, removing also the lookup from its name if set.
+    /// This will return an error if the ID is not in the lookup table.
+    /// Note that this function requires a new heap allocation to change the underlying dataset
+    pub fn rm_by_id(&mut self, id: NaifId) -> Result<(), DataSetError> {
+        if let Some(entry) = self.lut.by_id.remove(&id) {
+            let mut bytes = self.bytes.to_vec();
+
+            let these_bytes = bytes
+                .get_mut(entry.start_idx as usize..)
+                .ok_or_else(|| entry.decoding_error())
+                .with_context(|_| DataDecodingSnafu {
+                    action: "removing by ID",
+                })?;
+
+            if let Err(err) = T::default().encode_to_slice(these_bytes) {
+                return Err(DataSetError::DataDecoding {
+                    action: "encoding default data set when removing by ID",
+                    source: DecodingError::DecodingDer { err },
+                });
+            }
+
+            // Search the names for that same entry.
+            for (name, name_entry) in &self.lut.by_name.clone() {
+                if name_entry == &entry {
+                    self.lut.rmname(&name).with_context(|_| DataSetLutSnafu {
+                        action: "removing by ID",
+                    })?;
+                    break;
+                }
+            }
+
+            self.bytes = Bytes::from(bytes);
+
+            Ok(())
+        } else {
+            Err(DataSetError::DataSetLut {
+                action: "removing by ID",
                 source: LutError::UnknownId { id },
             })
         }
@@ -279,9 +321,52 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
         }
     }
 
+    /// Mutates this dataset to remove the provided name from the LUT and the dataset, removing also the lookup from its ID if set.
+    /// This will return an error if the name is not in the lookup table.
+    /// Note that this function requires a new heap allocation to change the underlying dataset
+    pub fn rm_by_name(&mut self, name: &str) -> Result<(), DataSetError> {
+        if let Some(entry) = self.lut.by_name.remove(&name.try_into().unwrap()) {
+            let mut bytes = self.bytes.to_vec();
+
+            let these_bytes = bytes
+                .get_mut(entry.start_idx as usize..)
+                .ok_or_else(|| entry.decoding_error())
+                .with_context(|_| DataDecodingSnafu {
+                    action: "removing by name",
+                })?;
+
+            if let Err(err) = T::default().encode_to_slice(these_bytes) {
+                return Err(DataSetError::DataDecoding {
+                    action: "encoding default data set when removing by name",
+                    source: DecodingError::DecodingDer { err },
+                });
+            }
+
+            // Search the names for that same entry.
+            for (id, id_entry) in &self.lut.by_id.clone() {
+                if id_entry == &entry {
+                    self.lut.rmid(*id).with_context(|_| DataSetLutSnafu {
+                        action: "removing by name",
+                    })?;
+                    break;
+                }
+            }
+
+            self.bytes = Bytes::from(bytes);
+
+            Ok(())
+        } else {
+            Err(DataSetError::DataSetLut {
+                action: "removing by ID",
+                source: LutError::UnknownName {
+                    name: name.try_into().unwrap(),
+                },
+            })
+        }
+    }
+
     /// Saves this dataset to the provided file
     /// If overwrite is set to false, and the filename already exists, this function will return an error.
-
     pub fn save_as(&self, filename: &PathBuf, overwrite: bool) -> Result<(), DataSetError> {
         use log::{info, warn};
 
@@ -534,6 +619,36 @@ mod dataset_ut {
             "value was not modified"
         );
         assert!(dataset.set_by_name("Unavailable SC", &sc).is_err());
+
+        // Test renaming by name
+        dataset
+            .lut
+            .rename("SRP spacecraft", "Renamed SRP spacecraft")
+            .unwrap();
+        // Calling this a second time will lead to an error
+        assert!(dataset
+            .lut
+            .rename("SRP spacecraft", "Renamed SRP spacecraft")
+            .is_err());
+        // Calling the original will lead to an error
+        assert!(dataset.get_by_name("SRP spacecraft").is_err());
+        // Check that we can fetch that data as we modified it.
+        assert_eq!(
+            dataset
+                .get_by_name("Renamed SRP spacecraft")
+                .unwrap()
+                .srp_data
+                .unwrap()
+                .coeff_reflectivity,
+            1.1,
+            "value not reachable after rename"
+        );
+        // Finally remove that ID all together and make sure it is not reachable.
+        assert!(dataset.lut.rmname("Renamed SRP spacecraft").is_ok());
+        // Second call fails
+        assert!(dataset.lut.rmname("Renamed SRP spacecraft").is_err());
+        // Fetch fails
+        assert!(dataset.get_by_name("Renamed SRP spacecraft").is_err());
     }
 
     #[test]
@@ -620,5 +735,39 @@ mod dataset_ut {
             "value was not modified"
         );
         assert!(dataset.set_by_id(111, &repr).is_err());
+        // Test renaming by ID
+        dataset.lut.reid(-50, -52).unwrap();
+        // Calling this a second time will lead to an error
+        assert!(dataset.lut.reid(-50, -52).is_err());
+        // Calling the original will lead to an error
+        assert!(dataset.get_by_id(-50).is_err());
+        // Check that we can fetch that data as we modified it.
+        assert_eq!(
+            dataset.get_by_id(-52).unwrap().mass_kg.unwrap().dry_mass_kg,
+            100.5,
+            "value not reachable after reid"
+        );
+        // Finally remove that ID all together and make sure it is not reachable.
+        assert!(dataset.lut.rmid(-52).is_ok());
+        // Second call fails
+        assert!(dataset.lut.rmid(-52).is_err());
+        // Fetch fails
+        assert!(dataset.get_by_id(-52).is_err());
+
+        // Remove by ID
+        assert!(dataset.rm_by_id(-20).is_ok(), "could not remove by id");
+        // Check that the associated name is no reachable
+        assert!(
+            dataset.get_by_name("SRP spacecraft").is_err(),
+            "still reachable by name"
+        );
+
+        // Remove by name
+        assert!(
+            dataset.rm_by_name("Full spacecraft").is_ok(),
+            "could not remove by name"
+        );
+        // Check that the associated name is no reachable
+        assert!(dataset.get_by_id(-52).is_err(), "still reachable by id");
     }
 }
