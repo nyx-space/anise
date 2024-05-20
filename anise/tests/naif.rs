@@ -174,26 +174,30 @@ fn test_spk_mut_summary_name() {
     let _ = pretty_env_logger::try_init();
 
     let path = "../data/variable-seg-size-hermite.bsp";
+    let output_path = "../data/rename-test.bsp";
 
-    let mut example_data = SPK::load(path).unwrap().to_mutable();
+    let mut my_spk = SPK::load(path).unwrap().to_mutable();
 
-    let summary_size = example_data.file_record().unwrap().summary_size();
+    let summary_size = my_spk.file_record().unwrap().summary_size();
 
-    let mut name_rcrd = example_data.name_record().unwrap();
-    name_rcrd.set_nth_name(0, summary_size, "BLAH BLAH");
-    example_data.set_name_record(name_rcrd).unwrap();
+    let mut name_rcrd = my_spk.name_record().unwrap();
 
-    dbg!(example_data
-        .name_record()
-        .unwrap()
-        .nth_name(0, summary_size));
+    // Rename all summaries
+    for sno in 0..my_spk.data_summaries().unwrap().len() {
+        name_rcrd.set_nth_name(
+            sno,
+            summary_size,
+            &format!("Renamed #{sno} (ANISE by Nyx Space)"),
+        );
+    }
+    my_spk.set_name_record(name_rcrd).unwrap();
 
-    // example_data.persist(path).unwrap();
+    my_spk.persist(&output_path).unwrap();
 
     // Check that the written file is correct.
-    let reloaded = SPK::load(path).unwrap();
+    let reloaded = SPK::load(output_path).unwrap();
     assert_eq!(
         reloaded.name_record().unwrap().nth_name(0, summary_size),
-        "BLAH BLAH"
+        "Renamed #0 (ANISE by Nyx Space)"
     );
 }
