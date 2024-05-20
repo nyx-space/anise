@@ -159,30 +159,6 @@ fn test_spk_load_bytes() {
     println!("{}", size_of_val(&spice));
 }
 
-// The `load` function copies the bytes, so it's only available with std
-
-#[test]
-fn test_spk_rename_summary() {
-    let _ = pretty_env_logger::try_init();
-
-    let path = "../data/variable-seg-size-hermite.bsp";
-
-    let example_data = SPK::load(path).unwrap();
-
-    example_data.name_record().unwrap().set_nth_name(
-        0,
-        example_data.file_record().unwrap().summary_size(),
-        "BLAH BLAH",
-    );
-
-    dbg!(example_data
-        .name_record()
-        .unwrap()
-        .nth_name(0, example_data.file_record().unwrap().summary_size()));
-
-    example_data.persist("../target/rename-test.bsp").unwrap();
-}
-
 #[test]
 fn test_invalid_load() {
     let _ = pretty_env_logger::try_init();
@@ -191,4 +167,33 @@ fn test_invalid_load() {
     assert!(BPC::load("i_dont_exist.bpc").is_err());
     // Check that a file that's too small does not panic
     assert!(BPC::load("../.gitattributes").is_err());
+}
+
+#[test]
+fn test_spk_mut_summary_name() {
+    let _ = pretty_env_logger::try_init();
+
+    let path = "../data/variable-seg-size-hermite.bsp";
+
+    let mut example_data = SPK::load(path).unwrap().to_mutable();
+
+    let summary_size = example_data.file_record().unwrap().summary_size();
+
+    let mut name_rcrd = example_data.name_record().unwrap();
+    name_rcrd.set_nth_name(0, summary_size, "BLAH BLAH");
+    example_data.set_name_record(name_rcrd).unwrap();
+
+    dbg!(example_data
+        .name_record()
+        .unwrap()
+        .nth_name(0, summary_size));
+
+    // example_data.persist(path).unwrap();
+
+    // Check that the written file is correct.
+    let reloaded = SPK::load(path).unwrap();
+    assert_eq!(
+        reloaded.name_record().unwrap().nth_name(0, summary_size),
+        "BLAH BLAH"
+    );
 }

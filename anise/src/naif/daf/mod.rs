@@ -21,6 +21,7 @@ pub(crate) const RCRD_LEN: usize = 1024;
 #[allow(clippy::module_inception)]
 pub mod daf;
 mod data_types;
+pub mod mut_daf;
 pub use data_types::DataType as DafDataType;
 pub mod file_record;
 pub mod name_record;
