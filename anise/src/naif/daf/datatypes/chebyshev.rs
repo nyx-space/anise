@@ -34,6 +34,27 @@ impl<'a> Type2ChebyshevSet<'a> {
     pub fn degree(&self) -> usize {
         (self.rsize - 2) / 3 - 1
     }
+
+    fn spline_idx<S: NAIFSummaryRecord>(
+        &self,
+        epoch: Epoch,
+        summary: &S,
+    ) -> Result<usize, InterpolationError> {
+        if epoch < summary.start_epoch() || epoch > summary.end_epoch() {
+            // No need to go any further.
+            return Err(InterpolationError::NoInterpolationData {
+                req: epoch,
+                start: summary.start_epoch(),
+                end: summary.end_epoch(),
+            });
+        }
+
+        let window_duration_s = self.interval_length.to_seconds();
+
+        let ephem_start_delta_s = epoch.to_et_seconds() - summary.start_epoch_et_s();
+
+        Ok(((ephem_start_delta_s / window_duration_s) as usize + 1).min(self.num_records))
+    }
 }
 
 impl<'a> fmt::Display for Type2ChebyshevSet<'a> {
@@ -126,46 +147,10 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         epoch: Epoch,
         summary: &S,
     ) -> Result<(Vector3, Vector3), InterpolationError> {
-        if epoch < summary.start_epoch() || epoch > summary.end_epoch() {
-            // No need to go any further.
-            return Err(InterpolationError::NoInterpolationData {
-                req: epoch,
-                start: summary.start_epoch(),
-                end: summary.end_epoch(),
-            });
-        }
+        let spline_idx = self.spline_idx(epoch, summary)?;
 
         let window_duration_s = self.interval_length.to_seconds();
-
         let radius_s = window_duration_s / 2.0;
-        let ephem_start_delta_s = epoch.to_et_seconds() - summary.start_epoch_et_s();
-
-        /*
-                CSPICE CODE
-                https://github.com/ChristopherRabotin/cspice/blob/26c72936fb7ff6f366803a1419b7cc3c61e0b6e5/src/cspice/spkr02.c#L272
-
-            i__1 = end - 3;
-            dafgda_(handle, &i__1, &end, record);
-            init = record[0];
-            intlen = record[1];
-            recsiz = (integer) record[2];
-            nrec = (integer) record[3];
-            recno = (integer) ((*et - init) / intlen) + 1;
-            recno = min(recno,nrec);
-
-        /*     Compute the address of the desired record. */
-
-            recadr = (recno - 1) * recsiz + begin;
-
-        /*     Along with the record, return the size of the record. */
-
-            record[0] = record[2];
-            i__1 = recadr + recsiz - 1;
-            dafgda_(handle, &recadr, &i__1, &record[1]);
-                */
-
-        let spline_idx =
-            ((ephem_start_delta_s / window_duration_s) as usize + 1).min(self.num_records);
 
         // Now, build the X, Y, Z data from the record data.
         let record = self
@@ -202,6 +187,31 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         }
 
         Ok(())
+    }
+
+    fn truncate<S: NAIFSummaryRecord>(
+        mut self,
+        summary: &S,
+        new_start: Option<Epoch>,
+        new_end: Option<Epoch>,
+    ) -> Result<Self, InterpolationError> {
+        let start_idx = if let Some(start) = new_start {
+            self.spline_idx(start, summary)? - 1
+        } else {
+            0
+        };
+
+        let end_idx = if let Some(end) = new_end {
+            self.spline_idx(end, summary)? - 1
+        } else {
+            self.num_records - 1
+        };
+
+        self.record_data = &self.record_data[start_idx * self.rsize..(end_idx + 1) * self.rsize];
+        self.num_records = (self.record_data.len() / self.rsize) - 1;
+        self.init_epoch = self.nth_record(0).unwrap().midpoint_epoch() - 0.5 * self.interval_length;
+
+        Ok(self)
     }
 }
 

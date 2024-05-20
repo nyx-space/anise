@@ -13,7 +13,7 @@ use std::mem::size_of_val;
 use anise::{
     file2heap,
     naif::{
-        daf::{datatypes::Type2ChebyshevSet, DAF},
+        daf::{datatypes::Type2ChebyshevSet, NAIFDataSet, DAF},
         pck::BPCSummaryRecord,
         spk::summary::SPKSummaryRecord,
         Endian,
@@ -200,4 +200,21 @@ fn test_spk_mut_summary_name() {
         reloaded.name_record().unwrap().nth_name(0, summary_size),
         "Renamed #0 (ANISE by Nyx Space)"
     );
+}
+
+#[test]
+fn test_spk_truncate_cheby() {
+    let _ = pretty_env_logger::try_init();
+
+    let path = "../data/de440s.bsp";
+
+    let mut my_spk = SPK::load(path).unwrap().to_mutable();
+
+    let summary = my_spk.data_summaries().unwrap()[0];
+    let segment = my_spk.nth_data::<Type2ChebyshevSet>(0).unwrap();
+    println!("{segment}");
+    let updated_segment = segment
+        .truncate(&summary, Some(summary.start_epoch() + Unit::Day * 15), None)
+        .unwrap();
+    println!("{updated_segment}");
 }

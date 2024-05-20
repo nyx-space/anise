@@ -86,6 +86,29 @@ pub trait NAIFDataSet<'a>: Sized + Display + PartialEq {
 
     /// Checks the integrity of this data set, returns an error if the data has issues.
     fn check_integrity(&self) -> Result<(), IntegrityError>;
+
+    /// Returns a copy of Self where the data corresponds to the start and end times provided.
+    /// If either is set to None, then that data will not be modified.
+    ///
+    /// # Rounding of truncation
+    /// The exact new start and new end times may not match the exact data. This function only truncates
+    /// the available data and does not make any modifications to it (i.e. it does not recompute the interpolation coefficients).
+    ///
+    /// # Error
+    /// This function will return an error if the new start is before the current start or if the new end is after the current end of the data.
+    /// That's because it can't make up new data.
+    fn truncate<S: NAIFSummaryRecord>(
+        self,
+        summary: &S,
+        new_start: Option<Epoch>,
+        new_end: Option<Epoch>,
+    ) -> Result<Self, InterpolationError> {
+        /*
+        IDEA:
+        # Chebyshev: grab the spline index for the provided start time and stop time.
+         */
+        unimplemented!("truncation is not available yet")
+    }
 }
 
 pub trait NAIFDataRecord<'a>: Display {
