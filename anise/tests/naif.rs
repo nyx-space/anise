@@ -208,7 +208,7 @@ fn test_spk_truncate_cheby() {
 
     let path = "../data/de440s.bsp";
 
-    let mut my_spk = SPK::load(path).unwrap().to_mutable();
+    let my_spk = SPK::load(path).unwrap();
 
     // Check that we correctly throw an error if the nth data does not exist.
     assert!(my_spk.nth_data::<Type2ChebyshevSet>(100).is_err());
@@ -221,8 +221,13 @@ fn test_spk_truncate_cheby() {
     let updated_segment = segment
         .truncate(&summary, Some(summary.start_epoch() + Unit::Day * 16), None)
         .unwrap();
+
     assert!(
         updated_segment.init_epoch - orig_init_epoch <= Unit::Day * 16,
         "truncated too much data"
     );
+
+    // Now we can grab a mutable version of the SPK and modify it.
+    let mut my_spk_mut = my_spk.to_mutable();
+    assert!(my_spk_mut.set_nth_data(0, updated_segment).is_ok());
 }

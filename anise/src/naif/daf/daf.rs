@@ -418,10 +418,8 @@ impl<R: NAIFSummaryRecord> DAF<R> {
 
     /// Copies the underlying bytes of this DAF into a MutDAF, enabling modification of the DAF.
     pub fn to_mutable(&self) -> MutDAF<R> {
-        let mut bytes = BytesMut::with_capacity(0);
-        bytes.extend_from_slice(&self.bytes);
         MutDAF {
-            bytes,
+            bytes: BytesMut::from_iter(&self.bytes),
             crc32_checksum: self.crc32_checksum,
             _daf_type: PhantomData,
         }

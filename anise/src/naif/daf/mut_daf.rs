@@ -79,7 +79,7 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
 
     /// Provided a name that is in the summary, return its full data, if name is available.
     pub fn set_nth_data<'a, S: NAIFDataSet<'a>>(
-        &'a mut self,
+        &mut self,
         idx: usize,
         new_data: S,
     ) -> Result<(), DAFError> {
@@ -102,24 +102,17 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
         let start = (this_summary.start_index() - 1) * DBL_SIZE;
         let end = this_summary.end_index() * DBL_SIZE;
 
-        let size = self.bytes.len();
+        // let original_size = (end - start) as isize;
 
-        match self
-            .bytes
-            .get_mut(start..end)
-            .ok_or_else(|| DecodingError::InaccessibleBytes { start, end, size })
-        {
-            Ok(data_bytes) => {
-                data_bytes.copy_from_slice(new_data.to_f64_daf_array().as_bytes());
-            }
-            Err(source) => {
-                return Err(DAFError::DecodingData {
-                    kind: R::NAME,
-                    idx,
-                    source,
-                })
-            }
-        };
+        let new_data_bytes = new_data.to_f64_daf_array();
+        // let new_size = new_data_bytes.len() as isize;
+
+        // Update the bytes
+        let mut new_bytes = self.bytes.to_vec();
+        new_bytes.splice(start..end, new_data_bytes.as_bytes().iter().cloned());
+        self.bytes = BytesMut::from_iter(new_bytes);
+
+        // TODO: Update the indexes of all the summaries...
 
         Ok(())
     }
