@@ -95,7 +95,7 @@ impl Almanac {
             warn!("object nearly overhead (el = {elevation_deg:.6} deg), azimuth may be incorrect");
         }
         // For the elevation, we need to perform a quadrant check because it's measured from 0 to 360 degrees.
-        let azimuth_deg = between_0_360((-rho_sez.y.atan2(rho_sez.x)).to_degrees());
+        let azimuth_deg = between_0_360((rho_sez.y.atan2(-rho_sez.x)).to_degrees());
 
         Ok(AzElRange {
             epoch: tx.epoch,
@@ -240,7 +240,7 @@ mod ut_aer {
                 assert_eq!(
                     format!("{aer}"),
                     format!(
-                        "{}: az.: 313.599990 deg    el.: 7.237568 deg    range: 91457.271742 km    range-rate: -12.396849 km/s",
+                        "{}: az.: 133.599990 deg    el.: 7.237568 deg    range: 91457.271742 km    range-rate: -12.396849 km/s",
                         state.epoch
                     )
                 );
