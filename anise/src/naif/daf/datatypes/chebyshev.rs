@@ -202,7 +202,7 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         };
 
         let end_idx = if let Some(end) = new_end {
-            self.spline_idx(end, summary)? - 1
+            self.spline_idx(end, summary)?
         } else {
             self.num_records - 1
         };

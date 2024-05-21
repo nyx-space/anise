@@ -210,11 +210,19 @@ fn test_spk_truncate_cheby() {
 
     let mut my_spk = SPK::load(path).unwrap().to_mutable();
 
+    // Check that we correctly throw an error if the nth data does not exist.
+    assert!(my_spk.nth_data::<Type2ChebyshevSet>(100).is_err());
+
     let summary = my_spk.data_summaries().unwrap()[0];
     let segment = my_spk.nth_data::<Type2ChebyshevSet>(0).unwrap();
-    println!("{segment}");
+
+    let orig_init_epoch = segment.init_epoch;
+
     let updated_segment = segment
-        .truncate(&summary, Some(summary.start_epoch() + Unit::Day * 15), None)
+        .truncate(&summary, Some(summary.start_epoch() + Unit::Day * 16), None)
         .unwrap();
-    println!("{updated_segment}");
+    assert!(
+        updated_segment.init_epoch - orig_init_epoch <= Unit::Day * 16,
+        "truncated too much data"
+    );
 }

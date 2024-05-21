@@ -76,6 +76,11 @@ pub trait NAIFDataSet<'a>: Sized + Display + PartialEq {
     /// Builds this dataset given a slice of f64 data
     fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError>;
 
+    /// Builds the DAF array representing this data
+    fn to_f64_daf_array(&self) -> Vec<f64> {
+        unimplemented!("this dataset cannot yet be converted to a new DAF array")
+    }
+
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError>;
 
     fn evaluate<S: NAIFSummaryRecord>(
@@ -103,10 +108,6 @@ pub trait NAIFDataSet<'a>: Sized + Display + PartialEq {
         new_start: Option<Epoch>,
         new_end: Option<Epoch>,
     ) -> Result<Self, InterpolationError> {
-        /*
-        IDEA:
-        # Chebyshev: grab the spline index for the provided start time and stop time.
-         */
         unimplemented!("truncation is not available yet")
     }
 }
@@ -210,6 +211,8 @@ pub enum DAFError {
         dtype: DafDataType,
         kind: &'static str,
     },
+    #[snafu(display("DAF/{kind}: data index {idx} is invalid"))]
+    InvalidIndex { kind: &'static str, idx: usize },
 }
 
 // Manual implementation of PartialEq because IOError does not derive it, sadly.

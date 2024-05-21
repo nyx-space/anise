@@ -11,16 +11,20 @@
 use core::{marker::PhantomData, ops::Deref};
 
 use bytes::BytesMut;
+use log::trace;
 use snafu::ResultExt;
 use zerocopy::AsBytes;
 
 use crate::{
     errors::{DecodingError, InputOutputError},
     file2heap,
+    naif::daf::file_record::FileRecordError,
+    DBL_SIZE,
 };
 
 use super::{
-    daf::MutDAF, DAFError, DecodingNameSnafu, IOSnafu, NAIFSummaryRecord, NameRecord, RCRD_LEN,
+    daf::MutDAF, DAFError, DecodingNameSnafu, IOSnafu, NAIFDataSet, NAIFSummaryRecord, NameRecord,
+    RCRD_LEN,
 };
 
 macro_rules! io_imports {
@@ -70,6 +74,53 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
             })
             .with_context(|_| DecodingNameSnafu { kind: R::NAME })?;
         rcrd_bytes.copy_from_slice(new_name_record.as_bytes());
+        Ok(())
+    }
+
+    /// Provided a name that is in the summary, return its full data, if name is available.
+    pub fn set_nth_data<'a, S: NAIFDataSet<'a>>(
+        &'a mut self,
+        idx: usize,
+        new_data: S,
+    ) -> Result<(), DAFError> {
+        let this_summary =
+            self.data_summaries()?
+                .get(idx)
+                .ok_or_else(|| DAFError::InvalidIndex {
+                    idx,
+                    kind: S::DATASET_NAME,
+                })?;
+        // Grab the data in native endianness (TODO: How to support both big and little endian?)
+        trace!("{idx} -> {this_summary:?}");
+        if self.file_record()?.is_empty() {
+            return Err(DAFError::FileRecord {
+                kind: R::NAME,
+                source: FileRecordError::EmptyRecord,
+            });
+        }
+
+        let start = (this_summary.start_index() - 1) * DBL_SIZE;
+        let end = this_summary.end_index() * DBL_SIZE;
+
+        let size = self.bytes.len();
+
+        match self
+            .bytes
+            .get_mut(start..end)
+            .ok_or_else(|| DecodingError::InaccessibleBytes { start, end, size })
+        {
+            Ok(data_bytes) => {
+                data_bytes.copy_from_slice(new_data.to_f64_daf_array().as_bytes());
+            }
+            Err(source) => {
+                return Err(DAFError::DecodingData {
+                    kind: R::NAME,
+                    idx,
+                    source,
+                })
+            }
+        };
+
         Ok(())
     }
 }
