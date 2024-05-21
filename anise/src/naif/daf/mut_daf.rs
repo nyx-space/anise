@@ -18,7 +18,7 @@ use zerocopy::AsBytes;
 use crate::{
     errors::{DecodingError, InputOutputError},
     file2heap,
-    naif::daf::file_record::FileRecordError,
+    naif::daf::{file_record::FileRecordError, MutInterpolationSnafu},
     DBL_SIZE,
 };
 
@@ -104,7 +104,12 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
 
         // let original_size = (end - start) as isize;
 
-        let new_data_bytes = new_data.to_f64_daf_array();
+        let new_data_bytes = new_data
+            .to_f64_daf_vec()
+            .with_context(|_| MutInterpolationSnafu {
+                kind: R::NAME,
+                action: "building new DAF vector",
+            })?;
         // let new_size = new_data_bytes.len() as isize;
 
         // Update the bytes

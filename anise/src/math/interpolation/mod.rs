@@ -45,4 +45,9 @@ pub enum InterpolationError {
     MissingInterpolationData { epoch: Epoch },
     #[snafu(display("interpolation data corrupted: {what}"))]
     CorruptedData { what: &'static str },
+    #[snafu(display("{op} is unsupported for {kind}"))]
+    UnsupportedOperation {
+        kind: &'static str,
+        op: &'static str,
+    },
 }

@@ -76,7 +76,7 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
     type RecordKind = Type2ChebyshevRecord<'a>;
     const DATASET_NAME: &'static str = "Chebyshev Type 2";
 
-    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError> {
+    fn from_f64_slice(slice: &'a [f64]) -> Result<Self, DecodingError> {
         ensure!(
             slice.len() >= 5,
             TooFewDoublesSnafu {
@@ -314,7 +314,7 @@ mod chebyshev_ut {
 
     #[test]
     fn too_small() {
-        if Type2ChebyshevSet::from_slice_f64(&[0.1, 0.2, 0.3, 0.4])
+        if Type2ChebyshevSet::from_f64_slice(&[0.1, 0.2, 0.3, 0.4])
             != Err(DecodingError::TooFewDoubles {
                 dataset: "Chebyshev Type 2",
                 got: 4,
@@ -327,7 +327,7 @@ mod chebyshev_ut {
 
     #[test]
     fn subnormal() {
-        match Type2ChebyshevSet::from_slice_f64(&[0.0, f64::INFINITY, 0.0, 0.0, 0.0]) {
+        match Type2ChebyshevSet::from_f64_slice(&[0.0, f64::INFINITY, 0.0, 0.0, 0.0]) {
             Ok(_) => panic!("test failed on invalid init_epoch"),
             Err(e) => {
                 assert_eq!(
@@ -342,7 +342,7 @@ mod chebyshev_ut {
             }
         }
 
-        match Type2ChebyshevSet::from_slice_f64(&[0.0, 0.0, f64::INFINITY, 0.0, 0.0]) {
+        match Type2ChebyshevSet::from_f64_slice(&[0.0, 0.0, f64::INFINITY, 0.0, 0.0]) {
             Ok(_) => panic!("test failed on invalid interval_length"),
             Err(e) => {
                 assert_eq!(
@@ -357,7 +357,7 @@ mod chebyshev_ut {
             }
         }
 
-        match Type2ChebyshevSet::from_slice_f64(&[0.0, 0.0, -1e-16, 0.0, 0.0]) {
+        match Type2ChebyshevSet::from_f64_slice(&[0.0, 0.0, -1e-16, 0.0, 0.0]) {
             Ok(_) => panic!("test failed on invalid interval_length"),
             Err(e) => {
                 assert_eq!(
@@ -376,7 +376,7 @@ mod chebyshev_ut {
 
         // Load a slice whose metadata is OK but the record data is not
         let dataset =
-            Type2ChebyshevSet::from_slice_f64(&[f64::INFINITY, 0.0, 2e-16, 0.0, 0.0]).unwrap();
+            Type2ChebyshevSet::from_f64_slice(&[f64::INFINITY, 0.0, 2e-16, 0.0, 0.0]).unwrap();
         match dataset.check_integrity() {
             Ok(_) => panic!("test failed on invalid interval_length"),
             Err(e) => {

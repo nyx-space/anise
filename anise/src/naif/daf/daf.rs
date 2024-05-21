@@ -291,7 +291,7 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
         .into_slice();
 
         // Convert it
-        S::from_slice_f64(data).with_context(|_| DecodingDataSnafu { kind: R::NAME, idx })
+        S::from_f64_slice(data).with_context(|_| DecodingDataSnafu { kind: R::NAME, idx })
     }
 
     pub fn comments(&self) -> Result<Option<String>, DAFError> {

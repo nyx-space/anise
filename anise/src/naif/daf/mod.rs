@@ -74,11 +74,14 @@ pub trait NAIFDataSet<'a>: Sized + Display + PartialEq {
     const DATASET_NAME: &'static str;
 
     /// Builds this dataset given a slice of f64 data
-    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError>;
+    fn from_f64_slice(slice: &'a [f64]) -> Result<Self, DecodingError>;
 
     /// Builds the DAF array representing this data
-    fn to_f64_daf_array(&self) -> Vec<f64> {
-        unimplemented!("this dataset cannot yet be converted to a new DAF array")
+    fn to_f64_daf_vec(&self) -> Result<Vec<f64>, InterpolationError> {
+        Err(InterpolationError::UnsupportedOperation {
+            kind: Self::DATASET_NAME,
+            op: "building new DAF",
+        })
     }
 
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError>;
@@ -104,11 +107,14 @@ pub trait NAIFDataSet<'a>: Sized + Display + PartialEq {
     /// That's because it can't make up new data.
     fn truncate<S: NAIFSummaryRecord>(
         self,
-        summary: &S,
-        new_start: Option<Epoch>,
-        new_end: Option<Epoch>,
+        _summary: &S,
+        _new_start: Option<Epoch>,
+        _new_end: Option<Epoch>,
     ) -> Result<Self, InterpolationError> {
-        unimplemented!("truncation is not available yet")
+        Err(InterpolationError::UnsupportedOperation {
+            kind: Self::DATASET_NAME,
+            op: "truncation",
+        })
     }
 }
 
@@ -213,6 +219,12 @@ pub enum DAFError {
     },
     #[snafu(display("DAF/{kind}: data index {idx} is invalid"))]
     InvalidIndex { kind: &'static str, idx: usize },
+    #[snafu(display("DAF/{kind}: encountered {source} when {action}"))]
+    MutInterpolationError {
+        kind: &'static str,
+        action: &'static str,
+        source: InterpolationError,
+    },
 }
 
 // Manual implementation of PartialEq because IOError does not derive it, sadly.
