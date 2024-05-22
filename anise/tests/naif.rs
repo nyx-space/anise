@@ -213,8 +213,10 @@ fn test_spk_truncate_cheby() {
     // Check that we correctly throw an error if the nth data does not exist.
     assert!(my_spk.nth_data::<Type2ChebyshevSet>(100).is_err());
 
-    let summary = my_spk.data_summaries().unwrap()[0];
-    let segment = my_spk.nth_data::<Type2ChebyshevSet>(0).unwrap();
+    let idx = 10;
+
+    let summary = my_spk.data_summaries().unwrap()[idx];
+    let segment = my_spk.nth_data::<Type2ChebyshevSet>(idx).unwrap();
 
     let orig_init_epoch = segment.init_epoch;
 
@@ -235,14 +237,14 @@ fn test_spk_truncate_cheby() {
     // Now we can grab a mutable version of the SPK and modify it.
     let mut my_spk_mut = my_spk.to_mutable();
     assert!(my_spk_mut
-        .set_nth_data(0, updated_segment, new_start, summary.end_epoch())
+        .set_nth_data(idx, updated_segment, new_start, summary.end_epoch())
         .is_ok());
 
     // Serialize the data into a new BSP and confirm that we've updated everything.
     let output_path = "../target/truncated-de440s.bsp";
     my_spk_mut.persist(output_path).unwrap();
-    let reloaded = SPK::load(output_path).unwrap();
 
-    let summary = reloaded.data_summaries().unwrap()[0];
+    let reloaded = SPK::load(output_path).unwrap();
+    let summary = reloaded.data_summaries().unwrap()[idx];
     assert_eq!(summary.start_epoch(), new_start);
 }

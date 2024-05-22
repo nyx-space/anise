@@ -98,10 +98,12 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
             });
         }
 
-        let orig_data_start = (this_summary.start_index() - 1) * DBL_SIZE;
-        let orig_data_end = this_summary.end_index() * DBL_SIZE;
+        let orig_index_start = this_summary.start_index() - 1;
+        let orig_index_end = this_summary.end_index();
+        let orig_data_start = orig_index_start * DBL_SIZE;
+        let orig_data_end = orig_index_end * DBL_SIZE;
 
-        let original_size = (orig_data_end - orig_data_start) as isize;
+        let original_size = ((orig_data_end - orig_data_start) / DBL_SIZE) as isize;
 
         let new_data_bytes = new_data
             .to_f64_daf_vec()
@@ -123,7 +125,7 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
         );
 
         let mut new_summaries: Vec<R> = summaries.iter().map(|summary| *summary).collect();
-        for (sno, summary) in new_summaries[idx..].iter_mut().enumerate() {
+        for (sno, summary) in new_summaries.iter_mut().enumerate() {
             if sno < idx {
                 continue;
             } else if sno == idx {
@@ -133,19 +135,21 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
                     *summary = R::default()
                 } else {
                     summary.update_indexes(
-                        orig_data_start,
-                        (orig_data_end as isize - size_change) as usize,
+                        orig_index_start + 1,
+                        (orig_index_end as isize - size_change) as usize,
                     );
                     summary.update_epochs(new_start_epoch, new_end_epoch);
                 }
             } else {
                 // Shift all of the indexes.
-                let prev_start = summary.start_index();
-                let prev_end = summary.end_index();
-                summary.update_indexes(
-                    (prev_start as isize - size_change) as usize,
-                    (prev_end as isize - size_change) as usize,
-                );
+                if !summary.is_empty() {
+                    let prev_start = summary.start_index();
+                    let prev_end = summary.end_index();
+                    summary.update_indexes(
+                        (prev_start as isize - size_change) as usize,
+                        (prev_end as isize - size_change) as usize,
+                    );
+                }
             }
         }
 
