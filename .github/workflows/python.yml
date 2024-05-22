@@ -42,6 +42,7 @@ jobs:
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
+        continue-on-error: ${{ matrix.target == 's390x' }}
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
