@@ -33,7 +33,7 @@ jobs:
               run: cargo build --release --bin anise-gui --workspace --exclude anise-py
             
             - name: Save executable
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v3
               with:
                 name: anise-gui-linux
                 path: target/release/anise-gui
@@ -53,7 +53,7 @@ jobs:
               run: cargo build --release --bin anise-gui --workspace --exclude anise-py
 
             - name: Save executable
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v3
               with:
                 name: anise-gui-windows
                 path: target\release\anise-gui.exe

@@ -65,7 +65,7 @@ jobs:
             fi
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: wheels
           path: anise-py/dist
@@ -132,7 +132,7 @@ jobs:
           working-directory: anise-py
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: wheels
           path: anise-py/dist
@@ -170,7 +170,7 @@ jobs:
           working-directory: anise-py
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: wheels
           path: anise-py/dist
@@ -208,7 +208,7 @@ jobs:
           working-directory: anise-py
 
       - name: Upload sdist
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: wheels
           path: anise-py/dist
