@@ -235,16 +235,30 @@ fn test_spk_truncate_cheby() {
     );
 
     // Now we can grab a mutable version of the SPK and modify it.
-    let mut my_spk_mut = my_spk.to_mutable();
-    assert!(my_spk_mut
+    let mut my_spk_trunc = my_spk.to_mutable();
+    assert!(my_spk_trunc
         .set_nth_data(idx, updated_segment, new_start, summary.end_epoch())
         .is_ok());
 
     // Serialize the data into a new BSP and confirm that we've updated everything.
     let output_path = "../target/truncated-de440s.bsp";
-    my_spk_mut.persist(output_path).unwrap();
+    my_spk_trunc.persist(output_path).unwrap();
 
     let reloaded = SPK::load(output_path).unwrap();
     let summary = reloaded.data_summaries().unwrap()[idx];
     assert_eq!(summary.start_epoch(), new_start);
+
+    // Test that we can remove segments all togethet
+    let mut my_spk_rm = my_spk.to_mutable();
+    assert!(my_spk_rm.delete_nth_data(idx).is_ok());
+
+    // Serialize the data into a new BSP and confirm that we've updated everything.
+    let output_path = "../target/rm-de440s.bsp";
+    my_spk_rm.persist(output_path).unwrap();
+
+    let reloaded = SPK::load(output_path).unwrap();
+    assert!(
+        reloaded.summary_from_id(301).is_err(),
+        "summary 301 not removed"
+    );
 }

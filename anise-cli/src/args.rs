@@ -55,15 +55,14 @@ pub enum Actions {
         /// New end epoch of the segment
         end: Option<Epoch>,
     },
-    /// Rename the segment with the provided "old name" to the "new name" in any DAF file (SPK or BPC).
-    RenameDAFSegment {
+    /// Remove the segment of the provided ID of the input NAIF DAF file.
+    /// Limitation: this may not work correctly if there are several segments with the same ID.
+    RmDAFById {
         /// Input DAF file, SPK or BPC
         input: PathBuf,
         /// Output DAF file path
         output: PathBuf,
-        /// Old segment name
-        old_name: String,
-        /// New segment name
-        new_name: String,
+        /// ID of the segment to truncate
+        id: i32,
     },
 }

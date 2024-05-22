@@ -290,11 +290,66 @@ fn main() -> Result<(), CliErrors> {
                 }),
             }
         }
-        Actions::RenameDAFSegment {
-            input,
-            output,
-            old_name,
-            new_name,
-        } => Ok(()),
+        Actions::RmDAFById { input, output, id } => {
+            let path_str = input.clone();
+            let bytes = file2heap!(input).with_context(|_| AniseSnafu)?;
+            // Load the header only
+            let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
+
+            match file_record
+                .identification()
+                .with_context(|_| CliFileRecordSnafu)?
+            {
+                "PCK" => {
+                    info!("Loading {path_str:?} as DAF/PCK");
+                    let pck = BPC::parse(bytes).with_context(|_| CliDAFSnafu)?;
+
+                    let mut ids = HashSet::new();
+                    for summary in pck.data_summaries().with_context(|_| CliDAFSnafu)? {
+                        ids.insert(summary.id());
+                    }
+
+                    info!("IDs present in file: {ids:?}");
+
+                    let (_, idx) = pck.summary_from_id(id).with_context(|_| CliDAFSnafu)?;
+
+                    let mut my_pck_mut = pck.to_mutable();
+                    my_pck_mut
+                        .delete_nth_data(idx)
+                        .with_context(|_| CliDAFSnafu)?;
+
+                    info!("Saving file to {output:?}");
+                    my_pck_mut.persist(output).unwrap();
+
+                    Ok(())
+                }
+                "SPK" => {
+                    info!("Loading {path_str:?} as DAF/PCK");
+                    let spk = SPK::parse(bytes).with_context(|_| CliDAFSnafu)?;
+
+                    let mut ids = HashSet::new();
+                    for summary in spk.data_summaries().with_context(|_| CliDAFSnafu)? {
+                        ids.insert(summary.id());
+                    }
+
+                    info!("IDs present in file: {ids:?}");
+
+                    let (_, idx) = spk.summary_from_id(id).with_context(|_| CliDAFSnafu)?;
+
+                    let mut my_spk_mut = spk.to_mutable();
+                    my_spk_mut
+                        .delete_nth_data(idx)
+                        .with_context(|_| CliDAFSnafu)?;
+
+                    info!("Saving file to {output:?}");
+                    my_spk_mut.persist(output).unwrap();
+
+                    Ok(())
+                }
+                fileid => Err(CliErrors::ArgumentError {
+                    arg: format!("{fileid} is not supported yet"),
+                }),
+            }
+        }
     }
 }

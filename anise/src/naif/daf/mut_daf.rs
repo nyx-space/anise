@@ -77,7 +77,7 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
         Ok(())
     }
 
-    /// Provided a name that is in the summary, return its full data, if name is available.
+    /// Sets the data for the n-th segment of this DAF file.
     pub fn set_nth_data<'a, S: NAIFDataSet<'a>>(
         &mut self,
         idx: usize,
@@ -86,10 +86,9 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
         new_end_epoch: Epoch,
     ) -> Result<(), DAFError> {
         let summaries = self.data_summaries()?;
-        let this_summary = summaries.get(idx).ok_or_else(|| DAFError::InvalidIndex {
-            idx,
-            kind: S::DATASET_NAME,
-        })?;
+        let this_summary = summaries
+            .get(idx)
+            .ok_or_else(|| DAFError::InvalidIndex { idx, kind: R::NAME })?;
 
         if self.file_record()?.is_empty() {
             return Err(DAFError::FileRecord {
@@ -130,16 +129,11 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
                 continue;
             } else if sno == idx {
                 // Only update the end index for the data we modified
-                if new_size == 0 {
-                    // We've removed this data, so clear the summary.
-                    *summary = R::default()
-                } else {
-                    summary.update_indexes(
-                        orig_index_start + 1,
-                        (orig_index_end as isize - size_change) as usize,
-                    );
-                    summary.update_epochs(new_start_epoch, new_end_epoch);
-                }
+                summary.update_indexes(
+                    orig_index_start + 1,
+                    (orig_index_end as isize - size_change) as usize,
+                );
+                summary.update_epochs(new_start_epoch, new_end_epoch);
             } else {
                 // Shift all of the indexes.
                 if !summary.is_empty() {
@@ -154,6 +148,76 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
         }
 
         let summary_bytes: Vec<u8> = new_summaries.as_bytes().iter().cloned().collect();
+
+        let rcrd_idx = (self.file_record()?.fwrd_idx() - 1) * RCRD_LEN;
+        // Note: we use copy_from_slice here because we have the guarantee that the summary bytes are the same length as the original version.
+        let orig_summary_bytes =
+            &mut new_bytes[rcrd_idx..rcrd_idx + RCRD_LEN][SummaryRecord::SIZE..];
+        orig_summary_bytes.copy_from_slice(&summary_bytes);
+
+        self.bytes = BytesMut::from_iter(new_bytes);
+
+        Ok(())
+    }
+
+    /// Deletes the data for the n-th segment of this DAF file.
+    pub fn delete_nth_data<'a>(&mut self, idx: usize) -> Result<(), DAFError> {
+        let summaries = self.data_summaries()?;
+        let this_summary = summaries
+            .get(idx)
+            .ok_or_else(|| DAFError::InvalidIndex { idx, kind: R::NAME })?;
+
+        if self.file_record()?.is_empty() {
+            return Err(DAFError::FileRecord {
+                kind: R::NAME,
+                source: FileRecordError::EmptyRecord,
+            });
+        }
+
+        let orig_index_start = this_summary.start_index() - 1;
+        let orig_index_end = this_summary.end_index();
+        let orig_data_start = orig_index_start * DBL_SIZE;
+        let orig_data_end = orig_index_end * DBL_SIZE;
+
+        let original_size = ((orig_data_end - orig_data_start) / DBL_SIZE) as isize;
+
+        // Size change will be positive if the new data is _smaller_ than the previous one, and vice versa.
+        let size_change = original_size;
+
+        // Update the bytes
+        let mut new_bytes = self.bytes.to_vec();
+        new_bytes.drain(orig_data_start..orig_data_end);
+
+        let mut new_summaries: Vec<R> = summaries.iter().map(|summary| *summary).collect();
+        for (sno, summary) in new_summaries.iter_mut().enumerate() {
+            if sno < idx {
+                continue;
+            } else if sno == idx {
+                // We've removed this data, so clear the summary.
+                *summary = R::default()
+            } else {
+                // Shift all of the indexes.
+                if !summary.is_empty() {
+                    let prev_start = summary.start_index();
+                    let prev_end = summary.end_index();
+                    summary.update_indexes(
+                        (prev_start as isize - size_change) as usize,
+                        (prev_end as isize - size_change) as usize,
+                    );
+                }
+            }
+        }
+
+        // Remove empty entries from the summary all together
+        let cleaned_summaries: Vec<R> = new_summaries
+            .iter()
+            .filter(|summary| !summary.is_empty())
+            .cloned()
+            .collect();
+
+        let mut summary_bytes: Vec<u8> = cleaned_summaries.as_bytes().iter().cloned().collect();
+        // We need to pad with zeros all of the summaries we've removed.
+        summary_bytes.extend(vec![0x0; 1000 - summary_bytes.len()]);
 
         let rcrd_idx = (self.file_record()?.fwrd_idx() - 1) * RCRD_LEN;
         // Note: we use copy_from_slice here because we have the guarantee that the summary bytes are the same length as the original version.
