@@ -40,7 +40,7 @@ parquet = "51.0.0"
 arrow = "51.0.0"
 criterion = "0.5"
 iai = "0.1"
-polars = { version = "0.39.0", features = ["lazy", "parquet"] }
+polars = { version = "0.40.0", features = ["lazy", "parquet"] }
 rayon = "1.7"
 serde_yaml = "0.9.30"
 
