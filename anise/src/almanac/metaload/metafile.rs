@@ -58,6 +58,14 @@ impl MetaFile {
                 Ok(())
             }
             Ok(url) => {
+                if !url.scheme().starts_with("http") {
+                    // This means it could be either a path with `file:///`, or an absolute path on Windows.
+                    if url.scheme() == "file" {
+                        // Remove the first four characters plus `://`, regardless of case
+                        self.uri = self.uri[7..].to_string();
+                    }
+                    return Ok(());
+                }
                 // Build the path for this file.
                 match url.path_segments().and_then(|segments| segments.last()) {
                     Some(remote_file_path) => {
@@ -207,5 +215,41 @@ impl MetaFile {
     /// This function modified `self` and changes the URI to be the path to the downloaded file.
     pub fn process(&mut self, py: Python) -> Result<(), MetaAlmanacError> {
         py.allow_threads(|| self._process())
+    }
+}
+
+#[cfg(test)]
+mod ut_metafile {
+    use super::MetaFile;
+
+    #[test]
+    fn abs_paths() {
+        let mut window_path = MetaFile {
+            uri: "C:\\Users\\me\\meta.dhall".to_string(),
+            crc32: None,
+        };
+        assert!(window_path._process().is_ok());
+        assert_eq!(window_path.uri, "C:\\Users\\me\\meta.dhall".to_string());
+
+        let mut file_prefix_path = MetaFile {
+            uri: "fIlE:///Users/me/meta.dhall".to_string(),
+            crc32: None,
+        };
+        assert!(file_prefix_path._process().is_ok());
+        assert_eq!(file_prefix_path.uri, "/Users/me/meta.dhall".to_string());
+
+        let mut unix_abs_path = MetaFile {
+            uri: "/Users/me/meta.dhall".to_string(),
+            crc32: None,
+        };
+        assert!(unix_abs_path._process().is_ok());
+        assert_eq!(unix_abs_path.uri, "/Users/me/meta.dhall".to_string());
+
+        let mut unix_rel_path = MetaFile {
+            uri: "../Users/me/meta.dhall".to_string(),
+            crc32: None,
+        };
+        assert!(unix_rel_path._process().is_ok());
+        assert_eq!(unix_rel_path.uri, "../Users/me/meta.dhall".to_string());
     }
 }
