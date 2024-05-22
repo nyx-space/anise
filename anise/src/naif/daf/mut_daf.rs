@@ -88,7 +88,7 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
         let summaries = self.data_summaries()?;
         let this_summary = summaries
             .get(idx)
-            .ok_or_else(|| DAFError::InvalidIndex { idx, kind: R::NAME })?;
+            .ok_or(DAFError::InvalidIndex { idx, kind: R::NAME })?;
 
         if self.file_record()?.is_empty() {
             return Err(DAFError::FileRecord {
@@ -123,7 +123,7 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
             new_data_bytes.as_bytes().iter().cloned(),
         );
 
-        let mut new_summaries: Vec<R> = summaries.iter().map(|summary| *summary).collect();
+        let mut new_summaries: Vec<R> = summaries.to_vec();
         for (sno, summary) in new_summaries.iter_mut().enumerate() {
             if sno < idx {
                 continue;
@@ -134,20 +134,18 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
                     (orig_index_end as isize - size_change) as usize,
                 );
                 summary.update_epochs(new_start_epoch, new_end_epoch);
-            } else {
+            } else if !summary.is_empty() {
                 // Shift all of the indexes.
-                if !summary.is_empty() {
-                    let prev_start = summary.start_index();
-                    let prev_end = summary.end_index();
-                    summary.update_indexes(
-                        (prev_start as isize - size_change) as usize,
-                        (prev_end as isize - size_change) as usize,
-                    );
-                }
+                let prev_start = summary.start_index();
+                let prev_end = summary.end_index();
+                summary.update_indexes(
+                    (prev_start as isize - size_change) as usize,
+                    (prev_end as isize - size_change) as usize,
+                );
             }
         }
 
-        let summary_bytes: Vec<u8> = new_summaries.as_bytes().iter().cloned().collect();
+        let summary_bytes: Vec<u8> = new_summaries.as_bytes().to_vec();
 
         let rcrd_idx = (self.file_record()?.fwrd_idx() - 1) * RCRD_LEN;
         // Note: we use copy_from_slice here because we have the guarantee that the summary bytes are the same length as the original version.
@@ -161,11 +159,11 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
     }
 
     /// Deletes the data for the n-th segment of this DAF file.
-    pub fn delete_nth_data<'a>(&mut self, idx: usize) -> Result<(), DAFError> {
+    pub fn delete_nth_data(&mut self, idx: usize) -> Result<(), DAFError> {
         let summaries = self.data_summaries()?;
         let this_summary = summaries
             .get(idx)
-            .ok_or_else(|| DAFError::InvalidIndex { idx, kind: R::NAME })?;
+            .ok_or(DAFError::InvalidIndex { idx, kind: R::NAME })?;
 
         if self.file_record()?.is_empty() {
             return Err(DAFError::FileRecord {
@@ -188,23 +186,21 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
         let mut new_bytes = self.bytes.to_vec();
         new_bytes.drain(orig_data_start..orig_data_end);
 
-        let mut new_summaries: Vec<R> = summaries.iter().map(|summary| *summary).collect();
+        let mut new_summaries: Vec<R> = summaries.to_vec();
         for (sno, summary) in new_summaries.iter_mut().enumerate() {
             if sno < idx {
                 continue;
             } else if sno == idx {
                 // We've removed this data, so clear the summary.
                 *summary = R::default()
-            } else {
+            } else if !summary.is_empty() {
                 // Shift all of the indexes.
-                if !summary.is_empty() {
-                    let prev_start = summary.start_index();
-                    let prev_end = summary.end_index();
-                    summary.update_indexes(
-                        (prev_start as isize - size_change) as usize,
-                        (prev_end as isize - size_change) as usize,
-                    );
-                }
+                let prev_start = summary.start_index();
+                let prev_end = summary.end_index();
+                summary.update_indexes(
+                    (prev_start as isize - size_change) as usize,
+                    (prev_end as isize - size_change) as usize,
+                );
             }
         }
 
@@ -215,7 +211,7 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
             .cloned()
             .collect();
 
-        let mut summary_bytes: Vec<u8> = cleaned_summaries.as_bytes().iter().cloned().collect();
+        let mut summary_bytes: Vec<u8> = cleaned_summaries.as_bytes().to_vec();
         // We need to pad with zeros all of the summaries we've removed.
         summary_bytes.extend(vec![0x0; 1000 - summary_bytes.len()]);
 

@@ -250,13 +250,13 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
 
     /// Provided a name that is in the summary, return its full data, if name is available.
     pub fn nth_data<'a, S: NAIFDataSet<'a>>(&'a self, idx: usize) -> Result<S, DAFError> {
-        let this_summary =
-            self.data_summaries()?
-                .get(idx)
-                .ok_or_else(|| DAFError::InvalidIndex {
-                    idx,
-                    kind: S::DATASET_NAME,
-                })?;
+        let this_summary = self
+            .data_summaries()?
+            .get(idx)
+            .ok_or(DAFError::InvalidIndex {
+                idx,
+                kind: S::DATASET_NAME,
+            })?;
         // Grab the data in native endianness (TODO: How to support both big and little endian?)
         trace!("{idx} -> {this_summary:?}");
         if self.file_record()?.is_empty() {
