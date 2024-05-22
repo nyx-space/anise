@@ -8,7 +8,6 @@ assignees: ''
 ---
 
 # Bug report
-_Bug reports will lead to a stakeholder need report, and will need to be linked to this issue_
 
 ## Describe the bug
 A clear and concise description of what the bug is.

@@ -125,7 +125,7 @@ jobs:
           RUST_BACKTRACE=1 cargo test de440s_translation_verif_venus2emb --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
 
       # Now analyze the results and create pretty plots
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 

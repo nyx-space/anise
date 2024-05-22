@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-onward Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -18,19 +18,17 @@ use crate::errors::{DecodingError, InputOutputError};
 use crate::file2heap;
 use crate::naif::daf::DecodingDataSnafu;
 use crate::{errors::IntegrityError, DBL_SIZE};
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut};
+use core::fmt::Debug;
 use core::hash::Hash;
+use core::marker::PhantomData;
 use core::ops::Deref;
 use hifitime::Epoch;
 use log::{debug, error, trace};
 use snafu::ResultExt;
-use std::fmt::Debug;
-use std::marker::PhantomData;
 
 use zerocopy::AsBytes;
 use zerocopy::{FromBytes, Ref};
-
-// Thanks ChatGPT for the idea !
 
 macro_rules! io_imports {
     () => {
@@ -45,13 +43,20 @@ io_imports!();
 
 pub(crate) const RCRD_LEN: usize = 1024;
 #[derive(Clone, Default, Debug, PartialEq)]
-pub struct DAF<R: NAIFSummaryRecord> {
-    pub bytes: Bytes,
+pub struct GenericDAF<R: NAIFSummaryRecord, W: MutKind> {
+    pub bytes: W,
     pub crc32_checksum: u32,
     pub _daf_type: PhantomData<R>,
 }
 
-impl<R: NAIFSummaryRecord> DAF<R> {
+pub type DAF<R> = GenericDAF<R, Bytes>;
+pub type MutDAF<R> = GenericDAF<R, BytesMut>;
+
+pub trait MutKind: Deref<Target = [u8]> {}
+impl MutKind for Bytes {}
+impl MutKind for BytesMut {}
+
+impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
     /// Compute the CRC32 of the underlying bytes
     pub fn crc32(&self) -> u32 {
         crc32fast::hash(&self.bytes)
@@ -68,48 +73,6 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 computed: self.crc32(),
             })
         }
-    }
-
-    /// Parse the DAF only if the CRC32 checksum of the data is valid
-    pub fn check_then_parse<B: Deref<Target = [u8]>>(
-        bytes: B,
-        expected: u32,
-    ) -> Result<Self, DAFError> {
-        let computed = crc32fast::hash(&bytes);
-        if computed != expected {
-            return Err(DAFError::DAFIntegrity {
-                source: IntegrityError::ChecksumInvalid { expected, computed },
-            });
-        }
-
-        Self::parse(bytes)
-    }
-
-    pub fn load(path: &str) -> Result<Self, DAFError> {
-        let bytes = file2heap!(path).with_context(|_| IOSnafu {
-            action: format!("loading {path:?}"),
-        })?;
-
-        Self::parse(bytes)
-    }
-
-    /// Parse the provided static byte array as a SPICE Double Array File
-    pub fn from_static<B: Deref<Target = [u8]>>(bytes: &'static B) -> Result<Self, DAFError> {
-        Self::parse(Bytes::from_static(bytes))
-    }
-
-    /// Parse the provided bytes as a SPICE Double Array File
-    pub fn parse<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DAFError> {
-        let crc32_checksum = crc32fast::hash(&bytes);
-        let me = Self {
-            bytes: Bytes::copy_from_slice(&bytes),
-            crc32_checksum,
-            _daf_type: PhantomData,
-        };
-        // Check that these calls will succeed.
-        me.file_record()?;
-        me.name_record()?;
-        Ok(me)
     }
 
     pub fn file_record(&self) -> Result<FileRecord, DAFError> {
@@ -287,7 +250,13 @@ impl<R: NAIFSummaryRecord> DAF<R> {
 
     /// Provided a name that is in the summary, return its full data, if name is available.
     pub fn nth_data<'a, S: NAIFDataSet<'a>>(&'a self, idx: usize) -> Result<S, DAFError> {
-        let this_summary = &self.data_summaries()?[idx];
+        let this_summary = self
+            .data_summaries()?
+            .get(idx)
+            .ok_or(DAFError::InvalidIndex {
+                idx,
+                kind: S::DATASET_NAME,
+            })?;
         // Grab the data in native endianness (TODO: How to support both big and little endian?)
         trace!("{idx} -> {this_summary:?}");
         if self.file_record()?.is_empty() {
@@ -322,8 +291,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         .into_slice();
 
         // Convert it
-        S::from_slice_f64(data).with_context(|_| DecodingDataSnafu { kind: R::NAME, idx })
-        // S::from_slice_f64(data)
+        S::from_f64_slice(data).with_context(|_| DecodingDataSnafu { kind: R::NAME, idx })
     }
 
     pub fn comments(&self) -> Result<Option<String>, DAFError> {
@@ -398,10 +366,63 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 }
 
-impl<R: NAIFSummaryRecord> Hash for DAF<R> {
+impl<R: NAIFSummaryRecord, W: MutKind> Hash for GenericDAF<R, W> {
     /// Hash will only hash the bytes, nothing else (since these are derived from the bytes anyway).
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.bytes.hash(state);
+    }
+}
+
+impl<R: NAIFSummaryRecord> DAF<R> {
+    /// Parse the provided bytes as a SPICE Double Array File
+    pub fn parse<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DAFError> {
+        let crc32_checksum = crc32fast::hash(&bytes);
+        let me = Self {
+            bytes: Bytes::copy_from_slice(&bytes),
+            crc32_checksum,
+            _daf_type: PhantomData,
+        };
+        // Check that these calls will succeed.
+        me.file_record()?;
+        me.name_record()?;
+        Ok(me)
+    }
+
+    /// Parse the DAF only if the CRC32 checksum of the data is valid
+    pub fn check_then_parse<B: Deref<Target = [u8]>>(
+        bytes: B,
+        expected: u32,
+    ) -> Result<Self, DAFError> {
+        let computed = crc32fast::hash(&bytes);
+        if computed != expected {
+            return Err(DAFError::DAFIntegrity {
+                source: IntegrityError::ChecksumInvalid { expected, computed },
+            });
+        }
+
+        Self::parse(bytes)
+    }
+
+    pub fn load(path: &str) -> Result<Self, DAFError> {
+        let bytes = file2heap!(path).with_context(|_| IOSnafu {
+            action: format!("loading {path:?}"),
+        })?;
+
+        Self::parse(bytes)
+    }
+
+    /// Parse the provided static byte array as a SPICE Double Array File
+    pub fn from_static<B: Deref<Target = [u8]>>(bytes: &'static B) -> Result<Self, DAFError> {
+        Self::parse(Bytes::from_static(bytes))
+    }
+
+    /// Copies the underlying bytes of this DAF into a MutDAF, enabling modification of the DAF.
+    pub fn to_mutable(&self) -> MutDAF<R> {
+        MutDAF {
+            bytes: BytesMut::from_iter(&self.bytes),
+            crc32_checksum: self.crc32_checksum,
+            _daf_type: PhantomData,
+        }
     }
 }
 

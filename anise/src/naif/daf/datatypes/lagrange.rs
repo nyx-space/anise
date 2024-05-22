@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-onward Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -49,7 +49,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
     type RecordKind = PositionVelocityRecord;
     const DATASET_NAME: &'static str = "Lagrange Type 8";
 
-    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError> {
+    fn from_f64_slice(slice: &'a [f64]) -> Result<Self, DecodingError> {
         ensure!(
             slice.len() >= 5,
             TooFewDoublesSnafu {
@@ -157,7 +157,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
     type RecordKind = PositionVelocityRecord;
     const DATASET_NAME: &'static str = "Lagrange Type 9";
 
-    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError> {
+    fn from_f64_slice(slice: &'a [f64]) -> Result<Self, DecodingError> {
         ensure!(
             slice.len() >= 3,
             TooFewDoublesSnafu {

@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-onward Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -21,6 +21,7 @@ pub(crate) const RCRD_LEN: usize = 1024;
 #[allow(clippy::module_inception)]
 pub mod daf;
 mod data_types;
+pub mod mut_daf;
 pub use data_types::DataType as DafDataType;
 pub mod file_record;
 pub mod name_record;
@@ -58,6 +59,10 @@ pub trait NAIFSummaryRecord: NAIFRecord + Copy {
     fn is_empty(&self) -> bool {
         self.start_index() == self.end_index()
     }
+    /// Updates the indexes of this summary (used when modifying a DAF).
+    fn update_indexes(&mut self, start: usize, end: usize);
+    /// Updates the epochs of this summary (used when modifying a DAF).
+    fn update_epochs(&mut self, start_epoch: Epoch, end_epoch: Epoch);
     /// Name of this NAIF type
     const NAME: &'static str;
 }
@@ -73,7 +78,15 @@ pub trait NAIFDataSet<'a>: Sized + Display + PartialEq {
     const DATASET_NAME: &'static str;
 
     /// Builds this dataset given a slice of f64 data
-    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError>;
+    fn from_f64_slice(slice: &'a [f64]) -> Result<Self, DecodingError>;
+
+    /// Builds the DAF array representing this data
+    fn to_f64_daf_vec(&self) -> Result<Vec<f64>, InterpolationError> {
+        Err(InterpolationError::UnsupportedOperation {
+            kind: Self::DATASET_NAME,
+            op: "building new DAF",
+        })
+    }
 
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError>;
 
@@ -85,6 +98,28 @@ pub trait NAIFDataSet<'a>: Sized + Display + PartialEq {
 
     /// Checks the integrity of this data set, returns an error if the data has issues.
     fn check_integrity(&self) -> Result<(), IntegrityError>;
+
+    /// Returns a copy of Self where the data corresponds to the start and end times provided.
+    /// If either is set to None, then that data will not be modified.
+    ///
+    /// # Rounding of truncation
+    /// The exact new start and new end times may not match the exact data. This function only truncates
+    /// the available data and does not make any modifications to it (i.e. it does not recompute the interpolation coefficients).
+    ///
+    /// # Error
+    /// This function will return an error if the new start is before the current start or if the new end is after the current end of the data.
+    /// That's because it can't make up new data.
+    fn truncate<S: NAIFSummaryRecord>(
+        self,
+        _summary: &S,
+        _new_start: Option<Epoch>,
+        _new_end: Option<Epoch>,
+    ) -> Result<Self, InterpolationError> {
+        Err(InterpolationError::UnsupportedOperation {
+            kind: Self::DATASET_NAME,
+            op: "truncation",
+        })
+    }
 }
 
 pub trait NAIFDataRecord<'a>: Display {
@@ -186,6 +221,10 @@ pub enum DAFError {
         dtype: DafDataType,
         kind: &'static str,
     },
+    #[snafu(display("DAF/{kind}: data index {idx} is invalid"))]
+    InvalidIndex { kind: &'static str, idx: usize },
+    #[snafu(display("could not build data vector of type DAF/{kind}"))]
+    DataBuildError { kind: &'static str },
 }
 
 // Manual implementation of PartialEq because IOError does not derive it, sadly.

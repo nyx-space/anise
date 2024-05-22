@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-onward Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -45,4 +45,9 @@ pub enum InterpolationError {
     MissingInterpolationData { epoch: Epoch },
     #[snafu(display("interpolation data corrupted: {what}"))]
     CorruptedData { what: &'static str },
+    #[snafu(display("{op} is unsupported for {kind}"))]
+    UnsupportedOperation {
+        kind: &'static str,
+        op: &'static str,
+    },
 }

@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-onward Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -13,7 +13,7 @@ use std::mem::size_of_val;
 use anise::{
     file2heap,
     naif::{
-        daf::{datatypes::Type2ChebyshevSet, DAF},
+        daf::{datatypes::Type2ChebyshevSet, NAIFDataSet, DAF},
         pck::BPCSummaryRecord,
         spk::summary::SPKSummaryRecord,
         Endian,
@@ -159,30 +159,6 @@ fn test_spk_load_bytes() {
     println!("{}", size_of_val(&spice));
 }
 
-// The `load` function copies the bytes, so it's only available with std
-
-#[test]
-fn test_spk_rename_summary() {
-    let _ = pretty_env_logger::try_init();
-
-    let path = "../data/variable-seg-size-hermite.bsp";
-
-    let example_data = SPK::load(path).unwrap();
-
-    example_data.name_record().unwrap().set_nth_name(
-        0,
-        example_data.file_record().unwrap().summary_size(),
-        "BLAH BLAH",
-    );
-
-    dbg!(example_data
-        .name_record()
-        .unwrap()
-        .nth_name(0, example_data.file_record().unwrap().summary_size()));
-
-    example_data.persist("../target/rename-test.bsp").unwrap();
-}
-
 #[test]
 fn test_invalid_load() {
     let _ = pretty_env_logger::try_init();
@@ -191,4 +167,98 @@ fn test_invalid_load() {
     assert!(BPC::load("i_dont_exist.bpc").is_err());
     // Check that a file that's too small does not panic
     assert!(BPC::load("../.gitattributes").is_err());
+}
+
+#[test]
+fn test_spk_mut_summary_name() {
+    let _ = pretty_env_logger::try_init();
+
+    let path = "../data/variable-seg-size-hermite.bsp";
+    let output_path = "../target/rename-test.bsp";
+
+    let mut my_spk = SPK::load(path).unwrap().to_mutable();
+
+    let summary_size = my_spk.file_record().unwrap().summary_size();
+
+    let mut name_rcrd = my_spk.name_record().unwrap();
+
+    // Rename all summaries
+    for sno in 0..my_spk.data_summaries().unwrap().len() {
+        name_rcrd.set_nth_name(
+            sno,
+            summary_size,
+            &format!("Renamed #{sno} (ANISE by Nyx Space)"),
+        );
+    }
+    my_spk.set_name_record(name_rcrd).unwrap();
+
+    my_spk.persist(&output_path).unwrap();
+
+    // Check that the written file is correct.
+    let reloaded = SPK::load(output_path).unwrap();
+    assert_eq!(
+        reloaded.name_record().unwrap().nth_name(0, summary_size),
+        "Renamed #0 (ANISE by Nyx Space)"
+    );
+}
+
+#[test]
+fn test_spk_truncate_cheby() {
+    let _ = pretty_env_logger::try_init();
+
+    let path = "../data/de440s.bsp";
+
+    let my_spk = SPK::load(path).unwrap();
+
+    // Check that we correctly throw an error if the nth data does not exist.
+    assert!(my_spk.nth_data::<Type2ChebyshevSet>(100).is_err());
+
+    let idx = 10;
+
+    let summary = my_spk.data_summaries().unwrap()[idx];
+    let segment = my_spk.nth_data::<Type2ChebyshevSet>(idx).unwrap();
+
+    let orig_init_epoch = segment.init_epoch;
+
+    let new_start = summary.start_epoch() + Unit::Day * 16;
+
+    let updated_segment = segment.truncate(&summary, Some(new_start), None).unwrap();
+
+    assert!(
+        updated_segment.init_epoch - orig_init_epoch <= Unit::Day * 16,
+        "truncated too much data"
+    );
+
+    assert_ne!(
+        updated_segment.init_epoch, orig_init_epoch,
+        "truncated too little data"
+    );
+
+    // Now we can grab a mutable version of the SPK and modify it.
+    let mut my_spk_trunc = my_spk.to_mutable();
+    assert!(my_spk_trunc
+        .set_nth_data(idx, updated_segment, new_start, summary.end_epoch())
+        .is_ok());
+
+    // Serialize the data into a new BSP and confirm that we've updated everything.
+    let output_path = "../target/truncated-de440s.bsp";
+    my_spk_trunc.persist(output_path).unwrap();
+
+    let reloaded = SPK::load(output_path).unwrap();
+    let summary = reloaded.data_summaries().unwrap()[idx];
+    assert_eq!(summary.start_epoch(), new_start);
+
+    // Test that we can remove segments all togethet
+    let mut my_spk_rm = my_spk.to_mutable();
+    assert!(my_spk_rm.delete_nth_data(idx).is_ok());
+
+    // Serialize the data into a new BSP and confirm that we've updated everything.
+    let output_path = "../target/rm-de440s.bsp";
+    my_spk_rm.persist(output_path).unwrap();
+
+    let reloaded = SPK::load(output_path).unwrap();
+    assert!(
+        reloaded.summary_from_id(301).is_err(),
+        "summary 301 not removed"
+    );
 }

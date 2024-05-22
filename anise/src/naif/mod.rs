@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-onward Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -16,10 +16,20 @@ pub mod spk;
 
 pub mod pretty_print;
 
-use self::{daf::DAF, pck::BPCSummaryRecord, spk::summary::SPKSummaryRecord};
+use self::{
+    daf::{daf::MutDAF, DAF},
+    pck::BPCSummaryRecord,
+    spk::summary::SPKSummaryRecord,
+};
 
+/// Spacecraft Planetary Kernel
 pub type SPK = DAF<SPKSummaryRecord>;
+/// Spacecraft Planetary Kernel, mutable, for editing DAF/SPK files
+pub type MutSPK = MutDAF<SPKSummaryRecord>;
+/// Binary Planetary Constant
 pub type BPC = DAF<BPCSummaryRecord>;
+/// Binary Planetary Constant, mutable, for editing DAF/PCK files
+pub type MutBPC = MutDAF<BPCSummaryRecord>;
 
 #[macro_export]
 macro_rules! parse_bytes_as {

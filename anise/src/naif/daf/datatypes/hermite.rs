@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-onward Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -53,7 +53,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
     type RecordKind = PositionVelocityRecord;
     const DATASET_NAME: &'static str = "Hermite Type 12";
 
-    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError> {
+    fn from_f64_slice(slice: &'a [f64]) -> Result<Self, DecodingError> {
         ensure!(
             slice.len() >= 5,
             TooFewDoublesSnafu {
@@ -171,7 +171,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
     type RecordKind = PositionVelocityRecord;
     const DATASET_NAME: &'static str = "Hermite Type 13";
 
-    fn from_slice_f64(slice: &'a [f64]) -> Result<Self, DecodingError> {
+    fn from_f64_slice(slice: &'a [f64]) -> Result<Self, DecodingError> {
         ensure!(
             slice.len() >= 3,
             TooFewDoublesSnafu {
@@ -398,7 +398,7 @@ mod hermite_ut {
 
     #[test]
     fn too_small() {
-        if HermiteSetType13::from_slice_f64(&[0.1, 0.2])
+        if HermiteSetType13::from_f64_slice(&[0.1, 0.2])
             != Err(DecodingError::TooFewDoubles {
                 dataset: "Hermite Type 13",
                 got: 2,
@@ -416,7 +416,7 @@ mod hermite_ut {
 
         let mut invalid_num_records = zeros;
         invalid_num_records[zeros.len() - 1] = f64::INFINITY;
-        match HermiteSetType13::from_slice_f64(&invalid_num_records) {
+        match HermiteSetType13::from_f64_slice(&invalid_num_records) {
             Ok(_) => panic!("test failed on invalid num records"),
             Err(e) => {
                 assert_eq!(
@@ -435,7 +435,7 @@ mod hermite_ut {
 
         let mut invalid_num_samples = zeros;
         invalid_num_samples[zeros.len() - 2] = f64::INFINITY;
-        match HermiteSetType13::from_slice_f64(&invalid_num_samples) {
+        match HermiteSetType13::from_f64_slice(&invalid_num_samples) {
             Ok(_) => panic!("test failed on invalid num samples"),
             Err(e) => {
                 assert_eq!(
@@ -455,7 +455,7 @@ mod hermite_ut {
         let mut invalid_epoch = zeros;
         invalid_epoch[zeros.len() - 3] = f64::INFINITY;
 
-        let dataset = HermiteSetType13::from_slice_f64(&invalid_epoch).unwrap();
+        let dataset = HermiteSetType13::from_f64_slice(&invalid_epoch).unwrap();
         match dataset.check_integrity() {
             Ok(_) => panic!("test failed on invalid interval_length"),
             Err(e) => {
@@ -474,7 +474,7 @@ mod hermite_ut {
         // Force the number of records to be one, otherwise everything is considered the epoch registry
         invalid_record[zeros.len() - 1] = 1.0;
 
-        let dataset = HermiteSetType13::from_slice_f64(&invalid_record).unwrap();
+        let dataset = HermiteSetType13::from_f64_slice(&invalid_record).unwrap();
         match dataset.check_integrity() {
             Ok(_) => panic!("test failed on invalid interval_length"),
             Err(e) => {

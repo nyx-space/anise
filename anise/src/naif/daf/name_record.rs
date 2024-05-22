@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-onward Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -55,21 +55,9 @@ impl NameRecord {
     }
 
     /// Changes the name of the n-th record
-    ///
-    /// # Safety
-    ///
-    /// This function uses an `unsafe` call to mutate the underlying `&[u8]` even though it isn't declared as mutable.
-    /// This will _only_ change the name record and will, at worst, change the full name.
-    ///
-    /// In terms of concurrency, this means that if the Context is borrowed while this function is called, between two separate calls,
-    /// the name of a record may no longer be available.
-    pub fn set_nth_name(&self, n: usize, summary_size: usize, new_name: &str) {
+    pub fn set_nth_name(&mut self, n: usize, summary_size: usize, new_name: &str) {
         let this_name =
-            &self.raw_names[n * summary_size * DBL_SIZE..(n + 1) * summary_size * DBL_SIZE];
-
-        let this_name = unsafe {
-            core::slice::from_raw_parts_mut(this_name.as_ptr() as *mut u8, this_name.len())
-        };
+            &mut self.raw_names[n * summary_size * DBL_SIZE..(n + 1) * summary_size * DBL_SIZE];
 
         // Copy the name (thanks Clippy)
         let cur_len = this_name.len();

@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-onward Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -186,6 +186,16 @@ impl NAIFSummaryRecord for SPKSummaryRecord {
 
     fn end_epoch_et_s(&self) -> f64 {
         self.end_epoch_et_s
+    }
+
+    fn update_indexes(&mut self, start: usize, end: usize) {
+        self.start_idx = start as i32;
+        self.end_idx = end as i32;
+    }
+
+    fn update_epochs(&mut self, start_epoch: Epoch, end_epoch: Epoch) {
+        self.start_epoch_et_s = start_epoch.to_et_seconds();
+        self.end_epoch_et_s = end_epoch.to_et_seconds();
     }
 }
 
