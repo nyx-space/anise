@@ -213,6 +213,17 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
 
         Ok(self)
     }
+
+    /// Builds the DAF array representing a Chebyshev Type 2 interpolation set.
+    fn to_f64_daf_vec(&self) -> Result<Vec<f64>, InterpolationError> {
+        let mut data = self.record_data.to_vec();
+        data.push(self.init_epoch.to_et_seconds());
+        data.push(self.interval_length.to_seconds());
+        data.push(self.rsize as f64);
+        data.push(self.num_records as f64);
+
+        Ok(data)
+    }
 }
 
 pub struct Type2ChebyshevRecord<'a> {

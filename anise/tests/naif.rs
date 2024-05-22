@@ -174,7 +174,7 @@ fn test_spk_mut_summary_name() {
     let _ = pretty_env_logger::try_init();
 
     let path = "../data/variable-seg-size-hermite.bsp";
-    let output_path = "../data/rename-test.bsp";
+    let output_path = "../target/rename-test.bsp";
 
     let mut my_spk = SPK::load(path).unwrap().to_mutable();
 
@@ -218,16 +218,31 @@ fn test_spk_truncate_cheby() {
 
     let orig_init_epoch = segment.init_epoch;
 
-    let updated_segment = segment
-        .truncate(&summary, Some(summary.start_epoch() + Unit::Day * 16), None)
-        .unwrap();
+    let new_start = summary.start_epoch() + Unit::Day * 16;
+
+    let updated_segment = segment.truncate(&summary, Some(new_start), None).unwrap();
 
     assert!(
         updated_segment.init_epoch - orig_init_epoch <= Unit::Day * 16,
         "truncated too much data"
     );
 
+    assert_ne!(
+        updated_segment.init_epoch, orig_init_epoch,
+        "truncated too little data"
+    );
+
     // Now we can grab a mutable version of the SPK and modify it.
     let mut my_spk_mut = my_spk.to_mutable();
-    assert!(my_spk_mut.set_nth_data(0, updated_segment).is_ok());
+    assert!(my_spk_mut
+        .set_nth_data(0, updated_segment, new_start, summary.end_epoch())
+        .is_ok());
+
+    // Serialize the data into a new BSP and confirm that we've updated everything.
+    let output_path = "../target/truncated-de440s.bsp";
+    my_spk_mut.persist(output_path).unwrap();
+    let reloaded = SPK::load(output_path).unwrap();
+
+    let summary = reloaded.data_summaries().unwrap()[0];
+    assert_eq!(summary.start_epoch(), new_start);
 }

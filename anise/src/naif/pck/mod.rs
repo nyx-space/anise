@@ -91,4 +91,14 @@ impl NAIFSummaryRecord for BPCSummaryRecord {
     fn end_epoch_et_s(&self) -> f64 {
         self.end_epoch_et_s
     }
+
+    fn update_indexes(&mut self, start: usize, end: usize) {
+        self.start_idx = start as i32;
+        self.end_idx = end as i32;
+    }
+
+    fn update_epochs(&mut self, start_epoch: Epoch, end_epoch: Epoch) {
+        self.start_epoch_et_s = start_epoch.to_et_seconds();
+        self.end_epoch_et_s = end_epoch.to_et_seconds();
+    }
 }

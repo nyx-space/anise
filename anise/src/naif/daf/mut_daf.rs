@@ -11,14 +11,14 @@
 use core::{marker::PhantomData, ops::Deref};
 
 use bytes::BytesMut;
-use log::trace;
+use hifitime::Epoch;
 use snafu::ResultExt;
 use zerocopy::AsBytes;
 
 use crate::{
     errors::{DecodingError, InputOutputError},
     file2heap,
-    naif::daf::{file_record::FileRecordError, MutInterpolationSnafu},
+    naif::daf::{file_record::FileRecordError, MutInterpolationSnafu, NAIFRecord, SummaryRecord},
     DBL_SIZE,
 };
 
@@ -82,16 +82,15 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
         &mut self,
         idx: usize,
         new_data: S,
+        new_start_epoch: Epoch,
+        new_end_epoch: Epoch,
     ) -> Result<(), DAFError> {
-        let this_summary =
-            self.data_summaries()?
-                .get(idx)
-                .ok_or_else(|| DAFError::InvalidIndex {
-                    idx,
-                    kind: S::DATASET_NAME,
-                })?;
-        // Grab the data in native endianness (TODO: How to support both big and little endian?)
-        trace!("{idx} -> {this_summary:?}");
+        let summaries = self.data_summaries()?;
+        let this_summary = summaries.get(idx).ok_or_else(|| DAFError::InvalidIndex {
+            idx,
+            kind: S::DATASET_NAME,
+        })?;
+
         if self.file_record()?.is_empty() {
             return Err(DAFError::FileRecord {
                 kind: R::NAME,
@@ -99,10 +98,10 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
             });
         }
 
-        let start = (this_summary.start_index() - 1) * DBL_SIZE;
-        let end = this_summary.end_index() * DBL_SIZE;
+        let orig_data_start = (this_summary.start_index() - 1) * DBL_SIZE;
+        let orig_data_end = this_summary.end_index() * DBL_SIZE;
 
-        // let original_size = (end - start) as isize;
+        let original_size = (orig_data_end - orig_data_start) as isize;
 
         let new_data_bytes = new_data
             .to_f64_daf_vec()
@@ -110,14 +109,55 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
                 kind: R::NAME,
                 action: "building new DAF vector",
             })?;
-        // let new_size = new_data_bytes.len() as isize;
+
+        let new_size = new_data_bytes.len() as isize;
+
+        // Size change will be positive if the new data is _smaller_ than the previous one, and vice versa.
+        let size_change = original_size - new_size;
 
         // Update the bytes
         let mut new_bytes = self.bytes.to_vec();
-        new_bytes.splice(start..end, new_data_bytes.as_bytes().iter().cloned());
-        self.bytes = BytesMut::from_iter(new_bytes);
+        new_bytes.splice(
+            orig_data_start..orig_data_end,
+            new_data_bytes.as_bytes().iter().cloned(),
+        );
 
-        // TODO: Update the indexes of all the summaries...
+        let mut new_summaries: Vec<R> = summaries.iter().map(|summary| *summary).collect();
+        for (sno, summary) in new_summaries[idx..].iter_mut().enumerate() {
+            if sno < idx {
+                continue;
+            } else if sno == idx {
+                // Only update the end index for the data we modified
+                if new_size == 0 {
+                    // We've removed this data, so clear the summary.
+                    *summary = R::default()
+                } else {
+                    summary.update_indexes(
+                        orig_data_start,
+                        (orig_data_end as isize - size_change) as usize,
+                    );
+                    summary.update_epochs(new_start_epoch, new_end_epoch);
+                }
+            } else {
+                // Shift all of the indexes.
+                let prev_start = summary.start_index();
+                let prev_end = summary.end_index();
+                summary.update_indexes(
+                    (prev_start as isize - size_change) as usize,
+                    (prev_end as isize - size_change) as usize,
+                );
+            }
+        }
+
+        let summary_bytes: Vec<u8> = new_summaries.as_bytes().iter().cloned().collect();
+
+        let rcrd_idx = (self.file_record()?.fwrd_idx() - 1) * RCRD_LEN;
+        // Note: we use copy_from_slice here because we have the guarantee that the summary bytes are the same length as the original version.
+        let orig_summary_bytes =
+            &mut new_bytes[rcrd_idx..rcrd_idx + RCRD_LEN][SummaryRecord::SIZE..];
+        orig_summary_bytes.copy_from_slice(&summary_bytes);
+
+        self.bytes = BytesMut::from_iter(new_bytes);
 
         Ok(())
     }

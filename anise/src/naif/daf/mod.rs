@@ -59,6 +59,10 @@ pub trait NAIFSummaryRecord: NAIFRecord + Copy {
     fn is_empty(&self) -> bool {
         self.start_index() == self.end_index()
     }
+    /// Updates the indexes of this summary (used when modifying a DAF).
+    fn update_indexes(&mut self, start: usize, end: usize);
+    /// Updates the epochs of this summary (used when modifying a DAF).
+    fn update_epochs(&mut self, start_epoch: Epoch, end_epoch: Epoch);
     /// Name of this NAIF type
     const NAME: &'static str;
 }
