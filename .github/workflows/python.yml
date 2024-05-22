@@ -36,7 +36,7 @@ jobs:
           wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v0.3/pck08.pca
           wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v0.3/pck11.pca
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -65,7 +65,7 @@ jobs:
             fi
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: anise-py/dist
@@ -118,7 +118,7 @@ jobs:
         with:
           lfs: true
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           architecture: ${{ matrix.target }}
@@ -132,7 +132,7 @@ jobs:
           working-directory: anise-py
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: anise-py/dist
@@ -157,7 +157,7 @@ jobs:
         with:
           lfs: true
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -170,7 +170,7 @@ jobs:
           working-directory: anise-py
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: anise-py/dist
@@ -208,7 +208,7 @@ jobs:
           working-directory: anise-py
 
       - name: Upload sdist
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: anise-py/dist
