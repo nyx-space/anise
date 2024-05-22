@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-onward Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -10,30 +10,21 @@
 
 use core::{marker::PhantomData, ops::Deref};
 
-use bytes::BytesMut;
-use hifitime::Epoch;
-use snafu::ResultExt;
-use zerocopy::AsBytes;
-
-use crate::{
-    errors::{DecodingError, InputOutputError},
-    file2heap,
-    naif::daf::{file_record::FileRecordError, MutInterpolationSnafu, NAIFRecord, SummaryRecord},
-    DBL_SIZE,
-};
-
 use super::{
     daf::MutDAF, DAFError, DecodingNameSnafu, IOSnafu, NAIFDataSet, NAIFSummaryRecord, NameRecord,
     RCRD_LEN,
 };
-
-macro_rules! io_imports {
-    () => {
-        use std::fs::File;
-    };
-}
-
-io_imports!();
+use crate::{
+    errors::{DecodingError, InputOutputError},
+    file2heap,
+    naif::daf::{file_record::FileRecordError, NAIFRecord, SummaryRecord},
+    DBL_SIZE,
+};
+use bytes::BytesMut;
+use hifitime::Epoch;
+use snafu::ResultExt;
+use std::fs::File;
+use zerocopy::AsBytes;
 
 impl<R: NAIFSummaryRecord> MutDAF<R> {
     /// Parse the provided bytes as a SPICE Double Array File
@@ -106,10 +97,7 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
 
         let new_data_bytes = new_data
             .to_f64_daf_vec()
-            .with_context(|_| MutInterpolationSnafu {
-                kind: R::NAME,
-                action: "building new DAF vector",
-            })?;
+            .or(Err(DAFError::DataBuildError { kind: R::NAME }))?;
 
         let new_size = new_data_bytes.len() as isize;
 

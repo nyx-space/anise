@@ -1,6 +1,6 @@
 /*
  * ANISE Toolkit
- * Copyright (C) 2021-2023 Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
+ * Copyright (C) 2021-onward Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -223,12 +223,8 @@ pub enum DAFError {
     },
     #[snafu(display("DAF/{kind}: data index {idx} is invalid"))]
     InvalidIndex { kind: &'static str, idx: usize },
-    #[snafu(display("DAF/{kind}: encountered {source} when {action}"))]
-    MutInterpolationError {
-        kind: &'static str,
-        action: &'static str,
-        source: InterpolationError,
-    },
+    #[snafu(display("could not build data vector of type DAF/{kind}"))]
+    DataBuildError { kind: &'static str },
 }
 
 // Manual implementation of PartialEq because IOError does not derive it, sadly.
