@@ -26,7 +26,7 @@ use snafu::prelude::*;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub enum MetaAlmanacError {
     #[snafu(display("could not create the cache folder for ANISE, please use a relative path"))]
