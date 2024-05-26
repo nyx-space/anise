@@ -104,7 +104,7 @@ impl<'a, T: DataSetT, const ENTRIES: usize> DataSetBuilder<T, ENTRIES> {
     }
 
     pub fn finalize(mut self, buf: Vec<u8>) -> Result<DataSet<T, ENTRIES>, DataSetError> {
-        self.dataset.bytes = Bytes::copy_from_slice(&buf);
+        // self.dataset.bytes = Bytes::copy_from_slice(&buf);
         self.dataset.set_crc32();
         Ok(self.dataset)
     }
