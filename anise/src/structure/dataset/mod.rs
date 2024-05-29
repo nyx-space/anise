@@ -9,7 +9,7 @@
  */
 use self::error::{DataDecodingSnafu, DataSetLutSnafu};
 use super::{
-    lookuptable::{LookUpTable, LutError},
+    lookuptable::{Entry, LookUpTable, LutError},
     metadata::Metadata,
     semver::Semver,
     ANISE_VERSION,
@@ -124,12 +124,16 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
     /// Compute the CRC32 of the underlying bytes
     pub fn crc32(&self) -> u32 {
         let size = ENTRIES * size_of::<Self>();
-        let mut buf = std::vec::Vec::with_capacity(size);
-        let _ = self.encode_to_vec(&mut buf);
+        let mut buf = Vec::with_capacity(size);
+        // Clone the data set, setting the CRC32 to zero for the CRC check.
+        let mut me = self.clone();
+        me.data_checksum = u32::MAX;
+        let _ = me.encode_to_vec(&mut buf);
         crc32fast::hash(&buf)
     }
 
     /// Sets the checksum of this data.
+    /// NOTE: For this calculation, the data checksum field is set to u32::MAX;
     pub fn set_crc32(&mut self) {
         self.data_checksum = self.crc32();
     }
@@ -162,6 +166,77 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
                 computed: self.crc32(),
             })
         }
+    }
+
+    pub fn push(
+        &mut self,
+        item: T,
+        id: Option<NaifId>,
+        name: Option<&str>,
+    ) -> Result<(), DataSetError> {
+        // Build this entry data.
+        let entry = Entry {
+            start_idx: self.data.len() as u32,
+            end_idx: 0,
+        };
+
+        match id {
+            Some(id) => {
+                match name {
+                    Some(name) => {
+                        // Both an ID and a name
+                        self.lut
+                            .append(id, name, entry)
+                            .with_context(|_| DataSetLutSnafu {
+                                action: "pushing data with ID and name",
+                            })?;
+                        // If the ID is the body of a system with a single object, also insert it for the system ID.
+                        if [199, 299].contains(&id) {
+                            self.lut.append(id / 100, name, entry).with_context(|_| {
+                                DataSetLutSnafu {
+                                    action: "pushing data with ID and name",
+                                }
+                            })?;
+                        }
+                    }
+                    None => {
+                        // Only an ID and no name
+                        self.lut
+                            .append_id(id, entry)
+                            .with_context(|_| DataSetLutSnafu {
+                                action: "pushing data with ID only",
+                            })?;
+                        // If the ID is the body of a system with a single object, also insert it for the system ID.
+                        if [199, 299].contains(&id) {
+                            self.lut.append_id(id / 100, entry).with_context(|_| {
+                                DataSetLutSnafu {
+                                    action: "pushing data with ID and name",
+                                }
+                            })?;
+                        }
+                    }
+                }
+            }
+            None => {
+                if name.is_some() {
+                    // Only a name
+                    self.lut
+                        .append_name(name.unwrap(), entry)
+                        .with_context(|_| DataSetLutSnafu {
+                            action: "pushing data with name only",
+                        })?;
+                } else {
+                    return Err(DataSetError::DataSetLut {
+                        action: "pushing data",
+                        source: LutError::NoKeyProvided,
+                    });
+                }
+            }
+        }
+
+        self.data.push(item);
+
+        Ok(())
     }
 
     /// Get a copy of the data with that ID, if that ID is in the lookup table
@@ -406,7 +481,6 @@ impl<'a, T: DataSetT, const ENTRIES: usize> Decode<'a> for DataSet<T, ENTRIES> {
         let metadata = decoder.decode()?;
         let lut = decoder.decode()?;
         let crc32_checksum = decoder.decode()?;
-        // let bytes: OctetStringRef = decoder.decode()?;
         let data_seq: SequenceOf<T, ENTRIES> = decoder.decode()?;
         let data: Vec<T> = data_seq.iter().cloned().collect();
         Ok(Self {
@@ -641,35 +715,31 @@ mod dataset_ut {
 
         dbg!(size_of::<SpacecraftDataSet>());
 
-        // Initialize the overall buffer for building the data
-        let mut buf = vec![];
-        let mut builder = DataSetBuilder::default();
-        builder
-            .push_into(&mut buf, &srp_sc, Some(-20), Some("SRP spacecraft"))
+        let mut dataset = DataSet::<SpacecraftData, 16>::default();
+        dataset
+            .push(srp_sc.clone(), Some(-20), Some("SRP spacecraft"))
             .unwrap();
 
-        builder
-            .push_into(&mut buf, &full_sc, Some(-50), Some("Full spacecraft"))
+        dataset
+            .push(full_sc.clone(), Some(-50), Some("Full spacecraft"))
             .unwrap();
 
         // Pushing without name as ID -51
-        builder
-            .push_into(&mut buf, &full_sc, Some(-51), None)
-            .unwrap();
+        dataset.push(full_sc.clone(), Some(-51), None).unwrap();
 
         // Pushing without ID
-        builder
-            .push_into(&mut buf, &srp_sc, None, Some("ID less SRP spacecraft"))
+        dataset
+            .push(srp_sc.clone(), None, Some("ID less SRP spacecraft"))
             .unwrap();
 
-        let mut dataset = builder.finalize(buf).unwrap();
-
+        // Make sure to set the CRC32.
+        dataset.set_crc32();
         // And encode it.
 
         let mut ebuf = vec![];
         dataset.encode_to_vec(&mut ebuf).unwrap();
 
-        assert_eq!(ebuf.len(), 530);
+        assert_eq!(ebuf.len(), 523);
 
         let repr_dec = SpacecraftDataSet::from_bytes(ebuf);
 
