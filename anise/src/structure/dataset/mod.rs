@@ -22,7 +22,6 @@ use crate::{
 use core::fmt;
 use core::ops::Deref;
 use der::{asn1::SequenceOf, Decode, Encode, Reader, Writer};
-use heapless::Vec;
 use log::{error, trace};
 use snafu::prelude::*;
 use std::mem::size_of;
@@ -59,7 +58,7 @@ pub struct DataSet<T: DataSetT, const ENTRIES: usize> {
     pub lut: LookUpTable<ENTRIES>,
     pub data_checksum: u32,
     /// The actual data from the dataset
-    pub data: Vec<T, ENTRIES>,
+    pub data: Vec<T>,
 }
 
 impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
@@ -409,7 +408,7 @@ impl<'a, T: DataSetT, const ENTRIES: usize> Decode<'a> for DataSet<T, ENTRIES> {
         let crc32_checksum = decoder.decode()?;
         // let bytes: OctetStringRef = decoder.decode()?;
         let data_seq: SequenceOf<T, ENTRIES> = decoder.decode()?;
-        let data: Vec<T, ENTRIES> = data_seq.iter().cloned().collect();
+        let data: Vec<T> = data_seq.iter().cloned().collect();
         Ok(Self {
             metadata,
             lut,
@@ -531,8 +530,8 @@ mod dataset_ut {
             // bytes: Bytes::copy_from_slice(&packed_buf),
             ..Default::default()
         };
-        dataset.data.push(srp_sc.clone()).unwrap();
-        dataset.data.push(full_sc.clone()).unwrap();
+        dataset.data.push(srp_sc.clone());
+        dataset.data.push(full_sc.clone());
         dataset.set_crc32();
 
         // And encode it.
