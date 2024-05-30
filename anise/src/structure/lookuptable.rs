@@ -327,13 +327,13 @@ mod lut_ut {
         lut.append(1, "a", 0).unwrap();
         assert!(lut.check_integrity()); // ID only, passes
 
-        lut.append_name("a", 1).unwrap();
+        lut.append_name("a", 0).unwrap();
         assert!(lut.check_integrity()); // Name added, passes
 
         lut.append(2, "b", 11).unwrap();
         assert!(lut.check_integrity()); // Second ID, name missing, fails
 
-        lut.append_name("b", 111).unwrap();
+        lut.append_name("b", 11).unwrap();
         assert!(lut.check_integrity()); // Name added, passes
     }
 }
