@@ -66,10 +66,9 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
             Ok(ctx) => {
                 trace!("[try_from_bytes] loaded context successfully");
                 // Check the full integrity on load of the file.
-                ctx.check_integrity()
-                    .with_context(|_| DataSetIntegritySnafu {
-                        action: "loading data set from bytes",
-                    })?;
+                ctx.check_integrity().context(DataSetIntegritySnafu {
+                    action: "loading data set from bytes",
+                })?;
                 Ok(ctx)
             }
             Err(_) => {
@@ -81,7 +80,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
                         end: 5,
                         size: bytes.len(),
                     })
-                    .with_context(|_| DataDecodingSnafu {
+                    .context(DataDecodingSnafu {
                         action: "checking data set version",
                     })?;
                 match Semver::from_der(semver_bytes) {
@@ -179,14 +178,12 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
                 match name {
                     Some(name) => {
                         // Both an ID and a name
-                        self.lut
-                            .append(id, name, index)
-                            .with_context(|_| DataSetLutSnafu {
-                                action: "pushing data with ID and name",
-                            })?;
+                        self.lut.append(id, name, index).context(DataSetLutSnafu {
+                            action: "pushing data with ID and name",
+                        })?;
                         // If the ID is the body of a system with a single object, also insert it for the system ID.
                         if [199, 299].contains(&id) {
-                            self.lut.append(id / 100, name, index).with_context(|_| {
+                            self.lut.append(id / 100, name, index).context({
                                 DataSetLutSnafu {
                                     action: "pushing data with ID and name",
                                 }
@@ -195,14 +192,12 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
                     }
                     None => {
                         // Only an ID and no name
-                        self.lut
-                            .append_id(id, index)
-                            .with_context(|_| DataSetLutSnafu {
-                                action: "pushing data with ID only",
-                            })?;
+                        self.lut.append_id(id, index).context(DataSetLutSnafu {
+                            action: "pushing data with ID only",
+                        })?;
                         // If the ID is the body of a system with a single object, also insert it for the system ID.
                         if [199, 299].contains(&id) {
-                            self.lut.append_id(id / 100, index).with_context(|_| {
+                            self.lut.append_id(id / 100, index).context({
                                 DataSetLutSnafu {
                                     action: "pushing data with ID and name",
                                 }
@@ -216,7 +211,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
                     // Only a name
                     self.lut
                         .append_name(name.unwrap(), index)
-                        .with_context(|_| DataSetLutSnafu {
+                        .context(DataSetLutSnafu {
                             action: "pushing data with name only",
                         })?;
                 } else {
@@ -241,7 +236,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
                 .get(*index as usize)
                 .cloned()
                 .ok_or_else(|| LutError::InvalidIndex { index: *index })
-                .with_context(|_| DataSetLutSnafu {
+                .context(DataSetLutSnafu {
                     action: "fetching by ID",
                 })
         } else {
@@ -261,7 +256,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
                 .data
                 .get_mut(*index as usize)
                 .ok_or_else(|| LutError::InvalidIndex { index: *index })
-                .with_context(|_| DataSetLutSnafu {
+                .context(DataSetLutSnafu {
                     action: "fetching by ID",
                 })? = new_value;
 
@@ -283,14 +278,14 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
                 .data
                 .get_mut(index as usize)
                 .ok_or_else(|| LutError::InvalidIndex { index })
-                .with_context(|_| DataSetLutSnafu {
+                .context(DataSetLutSnafu {
                     action: "fetching by ID",
                 })? = T::default();
 
             // Search the names for that same entry.
             for (name, name_index) in &self.lut.by_name.clone() {
                 if name_index == &index {
-                    self.lut.rmname(name).with_context(|_| DataSetLutSnafu {
+                    self.lut.rmname(name).context(DataSetLutSnafu {
                         action: "removing by ID",
                     })?;
                     break;
@@ -313,7 +308,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
                 .get(*index as usize)
                 .cloned()
                 .ok_or_else(|| LutError::InvalidIndex { index: *index })
-                .with_context(|_| DataSetLutSnafu {
+                .context(DataSetLutSnafu {
                     action: "fetching by name",
                 })
         } else {
@@ -335,7 +330,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
                 .data
                 .get_mut(*index as usize)
                 .ok_or_else(|| LutError::InvalidIndex { index: *index })
-                .with_context(|_| DataSetLutSnafu {
+                .context(DataSetLutSnafu {
                     action: "fetching by ID",
                 })? = new_value;
 
@@ -359,14 +354,14 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
                 .data
                 .get_mut(index as usize)
                 .ok_or_else(|| LutError::InvalidIndex { index })
-                .with_context(|_| DataSetLutSnafu {
+                .context(DataSetLutSnafu {
                     action: "fetching by ID",
                 })? = T::default();
 
             // Search the names for that same entry.
             for (id, id_index) in &self.lut.by_id.clone() {
                 if id_index == &index {
-                    self.lut.rmid(*id).with_context(|_| DataSetLutSnafu {
+                    self.lut.rmid(*id).context(DataSetLutSnafu {
                         action: "removing by name",
                     })?;
                     break;

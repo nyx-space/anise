@@ -64,7 +64,7 @@ fn main() -> Result<(), CliErrors> {
             crc32_checksum,
         } => {
             let path_str = file.clone();
-            let bytes = file2heap!(file).with_context(|_| AniseSnafu)?;
+            let bytes = file2heap!(file).context(AniseSnafu)?;
             // Try to load this as a dataset by first trying to load the metadata
             if let Ok(metadata) = Metadata::decode_header(&bytes) {
                 // Now, we can load this depending on the kind of data that it is
@@ -73,21 +73,21 @@ fn main() -> Result<(), CliErrors> {
                     DataSetType::SpacecraftData => {
                         // Decode as spacecraft data
                         let dataset = SpacecraftDataSet::try_from_bytes(bytes)
-                            .with_context(|_| CliDataSetSnafu)?;
+                            .context(CliDataSetSnafu)?;
                         println!("{dataset}");
                         Ok(())
                     }
                     DataSetType::PlanetaryData => {
                         // Decode as planetary data
                         let dataset = PlanetaryDataSet::try_from_bytes(bytes)
-                            .with_context(|_| CliDataSetSnafu)?;
+                            .context(CliDataSetSnafu)?;
                         println!("{dataset}");
                         Ok(())
                     }
                     DataSetType::EulerParameterData => {
                         // Decode as euler parameter data
                         let dataset = EulerParameterDataSet::try_from_bytes(bytes)
-                            .with_context(|_| CliDataSetSnafu)?;
+                            .context(CliDataSetSnafu)?;
                         println!("{dataset}");
                         Ok(())
                     }
@@ -97,19 +97,19 @@ fn main() -> Result<(), CliErrors> {
                 let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
                 match file_record
                     .identification()
-                    .with_context(|_| CliFileRecordSnafu)?
+                    .context(CliFileRecordSnafu)?
                 {
                     "PCK" => {
                         info!("Loading {path_str:?} as DAF/PCK");
                         BPC::check_then_parse(bytes, crc32_checksum)
-                            .with_context(|_| CliDAFSnafu)?;
+                            .context(CliDAFSnafu)?;
                         info!("[OK] Checksum matches");
                         Ok(())
                     }
                     "SPK" => {
                         info!("Loading {path_str:?} as DAF/SPK");
                         SPK::check_then_parse(bytes, crc32_checksum)
-                            .with_context(|_| CliDAFSnafu)?;
+                            .context(CliDAFSnafu)?;
                         info!("[OK] Checksum matches");
                         Ok(())
                     }
@@ -119,19 +119,19 @@ fn main() -> Result<(), CliErrors> {
         }
         Actions::Inspect { file } => {
             let path_str = file.clone();
-            let bytes = file2heap!(file).with_context(|_| AniseSnafu)?;
+            let bytes = file2heap!(file).context(AniseSnafu)?;
             // Load the header only
             let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
 
             match file_record
                 .identification()
-                .with_context(|_| CliFileRecordSnafu)?
+                .context(CliFileRecordSnafu)?
             {
                 "PCK" => {
                     info!("Loading {path_str:?} as DAF/PCK");
-                    let pck = BPC::parse(bytes).with_context(|_| CliDAFSnafu)?;
+                    let pck = BPC::parse(bytes).context(CliDAFSnafu)?;
                     info!("CRC32 checksum: 0x{:X}", pck.crc32());
-                    if let Some(comments) = pck.comments().with_context(|_| CliDAFSnafu)? {
+                    if let Some(comments) = pck.comments().context(CliDAFSnafu)? {
                         println!("== COMMENTS ==\n{}== END ==", comments);
                     } else {
                         println!("(File has no comments)");
@@ -141,10 +141,10 @@ fn main() -> Result<(), CliErrors> {
                 }
                 "SPK" => {
                     info!("Loading {path_str:?} as DAF/SPK");
-                    let spk = SPK::parse(bytes).with_context(|_| CliDAFSnafu)?;
+                    let spk = SPK::parse(bytes).context(CliDAFSnafu)?;
 
                     info!("CRC32 checksum: 0x{:X}", spk.crc32());
-                    if let Some(comments) = spk.comments().with_context(|_| CliDAFSnafu)? {
+                    if let Some(comments) = spk.comments().context(CliDAFSnafu)? {
                         println!("== COMMENTS ==\n{}== END ==", comments);
                     } else {
                         println!("(File has no comments)");
@@ -162,11 +162,11 @@ fn main() -> Result<(), CliErrors> {
             gmfile,
             outfile,
         } => {
-            let dataset = convert_tpc(pckfile, gmfile).with_context(|_| CliDataSetSnafu)?;
+            let dataset = convert_tpc(pckfile, gmfile).context(CliDataSetSnafu)?;
 
             dataset
                 .save_as(&outfile, false)
-                .with_context(|_| CliDataSetSnafu)?;
+                .context(CliDataSetSnafu)?;
 
             Ok(())
         }
@@ -175,7 +175,7 @@ fn main() -> Result<(), CliErrors> {
 
             dataset
                 .save_as(&outfile, false)
-                .with_context(|_| CliDataSetSnafu)?;
+                .context(CliDataSetSnafu)?;
 
             Ok(())
         }
@@ -194,29 +194,29 @@ fn main() -> Result<(), CliErrors> {
             );
 
             let path_str = input.clone();
-            let bytes = file2heap!(input).with_context(|_| AniseSnafu)?;
+            let bytes = file2heap!(input).context(AniseSnafu)?;
             // Load the header only
             let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
 
             match file_record
                 .identification()
-                .with_context(|_| CliFileRecordSnafu)?
+                .context(CliFileRecordSnafu)?
             {
                 "PCK" => {
                     info!("Loading {path_str:?} as DAF/PCK");
-                    let pck = BPC::parse(bytes).with_context(|_| CliDAFSnafu)?;
+                    let pck = BPC::parse(bytes).context(CliDAFSnafu)?;
 
                     let mut ids = HashSet::new();
-                    for summary in pck.data_summaries().with_context(|_| CliDAFSnafu)? {
+                    for summary in pck.data_summaries().context(CliDAFSnafu)? {
                         ids.insert(summary.id());
                     }
 
                     info!("IDs present in file: {ids:?}");
 
-                    let (summary, idx) = pck.summary_from_id(id).with_context(|_| CliDAFSnafu)?;
+                    let (summary, idx) = pck.summary_from_id(id).context(CliDAFSnafu)?;
 
                     let data_type =
-                        DafDataType::try_from(summary.data_type_i).with_context(|_| CliDAFSnafu)?;
+                        DafDataType::try_from(summary.data_type_i).context(CliDAFSnafu)?;
                     ensure!(
                         data_type == DafDataType::Type2ChebyshevTriplet,
                         ArgumentSnafu {
@@ -245,20 +245,20 @@ fn main() -> Result<(), CliErrors> {
                 }
                 "SPK" => {
                     info!("Loading {path_str:?} as DAF/PCK");
-                    let spk = SPK::parse(bytes).with_context(|_| CliDAFSnafu)?;
+                    let spk = SPK::parse(bytes).context(CliDAFSnafu)?;
 
                     let mut ids = HashSet::new();
-                    for summary in spk.data_summaries().with_context(|_| CliDAFSnafu)? {
+                    for summary in spk.data_summaries().context(CliDAFSnafu)? {
                         ids.insert(summary.id());
                     }
 
                     info!("IDs present in file: {ids:?}");
 
-                    let (summary, idx) = spk.summary_from_id(id).with_context(|_| CliDAFSnafu)?;
+                    let (summary, idx) = spk.summary_from_id(id).context(CliDAFSnafu)?;
                     info!("Modifying {summary}");
 
                     let data_type =
-                        DafDataType::try_from(summary.data_type_i).with_context(|_| CliDAFSnafu)?;
+                        DafDataType::try_from(summary.data_type_i).context(CliDAFSnafu)?;
                     ensure!(
                         data_type == DafDataType::Type2ChebyshevTriplet,
                         ArgumentSnafu {
@@ -292,31 +292,31 @@ fn main() -> Result<(), CliErrors> {
         }
         Actions::RmDAFById { input, output, id } => {
             let path_str = input.clone();
-            let bytes = file2heap!(input).with_context(|_| AniseSnafu)?;
+            let bytes = file2heap!(input).context(AniseSnafu)?;
             // Load the header only
             let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
 
             match file_record
                 .identification()
-                .with_context(|_| CliFileRecordSnafu)?
+                .context(CliFileRecordSnafu)?
             {
                 "PCK" => {
                     info!("Loading {path_str:?} as DAF/PCK");
-                    let pck = BPC::parse(bytes).with_context(|_| CliDAFSnafu)?;
+                    let pck = BPC::parse(bytes).context(CliDAFSnafu)?;
 
                     let mut ids = HashSet::new();
-                    for summary in pck.data_summaries().with_context(|_| CliDAFSnafu)? {
+                    for summary in pck.data_summaries().context(CliDAFSnafu)? {
                         ids.insert(summary.id());
                     }
 
                     info!("IDs present in file: {ids:?}");
 
-                    let (_, idx) = pck.summary_from_id(id).with_context(|_| CliDAFSnafu)?;
+                    let (_, idx) = pck.summary_from_id(id).context(CliDAFSnafu)?;
 
                     let mut my_pck_mut = pck.to_mutable();
                     my_pck_mut
                         .delete_nth_data(idx)
-                        .with_context(|_| CliDAFSnafu)?;
+                        .context(CliDAFSnafu)?;
 
                     info!("Saving file to {output:?}");
                     my_pck_mut.persist(output).unwrap();
@@ -325,21 +325,21 @@ fn main() -> Result<(), CliErrors> {
                 }
                 "SPK" => {
                     info!("Loading {path_str:?} as DAF/PCK");
-                    let spk = SPK::parse(bytes).with_context(|_| CliDAFSnafu)?;
+                    let spk = SPK::parse(bytes).context(CliDAFSnafu)?;
 
                     let mut ids = HashSet::new();
-                    for summary in spk.data_summaries().with_context(|_| CliDAFSnafu)? {
+                    for summary in spk.data_summaries().context(CliDAFSnafu)? {
                         ids.insert(summary.id());
                     }
 
                     info!("IDs present in file: {ids:?}");
 
-                    let (_, idx) = spk.summary_from_id(id).with_context(|_| CliDAFSnafu)?;
+                    let (_, idx) = spk.summary_from_id(id).context(CliDAFSnafu)?;
 
                     let mut my_spk_mut = spk.to_mutable();
                     my_spk_mut
                         .delete_nth_data(idx)
-                        .with_context(|_| CliDAFSnafu)?;
+                        .context(CliDAFSnafu)?;
 
                     info!("Saving file to {output:?}");
                     my_spk_mut.persist(output).unwrap();

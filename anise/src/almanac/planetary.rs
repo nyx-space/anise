@@ -33,7 +33,7 @@ impl Almanac {
         Ok(self
             .planetary_data
             .get_by_id(uid.ephemeris_id)
-            .with_context(|_| PlanetaryDataSetSnafu {
+            .context(PlanetaryDataSetSnafu {
                 action: "fetching frame by its UID via ephemeris_id",
             })?
             .to_frame(uid))

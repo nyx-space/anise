@@ -78,17 +78,15 @@ impl Almanac {
             let cur_dcm = self.rotation_to_parent(Frame::from_orient_ssb(next_parent), epoch)?;
 
             if dcm_fwrd.from == cur_dcm.from {
-                dcm_fwrd =
-                    (cur_dcm * dcm_fwrd.transpose()).with_context(|_| OrientationPhysicsSnafu)?;
+                dcm_fwrd = (cur_dcm * dcm_fwrd.transpose()).context(OrientationPhysicsSnafu)?;
             } else if dcm_fwrd.from == cur_dcm.to {
                 dcm_fwrd = (dcm_fwrd * cur_dcm)
-                    .with_context(|_| OrientationPhysicsSnafu)?
+                    .context(OrientationPhysicsSnafu)?
                     .transpose();
             } else if dcm_bwrd.to == cur_dcm.from {
-                dcm_bwrd = (cur_dcm * dcm_bwrd).with_context(|_| OrientationPhysicsSnafu)?;
+                dcm_bwrd = (cur_dcm * dcm_bwrd).context(OrientationPhysicsSnafu)?;
             } else if dcm_bwrd.to == cur_dcm.to {
-                dcm_bwrd =
-                    (dcm_bwrd.transpose() * cur_dcm).with_context(|_| OrientationPhysicsSnafu)?;
+                dcm_bwrd = (dcm_bwrd.transpose() * cur_dcm).context(OrientationPhysicsSnafu)?;
             } else {
                 return Err(OrientationError::Unreachable);
             }
@@ -99,17 +97,17 @@ impl Almanac {
         }
 
         if dcm_fwrd.from == dcm_bwrd.from {
-            (dcm_bwrd * dcm_fwrd.transpose()).with_context(|_| OrientationPhysicsSnafu)
+            (dcm_bwrd * dcm_fwrd.transpose()).context(OrientationPhysicsSnafu)
         } else if dcm_fwrd.from == dcm_bwrd.to {
             Ok((dcm_fwrd * dcm_bwrd)
-                .with_context(|_| OrientationPhysicsSnafu)?
+                .context(OrientationPhysicsSnafu)?
                 .transpose())
         } else if dcm_fwrd.to == dcm_bwrd.to {
             Ok((dcm_fwrd.transpose() * dcm_bwrd)
-                .with_context(|_| OrientationPhysicsSnafu)?
+                .context(OrientationPhysicsSnafu)?
                 .transpose())
         } else {
-            (dcm_bwrd * dcm_fwrd).with_context(|_| OrientationPhysicsSnafu)
+            (dcm_bwrd * dcm_fwrd).context(OrientationPhysicsSnafu)
         }
     }
 
@@ -140,6 +138,6 @@ impl Almanac {
             frame: from_frame,
         };
 
-        (dcm * input_state).with_context(|_| OrientationPhysicsSnafu {})
+        (dcm * input_state).context(OrientationPhysicsSnafu {})
     }
 }

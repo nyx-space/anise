@@ -40,7 +40,7 @@ impl Almanac {
         for maybe_bpc in self.bpc_data.iter().take(self.num_loaded_bpc()).rev() {
             let bpc = maybe_bpc.as_ref().unwrap();
 
-            for summary in bpc.data_summaries().with_context(|_| BPCSnafu {
+            for summary in bpc.data_summaries().context(BPCSnafu {
                 action: "finding orientation root",
             })? {
                 // This summary exists, so we need to follow the branch of centers up the tree.
@@ -102,7 +102,7 @@ impl Almanac {
                 let planetary_data = self
                     .planetary_data
                     .get_by_id(source.orientation_id)
-                    .with_context(|_| OrientationDataSetSnafu)?;
+                    .context(OrientationDataSetSnafu)?;
                 planetary_data.parent_id
             }
         };
@@ -130,7 +130,7 @@ impl Almanac {
                     let planetary_data = self
                         .planetary_data
                         .get_by_id(inertial_frame_id)
-                        .with_context(|_| OrientationDataSetSnafu)?;
+                        .context(OrientationDataSetSnafu)?;
                     planetary_data.parent_id
                 }
             };

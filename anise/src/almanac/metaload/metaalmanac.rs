@@ -57,7 +57,7 @@ impl MetaAlmanac {
     /// Fetch all of the URIs and return a loaded Almanac
     pub(crate) fn _process(&mut self) -> AlmanacResult<Almanac> {
         for (fno, file) in self.files.iter_mut().enumerate() {
-            file._process().with_context(|_| MetaSnafu {
+            file._process().context(MetaSnafu {
                 fno,
                 file: file.clone(),
             })?;

@@ -59,14 +59,14 @@ impl Almanac {
         // SEZ DCM is topo to fixed
         let sez_dcm = tx
             .dcm_from_topocentric_to_body_fixed(from)
-            .with_context(|_| EphemerisPhysicsSnafu { action: "" })
-            .with_context(|_| EphemerisSnafu {
+            .context(EphemerisPhysicsSnafu { action: "" })
+            .context(EphemerisSnafu {
                 action: "computing SEZ DCM for AER",
             })?;
 
         let tx_sez = (sez_dcm.transpose() * tx)
-            .with_context(|_| EphemerisPhysicsSnafu { action: "" })
-            .with_context(|_| EphemerisSnafu {
+            .context(EphemerisPhysicsSnafu { action: "" })
+            .context(EphemerisSnafu {
                 action: "transforming transmitter to SEZ",
             })?;
 
@@ -74,8 +74,8 @@ impl Almanac {
         let rx_in_tx_frame = self.transform_to(rx, tx.frame, None)?;
         // Convert into SEZ frame
         let rx_sez = (sez_dcm.transpose() * rx_in_tx_frame)
-            .with_context(|_| EphemerisPhysicsSnafu { action: "" })
-            .with_context(|_| EphemerisSnafu {
+            .context(EphemerisPhysicsSnafu { action: "" })
+            .context(EphemerisSnafu {
                 action: "transforming received to SEZ",
             })?;
 

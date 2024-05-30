@@ -53,7 +53,7 @@ pub enum MetaAlmanacError {
 impl Almanac {
     /// Load from the provided MetaFile.
     fn _load_from_metafile(&self, mut metafile: MetaFile) -> AlmanacResult<Self> {
-        metafile._process().with_context(|_| MetaSnafu {
+        metafile._process().context(MetaSnafu {
             fno: 0_usize,
             file: metafile.clone(),
         })?;

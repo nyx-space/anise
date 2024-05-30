@@ -36,7 +36,7 @@ impl Almanac {
         for maybe_spk in self.spk_data.iter().take(self.num_loaded_spk()).rev() {
             let spk = maybe_spk.as_ref().unwrap();
 
-            for summary in spk.data_summaries().with_context(|_| SPKSnafu {
+            for summary in spk.data_summaries().context(SPKSnafu {
                 action: "finding ephemeris root",
             })? {
                 // This summary exists, so we need to follow the branch of centers up the tree.
