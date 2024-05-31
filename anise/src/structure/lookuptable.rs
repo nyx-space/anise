@@ -154,6 +154,11 @@ impl<const ENTRIES: usize> LookUpTable<ENTRIES> {
         }
     }
 
+    /// Returns the length of the LONGEST of the two look up indexes
+    pub fn len(&self) -> usize {
+        self.by_id.len().max(self.by_name.len())
+    }
+
     pub(crate) fn check_integrity(&self) -> bool {
         if self.by_id.is_empty() || self.by_name.is_empty() {
             // If either map is empty, the LUT is integral because there cannot be

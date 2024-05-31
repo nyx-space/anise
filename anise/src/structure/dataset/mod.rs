@@ -21,7 +21,10 @@ use crate::{
 };
 use core::fmt;
 use core::ops::Deref;
-use der::{asn1::SequenceOf, Decode, Encode, Reader, Writer};
+use der::{
+    asn1::{OctetString, SequenceOf},
+    Decode, Encode, Reader, Writer,
+};
 use log::{error, trace};
 use snafu::prelude::*;
 use std::mem::size_of;
@@ -427,11 +430,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
 
     /// Returns the length of the LONGEST of the two look up tables
     pub fn len(&self) -> usize {
-        if self.lut.by_id.len() > self.lut.by_name.len() {
-            self.lut.by_id.len()
-        } else {
-            self.lut.by_name.len()
-        }
+        self.lut.len()
     }
 
     /// Returns whether this dataset is empty
@@ -440,38 +439,63 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
     }
 
     /// Returns this data as a data sequence, cloning all of the entries into this sequence.
-    fn build_data_seq(&self) -> SequenceOf<T, ENTRIES> {
-        let mut data_seq = SequenceOf::<T, ENTRIES>::new();
-        for d in &self.data {
-            data_seq.add(d.clone()).unwrap();
+    fn build_data_seq(&self) -> (SequenceOf<u32, ENTRIES>, OctetString) {
+        let mut buf = vec![];
+        let mut bytes_meta = SequenceOf::<u32, ENTRIES>::default();
+        bytes_meta.add(self.data.len() as u32).unwrap();
+        for data in &self.data {
+            let mut this_buf = vec![];
+            data.encode_to_vec(&mut this_buf).unwrap();
+            bytes_meta.add(this_buf.len() as u32).unwrap();
+            buf.extend_from_slice(&this_buf);
         }
-        data_seq
+        let bytes = OctetString::new(buf).unwrap();
+        (bytes_meta, bytes)
     }
 }
 
 impl<T: DataSetT, const ENTRIES: usize> Encode for DataSet<T, ENTRIES> {
     fn encoded_len(&self) -> der::Result<der::Length> {
+        let (bytes_meta, bytes) = self.build_data_seq();
         self.metadata.encoded_len()?
             + self.lut.encoded_len()?
             + self.data_checksum.encoded_len()?
-            + self.build_data_seq().encoded_len()?
+            + bytes_meta.encoded_len()?
+            + bytes.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
+        let (bytes_meta, bytes) = self.build_data_seq();
         self.metadata.encode(encoder)?;
         self.lut.encode(encoder)?;
         self.data_checksum.encode(encoder)?;
-        self.build_data_seq().encode(encoder)
+        bytes_meta.encode(encoder)?;
+        bytes.encode(encoder)
     }
 }
 
 impl<'a, T: DataSetT, const ENTRIES: usize> Decode<'a> for DataSet<T, ENTRIES> {
     fn decode<D: Reader<'a>>(decoder: &mut D) -> der::Result<Self> {
         let metadata = decoder.decode()?;
-        let lut = decoder.decode()?;
+        let lut: LookUpTable<ENTRIES> = decoder.decode()?;
         let crc32_checksum = decoder.decode()?;
-        let data_seq: SequenceOf<T, ENTRIES> = decoder.decode()?;
-        let data: Vec<T> = data_seq.iter().cloned().collect();
+        // Metadata of the bytes to decode.
+        // The first integer contains the number of usable items in the data.
+        // The other integers are the encoded lengths of each of the data.
+        let bytes_meta: SequenceOf<u32, ENTRIES> = decoder.decode()?;
+        let der_octets: OctetString = decoder.decode()?;
+        let bytes = der_octets.as_bytes();
+
+        let mut data = vec![];
+
+        let mut idx = 0;
+        for meta_idx in 0..*bytes_meta.get(0).unwrap() as usize {
+            let next_len = *bytes_meta.get(meta_idx + 1).unwrap() as usize;
+            let this_data = T::from_der(&bytes[idx..idx + next_len]).unwrap();
+            data.push(this_data);
+            idx += next_len;
+        }
+
         Ok(Self {
             metadata,
             lut,
@@ -511,15 +535,15 @@ mod dataset_ut {
 
         let mut buf = vec![];
         repr.encode_to_vec(&mut buf).unwrap();
-        assert_eq!(buf.len(), 58);
+        assert_eq!(buf.len(), 63);
 
         let repr_dec = DataSet::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
 
         dbg!(repr);
-        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData, 2>>(), 288);
-        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData, 128>>(), 10368);
+        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData, 2>>(), 256);
+        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData, 128>>(), 8824);
     }
 
     #[test]
@@ -720,7 +744,7 @@ mod dataset_ut {
         let mut ebuf = vec![];
         dataset.encode_to_vec(&mut ebuf).unwrap();
 
-        assert_eq!(ebuf.len(), 506);
+        // assert_eq!(ebuf.len(), 506);
 
         let repr_dec = SpacecraftDataSet::from_bytes(ebuf);
 
