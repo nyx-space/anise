@@ -23,7 +23,7 @@ use core::fmt::Debug;
 use core::hash::Hash;
 use core::marker::PhantomData;
 use core::ops::Deref;
-use hifitime::Epoch;
+use hifitime::{Epoch, TimeUnits};
 use log::{debug, error, trace};
 use snafu::ResultExt;
 
@@ -209,7 +209,9 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
         // so we can't just call `summary_from_id`.
         for (idx, summary) in self.data_summaries()?.iter().enumerate() {
             if summary.id() == id {
-                if epoch >= summary.start_epoch() && epoch <= summary.end_epoch() {
+                if epoch >= summary.start_epoch() - 1_i64.nanoseconds()
+                    && epoch <= summary.end_epoch() + 1_i64.nanoseconds()
+                {
                     trace!("Found {id} in position {idx}: {summary:?}");
                     return Ok((summary, idx));
                 } else {

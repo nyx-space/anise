@@ -428,7 +428,7 @@ fn hermite_query() {
         .unwrap();
 
     // This tests that we've loaded the frame info from the Almanac, otherwise we cannot compute the orbital elements.
-    assert_eq!(format!("{state:x}"), "[Earth J2000] 2000-01-01T13:39:27.999998123 UTC\tsma = 7192.041350 km\tecc = 0.024628\tinc = 12.851841 deg\traan = 306.170038 deg\taop = 315.085528 deg\tta = 96.135384 deg");
+    assert_eq!(format!("{state:x}"), "[Earth J2000] 2000-01-01T13:40:32.183929398 ET\tsma = 7192.041350 km\tecc = 0.024628\tinc = 12.851841 deg\traan = 306.170038 deg\taop = 315.085528 deg\tta = 96.135384 deg");
 
     // Fetch the state at the start of this spline to make sure we don't glitch.
     assert!(ctx
@@ -440,17 +440,14 @@ fn hermite_query() {
         )
         .is_ok());
 
-    // The very last state may fail because of a rounding difference in hifitime when going to/from TDB
-    // For example, in this exact case, the end_epoch is shown to be 12032.183931521 seconds but the epoch
-    // data in the BSP is 12032.1839315118(27), or 30 ns. This fix is in progress in hifitime v4.
-    // assert!(ctx
-    //     .translate_from_to(
-    //         summary.target_frame(),
-    //         to_frame,
-    //         summary.end_epoch(),
-    //         Aberration::None,
-    //     )
-    //     .is_ok());
+    assert!(ctx
+        .translate(
+            summary.target_frame(),
+            summary.center_frame(),
+            summary.end_epoch(),
+            Aberration::NONE,
+        )
+        .is_ok());
 }
 
 /// This tests that the rotation from Moon to Earth matches SPICE with different aberration corrections.
