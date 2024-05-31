@@ -144,7 +144,7 @@ impl CompareEphem {
         // will cause us to seek out of the definition bounds.
 
         let bound_offset = match self.aberration {
-            None => 0.0_f64.seconds(),
+            None => 1.0_f64.nanoseconds(),
             Some(_) => 36.0_f64.hours(),
         };
 
