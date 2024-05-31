@@ -71,10 +71,9 @@ impl Frame {
             action: "converting center name to its ID",
         })?;
 
-        let orientation_id =
-            id_to_orientation_name(ref_frame).context(OrientationSnafu {
-                action: "converting reference frame to its ID",
-            })?;
+        let orientation_id = id_to_orientation_name(ref_frame).context(OrientationSnafu {
+            action: "converting reference frame to its ID",
+        })?;
 
         Ok(Self::new(ephemeris_id, orientation_id))
     }
