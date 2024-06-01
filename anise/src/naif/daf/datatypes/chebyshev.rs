@@ -40,7 +40,9 @@ impl<'a> Type2ChebyshevSet<'a> {
         epoch: Epoch,
         summary: &S,
     ) -> Result<usize, InterpolationError> {
-        if epoch < summary.start_epoch() || epoch > summary.end_epoch() {
+        if epoch < summary.start_epoch() - 1_i64.nanoseconds()
+            || epoch > summary.end_epoch() + 1_i64.nanoseconds()
+        {
             // No need to go any further.
             return Err(InterpolationError::NoInterpolationData {
                 req: epoch,

@@ -26,7 +26,7 @@ use crate::almanac::metaload::MetaAlmanacError;
 #[cfg(feature = "metaload")]
 use crate::almanac::metaload::MetaFile;
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 #[snafu(visibility(pub))]
 pub enum AlmanacError {
     #[snafu(display("{action} encountered an error with ephemeris computation {source}"))]
@@ -62,7 +62,7 @@ pub enum AlmanacError {
 
 pub type AlmanacResult<T> = Result<T, AlmanacError>;
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub enum InputOutputError {
     /// Raised for an error in reading or writing the file(s)

@@ -87,6 +87,23 @@ impl CartesianState {
         }
     }
 
+    /// Creates a new Cartesian state in the provided frame at the provided Epoch (shortcut to `new`).
+    ///
+    /// **Units:** km, km, km, km/s, km/s, km/s
+    #[allow(clippy::too_many_arguments)]
+    pub fn cartesian(
+        x_km: f64,
+        y_km: f64,
+        z_km: f64,
+        vx_km_s: f64,
+        vy_km_s: f64,
+        vz_km_s: f64,
+        epoch: Epoch,
+        frame: Frame,
+    ) -> Self {
+        Self::new(x_km, y_km, z_km, vx_km_s, vy_km_s, vz_km_s, epoch, frame)
+    }
+
     /// Creates a new Cartesian in the provided frame at the provided Epoch in time with 0.0 velocity.
     ///
     /// **Units:** km, km, km
