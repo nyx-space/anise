@@ -144,7 +144,7 @@ impl CompareEphem {
         // will cause us to seek out of the definition bounds.
 
         let bound_offset = match self.aberration {
-            None => 1.0_f64.nanoseconds(),
+            None => 0.01_f64.microseconds(),
             Some(_) => 36.0_f64.hours(),
         };
 
@@ -230,7 +230,11 @@ impl CompareEphem {
                 / (self.num_queries_per_pair as f64))
                 .seconds();
 
-            let time_it = TimeSeries::exclusive(*start_epoch, *end_epoch - time_step, time_step);
+            let time_it = TimeSeries::exclusive(
+                *start_epoch + bound_offset,
+                *end_epoch - time_step - bound_offset,
+                time_step,
+            );
 
             info!("{time_it} for {from_frame} -> {to_frame} ");
 
