@@ -42,6 +42,9 @@ jobs:
       
       - name: Bench Binary planetary constants
         run: cargo bench --bench "crit_bpc_rotation" --workspace --exclude anise-py
+      
+      - name: Bench planetary constants ANISE file
+        run: cargo bench --bench "crit_planetary_data" --workspace --exclude anise-py
 
       - name: Save benchmark artifacts
         uses: actions/upload-artifact@v3

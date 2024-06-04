@@ -13,16 +13,23 @@ use anise::prelude::*;
 mod validation;
 
 #[test]
-fn test_find_root() {
+fn test_find_root_from_pca() {
     let planetary_data = convert_tpc("../data/pck00011.tpc", "../data/gm_de431.tpc").unwrap();
     // Serialize to disk
     planetary_data
-        .save_as(&PathBuf::from_str("pck11.pca").unwrap(), true)
+        .save_as(&PathBuf::from_str("../data/pck11.pca").unwrap(), true)
         .unwrap();
 
-    let almanac = Almanac::default().load("pck11.pca").unwrap();
+    let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
 
     assert_eq!(almanac.try_find_orientation_root(), Ok(J2000));
+
+    let planetary_data = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
+    // Serialize to disk
+    planetary_data
+        .save_as(&PathBuf::from_str("../data/pck08.pca").unwrap(), true)
+        .unwrap();
+    assert!(Almanac::default().load("../data/pck08.pca").is_ok());
 }
 
 #[test]
