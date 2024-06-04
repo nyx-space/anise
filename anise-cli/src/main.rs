@@ -72,15 +72,15 @@ fn main() -> Result<(), CliErrors> {
                     DataSetType::NotApplicable => unreachable!("no such ANISE data yet"),
                     DataSetType::SpacecraftData => {
                         // Decode as spacecraft data
-                        let dataset = SpacecraftDataSet::try_from_bytes(bytes)
-                            .context(CliDataSetSnafu)?;
+                        let dataset =
+                            SpacecraftDataSet::try_from_bytes(bytes).context(CliDataSetSnafu)?;
                         println!("{dataset}");
                         Ok(())
                     }
                     DataSetType::PlanetaryData => {
                         // Decode as planetary data
-                        let dataset = PlanetaryDataSet::try_from_bytes(bytes)
-                            .context(CliDataSetSnafu)?;
+                        let dataset =
+                            PlanetaryDataSet::try_from_bytes(bytes).context(CliDataSetSnafu)?;
                         println!("{dataset}");
                         Ok(())
                     }
@@ -95,21 +95,16 @@ fn main() -> Result<(), CliErrors> {
             } else {
                 // Load the header only
                 let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
-                match file_record
-                    .identification()
-                    .context(CliFileRecordSnafu)?
-                {
+                match file_record.identification().context(CliFileRecordSnafu)? {
                     "PCK" => {
                         info!("Loading {path_str:?} as DAF/PCK");
-                        BPC::check_then_parse(bytes, crc32_checksum)
-                            .context(CliDAFSnafu)?;
+                        BPC::check_then_parse(bytes, crc32_checksum).context(CliDAFSnafu)?;
                         info!("[OK] Checksum matches");
                         Ok(())
                     }
                     "SPK" => {
                         info!("Loading {path_str:?} as DAF/SPK");
-                        SPK::check_then_parse(bytes, crc32_checksum)
-                            .context(CliDAFSnafu)?;
+                        SPK::check_then_parse(bytes, crc32_checksum).context(CliDAFSnafu)?;
                         info!("[OK] Checksum matches");
                         Ok(())
                     }
@@ -123,10 +118,7 @@ fn main() -> Result<(), CliErrors> {
             // Load the header only
             let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
 
-            match file_record
-                .identification()
-                .context(CliFileRecordSnafu)?
-            {
+            match file_record.identification().context(CliFileRecordSnafu)? {
                 "PCK" => {
                     info!("Loading {path_str:?} as DAF/PCK");
                     let pck = BPC::parse(bytes).context(CliDAFSnafu)?;
@@ -164,18 +156,14 @@ fn main() -> Result<(), CliErrors> {
         } => {
             let dataset = convert_tpc(pckfile, gmfile).context(CliDataSetSnafu)?;
 
-            dataset
-                .save_as(&outfile, false)
-                .context(CliDataSetSnafu)?;
+            dataset.save_as(&outfile, false).context(CliDataSetSnafu)?;
 
             Ok(())
         }
         Actions::ConvertFk { fkfile, outfile } => {
             let dataset = convert_fk(fkfile, false).unwrap();
 
-            dataset
-                .save_as(&outfile, false)
-                .context(CliDataSetSnafu)?;
+            dataset.save_as(&outfile, false).context(CliDataSetSnafu)?;
 
             Ok(())
         }
@@ -198,10 +186,7 @@ fn main() -> Result<(), CliErrors> {
             // Load the header only
             let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
 
-            match file_record
-                .identification()
-                .context(CliFileRecordSnafu)?
-            {
+            match file_record.identification().context(CliFileRecordSnafu)? {
                 "PCK" => {
                     info!("Loading {path_str:?} as DAF/PCK");
                     let pck = BPC::parse(bytes).context(CliDAFSnafu)?;
@@ -296,10 +281,7 @@ fn main() -> Result<(), CliErrors> {
             // Load the header only
             let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
 
-            match file_record
-                .identification()
-                .context(CliFileRecordSnafu)?
-            {
+            match file_record.identification().context(CliFileRecordSnafu)? {
                 "PCK" => {
                     info!("Loading {path_str:?} as DAF/PCK");
                     let pck = BPC::parse(bytes).context(CliDAFSnafu)?;
@@ -314,9 +296,7 @@ fn main() -> Result<(), CliErrors> {
                     let (_, idx) = pck.summary_from_id(id).context(CliDAFSnafu)?;
 
                     let mut my_pck_mut = pck.to_mutable();
-                    my_pck_mut
-                        .delete_nth_data(idx)
-                        .context(CliDAFSnafu)?;
+                    my_pck_mut.delete_nth_data(idx).context(CliDAFSnafu)?;
 
                     info!("Saving file to {output:?}");
                     my_pck_mut.persist(output).unwrap();
@@ -337,9 +317,7 @@ fn main() -> Result<(), CliErrors> {
                     let (_, idx) = spk.summary_from_id(id).context(CliDAFSnafu)?;
 
                     let mut my_spk_mut = spk.to_mutable();
-                    my_spk_mut
-                        .delete_nth_data(idx)
-                        .context(CliDAFSnafu)?;
+                    my_spk_mut.delete_nth_data(idx).context(CliDAFSnafu)?;
 
                     info!("Saving file to {output:?}");
                     my_spk_mut.persist(output).unwrap();
