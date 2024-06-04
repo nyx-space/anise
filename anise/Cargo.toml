@@ -49,7 +49,7 @@ default = ["metaload"]
 # Enabling this flag significantly increases compilation times due to Arrow and Polars.
 spkezr_validation = []
 python = ["pyo3", "pyo3-log"]
-metaload = [ "url", "reqwest/blocking", "platform-dirs"]
+metaload = ["url", "reqwest/blocking", "platform-dirs"]
 
 [[bench]]
 name = "iai_jpl_ephemerides"
@@ -65,4 +65,8 @@ harness = false
 
 [[bench]]
 name = "crit_bpc_rotation"
+harness = false
+
+[[bench]]
+name = "crit_planetary_data"
 harness = false
