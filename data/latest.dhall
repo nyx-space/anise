@@ -4,10 +4,10 @@
     , uri = "http://public-data.nyxspace.com/anise/de440s.bsp"
     }
   , { crc32 = Some 2220275152
-    , uri = "http://public-data.nyxspace.com/anise/v0.4/pck11.pca"
+    , uri = "http://public-data.nyxspace.com/anise/v0.3/pck11.pca"
     }
   , { crc32 = Some 3329024259
-    , uri = "http://public-data.nyxspace.com/anise/v0.4/moon_fk.epa"
+    , uri = "http://public-data.nyxspace.com/anise/v0.3/moon_fk.epa"
     }
   , { crc32 = Some 1817759242
     , uri = "http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc"
