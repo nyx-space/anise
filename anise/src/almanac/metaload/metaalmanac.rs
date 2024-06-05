@@ -81,7 +81,7 @@ impl MetaAlmanac {
     ///
     /// # File list
     /// - <http://public-data.nyxspace.com/anise/de440s.bsp>
-    /// - <http://public-data.nyxspace.com/anise/pck08.pca>
+    /// - <http://public-data.nyxspace.com/anise/v0.4/pck11.pca>
     /// - <http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc>
     /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc>
     ///
@@ -155,7 +155,7 @@ impl MetaAlmanac {
     ///
     /// # File list
     /// - <http://public-data.nyxspace.com/anise/de440s.bsp>
-    /// - <http://public-data.nyxspace.com/anise/pck08.pca>
+    /// - <http://public-data.nyxspace.com/anise/v0.4/pck08.pca>
     /// - <http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc>
     /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc>
     ///
@@ -225,11 +225,11 @@ impl Default for MetaAlmanac {
                 },
                 MetaFile {
                     uri: nyx_cloud_stor.join("v0.4/pck11.pca").unwrap().to_string(),
-                    crc32: Some(0xacd1fe17),
+                    crc32: Some(0xa4f3efb0),
                 },
                 MetaFile {
                     uri: nyx_cloud_stor.join("v0.4/moon_fk.epa").unwrap().to_string(),
-                    crc32: Some(0x7f27859c),
+                    crc32: Some(0xb1c44f3c),
                 },
                 MetaFile {
                     uri: nyx_cloud_stor

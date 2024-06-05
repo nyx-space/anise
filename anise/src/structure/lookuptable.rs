@@ -159,6 +159,11 @@ impl<const ENTRIES: usize> LookUpTable<ENTRIES> {
         self.by_id.len().max(self.by_name.len())
     }
 
+    /// Returns whether this dataset is empty
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub(crate) fn check_integrity(&self) -> bool {
         if self.by_id.is_empty() || self.by_name.is_empty() {
             // If either map is empty, the LUT is integral because there cannot be

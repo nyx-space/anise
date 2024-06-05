@@ -27,7 +27,6 @@ use der::{
 };
 use log::{error, trace};
 use snafu::prelude::*;
-use std::mem::size_of;
 
 macro_rules! io_imports {
     () => {
@@ -123,13 +122,8 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
 
     /// Compute the CRC32 of the underlying bytes
     pub fn crc32(&self) -> u32 {
-        let size = ENTRIES * size_of::<Self>();
-        let mut buf = Vec::with_capacity(size);
-        // Clone the data set, setting the CRC32 to zero for the CRC check.
-        let mut me = self.clone();
-        me.data_checksum = u32::MAX;
-        let _ = me.encode_to_vec(&mut buf);
-        crc32fast::hash(&buf)
+        let bytes = self.build_data_seq().1;
+        crc32fast::hash(&bytes.as_bytes())
     }
 
     /// Sets the checksum of this data.
