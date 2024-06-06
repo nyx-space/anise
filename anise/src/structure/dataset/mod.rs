@@ -435,16 +435,17 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
     /// Returns this data as a data sequence, cloning all of the entries into this sequence.
     fn build_data_seq(&self) -> (SequenceOf<u32, ENTRIES>, OctetString) {
         let mut buf = vec![];
-        let mut bytes_meta = SequenceOf::<u32, ENTRIES>::default();
-        bytes_meta.add(self.data.len() as u32).unwrap();
+        // TODO: Return an octet string instead of seqof. We might overflow it!
+        let mut meta = SequenceOf::<u32, ENTRIES>::default();
+        meta.add(self.data.len() as u32).unwrap();
         for data in &self.data {
             let mut this_buf = vec![];
             data.encode_to_vec(&mut this_buf).unwrap();
-            bytes_meta.add(this_buf.len() as u32).unwrap();
+            meta.add(this_buf.len() as u32).unwrap();
             buf.extend_from_slice(&this_buf);
         }
         let bytes = OctetString::new(buf).unwrap();
-        (bytes_meta, bytes)
+        (meta, bytes)
     }
 }
 

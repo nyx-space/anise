@@ -221,15 +221,15 @@ impl Default for MetaAlmanac {
             files: vec![
                 MetaFile {
                     uri: nyx_cloud_stor.join("de440s.bsp").unwrap().to_string(),
-                    crc32: Some(0x7286750a),
+                    crc32: Some(0xb71d6fa8),
                 },
                 MetaFile {
                     uri: nyx_cloud_stor.join("v0.4/pck11.pca").unwrap().to_string(),
-                    crc32: Some(0xa4f3efb0),
+                    crc32: Some(0x62a4f3ad),
                 },
                 MetaFile {
                     uri: nyx_cloud_stor.join("v0.4/moon_fk.epa").unwrap().to_string(),
-                    crc32: Some(0xb1c44f3c),
+                    crc32: Some(0x1175bd92),
                 },
                 MetaFile {
                     uri: nyx_cloud_stor
