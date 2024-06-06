@@ -161,13 +161,11 @@ mod ut_aer {
         let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
 
         // Now iterate the trajectory to generate the measurements.
-        let gmat_ranges_km = vec![
-            9.145_755_787_575_61e4,
+        let gmat_ranges_km = [9.145_755_787_575_61e4,
             9.996_505_560_799_869e4,
             1.073_229_118_411_670_2e5,
             1.145_516_751_191_464_7e5,
-            1.265_739_190_638_930_7e5,
-        ];
+            1.265_739_190_638_930_7e5];
 
         let states = [
             CartesianState::new(

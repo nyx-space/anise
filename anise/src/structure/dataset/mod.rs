@@ -123,7 +123,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
     /// Compute the CRC32 of the underlying bytes
     pub fn crc32(&self) -> u32 {
         let bytes = self.build_data_seq().1;
-        crc32fast::hash(&bytes.as_bytes())
+        crc32fast::hash(bytes.as_bytes())
     }
 
     /// Sets the checksum of this data.
@@ -588,7 +588,7 @@ mod dataset_ut {
         srp_sc.encode_to_vec(&mut this_buf).unwrap();
         // Copy into the packed buffer
         for (i, byte) in this_buf.iter().enumerate() {
-            packed_buf[i + end_idx as usize] = *byte;
+            packed_buf[i + end_idx] = *byte;
         }
         let srp_sc_entry = end_idx..end_idx + this_buf.len();
         // Check that we can decode the next entry
