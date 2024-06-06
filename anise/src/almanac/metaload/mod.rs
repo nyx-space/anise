@@ -121,10 +121,10 @@ mod meta_test {
   [ { crc32 = Some 1921414410
     , uri = "http://public-data.nyxspace.com/anise/de440s.bsp"
     }
-  , { crc32 = Some 2767450032
+  , { crc32 = Some 1654977453
     , uri = "http://public-data.nyxspace.com/anise/v0.4/pck11.pca"
     }
-  , { crc32 = Some 2982432572
+  , { crc32 = Some 292928914
     , uri = "http://public-data.nyxspace.com/anise/v0.4/moon_fk.epa"
     }
   , { crc32 = Some 1817759242

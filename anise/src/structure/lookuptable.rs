@@ -287,7 +287,7 @@ mod lut_ut {
         assert_eq!(repr, repr_dec);
 
         dbg!(repr);
-        assert_eq!(core::mem::size_of::<LookUpTable<64>>(), 5136);
+        assert_eq!(core::mem::size_of::<LookUpTable<64>>(), 4368);
     }
 
     #[test]
