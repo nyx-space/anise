@@ -201,8 +201,8 @@ impl MetaAlmanac {
 ///
 /// # File list
 /// - <http://public-data.nyxspace.com/anise/de440s.bsp>
-/// - <http://public-data.nyxspace.com/anise/v0.3/pck11.pca>
-/// - <http://public-data.nyxspace.com/anise/v0.3/moon_fk.epa>
+/// - <http://public-data.nyxspace.com/anise/v0.4/pck11.pca>
+/// - <http://public-data.nyxspace.com/anise/v0.4/moon_fk.epa>
 /// - <http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc>
 /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc>
 ///
