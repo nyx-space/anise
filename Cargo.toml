@@ -52,7 +52,7 @@ serde = "1"
 serde_derive = "1"
 serde_dhall = "0.12"
 
-anise = { version = "0.3.2", path = "anise", default-features = false }
+anise = { version = "0.4.0", path = "anise", default-features = false }
 
 [profile.bench]
 debug = true
