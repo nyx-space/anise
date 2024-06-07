@@ -161,7 +161,7 @@ impl Almanac {
                 if ab_corr.stellar {
                     // Modifications based on transmission versus reception case is done in the function directly.
                     rel_pos_km = stellar_aberration(rel_pos_km, obs_ssb_vel_km_s, ab_corr)
-                        .with_context(|_| EphemerisPhysicsSnafu {
+                        .context(EphemerisPhysicsSnafu {
                             action: "computing stellar aberration",
                         })?;
                 }
@@ -231,7 +231,7 @@ impl Almanac {
             frame: from_frame,
         };
 
-        (input_state + frame_state).with_context(|_| EphemerisPhysicsSnafu {
+        (input_state + frame_state).context(EphemerisPhysicsSnafu {
             action: "translating states (likely a bug!)",
         })
     }

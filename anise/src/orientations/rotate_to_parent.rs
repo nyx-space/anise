@@ -60,13 +60,13 @@ impl Almanac {
                 // Compute the angles and their rates
                 let (ra_dec_w, d_ra_dec_w) = match summary.data_type()? {
                     DafDataType::Type2ChebyshevTriplet => {
-                        let data = bpc_data
-                            .nth_data::<Type2ChebyshevSet>(idx_in_bpc)
-                            .with_context(|_| BPCSnafu {
+                        let data = bpc_data.nth_data::<Type2ChebyshevSet>(idx_in_bpc).context(
+                            BPCSnafu {
                                 action: "fetching data for interpolation",
-                            })?;
+                            },
+                        )?;
                         data.evaluate(epoch, summary)
-                            .with_context(|_| OrientationInterpolationSnafu)?
+                            .context(OrientationInterpolationSnafu)?
                     }
                     dtype => {
                         return Err(OrientationError::BPC {
@@ -108,7 +108,7 @@ impl Almanac {
                 let planetary_data = self
                     .planetary_data
                     .get_by_id(source.orientation_id)
-                    .with_context(|_| OrientationDataSetSnafu)?;
+                    .context(OrientationDataSetSnafu)?;
 
                 // Fetch the parent info
                 let system_data = match self.planetary_data.get_by_id(planetary_data.parent_id) {
@@ -118,7 +118,7 @@ impl Almanac {
 
                 planetary_data
                     .rotation_to_parent(epoch, &system_data)
-                    .with_context(|_| OrientationPhysicsSnafu)
+                    .context(OrientationPhysicsSnafu)
             }
         }
     }

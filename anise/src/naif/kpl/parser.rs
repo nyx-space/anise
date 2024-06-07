@@ -24,7 +24,7 @@ use crate::math::Matrix3;
 use crate::naif::kpl::fk::FKItem;
 use crate::naif::kpl::tpc::TPCItem;
 use crate::naif::kpl::Parameter;
-use crate::structure::dataset::{DataSetBuilder, DataSetError, DataSetType};
+use crate::structure::dataset::{DataSetError, DataSetType};
 use crate::structure::metadata::Metadata;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
 use crate::structure::planetocentric::phaseangle::PhaseAngle;
@@ -144,8 +144,7 @@ pub fn convert_tpc<P: AsRef<Path> + fmt::Debug>(
     pck: P,
     gm: P,
 ) -> Result<PlanetaryDataSet, DataSetError> {
-    let mut buf = vec![];
-    let mut dataset_builder = DataSetBuilder::default();
+    let mut dataset = PlanetaryDataSet::default();
 
     let gravity_data = parse_file::<_, TPCItem>(gm, false)?;
     let mut planetary_data = parse_file::<_, TPCItem>(pck, false)?;
@@ -288,7 +287,7 @@ pub fn convert_tpc<P: AsRef<Path> + fmt::Debug>(
                         };
 
                         // Skip the DER serialization in full.
-                        dataset_builder.push_into(&mut buf, &constant, Some(object_id), None)?;
+                        dataset.push(constant, Some(object_id), None)?;
                         info!("Added {object_id}");
                     }
                     _ => error!(
@@ -302,9 +301,9 @@ pub fn convert_tpc<P: AsRef<Path> + fmt::Debug>(
         }
     }
 
-    println!("Added {} items", dataset_builder.dataset.lut.by_id.len());
+    println!("Added {} items", dataset.lut.by_id.len());
 
-    let mut dataset = dataset_builder.finalize(buf)?;
+    dataset.set_crc32();
     dataset.metadata = Metadata::default();
     dataset.metadata.dataset_type = DataSetType::PlanetaryData;
 
@@ -317,8 +316,7 @@ pub fn convert_fk<P: AsRef<Path> + fmt::Debug>(
     fk_file_path: P,
     show_comments: bool,
 ) -> Result<EulerParameterDataSet, DataSetError> {
-    let mut buf = vec![];
-    let mut dataset_builder = DataSetBuilder::default();
+    let mut dataset = EulerParameterDataSet::default();
 
     let assignments = parse_file::<_, FKItem>(fk_file_path, show_comments)?;
 
@@ -373,7 +371,7 @@ pub fn convert_fk<P: AsRef<Path> + fmt::Debug>(
             }
             .into();
 
-            dataset_builder.push_into(&mut buf, &q, Some(id), item.name.as_deref())?;
+            dataset.push(q, Some(id), item.name.as_deref())?;
         } else if let Some(matrix) = item.data.get(&Parameter::Matrix) {
             let mat_data = matrix.to_vec_f64().unwrap();
             let rot_mat = Matrix3::new(
@@ -393,11 +391,11 @@ pub fn convert_fk<P: AsRef<Path> + fmt::Debug>(
                 rot_mat,
                 rot_mat_dt: None,
             };
-            dataset_builder.push_into(&mut buf, &dcm.into(), Some(id), item.name.as_deref())?;
+            dataset.push(dcm.into(), Some(id), item.name.as_deref())?;
         }
     }
 
-    let mut dataset: EulerParameterDataSet = dataset_builder.finalize(buf)?;
+    dataset.set_crc32();
     dataset.metadata = Metadata::default();
     dataset.metadata.dataset_type = DataSetType::EulerParameterData;
 

@@ -285,7 +285,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 // Oh wow, this state actually exists, no interpolation needed!
                 Ok(self
                     .nth_record(idx)
-                    .with_context(|_| InterpDecodingSnafu)?
+                    .context(InterpDecodingSnafu)?
                     .to_pos_vel())
             }
             Err(idx) => {
@@ -310,7 +310,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 let mut vys = [0.0; MAX_SAMPLES];
                 let mut vzs = [0.0; MAX_SAMPLES];
                 for (cno, idx) in (first_idx..last_idx).enumerate() {
-                    let record = self.nth_record(idx).with_context(|_| InterpDecodingSnafu)?;
+                    let record = self.nth_record(idx).context(InterpDecodingSnafu)?;
                     xs[cno] = record.x_km;
                     ys[cno] = record.y_km;
                     zs[cno] = record.z_km;

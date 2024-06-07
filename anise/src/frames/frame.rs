@@ -67,14 +67,13 @@ impl Frame {
     /// Attempts to create a new frame from its center and reference frame name.
     /// This function is compatible with the CCSDS OEM names.
     pub fn from_name(center: &str, ref_frame: &str) -> Result<Self, AlmanacError> {
-        let ephemeris_id = id_to_celestial_name(center).with_context(|_| EphemerisSnafu {
+        let ephemeris_id = id_to_celestial_name(center).context(EphemerisSnafu {
             action: "converting center name to its ID",
         })?;
 
-        let orientation_id =
-            id_to_orientation_name(ref_frame).with_context(|_| OrientationSnafu {
-                action: "converting reference frame to its ID",
-            })?;
+        let orientation_id = id_to_orientation_name(ref_frame).context(OrientationSnafu {
+            action: "converting reference frame to its ID",
+        })?;
 
         Ok(Self::new(ephemeris_id, orientation_id))
     }

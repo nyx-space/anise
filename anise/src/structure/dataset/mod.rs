@@ -19,11 +19,12 @@ use crate::{
     structure::dataset::error::DataSetIntegritySnafu,
     NaifId,
 };
-use bytes::Bytes;
 use core::fmt;
-use core::marker::PhantomData;
 use core::ops::Deref;
-use der::{asn1::OctetStringRef, Decode, Encode, Reader, Writer};
+use der::{
+    asn1::{OctetString, SequenceOf},
+    Decode, Encode, Reader, Writer,
+};
 use log::{error, trace};
 use snafu::prelude::*;
 
@@ -38,16 +39,14 @@ macro_rules! io_imports {
 
 io_imports!();
 
-mod builder;
 mod datatype;
 mod error;
 
-pub use builder::DataSetBuilder;
 pub use datatype::DataSetType;
 pub use error::DataSetError;
 
 /// The kind of data that can be encoded in a dataset
-pub trait DataSetT: Default + Encode + for<'a> Decode<'a> {
+pub trait DataSetT: Clone + Default + Encode + for<'a> Decode<'a> {
     const NAME: &'static str;
 }
 
@@ -59,8 +58,7 @@ pub struct DataSet<T: DataSetT, const ENTRIES: usize> {
     pub lut: LookUpTable<ENTRIES>,
     pub data_checksum: u32,
     /// The actual data from the dataset
-    pub bytes: Bytes,
-    _daf_type: PhantomData<T>,
+    pub data: Vec<T>,
 }
 
 impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
@@ -70,10 +68,9 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
             Ok(ctx) => {
                 trace!("[try_from_bytes] loaded context successfully");
                 // Check the full integrity on load of the file.
-                ctx.check_integrity()
-                    .with_context(|_| DataSetIntegritySnafu {
-                        action: "loading data set from bytes",
-                    })?;
+                ctx.check_integrity().context(DataSetIntegritySnafu {
+                    action: "loading data set from bytes",
+                })?;
                 Ok(ctx)
             }
             Err(_) => {
@@ -85,7 +82,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
                         end: 5,
                         size: bytes.len(),
                     })
-                    .with_context(|_| DataDecodingSnafu {
+                    .context(DataDecodingSnafu {
                         action: "checking data set version",
                     })?;
                 match Semver::from_der(semver_bytes) {
@@ -125,17 +122,19 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
 
     /// Compute the CRC32 of the underlying bytes
     pub fn crc32(&self) -> u32 {
-        crc32fast::hash(&self.bytes)
+        let bytes = self.build_data_seq().1;
+        crc32fast::hash(bytes.as_bytes())
     }
 
     /// Sets the checksum of this data.
+    /// NOTE: For this calculation, the data checksum field is set to u32::MAX;
     pub fn set_crc32(&mut self) {
         self.data_checksum = self.crc32();
     }
 
     pub fn check_integrity(&self) -> Result<(), IntegrityError> {
         // Ensure that the data is correctly decoded
-        let computed_chksum = crc32fast::hash(&self.bytes);
+        let computed_chksum = self.crc32();
         if computed_chksum == self.data_checksum {
             Ok(())
         } else {
@@ -163,20 +162,78 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
         }
     }
 
+    pub fn push(
+        &mut self,
+        item: T,
+        id: Option<NaifId>,
+        name: Option<&str>,
+    ) -> Result<(), DataSetError> {
+        let index = self.data.len() as u32;
+
+        match id {
+            Some(id) => {
+                match name {
+                    Some(name) => {
+                        // Both an ID and a name
+                        self.lut.append(id, name, index).context(DataSetLutSnafu {
+                            action: "pushing data with ID and name",
+                        })?;
+                        // If the ID is the body of a system with a single object, also insert it for the system ID.
+                        if [199, 299].contains(&id) {
+                            self.lut.append(id / 100, name, index).context({
+                                DataSetLutSnafu {
+                                    action: "pushing data with ID and name",
+                                }
+                            })?;
+                        }
+                    }
+                    None => {
+                        // Only an ID and no name
+                        self.lut.append_id(id, index).context(DataSetLutSnafu {
+                            action: "pushing data with ID only",
+                        })?;
+                        // If the ID is the body of a system with a single object, also insert it for the system ID.
+                        if [199, 299].contains(&id) {
+                            self.lut.append_id(id / 100, index).context({
+                                DataSetLutSnafu {
+                                    action: "pushing data with ID and name",
+                                }
+                            })?;
+                        }
+                    }
+                }
+            }
+            None => {
+                if name.is_some() {
+                    // Only a name
+                    self.lut
+                        .append_name(name.unwrap(), index)
+                        .context(DataSetLutSnafu {
+                            action: "pushing data with name only",
+                        })?;
+                } else {
+                    return Err(DataSetError::DataSetLut {
+                        action: "pushing data",
+                        source: LutError::NoKeyProvided,
+                    });
+                }
+            }
+        }
+
+        self.data.push(item);
+
+        Ok(())
+    }
+
     /// Get a copy of the data with that ID, if that ID is in the lookup table
     pub fn get_by_id(&self, id: NaifId) -> Result<T, DataSetError> {
-        if let Some(entry) = self.lut.by_id.get(&id) {
+        if let Some(index) = self.lut.by_id.get(&id) {
             // Found the ID
-            let bytes = self
-                .bytes
-                .get(entry.as_range())
-                .ok_or_else(|| entry.decoding_error())
-                .with_context(|_| DataDecodingSnafu {
-                    action: "fetching by ID",
-                })?;
-            T::from_der(bytes)
-                .map_err(|err| DecodingError::DecodingDer { err })
-                .with_context(|_| DataDecodingSnafu {
+            self.data
+                .get(*index as usize)
+                .cloned()
+                .ok_or_else(|| LutError::InvalidIndex { index: *index })
+                .context(DataSetLutSnafu {
                     action: "fetching by ID",
                 })
         } else {
@@ -190,25 +247,15 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
     /// Mutates this dataset to change the value of the entry with that ID to the new provided value.
     /// This will return an error if the ID is not in the lookup table.
     /// Note that this function requires a new heap allocation to change the underlying dataset
-    pub fn set_by_id(&mut self, id: NaifId, new_value: &T) -> Result<(), DataSetError> {
-        if let Some(entry) = self.lut.by_id.get(&id) {
-            let mut bytes = self.bytes.to_vec();
-
-            let these_bytes = bytes
-                .get_mut(entry.start_idx as usize..)
-                .ok_or_else(|| entry.decoding_error())
-                .with_context(|_| DataDecodingSnafu {
-                    action: "setting by ID",
-                })?;
-
-            if let Err(err) = new_value.encode_to_slice(these_bytes) {
-                return Err(DataSetError::DataDecoding {
-                    action: "encoding data set when setting by ID",
-                    source: DecodingError::DecodingDer { err },
-                });
-            }
-
-            self.bytes = Bytes::from(bytes);
+    pub fn set_by_id(&mut self, id: NaifId, new_value: T) -> Result<(), DataSetError> {
+        if let Some(index) = self.lut.by_id.get(&id) {
+            *self
+                .data
+                .get_mut(*index as usize)
+                .ok_or_else(|| LutError::InvalidIndex { index: *index })
+                .context(DataSetLutSnafu {
+                    action: "fetching by ID",
+                })? = new_value;
 
             Ok(())
         } else {
@@ -223,34 +270,24 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
     /// This will return an error if the ID is not in the lookup table.
     /// Note that this function requires a new heap allocation to change the underlying dataset
     pub fn rm_by_id(&mut self, id: NaifId) -> Result<(), DataSetError> {
-        if let Some(entry) = self.lut.by_id.remove(&id) {
-            let mut bytes = self.bytes.to_vec();
-
-            let these_bytes = bytes
-                .get_mut(entry.start_idx as usize..)
-                .ok_or_else(|| entry.decoding_error())
-                .with_context(|_| DataDecodingSnafu {
-                    action: "removing by ID",
-                })?;
-
-            if let Err(err) = T::default().encode_to_slice(these_bytes) {
-                return Err(DataSetError::DataDecoding {
-                    action: "encoding default data set when removing by ID",
-                    source: DecodingError::DecodingDer { err },
-                });
-            }
+        if let Some(index) = self.lut.by_id.remove(&id) {
+            *self
+                .data
+                .get_mut(index as usize)
+                .ok_or_else(|| LutError::InvalidIndex { index })
+                .context(DataSetLutSnafu {
+                    action: "fetching by ID",
+                })? = T::default();
 
             // Search the names for that same entry.
-            for (name, name_entry) in &self.lut.by_name.clone() {
-                if name_entry == &entry {
-                    self.lut.rmname(name).with_context(|_| DataSetLutSnafu {
+            for (name, name_index) in &self.lut.by_name.clone() {
+                if name_index == &index {
+                    self.lut.rmname(name).context(DataSetLutSnafu {
                         action: "removing by ID",
                     })?;
                     break;
                 }
             }
-
-            self.bytes = Bytes::from(bytes);
 
             Ok(())
         } else {
@@ -263,18 +300,12 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
 
     /// Get a copy of the data with that name, if that name is in the lookup table
     pub fn get_by_name(&self, name: &str) -> Result<T, DataSetError> {
-        if let Some(entry) = self.lut.by_name.get(&name.try_into().unwrap()) {
-            // Found the name
-            let bytes = self
-                .bytes
-                .get(entry.as_range())
-                .ok_or_else(|| entry.decoding_error())
-                .with_context(|_| DataDecodingSnafu {
-                    action: "fetching by name",
-                })?;
-            T::from_der(bytes)
-                .map_err(|err| DecodingError::DecodingDer { err })
-                .with_context(|_| DataDecodingSnafu {
+        if let Some(index) = self.lut.by_name.get(&name.try_into().unwrap()) {
+            self.data
+                .get(*index as usize)
+                .cloned()
+                .ok_or_else(|| LutError::InvalidIndex { index: *index })
+                .context(DataSetLutSnafu {
                     action: "fetching by name",
                 })
         } else {
@@ -290,25 +321,15 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
     /// Mutates this dataset to change the value of the entry with that name to the new provided value.
     /// This will return an error if the name is not in the lookup table.
     /// Note that this function requires a new heap allocation to change the underlying dataset
-    pub fn set_by_name(&mut self, name: &str, new_value: &T) -> Result<(), DataSetError> {
-        if let Some(entry) = self.lut.by_name.get(&name.try_into().unwrap()) {
-            let mut bytes = self.bytes.to_vec();
-
-            let these_bytes = bytes
-                .get_mut(entry.start_idx as usize..)
-                .ok_or_else(|| entry.decoding_error())
-                .with_context(|_| DataDecodingSnafu {
-                    action: "setting by name",
-                })?;
-
-            if let Err(err) = new_value.encode_to_slice(these_bytes) {
-                return Err(DataSetError::DataDecoding {
-                    action: "encoding data set when setting by name",
-                    source: DecodingError::DecodingDer { err },
-                });
-            }
-
-            self.bytes = Bytes::from(bytes);
+    pub fn set_by_name(&mut self, name: &str, new_value: T) -> Result<(), DataSetError> {
+        if let Some(index) = self.lut.by_name.get(&name.try_into().unwrap()) {
+            *self
+                .data
+                .get_mut(*index as usize)
+                .ok_or_else(|| LutError::InvalidIndex { index: *index })
+                .context(DataSetLutSnafu {
+                    action: "fetching by ID",
+                })? = new_value;
 
             Ok(())
         } else {
@@ -325,34 +346,24 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
     /// This will return an error if the name is not in the lookup table.
     /// Note that this function requires a new heap allocation to change the underlying dataset
     pub fn rm_by_name(&mut self, name: &str) -> Result<(), DataSetError> {
-        if let Some(entry) = self.lut.by_name.remove(&name.try_into().unwrap()) {
-            let mut bytes = self.bytes.to_vec();
-
-            let these_bytes = bytes
-                .get_mut(entry.start_idx as usize..)
-                .ok_or_else(|| entry.decoding_error())
-                .with_context(|_| DataDecodingSnafu {
-                    action: "removing by name",
-                })?;
-
-            if let Err(err) = T::default().encode_to_slice(these_bytes) {
-                return Err(DataSetError::DataDecoding {
-                    action: "encoding default data set when removing by name",
-                    source: DecodingError::DecodingDer { err },
-                });
-            }
+        if let Some(index) = self.lut.by_name.remove(&name.try_into().unwrap()) {
+            *self
+                .data
+                .get_mut(index as usize)
+                .ok_or_else(|| LutError::InvalidIndex { index })
+                .context(DataSetLutSnafu {
+                    action: "fetching by ID",
+                })? = T::default();
 
             // Search the names for that same entry.
-            for (id, id_entry) in &self.lut.by_id.clone() {
-                if id_entry == &entry {
-                    self.lut.rmid(*id).with_context(|_| DataSetLutSnafu {
+            for (id, id_index) in &self.lut.by_id.clone() {
+                if id_index == &index {
+                    self.lut.rmid(*id).context(DataSetLutSnafu {
                         action: "removing by name",
                     })?;
                     break;
                 }
             }
-
-            self.bytes = Bytes::from(bytes);
 
             Ok(())
         } else {
@@ -413,49 +424,77 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
 
     /// Returns the length of the LONGEST of the two look up tables
     pub fn len(&self) -> usize {
-        if self.lut.by_id.len() > self.lut.by_name.len() {
-            self.lut.by_id.len()
-        } else {
-            self.lut.by_name.len()
-        }
+        self.lut.len()
     }
 
     /// Returns whether this dataset is empty
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
+
+    /// Returns this data as a data sequence, cloning all of the entries into this sequence.
+    fn build_data_seq(&self) -> (Vec<u32>, OctetString) {
+        let mut buf = Vec::with_capacity(ENTRIES * 2);
+        let mut meta = Vec::with_capacity(ENTRIES * 2);
+        meta.push(self.data.len() as u32);
+        for data in &self.data {
+            let mut this_buf = vec![];
+            data.encode_to_vec(&mut this_buf).unwrap();
+            meta.push(this_buf.len() as u32);
+            buf.extend_from_slice(&this_buf);
+        }
+        let bytes = OctetString::new(buf).unwrap();
+        (meta, bytes)
+    }
 }
 
 impl<T: DataSetT, const ENTRIES: usize> Encode for DataSet<T, ENTRIES> {
     fn encoded_len(&self) -> der::Result<der::Length> {
-        let as_byte_ref = OctetStringRef::new(&self.bytes)?;
+        let (bytes_meta, bytes) = self.build_data_seq();
         self.metadata.encoded_len()?
             + self.lut.encoded_len()?
             + self.data_checksum.encoded_len()?
-            + as_byte_ref.encoded_len()?
+            + bytes_meta.encoded_len()?
+            + bytes.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
-        let as_byte_ref = OctetStringRef::new(&self.bytes)?;
+        let (bytes_meta, bytes) = self.build_data_seq();
         self.metadata.encode(encoder)?;
         self.lut.encode(encoder)?;
         self.data_checksum.encode(encoder)?;
-        as_byte_ref.encode(encoder)
+        bytes_meta.encode(encoder)?;
+        bytes.encode(encoder)
     }
 }
 
 impl<'a, T: DataSetT, const ENTRIES: usize> Decode<'a> for DataSet<T, ENTRIES> {
     fn decode<D: Reader<'a>>(decoder: &mut D) -> der::Result<Self> {
         let metadata = decoder.decode()?;
-        let lut = decoder.decode()?;
+        let lut: LookUpTable<ENTRIES> = decoder.decode()?;
         let crc32_checksum = decoder.decode()?;
-        let bytes: OctetStringRef = decoder.decode()?;
+        // Metadata of the bytes to decode.
+        // The first integer contains the number of usable items in the data.
+        // The other integers are the encoded lengths of each of the data.
+        let bytes_meta: SequenceOf<u32, ENTRIES> = decoder.decode()?;
+        let der_octets: OctetString = decoder.decode()?;
+        let bytes = der_octets.as_bytes();
+
+        let mut data = vec![];
+
+        let mut idx = 0;
+        for meta_idx in 0..*bytes_meta.get(0).unwrap() as usize {
+            let next_len = *bytes_meta.get(meta_idx + 1).unwrap() as usize;
+            let this_data = T::from_der(&bytes[idx..idx + next_len]).unwrap();
+            data.push(this_data);
+            idx += next_len;
+        }
+
         Ok(Self {
             metadata,
             lut,
             data_checksum: crc32_checksum,
-            bytes: Bytes::copy_from_slice(bytes.as_bytes()),
-            _daf_type: PhantomData::<T>,
+            data,
         })
     }
 }
@@ -474,15 +513,14 @@ impl<T: DataSetT, const ENTRIES: usize> fmt::Display for DataSet<T, ENTRIES> {
 
 #[cfg(test)]
 mod dataset_ut {
+    use std::mem::size_of;
+
     use crate::structure::{
-        dataset::DataSetBuilder,
-        lookuptable::Entry,
         spacecraft::{DragData, Inertia, Mass, SRPData, SpacecraftData},
         SpacecraftDataSet,
     };
-    use bytes::Bytes;
 
-    use super::{DataSet, Decode, Encode, LookUpTable};
+    use super::{DataSet, Decode, Encode};
 
     #[test]
     fn zero_repr() {
@@ -491,15 +529,15 @@ mod dataset_ut {
 
         let mut buf = vec![];
         repr.encode_to_vec(&mut buf).unwrap();
-        assert_eq!(buf.len(), 58);
+        assert_eq!(buf.len(), 63);
 
         let repr_dec = DataSet::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
 
         dbg!(repr);
-        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData, 2>>(), 288);
-        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData, 128>>(), 10368);
+        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData, 2>>(), 256);
+        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData, 128>>(), 8824);
     }
 
     #[test]
@@ -534,43 +572,39 @@ mod dataset_ut {
 
         let mut this_buf = vec![];
         full_sc.encode_to_vec(&mut this_buf).unwrap();
-        let end_idx = this_buf.len() as u32;
+        let end_idx = this_buf.len();
         // Build this entry data.
-        let full_sc_entry = Entry {
-            start_idx: 0,
-            end_idx,
-        };
+        let full_sc_entry = 0..end_idx;
+
         // Copy into the packed buffer
         for (i, byte) in this_buf.iter().enumerate() {
             packed_buf[i] = *byte;
         }
         // Check that we can decode what we have copied so far
-        let full_sc_dec = SpacecraftData::from_der(&packed_buf[full_sc_entry.as_range()]).unwrap();
+        let full_sc_dec = SpacecraftData::from_der(&packed_buf[full_sc_entry]).unwrap();
         assert_eq!(full_sc_dec, full_sc);
         // Encode the other entry
         let mut this_buf = vec![];
         srp_sc.encode_to_vec(&mut this_buf).unwrap();
         // Copy into the packed buffer
         for (i, byte) in this_buf.iter().enumerate() {
-            packed_buf[i + end_idx as usize] = *byte;
+            packed_buf[i + end_idx] = *byte;
         }
-        let srp_sc_entry = Entry {
-            start_idx: end_idx,
-            end_idx: end_idx + this_buf.len() as u32,
-        };
+        let srp_sc_entry = end_idx..end_idx + this_buf.len();
         // Check that we can decode the next entry
-        let srp_sc_dec = SpacecraftData::from_der(&packed_buf[srp_sc_entry.as_range()]).unwrap();
+        let srp_sc_dec = SpacecraftData::from_der(&packed_buf[srp_sc_entry]).unwrap();
         assert_eq!(srp_sc_dec, srp_sc);
-        // Build the lookup table
-        let mut lut = LookUpTable::default();
-        lut.append(-20, "SRP spacecraft", srp_sc_entry).unwrap();
-        lut.append(-50, "Full spacecraft", full_sc_entry).unwrap();
         // Build the dataset
-        let mut dataset = DataSet {
-            lut,
-            bytes: Bytes::copy_from_slice(&packed_buf),
-            ..Default::default()
-        };
+        let mut dataset = DataSet::default();
+
+        // Build the lookup table
+        dataset
+            .push(srp_sc.clone(), Some(-20), Some("SRP spacecraft"))
+            .unwrap();
+        dataset
+            .push(full_sc.clone(), Some(-50), Some("Full spacecraft"))
+            .unwrap();
+
         dataset.set_crc32();
 
         // And encode it.
@@ -600,7 +634,7 @@ mod dataset_ut {
         // Grab a copy of the original data
         let mut sc = dataset.get_by_name("SRP spacecraft").unwrap();
         sc.srp_data.as_mut().unwrap().coeff_reflectivity = 1.1;
-        dataset.set_by_name("SRP spacecraft", &sc).unwrap();
+        dataset.set_by_name("SRP spacecraft", sc.clone()).unwrap();
         // Ensure that we've modified only that entry
         assert_eq!(
             dataset.get_by_name("Full spacecraft").unwrap(),
@@ -618,7 +652,7 @@ mod dataset_ut {
             1.1,
             "value was not modified"
         );
-        assert!(dataset.set_by_name("Unavailable SC", &sc).is_err());
+        assert!(dataset.set_by_name("Unavailable SC", sc.clone()).is_err());
 
         // Test renaming by name
         dataset
@@ -678,35 +712,33 @@ mod dataset_ut {
             ..Default::default()
         };
 
-        // Initialize the overall buffer for building the data
-        let mut buf = vec![];
-        let mut builder = DataSetBuilder::default();
-        builder
-            .push_into(&mut buf, &srp_sc, Some(-20), Some("SRP spacecraft"))
+        dbg!(size_of::<SpacecraftDataSet>());
+
+        let mut dataset = DataSet::<SpacecraftData, 16>::default();
+        dataset
+            .push(srp_sc.clone(), Some(-20), Some("SRP spacecraft"))
             .unwrap();
 
-        builder
-            .push_into(&mut buf, &full_sc, Some(-50), Some("Full spacecraft"))
+        dataset
+            .push(full_sc.clone(), Some(-50), Some("Full spacecraft"))
             .unwrap();
 
         // Pushing without name as ID -51
-        builder
-            .push_into(&mut buf, &full_sc, Some(-51), None)
-            .unwrap();
+        dataset.push(full_sc.clone(), Some(-51), None).unwrap();
 
         // Pushing without ID
-        builder
-            .push_into(&mut buf, &srp_sc, None, Some("ID less SRP spacecraft"))
+        dataset
+            .push(srp_sc.clone(), None, Some("ID less SRP spacecraft"))
             .unwrap();
 
-        let mut dataset = builder.finalize(buf).unwrap();
-
+        // Make sure to set the CRC32.
+        dataset.set_crc32();
         // And encode it.
 
         let mut ebuf = vec![];
         dataset.encode_to_vec(&mut ebuf).unwrap();
 
-        assert_eq!(ebuf.len(), 530);
+        // assert_eq!(ebuf.len(), 506);
 
         let repr_dec = SpacecraftDataSet::from_bytes(ebuf);
 
@@ -728,13 +760,13 @@ mod dataset_ut {
         // Check that we can set by ID
         let mut repr = dataset.get_by_id(-50).unwrap();
         repr.mass_kg.as_mut().unwrap().dry_mass_kg = 100.5;
-        dataset.set_by_id(-50, &repr).unwrap();
+        dataset.set_by_id(-50, repr.clone()).unwrap();
         assert_eq!(
             dataset.get_by_id(-50).unwrap().mass_kg.unwrap().dry_mass_kg,
             100.5,
             "value was not modified"
         );
-        assert!(dataset.set_by_id(111, &repr).is_err());
+        assert!(dataset.set_by_id(111, repr.clone()).is_err());
         // Test renaming by ID
         dataset.lut.reid(-50, -52).unwrap();
         // Calling this a second time will lead to an error

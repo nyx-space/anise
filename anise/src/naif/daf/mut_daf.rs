@@ -44,7 +44,7 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
     }
 
     pub fn load(path: &str) -> Result<Self, DAFError> {
-        let bytes = file2heap!(path).with_context(|_| IOSnafu {
+        let bytes = file2heap!(path).context(IOSnafu {
             action: format!("loading {path:?}"),
         })?;
 
@@ -63,7 +63,7 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
                 end: rcrd_idx + RCRD_LEN,
                 size,
             })
-            .with_context(|_| DecodingNameSnafu { kind: R::NAME })?;
+            .context(DecodingNameSnafu { kind: R::NAME })?;
         rcrd_bytes.copy_from_slice(new_name_record.as_bytes());
         Ok(())
     }

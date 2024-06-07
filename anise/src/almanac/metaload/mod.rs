@@ -53,7 +53,7 @@ pub enum MetaAlmanacError {
 impl Almanac {
     /// Load from the provided MetaFile.
     fn _load_from_metafile(&self, mut metafile: MetaFile) -> AlmanacResult<Self> {
-        metafile._process().with_context(|_| MetaSnafu {
+        metafile._process().context(MetaSnafu {
             fno: 0_usize,
             file: metafile.clone(),
         })?;
@@ -121,11 +121,11 @@ mod meta_test {
   [ { crc32 = Some 1921414410
     , uri = "http://public-data.nyxspace.com/anise/de440s.bsp"
     }
-  , { crc32 = Some 2899443223
-    , uri = "http://public-data.nyxspace.com/anise/v0.3/pck11.pca"
+  , { crc32 = Some 1654977453
+    , uri = "http://public-data.nyxspace.com/anise/v0.4/pck11.pca"
     }
-  , { crc32 = Some 2133296540
-    , uri = "http://public-data.nyxspace.com/anise/v0.3/moon_fk.epa"
+  , { crc32 = Some 292928914
+    , uri = "http://public-data.nyxspace.com/anise/v0.4/moon_fk.epa"
     }
   , { crc32 = Some 1817759242
     , uri = "http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc"

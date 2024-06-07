@@ -114,8 +114,7 @@ impl FileRecord {
     }
 
     pub fn endianness(&self) -> Result<Endian, FileRecordError> {
-        let str_endianness =
-            core::str::from_utf8(&self.endian_str).with_context(|_| ParsingSnafu)?;
+        let str_endianness = core::str::from_utf8(&self.endian_str).context(ParsingSnafu)?;
 
         let file_endian = if str_endianness == "LTL-IEEE" {
             Endian::Little
@@ -135,7 +134,7 @@ impl FileRecord {
 
     pub fn internal_filename(&self) -> Result<&str, FileRecordError> {
         Ok(core::str::from_utf8(&self.internal_filename)
-            .with_context(|_| ParsingSnafu)?
+            .context(ParsingSnafu)?
             .trim())
     }
 

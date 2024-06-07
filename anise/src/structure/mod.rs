@@ -30,7 +30,7 @@ use crate::{
 /// The current version of ANISE
 pub const ANISE_VERSION: Semver = Semver {
     major: 0,
-    minor: 3,
+    minor: 4,
     patch: 0,
 };
 

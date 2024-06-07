@@ -20,6 +20,8 @@ fn test_find_root_from_pca() {
         .save_as(&PathBuf::from_str("../data/pck11.pca").unwrap(), true)
         .unwrap();
 
+    println!("PCK11 CRC32: {}", planetary_data.crc32());
+
     let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
 
     assert_eq!(almanac.try_find_orientation_root(), Ok(J2000));
@@ -29,6 +31,7 @@ fn test_find_root_from_pca() {
     planetary_data
         .save_as(&PathBuf::from_str("../data/pck08.pca").unwrap(), true)
         .unwrap();
+    println!("PCK08 CRC32: {}", planetary_data.crc32());
     assert!(Almanac::default().load("../data/pck08.pca").is_ok());
 }
 

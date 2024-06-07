@@ -59,14 +59,14 @@ impl Almanac {
         // SEZ DCM is topo to fixed
         let sez_dcm = tx
             .dcm_from_topocentric_to_body_fixed(from)
-            .with_context(|_| EphemerisPhysicsSnafu { action: "" })
-            .with_context(|_| EphemerisSnafu {
+            .context(EphemerisPhysicsSnafu { action: "" })
+            .context(EphemerisSnafu {
                 action: "computing SEZ DCM for AER",
             })?;
 
         let tx_sez = (sez_dcm.transpose() * tx)
-            .with_context(|_| EphemerisPhysicsSnafu { action: "" })
-            .with_context(|_| EphemerisSnafu {
+            .context(EphemerisPhysicsSnafu { action: "" })
+            .context(EphemerisSnafu {
                 action: "transforming transmitter to SEZ",
             })?;
 
@@ -74,8 +74,8 @@ impl Almanac {
         let rx_in_tx_frame = self.transform_to(rx, tx.frame, None)?;
         // Convert into SEZ frame
         let rx_sez = (sez_dcm.transpose() * rx_in_tx_frame)
-            .with_context(|_| EphemerisPhysicsSnafu { action: "" })
-            .with_context(|_| EphemerisSnafu {
+            .context(EphemerisPhysicsSnafu { action: "" })
+            .context(EphemerisSnafu {
                 action: "transforming received to SEZ",
             })?;
 
@@ -161,7 +161,7 @@ mod ut_aer {
         let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
 
         // Now iterate the trajectory to generate the measurements.
-        let gmat_ranges_km = vec![
+        let gmat_ranges_km = [
             9.145_755_787_575_61e4,
             9.996_505_560_799_869e4,
             1.073_229_118_411_670_2e5,

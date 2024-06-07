@@ -157,7 +157,7 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         // Now, build the X, Y, Z data from the record data.
         let record = self
             .nth_record(spline_idx - 1)
-            .with_context(|_| InterpDecodingSnafu)?;
+            .context(InterpDecodingSnafu)?;
 
         let normalized_time = (epoch.to_et_seconds() - record.midpoint_et_s) / radius_s;
 

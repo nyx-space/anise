@@ -55,31 +55,32 @@ impl Almanac {
 
         let (pos_km, vel_km_s) = match summary.data_type()? {
             DafDataType::Type2ChebyshevTriplet => {
-                let data = spk_data
-                    .nth_data::<Type2ChebyshevSet>(idx_in_spk)
-                    .with_context(|_| SPKSnafu {
-                        action: "fetching data for interpolation",
-                    })?;
+                let data =
+                    spk_data
+                        .nth_data::<Type2ChebyshevSet>(idx_in_spk)
+                        .context(SPKSnafu {
+                            action: "fetching data for interpolation",
+                        })?;
                 data.evaluate(epoch, summary)
-                    .with_context(|_| EphemInterpolationSnafu)?
+                    .context(EphemInterpolationSnafu)?
             }
             DafDataType::Type9LagrangeUnequalStep => {
                 let data = spk_data
                     .nth_data::<LagrangeSetType9>(idx_in_spk)
-                    .with_context(|_| SPKSnafu {
+                    .context(SPKSnafu {
                         action: "fetching data for interpolation",
                     })?;
                 data.evaluate(epoch, summary)
-                    .with_context(|_| EphemInterpolationSnafu)?
+                    .context(EphemInterpolationSnafu)?
             }
             DafDataType::Type13HermiteUnequalStep => {
                 let data = spk_data
                     .nth_data::<HermiteSetType13>(idx_in_spk)
-                    .with_context(|_| SPKSnafu {
+                    .context(SPKSnafu {
                         action: "fetching data for interpolation",
                     })?;
                 data.evaluate(epoch, summary)
-                    .with_context(|_| EphemInterpolationSnafu)?
+                    .context(EphemInterpolationSnafu)?
             }
             dtype => {
                 return Err(EphemerisError::SPK {

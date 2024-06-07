@@ -146,7 +146,7 @@ mod metadata_ut {
         assert_eq!(
             format!("{repr}"),
             format!(
-                r#"ANISE version ANISE version 0.3.0
+                r#"ANISE version ANISE version 0.4.0
 Originator: (not set)
 Creation date: {}
 "#,

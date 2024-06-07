@@ -48,19 +48,19 @@ impl Almanac {
         // Translate
         let state = self
             .translate(target_frame, observer_frame, epoch, ab_corr)
-            .with_context(|_| EphemerisSnafu {
+            .context(EphemerisSnafu {
                 action: "transform from/to",
             })?;
         // Rotate
         let dcm = self
             .rotate_from_to(target_frame, observer_frame, epoch)
-            .with_context(|_| OrientationSnafu {
+            .context(OrientationSnafu {
                 action: "transform from/to",
             })?;
 
         (dcm * state)
-            .with_context(|_| OrientationPhysicsSnafu {})
-            .with_context(|_| OrientationSnafu {
+            .context(OrientationPhysicsSnafu {})
+            .context(OrientationSnafu {
                 action: "transform from/to",
             })
     }
@@ -77,20 +77,20 @@ impl Almanac {
     ) -> AlmanacResult<CartesianState> {
         let state = self
             .translate_to(state, observer_frame, ab_corr)
-            .with_context(|_| EphemerisSnafu {
+            .context(EphemerisSnafu {
                 action: "transform state",
             })?;
 
         // Compute the frame rotation
         let dcm = self
             .rotate_from_to(state.frame, observer_frame, state.epoch)
-            .with_context(|_| OrientationSnafu {
+            .context(OrientationSnafu {
                 action: "transform state dcm",
             })?;
 
         (dcm * state)
-            .with_context(|_| OrientationPhysicsSnafu {})
-            .with_context(|_| OrientationSnafu {
+            .context(OrientationPhysicsSnafu {})
+            .context(OrientationSnafu {
                 action: "transform state",
             })
     }
@@ -137,20 +137,20 @@ impl Almanac {
                 distance_unit,
                 time_unit,
             )
-            .with_context(|_| EphemerisSnafu {
+            .context(EphemerisSnafu {
                 action: "transform provided state",
             })?;
 
         // Compute the frame rotation
         let dcm = self
             .rotate_from_to(from_frame, to_frame, epoch)
-            .with_context(|_| OrientationSnafu {
+            .context(OrientationSnafu {
                 action: "transform provided state dcm",
             })?;
 
         (dcm * state)
-            .with_context(|_| OrientationPhysicsSnafu {})
-            .with_context(|_| OrientationSnafu {
+            .context(OrientationPhysicsSnafu {})
+            .context(OrientationSnafu {
                 action: "transform provided state",
             })
     }

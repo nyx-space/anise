@@ -123,26 +123,26 @@ impl Almanac {
                     "PCK" => {
                         info!("Loading as DAF/PCK");
                         let bpc = BPC::parse(bytes)
-                            .with_context(|_| BPCSnafu {
+                            .context(BPCSnafu {
                                 action: "parsing bytes",
                             })
-                            .with_context(|_| OrientationSnafu {
+                            .context(OrientationSnafu {
                                 action: "from generic loading",
                             })?;
-                        self.with_bpc(bpc).with_context(|_| OrientationSnafu {
+                        self.with_bpc(bpc).context(OrientationSnafu {
                             action: "adding BPC file to context",
                         })
                     }
                     "SPK" => {
                         info!("Loading as DAF/SPK");
                         let spk = SPK::parse(bytes)
-                            .with_context(|_| SPKSnafu {
+                            .context(SPKSnafu {
                                 action: "parsing bytes",
                             })
-                            .with_context(|_| EphemerisSnafu {
+                            .context(EphemerisSnafu {
                                 action: "from generic loading",
                             })?;
-                        self.with_spk(spk).with_context(|_| EphemerisSnafu {
+                        self.with_spk(spk).context(EphemerisSnafu {
                             action: "adding SPK file to context",
                         })
                     }
@@ -160,7 +160,7 @@ impl Almanac {
                 DataSetType::NotApplicable => unreachable!("no such ANISE data yet"),
                 DataSetType::SpacecraftData => {
                     // Decode as spacecraft data
-                    let dataset = SpacecraftDataSet::try_from_bytes(bytes).with_context(|_| {
+                    let dataset = SpacecraftDataSet::try_from_bytes(bytes).context({
                         TLDataSetSnafu {
                             action: "loading as spacecraft data",
                         }
@@ -169,7 +169,7 @@ impl Almanac {
                 }
                 DataSetType::PlanetaryData => {
                     // Decode as planetary data
-                    let dataset = PlanetaryDataSet::try_from_bytes(bytes).with_context(|_| {
+                    let dataset = PlanetaryDataSet::try_from_bytes(bytes).context({
                         TLDataSetSnafu {
                             action: "loading as planetary data",
                         }
@@ -178,12 +178,11 @@ impl Almanac {
                 }
                 DataSetType::EulerParameterData => {
                     // Decode as euler parameter data
-                    let dataset =
-                        EulerParameterDataSet::try_from_bytes(bytes).with_context(|_| {
-                            TLDataSetSnafu {
-                                action: "loading Euler parameters",
-                            }
-                        })?;
+                    let dataset = EulerParameterDataSet::try_from_bytes(bytes).context({
+                        TLDataSetSnafu {
+                            action: "loading Euler parameters",
+                        }
+                    })?;
                     Ok(self.with_euler_parameters(dataset))
                 }
             }
@@ -200,7 +199,7 @@ impl Almanac {
     /// Generic function that tries to load the provided path guessing to the file type.
     pub fn load(&self, path: &str) -> AlmanacResult<Self> {
         // Load the data onto the heap
-        let bytes = file2heap!(path).with_context(|_| LoadingSnafu {
+        let bytes = file2heap!(path).context(LoadingSnafu {
             path: path.to_string(),
         })?;
         info!("Loading almanac from {path}");

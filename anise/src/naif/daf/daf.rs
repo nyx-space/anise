@@ -84,7 +84,7 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
                     end: FileRecord::SIZE,
                     size: self.bytes.len(),
                 })
-                .with_context(|_| DecodingDataSnafu {
+                .context(DecodingDataSnafu {
                     idx: 0_usize,
                     kind: R::NAME,
                 })?,
@@ -93,7 +93,7 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
         // Check that the endian-ness is compatible with this platform.
         file_record
             .endianness()
-            .with_context(|_| FileRecordSnafu { kind: R::NAME })?;
+            .context(FileRecordSnafu { kind: R::NAME })?;
         Ok(file_record)
     }
 
@@ -107,7 +107,7 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
                 end: rcrd_idx + RCRD_LEN,
                 size: self.bytes.len(),
             })
-            .with_context(|_| DecodingNameSnafu { kind: R::NAME })?;
+            .context(DecodingNameSnafu { kind: R::NAME })?;
         Ok(NameRecord::read_from(rcrd_bytes).unwrap())
     }
 
@@ -121,11 +121,11 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
                 end: rcrd_idx + RCRD_LEN,
                 size: self.bytes.len(),
             })
-            .with_context(|_| DecodingSummarySnafu { kind: R::NAME })?;
+            .context(DecodingSummarySnafu { kind: R::NAME })?;
 
         SummaryRecord::read_from(&rcrd_bytes[..SummaryRecord::SIZE])
             .ok_or(DecodingError::Casting)
-            .with_context(|_| DecodingSummarySnafu { kind: R::NAME })
+            .context(DecodingSummarySnafu { kind: R::NAME })
     }
 
     /// Parses the data summaries on the fly.
@@ -291,7 +291,7 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
         .into_slice();
 
         // Convert it
-        S::from_f64_slice(data).with_context(|_| DecodingDataSnafu { kind: R::NAME, idx })
+        S::from_f64_slice(data).context(DecodingDataSnafu { kind: R::NAME, idx })
     }
 
     pub fn comments(&self) -> Result<Option<String>, DAFError> {
@@ -404,7 +404,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     pub fn load(path: &str) -> Result<Self, DAFError> {
-        let bytes = file2heap!(path).with_context(|_| IOSnafu {
+        let bytes = file2heap!(path).context(IOSnafu {
             action: format!("loading {path:?}"),
         })?;
 
