@@ -197,8 +197,9 @@ impl Almanac {
         ab_corr: Option<Aberration>,
     ) -> Result<CartesianState, EphemerisError> {
         let frame_state = self.translate(state.frame, observer_frame, state.epoch, ab_corr)?;
-
-        Ok(state.add_unchecked(&frame_state))
+        let mut new_state = state.add_unchecked(&frame_state);
+        new_state.frame = observer_frame.with_orient(state.frame.orientation_id);
+        Ok(new_state)
     }
 }
 
