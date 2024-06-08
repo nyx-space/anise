@@ -146,7 +146,7 @@ impl MetaAlmanac {
 
     /// Loads the provided string as a Dhall configuration to build a MetaAlmanac
     #[classmethod]
-    fn loads(_cls: &PyType, s: String) -> Result<Self, MetaAlmanacError> {
+    fn loads(_cls: &Bound<'_, PyType>, s: String) -> Result<Self, MetaAlmanacError> {
         Self::from_str(&s)
     }
 
@@ -165,7 +165,7 @@ impl MetaAlmanac {
     /// if queried at some future time, the Earth rotation parameters may have changed between two queries.
     ///
     #[classmethod]
-    fn latest(_cls: &PyType, py: Python) -> AlmanacResult<Almanac> {
+    fn latest(_cls: &Bound<'_, PyType>, py: Python) -> AlmanacResult<Almanac> {
         let mut meta = Self::default();
         py.allow_threads(|| match meta._process() {
             Ok(almanac) => Ok(almanac),
