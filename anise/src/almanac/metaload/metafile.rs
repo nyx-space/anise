@@ -91,8 +91,7 @@ impl MetaFile {
 
                                         let dest_path = app_dir.data_dir.join(file_name);
                                         let lock_path = dest_path.with_file_name(
-                                            file_name.to_str().unwrap().to_string()
-                                                + ".lock".into(),
+                                            file_name.to_str().unwrap().to_string() + ".lock",
                                         );
 
                                         // Check the existence of the lock file.

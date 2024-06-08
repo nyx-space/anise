@@ -192,7 +192,7 @@ fn test_spk_mut_summary_name() {
     }
     my_spk.set_name_record(name_rcrd).unwrap();
 
-    my_spk.persist(&output_path).unwrap();
+    my_spk.persist(output_path).unwrap();
 
     // Check that the written file is correct.
     let reloaded = SPK::load(output_path).unwrap();
