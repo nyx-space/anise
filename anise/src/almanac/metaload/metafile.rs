@@ -90,11 +90,15 @@ impl MetaFile {
                                         }
 
                                         let dest_path = app_dir.data_dir.join(file_name);
+                                        let lock_path = dest_path.with_file_name(
+                                            file_name.to_str().unwrap().to_string()
+                                                + ".lock".into(),
+                                        );
 
                                         // Check the existence of the lock file.
                                         let mut checks = 0;
                                         loop {
-                                            if dest_path.join(".lock").exists() {
+                                            if lock_path.exists() {
                                                 if checks == 9 {
                                                     return Err(MetaAlmanacError::PersistentLock {
                                                         desired: dest_path
@@ -133,7 +137,7 @@ impl MetaFile {
                                         // At this stage, either the dest path does not exist, or the CRC32 check failed.
 
                                         // Create the lock file
-                                        if let Err(e) = File::create(dest_path.join(".lock")) {
+                                        if let Err(e) = File::create(&lock_path) {
                                             return Err(MetaAlmanacError::MetaIO {
                                                 path: dest_path
                                                     .join(".lock")
@@ -148,7 +152,7 @@ impl MetaFile {
                                         }
 
                                         let del_lock_file = || -> Result<(), MetaAlmanacError> {
-                                            if let Err(e) = remove_file(dest_path.join(".lock")) {
+                                            if let Err(e) = remove_file(lock_path) {
                                                 return Err(MetaAlmanacError::MetaIO {
                                                     path: dest_path
                                                         .join(".lock")
