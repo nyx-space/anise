@@ -479,7 +479,7 @@ impl Orbit {
     #[cfg(feature = "python")]
     #[classmethod]
     pub fn from_keplerian(
-        _cls: &PyType,
+        _cls: &Bound<'_, PyType>,
         sma: f64,
         ecc: f64,
         inc: f64,
@@ -496,7 +496,7 @@ impl Orbit {
     #[cfg(feature = "python")]
     #[classmethod]
     pub fn from_keplerian_apsis_radii(
-        _cls: &PyType,
+        _cls: &Bound<'_, PyType>,
         r_a: f64,
         r_p: f64,
         inc: f64,
@@ -518,7 +518,7 @@ impl Orbit {
     #[cfg(feature = "python")]
     #[classmethod]
     pub fn from_keplerian_mean_anomaly(
-        _cls: &PyType,
+        _cls: &Bound<'_, PyType>,
         sma_km: f64,
         ecc: f64,
         inc_deg: f64,

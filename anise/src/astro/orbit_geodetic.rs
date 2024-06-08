@@ -119,7 +119,7 @@ impl CartesianState {
     #[cfg(feature = "python")]
     #[classmethod]
     pub fn from_keplerian_altitude(
-        _cls: &PyType,
+        _cls: &Bound<'_, PyType>,
         sma_altitude: f64,
         ecc: f64,
         inc: f64,
@@ -137,7 +137,7 @@ impl CartesianState {
     #[cfg(feature = "python")]
     #[classmethod]
     pub fn from_keplerian_apsis_altitude(
-        _cls: &PyType,
+        _cls: &Bound<'_, PyType>,
         apo_alt: f64,
         peri_alt: f64,
         inc: f64,
@@ -158,7 +158,7 @@ impl CartesianState {
     #[cfg(feature = "python")]
     #[classmethod]
     pub fn from_latlongalt(
-        _cls: &PyType,
+        _cls: &Bound<'_, PyType>,
         latitude_deg: f64,
         longitude_deg: f64,
         height_km: f64,

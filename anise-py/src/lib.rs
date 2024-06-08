@@ -24,10 +24,11 @@ mod utils;
 
 /// A Python module implemented in Rust.
 #[pymodule]
-fn anise(py: Python, m: &PyModule) -> PyResult<()> {
-    register_time_module(py, m)?;
-    astro::register_astro(py, m)?;
-    utils::register_utils(py, m)?;
+fn anise(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    pyo3_log::init();
+    register_time_module(m)?;
+    astro::register_astro(&m)?;
+    utils::register_utils(m)?;
     m.add_class::<Almanac>()?;
     m.add_class::<Aberration>()?;
     m.add_class::<MetaAlmanac>()?;
@@ -36,10 +37,8 @@ fn anise(py: Python, m: &PyModule) -> PyResult<()> {
 }
 
 /// Reexport hifitime as anise.time
-fn register_time_module(py: Python<'_>, parent_module: &PyModule) -> PyResult<()> {
-    pyo3_log::init();
-
-    let sm = PyModule::new(parent_module.py(), "time")?;
+fn register_time_module(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
+    let sm = PyModule::new_bound(parent_module.py(), "time")?;
 
     sm.add_class::<Epoch>()?;
     sm.add_class::<TimeScale>()?;
@@ -50,7 +49,9 @@ fn register_time_module(py: Python<'_>, parent_module: &PyModule) -> PyResult<()
     sm.add_class::<LeapSecondsFile>()?;
     sm.add_class::<Ut1Provider>()?;
 
-    py_run!(py, sm, "import sys; sys.modules['anise.time'] = sm");
-    parent_module.add_submodule(sm)?;
+    Python::with_gil(|py| {
+        py_run!(py, sm, "import sys; sys.modules['anise.time'] = sm");
+    });
+    parent_module.add_submodule(&sm)?;
     Ok(())
 }

@@ -223,7 +223,8 @@ impl CartesianState {
     /// Returns the distance in kilometers between this state and another state, if both frame match (epoch does not need to match).
     pub fn distance_to_km(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
-            self.frame == other.frame,
+            self.frame.ephem_origin_match(other.frame)
+                && self.frame.orient_origin_match(other.frame),
             FrameMismatchSnafu {
                 action: "computing distance between states",
                 frame1: self.frame,
@@ -237,7 +238,8 @@ impl CartesianState {
     /// Returns the root mean squared (RSS) radius difference between this state and another state, if both frames match (epoch does not need to match)
     pub fn rss_radius_km(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
-            self.frame == other.frame,
+            self.frame.ephem_origin_match(other.frame)
+                && self.frame.orient_origin_match(other.frame),
             FrameMismatchSnafu {
                 action: "computing radius RSS",
                 frame1: self.frame,
@@ -250,7 +252,8 @@ impl CartesianState {
     /// Returns the root mean squared (RSS) velocity difference between this state and another state, if both frames match (epoch does not need to match)
     pub fn rss_velocity_km_s(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
-            self.frame == other.frame,
+            self.frame.ephem_origin_match(other.frame)
+                && self.frame.orient_origin_match(other.frame),
             FrameMismatchSnafu {
                 action: "computing velocity RSS",
                 frame1: self.frame,
@@ -269,7 +272,8 @@ impl CartesianState {
             && (self.velocity_km_s.x - other.velocity_km_s.x).abs() < velocity_tol_km_s
             && (self.velocity_km_s.y - other.velocity_km_s.y).abs() < velocity_tol_km_s
             && (self.velocity_km_s.z - other.velocity_km_s.z).abs() < velocity_tol_km_s
-            && self.frame == other.frame
+            && self.frame.ephem_origin_match(other.frame)
+            && self.frame.orient_origin_match(other.frame)
     }
 
     /// Returns the light time duration between this object and the origin of its reference frame.

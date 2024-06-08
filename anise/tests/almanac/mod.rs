@@ -56,6 +56,13 @@ fn test_state_transformation() {
         .transform_to(orig_state, EARTH_ITRF93, Aberration::NONE)
         .unwrap();
 
+    // Check that the frame is correctly set.
+    assert_eq!(state_itrf93.frame.ephemeris_id, EARTH_ITRF93.ephemeris_id);
+    assert_eq!(
+        state_itrf93.frame.orientation_id,
+        EARTH_ITRF93.orientation_id
+    );
+
     println!("{orig_state:x}");
     println!("{state_itrf93:X}");
 
@@ -66,6 +73,7 @@ fn test_state_transformation() {
         .unwrap();
 
     println!("{from_state_itrf93_to_eme2k}");
+    println!("{from_state_itrf93_to_eme2k:x}");
 
     assert_eq!(orig_state, from_state_itrf93_to_eme2k);
 }
