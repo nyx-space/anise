@@ -185,18 +185,21 @@ impl UsualConstants {
     const SPEED_OF_LIGHT_KM_S: f64 = SPEED_OF_LIGHT_KM_S;
 }
 
-pub(crate) fn register_constants(py: Python<'_>, parent_module: &PyModule) -> PyResult<()> {
-    let sm = PyModule::new(py, "astro.constants")?;
+pub(crate) fn register_constants(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
+    let sm = PyModule::new_bound(parent_module.py(), "astro.constants")?;
     sm.add_class::<CelestialObjects>()?;
     sm.add_class::<Frames>()?;
     sm.add_class::<Orientations>()?;
     sm.add_class::<UsualConstants>()?;
 
-    py_run!(
-        py,
-        sm,
-        "import sys; sys.modules['anise.astro.constants'] = sm"
-    );
-    parent_module.add_submodule(sm)?;
+    Python::with_gil(|py| {
+        py_run!(
+            py,
+            sm,
+            "import sys; sys.modules['anise.astro.constants'] = sm"
+        );
+    });
+
+    parent_module.add_submodule(&sm)?;
     Ok(())
 }

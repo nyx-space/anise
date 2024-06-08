@@ -18,16 +18,19 @@ use anise::frames::Frame;
 
 use super::constants::register_constants;
 
-pub(crate) fn register_astro(py: Python<'_>, parent_module: &PyModule) -> PyResult<()> {
-    let sm = PyModule::new(py, "astro")?;
+pub(crate) fn register_astro(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
+    let sm = PyModule::new_bound(parent_module.py(), "astro")?;
     sm.add_class::<Ellipsoid>()?;
     sm.add_class::<Frame>()?;
     sm.add_class::<Orbit>()?;
     sm.add_class::<AzElRange>()?;
 
-    register_constants(py, sm)?;
+    register_constants(&sm)?;
 
-    py_run!(py, sm, "import sys; sys.modules['anise.astro'] = sm");
-    parent_module.add_submodule(sm)?;
+    Python::with_gil(|py| {
+        py_run!(py, sm, "import sys; sys.modules['anise.astro'] = sm");
+    });
+
+    parent_module.add_submodule(&sm)?;
     Ok(())
 }

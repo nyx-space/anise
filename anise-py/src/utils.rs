@@ -15,14 +15,16 @@ use anise::structure::dataset::DataSetError;
 use anise::structure::planetocentric::ellipsoid::Ellipsoid;
 use pyo3::{prelude::*, py_run};
 
-pub(crate) fn register_utils(py: Python<'_>, parent_module: &PyModule) -> PyResult<()> {
-    let sm = PyModule::new(py, "utils")?;
+pub(crate) fn register_utils(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
+    let sm = PyModule::new_bound(parent_module.py(), "utils")?;
     sm.add_class::<Ellipsoid>()?;
-    sm.add_function(wrap_pyfunction!(convert_fk, sm)?)?;
-    sm.add_function(wrap_pyfunction!(convert_tpc, sm)?)?;
+    sm.add_function(wrap_pyfunction!(convert_fk, &sm)?)?;
+    sm.add_function(wrap_pyfunction!(convert_tpc, &sm)?)?;
 
-    py_run!(py, sm, "import sys; sys.modules['anise.utils'] = sm");
-    parent_module.add_submodule(sm)?;
+    Python::with_gil(|py| {
+        py_run!(py, sm, "import sys; sys.modules['anise.utils'] = sm");
+    });
+    parent_module.add_submodule(&sm)?;
     Ok(())
 }
 
