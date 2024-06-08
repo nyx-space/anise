@@ -155,7 +155,7 @@ impl MetaFile {
                                                         .to_str()
                                                         .unwrap()
                                                         .into(),
-                                                    what: "creating lock file",
+                                                    what: "deleting lock file",
                                                     source: InputOutputError::IOError {
                                                         kind: e.kind(),
                                                     },
