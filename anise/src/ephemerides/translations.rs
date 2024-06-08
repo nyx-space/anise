@@ -49,7 +49,7 @@ impl Almanac {
     pub fn translate(
         &self,
         target_frame: Frame,
-        observer_frame: Frame,
+        mut observer_frame: Frame,
         epoch: Epoch,
         ab_corr: Option<Aberration>,
     ) -> Result<CartesianState, EphemerisError> {
@@ -58,12 +58,10 @@ impl Almanac {
             return Ok(CartesianState::zero(observer_frame));
         }
 
-        let mut obs_frame: Frame = observer_frame;
-
         // If there is no frame info, the user hasn't loaded this frame, but might still want to compute a translation.
-        if let Ok(obs_frame_info) = self.frame_from_uid(obs_frame) {
+        if let Ok(obs_frame_info) = self.frame_from_uid(observer_frame) {
             // User has loaded the planetary data for this frame, so let's use that as the to_frame.
-            obs_frame = obs_frame_info;
+            observer_frame = obs_frame_info;
         }
 
         match ab_corr {
@@ -116,7 +114,7 @@ impl Almanac {
                     radius_km: pos_bwrd - pos_fwrd,
                     velocity_km_s: vel_bwrd - vel_fwrd,
                     epoch,
-                    frame: obs_frame.with_orient(target_frame.orientation_id),
+                    frame: observer_frame.with_orient(target_frame.orientation_id),
                 })
             }
             Some(ab_corr) => {
@@ -193,11 +191,17 @@ impl Almanac {
     pub fn translate_to(
         &self,
         state: CartesianState,
-        observer_frame: Frame,
+        mut observer_frame: Frame,
         ab_corr: Option<Aberration>,
     ) -> Result<CartesianState, EphemerisError> {
         let frame_state = self.translate(state.frame, observer_frame, state.epoch, ab_corr)?;
         let mut new_state = state.add_unchecked(&frame_state);
+
+        // If there is no frame info, the user hasn't loaded this frame, but might still want to compute a translation.
+        if let Ok(obs_frame_info) = self.frame_from_uid(observer_frame) {
+            // User has loaded the planetary data for this frame, so let's use that as the to_frame.
+            observer_frame = obs_frame_info;
+        }
         new_state.frame = observer_frame.with_orient(state.frame.orientation_id);
         Ok(new_state)
     }
