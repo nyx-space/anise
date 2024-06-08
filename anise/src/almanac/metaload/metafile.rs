@@ -13,9 +13,10 @@ use platform_dirs::AppDirs;
 
 use serde_derive::{Deserialize, Serialize};
 use serde_dhall::StaticType;
-use std::fs::{create_dir_all, File};
+use std::fs::{create_dir_all, remove_file, File};
 use std::io::Write;
 use std::path::Path;
+use std::thread;
 use std::time::Duration;
 use url::Url;
 
@@ -74,19 +75,40 @@ impl MetaFile {
                                 match AppDirs::new(Some("nyx-space/anise"), true) {
                                     Some(app_dir) => {
                                         // Check whether the path currently exists.
-                                        let dest_path = app_dir.data_dir.join(file_name);
 
                                         if !app_dir.data_dir.exists() {
                                             // Create the folders
-                                            create_dir_all(app_dir.data_dir).map_err(|e| {
+                                            create_dir_all(&app_dir.data_dir).map_err(|e| {
                                                 MetaAlmanacError::MetaIO {
-                                                    path: dest_path.to_str().unwrap().into(),
+                                                    path: app_dir.data_dir.to_str().unwrap().into(),
                                                     what: "creating directories for storage",
                                                     source: InputOutputError::IOError {
                                                         kind: e.kind(),
                                                     },
                                                 }
                                             })?;
+                                        }
+
+                                        let dest_path = app_dir.data_dir.join(file_name);
+
+                                        // Check the existence of the lock file.
+                                        let mut checks = 0;
+                                        loop {
+                                            if dest_path.join(".lock").exists() {
+                                                if checks == 9 {
+                                                    return Err(MetaAlmanacError::PersistentLock {
+                                                        desired: dest_path
+                                                            .to_str()
+                                                            .unwrap()
+                                                            .to_owned(),
+                                                    });
+                                                }
+
+                                                checks += 1;
+                                                thread::sleep(std::time::Duration::from_secs(1));
+                                            } else {
+                                                break;
+                                            }
                                         }
 
                                         if dest_path.exists() {
@@ -109,6 +131,39 @@ impl MetaFile {
                                         }
 
                                         // At this stage, either the dest path does not exist, or the CRC32 check failed.
+
+                                        // Create the lock file
+                                        if let Err(e) = File::create(dest_path.join(".lock")) {
+                                            return Err(MetaAlmanacError::MetaIO {
+                                                path: dest_path
+                                                    .join(".lock")
+                                                    .to_str()
+                                                    .unwrap()
+                                                    .into(),
+                                                what: "creating lock file",
+                                                source: InputOutputError::IOError {
+                                                    kind: e.kind(),
+                                                },
+                                            });
+                                        }
+
+                                        let del_lock_file = || -> Result<(), MetaAlmanacError> {
+                                            if let Err(e) = remove_file(dest_path.join(".lock")) {
+                                                return Err(MetaAlmanacError::MetaIO {
+                                                    path: dest_path
+                                                        .join(".lock")
+                                                        .to_str()
+                                                        .unwrap()
+                                                        .into(),
+                                                    what: "creating lock file",
+                                                    source: InputOutputError::IOError {
+                                                        kind: e.kind(),
+                                                    },
+                                                });
+                                            }
+                                            Ok(())
+                                        };
+
                                         let client = reqwest::blocking::Client::builder()
                                             .connect_timeout(Duration::from_secs(30))
                                             .timeout(Duration::from_secs(30))
@@ -120,16 +175,19 @@ impl MetaFile {
                                                 if resp.status().is_success() {
                                                     // Downloaded the file, let's store it locally.
                                                     match File::create(&dest_path) {
-                                                        Err(e) => Err(MetaAlmanacError::MetaIO {
-                                                            path: dest_path
-                                                                .to_str()
-                                                                .unwrap()
-                                                                .into(),
-                                                            what: "creating file for storage",
-                                                            source: InputOutputError::IOError {
-                                                                kind: e.kind(),
-                                                            },
-                                                        }),
+                                                        Err(e) => {
+                                                            del_lock_file()?;
+                                                            Err(MetaAlmanacError::MetaIO {
+                                                                path: dest_path
+                                                                    .to_str()
+                                                                    .unwrap()
+                                                                    .into(),
+                                                                what: "creating file for storage",
+                                                                source: InputOutputError::IOError {
+                                                                    kind: e.kind(),
+                                                                },
+                                                            })
+                                                        }
                                                         Ok(mut file) => {
                                                             // Created the file, let's write the bytes.
                                                             let bytes = resp.bytes().unwrap();
@@ -150,20 +208,26 @@ impl MetaFile {
                                                             // Set the CRC32
                                                             self.crc32 = Some(crc32);
 
+                                                            del_lock_file()?;
+
                                                             Ok(())
                                                         }
                                                     }
                                                 } else {
+                                                    del_lock_file()?;
                                                     Err(MetaAlmanacError::FetchError {
                                                         status: resp.status(),
                                                         uri: self.uri.clone(),
                                                     })
                                                 }
                                             }
-                                            Err(e) => Err(MetaAlmanacError::CnxError {
-                                                uri: self.uri.clone(),
-                                                error: format!("{e}"),
-                                            }),
+                                            Err(e) => {
+                                                del_lock_file()?;
+                                                Err(MetaAlmanacError::CnxError {
+                                                    uri: self.uri.clone(),
+                                                    error: format!("{e}"),
+                                                })
+                                            }
                                         }
                                     }
                                     None => Err(MetaAlmanacError::AppDirError),
