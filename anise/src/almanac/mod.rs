@@ -203,7 +203,15 @@ impl Almanac {
             path: path.to_string(),
         })?;
         info!("Loading almanac from {path}");
-        self.load_from_bytes(bytes)
+        self.load_from_bytes(bytes).map_err(|e| match e {
+            AlmanacError::GenericError { err } => {
+                // Add the path to the error
+                AlmanacError::GenericError {
+                    err: format!("with {path}: {err}")
+                }
+            }
+            _ => e,
+        })
     }
 
     /// Initializes a new Almanac from the provided file path, guessing at the file type
