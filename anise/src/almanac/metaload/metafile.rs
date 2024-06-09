@@ -150,21 +150,9 @@ impl MetaFile {
                                             });
                                         }
 
-                                        let del_lock_file = || -> Result<(), MetaAlmanacError> {
-                                            if let Err(e) = remove_file(lock_path) {
-                                                return Err(MetaAlmanacError::MetaIO {
-                                                    path: dest_path
-                                                        .join(".lock")
-                                                        .to_str()
-                                                        .unwrap()
-                                                        .into(),
-                                                    what: "deleting lock file",
-                                                    source: InputOutputError::IOError {
-                                                        kind: e.kind(),
-                                                    },
-                                                });
-                                            }
-                                            Ok(())
+                                        let del_lock_file = || {
+                                            // Ignore if the deletion of the lock file fails
+                                            let _ = remove_file(lock_path);
                                         };
 
                                         let client = reqwest::blocking::Client::builder()
@@ -179,7 +167,7 @@ impl MetaFile {
                                                     // Downloaded the file, let's store it locally.
                                                     match File::create(&dest_path) {
                                                         Err(e) => {
-                                                            del_lock_file()?;
+                                                            del_lock_file();
                                                             Err(MetaAlmanacError::MetaIO {
                                                                 path: dest_path
                                                                     .to_str()
@@ -211,13 +199,13 @@ impl MetaFile {
                                                             // Set the CRC32
                                                             self.crc32 = Some(crc32);
 
-                                                            del_lock_file()?;
+                                                            del_lock_file();
 
                                                             Ok(())
                                                         }
                                                     }
                                                 } else {
-                                                    del_lock_file()?;
+                                                    del_lock_file();
                                                     Err(MetaAlmanacError::FetchError {
                                                         status: resp.status(),
                                                         uri: self.uri.clone(),
@@ -225,7 +213,7 @@ impl MetaFile {
                                                 }
                                             }
                                             Err(e) => {
-                                                del_lock_file()?;
+                                                del_lock_file();
                                                 Err(MetaAlmanacError::CnxError {
                                                     uri: self.uri.clone(),
                                                     error: format!("{e}"),
