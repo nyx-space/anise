@@ -207,7 +207,7 @@ impl Almanac {
             AlmanacError::GenericError { err } => {
                 // Add the path to the error
                 AlmanacError::GenericError {
-                    err: format!("with {path}: {err}")
+                    err: format!("with {path}: {err}"),
                 }
             }
             _ => e,
