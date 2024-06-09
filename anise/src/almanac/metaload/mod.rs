@@ -47,6 +47,10 @@ pub enum MetaAlmanacError {
     ParseDhall { path: String, err: String },
     #[snafu(display("error exporting as Dhall config (please file a bug): {err}"))]
     ExportDhall { err: String },
+    #[snafu(display(
+        "download to {desired} blocked while lock file `{desired}.lock` exists, please delete lock file"
+    ))]
+    PersistentLock { desired: String },
 }
 
 #[cfg_attr(feature = "python", pymethods)]
