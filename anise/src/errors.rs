@@ -71,7 +71,7 @@ pub enum InputOutputError {
     IOUnknownError,
 }
 
-#[derive(Debug, Snafu, PartialEq)]
+#[derive(Copy, Clone, Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
 pub enum DecodingError {
     #[snafu(display(
