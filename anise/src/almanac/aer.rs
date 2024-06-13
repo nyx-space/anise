@@ -43,14 +43,14 @@ impl Almanac {
         if tx.epoch != rx.epoch {
             return Err(AlmanacError::Ephemeris {
                 action: "",
-                source: EphemerisError::EphemerisPhysics {
+                source: Box::new(EphemerisError::EphemerisPhysics {
                     action: "computing AER",
                     source: PhysicsError::EpochMismatch {
                         action: "computing AER",
                         epoch1: tx.epoch,
                         epoch2: rx.epoch,
                     },
-                },
+                }),
             });
         }
 

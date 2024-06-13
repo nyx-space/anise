@@ -32,12 +32,14 @@ pub enum AlmanacError {
     #[snafu(display("{action} encountered an error with ephemeris computation {source}"))]
     Ephemeris {
         action: &'static str,
-        source: EphemerisError,
+        #[snafu(source(from(EphemerisError, Box::new)))]
+        source: Box<EphemerisError>,
     },
     #[snafu(display("{action} encountered an error with orientation computation {source}"))]
     Orientation {
         action: &'static str,
-        source: OrientationError,
+        #[snafu(source(from(OrientationError, Box::new)))]
+        source: Box<OrientationError>,
     },
     #[snafu(display("{source} encountered when loading {path}"))]
     Loading {
