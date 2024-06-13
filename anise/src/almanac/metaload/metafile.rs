@@ -44,7 +44,7 @@ pub struct MetaFile {
 }
 
 impl MetaFile {
-    /// Processes this MetaFile by downloading it if it's a URL.
+    /// Processes this MetaFile by downloading it if it's a URL and sets this structure's `uri` field to the local path
     ///
     /// This function modified `self` and changes the URI to be the path to the downloaded file.
     #[cfg(not(feature = "python"))]
@@ -119,15 +119,16 @@ impl MetaFile {
                                                 // Open the file and check the CRC32
                                                 let dest_path_c = dest_path.clone(); // macro token issue
                                                 if let Ok(bytes) = file2heap!(dest_path_c) {
-                                                    if crc32fast::hash(&bytes) == crc32 {
+                                                    let computed_crc32 = crc32fast::hash(&bytes);
+                                                    let dest_path_s =
+                                                        dest_path.to_str().unwrap().to_string();
+                                                    if computed_crc32 == crc32 {
                                                         // No need to redownload this, let's just update the uri path
-                                                        self.uri =
-                                                            dest_path.to_str().unwrap().to_string();
-                                                        info!(
-                                                            "Using cached {} (CRC32 matched)",
-                                                            self.uri
-                                                        );
+                                                        info!("Using cached {dest_path_s}",);
+                                                        self.uri = dest_path_s;
                                                         return Ok(());
+                                                    } else {
+                                                        info!("Discarding cached {dest_path_s} - CRC32 differ (got {computed_crc32}, config expected {crc32})");
                                                     }
                                                 }
                                             }
