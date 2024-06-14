@@ -26,7 +26,7 @@ use crate::{
     NaifId,
 };
 use core::f64::consts::PI;
-use core::f64::EPSILON;
+
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits, Unit};
 use log::{error, info, warn};
@@ -64,7 +64,7 @@ impl Orbit {
         frame: Frame,
     ) -> PhysicsResult<Self> {
         let mu_km3_s2 = frame.mu_km3_s2()?;
-        if mu_km3_s2.abs() < EPSILON {
+        if mu_km3_s2.abs() < f64::EPSILON {
             warn!("GM is near zero ({mu_km3_s2} km^3/s^2): expect rounding errors!",);
         }
         // Algorithm from GMAT's StateConversionUtil::KeplerianToCartesian
@@ -115,7 +115,7 @@ impl Orbit {
         let ta = ta.to_radians();
         let p = sma * (1.0 - ecc.powi(2));
 
-        ensure!(p.abs() >= EPSILON, ParabolicSemiParamSnafu { p });
+        ensure!(p.abs() >= f64::EPSILON, ParabolicSemiParamSnafu { p });
 
         // NOTE: At this point GMAT computes 1+ecc**2 and checks whether it's very small.
         // It then reports that the radius may be too large. We've effectively already done
@@ -159,13 +159,13 @@ impl Orbit {
         frame: Frame,
     ) -> PhysicsResult<Self> {
         ensure!(
-            r_a > EPSILON,
+            r_a > f64::EPSILON,
             RadiusSnafu {
                 action: "radius of apoapsis is negative"
             }
         );
         ensure!(
-            r_p > EPSILON,
+            r_p > f64::EPSILON,
             RadiusSnafu {
                 action: "radius of periapsis is negative"
             }
@@ -280,13 +280,13 @@ impl Orbit {
     /// Returns the orbital momentum vector
     pub fn hvec(&self) -> PhysicsResult<Vector3> {
         ensure!(
-            self.rmag_km() > EPSILON,
+            self.rmag_km() > f64::EPSILON,
             RadiusSnafu {
                 action: "cannot compute orbital momentum vector with zero radius"
             }
         );
         ensure!(
-            self.vmag_km_s() > EPSILON,
+            self.vmag_km_s() > f64::EPSILON,
             VelocitySnafu {
                 action: "cannot compute orbital momentum vector with zero velocity"
             }
@@ -298,7 +298,7 @@ impl Orbit {
     pub fn evec(&self) -> Result<Vector3, PhysicsError> {
         let r = self.radius_km;
         ensure!(
-            self.rmag_km() > EPSILON,
+            self.rmag_km() > f64::EPSILON,
             RadiusSnafu {
                 action: "cannot compute eccentricity vector with zero radial state"
             }
@@ -556,7 +556,7 @@ impl Orbit {
     /// Returns the specific mechanical energy in km^2/s^2
     pub fn energy_km2_s2(&self) -> PhysicsResult<f64> {
         ensure!(
-            self.rmag_km() > EPSILON,
+            self.rmag_km() > f64::EPSILON,
             RadiusSnafu {
                 action: "cannot compute energy with zero radial state"
             }

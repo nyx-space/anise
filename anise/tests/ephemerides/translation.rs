@@ -8,8 +8,6 @@
  * Documentation: https://nyxspace.com/
  */
 
-use core::f64::EPSILON;
-
 use anise::constants::frames::{EARTH_J2000, EARTH_MOON_BARYCENTER_J2000, MOON_J2000, VENUS_J2000};
 use anise::file2heap;
 use anise::math::Vector3;
@@ -71,14 +69,14 @@ fn de440s_translation_verif_venus2emb() {
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        relative_eq!(state.radius_km, pos_expct_km, epsilon = EPSILON),
+        relative_eq!(state.radius_km, pos_expct_km, epsilon = f64::EPSILON),
         "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
         state.radius_km,
         pos_expct_km - state.radius_km
     );
 
     assert!(
-        relative_eq!(state.velocity_km_s, vel_expct_km_s, epsilon = EPSILON),
+        relative_eq!(state.velocity_km_s, vel_expct_km_s, epsilon = f64::EPSILON),
         "vel = {}\nexp = {vel_expct_km_s}\nerr = {:e}",
         state.velocity_km_s,
         vel_expct_km_s - state.velocity_km_s
@@ -91,14 +89,14 @@ fn de440s_translation_verif_venus2emb() {
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        relative_eq!(state.radius_km, -pos_expct_km, epsilon = EPSILON),
+        relative_eq!(state.radius_km, -pos_expct_km, epsilon = f64::EPSILON),
         "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
         state.radius_km,
         pos_expct_km + state.radius_km
     );
 
     assert!(
-        relative_eq!(state.velocity_km_s, -vel_expct_km_s, epsilon = EPSILON),
+        relative_eq!(state.velocity_km_s, -vel_expct_km_s, epsilon = f64::EPSILON),
         "vel = {}\nexp = {vel_expct_km_s}\nerr = {:e}",
         state.velocity_km_s,
         vel_expct_km_s + state.velocity_km_s
@@ -153,7 +151,7 @@ fn de438s_translation_verif_venus2moon() {
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        relative_eq!(state.radius_km, pos_expct_km, epsilon = EPSILON),
+        relative_eq!(state.radius_km, pos_expct_km, epsilon = f64::EPSILON),
         "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
         state.radius_km,
         pos_expct_km - state.radius_km
@@ -177,7 +175,7 @@ fn de438s_translation_verif_venus2moon() {
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        relative_eq!(state.radius_km, -pos_expct_km, epsilon = EPSILON),
+        relative_eq!(state.radius_km, -pos_expct_km, epsilon = f64::EPSILON),
         "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
         state.radius_km,
         pos_expct_km + state.radius_km
@@ -250,7 +248,7 @@ fn de438s_translation_verif_emb2moon() {
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        relative_eq!(state.radius_km, pos_expct_km, epsilon = EPSILON),
+        relative_eq!(state.radius_km, pos_expct_km, epsilon = f64::EPSILON),
         "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
         state.radius_km,
         pos_expct_km - state.radius_km
@@ -279,7 +277,7 @@ fn de438s_translation_verif_emb2moon() {
 
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
-        relative_eq!(state.radius_km, -pos_expct_km, epsilon = EPSILON),
+        relative_eq!(state.radius_km, -pos_expct_km, epsilon = f64::EPSILON),
         "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
         state.radius_km,
         pos_expct_km + state.radius_km
@@ -605,7 +603,7 @@ fn de440s_translation_verif_aberrations() {
 
         // We expect exactly the same output as SPICE to machine precision.
         assert!(
-            relative_eq!(pos_km, case.pos_expct_km, epsilon = EPSILON),
+            relative_eq!(pos_km, case.pos_expct_km, epsilon = f64::EPSILON),
             "got {} but want {} with {} (#{cno}) => err = {:.3e} km",
             pos_km,
             case.pos_expct_km,

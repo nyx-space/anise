@@ -8,8 +8,6 @@
  * Documentation: https://nyxspace.com/
  */
 
-use std::f64::EPSILON;
-
 use anise::{
     constants::{
         celestial_objects::EARTH,
@@ -392,7 +390,7 @@ fn validate_j2000_ecliptic() {
         };
 
         assert!(
-            (dcm.rot_mat - rot_mat).norm() < EPSILON,
+            (dcm.rot_mat - rot_mat).norm() < f64::EPSILON,
             "#{num} {epoch}\ngot: {}want:{rot_mat}err = {:.3e}: {:.3e}",
             dcm.rot_mat,
             (dcm.rot_mat - rot_mat).norm(),

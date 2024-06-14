@@ -22,7 +22,7 @@ use crate::errors::{DecodingError, MathError};
 /// Until https://github.com/rust-lang/rust/issues/60551 , we cannot do operations on const generic, so we need some hack around it.
 pub(crate) const MAX_SAMPLES: usize = 32;
 
-#[derive(Debug, Snafu, PartialEq)]
+#[derive(Copy, Clone, Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
 pub enum InterpolationError {
     #[snafu(display("decoding error during interpolation: {source}"))]

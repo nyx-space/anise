@@ -15,7 +15,7 @@ use crate::{
     math::{Matrix3, Vector3},
     NaifId,
 };
-use core::f64::EPSILON;
+
 use core::ops::Mul;
 
 use super::{Quaternion, Rotation};
@@ -100,7 +100,7 @@ impl MRP {
 
     /// Returns whether this MRP is singular.
     pub fn is_singular(&self) -> bool {
-        self.scalar_norm() < EPSILON
+        self.scalar_norm() < f64::EPSILON
     }
 
     /// If the norm of this MRP is greater than max_norm then this MRP is set to its shadow set
@@ -237,7 +237,7 @@ impl TryFrom<Quaternion> for MRP {
     /// + A zero rotation, as the associated MRP is singular
     fn try_from(q: Quaternion) -> Result<Self, Self::Error> {
         ensure!(
-            (1.0 + q.w).abs() >= EPSILON,
+            (1.0 + q.w).abs() >= f64::EPSILON,
             DivisionByZeroSnafu {
                 action: "quaternion represents a zero rotation, which is a singular MRP"
             }

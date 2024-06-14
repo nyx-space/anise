@@ -7,7 +7,7 @@
  *
  * Documentation: https://nyxspace.com/
  */
-use core::f64::EPSILON;
+
 use core::fmt;
 use der::{Decode, Encode, Reader, Writer};
 use serde_derive::{Deserialize, Serialize};
@@ -123,12 +123,12 @@ impl Ellipsoid {
 
     pub fn is_sphere(&self) -> bool {
         self.is_spheroid()
-            && (self.polar_radius_km - self.semi_minor_equatorial_radius_km).abs() < EPSILON
+            && (self.polar_radius_km - self.semi_minor_equatorial_radius_km).abs() < f64::EPSILON
     }
 
     pub fn is_spheroid(&self) -> bool {
         (self.semi_major_equatorial_radius_km - self.semi_minor_equatorial_radius_km).abs()
-            < EPSILON
+            < f64::EPSILON
     }
 
     /// Returns the flattening ratio, computed from the mean equatorial radius and the polar radius

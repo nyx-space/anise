@@ -47,36 +47,6 @@ impl Almanac {
     }
 }
 
-/*
-ui.heading("Name");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("ID");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("Gravity param (km^3/s^2)");
-                                                });
-
-                                                header.col(|ui| {
-                                                    ui.heading("Major axis (km)");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("Minor axis (km)");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("Polar axis (km)");
-                                                });
-
-                                                header.col(|ui| {
-                                                    ui.heading("Pole right asc.");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("Pole declination");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("Prime meridian");
-*/
-
 #[derive(Tabled, Default)]
 struct PlanetaryRow {
     #[tabled(rename = "Name")]

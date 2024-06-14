@@ -398,7 +398,6 @@ impl fmt::LowerExp for CartesianState {
 
 #[cfg(test)]
 mod cartesian_state_ut {
-    use std::f64::EPSILON;
 
     use hifitime::{Duration, Epoch, TimeUnits};
 
@@ -465,7 +464,7 @@ mod cartesian_state_ut {
         let s1 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
         let s2 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
 
-        assert!(s1.distance_to_km(&s2).unwrap().abs() < EPSILON);
+        assert!(s1.distance_to_km(&s2).unwrap().abs() < f64::EPSILON);
 
         let as_vec6 = Vector6::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0);
         assert_eq!(s1.to_cartesian_pos_vel(), as_vec6);

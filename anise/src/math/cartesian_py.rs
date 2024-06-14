@@ -27,7 +27,7 @@ impl CartesianState {
     #[allow(clippy::too_many_arguments)]
     #[classmethod]
     pub fn from_cartesian(
-        _cls: &PyType,
+        _cls: &Bound<'_, PyType>,
         x_km: f64,
         y_km: f64,
         z_km: f64,

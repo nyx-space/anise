@@ -14,7 +14,7 @@ use crate::errors::{MathError, PhysicsError};
 
 use super::PhysicsResult;
 
-/// Mean anomaly epsilon
+/// Mean anomaly f64::EPSILON
 pub const MA_EPSILON: f64 = 1e-16;
 
 /// Computes the true anomaly from the given mean anomaly for an orbit.

@@ -13,7 +13,7 @@ use crate::{
     errors::{AberrationSnafu, VelocitySnafu},
     math::{rotate_vector, Vector3},
 };
-use core::f64::EPSILON;
+
 use core::fmt;
 
 #[cfg(feature = "python")]
@@ -277,7 +277,7 @@ pub fn stellar_aberration(
     // Correct for stellar aberration
     let mut app_target_pos_km = target_pos_km;
     let sin_phi = h.norm();
-    if sin_phi > EPSILON {
+    if sin_phi > f64::EPSILON {
         let phi = sin_phi.asin();
         app_target_pos_km = rotate_vector(&target_pos_km, &h, phi);
     }
