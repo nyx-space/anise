@@ -225,7 +225,7 @@ impl Default for MetaAlmanac {
                 },
                 MetaFile {
                     uri: nyx_cloud_stor.join("v0.4/pck11.pca").unwrap().to_string(),
-                    crc32: Some(0x62a4f3ad),
+                    crc32: Some(0x8213b6e9),
                 },
                 MetaFile {
                     uri: nyx_cloud_stor.join("v0.4/moon_fk.epa").unwrap().to_string(),
