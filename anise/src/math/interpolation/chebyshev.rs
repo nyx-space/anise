@@ -9,7 +9,7 @@
  */
 
 use crate::errors::MathError;
-use core::f64::EPSILON;
+
 use hifitime::Epoch;
 
 use super::InterpolationError;
@@ -25,7 +25,7 @@ pub fn chebyshev_eval(
     eval_epoch: Epoch,
     degree: usize,
 ) -> Result<(f64, f64), InterpolationError> {
-    if spline_radius_s.abs() < EPSILON {
+    if spline_radius_s.abs() < f64::EPSILON {
         return Err(InterpolationError::InterpMath {
             source: MathError::DivisionByZero {
                 action: "spline radius in Chebyshev eval is zero",

@@ -206,16 +206,16 @@ impl Mul<Vector3> for DCM {
     /// use anise::math::Vector3;
     /// use anise::math::rotation::DCM;
     /// use core::f64::consts::FRAC_PI_2;
-    /// use core::f64::EPSILON;
+    ///
     ///
     /// let r1 = DCM::r1(FRAC_PI_2, 0, 1);
     ///
     /// // Rotation of the X vector about X, yields X
     /// assert_eq!(r1 * Vector3::x(), Vector3::x());
     /// // Rotation of the Z vector about X by half pi, yields -Y
-    /// assert!((r1 * Vector3::z() - Vector3::y()).norm() < EPSILON);
+    /// assert!((r1 * Vector3::z() - Vector3::y()).norm() < f64::EPSILON);
     /// // Rotation of the Y vector about X by half pi, yields Z
-    /// assert!((r1 * Vector3::y() + Vector3::z()).norm() < EPSILON);
+    /// assert!((r1 * Vector3::y() + Vector3::z()).norm() < f64::EPSILON);
     /// ```
     ///
     /// # Warnings
@@ -410,7 +410,6 @@ mod ut_dcm {
 
     use super::{Vector3, DCM};
     use core::f64::consts::FRAC_PI_2;
-    use core::f64::EPSILON;
 
     #[test]
     fn test_r1() {
@@ -419,13 +418,13 @@ mod ut_dcm {
         // Rotation of the X vector about X, yields X
         assert_eq!(r1 * Vector3::x(), Vector3::x());
         // Rotation of the Z vector about X by half pi, yields Y
-        assert!((r1 * Vector3::z() - Vector3::y()).norm() < EPSILON);
+        assert!((r1 * Vector3::z() - Vector3::y()).norm() < f64::EPSILON);
         // Rotation of the Y vector about X by half pi, yields -Z
-        assert!((r1 * Vector3::y() + Vector3::z()).norm() < EPSILON);
+        assert!((r1 * Vector3::y() + Vector3::z()).norm() < f64::EPSILON);
 
         assert!(
             (r1.rot_mat - Matrix3::new(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -1.0, 0.0)).norm()
-                < EPSILON
+                < f64::EPSILON
         );
     }
 
@@ -436,17 +435,17 @@ mod ut_dcm {
         // Rotation of the Y vector about Y, yields Y
         assert_eq!(r2 * Vector3::y(), Vector3::y());
         // Rotation of the X vector about Y by -half pi, yields Z
-        assert!((r2 * Vector3::x() - Vector3::z()).norm() < EPSILON);
+        assert!((r2 * Vector3::x() - Vector3::z()).norm() < f64::EPSILON);
         // Rotation of the Z vector about Y by -half pi, yields -X
-        assert!((r2 * Vector3::z() + Vector3::x()).norm() < EPSILON);
+        assert!((r2 * Vector3::z() + Vector3::x()).norm() < f64::EPSILON);
 
         // Edge case: Rotation by 0 degrees should yield the original vector
         let r2_zero = DCM::r2(0.0, 0, 1);
-        assert!((r2_zero * Vector3::x() - Vector3::x()).norm() < EPSILON);
+        assert!((r2_zero * Vector3::x() - Vector3::x()).norm() < f64::EPSILON);
 
         assert!(
             (r2.rot_mat - Matrix3::new(0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0)).norm()
-                < EPSILON
+                < f64::EPSILON
         );
     }
 
@@ -459,17 +458,17 @@ mod ut_dcm {
         // Rotation of the Z vector about Z, yields Z
         assert_eq!(r3 * Vector3::z(), Vector3::z());
         // Rotation of the X vector about Z by -half pi, yields -Y
-        assert!((r3 * Vector3::x() + Vector3::y()).norm() < EPSILON);
+        assert!((r3 * Vector3::x() + Vector3::y()).norm() < f64::EPSILON);
         // Rotation of the Y vector about Z by -half pi, yields X
-        assert!((r3 * Vector3::y() - Vector3::x()).norm() < EPSILON);
+        assert!((r3 * Vector3::y() - Vector3::x()).norm() < f64::EPSILON);
 
         // Edge case: Rotation by 0 degrees should yield the original vector
         let r3_zero = DCM::r3(0.0, 0, 1);
-        assert!((r3_zero * Vector3::x() - Vector3::x()).norm() < EPSILON);
+        assert!((r3_zero * Vector3::x() - Vector3::x()).norm() < f64::EPSILON);
 
         assert!(
             (r3.rot_mat - Matrix3::new(0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0)).norm()
-                < EPSILON
+                < f64::EPSILON
         );
     }
 }

@@ -59,8 +59,6 @@
 
 /* -    SPICELIB Version 1.0.0, 01-MAR-2000 (NJB) */
 
-use core::f64::EPSILON;
-
 use crate::errors::MathError;
 use log::error;
 
@@ -121,7 +119,7 @@ pub fn hermite_eval(
         let c1 = xs[i] - x_eval;
         let c2 = x_eval - xs[i - 1];
         let denom = xs[i] - xs[i - 1];
-        if denom.abs() < EPSILON {
+        if denom.abs() < f64::EPSILON {
             return Err(InterpolationError::InterpMath {
                 source: MathError::DivisionByZero {
                     action:
@@ -181,7 +179,7 @@ pub fn hermite_eval(
             let c1 = xs[xij - 1] - x_eval;
             let c2 = x_eval - xs[xi - 1];
             let denom = xs[xij - 1] - xs[xi - 1];
-            if denom.abs() < EPSILON {
+            if denom.abs() < f64::EPSILON {
                 return Err(InterpolationError::InterpMath {
                     source:MathError::DivisionByZero {
                     action:
@@ -221,7 +219,6 @@ pub fn hermite_eval(
 
 #[test]
 fn hermite_spice_docs_example() {
-    use core::f64::EPSILON;
     let ts = [-1.0, 0.0, 3.0, 5.0];
     let yvals = [6.0, 5.0, 2210.0, 78180.0];
     let ydotvals = [3.0, 0.0, 5115.0, 109395.0];
@@ -230,15 +227,15 @@ fn hermite_spice_docs_example() {
     for (i, t) in ts.iter().enumerate() {
         let (eval, deriv) = hermite_eval(&ts, &yvals, &ydotvals, *t).unwrap();
         let eval_err = (eval - yvals[i]).abs();
-        assert!(eval_err < EPSILON, "f(x) error is {eval_err:e}");
+        assert!(eval_err < f64::EPSILON, "f(x) error is {eval_err:e}");
 
         let deriv_err = (deriv - ydotvals[i]).abs();
-        assert!(deriv_err < EPSILON, "f'(x) error is {deriv_err:e}");
+        assert!(deriv_err < f64::EPSILON, "f'(x) error is {deriv_err:e}");
     }
 
     // Check the interpolation from the SPICE documentation
     let (x, vx) = hermite_eval(&ts, &yvals, &ydotvals, 2.0).unwrap();
 
-    assert!((x - 141.0).abs() < EPSILON, "X error");
-    assert!((vx - 456.0).abs() < EPSILON, "VX error");
+    assert!((x - 141.0).abs() < f64::EPSILON, "X error");
+    assert!((vx - 456.0).abs() < f64::EPSILON, "VX error");
 }

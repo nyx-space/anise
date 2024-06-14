@@ -159,7 +159,10 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
         // The summaries are defined in the same record as the DAF summary
         Ok(match Ref::new_slice(&rcrd_bytes[SummaryRecord::SIZE..]) {
             Some(data) => data.into_slice(),
-            None => &[R::default(); 0],
+            None => &{
+                R::default();
+                [] as [R; 0]
+            },
         })
     }
 

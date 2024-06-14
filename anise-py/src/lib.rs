@@ -27,7 +27,7 @@ mod utils;
 fn anise(m: &Bound<'_, PyModule>) -> PyResult<()> {
     pyo3_log::init();
     register_time_module(m)?;
-    astro::register_astro(&m)?;
+    astro::register_astro(m)?;
     utils::register_utils(m)?;
     m.add_class::<Almanac>()?;
     m.add_class::<Aberration>()?;
