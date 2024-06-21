@@ -572,7 +572,7 @@ impl Orbit {
 
     /// Mutates this orbit to change the SMA
     pub fn set_sma_km(&mut self, new_sma_km: f64) -> PhysicsResult<()> {
-        let me = Self::keplerian(
+        let me = Self::try_keplerian(
             new_sma_km,
             self.ecc()?,
             self.inc_deg()?,
@@ -581,7 +581,7 @@ impl Orbit {
             self.ta_deg()?,
             self.epoch,
             self.frame,
-        );
+        )?;
 
         *self = me;
 
@@ -618,7 +618,7 @@ impl Orbit {
 
     /// Mutates this orbit to change the ECC
     pub fn set_ecc(&mut self, new_ecc: f64) -> PhysicsResult<()> {
-        let me = Self::keplerian(
+        let me = Self::try_keplerian(
             self.sma_km()?,
             new_ecc,
             self.inc_deg()?,
@@ -627,7 +627,7 @@ impl Orbit {
             self.ta_deg()?,
             self.epoch,
             self.frame,
-        );
+        )?;
 
         *self = me;
 
@@ -655,7 +655,7 @@ impl Orbit {
 
     /// Mutates this orbit to change the INC
     pub fn set_inc_deg(&mut self, new_inc_deg: f64) -> PhysicsResult<()> {
-        let me = Self::keplerian(
+        let me = Self::try_keplerian(
             self.sma_km()?,
             self.ecc()?,
             new_inc_deg,
@@ -664,7 +664,7 @@ impl Orbit {
             self.ta_deg()?,
             self.epoch,
             self.frame,
-        );
+        )?;
 
         *self = me;
 
@@ -705,7 +705,7 @@ impl Orbit {
 
     /// Mutates this orbit to change the AOP
     pub fn set_aop_deg(&mut self, new_aop_deg: f64) -> PhysicsResult<()> {
-        let me = Self::keplerian(
+        let me = Self::try_keplerian(
             self.sma_km()?,
             self.ecc()?,
             self.inc_deg()?,
@@ -714,7 +714,7 @@ impl Orbit {
             self.ta_deg()?,
             self.epoch,
             self.frame,
-        );
+        )?;
 
         *self = me;
 
@@ -755,7 +755,7 @@ impl Orbit {
 
     /// Mutates this orbit to change the RAAN
     pub fn set_raan_deg(&mut self, new_raan_deg: f64) -> PhysicsResult<()> {
-        let me = Self::keplerian(
+        let me = Self::try_keplerian(
             self.sma_km()?,
             self.ecc()?,
             self.inc_deg()?,
@@ -764,7 +764,7 @@ impl Orbit {
             self.ta_deg()?,
             self.epoch,
             self.frame,
-        );
+        )?;
 
         *self = me;
 
@@ -818,7 +818,7 @@ impl Orbit {
 
     /// Mutates this orbit to change the TA
     pub fn set_ta_deg(&mut self, new_ta_deg: f64) -> PhysicsResult<()> {
-        let me = Self::keplerian(
+        let me = Self::try_keplerian(
             self.sma_km()?,
             self.ecc()?,
             self.inc_deg()?,
@@ -827,7 +827,7 @@ impl Orbit {
             new_ta_deg,
             self.epoch,
             self.frame,
-        );
+        )?;
 
         *self = me;
 
