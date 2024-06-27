@@ -15,6 +15,7 @@ mod lagrange;
 pub use chebyshev::chebyshev_eval;
 pub use hermite::hermite_eval;
 use hifitime::Epoch;
+pub use lagrange::lagrange_eval;
 use snafu::Snafu;
 
 use crate::errors::{DecodingError, MathError};

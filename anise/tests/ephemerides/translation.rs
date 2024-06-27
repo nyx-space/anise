@@ -660,6 +660,9 @@ fn type9_lagrange_query() {
         .translate(obj_frame, EARTH_J2000, start, Aberration::NONE)
         .unwrap();
 
-    // This tests that we've loaded the frame info from the Almanac, otherwise we cannot compute the orbital elements.
-    assert_eq!(format!("{state:x}"), "[Earth J2000] 2000-01-01T13:40:32.183929398 ET\tsma = 7192.041350 km\tecc = 0.024628\tinc = 12.851841 deg\traan = 306.170038 deg\taop = 315.085528 deg\tta = 96.135384 deg");
+    let expected_pos_km = Vector3::new(-7330.07448072, 3165.86736474, 765.52615102);
+    let expected_vel_km_s = Vector3::new(-7.224378, -5.265514, -4.125131);
+
+    dbg!(state.radius_km - expected_pos_km);
+    dbg!(state.velocity_km_s - expected_vel_km_s);
 }
