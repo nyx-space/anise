@@ -633,3 +633,33 @@ fn de440s_translation_verif_aberrations() {
         );
     }
 }
+
+#[cfg(feature = "metaload")]
+#[test]
+fn type9_lagrange_query() {
+    use anise::almanac::metaload::MetaFile;
+    use anise::constants::frames::EARTH_J2000;
+    use anise::prelude::Frame;
+
+    let lagrange_meta = MetaFile {
+        uri: "http://public-data.nyxspace.com/anise/ci/env:LAGRANGE_BSP".to_string(),
+        crc32: None,
+    };
+
+    let almanac = Almanac::default()
+        .load_from_metafile(lagrange_meta)
+        .unwrap();
+
+    let obj_id = -10;
+    let obj_frame = Frame::from_ephem_j2000(obj_id);
+
+    let (start, _) = almanac.spk_domain(obj_id).unwrap();
+
+    // Query in the middle to the parent, since we don't have anything else loaded.
+    let state = almanac
+        .translate(obj_frame, EARTH_J2000, start, Aberration::NONE)
+        .unwrap();
+
+    // This tests that we've loaded the frame info from the Almanac, otherwise we cannot compute the orbital elements.
+    assert_eq!(format!("{state:x}"), "[Earth J2000] 2000-01-01T13:40:32.183929398 ET\tsma = 7192.041350 km\tecc = 0.024628\tinc = 12.851841 deg\traan = 306.170038 deg\taop = 315.085528 deg\tta = 96.135384 deg");
+}
