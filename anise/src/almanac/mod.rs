@@ -48,6 +48,9 @@ pub mod metaload;
 #[cfg(feature = "python")]
 mod python;
 
+#[cfg(feature = "embed_ephem")]
+mod embed;
+
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 

@@ -183,6 +183,7 @@ jobs:
           cargo llvm-cov test --no-report validate_jplde_de440s_no_aberration --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov test --no-report validate_jplde_de440s_aberration_lt --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov test --no-report validate_hermite_type13_from_gmat --features spkezr_validation -- --nocapture --ignored
+          cargo llvm-cov test --no-report ut_embed --features embed_ephem
           cargo llvm-cov report --lcov > ../lcov.txt
         env:
           RUSTFLAGS: --cfg __ui_tests
