@@ -112,7 +112,10 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
         _epoch: Epoch,
         _: &S,
     ) -> Result<CartesianState, InterpolationError> {
-        todo!("https://github.com/anise-toolkit/anise.rs/issues/12")
+        Err(InterpolationError::UnimplementedType {
+            dataset: Self::DATASET_NAME,
+            issue: 12,
+        })
     }
 
     fn check_integrity(&self) -> Result<(), IntegrityError> {
@@ -205,7 +208,10 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
         _epoch: Epoch,
         _: &S,
     ) -> Result<Self::StateKind, InterpolationError> {
-        todo!("https://github.com/anise-toolkit/anise.rs/issues/13")
+        Err(InterpolationError::UnimplementedType {
+            dataset: Self::DATASET_NAME,
+            issue: 12,
+        })
     }
 
     fn check_integrity(&self) -> Result<(), IntegrityError> {

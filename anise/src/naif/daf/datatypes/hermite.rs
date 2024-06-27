@@ -115,7 +115,10 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
         _epoch: Epoch,
         _: &S,
     ) -> Result<CartesianState, InterpolationError> {
-        todo!("https://github.com/anise-toolkit/anise.rs/issues/14")
+        Err(InterpolationError::UnimplementedType {
+            dataset: Self::DATASET_NAME,
+            issue: 14,
+        })
     }
 
     fn check_integrity(&self) -> Result<(), IntegrityError> {

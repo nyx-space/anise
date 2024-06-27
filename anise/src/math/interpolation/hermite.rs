@@ -16,7 +16,6 @@
    2. The relevant comments (including authors) from hrmint are kept.
    3. The tests are not part of the original SPICE code.
    4. The transliteration in itself justifies the change of license from unrestricted to MPL.
-
 */
 /* hrmint.f -- translated by f2c (version 19980913).
    You must link the resulting object file with the libraries:
@@ -93,7 +92,7 @@ pub fn hermite_eval(
 
     // At this point, we know that the lengths of items is correct, so we can directly address them without worry for overflowing the array.
 
-    let work: &mut [f64] = &mut [0.0; 256];
+    let work: &mut [f64] = &mut [0.0; 8 * MAX_SAMPLES];
     let n: usize = xs.len();
 
     /*     Copy the input array into WORK.  After this, the first column */
@@ -181,10 +180,10 @@ pub fn hermite_eval(
             let denom = xs[xij - 1] - xs[xi - 1];
             if denom.abs() < f64::EPSILON {
                 return Err(InterpolationError::InterpMath {
-                    source:MathError::DivisionByZero {
-                    action:
-                        "hermite data contains likely duplicate abcissa, remove duplicate states",
-                }});
+                    source: MathError::DivisionByZero {
+                        action: "hermite data contains duplicate states",
+                    },
+                });
             }
 
             /*           Compute the interpolated derivative at X for the Ith */

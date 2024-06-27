@@ -10,6 +10,7 @@
 
 mod chebyshev;
 mod hermite;
+mod lagrange;
 
 pub use chebyshev::chebyshev_eval;
 pub use hermite::hermite_eval;
@@ -50,4 +51,8 @@ pub enum InterpolationError {
         kind: &'static str,
         op: &'static str,
     },
+    #[snafu(display(
+        "{dataset} is not yet supported -- https://github.com/nyx-space/anise/issues/{issue}"
+    ))]
+    UnimplementedType { issue: u32, dataset: &'static str },
 }
