@@ -33,6 +33,10 @@ serde_dhall = { workspace = true }
 reqwest = { version = "0.12.0", optional = true, features = ["blocking"] }
 platform-dirs = { version = "0.3.0", optional = true }
 tabled = { workspace = true }
+rust-embed = { version = "8.4.0", features = [
+    "interpolate-folder-path",
+    "include-exclude",
+], optional = true }
 
 [dev-dependencies]
 rust-spice = "0.7.6"
@@ -50,6 +54,7 @@ default = ["metaload"]
 spkezr_validation = []
 python = ["pyo3", "pyo3-log"]
 metaload = ["url", "reqwest/blocking", "platform-dirs"]
+embed_ephem = ["rust-embed"]
 
 [[bench]]
 name = "iai_jpl_ephemerides"
