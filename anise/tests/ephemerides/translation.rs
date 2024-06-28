@@ -299,19 +299,6 @@ fn de438s_translation_verif_emb2moon() {
 fn spk_hermite_type13_verif() {
     let _ = pretty_env_logger::try_init().is_err();
 
-    // "Load" the file via a memory map (avoids allocations)
-    // let path = "../data/de440s.bsp";
-    // let buf = file2heap!(path).unwrap();
-    // let spk = SPK::parse(buf).unwrap();
-
-    // let buf = file2heap!("../data/gmat-hermite.bsp").unwrap();
-    // let spacecraft = SPK::parse(buf).unwrap();
-
-    // let ctx = Almanac::from_spk(spk)
-    //     .unwrap()
-    //     .with_spk(spacecraft)
-    //     .unwrap();
-
     let ctx = Almanac::default()
         .load("../data/de440s.bsp")
         .and_then(|ctx| ctx.load("../data/gmat-hermite.bsp"))

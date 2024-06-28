@@ -55,9 +55,13 @@ jobs:
         run: sh dev-env-setup.sh && cd .. # Return to root
 
       - name: Test debug
+        env:
+          LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
         run: cargo test --workspace --exclude anise-gui --exclude anise-py
 
       - name: Test release
+        env:
+          LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
         run: cargo test --release --workspace --exclude anise-gui --exclude anise-py
 
   lints:
