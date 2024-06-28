@@ -179,7 +179,8 @@ jobs:
 
       - name: Generate coverage report
         env:
-            LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
+          LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
+          RUSTFLAGS: --cfg __ui_tests
         run: |
           cd anise # Prevent the workspace flag
           cargo llvm-cov clean --workspace
@@ -193,8 +194,6 @@ jobs:
           cargo llvm-cov test --no-report validate_lagrange_type9_with_varying_segment_sizes --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov test --no-report ut_embed --features embed_ephem
           cargo llvm-cov report --lcov > ../lcov.txt
-        env:
-          RUSTFLAGS: --cfg __ui_tests
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v3
