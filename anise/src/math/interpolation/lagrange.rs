@@ -57,6 +57,7 @@ pub fn lagrange_eval(
             dwork[i] = ((x_eval - xij) * dwork[i] + (xi - x_eval) * dwork[i + 1]) / denom + deriv;
         }
     }
+
     let f = work[0];
     let df = dwork[0];
     Ok((f, df))

@@ -657,12 +657,33 @@ fn type9_lagrange_query() {
 
     // Query in the middle to the parent, since we don't have anything else loaded.
     let state = almanac
-        .translate(obj_frame, EARTH_J2000, start, Aberration::NONE)
+        .translate(
+            obj_frame,
+            EARTH_J2000,
+            start + 1.159_f64.seconds(),
+            Aberration::NONE,
+        )
         .unwrap();
 
-    let expected_pos_km = Vector3::new(-7330.07448072, 3165.86736474, 765.52615102);
-    let expected_vel_km_s = Vector3::new(-7.224378, -5.265514, -4.125131);
+    let expected_pos_km = Vector3::new(-7338.44373643, 3159.7629953, 760.74472775);
+    let expected_vel_km_s = Vector3::new(-7.21781188, -5.26834555, -4.12581558);
 
     dbg!(state.radius_km - expected_pos_km);
     dbg!(state.velocity_km_s - expected_vel_km_s);
+
+    assert!(
+        relative_eq!(state.radius_km, expected_pos_km, epsilon = 5e-6),
+        "got {} but want {} => err = {:.3e} km",
+        state.radius_km,
+        expected_pos_km,
+        (state.radius_km - expected_pos_km).norm()
+    );
+
+    assert!(
+        relative_eq!(state.velocity_km_s, expected_vel_km_s, epsilon = 5e-9),
+        "got {} but want {} => err = {:.3e} km/s",
+        state.velocity_km_s,
+        expected_vel_km_s,
+        (state.velocity_km_s - expected_vel_km_s).norm()
+    );
 }

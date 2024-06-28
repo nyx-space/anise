@@ -139,7 +139,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
 #[derive(PartialEq)]
 pub struct LagrangeSetType9<'a> {
     pub degree: usize,
-    pub samples: usize,
+    pub num_records: usize,
     pub state_data: &'a [f64],
     pub epoch_data: &'a [f64],
     pub epoch_registry: &'a [f64],
@@ -175,19 +175,19 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
         );
 
         // For this kind of record, the metadata is stored at the very end of the dataset
-        let samples = slice[slice.len() - 1] as usize;
+        let num_records = slice[slice.len() - 1] as usize;
         let degree = slice[slice.len() - 2] as usize;
         // NOTE: The ::SIZE returns the C representation memory size of this, but we only want the number of doubles.
-        let state_data_end_idx = PositionVelocityRecord::SIZE / DBL_SIZE * samples;
+        let state_data_end_idx = PositionVelocityRecord::SIZE / DBL_SIZE * num_records;
         let state_data = slice.get(0..state_data_end_idx).unwrap();
-        let epoch_data_end_idx = state_data_end_idx + samples;
+        let epoch_data_end_idx = state_data_end_idx + num_records;
         let epoch_data = slice.get(state_data_end_idx..epoch_data_end_idx).unwrap();
         // And the epoch directory is whatever remains minus the metadata
         let epoch_registry = slice.get(epoch_data_end_idx..slice.len() - 2).unwrap();
 
         Ok(Self {
             degree,
-            samples,
+            num_records,
             state_data,
             epoch_data,
             epoch_registry,
@@ -195,7 +195,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
     }
 
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError> {
-        let rcrd_len = self.state_data.len() / self.samples;
+        let rcrd_len = self.state_data.len() / self.num_records;
         Ok(Self::RecordKind::from_slice_f64(
             self.state_data
                 .get(n * rcrd_len..(n + 1) * rcrd_len)
@@ -239,14 +239,15 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
             }
             Err(idx) => {
                 // We didn't find it, so let's build an interpolation here.
-                let num_left = self.samples / 2;
+                let group_size = self.degree + 1;
+                let num_left = group_size / 2;
 
                 // Ensure that we aren't fetching out of the window
                 let mut first_idx = idx.saturating_sub(num_left);
-                let last_idx = self.samples.min(first_idx + self.samples);
+                let last_idx = group_size.min(first_idx + group_size);
 
                 // Check that we have enough samples
-                if last_idx == self.samples {
+                if last_idx == group_size {
                     first_idx = last_idx - 2 * num_left;
                 }
 
@@ -258,6 +259,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
                 let mut vxs = [0.0; MAX_SAMPLES];
                 let mut vys = [0.0; MAX_SAMPLES];
                 let mut vzs = [0.0; MAX_SAMPLES];
+
                 for (cno, idx) in (first_idx..last_idx).enumerate() {
                     let record = self.nth_record(idx).context(InterpDecodingSnafu)?;
                     xs[cno] = record.x_km;
@@ -273,21 +275,39 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
 
                 // Build the interpolation polynomials making sure to limit the slices to exactly the number of items we actually used
                 // The other ones are zeros, which would cause the interpolation function to fail.
-                let (x_km, vx_km_s) = lagrange_eval(
-                    &epochs[..self.samples],
-                    &xs[..self.samples],
+                let (x_km, _) = lagrange_eval(
+                    &epochs[..group_size],
+                    &xs[..group_size],
                     epoch.to_et_seconds(),
                 )?;
 
-                let (y_km, vy_km_s) = lagrange_eval(
-                    &epochs[..self.samples],
-                    &ys[..self.samples],
+                let (y_km, _) = lagrange_eval(
+                    &epochs[..group_size],
+                    &ys[..group_size],
                     epoch.to_et_seconds(),
                 )?;
 
-                let (z_km, vz_km_s) = lagrange_eval(
-                    &epochs[..self.samples],
-                    &zs[..self.samples],
+                let (z_km, _) = lagrange_eval(
+                    &epochs[..group_size],
+                    &zs[..group_size],
+                    epoch.to_et_seconds(),
+                )?;
+
+                let (vx_km_s, _) = lagrange_eval(
+                    &epochs[..group_size],
+                    &vxs[..group_size],
+                    epoch.to_et_seconds(),
+                )?;
+
+                let (vy_km_s, _) = lagrange_eval(
+                    &epochs[..group_size],
+                    &vys[..group_size],
+                    epoch.to_et_seconds(),
+                )?;
+
+                let (vz_km_s, _) = lagrange_eval(
+                    &epochs[..group_size],
+                    &vzs[..group_size],
                     epoch.to_et_seconds(),
                 )?;
 
