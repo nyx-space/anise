@@ -244,10 +244,10 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
 
                 // Ensure that we aren't fetching out of the window
                 let mut first_idx = idx.saturating_sub(num_left);
-                let last_idx = group_size.min(first_idx + group_size);
+                let last_idx = self.num_records.min(first_idx + group_size);
 
                 // Check that we have enough samples
-                if last_idx == group_size {
+                if last_idx == self.num_records {
                     first_idx = last_idx - 2 * num_left;
                 }
 

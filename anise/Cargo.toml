@@ -37,7 +37,7 @@ rust-embed = { version = "8.4.0", features = [
     "interpolate-folder-path",
     "include-exclude",
 ], optional = true }
-regex = "1.10.5"
+regex = {version = "1.10.5" , optional = true}
 
 [dev-dependencies]
 rust-spice = "0.7.6"
@@ -54,7 +54,7 @@ default = ["metaload"]
 # Enabling this flag significantly increases compilation times due to Arrow and Polars.
 spkezr_validation = []
 python = ["pyo3", "pyo3-log"]
-metaload = ["url", "reqwest/blocking", "platform-dirs"]
+metaload = ["url", "reqwest/blocking", "platform-dirs", "regex"]
 embed_ephem = ["rust-embed"]
 
 [[bench]]

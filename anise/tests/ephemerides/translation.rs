@@ -653,9 +653,9 @@ fn type9_lagrange_query() {
     let obj_id = -10;
     let obj_frame = Frame::from_ephem_j2000(obj_id);
 
-    let (start, _) = almanac.spk_domain(obj_id).unwrap();
+    let (start, end) = almanac.spk_domain(obj_id).unwrap();
 
-    // Query in the middle to the parent, since we don't have anything else loaded.
+    // Query near the start, but somewhere where the state is not exactly defined
     let state = almanac
         .translate(
             obj_frame,
@@ -667,6 +667,38 @@ fn type9_lagrange_query() {
 
     let expected_pos_km = Vector3::new(-7338.44373643, 3159.7629953, 760.74472775);
     let expected_vel_km_s = Vector3::new(-7.21781188, -5.26834555, -4.12581558);
+
+    dbg!(state.radius_km - expected_pos_km);
+    dbg!(state.velocity_km_s - expected_vel_km_s);
+
+    assert!(
+        relative_eq!(state.radius_km, expected_pos_km, epsilon = 5e-6),
+        "got {} but want {} => err = {:.3e} km",
+        state.radius_km,
+        expected_pos_km,
+        (state.radius_km - expected_pos_km).norm()
+    );
+
+    assert!(
+        relative_eq!(state.velocity_km_s, expected_vel_km_s, epsilon = 5e-9),
+        "got {} but want {} => err = {:.3e} km/s",
+        state.velocity_km_s,
+        expected_vel_km_s,
+        (state.velocity_km_s - expected_vel_km_s).norm()
+    );
+
+    // Query near the end, but not in the registry either
+    let state = almanac
+        .translate(
+            obj_frame,
+            EARTH_J2000,
+            end - 1159.56_f64.seconds(),
+            Aberration::NONE,
+        )
+        .unwrap();
+
+    let expected_pos_km = Vector3::new(10106.15561792, -166810.06321791, -95547.93140678);
+    let expected_vel_km_s = Vector3::new(0.43375448, -1.07193959, -0.55979951);
 
     dbg!(state.radius_km - expected_pos_km);
     dbg!(state.velocity_km_s - expected_vel_km_s);

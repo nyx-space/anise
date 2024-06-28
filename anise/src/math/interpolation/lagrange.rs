@@ -41,6 +41,8 @@ pub fn lagrange_eval(
 
             let denom = xi - xij;
             if denom.abs() < f64::EPSILON {
+                dbg!(&xs);
+                dbg!(&ys);
                 return Err(InterpolationError::InterpMath {
                     source: MathError::DivisionByZero {
                         action: "lagrange data contains duplicate states",

@@ -36,7 +36,6 @@ fn validate_hermite_type13_from_gmat() {
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
 fn validate_hermite_type13_with_varying_segment_sizes() {
-    // ISSUE: This file is corrupt. I messed up the rewrite.
     let file_name = "spk-type13-validation-variable-seg-size".to_string();
     let comparator = CompareEphem::new(
         vec!["../data/variable-seg-size-hermite.bsp".to_string()],
