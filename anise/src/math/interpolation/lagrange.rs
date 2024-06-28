@@ -10,7 +10,7 @@
 
 use crate::errors::MathError;
 
-use super::InterpolationError;
+use super::{InterpolationError, MAX_SAMPLES};
 
 pub fn lagrange_eval(
     xs: &[f64],
@@ -29,8 +29,11 @@ pub fn lagrange_eval(
 
     // At this point, we know that the lengths of items is correct, so we can directly address them without worry for overflowing the array.
 
-    let mut work = ys.to_vec();
-    let mut dwork = vec![0.0; ys.len()];
+    let work: &mut [f64] = &mut [0.0; MAX_SAMPLES];
+    let dwork: &mut [f64] = &mut [0.0; MAX_SAMPLES];
+    for (ii, y) in ys.iter().enumerate() {
+        work[ii] = *y;
+    }
 
     let n = xs.len();
 
@@ -41,8 +44,6 @@ pub fn lagrange_eval(
 
             let denom = xi - xij;
             if denom.abs() < f64::EPSILON {
-                dbg!(&xs);
-                dbg!(&ys);
                 return Err(InterpolationError::InterpMath {
                     source: MathError::DivisionByZero {
                         action: "lagrange data contains duplicate states",
