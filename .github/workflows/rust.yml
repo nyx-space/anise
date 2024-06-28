@@ -55,9 +55,13 @@ jobs:
         run: sh dev-env-setup.sh && cd .. # Return to root
 
       - name: Test debug
+        env:
+          LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
         run: cargo test --workspace --exclude anise-gui --exclude anise-py
 
       - name: Test release
+        env:
+          LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
         run: cargo test --release --workspace --exclude anise-gui --exclude anise-py
 
   lints:
@@ -85,7 +89,7 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
-        
+
       - name: Download data
         run: |
           wget -O data/de421.bsp http://public-data.nyxspace.com/anise/de421.bsp
@@ -115,12 +119,17 @@ jobs:
 
       - name: Rust-SPICE hermite validation
         run: RUST_BACKTRACE=1 cargo test validate_hermite_type13_ --features spkezr_validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
-      
+
+      - name: Rust-SPICE Lagrange validation
+        env:
+          LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
+        run: RUST_BACKTRACE=1 cargo test validate_lagrange_type9_with_varying_segment_sizes --features spkezr_validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
+
       - name: Rust-SPICE PCK validation
         run: RUST_BACKTRACE=1 cargo test validate_iau_rotation_to_parent --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --ignored
-      
+
       - name: Rust-SPICE BPC validation
-        run: | 
+        run: |
           RUST_BACKTRACE=1 cargo test validate_bpc_ --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
           RUST_BACKTRACE=1 cargo test de440s_translation_verif_venus2emb --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
 
@@ -148,7 +157,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Download data
         run: |
           wget -O data/de421.bsp http://public-data.nyxspace.com/anise/de421.bsp
@@ -173,6 +182,9 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Generate coverage report
+        env:
+          LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
+          RUSTFLAGS: --cfg __ui_tests
         run: |
           cd anise # Prevent the workspace flag
           cargo llvm-cov clean --workspace
@@ -183,10 +195,9 @@ jobs:
           cargo llvm-cov test --no-report validate_jplde_de440s_no_aberration --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov test --no-report validate_jplde_de440s_aberration_lt --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov test --no-report validate_hermite_type13_from_gmat --features spkezr_validation -- --nocapture --ignored
+          cargo llvm-cov test --no-report validate_lagrange_type9_with_varying_segment_sizes --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov test --no-report ut_embed --features embed_ephem
           cargo llvm-cov report --lcov > ../lcov.txt
-        env:
-          RUSTFLAGS: --cfg __ui_tests
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v3
@@ -217,4 +228,3 @@ jobs:
           cd anise # Jump into the package
           cargo login $TOKEN
           cargo publish
-        

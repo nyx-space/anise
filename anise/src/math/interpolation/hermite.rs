@@ -16,7 +16,6 @@
    2. The relevant comments (including authors) from hrmint are kept.
    3. The tests are not part of the original SPICE code.
    4. The transliteration in itself justifies the change of license from unrestricted to MPL.
-
 */
 /* hrmint.f -- translated by f2c (version 19980913).
    You must link the resulting object file with the libraries:
@@ -25,37 +24,37 @@
 
 /* $ Restrictions */
 
-/*     None. */
+/*  None. */
 
 /* $ Literature_References */
 
-/*     [1]  "Numerical Recipes---The Art of Scientific Computing" by */
-/*           William H. Press, Brian P. Flannery, Saul A. Teukolsky, */
-/*           William T. Vetterling (see sections 3.0 and 3.1). */
+/*  [1]  "Numerical Recipes---The Art of Scientific Computing" by */
+/*  William H. Press, Brian P. Flannery, Saul A. Teukolsky, */
+/*  William T. Vetterling (see sections 3.0 and 3.1). */
 
-/*     [2]  "Elementary Numerical Analysis---An Algorithmic Approach" */
-/*           by S. D. Conte and Carl de Boor.  See p. 64. */
+/*  [2]  "Elementary Numerical Analysis---An Algorithmic Approach" */
+/*  by S. D. Conte and Carl de Boor.  See p. 64. */
 
 /* $ Author_and_Institution */
 
-/*     N.J. Bachman   (JPL) */
+/*  N.J. Bachman   (JPL) */
 
 /* $ Version */
 
 /* -    SPICELIB Version 1.2.1, 28-JAN-2014 (NJB) */
 
-/*        Fixed a few comment typos. */
+/*  Fixed a few comment typos. */
 
 /* -    SPICELIB Version 1.2.0, 01-FEB-2002 (NJB) (EDW) */
 
-/*        Bug fix:  declarations of local variables XI and XIJ */
-/*        were changed from DOUBLE PRECISION to INTEGER. */
-/*        Note:  bug had no effect on behavior of this routine. */
+/*  Bug fix:  declarations of local variables XI and XIJ */
+/*  were changed from DOUBLE PRECISION to INTEGER. */
+/*  Note:  bug had no effect on behavior of this routine. */
 
 /* -    SPICELIB Version 1.1.0, 28-DEC-2001 (NJB) */
 
-/*        Blanks following final newline were truncated to */
-/*        suppress compilation warnings on the SGI-N32 platform. */
+/*  Blanks following final newline were truncated to */
+/*  suppress compilation warnings on the SGI-N32 platform. */
 
 /* -    SPICELIB Version 1.0.0, 01-MAR-2000 (NJB) */
 
@@ -93,27 +92,27 @@ pub fn hermite_eval(
 
     // At this point, we know that the lengths of items is correct, so we can directly address them without worry for overflowing the array.
 
-    let work: &mut [f64] = &mut [0.0; 256];
+    let work: &mut [f64] = &mut [0.0; 8 * MAX_SAMPLES];
     let n: usize = xs.len();
 
-    /*     Copy the input array into WORK.  After this, the first column */
-    /*     of WORK represents the first column of our triangular */
-    /*     interpolation table. */
+    /*  Copy the input array into WORK.  After this, the first column */
+    /*  of WORK represents the first column of our triangular */
+    /*  interpolation table. */
 
     for i in 0..n {
         work[2 * i] = ys[i];
         work[2 * i + 1] = ydots[i];
     }
 
-    /*     Compute the second column of the interpolation table: this */
-    /*     consists of the N-1 values obtained by evaluating the */
-    /*     first-degree interpolants at X. We'll also evaluate the */
-    /*     derivatives of these interpolants at X and save the results in */
-    /*     the second column of WORK. Because the derivative computations */
-    /*     depend on the function computations from the previous column in */
-    /*     the interpolation table, and because the function interpolation */
-    /*     overwrites the previous column of interpolated function values, */
-    /*     we must evaluate the derivatives first. */
+    /*  Compute the second column of the interpolation table: this */
+    /*  consists of the N-1 values obtained by evaluating the */
+    /*  first-degree interpolants at X. We'll also evaluate the */
+    /*  derivatives of these interpolants at X and save the results in */
+    /*  the second column of WORK. Because the derivative computations */
+    /*  depend on the function computations from the previous column in */
+    /*  the interpolation table, and because the function interpolation */
+    /*  overwrites the previous column of interpolated function values, */
+    /*  we must evaluate the derivatives first. */
 
     for i in 1..=n - 1 {
         let c1 = xs[i] - x_eval;
@@ -128,51 +127,50 @@ pub fn hermite_eval(
             });
         }
 
-        /*        The second column of WORK contains interpolated derivative */
-        /*        values. */
+        /*  The second column of WORK contains interpolated derivative */
+        /*  values. */
 
-        /*        The odd-indexed interpolated derivatives are simply the input */
-        /*        derivatives. */
+        /*  The odd-indexed interpolated derivatives are simply the input */
+        /*  derivatives. */
 
         let prev = 2 * i - 1;
         let curr = 2 * i;
         work[prev + 2 * n - 1] = work[prev];
 
-        /*        The even-indexed interpolated derivatives are the slopes of */
-        /*        the linear interpolating polynomials for adjacent input */
-        /*        abscissa/ordinate pairs. */
+        /*  The even-indexed interpolated derivatives are the slopes of */
+        /*  the linear interpolating polynomials for adjacent input */
+        /*  abscissa/ordinate pairs. */
 
         work[prev + 2 * n] = (work[curr] - work[prev - 1]) / denom;
 
-        /*        The first column of WORK contains interpolated function values. */
-        /*        The odd-indexed entries are the linear Taylor polynomials, */
-        /*        for each input abscissa value, evaluated at X. */
+        /*  The first column of WORK contains interpolated function values. */
+        /*  The odd-indexed entries are the linear Taylor polynomials, */
+        /*  for each input abscissa value, evaluated at X. */
 
         let temp = work[prev] * (x_eval - xs[i - 1]) + work[prev - 1];
         work[prev] = (c1 * work[prev - 1] + c2 * work[curr]) / denom;
         work[prev - 1] = temp;
     }
 
-    /*     The last column entries were not computed by the preceding loop; */
-    /*     compute them now. */
+    /*  The last column entries were not computed by the preceding loop; */
+    /*  compute them now. */
 
     work[4 * n - 2] = work[(2 * n) - 1];
     work[2 * (n - 1)] += work[(2 * n) - 1] * (x_eval - xs[n - 1]);
 
-    /*     Compute columns 3 through 2*N of the table. */
+    /*  Compute columns 3 through 2*N of the table. */
 
     for j in 2..=(2 * n) - 1 {
         for i in 1..=(2 * n) - j {
-            /*           In the theoretical construction of the interpolation table,
-             */
-            /*           there are 2*N abscissa values, since each input abcissa */
-            /*           value occurs with multiplicity two. In this theoretical */
-            /*           construction, the Jth column of the interpolation table */
-            /*           contains results of evaluating interpolants that span J+1 */
-            /*           consecutive abscissa values.  The indices XI and XIJ below */
-            /*           are used to pick the correct abscissa values out of the */
-            /*           physical XVALS array, in which the abscissa values are not */
-            /*           repeated. */
+            /*  In the theoretical construction of the interpolation table, */
+            /*  there are 2*N abscissa values, since each input abcissa */
+            /*  value occurs with multiplicity two. In this theoretical */
+            /*  construction, the Jth column of the interpolation table */
+            /*  contains results of evaluating interpolants that span J+1 */
+            /*  consecutive abscissa values.  The indices XI and XIJ below */
+            /*  are used to pick the correct abscissa values out of the */
+            /*  physical XVALS array, in which the abscissa values are not */
+            /*  repeated. */
 
             let xi = (i + 1) / 2;
             let xij = (i + j + 1) / 2;
@@ -181,36 +179,35 @@ pub fn hermite_eval(
             let denom = xs[xij - 1] - xs[xi - 1];
             if denom.abs() < f64::EPSILON {
                 return Err(InterpolationError::InterpMath {
-                    source:MathError::DivisionByZero {
-                    action:
-                        "hermite data contains likely duplicate abcissa, remove duplicate states",
-                }});
+                    source: MathError::DivisionByZero {
+                        action: "hermite data contains duplicate states",
+                    },
+                });
             }
 
-            /*           Compute the interpolated derivative at X for the Ith */
-            /*           interpolant. This is the derivative with respect to X of */
-            /*           the expression for the interpolated function value, which */
-            /*           is the second expression below. This derivative computation
-             */
-            /*           is done first because it relies on the interpolated */
-            /*           function values from the previous column of the */
-            /*           interpolation table. */
+            /*  Compute the interpolated derivative at X for the Ith */
+            /*  interpolant. This is the derivative with respect to X of */
+            /*  the expression for the interpolated function value, which */
+            /*  is the second expression below. This derivative computation */
+            /*  is done first because it relies on the interpolated */
+            /*  function values from the previous column of the */
+            /*  interpolation table. */
 
-            /*           The derivative expression here corresponds to equation */
-            /*           2.35 on page 64 in reference [2]. */
+            /*  The derivative expression here corresponds to equation */
+            /*  2.35 on page 64 in reference [2]. */
 
             work[i + 2 * n - 1] =
                 (c1 * work[i + 2 * n - 1] + c2 * work[i + 2 * n] + (work[i] - work[i - 1])) / denom;
 
-            /*           Compute the interpolated function value at X for the Ith */
-            /*           interpolant. */
+            /*  Compute the interpolated function value at X for the Ith */
+            /*  interpolant. */
 
             work[i - 1] = (c1 * work[i - 1] + c2 * work[i]) / denom;
         }
     }
 
-    /*     Our interpolated function value is sitting in WORK(1,1) at this */
-    /*     point.  The interpolated derivative is located in WORK(1,2). */
+    /*  Our interpolated function value is sitting in WORK(1,1) at this */
+    /*  point. The interpolated derivative is located in WORK(1,2). */
 
     let f = work[0];
     let df = work[2 * n];

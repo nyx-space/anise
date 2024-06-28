@@ -68,7 +68,6 @@ impl EphemValData {
 /// An ephemeris comparison tool that writes the differences between ephemerides to a Parquet file.
 pub struct CompareEphem {
     pub input_file_names: Vec<String>,
-    pub output_file_name: String,
     pub num_queries_per_pair: usize,
     pub dry_run: bool,
     pub aberration: Option<Aberration>,
@@ -109,7 +108,6 @@ impl CompareEphem {
         let writer = ArrowWriter::try_new(file, Arc::new(schema), Some(props)).unwrap();
 
         Self {
-            output_file_name,
             input_file_names,
             num_queries_per_pair,
             aberration,
@@ -313,8 +311,8 @@ impl CompareEphem {
                         0 => (data.spice_val_x_km, data.anise_val_x_km),
                         1 => (data.spice_val_y_km, data.anise_val_y_km),
                         2 => (data.spice_val_z_km, data.anise_val_z_km),
-                        3 => (data.spice_val_vy_km_s, data.anise_val_vy_km_s),
-                        4 => (data.spice_val_vz_km_s, data.anise_val_vz_km_s),
+                        3 => (data.spice_val_vx_km_s, data.anise_val_vx_km_s),
+                        4 => (data.spice_val_vy_km_s, data.anise_val_vy_km_s),
                         5 => (data.spice_val_vz_km_s, data.anise_val_vz_km_s),
                         _ => unreachable!(),
                     };

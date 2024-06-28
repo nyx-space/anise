@@ -10,11 +10,15 @@
 
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits};
-use snafu::ensure;
+use snafu::{ensure, ResultExt};
 
 use crate::{
     errors::{DecodingError, IntegrityError, TooFewDoublesSnafu},
-    math::{cartesian::CartesianState, interpolation::InterpolationError, Vector3},
+    math::{
+        cartesian::CartesianState,
+        interpolation::{lagrange_eval, InterpDecodingSnafu, InterpolationError, MAX_SAMPLES},
+        Vector3,
+    },
     naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord, NAIFSummaryRecord},
     DBL_SIZE,
 };
@@ -112,7 +116,10 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
         _epoch: Epoch,
         _: &S,
     ) -> Result<CartesianState, InterpolationError> {
-        todo!("https://github.com/anise-toolkit/anise.rs/issues/12")
+        Err(InterpolationError::UnimplementedType {
+            dataset: Self::DATASET_NAME,
+            issue: 12,
+        })
     }
 
     fn check_integrity(&self) -> Result<(), IntegrityError> {
@@ -202,10 +209,115 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
 
     fn evaluate<S: NAIFSummaryRecord>(
         &self,
-        _epoch: Epoch,
+        epoch: Epoch,
         _: &S,
     ) -> Result<Self::StateKind, InterpolationError> {
-        todo!("https://github.com/anise-toolkit/anise.rs/issues/13")
+        // Start by doing a binary search on the epoch registry to limit the search space in the total number of epochs.
+        // TODO: use the epoch registry to reduce the search space
+        // Check that we even have interpolation data for that time
+        if epoch.to_et_seconds() + 1e-9 < self.epoch_data[0]
+            || epoch.to_et_seconds() - 1e-9 > *self.epoch_data.last().unwrap()
+        {
+            return Err(InterpolationError::NoInterpolationData {
+                req: epoch,
+                start: Epoch::from_et_seconds(self.epoch_data[0]),
+                end: Epoch::from_et_seconds(*self.epoch_data.last().unwrap()),
+            });
+        }
+        // Now, perform a binary search on the epochs themselves.
+        match self.epoch_data.binary_search_by(|epoch_et| {
+            epoch_et
+                .partial_cmp(&epoch.to_et_seconds())
+                .expect("epochs in Hermite data is now NaN or infinite but was not before")
+        }) {
+            Ok(idx) => {
+                // Oh wow, this state actually exists, no interpolation needed!
+                Ok(self
+                    .nth_record(idx)
+                    .context(InterpDecodingSnafu)?
+                    .to_pos_vel())
+            }
+            Err(idx) => {
+                // We didn't find it, so let's build an interpolation here.
+                let group_size = self.degree + 1;
+                let num_left = group_size / 2;
+
+                // Ensure that we aren't fetching out of the window
+                let mut first_idx = idx.saturating_sub(num_left);
+                let last_idx = self.num_records.min(first_idx + group_size);
+
+                // Check that we have enough samples
+                if last_idx == self.num_records {
+                    first_idx = last_idx - 2 * num_left;
+                }
+
+                // Statically allocated arrays of the maximum number of samples
+                let mut epochs = [0.0; MAX_SAMPLES];
+                let mut xs = [0.0; MAX_SAMPLES];
+                let mut ys = [0.0; MAX_SAMPLES];
+                let mut zs = [0.0; MAX_SAMPLES];
+                let mut vxs = [0.0; MAX_SAMPLES];
+                let mut vys = [0.0; MAX_SAMPLES];
+                let mut vzs = [0.0; MAX_SAMPLES];
+
+                for (cno, idx) in (first_idx..last_idx).enumerate() {
+                    let record = self.nth_record(idx).context(InterpDecodingSnafu)?;
+                    xs[cno] = record.x_km;
+                    ys[cno] = record.y_km;
+                    zs[cno] = record.z_km;
+                    vxs[cno] = record.vx_km_s;
+                    vys[cno] = record.vy_km_s;
+                    vzs[cno] = record.vz_km_s;
+                    epochs[cno] = self.epoch_data[idx];
+                }
+
+                // TODO: Build a container that uses the underlying data and provides an index into it.
+
+                // Build the interpolation polynomials making sure to limit the slices to exactly the number of items we actually used
+                // The other ones are zeros, which would cause the interpolation function to fail.
+                let (x_km, _) = lagrange_eval(
+                    &epochs[..group_size],
+                    &xs[..group_size],
+                    epoch.to_et_seconds(),
+                )?;
+
+                let (y_km, _) = lagrange_eval(
+                    &epochs[..group_size],
+                    &ys[..group_size],
+                    epoch.to_et_seconds(),
+                )?;
+
+                let (z_km, _) = lagrange_eval(
+                    &epochs[..group_size],
+                    &zs[..group_size],
+                    epoch.to_et_seconds(),
+                )?;
+
+                let (vx_km_s, _) = lagrange_eval(
+                    &epochs[..group_size],
+                    &vxs[..group_size],
+                    epoch.to_et_seconds(),
+                )?;
+
+                let (vy_km_s, _) = lagrange_eval(
+                    &epochs[..group_size],
+                    &vys[..group_size],
+                    epoch.to_et_seconds(),
+                )?;
+
+                let (vz_km_s, _) = lagrange_eval(
+                    &epochs[..group_size],
+                    &vzs[..group_size],
+                    epoch.to_et_seconds(),
+                )?;
+
+                // And build the result
+                let pos_km = Vector3::new(x_km, y_km, z_km);
+                let vel_km_s = Vector3::new(vx_km_s, vy_km_s, vz_km_s);
+
+                Ok((pos_km, vel_km_s))
+            }
+        }
     }
 
     fn check_integrity(&self) -> Result<(), IntegrityError> {

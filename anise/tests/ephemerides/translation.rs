@@ -299,19 +299,6 @@ fn de438s_translation_verif_emb2moon() {
 fn spk_hermite_type13_verif() {
     let _ = pretty_env_logger::try_init().is_err();
 
-    // "Load" the file via a memory map (avoids allocations)
-    // let path = "../data/de440s.bsp";
-    // let buf = file2heap!(path).unwrap();
-    // let spk = SPK::parse(buf).unwrap();
-
-    // let buf = file2heap!("../data/gmat-hermite.bsp").unwrap();
-    // let spacecraft = SPK::parse(buf).unwrap();
-
-    // let ctx = Almanac::from_spk(spk)
-    //     .unwrap()
-    //     .with_spk(spacecraft)
-    //     .unwrap();
-
     let ctx = Almanac::default()
         .load("../data/de440s.bsp")
         .and_then(|ctx| ctx.load("../data/gmat-hermite.bsp"))
@@ -632,4 +619,90 @@ fn de440s_translation_verif_aberrations() {
             (vel_km_s - case.vel_expct_km_s).norm()
         );
     }
+}
+
+#[cfg(feature = "metaload")]
+#[test]
+fn type9_lagrange_query() {
+    use anise::almanac::metaload::MetaFile;
+    use anise::constants::frames::EARTH_J2000;
+    use anise::prelude::Frame;
+
+    let lagrange_meta = MetaFile {
+        uri: "http://public-data.nyxspace.com/anise/ci/env:LAGRANGE_BSP".to_string(),
+        crc32: None,
+    };
+
+    let almanac = Almanac::default()
+        .load_from_metafile(lagrange_meta)
+        .unwrap();
+
+    let obj_id = -10;
+    let obj_frame = Frame::from_ephem_j2000(obj_id);
+
+    let (start, end) = almanac.spk_domain(obj_id).unwrap();
+
+    // Query near the start, but somewhere where the state is not exactly defined
+    let state = almanac
+        .translate(
+            obj_frame,
+            EARTH_J2000,
+            start + 1.159_f64.seconds(),
+            Aberration::NONE,
+        )
+        .unwrap();
+
+    let expected_pos_km = Vector3::new(-7338.44373643, 3159.7629953, 760.74472775);
+    let expected_vel_km_s = Vector3::new(-7.21781188, -5.26834555, -4.12581558);
+
+    dbg!(state.radius_km - expected_pos_km);
+    dbg!(state.velocity_km_s - expected_vel_km_s);
+
+    assert!(
+        relative_eq!(state.radius_km, expected_pos_km, epsilon = 5e-6),
+        "got {} but want {} => err = {:.3e} km",
+        state.radius_km,
+        expected_pos_km,
+        (state.radius_km - expected_pos_km).norm()
+    );
+
+    assert!(
+        relative_eq!(state.velocity_km_s, expected_vel_km_s, epsilon = 5e-9),
+        "got {} but want {} => err = {:.3e} km/s",
+        state.velocity_km_s,
+        expected_vel_km_s,
+        (state.velocity_km_s - expected_vel_km_s).norm()
+    );
+
+    // Query near the end, but not in the registry either
+    let state = almanac
+        .translate(
+            obj_frame,
+            EARTH_J2000,
+            end - 1159.56_f64.seconds(),
+            Aberration::NONE,
+        )
+        .unwrap();
+
+    let expected_pos_km = Vector3::new(10106.15561792, -166810.06321791, -95547.93140678);
+    let expected_vel_km_s = Vector3::new(0.43375448, -1.07193959, -0.55979951);
+
+    dbg!(state.radius_km - expected_pos_km);
+    dbg!(state.velocity_km_s - expected_vel_km_s);
+
+    assert!(
+        relative_eq!(state.radius_km, expected_pos_km, epsilon = 5e-6),
+        "got {} but want {} => err = {:.3e} km",
+        state.radius_km,
+        expected_pos_km,
+        (state.radius_km - expected_pos_km).norm()
+    );
+
+    assert!(
+        relative_eq!(state.velocity_km_s, expected_vel_km_s, epsilon = 5e-9),
+        "got {} but want {} => err = {:.3e} km/s",
+        state.velocity_km_s,
+        expected_vel_km_s,
+        (state.velocity_km_s - expected_vel_km_s).norm()
+    );
 }

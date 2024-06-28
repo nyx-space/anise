@@ -10,10 +10,12 @@
 
 mod chebyshev;
 mod hermite;
+mod lagrange;
 
 pub use chebyshev::chebyshev_eval;
 pub use hermite::hermite_eval;
 use hifitime::Epoch;
+pub use lagrange::lagrange_eval;
 use snafu::Snafu;
 
 use crate::errors::{DecodingError, MathError};
@@ -50,4 +52,8 @@ pub enum InterpolationError {
         kind: &'static str,
         op: &'static str,
     },
+    #[snafu(display(
+        "{dataset} is not yet supported -- https://github.com/nyx-space/anise/issues/{issue}"
+    ))]
+    UnimplementedType { issue: u32, dataset: &'static str },
 }

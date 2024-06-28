@@ -10,9 +10,10 @@
 
 use log::{debug, info};
 use platform_dirs::AppDirs;
-
+use regex::Regex;
 use serde_derive::{Deserialize, Serialize};
 use serde_dhall::StaticType;
+use std::env;
 use std::fs::{create_dir_all, remove_file, File};
 use std::io::Write;
 use std::path::Path;
@@ -32,6 +33,11 @@ use crate::prelude::InputOutputError;
 
 use super::MetaAlmanacError;
 
+/// MetaFile allows downloading a remote file from a URL (http, https only), and interpolation of paths in environment variable using the Dhall syntax `env:MY_ENV_VAR`.
+///
+/// The data is stored in the user's local temp directory (i.e. `~/.local/share/nyx-space/anise/` on Linux and `AppData/Local/nyx-space/anise/` on Windows).
+/// Prior to loading a remote resource, if the local resource exists, its CRC32 will be computed: if it matches the CRC32 of this instance of MetaFile,
+/// then the file will not be downloaded a second time.
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 #[cfg_attr(feature = "python", pyo3(get_all, set_all))]
@@ -53,6 +59,8 @@ impl MetaFile {
     }
 
     pub(crate) fn _process(&mut self) -> Result<(), MetaAlmanacError> {
+        // First, parse environment variables if any.
+        self.uri = replace_env_vars(&self.uri);
         match Url::parse(&self.uri) {
             Err(e) => {
                 debug!("parsing {} caused {e} -- assuming local path", self.uri);
@@ -274,6 +282,15 @@ impl MetaFile {
     }
 }
 
+fn replace_env_vars(input: &str) -> String {
+    let re = Regex::new(r"env:([A-Z_][A-Z0-9_]*)").unwrap();
+    re.replace_all(input, |caps: &regex::Captures| {
+        let var_name = &caps[1];
+        env::var(var_name).unwrap_or_else(|_| format!("env:{}", var_name))
+    })
+    .to_string()
+}
+
 #[cfg(test)]
 mod ut_metafile {
     use super::MetaFile;
@@ -307,5 +324,26 @@ mod ut_metafile {
         };
         assert!(unix_rel_path._process().is_ok());
         assert_eq!(unix_rel_path.uri, "../Users/me/meta.dhall".to_string());
+    }
+
+    #[test]
+    fn test_metafile_regex() {
+        use std::env;
+        let mut user_path = MetaFile {
+            uri: "env:USER/.cargo/env".to_string(),
+            crc32: None,
+        };
+        user_path._process().unwrap();
+        assert_eq!(user_path.uri, env::var("USER").unwrap() + "/.cargo/env");
+
+        let mut unknown_path = MetaFile {
+            uri: "env:BLAH_BLAH_NO_EXIST/.cargo/env".to_string(),
+            crc32: None,
+        };
+        unknown_path._process().unwrap();
+        assert_eq!(
+            unknown_path.uri,
+            "env:BLAH_BLAH_NO_EXIST/.cargo/env".to_string()
+        );
     }
 }
