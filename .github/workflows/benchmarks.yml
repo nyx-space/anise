@@ -1,4 +1,4 @@
-name: Benchmarks
+name: Benchmark ANISE versus SPICE
 
 on:
   push:

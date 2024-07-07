@@ -1,10 +1,13 @@
+name: ANISE Rust
+
 on:
-  pull_request:
   push:
     branches:
       - master
-
-name: ANISE Rust Workflow
+    tags:
+      - '*'
+  pull_request:
+  workflow_dispatch:
 
 env:
   RUST_BACKTRACE: 1
