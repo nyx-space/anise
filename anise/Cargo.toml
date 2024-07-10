@@ -37,7 +37,7 @@ rust-embed = { version = "8.4.0", features = [
     "interpolate-folder-path",
     "include-exclude",
 ], optional = true }
-regex = {version = "1.10.5" , optional = true}
+regex = { version = "1.10.5", optional = true }
 
 [dev-dependencies]
 rust-spice = "0.7.6"
@@ -48,6 +48,9 @@ iai = "0.1"
 polars = { version = "0.41.1", features = ["lazy", "parquet"] }
 rayon = "1.7"
 serde_yaml = "0.9.30"
+
+[build-dependencies]
+reqwest = { version = "0.11", features = ["blocking"], optional = true }
 
 [features]
 default = ["metaload"]
