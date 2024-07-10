@@ -66,6 +66,13 @@ jobs:
         env:
           LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
         run: cargo test --release --workspace --exclude anise-gui --exclude anise-py
+      
+      - name: Test rust_embed build
+        run: |
+          rm -rf data # Not available on crates.io
+          cd anise # Build only the Rust library
+          cargo build --features embed_ephem
+          cargo build --features embed_ephem --release
 
   lints:
     name: Lints
