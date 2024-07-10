@@ -1,7 +1,12 @@
 #[cfg(feature = "embed_ephem")]
 fn main() {
     // Download the files to embed at build time.
-    use std::{fs::File, io::Write, time::Duration};
+    use std::{
+        fs::{self, File},
+        io::Write,
+        path::Path,
+        time::Duration,
+    };
     let client = reqwest::blocking::Client::builder()
         .connect_timeout(Duration::from_secs(30))
         .timeout(Duration::from_secs(30))
@@ -18,6 +23,13 @@ fn main() {
             format!("{}/../data/de440s.bsp", env!("CARGO_MANIFEST_DIR")),
         ),
     ];
+
+    let data_path = Path::new(&env!("CARGO_MANIFEST_DIR")).join("../data");
+
+    // Create the directory if it doesn't exist
+    if !data_path.exists() {
+        fs::create_dir_all(&data_path).expect(&format!("failed to create directory {data_path:?}"));
+    }
 
     for (url, dest_path) in embedded_files {
         let resp = client
