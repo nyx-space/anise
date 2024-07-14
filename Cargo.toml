@@ -34,7 +34,7 @@ log = "0.4"
 pretty_env_logger = "0.5"
 tabled = "=0.15"
 const_format = "0.2"
-nalgebra = { version = "0.32", default-features = true, features = [
+nalgebra = { version = "0.33", default-features = true, features = [
     "serde-serialize",
 ] }
 approx = "0.5.1"
