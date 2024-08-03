@@ -4,7 +4,10 @@ use std::env::{set_var, var};
 use std::io;
 
 use anise::naif::daf::datatypes::Type2ChebyshevSet;
-use anise::naif::daf::{DafDataType, NAIFDataSet};
+use anise::naif::daf::{DafDataType, NAIFDataSet, DAF};
+use anise::naif::pck::BPCSummaryRecord;
+use anise::naif::spk::summary::SPKSummaryRecord;
+use bytes::Bytes;
 use clap::Parser;
 use log::info;
 use snafu::prelude::*;
@@ -50,7 +53,9 @@ pub enum CliErrors {
 
 fn main() -> Result<(), CliErrors> {
     if var(LOG_VAR).is_err() {
-        set_var(LOG_VAR, "INFO");
+        unsafe {
+            set_var(LOG_VAR, "INFO");
+        }
     }
 
     if pretty_env_logger::try_init_custom_env(LOG_VAR).is_err() {
@@ -167,109 +172,22 @@ fn main() -> Result<(), CliErrors> {
 
             Ok(())
         }
-        Actions::TruncDAFById {
-            input,
-            output,
-            id,
-            start,
-            end,
-        } => {
+        Actions::TruncDAFById(action) => {
             ensure!(
-                start.is_some() || end.is_some(),
+                action.start.is_some() || action.end.is_some(),
                 ArgumentSnafu {
                     arg: "you must provide either START or END, or both"
                 }
             );
 
-            let path_str = input.clone();
+            let input = action.input.clone();
             let bytes = file2heap!(input).context(AniseSnafu)?;
             // Load the header only
             let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
 
             match file_record.identification().context(CliFileRecordSnafu)? {
-                "PCK" => {
-                    info!("Loading {path_str:?} as DAF/PCK");
-                    let pck = BPC::parse(bytes).context(CliDAFSnafu)?;
-
-                    let mut ids = HashSet::new();
-                    for summary in pck.data_summaries().context(CliDAFSnafu)? {
-                        ids.insert(summary.id());
-                    }
-
-                    info!("IDs present in file: {ids:?}");
-
-                    let (summary, idx) = pck.summary_from_id(id).context(CliDAFSnafu)?;
-
-                    let data_type =
-                        DafDataType::try_from(summary.data_type_i).context(CliDAFSnafu)?;
-                    ensure!(
-                        data_type == DafDataType::Type2ChebyshevTriplet,
-                        ArgumentSnafu {
-                            arg: format!("{path_str:?} is of type {data_type:?}, but operation is only valid for Type2ChebyshevTriplet")
-                        }
-                    );
-
-                    let segment = pck.nth_data::<Type2ChebyshevSet>(idx).unwrap();
-
-                    let updated_segment = segment.truncate(summary, start, end).unwrap();
-
-                    let mut my_pck_mut = pck.to_mutable();
-                    assert!(my_pck_mut
-                        .set_nth_data(
-                            0,
-                            updated_segment,
-                            start.or_else(|| Some(summary.start_epoch())).unwrap(),
-                            end.or_else(|| Some(summary.end_epoch())).unwrap(),
-                        )
-                        .is_ok());
-
-                    info!("Saving file to {output:?}");
-                    my_pck_mut.persist(output).unwrap();
-
-                    Ok(())
-                }
-                "SPK" => {
-                    info!("Loading {path_str:?} as DAF/PCK");
-                    let spk = SPK::parse(bytes).context(CliDAFSnafu)?;
-
-                    let mut ids = HashSet::new();
-                    for summary in spk.data_summaries().context(CliDAFSnafu)? {
-                        ids.insert(summary.id());
-                    }
-
-                    info!("IDs present in file: {ids:?}");
-
-                    let (summary, idx) = spk.summary_from_id(id).context(CliDAFSnafu)?;
-                    info!("Modifying {summary}");
-
-                    let data_type =
-                        DafDataType::try_from(summary.data_type_i).context(CliDAFSnafu)?;
-                    ensure!(
-                        data_type == DafDataType::Type2ChebyshevTriplet,
-                        ArgumentSnafu {
-                            arg: format!("{path_str:?} is of type {data_type:?}, but operation is only valid for Type2ChebyshevTriplet")
-                        }
-                    );
-
-                    let segment = spk.nth_data::<Type2ChebyshevSet>(idx).unwrap();
-
-                    let updated_segment = segment.truncate(summary, start, end).unwrap();
-
-                    let mut my_spk_mut = spk.to_mutable();
-                    assert!(my_spk_mut
-                        .set_nth_data(
-                            idx,
-                            updated_segment,
-                            start.or_else(|| Some(summary.start_epoch())).unwrap(),
-                            end.or_else(|| Some(summary.end_epoch())).unwrap(),
-                        )
-                        .is_ok());
-
-                    info!("Saving file to {output:?}");
-                    my_spk_mut.persist(output).unwrap();
-
-                    Ok(())
-                }
+                "PCK" => truncate_daf_by_id::<BPCSummaryRecord>(action, bytes),
+                "SPK" => truncate_daf_by_id::<SPKSummaryRecord>(action, bytes),
                 fileid => Err(CliErrors::ArgumentError {
                     arg: format!("{fileid} is not supported yet"),
                 }),
@@ -330,4 +248,57 @@ fn main() -> Result<(), CliErrors> {
             }
         }
     }
+}
+
+fn truncate_daf_by_id<R>(
+    args::TruncateById {
+        input,
+        output,
+        id,
+        start,
+        end,
+    }: args::TruncateById,
+    bytes: Bytes,
+) -> Result<(), CliErrors>
+where
+    R: NAIFSummaryRecord,
+{
+    info!("Loading {input:?} as DAF/PCK");
+    let fmt = DAF::<R>::parse(bytes).context(CliDAFSnafu)?;
+
+    let mut ids = HashSet::new();
+    for summary in fmt.data_summaries().context(CliDAFSnafu)? {
+        ids.insert(summary.id());
+    }
+
+    info!("IDs present in file: {ids:?}");
+
+    let (summary, idx) = fmt.summary_from_id(id).context(CliDAFSnafu)?;
+
+    let data_type = DafDataType::try_from(summary.data_type_i()).context(CliDAFSnafu)?;
+    ensure!(
+                        data_type == DafDataType::Type2ChebyshevTriplet,
+                        ArgumentSnafu {
+                            arg: format!("{input:?} is of type {data_type:?}, but operation is only valid for Type2ChebyshevTriplet")
+                        }
+                    );
+
+    let segment = fmt.nth_data::<Type2ChebyshevSet>(idx).unwrap();
+
+    let updated_segment = segment.truncate(summary, start, end).unwrap();
+
+    let mut my_pck_mut = fmt.to_mutable();
+    assert!(my_pck_mut
+        .set_nth_data(
+            idx,
+            updated_segment,
+            start.or_else(|| Some(summary.start_epoch())).unwrap(),
+            end.or_else(|| Some(summary.end_epoch())).unwrap(),
+        )
+        .is_ok());
+
+    info!("Saving file to {output:?}");
+    my_pck_mut.persist(output).unwrap();
+
+    Ok(())
 }

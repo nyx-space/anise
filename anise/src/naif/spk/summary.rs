@@ -160,6 +160,10 @@ impl NAIFRecord for SPKSummaryRecord {}
 
 impl NAIFSummaryRecord for SPKSummaryRecord {
     const NAME: &'static str = "SPKSummaryRecord";
+    fn data_type_i(&self) -> i32 {
+        self.data_type_i
+    }
+
     fn start_index(&self) -> usize {
         self.start_idx as usize
     }

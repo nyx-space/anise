@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+use clap::{Args as ArgsT, Parser, Subcommand};
 use hifitime::Epoch;
 
 #[derive(Parser, Debug)]
@@ -43,18 +43,7 @@ pub enum Actions {
     /// Truncate the segment of the provided ID of the input NAIF DAF file to the provided start and end epochs
     /// Limitation: this may not work correctly if there are several segments with the same ID.
     /// Only works with Chebyshev Type 2 data types (i.e. planetary ephemerides).
-    TruncDAFById {
-        /// Input DAF file, SPK or BPC
-        input: PathBuf,
-        /// Output DAF file path
-        output: PathBuf,
-        /// ID of the segment to truncate
-        id: i32,
-        /// New start epoch of the segment
-        start: Option<Epoch>,
-        /// New end epoch of the segment
-        end: Option<Epoch>,
-    },
+    TruncDAFById(TruncateById),
     /// Remove the segment of the provided ID of the input NAIF DAF file.
     /// Limitation: this may not work correctly if there are several segments with the same ID.
     RmDAFById {
@@ -65,4 +54,18 @@ pub enum Actions {
         /// ID of the segment to truncate
         id: i32,
     },
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, ArgsT)]
+pub(crate) struct TruncateById {
+    /// Input DAF file, SPK or BPC
+    pub input: PathBuf,
+    /// Output DAF file path
+    pub output: PathBuf,
+    /// ID of the segment to truncate
+    pub id: i32,
+    /// New start epoch of the segment
+    pub start: Option<Epoch>,
+    /// New end epoch of the segment
+    pub end: Option<Epoch>,
 }

@@ -64,6 +64,10 @@ impl NAIFRecord for BPCSummaryRecord {}
 impl NAIFSummaryRecord for BPCSummaryRecord {
     const NAME: &'static str = "BPCSummaryRecord";
 
+    fn data_type_i(&self) -> i32 {
+        self.data_type_i
+    }
+
     fn start_index(&self) -> usize {
         self.start_idx as usize
     }
