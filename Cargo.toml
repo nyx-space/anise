@@ -43,7 +43,7 @@ bytes = "1.6.0"
 snafu = { version = "0.8.0", features = ["backtrace"] }
 lexical-core = "0.8.5"
 heapless = "0.8.0"
-rstest = "0.21.0"
+rstest = "0.22.0"
 pyo3 = { version = "0.21", features = ["multiple-pymethods"] }
 pyo3-log = "0.10"
 serde = "1"
