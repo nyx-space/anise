@@ -204,61 +204,49 @@ fn main() -> Result<(), CliErrors> {
                 }),
             }
         }
-        Actions::RmDAFById { input, output, id } => {
-            let path_str = input.clone();
+        Actions::RmDAFById(action) => {
+            let input = action.input.clone();
             let bytes = file2heap!(input).context(AniseSnafu)?;
             // Load the header only
             let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
 
             match file_record.identification().context(CliFileRecordSnafu)? {
-                "PCK" => {
-                    info!("Loading {path_str:?} as DAF/PCK");
-                    let pck = BPC::parse(bytes).context(CliDAFSnafu)?;
-
-                    let mut ids = HashSet::new();
-                    for summary in pck.data_summaries().context(CliDAFSnafu)? {
-                        ids.insert(summary.id());
-                    }
-
-                    info!("IDs present in file: {ids:?}");
-
-                    let (_, idx) = pck.summary_from_id(id).context(CliDAFSnafu)?;
-
-                    let mut my_pck_mut = pck.to_mutable();
-                    my_pck_mut.delete_nth_data(idx).context(CliDAFSnafu)?;
-
-                    info!("Saving file to {output:?}");
-                    my_pck_mut.persist(output).unwrap();
-
-                    Ok(())
-                }
-                "SPK" => {
-                    info!("Loading {path_str:?} as DAF/PCK");
-                    let spk = SPK::parse(bytes).context(CliDAFSnafu)?;
-
-                    let mut ids = HashSet::new();
-                    for summary in spk.data_summaries().context(CliDAFSnafu)? {
-                        ids.insert(summary.id());
-                    }
-
-                    info!("IDs present in file: {ids:?}");
-
-                    let (_, idx) = spk.summary_from_id(id).context(CliDAFSnafu)?;
-
-                    let mut my_spk_mut = spk.to_mutable();
-                    my_spk_mut.delete_nth_data(idx).context(CliDAFSnafu)?;
-
-                    info!("Saving file to {output:?}");
-                    my_spk_mut.persist(output).unwrap();
-
-                    Ok(())
-                }
+                "PCK" => rm_daf_by_id::<BPCSummaryRecord>(action, bytes),
+                "SPK" => rm_daf_by_id::<SPKSummaryRecord>(action, bytes),
                 fileid => Err(CliErrors::ArgumentError {
                     arg: format!("{fileid} is not supported yet"),
                 }),
             }
         }
     }
+}
+
+fn rm_daf_by_id<R>(
+    args::RmById { input, output, id }: args::RmById,
+    bytes: Bytes,
+) -> Result<(), CliErrors>
+where
+    R: NAIFSummaryRecord,
+{
+    info!("Loading {:?} as DAF/PCK", input);
+    let fmt = DAF::<R>::parse(bytes).context(CliDAFSnafu)?;
+
+    let mut ids = HashSet::new();
+    for summary in fmt.data_summaries().context(CliDAFSnafu)? {
+        ids.insert(summary.id());
+    }
+
+    info!("IDs present in file: {ids:?}");
+
+    let (_, idx) = fmt.summary_from_id(id).context(CliDAFSnafu)?;
+
+    let mut my_fmt_mut = fmt.to_mutable();
+    my_fmt_mut.delete_nth_data(idx).context(CliDAFSnafu)?;
+
+    info!("Saving file to {output:?}");
+    my_fmt_mut.persist(output).unwrap();
+
+    Ok(())
 }
 
 fn truncate_daf_by_id<R>(

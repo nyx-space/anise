@@ -46,14 +46,17 @@ pub enum Actions {
     TruncDAFById(TruncateById),
     /// Remove the segment of the provided ID of the input NAIF DAF file.
     /// Limitation: this may not work correctly if there are several segments with the same ID.
-    RmDAFById {
-        /// Input DAF file, SPK or BPC
-        input: PathBuf,
-        /// Output DAF file path
-        output: PathBuf,
-        /// ID of the segment to truncate
-        id: i32,
-    },
+    RmDAFById(RmById),
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Args)]
+pub(crate) struct RmById {
+    /// Input DAF file, SPK or BPC
+    pub input: PathBuf,
+    /// Output DAF file path
+    pub output: PathBuf,
+    /// ID of the segment to truncate
+    pub id: i32,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Args)]
