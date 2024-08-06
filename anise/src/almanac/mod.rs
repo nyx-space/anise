@@ -12,13 +12,11 @@ use bytes::Bytes;
 use hifitime::TimeScale;
 use log::info;
 use snafu::ResultExt;
-use std::fs::File;
 use zerocopy::FromBytes;
 
 use crate::ephemerides::SPKSnafu;
 use crate::errors::{
-    AlmanacError, AlmanacResult, EphemerisSnafu, InputOutputError, LoadingSnafu, OrientationSnafu,
-    TLDataSetSnafu,
+    AlmanacError, AlmanacResult, EphemerisSnafu, LoadingSnafu, OrientationSnafu, TLDataSetSnafu,
 };
 use crate::file2heap;
 use crate::naif::daf::{FileRecord, NAIFRecord};

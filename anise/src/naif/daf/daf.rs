@@ -14,7 +14,7 @@ use super::{
     NAIFRecord, NAIFSummaryRecord,
 };
 pub use super::{FileRecord, NameRecord, SummaryRecord};
-use crate::errors::{DecodingError, InputOutputError};
+use crate::errors::DecodingError;
 use crate::file2heap;
 use crate::naif::daf::DecodingDataSnafu;
 use crate::{errors::IntegrityError, DBL_SIZE};

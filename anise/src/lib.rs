@@ -69,13 +69,13 @@ pub(crate) type NaifId = i32;
 #[macro_export]
 macro_rules! file2heap {
     ($filename:tt) => {
-        match File::open($filename) {
-            Err(e) => Err(InputOutputError::IOError { kind: e.kind() }),
+        match std::fs::File::open($filename) {
+            Err(e) => Err($crate::errors::InputOutputError::IOError { kind: e.kind() }),
             Ok(file) => unsafe {
                 use bytes::Bytes;
                 use memmap2::MmapOptions;
                 match MmapOptions::new().map(&file) {
-                    Err(_) => Err(InputOutputError::IOUnknownError),
+                    Err(_) => Err($crate::errors::InputOutputError::IOUnknownError),
                     Ok(mmap) => {
                         let bytes = Bytes::copy_from_slice(&mmap);
                         Ok(bytes)
