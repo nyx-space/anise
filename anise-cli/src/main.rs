@@ -2,11 +2,13 @@ extern crate pretty_env_logger;
 use std::collections::HashSet;
 use std::env::{set_var, var};
 use std::io;
+use std::path::PathBuf;
 
 use anise::math::interpolation::InterpolationError;
 use anise::naif::daf::datatypes::Type2ChebyshevSet;
 use anise::naif::daf::{DafDataType, NAIFDataSet, DAF};
 use anise::naif::pck::BPCSummaryRecord;
+use anise::naif::pretty_print::NAIFPrettyPrint;
 use anise::naif::spk::summary::SPKSummaryRecord;
 use bytes::Bytes;
 use clap::Parser;
@@ -129,37 +131,11 @@ fn main() -> Result<(), CliErrors> {
             }
         }
         Actions::Inspect { file } => {
-            let path_str = file.clone();
-            let bytes = file2heap!(file).context(AniseSnafu)?;
-            // Load the header only
-            let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
+            let (bytes, file_record) = read_and_record(file.clone())?;
 
             match file_record.identification().context(CliFileRecordSnafu)? {
-                "PCK" => {
-                    info!("Loading {path_str:?} as DAF/PCK");
-                    let pck = BPC::parse(bytes).context(CliDAFSnafu)?;
-                    info!("CRC32 checksum: 0x{:X}", pck.crc32());
-                    if let Some(comments) = pck.comments().context(CliDAFSnafu)? {
-                        println!("== COMMENTS ==\n{}== END ==", comments);
-                    } else {
-                        println!("(File has no comments)");
-                    }
-                    println!("{}", pck.describe());
-                    Ok(())
-                }
-                "SPK" => {
-                    info!("Loading {path_str:?} as DAF/SPK");
-                    let spk = SPK::parse(bytes).context(CliDAFSnafu)?;
-
-                    info!("CRC32 checksum: 0x{:X}", spk.crc32());
-                    if let Some(comments) = spk.comments().context(CliDAFSnafu)? {
-                        println!("== COMMENTS ==\n{}== END ==", comments);
-                    } else {
-                        println!("(File has no comments)");
-                    }
-                    println!("{}", spk.describe());
-                    Ok(())
-                }
+                "PCK" => inspect::<BPCSummaryRecord>(file, bytes),
+                "SPK" => inspect::<SPKSummaryRecord>(file, bytes),
                 fileid => Err(CliErrors::ArgumentError {
                     arg: format!("{fileid} is not supported yet"),
                 }),
@@ -191,10 +167,7 @@ fn main() -> Result<(), CliErrors> {
                 }
             );
 
-            let input = action.input.clone();
-            let bytes = file2heap!(input).context(AniseSnafu)?;
-            // Load the header only
-            let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
+            let (bytes, file_record) = read_and_record(action.input.clone())?;
 
             match file_record.identification().context(CliFileRecordSnafu)? {
                 "PCK" => truncate_daf_by_id::<BPCSummaryRecord>(action, bytes),
@@ -205,10 +178,7 @@ fn main() -> Result<(), CliErrors> {
             }
         }
         Actions::RmDAFById(action) => {
-            let input = action.input.clone();
-            let bytes = file2heap!(input).context(AniseSnafu)?;
-            // Load the header only
-            let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
+            let (bytes, file_record) = read_and_record(action.input.clone())?;
 
             match file_record.identification().context(CliFileRecordSnafu)? {
                 "PCK" => rm_daf_by_id::<BPCSummaryRecord>(action, bytes),
@@ -219,6 +189,31 @@ fn main() -> Result<(), CliErrors> {
             }
         }
     }
+}
+
+fn read_and_record(path_str: PathBuf) -> Result<(bytes::Bytes, FileRecord), CliErrors> {
+    let bytes = file2heap!(path_str).context(AniseSnafu)?;
+    // Load the header only
+    let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
+    Ok((bytes, file_record))
+}
+
+fn inspect<R>(path_str: PathBuf, bytes: Bytes) -> Result<(), CliErrors>
+where
+    R: NAIFSummaryRecord,
+    DAF<R>: NAIFPrettyPrint,
+{
+    info!("Loading {path_str:?} as DAF/SPK");
+    let fmt = DAF::<R>::parse(bytes).context(CliDAFSnafu)?;
+
+    info!("CRC32 checksum: 0x{:X}", fmt.crc32());
+    if let Some(comments) = fmt.comments().context(CliDAFSnafu)? {
+        println!("== COMMENTS ==\n{}== END ==", comments);
+    } else {
+        println!("(File has no comments)");
+    }
+    println!("{}", fmt.describe());
+    Ok(())
 }
 
 fn rm_daf_by_id<R>(

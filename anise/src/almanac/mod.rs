@@ -20,6 +20,7 @@ use crate::errors::{
 };
 use crate::file2heap;
 use crate::naif::daf::{FileRecord, NAIFRecord};
+use crate::naif::pretty_print::NAIFPrettyPrint;
 use crate::naif::{BPC, SPK};
 use crate::orientations::BPCSnafu;
 use crate::structure::dataset::DataSetType;
