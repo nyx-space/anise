@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
-use clap::{Args as ArgsT, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use hifitime::Epoch;
 
 #[derive(Parser, Debug)]
 #[clap(name="ANISE", author="Rabotin and ANISE contributors", version, about, long_about = None)]
-pub struct Args {
+pub struct CliArgs {
     #[clap(subcommand)]
     pub action: Actions,
 }
@@ -56,7 +56,7 @@ pub enum Actions {
     },
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, ArgsT)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Args)]
 pub(crate) struct TruncateById {
     /// Input DAF file, SPK or BPC
     pub input: PathBuf,

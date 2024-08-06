@@ -22,7 +22,7 @@ use anise::structure::metadata::Metadata;
 use anise::structure::{EulerParameterDataSet, PlanetaryDataSet, SpacecraftDataSet};
 
 mod args;
-use args::{Actions, Args};
+use args::{Actions, CliArgs};
 
 const LOG_VAR: &str = "ANISE_LOG";
 
@@ -62,7 +62,7 @@ fn main() -> Result<(), CliErrors> {
         println!("could not init logger");
     }
 
-    let cli = Args::parse();
+    let cli = CliArgs::parse();
     match cli.action {
         Actions::Check {
             file,
