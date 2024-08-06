@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use std::env::{set_var, var};
 use std::io;
 
+use anise::math::interpolation::InterpolationError;
 use anise::naif::daf::datatypes::Type2ChebyshevSet;
 use anise::naif::daf::{DafDataType, NAIFDataSet, DAF};
 use anise::naif::pck::BPCSummaryRecord;
@@ -33,6 +34,9 @@ pub enum CliErrors {
     FileNotFound {
         source: io::Error,
     },
+    FilePersist {
+        source: io::Error,
+    },
     /// ANISE error encountered"
     CliDAF {
         source: DAFError,
@@ -52,6 +56,9 @@ pub enum CliErrors {
     },
     AniseError {
         source: InputOutputError,
+    },
+    SegmentInterpolation {
+        source: InterpolationError,
     },
 }
 
@@ -289,22 +296,26 @@ where
                         }
                     );
 
-    let segment = fmt.nth_data::<Type2ChebyshevSet>(idx).unwrap();
+    let segment = fmt
+        .nth_data::<Type2ChebyshevSet>(idx)
+        .context(CliDAFSnafu)?;
 
-    let updated_segment = segment.truncate(summary, start, end).unwrap();
+    let updated_segment = segment
+        .truncate(summary, start, end)
+        .context(SegmentInterpolationSnafu)?;
 
     let mut my_pck_mut = fmt.to_mutable();
     assert!(my_pck_mut
         .set_nth_data(
             idx,
             updated_segment,
-            start.or_else(|| Some(summary.start_epoch())).unwrap(),
-            end.or_else(|| Some(summary.end_epoch())).unwrap(),
+            start.unwrap_or_else(|| summary.start_epoch()),
+            end.unwrap_or_else(|| summary.end_epoch()),
         )
         .is_ok());
 
     info!("Saving file to {output:?}");
-    my_pck_mut.persist(output).unwrap();
+    my_pck_mut.persist(output).context(FilePersistSnafu)?;
 
     Ok(())
 }
