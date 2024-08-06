@@ -44,8 +44,10 @@ pub trait NAIFRecord: AsBytes + FromBytes + Sized + Default + Debug {
 }
 
 pub trait NAIFSummaryRecord: NAIFRecord + Copy {
+    type Error: 'static + std::error::Error;
+
     fn start_index(&self) -> usize;
-    fn data_type_i(&self) -> i32;
+    fn data_type(&self) -> Result<DafDataType, Self::Error>;
     fn end_index(&self) -> usize;
     /// Returns the start epoch in high precision Epoch
     fn start_epoch(&self) -> Epoch;

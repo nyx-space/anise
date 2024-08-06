@@ -37,6 +37,10 @@ pub enum CliErrors {
     CliDAF {
         source: DAFError,
     },
+    /// ANISE error encountered"
+    CliDataType {
+        error: Box<dyn std::error::Error>,
+    },
     CliFileRecord {
         source: FileRecordError,
     },
@@ -275,7 +279,9 @@ where
 
     let (summary, idx) = fmt.summary_from_id(id).context(CliDAFSnafu)?;
 
-    let data_type = DafDataType::try_from(summary.data_type_i()).context(CliDAFSnafu)?;
+    let data_type = summary.data_type().map_err(|err| CliErrors::CliDataType {
+        error: Box::new(err),
+    })?;
     ensure!(
                         data_type == DafDataType::Type2ChebyshevTriplet,
                         ArgumentSnafu {
