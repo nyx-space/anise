@@ -17,7 +17,7 @@ fn main() {
     let _ = eframe::run_native(
         "ANISE by Nyx Space",
         eframe::NativeOptions::default(),
-        Box::new(|cc| Box::new(UiApp::new(cc))),
+        Box::new(|cc| Ok(Box::new(UiApp::new(cc)))),
     );
 }
 
@@ -35,7 +35,7 @@ fn main() {
             .start(
                 "anise_canvas",
                 web_options,
-                Box::new(|cc| Box::new(UiApp::new(cc))),
+                Box::new(|cc| Ok(Box::new(UiApp::new(cc)))),
             )
             .await
             .expect("failed to start eframe");
