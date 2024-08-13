@@ -58,7 +58,7 @@ default = ["metaload"]
 spkezr_validation = []
 python = ["pyo3", "pyo3-log"]
 metaload = ["url", "reqwest/blocking", "platform-dirs", "regex", "serde_dhall"]
-embed_ephem = ["rust-embed"]
+embed_ephem = ["rust-embed", "reqwest/blocking"]
 
 [[bench]]
 name = "iai_jpl_ephemerides"
