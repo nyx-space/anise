@@ -9,9 +9,8 @@ repository = { workspace = true }
 description = "Core of the ANISE library"
 
 [package.metadata.docs.rs]
-features = [
-    "metaload",
-]
+all-features = true
+rustdoc-ars = ["--cfg", "docrs", "--generate-link-to-definition"]
 
 [dependencies]
 lexical-core = { workspace = true }

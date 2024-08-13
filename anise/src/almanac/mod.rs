@@ -48,6 +48,7 @@ pub mod metaload;
 mod python;
 
 #[cfg(feature = "embed_ephem")]
+#[cfg_attr(docrs, doc(cfg(feature = "embed_ephem")))]
 mod embed;
 
 #[cfg(feature = "python")]

@@ -58,11 +58,13 @@ jobs:
         run: sh dev-env-setup.sh && cd .. # Return to root
 
       - name: Test debug
+        if: secrets.LAGRANGE_BSP != ''
         env:
           LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
         run: cargo test --workspace --exclude anise-gui --exclude anise-py
 
       - name: Test release
+        if: secrets.LAGRANGE_BSP != ''
         env:
           LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
         run: cargo test --release --workspace --exclude anise-gui --exclude anise-py
@@ -131,6 +133,7 @@ jobs:
         run: RUST_BACKTRACE=1 cargo test validate_hermite_type13_ --features spkezr_validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
 
       - name: Rust-SPICE Lagrange validation
+        if: secrets.LAGRANGE_BSP != ''
         env:
           LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
         run: RUST_BACKTRACE=1 cargo test validate_lagrange_type9_with_varying_segment_sizes --features spkezr_validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
@@ -205,7 +208,7 @@ jobs:
           cargo llvm-cov test --no-report validate_jplde_de440s_no_aberration --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov test --no-report validate_jplde_de440s_aberration_lt --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov test --no-report validate_hermite_type13_from_gmat --features spkezr_validation -- --nocapture --ignored
-          cargo llvm-cov test --no-report validate_lagrange_type9_with_varying_segment_sizes --features spkezr_validation -- --nocapture --ignored
+          [ -n "$LAGRANGE_BSP" ] && cargo llvm-cov test --no-report validate_lagrange_type9_with_varying_segment_sizes --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov test --no-report ut_embed --features embed_ephem
           cargo llvm-cov report --lcov > ../lcov.txt
 
