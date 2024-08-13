@@ -29,7 +29,7 @@ use nalgebra::{DefaultAllocator, DimName, OVector};
 /// Returns the root mean squared (RSS) between two vectors of any dimension N.
 pub fn root_mean_squared<N: DimName>(vec_a: &OVector<f64, N>, vec_b: &OVector<f64, N>) -> f64
 where
-    DefaultAllocator: Allocator<f64, N>,
+    DefaultAllocator: Allocator<N>,
 {
     vec_a
         .iter()

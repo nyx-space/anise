@@ -41,15 +41,18 @@ pub struct SpkRow {
     pub interpolation_kind: String,
 }
 
-impl BPC {
-    /// Returns a string of a table representing this BPC where the epochs are printed in the TDB time scale
-    pub fn describe(&self) -> String {
+pub trait NAIFPrettyPrint {
+    fn describe(&self) -> String {
         self.describe_in(TimeScale::TDB, None)
     }
 
+    fn describe_in(&self, time_scale: TimeScale, round: Option<bool>) -> String;
+}
+
+impl NAIFPrettyPrint for BPC {
     /// Returns a string of a table representing this BPC where the epochs are printed in the provided time scale
     /// Set `round` to Some(false) to _not_ round the durations. By default, the durations will be rounded to the nearest second.
-    pub fn describe_in(&self, time_scale: TimeScale, round: Option<bool>) -> String {
+    fn describe_in(&self, time_scale: TimeScale, round: Option<bool>) -> String {
         // Build the rows of the table
         let mut rows = Vec::new();
 
@@ -85,15 +88,10 @@ impl BPC {
     }
 }
 
-impl SPK {
-    /// Returns a string of a table representing this SPK where the epochs are printed in the TDB time scale
-    pub fn describe(&self) -> String {
-        self.describe_in(TimeScale::TDB, None)
-    }
-
+impl NAIFPrettyPrint for SPK {
     /// Returns a string of a table representing this SPK where the epochs are printed in the provided time scale
     /// Set `round` to Some(false) to _not_ round the duration. By default, the durations will be rounded to the nearest second.
-    pub fn describe_in(&self, time_scale: TimeScale, round: Option<bool>) -> String {
+    fn describe_in(&self, time_scale: TimeScale, round: Option<bool>) -> String {
         // Build the rows of the table
         let mut rows = Vec::new();
 

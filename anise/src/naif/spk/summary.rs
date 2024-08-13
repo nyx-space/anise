@@ -56,13 +56,6 @@ impl SPKSummaryRecord {
 
 #[cfg_attr(feature = "python", pymethods)]
 impl SPKSummaryRecord {
-    pub fn data_type(&self) -> Result<DafDataType, EphemerisError> {
-        DafDataType::try_from(self.data_type_i).map_err(|source| EphemerisError::SPK {
-            action: "converting data type from i32",
-            source,
-        })
-    }
-
     /// Returns the target frame UID of this summary
     pub fn target_frame(&self) -> Frame {
         Frame::from(self.target_frame_uid())
@@ -160,6 +153,16 @@ impl NAIFRecord for SPKSummaryRecord {}
 
 impl NAIFSummaryRecord for SPKSummaryRecord {
     const NAME: &'static str = "SPKSummaryRecord";
+
+    type Error = EphemerisError;
+
+    fn data_type(&self) -> Result<DafDataType, Self::Error> {
+        DafDataType::try_from(self.data_type_i).map_err(|source| EphemerisError::SPK {
+            action: "converting data type from i32",
+            source,
+        })
+    }
+
     fn start_index(&self) -> usize {
         self.start_idx as usize
     }

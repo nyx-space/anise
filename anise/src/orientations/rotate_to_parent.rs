@@ -17,7 +17,7 @@ use crate::constants::orientations::{ECLIPJ2000, J2000, J2000_TO_ECLIPJ2000_ANGL
 use crate::hifitime::Epoch;
 use crate::math::rotation::{r1, r1_dot, r3, r3_dot, DCM};
 use crate::naif::daf::datatypes::Type2ChebyshevSet;
-use crate::naif::daf::{DAFError, DafDataType, NAIFDataSet};
+use crate::naif::daf::{DAFError, DafDataType, NAIFDataSet, NAIFSummaryRecord};
 use crate::orientations::{BPCSnafu, OrientationDataSetSnafu, OrientationInterpolationSnafu};
 use crate::prelude::Frame;
 

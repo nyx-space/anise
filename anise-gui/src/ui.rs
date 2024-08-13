@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use anise::{
     almanac::Almanac, constants::orientations::orientation_name_from_id, errors::AlmanacError,
     naif::daf::NAIFSummaryRecord,
@@ -7,13 +5,13 @@ use anise::{
 use eframe::egui;
 use egui::Align2;
 use egui_extras::{Column, TableBuilder};
-use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
+use egui_toast::{Toast, ToastKind, ToastOptions, ToastStyle, Toasts};
 use hifitime::TimeScale;
 
 #[cfg(target_arch = "wasm32")]
 use poll_promise::Promise;
 
-use egui_aesthetix::{themes::StandardDark, Aesthetix};
+use catppuccin_egui::FRAPPE;
 
 #[cfg(target_arch = "wasm32")]
 type AlmanacFile = Option<(String, Vec<u8>)>;
@@ -40,8 +38,7 @@ impl UiApp {
         // Restore app state using cc.storage (requires the "persistence" feature).
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
-        _cc.egui_ctx
-            .set_style(Arc::new(StandardDark.custom_style()));
+        // _cc.egui_ctx.set_style(Arc::new(MOCHA));
         Self::default()
     }
 
@@ -85,6 +82,9 @@ impl UiApp {
 
 impl eframe::App for UiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        catppuccin_egui::set_theme(ctx, FRAPPE);
+        ctx.set_pixels_per_point(1.25);
+
         let mut toasts = Toasts::new()
             .anchor(Align2::RIGHT_BOTTOM, (-10.0, -10.0)) // 10 units from the bottom right corner
             .direction(egui::Direction::BottomUp);
@@ -128,6 +128,7 @@ impl eframe::App for UiApp {
                                                 toasts.add(Toast {
                                                     text: format!("Loaded {path:?}").into(),
                                                     kind: ToastKind::Success,
+                                                    style: ToastStyle::default(),
                                                     options: ToastOptions::default()
                                                         .duration_in_seconds(15.0)
                                                         .show_progress(true),
@@ -139,6 +140,7 @@ impl eframe::App for UiApp {
                                                 toasts.add(Toast {
                                                     text: format!("{e}").into(),
                                                     kind: ToastKind::Error,
+                                                    style: ToastStyle::default(),
                                                     options: ToastOptions::default()
                                                         .duration_in_seconds(15.0)
                                                         .show_progress(true),

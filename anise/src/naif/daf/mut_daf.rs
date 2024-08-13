@@ -15,7 +15,7 @@ use super::{
     RCRD_LEN,
 };
 use crate::{
-    errors::{DecodingError, InputOutputError},
+    errors::DecodingError,
     file2heap,
     naif::daf::{file_record::FileRecordError, NAIFRecord, SummaryRecord},
     DBL_SIZE,
@@ -23,7 +23,6 @@ use crate::{
 use bytes::BytesMut;
 use hifitime::Epoch;
 use snafu::ResultExt;
-use std::fs::File;
 use zerocopy::AsBytes;
 
 impl<R: NAIFSummaryRecord> MutDAF<R> {

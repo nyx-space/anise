@@ -35,14 +35,7 @@ pub struct BPCSummaryRecord {
     pub unused: i32,
 }
 
-impl BPCSummaryRecord {
-    pub fn data_type(&self) -> Result<DafDataType, OrientationError> {
-        DafDataType::try_from(self.data_type_i).map_err(|source| OrientationError::BPC {
-            action: "converting data type from i32",
-            source,
-        })
-    }
-}
+impl BPCSummaryRecord {}
 
 #[cfg(feature = "python")]
 #[pymethods]
@@ -63,6 +56,15 @@ impl NAIFRecord for BPCSummaryRecord {}
 
 impl NAIFSummaryRecord for BPCSummaryRecord {
     const NAME: &'static str = "BPCSummaryRecord";
+
+    type Error = OrientationError;
+
+    fn data_type(&self) -> Result<DafDataType, Self::Error> {
+        DafDataType::try_from(self.data_type_i).map_err(|source| OrientationError::BPC {
+            action: "converting data type from i32",
+            source,
+        })
+    }
 
     fn start_index(&self) -> usize {
         self.start_idx as usize

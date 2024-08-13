@@ -18,7 +18,7 @@ use crate::hifitime::Epoch;
 use crate::math::cartesian::CartesianState;
 use crate::math::Vector3;
 use crate::naif::daf::datatypes::{HermiteSetType13, LagrangeSetType9, Type2ChebyshevSet};
-use crate::naif::daf::{DAFError, DafDataType, NAIFDataSet};
+use crate::naif::daf::{DAFError, DafDataType, NAIFDataSet, NAIFSummaryRecord};
 use crate::prelude::Frame;
 
 #[cfg(feature = "python")]

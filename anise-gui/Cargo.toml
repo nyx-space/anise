@@ -14,11 +14,13 @@ hifitime = { workspace = true }
 log = { workspace = true }
 bytes = { workspace = true }
 pretty_env_logger = { workspace = true }
-egui-toast = "0.13"
-eframe = { version = "0.27" }
-egui = { version = "0.27" }
-egui_extras = { version = "0.27", features = ["datepicker", "http", "image"] }
-egui-aesthetix = { version = "0.2.3", features = ["standard"] }
+egui-toast = "0.14"
+eframe = { version = "0.28" }
+egui = { version = "0.28" }
+egui_extras = { version = "0.28", features = ["datepicker", "http", "image"] }
+catppuccin-egui = { version = "5.1", default-features = false, features = [
+    "egui28",
+] }
 rfd = { version = "0.14.1" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
