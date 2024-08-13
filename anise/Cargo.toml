@@ -8,6 +8,11 @@ license = { workspace = true }
 repository = { workspace = true }
 description = "Core of the ANISE library"
 
+[package.metadata.docs.rs]
+features = [
+    "metaload",
+]
+
 [dependencies]
 lexical-core = { workspace = true }
 hifitime = { workspace = true }
