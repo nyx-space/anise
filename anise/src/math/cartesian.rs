@@ -211,7 +211,6 @@ impl CartesianState {
     /// and you only intend to use partial rotations.
     pub fn has_velocity_dynamics(&self) -> bool {
         self.velocity_km_s.norm() > 0.0
-        pos_vel[3] != 0.0 && pos_vel[4] != 0.0 && pos_vel[5] != 0.0
     }
 }
 
