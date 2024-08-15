@@ -58,6 +58,40 @@ impl Ellipsoid {
             polar_radius_km,
         }
     }
+
+    /// Builds new WGS84 Ellipsoid shape, used by all GPS vehicles.
+    /// <https://gisgeography.com/ellipsoid-oblate-spheroid-earth>
+    pub const fn gps_wgs84() -> Self {
+        const FLATTENING: f64 = 1.0 / 298.257223563_f64;
+        const SEMI_MAJOR_EQUATORIAL_RADIUS_KM: f64 = 6378.137_f64;
+        const SEMI_MINOR_EQUATORIAL_RADIUS_KM: f64 = 6356.7523142_f64;
+        // mean equatorial radius R = (M+m)/2
+        const R: f64 = (SEMI_MAJOR_EQUATORIAL_RADIUS_KM + SEMI_MINOR_EQUATORIAL_RADIUS_KM) / 2.0;
+        // flattening = (R - p)/R
+        const POLAR_RADIUS_KM: f64 = R - FLATTENING * R;
+        Self {
+            polar_radius_km: POLAR_RADIUS_KM,
+            semi_major_equatorial_radius_km: SEMI_MAJOR_EQUATORIAL_RADIUS_KM,
+            semi_minor_equatorial_radius_km: SEMI_MINOR_EQUATORIAL_RADIUS_KM,
+        }
+    }
+
+    /// Builds new BDC (CGCS20) Ellipsoid shape, used by all BeiDou vehicles.
+    /// <https://www.unoosa.org/documents/pdf/icg/2018/icg13/wgd/wgd_05.pdf>
+    pub fn beidou_cgcs20() -> Self {
+        const FLATTENING: f64 = 1.0 / 298.257222101;
+        const SEMI_MAJOR_EQUATORIAL_RADIUS_KM: f64 = 6378.137_f64;
+        const SEMI_MINOR_EQUATORIAL_RADIUS_KM: f64 = 6356.7523141_f64;
+        // mean equatorial radius R = (M+m)/2
+        const R: f64 = (SEMI_MAJOR_EQUATORIAL_RADIUS_KM + SEMI_MINOR_EQUATORIAL_RADIUS_KM) / 2.0;
+        // flattening = (R - p)/R
+        const POLAR_RADIUS_KM: f64 = R - FLATTENING * R;
+        Self {
+            polar_radius_km: POLAR_RADIUS_KM,
+            semi_major_equatorial_radius_km: SEMI_MAJOR_EQUATORIAL_RADIUS_KM,
+            semi_minor_equatorial_radius_km: SEMI_MINOR_EQUATORIAL_RADIUS_KM,
+        }
+    }
 }
 
 #[cfg_attr(feature = "python", pymethods)]
