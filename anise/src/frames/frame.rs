@@ -77,6 +77,18 @@ impl Frame {
 
         Ok(Self::new(ephemeris_id, orientation_id))
     }
+
+    /// Define Ellipsoid shape and return a new [Frame]
+    pub fn with_ellipsoid(&self, shape: Ellipsoid) -> Self {
+        let mut s = self.clone();
+        s.shape = Some(shape);
+        s
+    }
+
+    /// Define Ellipsoid shape with mutable access
+    pub fn set_ellipsoid(&mut self, shape: Ellipsoid) {
+        self.shape = Some(shape);
+    }
 }
 
 #[cfg_attr(feature = "python", pymethods)]
