@@ -210,7 +210,7 @@ impl CartesianState {
     /// Which may not be the case if [Self] was built with [Self::from_position]
     /// and you only intend to use partial rotations.
     pub fn has_velocity_dynamics(&self) -> bool {
-        let pos_vel = self.to_cartesian_pos_vel();
+        self.velocity_km_s.norm() > 0.0
         pos_vel[3] != 0.0 && pos_vel[4] != 0.0 && pos_vel[5] != 0.0
     }
 }
