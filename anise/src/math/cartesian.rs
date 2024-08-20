@@ -205,6 +205,13 @@ impl CartesianState {
         me.apply_dv_km_s(dv_km_s);
         me
     }
+
+    /// Returns True if velocity (dynamics) are defined.
+    /// Which may not be the case if [Self] was built with [Self::from_position]
+    /// and you only intend to use partial rotations.
+    pub fn has_velocity_dynamics(&self) -> bool {
+        self.velocity_km_s.norm() > 0.0
+    }
 }
 
 // Methods shared with Python
