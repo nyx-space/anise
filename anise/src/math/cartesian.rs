@@ -124,52 +124,6 @@ impl CartesianState {
         )
     }
 
-    /// Creates a new [CartesianState] for a GPS vehicle position,
-    /// expressed in proposed [Frame] that we augment with appropriate
-    /// [Ellipsoid] shape.
-    ///
-    /// **Units:** km, km, km
-    pub fn from_gps_position(x_km: f64, y_km: f64, z_km: f64, epoch: Epoch, frame: Frame) -> Self {
-        let wgs84 = frame.with_ellipsoid(Ellipsoid::gps_wgs84());
-        Self::new(x_km, y_km, z_km, 0.0, 0.0, 0.0, epoch, wgs84)
-    }
-
-    /// Creates a new [CartesianState] from a GPS state vector, in the proposed [Frame] to which we apply the appropriate [Ellipsoid] shape.
-    ///
-    /// **Units:** position data must be in kilometers, velocity data must be in kilometers per second.
-    pub fn from_gps_pos_vel(pos_vel: Vector6<f64>, epoch: Epoch, frame: Frame) -> Self {
-        let wgs84 = frame.with_ellipsoid(Ellipsoid::gps_wgs84());
-        Self::new(
-            pos_vel[0], pos_vel[1], pos_vel[2], pos_vel[3], pos_vel[4], pos_vel[5], epoch, wgs84,
-        )
-    }
-
-    /// Creates a new [CartesianState] for BeiDou (BDS) vehicle,
-    /// expressed in proposed [Frame] that we augment with appropriate
-    /// [Ellipsoid] shape.
-    ///
-    /// **Units:** km, km, km
-    pub fn from_beidou_position(
-        x_km: f64,
-        y_km: f64,
-        z_km: f64,
-        epoch: Epoch,
-        frame: Frame,
-    ) -> Self {
-        let cgcs20 = frame.with_ellipsoid(Ellipsoid::beidou_cgcs20());
-        Self::new(x_km, y_km, z_km, 0.0, 0.0, 0.0, epoch, cgcs20)
-    }
-
-    /// Creates a new [CartesianState] from a BDS state vector, in the proposed [Frame] to which we apply the appropriate [Ellipsoid] shape.
-    ///
-    /// **Units:** position data must be in kilometers, velocity data must be in kilometers per second.
-    pub fn from_beidou_pos_vel(pos_vel: Vector6<f64>, epoch: Epoch, frame: Frame) -> Self {
-        let cgcs20 = frame.with_ellipsoid(Ellipsoid::beidou_cgcs20());
-        Self::new(
-            pos_vel[0], pos_vel[1], pos_vel[2], pos_vel[3], pos_vel[4], pos_vel[5], epoch, cgcs20,
-        )
-    }
-
     /// Returns a copy of the state with a new radius
     pub fn with_radius_km(self, new_radius_km: Vector3) -> Self {
         let mut me = self;
