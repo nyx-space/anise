@@ -84,11 +84,6 @@ impl Frame {
         s.shape = Some(shape);
         s
     }
-
-    /// Define Ellipsoid shape with mutable access
-    pub fn set_ellipsoid(&mut self, shape: Ellipsoid) {
-        self.shape = Some(shape);
-    }
 }
 
 #[cfg_attr(feature = "python", pymethods)]
