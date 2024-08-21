@@ -33,7 +33,6 @@ macro_rules! io_imports {
         use std::fs::File;
         use std::io::{Error as IOError, ErrorKind as IOErrorKind, Write};
         use std::path::Path;
-        use std::path::PathBuf;
     };
 }
 
@@ -378,7 +377,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
 
     /// Saves this dataset to the provided file
     /// If overwrite is set to false, and the filename already exists, this function will return an error.
-    pub fn save_as(&self, filename: &PathBuf, overwrite: bool) -> Result<(), DataSetError> {
+    pub fn save_as(&self, filename: &Path, overwrite: bool) -> Result<(), DataSetError> {
         use log::{info, warn};
 
         if Path::new(&filename).exists() {
