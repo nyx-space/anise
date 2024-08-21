@@ -79,10 +79,9 @@ impl Frame {
     }
 
     /// Define Ellipsoid shape and return a new [Frame]
-    pub fn with_ellipsoid(&self, shape: Ellipsoid) -> Self {
-        let mut s = self.clone();
-        s.shape = Some(shape);
-        s
+    pub fn with_ellipsoid(mut self, shape: Ellipsoid) -> Self {
+        self.shape = Some(shape);
+        self
     }
 }
 
