@@ -14,7 +14,6 @@ use crate::{
     constants::SPEED_OF_LIGHT_KM_S,
     errors::{EpochMismatchSnafu, FrameMismatchSnafu, PhysicsError},
     prelude::Frame,
-    structure::planetocentric::ellipsoid::Ellipsoid,
 };
 
 use core::fmt;
