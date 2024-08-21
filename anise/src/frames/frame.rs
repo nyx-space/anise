@@ -77,6 +77,12 @@ impl Frame {
 
         Ok(Self::new(ephemeris_id, orientation_id))
     }
+
+    /// Define Ellipsoid shape and return a new [Frame]
+    pub fn with_ellipsoid(mut self, shape: Ellipsoid) -> Self {
+        self.shape = Some(shape);
+        self
+    }
 }
 
 #[cfg_attr(feature = "python", pymethods)]
