@@ -57,7 +57,7 @@ pub enum MetaAlmanacError {
 impl Almanac {
     /// Load from the provided MetaFile.
     fn _load_from_metafile(&self, mut metafile: MetaFile) -> AlmanacResult<Self> {
-        metafile._process().context(MetaSnafu {
+        metafile._process(true).context(MetaSnafu {
             fno: 0_usize,
             file: metafile.clone(),
         })?;
@@ -91,12 +91,12 @@ mod meta_test {
         let mut meta = MetaAlmanac::default();
         println!("{meta:?}");
 
-        let almanac = meta._process().unwrap();
+        let almanac = meta._process(true).unwrap();
         // Shows everything in this Almanac
         almanac.describe(None, None, None, None, None);
 
         // Process again to confirm that the CRC check works
-        assert!(meta._process().is_ok());
+        assert!(meta._process(true).is_ok());
         // Test that loading from an invalid URI reports an error
         assert!(almanac
             ._load_from_metafile(MetaFile {

@@ -55,9 +55,9 @@ impl MetaAlmanac {
     }
 
     /// Fetch all of the URIs and return a loaded Almanac
-    pub(crate) fn _process(&mut self) -> AlmanacResult<Almanac> {
+    pub(crate) fn _process(&mut self, autodelete: bool) -> AlmanacResult<Almanac> {
         for (fno, file) in self.files.iter_mut().enumerate() {
-            file._process().context(MetaSnafu {
+            file._process(autodelete).context(MetaSnafu {
                 fno,
                 file: file.clone(),
             })?;
@@ -165,17 +165,21 @@ impl MetaAlmanac {
     /// if queried at some future time, the Earth rotation parameters may have changed between two queries.
     ///
     #[classmethod]
-    fn latest(_cls: &Bound<'_, PyType>, py: Python) -> AlmanacResult<Almanac> {
+    fn latest(
+        _cls: &Bound<'_, PyType>,
+        py: Python,
+        autodelete: Option<bool>,
+    ) -> AlmanacResult<Almanac> {
         let mut meta = Self::default();
-        py.allow_threads(|| match meta._process() {
+        py.allow_threads(|| match meta._process(autodelete.unwrap_or(false)) {
             Ok(almanac) => Ok(almanac),
             Err(e) => Err(e),
         })
     }
 
     /// Fetch all of the URIs and return a loaded Almanac
-    pub fn process(&mut self, py: Python) -> AlmanacResult<Almanac> {
-        py.allow_threads(|| self._process())
+    pub fn process(&mut self, py: Python, autodelete: Option<bool>) -> AlmanacResult<Almanac> {
+        py.allow_threads(|| self._process(autodelete.unwrap_or(false)))
     }
 
     fn __str__(&self) -> String {

@@ -434,13 +434,11 @@ mod daf_ut {
     use hifitime::Epoch;
 
     use crate::{
-        errors::{InputOutputError, IntegrityError},
+        errors::IntegrityError,
         file2heap,
         naif::daf::{datatypes::HermiteSetType13, DAFError},
         prelude::SPK,
     };
-
-    use std::fs::File;
 
     #[test]
     fn crc32_errors() {
