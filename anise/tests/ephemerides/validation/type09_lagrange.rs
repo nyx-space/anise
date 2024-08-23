@@ -24,7 +24,7 @@ fn validate_lagrange_type9_with_varying_segment_sizes() {
         uri: "http://public-data.nyxspace.com/anise/ci/env:LAGRANGE_BSP".to_string(),
         crc32: None,
     };
-    lagrange_meta.process().unwrap();
+    lagrange_meta.process(true).unwrap();
 
     let file_name = "spk-type9-validation-variable-seg-size".to_string();
     let comparator = CompareEphem::new(vec![lagrange_meta.uri], file_name.clone(), 10_000, None);

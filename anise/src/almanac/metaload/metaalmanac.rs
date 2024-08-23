@@ -71,6 +71,10 @@ impl MetaAlmanac {
     }
 
     /// Fetch all of the URIs and return a loaded Almanac
+    /// When downloading the data, ANISE will create a temporarily lock file to prevent race conditions
+    /// where multiple processes download the data at the same time. Set `autodelete` to true to delete
+    /// this lock file if a dead lock is detected after 10 seconds. Set this flag to false if you have
+    /// more than ten processes which may attempt to download files in parallel.
     #[cfg(not(feature = "python"))]
     pub fn process(&mut self, autodelete: bool) -> AlmanacResult<Almanac> {
         self._process(autodelete)
@@ -177,7 +181,11 @@ impl MetaAlmanac {
         })
     }
 
-    /// Fetch all of the URIs and return a loaded Almanac
+    /// Fetch all of the URIs and return a loaded Almanac.
+    /// When downloading the data, ANISE will create a temporarily lock file to prevent race conditions
+    /// where multiple processes download the data at the same time. Set `autodelete` to true to delete
+    /// this lock file if a dead lock is detected after 10 seconds. Set this flag to false if you have
+    /// more than ten processes which may attempt to download files in parallel.
     pub fn process(&mut self, py: Python, autodelete: Option<bool>) -> AlmanacResult<Almanac> {
         py.allow_threads(|| self._process(autodelete.unwrap_or(true)))
     }
