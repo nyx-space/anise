@@ -72,8 +72,8 @@ impl MetaAlmanac {
 
     /// Fetch all of the URIs and return a loaded Almanac
     #[cfg(not(feature = "python"))]
-    pub fn process(&mut self) -> AlmanacResult<Almanac> {
-        self._process()
+    pub fn process(&mut self, autodelete: bool) -> AlmanacResult<Almanac> {
+        self._process(autodelete)
     }
 
     /// Returns an Almanac loaded from the latest NAIF data via the `default` MetaAlmanac.
@@ -92,7 +92,7 @@ impl MetaAlmanac {
     ///
     #[cfg(not(feature = "python"))]
     pub fn latest() -> AlmanacResult<Almanac> {
-        Self::default().process()
+        Self::default().process(true)
     }
 }
 

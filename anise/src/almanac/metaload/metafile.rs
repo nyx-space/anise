@@ -54,8 +54,8 @@ impl MetaFile {
     ///
     /// This function modified `self` and changes the URI to be the path to the downloaded file.
     #[cfg(not(feature = "python"))]
-    pub fn process(&mut self) -> Result<(), MetaAlmanacError> {
-        self._process()
+    pub fn process(&mut self, autodelete: bool) -> Result<(), MetaAlmanacError> {
+        self._process(autodelete)
     }
 
     pub(crate) fn _process(&mut self, autodelete: bool) -> Result<(), MetaAlmanacError> {
