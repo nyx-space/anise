@@ -10,15 +10,21 @@
 
 use super::{compare::*, validate::Validation};
 use anise::almanac::metaload::MetaFile;
+use std::env;
 
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
 fn validate_lagrange_type9_with_varying_segment_sizes() {
+    if let Err(_) = env::var("LAGRANGE_BSP") {
+        // Skip this test if the env var is not defined.
+        return;
+    }
+
     let mut lagrange_meta = MetaFile {
         uri: "http://public-data.nyxspace.com/anise/ci/env:LAGRANGE_BSP".to_string(),
         crc32: None,
     };
-    lagrange_meta.process().unwrap();
+    lagrange_meta.process(true).unwrap();
 
     let file_name = "spk-type9-validation-variable-seg-size".to_string();
     let comparator = CompareEphem::new(vec![lagrange_meta.uri], file_name.clone(), 10_000, None);

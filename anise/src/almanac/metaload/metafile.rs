@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use log::{debug, info};
+use log::{debug, info, warn};
 use platform_dirs::AppDirs;
 use regex::Regex;
 use serde_derive::{Deserialize, Serialize};
@@ -54,11 +54,11 @@ impl MetaFile {
     ///
     /// This function modified `self` and changes the URI to be the path to the downloaded file.
     #[cfg(not(feature = "python"))]
-    pub fn process(&mut self) -> Result<(), MetaAlmanacError> {
-        self._process()
+    pub fn process(&mut self, autodelete: bool) -> Result<(), MetaAlmanacError> {
+        self._process(autodelete)
     }
 
-    pub(crate) fn _process(&mut self) -> Result<(), MetaAlmanacError> {
+    pub(crate) fn _process(&mut self, autodelete: bool) -> Result<(), MetaAlmanacError> {
         // First, parse environment variables if any.
         self.uri = replace_env_vars(&self.uri);
         match Url::parse(&self.uri) {
@@ -107,12 +107,25 @@ impl MetaFile {
                                         loop {
                                             if lock_path.exists() {
                                                 if checks == 9 {
-                                                    return Err(MetaAlmanacError::PersistentLock {
-                                                        desired: dest_path
-                                                            .to_str()
-                                                            .unwrap()
-                                                            .to_owned(),
-                                                    });
+                                                    if autodelete {
+                                                        info!(
+                                                            "deleting lock file {}",
+                                                            dest_path.to_str().unwrap().to_owned()
+                                                        );
+                                                        if let Err(e) = remove_file(&lock_path) {
+                                                            warn!("{e} -- ignoring");
+                                                        }
+                                                        break;
+                                                    } else {
+                                                        return Err(
+                                                            MetaAlmanacError::PersistentLock {
+                                                                desired: dest_path
+                                                                    .to_str()
+                                                                    .unwrap()
+                                                                    .to_owned(),
+                                                            },
+                                                        );
+                                                    }
                                                 }
 
                                                 checks += 1;
@@ -277,8 +290,12 @@ impl MetaFile {
     /// Processes this MetaFile by downloading it if it's a URL.
     ///
     /// This function modified `self` and changes the URI to be the path to the downloaded file.
-    pub fn process(&mut self, py: Python) -> Result<(), MetaAlmanacError> {
-        py.allow_threads(|| self._process())
+    pub fn process(
+        &mut self,
+        py: Python,
+        autodelete: Option<bool>,
+    ) -> Result<(), MetaAlmanacError> {
+        py.allow_threads(|| self._process(autodelete.unwrap_or(false)))
     }
 }
 
@@ -301,28 +318,28 @@ mod ut_metafile {
             uri: "C:\\Users\\me\\meta.dhall".to_string(),
             crc32: None,
         };
-        assert!(window_path._process().is_ok());
+        assert!(window_path._process(true).is_ok());
         assert_eq!(window_path.uri, "C:\\Users\\me\\meta.dhall".to_string());
 
         let mut file_prefix_path = MetaFile {
             uri: "fIlE:///Users/me/meta.dhall".to_string(),
             crc32: None,
         };
-        assert!(file_prefix_path._process().is_ok());
+        assert!(file_prefix_path._process(true).is_ok());
         assert_eq!(file_prefix_path.uri, "/Users/me/meta.dhall".to_string());
 
         let mut unix_abs_path = MetaFile {
             uri: "/Users/me/meta.dhall".to_string(),
             crc32: None,
         };
-        assert!(unix_abs_path._process().is_ok());
+        assert!(unix_abs_path._process(true).is_ok());
         assert_eq!(unix_abs_path.uri, "/Users/me/meta.dhall".to_string());
 
         let mut unix_rel_path = MetaFile {
             uri: "../Users/me/meta.dhall".to_string(),
             crc32: None,
         };
-        assert!(unix_rel_path._process().is_ok());
+        assert!(unix_rel_path._process(true).is_ok());
         assert_eq!(unix_rel_path.uri, "../Users/me/meta.dhall".to_string());
     }
 
@@ -333,14 +350,14 @@ mod ut_metafile {
             uri: "env:USER/.cargo/env".to_string(),
             crc32: None,
         };
-        user_path._process().unwrap();
+        user_path._process(false).unwrap();
         assert_eq!(user_path.uri, env::var("USER").unwrap() + "/.cargo/env");
 
         let mut unknown_path = MetaFile {
             uri: "env:BLAH_BLAH_NO_EXIST/.cargo/env".to_string(),
             crc32: None,
         };
-        unknown_path._process().unwrap();
+        unknown_path._process(false).unwrap();
         assert_eq!(
             unknown_path.uri,
             "env:BLAH_BLAH_NO_EXIST/.cargo/env".to_string()

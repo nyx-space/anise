@@ -56,8 +56,8 @@ pub enum MetaAlmanacError {
 #[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
     /// Load from the provided MetaFile.
-    fn _load_from_metafile(&self, mut metafile: MetaFile) -> AlmanacResult<Self> {
-        metafile._process().context(MetaSnafu {
+    fn _load_from_metafile(&self, mut metafile: MetaFile, autodelete: bool) -> AlmanacResult<Self> {
+        metafile._process(autodelete).context(MetaSnafu {
             fno: 0_usize,
             file: metafile.clone(),
         })?;
@@ -66,14 +66,19 @@ impl Almanac {
 
     /// Load from the provided MetaFile, downloading it if necessary.
     #[cfg(not(feature = "python"))]
-    pub fn load_from_metafile(&self, metafile: MetaFile) -> AlmanacResult<Self> {
-        self._load_from_metafile(metafile)
+    pub fn load_from_metafile(&self, metafile: MetaFile, autodelete: bool) -> AlmanacResult<Self> {
+        self._load_from_metafile(metafile, autodelete)
     }
 
     #[cfg(feature = "python")]
     /// Load from the provided MetaFile, downloading it if necessary.
-    pub fn load_from_metafile(&mut self, py: Python, metafile: MetaFile) -> AlmanacResult<Self> {
-        py.allow_threads(|| self._load_from_metafile(metafile))
+    pub fn load_from_metafile(
+        &mut self,
+        py: Python,
+        metafile: MetaFile,
+        autodelete: bool,
+    ) -> AlmanacResult<Self> {
+        py.allow_threads(|| self._load_from_metafile(metafile, autodelete))
     }
 }
 
@@ -91,18 +96,21 @@ mod meta_test {
         let mut meta = MetaAlmanac::default();
         println!("{meta:?}");
 
-        let almanac = meta._process().unwrap();
+        let almanac = meta._process(true).unwrap();
         // Shows everything in this Almanac
         almanac.describe(None, None, None, None, None);
 
         // Process again to confirm that the CRC check works
-        assert!(meta._process().is_ok());
+        assert!(meta._process(true).is_ok());
         // Test that loading from an invalid URI reports an error
         assert!(almanac
-            ._load_from_metafile(MetaFile {
-                uri: "http://example.com/non/existing.pca".to_string(),
-                crc32: None
-            })
+            ._load_from_metafile(
+                MetaFile {
+                    uri: "http://example.com/non/existing.pca".to_string(),
+                    crc32: None
+                },
+                true
+            )
             .is_err());
     }
 

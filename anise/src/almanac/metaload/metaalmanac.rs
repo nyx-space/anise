@@ -55,9 +55,9 @@ impl MetaAlmanac {
     }
 
     /// Fetch all of the URIs and return a loaded Almanac
-    pub(crate) fn _process(&mut self) -> AlmanacResult<Almanac> {
+    pub(crate) fn _process(&mut self, autodelete: bool) -> AlmanacResult<Almanac> {
         for (fno, file) in self.files.iter_mut().enumerate() {
-            file._process().context(MetaSnafu {
+            file._process(autodelete).context(MetaSnafu {
                 fno,
                 file: file.clone(),
             })?;
@@ -71,9 +71,13 @@ impl MetaAlmanac {
     }
 
     /// Fetch all of the URIs and return a loaded Almanac
+    /// When downloading the data, ANISE will create a temporarily lock file to prevent race conditions
+    /// where multiple processes download the data at the same time. Set `autodelete` to true to delete
+    /// this lock file if a dead lock is detected after 10 seconds. Set this flag to false if you have
+    /// more than ten processes which may attempt to download files in parallel.
     #[cfg(not(feature = "python"))]
-    pub fn process(&mut self) -> AlmanacResult<Almanac> {
-        self._process()
+    pub fn process(&mut self, autodelete: bool) -> AlmanacResult<Almanac> {
+        self._process(autodelete)
     }
 
     /// Returns an Almanac loaded from the latest NAIF data via the `default` MetaAlmanac.
@@ -92,7 +96,7 @@ impl MetaAlmanac {
     ///
     #[cfg(not(feature = "python"))]
     pub fn latest() -> AlmanacResult<Almanac> {
-        Self::default().process()
+        Self::default().process(true)
     }
 }
 
@@ -165,17 +169,25 @@ impl MetaAlmanac {
     /// if queried at some future time, the Earth rotation parameters may have changed between two queries.
     ///
     #[classmethod]
-    fn latest(_cls: &Bound<'_, PyType>, py: Python) -> AlmanacResult<Almanac> {
+    fn latest(
+        _cls: &Bound<'_, PyType>,
+        py: Python,
+        autodelete: Option<bool>,
+    ) -> AlmanacResult<Almanac> {
         let mut meta = Self::default();
-        py.allow_threads(|| match meta._process() {
+        py.allow_threads(|| match meta._process(autodelete.unwrap_or(false)) {
             Ok(almanac) => Ok(almanac),
             Err(e) => Err(e),
         })
     }
 
-    /// Fetch all of the URIs and return a loaded Almanac
-    pub fn process(&mut self, py: Python) -> AlmanacResult<Almanac> {
-        py.allow_threads(|| self._process())
+    /// Fetch all of the URIs and return a loaded Almanac.
+    /// When downloading the data, ANISE will create a temporarily lock file to prevent race conditions
+    /// where multiple processes download the data at the same time. Set `autodelete` to true to delete
+    /// this lock file if a dead lock is detected after 10 seconds. Set this flag to false if you have
+    /// more than ten processes which may attempt to download files in parallel.
+    pub fn process(&mut self, py: Python, autodelete: Option<bool>) -> AlmanacResult<Almanac> {
+        py.allow_threads(|| self._process(autodelete.unwrap_or(true)))
     }
 
     fn __str__(&self) -> String {
