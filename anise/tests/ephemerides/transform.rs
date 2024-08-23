@@ -149,7 +149,7 @@ fn de440s_transform_verif_venus2emb() {
 fn spice_verif_iau_moon() {
     let _ = pretty_env_logger::try_init();
 
-    let almanac = MetaAlmanac::default().process().unwrap();
+    let almanac = MetaAlmanac::default().process(true).unwrap();
 
     let epoch = Epoch::from_str("2024-09-22T08:45:22 UTC").unwrap();
     // This state is identical in ANISE and SPICE, queried from a BSP.

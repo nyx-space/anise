@@ -624,9 +624,16 @@ fn de440s_translation_verif_aberrations() {
 #[cfg(feature = "metaload")]
 #[test]
 fn type9_lagrange_query() {
+    use std::env;
+
     use anise::almanac::metaload::MetaFile;
     use anise::constants::frames::EARTH_J2000;
     use anise::prelude::Frame;
+
+    if let Err(_) = env::var("LAGRANGE_BSP") {
+        // Skip this test if the env var is not defined.
+        return;
+    }
 
     let lagrange_meta = MetaFile {
         uri: "http://public-data.nyxspace.com/anise/ci/env:LAGRANGE_BSP".to_string(),
@@ -634,7 +641,7 @@ fn type9_lagrange_query() {
     };
 
     let almanac = Almanac::default()
-        .load_from_metafile(lagrange_meta)
+        .load_from_metafile(lagrange_meta, true)
         .unwrap();
 
     let obj_id = -10;

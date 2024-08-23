@@ -179,7 +179,7 @@ impl MetaAlmanac {
 
     /// Fetch all of the URIs and return a loaded Almanac
     pub fn process(&mut self, py: Python, autodelete: Option<bool>) -> AlmanacResult<Almanac> {
-        py.allow_threads(|| self._process(autodelete.unwrap_or(false)))
+        py.allow_threads(|| self._process(autodelete.unwrap_or(true)))
     }
 
     fn __str__(&self) -> String {

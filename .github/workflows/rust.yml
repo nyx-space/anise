@@ -60,14 +60,12 @@ jobs:
       - name: Test debug
         env:
           LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
-        run: |
-          [ -n "$LAGRANGE_BSP" ] && cargo test --workspace --exclude anise-gui --exclude anise-py
+        run: cargo test --workspace --exclude anise-gui --exclude anise-py
 
       - name: Test release
         env:
           LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
-        run: |
-          [ -n "$LAGRANGE_BSP" ] && cargo test --release --workspace --exclude anise-gui --exclude anise-py
+        run: cargo test --release --workspace --exclude anise-gui --exclude anise-py
       
       - name: Test rust_embed build
         run: |
@@ -135,7 +133,7 @@ jobs:
       - name: Rust-SPICE Lagrange validation
         env:
           LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
-        run: RUST_BACKTRACE=1 [ -n "$LAGRANGE_BSP" ] && cargo test validate_lagrange_type9_with_varying_segment_sizes --features spkezr_validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
+        run: RUST_BACKTRACE=1 cargo test validate_lagrange_type9_with_varying_segment_sizes --features spkezr_validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
 
       - name: Rust-SPICE PCK validation
         run: RUST_BACKTRACE=1 cargo test validate_iau_rotation_to_parent --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --ignored
@@ -207,7 +205,7 @@ jobs:
           cargo llvm-cov test --no-report validate_jplde_de440s_no_aberration --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov test --no-report validate_jplde_de440s_aberration_lt --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov test --no-report validate_hermite_type13_from_gmat --features spkezr_validation -- --nocapture --ignored
-          [ -n "$LAGRANGE_BSP" ] && cargo llvm-cov test --no-report validate_lagrange_type9_with_varying_segment_sizes --features spkezr_validation -- --nocapture --ignored
+          cargo llvm-cov test --no-report validate_lagrange_type9_with_varying_segment_sizes --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov test --no-report ut_embed --features embed_ephem
           cargo llvm-cov report --lcov > ../lcov.txt
 
