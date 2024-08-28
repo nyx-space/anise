@@ -11,6 +11,7 @@
 use std::fmt::Display;
 
 use crate::errors::PhysicsError;
+use crate::frames::Frame;
 
 use hifitime::Epoch;
 
@@ -32,8 +33,6 @@ pub mod orbit_geodetic;
 pub type PhysicsResult<T> = Result<T, PhysicsError>;
 
 /// A structure that stores the result of Azimuth, Elevation, Range, Range rate calculation.
-///
-/// # Algorithm
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(get_all, set_all))]
@@ -44,6 +43,7 @@ pub struct AzElRange {
     pub elevation_deg: f64,
     pub range_km: f64,
     pub range_rate_km_s: f64,
+    pub obstructed_by: Option<Frame>,
 }
 
 #[cfg_attr(feature = "python", pymethods)]
@@ -62,6 +62,7 @@ impl AzElRange {
         elevation_deg: f64,
         range_km: f64,
         range_rate_km_s: f64,
+        obstructed_by: Option<Frame>,
     ) -> Self {
         Self {
             epoch,
@@ -69,6 +70,7 @@ impl AzElRange {
             elevation_deg,
             range_km,
             range_rate_km_s,
+            obstructed_by,
         }
     }
 
@@ -96,10 +98,14 @@ impl AzElRange {
 
 impl Display for AzElRange {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let obs = match self.obstructed_by {
+            None => "none".to_string(),
+            Some(frame) => format!("{frame:o}"),
+        };
         write!(
             f,
-            "{}: az.: {:.6} deg    el.: {:.6} deg    range: {:.6} km    range-rate: {:.6} km/s",
-            self.epoch, self.azimuth_deg, self.elevation_deg, self.range_km, self.range_rate_km_s
+            "{}: az.: {:.6} deg    el.: {:.6} deg    range: {:.6} km    range-rate: {:.6} km/s    obstruction: {}",
+            self.epoch, self.azimuth_deg, self.elevation_deg, self.range_km, self.range_rate_km_s, obs
         )
     }
 }
