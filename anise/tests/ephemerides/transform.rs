@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use anise::constants::frames::{EARTH_ITRF93, IAU_MOON_FRAME, MOON_J2000, VENUS_J2000};
+use anise::constants::frames::{EARTH_ITRF93, IAU_MOON_FRAME, MOON_J2000, SUN_J2000, VENUS_J2000};
 use anise::math::Vector3;
 use anise::prelude::*;
 
@@ -191,4 +191,40 @@ fn spice_verif_iau_moon() {
     // The Moon angular acceleration is expressed in centuries sicne J2000, where Hifitime does not suffer from rounding errors.
     assert!(rss_pos_km < 0.004);
     assert!(rss_vel_km_s < 1e-5);
+}
+
+#[test]
+fn gh_283_multi_barycenter() {
+    let almanac = MetaAlmanac::default()
+        .process(true)
+        .unwrap()
+        .load("../data/lro.bsp")
+        .unwrap();
+
+    const LRO_ID: i32 = -85;
+    let lro_frame = Frame::from_ephem_j2000(LRO_ID);
+
+    let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 1, 1);
+
+    // This state is identical in ANISE and SPICE, queried from a BSP.
+    let spice_lro_state = Orbit::new(
+        -25181236.12671419,
+        133176946.34310651,
+        57755823.14607649,
+        -31.33683951,
+        -4.57447104,
+        -1.6316696,
+        epoch,
+        SUN_J2000,
+    );
+
+    let anise_lro_state = almanac
+        .transform(lro_frame, SUN_J2000, epoch, None)
+        .unwrap();
+
+    println!("ANISE\n{anise_lro_state}\nSPICE\n{spice_lro_state}");
+    let rss_pos_km = anise_lro_state.rss_radius_km(&spice_lro_state).unwrap();
+    let rss_vel_km_s = anise_lro_state.rss_velocity_km_s(&spice_lro_state).unwrap();
+
+    dbg!(rss_pos_km, rss_vel_km_s);
 }
