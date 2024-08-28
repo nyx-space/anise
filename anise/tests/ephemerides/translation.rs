@@ -630,7 +630,7 @@ fn type9_lagrange_query() {
     use anise::constants::frames::EARTH_J2000;
     use anise::prelude::Frame;
 
-    if let Err(_) = env::var("LAGRANGE_BSP") {
+    if env::var("LAGRANGE_BSP").is_err() {
         // Skip this test if the env var is not defined.
         return;
     }
