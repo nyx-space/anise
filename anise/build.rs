@@ -28,7 +28,11 @@ fn main() {
 
     // Create the directory if it doesn't exist
     if !data_path.exists() {
-        fs::create_dir_all(&data_path).expect(&format!("failed to create directory {data_path:?}"));
+        if let Err(e) = fs::create_dir_all(&data_path) {
+            eprintln!("EMBEDDED EPHEM UNAVAILABLE: failed to create directory {data_path:?}");
+            // Try nothing else.
+            return;
+        }
     }
 
     for (url, dest_path) in embedded_files {
