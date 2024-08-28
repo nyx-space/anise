@@ -66,7 +66,7 @@ impl Almanac {
 
         match ab_corr {
             None => {
-                let (node_count, path, common_node) =
+                let (node_count, _path, common_node) =
                     self.common_ephemeris_path(observer_frame, target_frame, epoch)?;
 
                 // The fwrd variables are the states from the `from frame` to the common node
@@ -85,7 +85,7 @@ impl Almanac {
                         self.translation_parts_to_parent(target_frame, epoch)?
                     };
 
-                for cur_node_id in path.iter().take(node_count) {
+                for _ in 0..node_count {
                     if !frame_fwrd.ephem_origin_id_match(common_node) {
                         let (cur_pos_fwrd, cur_vel_fwrd, cur_frame_fwrd) =
                             self.translation_parts_to_parent(frame_fwrd, epoch)?;
@@ -102,11 +102,6 @@ impl Almanac {
                         pos_bwrd += cur_pos_bwrd;
                         vel_bwrd += cur_vel_bwrd;
                         frame_bwrd = cur_frame_bwrd;
-                    }
-
-                    // We know this exist, so we can safely unwrap it
-                    if cur_node_id.unwrap() == common_node {
-                        break;
                     }
                 }
 

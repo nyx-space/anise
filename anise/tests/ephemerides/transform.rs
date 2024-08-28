@@ -206,7 +206,19 @@ fn gh_283_multi_barycenter() {
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 1, 1);
 
-    // This state is identical in ANISE and SPICE, queried from a BSP.
+    // First, let's test that the common ephemeris path is correct
+    let (node_count, path, common_node) = almanac
+        .common_ephemeris_path(lro_frame, SUN_J2000, epoch)
+        .unwrap();
+
+    assert_eq!(common_node, 0, "common node should be the SSB");
+    assert_eq!(node_count, 3, "node count should be Moon, EMB, SSB");
+    assert_eq!(
+        path,
+        [Some(301), Some(3), Some(0), None, None, None, None, None,],
+        "node count should be Moon, EMB, SSB"
+    );
+
     let spice_lro_state = Orbit::new(
         -25181236.12671419,
         133176946.34310651,
@@ -227,4 +239,7 @@ fn gh_283_multi_barycenter() {
     let rss_vel_km_s = anise_lro_state.rss_velocity_km_s(&spice_lro_state).unwrap();
 
     dbg!(rss_pos_km, rss_vel_km_s);
+
+    assert!(rss_pos_km < f64::EPSILON);
+    assert!(rss_vel_km_s < 1e-8);
 }
