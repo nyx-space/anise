@@ -100,7 +100,7 @@ impl Display for AzElRange {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let obs = match self.obstructed_by {
             None => "none".to_string(),
-            Some(frame) => format!("{frame:o}"),
+            Some(frame) => format!("{frame:e}"),
         };
         write!(
             f,

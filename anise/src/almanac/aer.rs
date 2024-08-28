@@ -45,7 +45,7 @@ impl Almanac {
         &self,
         rx: Orbit,
         tx: Orbit,
-        obstructing_bodies: Option<Vec<Frame>>,
+        obstructing_body: Option<Frame>,
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<AzElRange> {
         if tx.epoch != rx.epoch {
@@ -63,11 +63,9 @@ impl Almanac {
         }
 
         let mut obstructed_by = None;
-        if let Some(obstructing_bodies) = obstructing_bodies {
-            for obstructing_body in obstructing_bodies {
-                if self.line_of_sight_obstructed(tx, rx, obstructing_body, ab_corr)? {
-                    obstructed_by = Some(obstructing_body);
-                }
+        if let Some(obstructing_body) = obstructing_body {
+            if self.line_of_sight_obstructed(tx, rx, obstructing_body, ab_corr)? {
+                obstructed_by = Some(obstructing_body);
             }
         }
 

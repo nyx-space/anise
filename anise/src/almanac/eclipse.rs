@@ -9,7 +9,10 @@
  */
 
 use crate::{
-    astro::Aberration, ephemerides::EphemerisPhysicsSnafu, errors::EphemerisSnafu, frames::Frame,
+    astro::Aberration,
+    ephemerides::EphemerisPhysicsSnafu,
+    errors::{AlmanacError, EphemerisSnafu},
+    frames::Frame,
     prelude::Orbit,
 };
 
@@ -56,23 +59,31 @@ impl Almanac {
         &self,
         observer: Orbit,
         observed: Orbit,
-        obstructing_body: Frame,
+        mut obstructing_body: Frame,
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<bool> {
         if observer == observed {
             return Ok(false);
         }
 
+        if obstructing_body.mean_equatorial_radius_km().is_err() {
+            obstructing_body =
+                self.frame_from_uid(obstructing_body)
+                    .map_err(|e| AlmanacError::GenericError {
+                        err: format!("{e} when fetching frame data for {obstructing_body}"),
+                    })?;
+        }
+
         let ob_mean_eq_radius_km = obstructing_body
             .mean_equatorial_radius_km()
             .context(EphemerisPhysicsSnafu {
-                action: "fetching mean equatorial radius of eclipsing body",
+                action: "fetching mean equatorial radius of obstructing body",
             })
             .context(EphemerisSnafu {
-                action: "computing eclipse state",
+                action: "computing line of sight",
             })?;
 
-        // Convert the states to the same frame as the eclipsing body (ensures we're in the same frame)
+        // Convert the states to the same frame as the obstructing body (ensures we're in the same frame)
         let r1 = self
             .transform_to(observed, obstructing_body, ab_corr)?
             .radius_km;
