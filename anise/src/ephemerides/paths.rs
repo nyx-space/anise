@@ -179,14 +179,14 @@ impl Almanac {
                         return Ok((items, common_path, to_frame.ephemeris_id));
                     }
 
+                    common_path[items] = Some(from_obj.unwrap());
+                    items += 1;
+
                     if from_obj == to_obj {
                         // This is where the paths branch meet, so the root is the parent of the current item.
                         // Recall that the path is _from_ the source to the root of the context, so we're walking them
                         // backward until we find "where" the paths branched out.
                         return Ok((items, common_path, to_obj.unwrap()));
-                    } else {
-                        common_path[items] = Some(from_obj.unwrap());
-                        items += 1;
                     }
                 }
             }
