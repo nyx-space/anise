@@ -8,8 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 
+use log::error;
+
 use crate::{
-    astro::Aberration,
+    astro::{Aberration, Occultation},
+    constants::frames::SUN_J2000,
     ephemerides::EphemerisPhysicsSnafu,
     errors::{AlmanacError, EphemerisSnafu},
     frames::Frame,
@@ -104,6 +107,174 @@ impl Almanac {
             Ok(true)
         }
     }
+
+    /// Computes the occultation percentage of the `back_frame` object by the `front_frame` object as seen from the observer, when according for the provided aberration correction.
+    ///
+    /// A zero percent occultation means that the back object is fully visible from the observer.
+    /// A 100%  percent occultation means that the back object is fully hidden from the observer because of the front frame (i.e. _umbra_ if the back object is the Sun).
+    /// A value in between means that the back object is partially hidden from the observser (i.e. _penumbra_ if the back object is the Sun).
+    /// Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse/) for modeling details.
+    pub fn occultation(
+        &self,
+        mut back_frame: Frame,
+        mut front_frame: Frame,
+        observer: Orbit,
+        ab_corr: Option<Aberration>,
+    ) -> AlmanacResult<Occultation> {
+        if back_frame.mean_equatorial_radius_km().is_err() {
+            back_frame =
+                self.frame_from_uid(back_frame)
+                    .map_err(|e| AlmanacError::GenericError {
+                        err: format!("{e} when fetching {back_frame:e} frame data"),
+                    })?;
+        }
+
+        if front_frame.mean_equatorial_radius_km().is_err() {
+            front_frame =
+                self.frame_from_uid(front_frame)
+                    .map_err(|e| AlmanacError::GenericError {
+                        err: format!("{e} when fetching {front_frame:e} frame data"),
+                    })?;
+        }
+
+        let bobj_mean_eq_radius_km = back_frame
+            .mean_equatorial_radius_km()
+            .context(EphemerisPhysicsSnafu {
+                action: "fetching mean equatorial radius of back frame",
+            })
+            .context(EphemerisSnafu {
+                action: "computing occultation state",
+            })?;
+
+        // If the back object's radius is zero, just call the line of sight algorithm
+        if bobj_mean_eq_radius_km < f64::EPSILON {
+            let observed = -self.transform_to(observer, back_frame, ab_corr)?;
+            let percentage =
+                if self.line_of_sight_obstructed(observer, observed, front_frame, ab_corr)? {
+                    100.0
+                } else {
+                    0.0
+                };
+            return Ok(Occultation {
+                percentage,
+                back_frame,
+                front_frame,
+            });
+        }
+
+        // All of the computations happen with the observer as the center.
+        // `eb` stands for front object; `ls` stands for back object.
+        // Get the radius vector of the spacecraft to the front object
+
+        let r_eb = self.transform_to(observer, front_frame, ab_corr)?.radius_km;
+
+        // Get the radius vector of the back object to the spacecraft
+        let r_ls = -self.transform_to(observer, back_frame, ab_corr)?.radius_km;
+
+        // Compute the apparent radii of the back object and front object (preventing any NaN)
+        let r_ls_prime = if bobj_mean_eq_radius_km >= r_ls.norm() {
+            bobj_mean_eq_radius_km
+        } else {
+            (bobj_mean_eq_radius_km / r_ls.norm()).asin()
+        };
+
+        let fobj_mean_eq_radius_km = front_frame
+            .mean_equatorial_radius_km()
+            .context(EphemerisPhysicsSnafu {
+                action: "fetching mean equatorial radius of front object",
+            })
+            .context(EphemerisSnafu {
+                action: "computing eclipse state",
+            })?;
+
+        let r_fobj_prime = if fobj_mean_eq_radius_km >= r_eb.norm() {
+            fobj_mean_eq_radius_km
+        } else {
+            (fobj_mean_eq_radius_km / r_eb.norm()).asin()
+        };
+
+        // Compute the apparent separation of both circles
+        let d_prime = (-(r_ls.dot(&r_eb)) / (r_eb.norm() * r_ls.norm())).acos();
+
+        if d_prime - r_ls_prime > r_fobj_prime {
+            // If the closest point where the apparent radius of the back object _starts_ is further
+            // away than the furthest point where the front object's shadow can reach, then the light
+            // source is totally visible.
+            Ok(Occultation {
+                percentage: 0.0,
+                back_frame,
+                front_frame,
+            })
+        } else if r_fobj_prime > d_prime + r_ls_prime {
+            // The back object is fully hidden by the front object, hence we're in total eclipse.
+            Ok(Occultation {
+                percentage: 100.0,
+                back_frame,
+                front_frame,
+            })
+        } else if (r_ls_prime - r_fobj_prime).abs() < d_prime && d_prime < r_ls_prime + r_fobj_prime
+        {
+            // If we have reached this point, we're in penumbra.
+            // Both circles, which represent the back object projected onto the plane and the eclipsing geoid,
+            // now overlap creating an asymmetrial lens.
+            // The following math comes from http://mathworld.wolfram.com/Circle-CircleIntersection.html
+            // and https://stackoverflow.com/questions/3349125/circle-circle-intersection-points .
+
+            // Compute the distances between the center of the eclipsing geoid and the line crossing the intersection
+            // points of both circles.
+            let d1 =
+                (d_prime.powi(2) - r_ls_prime.powi(2) + r_fobj_prime.powi(2)) / (2.0 * d_prime);
+            let d2 =
+                (d_prime.powi(2) + r_ls_prime.powi(2) - r_fobj_prime.powi(2)) / (2.0 * d_prime);
+
+            let shadow_area = circ_seg_area(r_fobj_prime, d1) + circ_seg_area(r_ls_prime, d2);
+            if shadow_area.is_nan() {
+                error!(
+                "Shadow area is NaN! Please file a bug with initial states, eclipsing bodies, etc."
+                );
+                return Ok(Occultation {
+                    percentage: 100.0,
+                    back_frame,
+                    front_frame,
+                });
+            }
+            // Compute the nominal area of the back object
+            let nominal_area = core::f64::consts::PI * r_ls_prime.powi(2);
+            // And return the percentage (between 0 and 1) of the eclipse.
+            let percentage = 100.0 * (1.0 - shadow_area / nominal_area);
+            Ok(Occultation {
+                percentage,
+                back_frame,
+                front_frame,
+            })
+        } else {
+            // Annular eclipse.
+            // If r_fobj_prime is very small, then the fraction is very small: however, we note a penumbra close to 1.0 as near full back object visibility, so let's subtract one from this.
+            let percentage = 100.0 * (1.0 - r_fobj_prime.powi(2) / r_ls_prime.powi(2));
+            Ok(Occultation {
+                percentage,
+                back_frame,
+                front_frame,
+            })
+        }
+    }
+
+    /// Computes the solar eclipsing of the observer due to the eclipsing_frame.
+    ///
+    /// This function calls `occultation` where the back object is the Sun in the J2000 frame, and the front object
+    /// is the provided eclipsing frame.
+    pub fn solar_eclipsing(
+        &self,
+        eclipsing_frame: Frame,
+        observer: Orbit,
+        ab_corr: Option<Aberration>,
+    ) -> AlmanacResult<Occultation> {
+        self.occultation(SUN_J2000, eclipsing_frame, observer, ab_corr)
+    }
+}
+// Compute the area of the circular segment of radius r and chord length d
+fn circ_seg_area(r: f64, d: f64) -> f64 {
+    r.powi(2) * (d / r).acos() - d * (r.powi(2) - d.powi(2)).sqrt()
 }
 
 #[cfg(test)]

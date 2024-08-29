@@ -27,6 +27,9 @@ pub mod utils;
 pub(crate) mod aberration;
 pub use aberration::Aberration;
 
+pub(crate) mod occultation;
+pub use occultation::Occultation;
+
 pub mod orbit;
 pub mod orbit_geodetic;
 
