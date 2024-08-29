@@ -18,8 +18,8 @@ obsrvr = '-85' # LRO
 stepsz = 5.0  # Step size in seconds
 cnfine = sp.stypes.SPICEDOUBLE_CELL(2)
 
-start_et = 757339269.1839061 # 2024-01-01T00:00:00 UTC
-end_et = 757346280.9439132 # 2024-01-01T01:56:51.760004731 UTC
+start_et = 755870469.1834258 # 2023-12-15T00:01:09.183425793 ET 
+end_et = 758030469.1841377 # 2024-01-09T00:01:09.184137727 ET
 
 # Input window
 window = sp.stypes.SPICEDOUBLE_CELL(1000)

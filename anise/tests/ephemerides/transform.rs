@@ -311,6 +311,10 @@ fn gh_283_multi_barycenter_and_los(almanac: Almanac) {
             no_obstructions += 1;
         }
 
+        // Make sure to print the LRO in the Moon TOD frame.
+        let rx_lro = almanac
+            .transform(lro_frame, IAU_MOON_FRAME, epoch, None)
+            .unwrap();
         // Compute the solar eclipsing
         let occult = almanac
             .solar_eclipsing(IAU_MOON_FRAME, rx_lro, None)

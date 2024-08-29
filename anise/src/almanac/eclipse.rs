@@ -12,7 +12,7 @@ use log::error;
 
 use crate::{
     astro::{Aberration, Occultation},
-    constants::frames::SUN_J2000,
+    constants::{frames::SUN_J2000, orientations::J2000},
     ephemerides::EphemerisPhysicsSnafu,
     errors::{AlmanacError, EphemerisSnafu},
     frames::Frame,
@@ -169,10 +169,15 @@ impl Almanac {
         // `eb` stands for front object; `ls` stands for back object.
         // Get the radius vector of the spacecraft to the front object
 
-        let r_eb = self.transform_to(observer, front_frame, ab_corr)?.radius_km;
+        // TODO: Check this.
+        let r_eb = self
+            .transform_to(observer, front_frame.with_orient(J2000), ab_corr)?
+            .radius_km;
 
         // Get the radius vector of the back object to the spacecraft
-        let r_ls = -self.transform_to(observer, back_frame, ab_corr)?.radius_km;
+        let r_ls = -self
+            .transform_to(observer, back_frame.with_orient(J2000), ab_corr)?
+            .radius_km;
 
         // Compute the apparent radii of the back object and front object (preventing any NaN)
         let r_ls_prime = if bobj_mean_eq_radius_km >= r_ls.norm() {
