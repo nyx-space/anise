@@ -146,6 +146,8 @@ impl Almanac {
                 action: "computing occultation state",
             })?;
 
+        let epoch = observer.epoch;
+
         // If the back object's radius is zero, just call the line of sight algorithm
         if bobj_mean_eq_radius_km < f64::EPSILON {
             let observed = -self.transform_to(observer, back_frame, ab_corr)?;
@@ -156,6 +158,7 @@ impl Almanac {
                     0.0
                 };
             return Ok(Occultation {
+                epoch,
                 percentage,
                 back_frame,
                 front_frame,
@@ -201,6 +204,7 @@ impl Almanac {
             // away than the furthest point where the front object's shadow can reach, then the light
             // source is totally visible.
             Ok(Occultation {
+                epoch,
                 percentage: 0.0,
                 back_frame,
                 front_frame,
@@ -208,6 +212,7 @@ impl Almanac {
         } else if r_fobj_prime > d_prime + r_ls_prime {
             // The back object is fully hidden by the front object, hence we're in total eclipse.
             Ok(Occultation {
+                epoch,
                 percentage: 100.0,
                 back_frame,
                 front_frame,
@@ -233,6 +238,7 @@ impl Almanac {
                 "Shadow area is NaN! Please file a bug with initial states, eclipsing bodies, etc."
                 );
                 return Ok(Occultation {
+                    epoch,
                     percentage: 100.0,
                     back_frame,
                     front_frame,
@@ -241,8 +247,9 @@ impl Almanac {
             // Compute the nominal area of the back object
             let nominal_area = core::f64::consts::PI * r_ls_prime.powi(2);
             // And return the percentage (between 0 and 1) of the eclipse.
-            let percentage = 100.0 * (1.0 - shadow_area / nominal_area);
+            let percentage = 100.0 * shadow_area / nominal_area;
             Ok(Occultation {
+                epoch,
                 percentage,
                 back_frame,
                 front_frame,
@@ -250,8 +257,9 @@ impl Almanac {
         } else {
             // Annular eclipse.
             // If r_fobj_prime is very small, then the fraction is very small: however, we note a penumbra close to 1.0 as near full back object visibility, so let's subtract one from this.
-            let percentage = 100.0 * (1.0 - r_fobj_prime.powi(2) / r_ls_prime.powi(2));
+            let percentage = 100.0 * r_fobj_prime.powi(2) / r_ls_prime.powi(2);
             Ok(Occultation {
+                epoch,
                 percentage,
                 back_frame,
                 front_frame,

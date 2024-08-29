@@ -281,8 +281,12 @@ fn gh_283_multi_barycenter_and_los(almanac: Almanac) {
     let obstructing_bodies = Some(MOON_J2000);
     let mut obstructions = 0;
     let mut no_obstructions = 0;
+    let mut printed_umbra = false;
+    let mut printed_visible = false;
 
-    for epoch in TimeSeries::inclusive(epoch, epoch + lro_state.period().unwrap(), 1.minutes()) {
+    let period = lro_state.period().unwrap();
+    println!("LRO period is {period}");
+    for epoch in TimeSeries::inclusive(epoch, epoch + period, 0.1.minutes()) {
         // Rebuild the ground station at this new epoch
         let tx_madrid = Orbit::try_latlongalt(
             latitude_deg,
@@ -306,8 +310,26 @@ fn gh_283_multi_barycenter_and_los(almanac: Almanac) {
         } else {
             no_obstructions += 1;
         }
+
+        // Compute the solar eclipsing
+        let occult = almanac
+            .solar_eclipsing(IAU_MOON_FRAME, rx_lro, None)
+            .unwrap();
+        if occult.is_visible() {
+            if !printed_visible {
+                println!("{occult} @ {rx_lro:x}");
+                printed_visible = true;
+            }
+        } else if occult.is_obstructed() {
+            if !printed_umbra {
+                println!("{occult} @ {rx_lro:x}");
+                printed_umbra = true;
+            }
+        } else {
+            println!("{occult}");
+        }
     }
 
-    assert_eq!(obstructions, 47);
-    assert_eq!(no_obstructions, 70);
+    assert_eq!(obstructions, 473);
+    assert_eq!(no_obstructions, 696);
 }

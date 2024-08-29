@@ -13,6 +13,7 @@ use core::fmt;
 
 use crate::{constants::celestial_objects::SUN, frames::Frame};
 
+use hifitime::Epoch;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
@@ -23,6 +24,7 @@ use pyo3::prelude::*;
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 #[cfg_attr(feature = "python", pyo3(get_all, set_all))]
 pub struct Occultation {
+    pub epoch: Epoch,
     pub percentage: f64,
     pub back_frame: Frame,
     pub front_frame: Frame,
@@ -39,28 +41,42 @@ impl Occultation {
     pub const fn is_eclipse_computation(&self) -> bool {
         self.back_frame.ephem_origin_id_match(SUN)
     }
+
+    /// Returns true if the occultation percentage is less than or equal 0.001%
+    pub fn is_visible(&self) -> bool {
+        self.percentage < 1e-3
+    }
+
+    /// Returns true if the occultation percentage is greater than or equal 99.999%
+    pub fn is_obstructed(&self) -> bool {
+        self.percentage > 99.999
+    }
 }
 
 impl fmt::Display for Occultation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_eclipse_computation() {
             // This is an eclipse computation
-            if self.percentage < 1e-3 {
-                write!(f, "no eclipse due to {:e}", self.front_frame)
-            } else if self.percentage >= 99.999 {
-                write!(f, "umbra due to {:e}", self.front_frame)
+            if self.is_visible() {
+                write!(
+                    f,
+                    "{}: no eclipse due to {:e}",
+                    self.epoch, self.front_frame
+                )
+            } else if self.is_obstructed() {
+                write!(f, "{}: umbra due to {:e}", self.epoch, self.front_frame)
             } else {
                 write!(
                     f,
-                    "penumbra of {:.3}% due to {:e}",
-                    self.percentage, self.front_frame
+                    "{}: penumbra of {:.3}% due to {:e}",
+                    self.epoch, self.percentage, self.front_frame
                 )
             }
         } else {
             write!(
                 f,
-                "{:.3}% occultation of {:e} due to {:e}",
-                self.percentage, self.front_frame, self.back_frame
+                "{}: {:.3}% occultation of {:e} due to {:e}",
+                self.epoch, self.percentage, self.front_frame, self.back_frame
             )
         }
     }
