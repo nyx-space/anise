@@ -29,7 +29,7 @@ sp.wninsd(start_et, end_et, window)
 result = sp.stypes.SPICEDOUBLE_CELL(1000)
 
 # Perform the occultation search
-sp.gfoclt(occtyp, front, fshape, fframe, back, bshape, bframe, abcorr, obsrvr, stepsz, cnfine, result)
+sp.occult(occtyp, front, fshape, fframe, back, bshape, bframe, abcorr, obsrvr, stepsz, cnfine, result)
 
 # Process and display results
 for i in range(sp.wncard(result)):

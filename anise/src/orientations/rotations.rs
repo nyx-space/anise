@@ -111,7 +111,21 @@ impl Almanac {
         }
     }
 
-    /// Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame
+    /// Rotates the provided Cartesian state into the requested observer frame
+    ///
+    /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_to` function instead to include rotations.
+    #[allow(clippy::too_many_arguments)]
+    pub fn rotate_to(
+        &self,
+        state: CartesianState,
+        observer_frame: Frame,
+    ) -> Result<CartesianState, OrientationError> {
+        let dcm = self.rotate_from_to(state.frame, observer_frame, state.epoch)?;
+
+        (dcm * state).context(OrientationPhysicsSnafu {})
+    }
+
+    /// Rotates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame
     ///
     /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_state_to` function instead to include rotations.
     #[allow(clippy::too_many_arguments)]

@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+use anise::astro::Occultation;
 use anise::constants::frames::{
     EARTH_ITRF93, IAU_EARTH_FRAME, IAU_MOON_FRAME, MOON_J2000, SUN_J2000, VENUS_J2000,
 };
@@ -286,7 +287,10 @@ fn gh_283_multi_barycenter_and_los(almanac: Almanac) {
 
     let period = lro_state.period().unwrap();
     println!("LRO period is {period}");
-    for epoch in TimeSeries::inclusive(epoch, epoch + period, 0.1.minutes()) {
+
+    let mut prev_occult: Option<Occultation> = None;
+
+    for epoch in TimeSeries::inclusive(epoch, epoch + period, 1.seconds()) {
         // Rebuild the ground station at this new epoch
         let tx_madrid = Orbit::try_latlongalt(
             latitude_deg,
@@ -312,6 +316,7 @@ fn gh_283_multi_barycenter_and_los(almanac: Almanac) {
         }
 
         // Make sure to print the LRO in the Moon TOD frame.
+        // This also checks that the rotation done in the occultation function is performed correctly.
         let rx_lro = almanac
             .transform(lro_frame, IAU_MOON_FRAME, epoch, None)
             .unwrap();
@@ -324,16 +329,38 @@ fn gh_283_multi_barycenter_and_los(almanac: Almanac) {
                 println!("{occult} @ {rx_lro:x}");
                 printed_visible = true;
             }
+            if let Some(prev_occult) = &prev_occult {
+                if prev_occult.is_partial() {
+                    assert_eq!(
+                        epoch,
+                        Epoch::from_gregorian_utc_hms(2024, 1, 1, 0, 46, 36),
+                        "wrong post-penumbra state"
+                    );
+                }
+            }
         } else if occult.is_obstructed() {
             if !printed_umbra {
                 println!("{occult} @ {rx_lro:x}");
+                assert_eq!(
+                    epoch,
+                    Epoch::from_gregorian_utc_hms(2024, 1, 1, 0, 1, 55),
+                    "wrong first umbra state"
+                );
                 printed_umbra = true;
             }
         } else {
+            if prev_occult.as_ref().unwrap().is_visible() {
+                assert_eq!(
+                    epoch,
+                    Epoch::from_gregorian_utc_hms(2024, 1, 1, 0, 1, 42),
+                    "wrong first penumbra state"
+                );
+            }
             println!("{occult}");
         }
+        prev_occult = Some(occult)
     }
 
-    assert_eq!(obstructions, 473);
-    assert_eq!(no_obstructions, 696);
+    assert_eq!(obstructions, 2841);
+    assert_eq!(no_obstructions, 4171);
 }

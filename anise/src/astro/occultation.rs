@@ -51,6 +51,11 @@ impl Occultation {
     pub fn is_obstructed(&self) -> bool {
         self.percentage > 99.999
     }
+
+    /// Returns true if neither occulted nor visible (i.e. penumbra for solar eclipsing)
+    pub fn is_partial(&self) -> bool {
+        !self.is_visible() && !self.is_obstructed()
+    }
 }
 
 impl fmt::Display for Occultation {

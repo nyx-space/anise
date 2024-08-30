@@ -14,7 +14,7 @@ use crate::{
     astro::{Aberration, Occultation},
     constants::{frames::SUN_J2000, orientations::J2000},
     ephemerides::EphemerisPhysicsSnafu,
-    errors::{AlmanacError, EphemerisSnafu},
+    errors::{AlmanacError, EphemerisSnafu, OrientationSnafu},
     frames::Frame,
     prelude::Orbit,
 };
@@ -118,7 +118,7 @@ impl Almanac {
         &self,
         mut back_frame: Frame,
         mut front_frame: Frame,
-        observer: Orbit,
+        mut observer: Orbit,
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<Occultation> {
         if back_frame.mean_equatorial_radius_km().is_err() {
@@ -169,7 +169,12 @@ impl Almanac {
         // `eb` stands for front object; `ls` stands for back object.
         // Get the radius vector of the spacecraft to the front object
 
-        // TODO: Check this.
+        // Ensure that the observer is in the J2000 frame.
+        observer = self
+            .rotate_to(observer, observer.frame.with_orient(J2000))
+            .context(OrientationSnafu {
+                action: "computing eclipse state",
+            })?;
         let r_eb = self
             .transform_to(observer, front_frame.with_orient(J2000), ab_corr)?
             .radius_km;
