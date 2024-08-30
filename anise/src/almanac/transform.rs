@@ -143,7 +143,7 @@ impl Almanac {
 
         // Compute the frame rotation
         let dcm = self
-            .rotate_from_to(from_frame, to_frame, epoch)
+            .rotate(from_frame, to_frame, epoch)
             .context(OrientationSnafu {
                 action: "transform provided state dcm",
             })?;

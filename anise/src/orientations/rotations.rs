@@ -22,6 +22,16 @@ use crate::math::Vector3;
 use crate::prelude::Frame;
 
 impl Almanac {
+    #[deprecated(since = "0.4.3", note = "replaced by `rotate` with same arguments")]
+    pub fn rotate_to_from(
+        &self,
+        from_frame: Frame,
+        to_frame: Frame,
+        epoch: Epoch,
+    ) -> Result<DCM, OrientationError> {
+        self.rotate(from_frame, to_frame, epoch)
+    }
+
     /// Returns the 6x6 DCM needed to rotation the `from_frame` to the `to_frame`.
     ///
     /// # Warning
@@ -29,7 +39,7 @@ impl Almanac {
     ///
     /// # Note
     /// This function performs a recursion of no more than twice the MAX_TREE_DEPTH.
-    pub fn rotate_from_to(
+    pub fn rotate(
         &self,
         from_frame: Frame,
         to_frame: Frame,
@@ -120,7 +130,7 @@ impl Almanac {
         state: CartesianState,
         observer_frame: Frame,
     ) -> Result<CartesianState, OrientationError> {
-        let dcm = self.rotate_from_to(state.frame, observer_frame, state.epoch)?;
+        let dcm = self.rotate(state.frame, observer_frame, state.epoch)?;
 
         (dcm * state).context(OrientationPhysicsSnafu {})
     }
@@ -140,7 +150,7 @@ impl Almanac {
         time_unit: TimeUnit,
     ) -> Result<CartesianState, OrientationError> {
         // Compute the frame translation
-        let dcm = self.rotate_from_to(from_frame, to_frame, epoch)?;
+        let dcm = self.rotate(from_frame, to_frame, epoch)?;
 
         let dist_unit_factor = LengthUnit::Kilometer.from_meters() * distance_unit.to_meters();
         let time_unit_factor = time_unit.in_seconds();
