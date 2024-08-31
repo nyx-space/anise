@@ -348,6 +348,13 @@ fn gh_283_multi_barycenter_and_los(almanac: Almanac) {
                 );
                 printed_umbra = true;
             }
+            let sun = almanac
+                .transform(SUN_J2000, MOON_J2000, epoch, None)
+                .unwrap();
+            let obstructed = almanac
+                .line_of_sight_obstructed(rx_lro, sun, MOON_J2000, None)
+                .unwrap();
+            assert!(obstructed, "{occult} but not obstructed!");
         } else {
             if prev_occult.as_ref().unwrap().is_visible() {
                 assert_eq!(
