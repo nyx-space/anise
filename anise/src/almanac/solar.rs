@@ -153,7 +153,7 @@ mod ut_solar {
 
             // Compute the Sun elevation from that point.
             let sun_elevation_deg = ctx
-                .azimuth_elevation_range_sez(sun_state, nadir_surface_point)
+                .azimuth_elevation_range_sez(sun_state, nadir_surface_point, None, None)
                 .unwrap()
                 .elevation_deg;
 

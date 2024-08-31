@@ -114,9 +114,7 @@ fn test_itrf93_to_j2k() {
 
     let epoch = Epoch::from_str("2019-03-01T04:02:51.0 ET").unwrap();
 
-    let dcm = almanac
-        .rotate_from_to(EARTH_ITRF93, EME2000, epoch)
-        .unwrap();
+    let dcm = almanac.rotate(EARTH_ITRF93, EME2000, epoch).unwrap();
 
     let spice_dcm = DCM {
         from: ITRF93,
@@ -176,9 +174,7 @@ fn test_j2k_to_itrf93() {
 
     let epoch = Epoch::from_str("2019-03-01T04:02:51.0 ET").unwrap();
 
-    let dcm = almanac
-        .rotate_from_to(EME2000, EARTH_ITRF93, epoch)
-        .unwrap();
+    let dcm = almanac.rotate(EME2000, EARTH_ITRF93, epoch).unwrap();
 
     let spice_dcm_t = DCM {
         from: ITRF93,
@@ -246,9 +242,7 @@ fn regression_test_issue_112_test_iau_moon() {
 
     let epoch = Epoch::from_str("2030-01-01 00:00:00").unwrap();
 
-    let dcm = almanac
-        .rotate_from_to(MOON_J2000, IAU_MOON_FRAME, epoch)
-        .unwrap();
+    let dcm = almanac.rotate(MOON_J2000, IAU_MOON_FRAME, epoch).unwrap();
 
     let spice_dcm = DCM {
         from: J2000,
@@ -289,7 +283,7 @@ fn regression_test_issue_112_test_iau_jupiter() {
     let epoch = Epoch::from_str("2030-01-01 00:00:00").unwrap();
 
     let dcm = almanac
-        .rotate_from_to(JUPITER_BARYCENTER_J2000, IAU_JUPITER_FRAME, epoch)
+        .rotate(JUPITER_BARYCENTER_J2000, IAU_JUPITER_FRAME, epoch)
         .unwrap();
 
     let spice_dcm = DCM {

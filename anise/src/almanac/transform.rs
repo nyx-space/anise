@@ -53,7 +53,7 @@ impl Almanac {
             })?;
         // Rotate
         let dcm = self
-            .rotate_from_to(target_frame, observer_frame, epoch)
+            .rotate(target_frame, observer_frame, epoch)
             .context(OrientationSnafu {
                 action: "transform from/to",
             })?;
@@ -83,7 +83,7 @@ impl Almanac {
 
         // Compute the frame rotation
         let dcm = self
-            .rotate_from_to(state.frame, observer_frame, state.epoch)
+            .rotate(state.frame, observer_frame, state.epoch)
             .context(OrientationSnafu {
                 action: "transform state dcm",
             })?;
@@ -143,7 +143,7 @@ impl Almanac {
 
         // Compute the frame rotation
         let dcm = self
-            .rotate_from_to(from_frame, to_frame, epoch)
+            .rotate(from_frame, to_frame, epoch)
             .context(OrientationSnafu {
                 action: "transform provided state dcm",
             })?;

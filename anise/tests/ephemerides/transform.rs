@@ -8,7 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 
-use anise::constants::frames::{EARTH_ITRF93, IAU_MOON_FRAME, MOON_J2000, SUN_J2000, VENUS_J2000};
+use anise::astro::Occultation;
+use anise::constants::frames::{
+    EARTH_ITRF93, IAU_EARTH_FRAME, IAU_MOON_FRAME, MOON_J2000, SUN_J2000, VENUS_J2000,
+};
+use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
 use anise::math::Vector3;
 use anise::prelude::*;
 
@@ -16,6 +20,31 @@ use anise::prelude::*;
 const POSITION_EPSILON_KM: f64 = 2e-5;
 // Corresponds to an error of 5e-7 meters per second, or 0.5 micrometers per second
 const VELOCITY_EPSILON_KM_S: f64 = 5e-10;
+
+use rstest::*;
+
+#[fixture]
+pub fn almanac() -> Almanac {
+    use std::path::PathBuf;
+
+    let manifest_dir =
+        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or(".".to_string()));
+
+    Almanac::new(
+        &manifest_dir
+            .clone()
+            .join("../data/de440s.bsp")
+            .to_string_lossy(),
+    )
+    .unwrap()
+    .load(
+        &manifest_dir
+            .clone()
+            .join("../data/pck08.pca")
+            .to_string_lossy(),
+    )
+    .unwrap()
+}
 
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
@@ -145,11 +174,9 @@ fn de440s_transform_verif_venus2emb() {
     spice::unload(spk_path);
 }
 
-#[test]
-fn spice_verif_iau_moon() {
+#[rstest]
+fn spice_verif_iau_moon(almanac: Almanac) {
     let _ = pretty_env_logger::try_init();
-
-    let almanac = MetaAlmanac::default().process(true).unwrap();
 
     let epoch = Epoch::from_str("2024-09-22T08:45:22 UTC").unwrap();
     // This state is identical in ANISE and SPICE, queried from a BSP.
@@ -193,13 +220,9 @@ fn spice_verif_iau_moon() {
     assert!(rss_vel_km_s < 1e-5);
 }
 
-#[test]
-fn gh_283_multi_barycenter() {
-    let almanac = MetaAlmanac::default()
-        .process(true)
-        .unwrap()
-        .load("../data/lro.bsp")
-        .unwrap();
+#[rstest]
+fn gh_283_multi_barycenter_and_los(almanac: Almanac) {
+    let almanac = almanac.load("../data/lro.bsp").unwrap();
 
     const LRO_ID: i32 = -85;
     let lro_frame = Frame::from_ephem_j2000(LRO_ID);
@@ -242,4 +265,109 @@ fn gh_283_multi_barycenter() {
 
     assert!(rss_pos_km < f64::EPSILON);
     assert!(rss_vel_km_s < 1e-8);
+
+    // Compute the line of sight via the AER computation throughout a full orbit.
+
+    // Grab the orbital period in the Moon frame
+    let lro_state = almanac
+        .transform(lro_frame, MOON_J2000, epoch, None)
+        .unwrap();
+
+    // Build the Madrid DSN gound station
+    let latitude_deg = 40.427_222;
+    let longitude_deg = 4.250_556;
+    let height_km = 0.834_939;
+    let iau_earth = almanac.frame_from_uid(IAU_EARTH_FRAME).unwrap();
+
+    let obstructing_bodies = Some(MOON_J2000);
+    let mut obstructions = 0;
+    let mut no_obstructions = 0;
+    let mut printed_umbra = false;
+    let mut printed_visible = false;
+
+    let period = lro_state.period().unwrap();
+    println!("LRO period is {period}");
+
+    let mut prev_occult: Option<Occultation> = None;
+
+    for epoch in TimeSeries::inclusive(epoch, epoch + period, 1.seconds()) {
+        // Rebuild the ground station at this new epoch
+        let tx_madrid = Orbit::try_latlongalt(
+            latitude_deg,
+            longitude_deg,
+            height_km,
+            MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
+            epoch,
+            iau_earth,
+        )
+        .unwrap();
+
+        let rx_lro = almanac
+            .transform(lro_frame, MOON_J2000, epoch, None)
+            .unwrap();
+
+        let aer = almanac
+            .azimuth_elevation_range_sez(rx_lro, tx_madrid, obstructing_bodies, None)
+            .unwrap();
+        if aer.obstructed_by.is_some() {
+            obstructions += 1;
+        } else {
+            no_obstructions += 1;
+        }
+
+        // Make sure to print the LRO in the Moon TOD frame.
+        // This also checks that the rotation done in the occultation function is performed correctly.
+        let rx_lro = almanac
+            .transform(lro_frame, IAU_MOON_FRAME, epoch, None)
+            .unwrap();
+        // Compute the solar eclipsing
+        let occult = almanac
+            .solar_eclipsing(IAU_MOON_FRAME, rx_lro, None)
+            .unwrap();
+        if occult.is_visible() {
+            if !printed_visible {
+                println!("{occult} @ {rx_lro:x}");
+                printed_visible = true;
+            }
+            if let Some(prev_occult) = &prev_occult {
+                if prev_occult.is_partial() {
+                    assert_eq!(
+                        epoch,
+                        Epoch::from_gregorian_utc_hms(2024, 1, 1, 0, 46, 36),
+                        "wrong post-penumbra state"
+                    );
+                }
+            }
+        } else if occult.is_obstructed() {
+            if !printed_umbra {
+                println!("{occult} @ {rx_lro:x}");
+                assert_eq!(
+                    epoch,
+                    Epoch::from_gregorian_utc_hms(2024, 1, 1, 0, 1, 55),
+                    "wrong first umbra state"
+                );
+                printed_umbra = true;
+            }
+            let sun = almanac
+                .transform(SUN_J2000, MOON_J2000, epoch, None)
+                .unwrap();
+            let obstructed = almanac
+                .line_of_sight_obstructed(rx_lro, sun, MOON_J2000, None)
+                .unwrap();
+            assert!(obstructed, "{occult} but not obstructed!");
+        } else {
+            if prev_occult.as_ref().unwrap().is_visible() {
+                assert_eq!(
+                    epoch,
+                    Epoch::from_gregorian_utc_hms(2024, 1, 1, 0, 1, 42),
+                    "wrong first penumbra state"
+                );
+            }
+            println!("{occult}");
+        }
+        prev_occult = Some(occult)
+    }
+
+    assert_eq!(obstructions, 2841);
+    assert_eq!(no_obstructions, 4171);
 }

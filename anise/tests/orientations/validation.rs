@@ -73,7 +73,7 @@ fn validate_iau_rotation_to_parent() {
         .enumerate()
         {
             let dcm = almanac
-                .rotate_from_to(frame.with_orient(J2000), frame, epoch)
+                .rotate(frame.with_orient(J2000), frame, epoch)
                 .unwrap();
 
             let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];
@@ -193,7 +193,7 @@ fn validate_iau_rotation_to_parent() {
 
             // Check the transpose
             let dcm_t = almanac
-                .rotate_from_to(frame, frame.with_orient(J2000), epoch)
+                .rotate(frame, frame.with_orient(J2000), epoch)
                 .unwrap();
             assert_eq!(dcm.transpose(), dcm_t);
         }
@@ -427,9 +427,7 @@ fn validate_bpc_rotations() {
     )
     .enumerate()
     {
-        let dcm = almanac
-            .rotate_from_to(EARTH_ITRF93, EME2000, epoch)
-            .unwrap();
+        let dcm = almanac.rotate(EARTH_ITRF93, EME2000, epoch).unwrap();
 
         let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];
         unsafe {
@@ -572,7 +570,7 @@ fn validate_bpc_to_iau_rotations() {
         IAU_SATURN_FRAME,
     ] {
         for (num, epoch) in TimeSeries::inclusive(start, end, 27.days()).enumerate() {
-            let dcm = almanac.rotate_from_to(EARTH_ITRF93, frame, epoch).unwrap();
+            let dcm = almanac.rotate(EARTH_ITRF93, frame, epoch).unwrap();
 
             let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];
             let spice_name = format!("{frame:o}");
@@ -714,7 +712,7 @@ fn validate_bpc_to_iau_rotations() {
             }
 
             // Grab the transposed DCM
-            let dcm_t = almanac.rotate_from_to(frame, EARTH_ITRF93, epoch).unwrap();
+            let dcm_t = almanac.rotate(frame, EARTH_ITRF93, epoch).unwrap();
 
             let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];
             unsafe {

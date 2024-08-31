@@ -9,9 +9,10 @@
  */
 
 use crate::{
-    astro::AzElRange,
+    astro::{Aberration, AzElRange},
     ephemerides::{EphemerisError, EphemerisPhysicsSnafu},
     errors::{AlmanacError, EphemerisSnafu, PhysicsError},
+    frames::Frame,
     math::angles::{between_0_360, between_pm_180},
     prelude::Orbit,
 };
@@ -32,14 +33,21 @@ impl Almanac {
     /// receiver state (`rx`) seen from the transmitter state (`tx`), once converted into the SEZ frame of the transmitter.
     ///
     /// # Algorithm
-    /// 1. Compute the SEZ (South East Zenith) frame of the transmitter.
-    /// 2. Rotate the receiver position vector into the transmitter SEZ frame.
-    /// 3. Rotate the transmitter position vector into that same SEZ frame.
-    /// 4. Compute the range as the norm of the difference between these two position vectors.
-    /// 5. Compute the elevation, and ensure it is between +/- 180 degrees.
-    /// 6. Compute the azimuth with a quadrant check, and ensure it is between 0 and 360 degrees.
+    /// 1. If any obstructing_bodies are provided, ensure that none of these are obstructing the line of sight between the receiver and transmitter.
+    /// 2. Compute the SEZ (South East Zenith) frame of the transmitter.
+    /// 3. Rotate the receiver position vector into the transmitter SEZ frame.
+    /// 4. Rotate the transmitter position vector into that same SEZ frame.
+    /// 5. Compute the range as the norm of the difference between these two position vectors.
+    /// 6. Compute the elevation, and ensure it is between +/- 180 degrees.
+    /// 7. Compute the azimuth with a quadrant check, and ensure it is between 0 and 360 degrees.
     ///
-    pub fn azimuth_elevation_range_sez(&self, rx: Orbit, tx: Orbit) -> AlmanacResult<AzElRange> {
+    pub fn azimuth_elevation_range_sez(
+        &self,
+        rx: Orbit,
+        tx: Orbit,
+        obstructing_body: Option<Frame>,
+        ab_corr: Option<Aberration>,
+    ) -> AlmanacResult<AzElRange> {
         if tx.epoch != rx.epoch {
             return Err(AlmanacError::Ephemeris {
                 action: "",
@@ -52,6 +60,13 @@ impl Almanac {
                     },
                 }),
             });
+        }
+
+        let mut obstructed_by = None;
+        if let Some(obstructing_body) = obstructing_body {
+            if self.line_of_sight_obstructed(tx, rx, obstructing_body, ab_corr)? {
+                obstructed_by = Some(obstructing_body);
+            }
         }
 
         // Compute the SEZ DCM
@@ -71,7 +86,7 @@ impl Almanac {
             })?;
 
         // Convert the receiver into the transmitter frame.
-        let rx_in_tx_frame = self.transform_to(rx, tx.frame, None)?;
+        let rx_in_tx_frame = self.transform_to(rx, tx.frame, ab_corr)?;
         // Convert into SEZ frame
         let rx_sez = (sez_dcm.transpose() * rx_in_tx_frame)
             .context(EphemerisPhysicsSnafu { action: "" })
@@ -103,6 +118,7 @@ impl Almanac {
             elevation_deg,
             range_km: rho_sez.norm(),
             range_rate_km_s,
+            obstructed_by,
         })
     }
 }
@@ -137,7 +153,7 @@ mod ut_aer {
         .unwrap();
 
         let aer = almanac
-            .azimuth_elevation_range_sez(ground_station, ground_station)
+            .azimuth_elevation_range_sez(ground_station, ground_station, None, None)
             .unwrap();
 
         assert!(!aer.is_valid());
@@ -234,13 +250,15 @@ mod ut_aer {
             )
             .unwrap();
 
-            let aer = almanac.azimuth_elevation_range_sez(*state, madrid).unwrap();
+            let aer = almanac
+                .azimuth_elevation_range_sez(*state, madrid, None, None)
+                .unwrap();
 
             if sno == 0 {
                 assert_eq!(
                     format!("{aer}"),
                     format!(
-                        "{}: az.: 133.599990 deg    el.: 7.237568 deg    range: 91457.271742 km    range-rate: -12.396849 km/s",
+                        "{}: az.: 133.599990 deg    el.: 7.237568 deg    range: 91457.271742 km    range-rate: -12.396849 km/s    obstruction: none",
                         state.epoch
                     )
                 );

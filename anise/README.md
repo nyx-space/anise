@@ -112,7 +112,7 @@ use anise::constants::frames::*;
 let epoch = Epoch::from_str("2020-11-15 12:34:56.789 TDB").unwrap();
 
 // Query for the DCM
-let dcm = almanac.rotate_from_to(EARTH_ITRF93, EME2000, epoch).unwrap();
+let dcm = almanac.rotate(EARTH_ITRF93, EME2000, epoch).unwrap();
 
 println!("{dcm}");
 ```
