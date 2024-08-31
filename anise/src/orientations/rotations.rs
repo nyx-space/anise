@@ -22,16 +22,6 @@ use crate::math::Vector3;
 use crate::prelude::Frame;
 
 impl Almanac {
-    #[deprecated(since = "0.4.3", note = "replaced by `rotate` with same arguments")]
-    pub fn rotate_to_from(
-        &self,
-        from_frame: Frame,
-        to_frame: Frame,
-        epoch: Epoch,
-    ) -> Result<DCM, OrientationError> {
-        self.rotate(from_frame, to_frame, epoch)
-    }
-
     /// Returns the 6x6 DCM needed to rotation the `from_frame` to the `to_frame`.
     ///
     /// # Warning
