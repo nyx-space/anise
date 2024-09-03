@@ -149,7 +149,7 @@ impl MetaFile {
                                                         self.uri = dest_path_s;
                                                         return Ok(());
                                                     } else {
-                                                        info!("Discarding cached {dest_path_s} - CRC32 differ (got {computed_crc32}, config expected {crc32})");
+                                                        info!("Discarding cached {dest_path_s} - CRC32 differ (got {computed_crc32:x}, expected {crc32:x})");
                                                     }
                                                 }
                                             }

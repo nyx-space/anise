@@ -241,14 +241,14 @@ impl Default for MetaAlmanac {
                 },
                 MetaFile {
                     uri: nyx_cloud_stor.join("v0.4/moon_fk.epa").unwrap().to_string(),
-                    crc32: Some(0x1175bd92),
+                    crc32: Some(0xb93ba21),
                 },
                 MetaFile {
                     uri: nyx_cloud_stor
                         .join("moon_pa_de440_200625.bpc")
                         .unwrap()
                         .to_string(),
-                    crc32: Some(0x6c58ce0a),
+                    crc32: Some(0xcde5ca7d),
                 },
                 MetaFile {
                     uri: jpl_cloud_stor
