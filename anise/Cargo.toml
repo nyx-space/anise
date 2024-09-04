@@ -45,7 +45,7 @@ regex = { version = "1.10.5", optional = true }
 
 [dev-dependencies]
 rust-spice = "0.7.6"
-parquet = "52.0.0"
+parquet = "53.0.0"
 arrow = "52.0.0"
 criterion = "0.5"
 iai = "0.1"
