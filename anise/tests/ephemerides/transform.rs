@@ -174,7 +174,7 @@ fn de440s_transform_verif_venus2emb() {
     spice::unload(spk_path);
 
     // Finally, check that ANISE's SPKEZR works as expected.
-    let state_ezr = almanac.spkezr(EARTH, epoch, ITRF93, VENUS, None).unwrap();
+    let state_ezr = almanac.spk_ezr(EARTH, epoch, ITRF93, VENUS, None).unwrap();
     assert_eq!(state_ezr, state_rtn);
 }
 

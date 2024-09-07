@@ -236,7 +236,7 @@ pub mod orientations {
     pub const J2000_TO_ECLIPJ2000_ANGLE_RAD: f64 = 0.40909280422232897;
 
     /// Given the frame ID, try to return a human name
-    /// Source: // https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/frames.html#Appendix.%20%60%60Built%20in''%20Inertial%20Reference%20Frames
+    /// Source: <https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/frames.html#Appendix.%20%60%60Built%20in''%20Inertial%20Reference%20Frames>
     pub const fn orientation_name_from_id(id: NaifId) -> Option<&'static str> {
         match id {
             J2000 => Some("J2000"),

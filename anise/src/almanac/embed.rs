@@ -16,7 +16,7 @@ struct AstroData;
 impl Almanac {
     /// Provides planetary ephemerides from 2024-01-01 until 2035-01-01. Also provides planetary constants data (from the PCK11 kernel).
     ///
-    /// Until https://github.com/nyx-space/anise/issues/269, this will provide 100 years of data
+    /// Until <https://github.com/nyx-space/anise/issues/269>, this will provide 100 years of data
     pub fn until_2035() -> AlmanacResult<Self> {
         // Regularly refer to https://github.com/nyx-space/anise/blob/master/data/ci_config.dhall for the latest CRC, although it should not change between minor versions!
         let pck11 = AstroData::get("pck11.pca").ok_or(AlmanacError::GenericError {

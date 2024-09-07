@@ -75,6 +75,11 @@ jobs:
           cd anise # Build only the Rust library
           cargo build --features embed_ephem
           cargo build --features embed_ephem --release
+          # Clean up the data folder as if we were on docsrs
+          cp data/.cargokeep .
+          rm -rf data/
+          mkdir data && mv .cargokeep data/.cargokeep
+          cargo doc --features embed_ephem
 
   lints:
     name: Lints

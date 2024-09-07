@@ -34,7 +34,7 @@ pub const MAX_NUT_PREC_ANGLES: usize = 32;
 /// ANISE supports two different kinds of orientation data. High precision, with spline based interpolations, and constants right ascension, declination, and prime meridian, typically used for planetary constant data.
 ///
 /// # Documentation of rotation angles
-/// Source: https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/pck.html#Models%20for%20the%20Sun,%20Planets,%20and%20some%20Minor%20Bodies%20in%20Text%20PCK%20Kernels
+/// Source: <https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/pck.html#Models%20for%20the%20Sun,%20Planets,%20and%20some%20Minor%20Bodies%20in%20Text%20PCK%20Kernels>
 ///  The angles RA, DEC, and W are defined as follows:
 ///
 /// ```text

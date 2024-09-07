@@ -111,7 +111,7 @@ impl Almanac {
 
     /// Alias fo SPICE's `spkezr` where the inputs must be the NAIF IDs of the objects and frames with the caveat that the aberration is moved to the last positional argument.
     ///
-    pub fn spkezr(
+    pub fn spk_ezr(
         &self,
         target: NaifId,
         epoch: Epoch,
