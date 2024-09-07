@@ -436,7 +436,10 @@ mod daf_ut {
     use crate::{
         errors::IntegrityError,
         file2heap,
-        naif::daf::{datatypes::HermiteSetType13, DAFError},
+        naif::{
+            daf::{datatypes::HermiteSetType13, file_record::FileRecordError, DAFError},
+            BPC,
+        },
         prelude::SPK,
     };
 
@@ -499,6 +502,26 @@ mod daf_ut {
             // We cannot user assert_eq! because the NAIF Data Set do not (and should not) impl Debug
             // These data sets are the full record!
             panic!("nth data test failed");
+        }
+    }
+
+    #[test]
+    fn load_big_endian() {
+        // Ensure this fails
+        assert_eq!(
+            SPK::load("../data/gmat-hermite-big-endian.bsp"),
+            Err(DAFError::FileRecord {
+                kind: "SPKSummaryRecord",
+                source: FileRecordError::WrongEndian
+            })
+        );
+
+        // Now ensure the error is correctly printed
+        if let Err(e) = BPC::load("../data/gmat-hermite-big-endian.bsp") {
+            assert_eq!(
+                format!("{e}"),
+                "DAF/BPCSummaryRecord: file record issue: endian of file does not match the endian order of the machine".to_string()
+            );
         }
     }
 }

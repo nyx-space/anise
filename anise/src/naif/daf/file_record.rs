@@ -21,21 +21,24 @@ use super::NAIFRecord;
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
 pub enum FileRecordError {
-    /// Endian of file does not match the endian order of the machine
+    #[snafu(display("issue: endian of file does not match the endian order of the machine"))]
     WrongEndian,
-    /// Could not parse the endian flag or internal filename as a UTF8 string
+    #[snafu(display("endian flag or internal filename is not a valid UTF8 string: {source:?}"))]
     ParsingError {
         source: Utf8Error,
     },
-    /// Endian flag should be either `BIG-IEEE` or `LTL-IEEE`
+    #[snafu(display("endian flag is `{read}` but it should be either `BIG-IEEE` or `LTL-IEEE`"))]
     InvalidEndian {
         read: String,
     },
     UnsupportedIdentifier {
         loci: String,
     },
+    #[snafu(display("indicates this is not a SPICE DAF file"))]
     NotDAF,
+    #[snafu(display("has no identifier"))]
     NoIdentifier,
+    #[snafu(display("is empty (ensure file is valid, e.g. do you need to run git-lfs)"))]
     EmptyRecord,
 }
 
