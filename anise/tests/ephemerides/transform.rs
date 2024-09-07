@@ -9,9 +9,11 @@
  */
 
 use anise::astro::Occultation;
+use anise::constants::celestial_objects::{EARTH, VENUS};
 use anise::constants::frames::{
-    EARTH_ITRF93, IAU_EARTH_FRAME, IAU_MOON_FRAME, MOON_J2000, SUN_J2000, VENUS_J2000,
+    EARTH_ITRF93, EARTH_J2000, IAU_EARTH_FRAME, IAU_MOON_FRAME, MOON_J2000, SUN_J2000, VENUS_J2000,
 };
+use anise::constants::orientations::ITRF93;
 use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
 use anise::math::Vector3;
 use anise::prelude::*;
@@ -100,78 +102,80 @@ fn de440s_transform_verif_venus2emb() {
         vel_expct_km_s - state.velocity_km_s
     );
 
-    // TODO https://github.com/nyx-space/anise/issues/130
-    // Test the opposite translation
-    // let state_rtn = almanac
-    //     .transform(EARTH_ITRF93, VENUS_J2000, epoch, None)
-    //     .unwrap();
+    let state_rtn = almanac
+        .transform(EARTH_J2000, Frame::new(VENUS, ITRF93), epoch, None)
+        .unwrap();
 
-    // println!("state = {state}");
-    // println!("state_rtn = {state_rtn}");
+    println!("state = {state}");
+    println!("state_rtn = {state_rtn}");
 
-    // let (spice_state, _) = spice::spkezr("EARTH", epoch.to_et_seconds(), "ITRF93", "NONE", "VENUS");
+    let (spice_state, _) = spice::spkezr("EARTH", epoch.to_et_seconds(), "ITRF93", "NONE", "VENUS");
 
-    // let pos_rtn_expct_km = Vector3::new(spice_state[0], spice_state[1], spice_state[2]);
-    // let vel_rtn_expct_km_s = Vector3::new(spice_state[3], spice_state[4], spice_state[5]);
+    let pos_rtn_expct_km = Vector3::new(spice_state[0], spice_state[1], spice_state[2]);
+    let vel_rtn_expct_km_s = Vector3::new(spice_state[3], spice_state[4], spice_state[5]);
 
-    // dbg!(pos_expct_km + pos_rtn_expct_km);
-    // dbg!(vel_expct_km_s + vel_rtn_expct_km_s);
+    dbg!(pos_expct_km + pos_rtn_expct_km);
+    dbg!(vel_expct_km_s + vel_rtn_expct_km_s);
 
-    // dbg!(pos_expct_km + state_rtn.radius_km);
-    // dbg!(pos_rtn_expct_km - state_rtn.radius_km);
-    // dbg!(vel_expct_km_s + state_rtn.velocity_km_s);
-    // dbg!(vel_rtn_expct_km_s - state_rtn.velocity_km_s);
+    dbg!(pos_expct_km + state_rtn.radius_km);
+    dbg!(pos_rtn_expct_km - state_rtn.radius_km);
+    dbg!(vel_expct_km_s + state_rtn.velocity_km_s);
+    dbg!(vel_rtn_expct_km_s - state_rtn.velocity_km_s);
 
-    // assert!(
-    //     relative_eq!(
-    //         state_rtn.radius_km,
-    //         -pos_expct_km,
-    //         epsilon = POSITION_EPSILON_KM
-    //     ),
-    //     "pos = {}\nexp = {pos_expct_km}\nerr = {:e}",
-    //     state_rtn.radius_km,
-    //     pos_expct_km + state_rtn.radius_km
-    // );
+    assert!(
+        relative_eq!(
+            state_rtn.radius_km,
+            pos_rtn_expct_km,
+            epsilon = POSITION_EPSILON_KM
+        ),
+        "pos = {}\nexp = {pos_rtn_expct_km}\nerr = {:e}",
+        state_rtn.radius_km,
+        pos_rtn_expct_km - state_rtn.radius_km
+    );
 
-    // assert!(
-    //     relative_eq!(
-    //         state.velocity_km_s,
-    //         -vel_expct_km_s,
-    //         epsilon = VELOCITY_EPSILON_KM_S
-    //     ),
-    //     "vel = {}\nexp = {vel_expct_km_s}\nerr = {:e}",
-    //     state.velocity_km_s,
-    //     vel_expct_km_s + state.velocity_km_s
-    // );
+    assert!(
+        relative_eq!(
+            state_rtn.velocity_km_s,
+            vel_rtn_expct_km_s,
+            epsilon = VELOCITY_EPSILON_KM_S
+        ),
+        "vel = {}\nexp = {vel_rtn_expct_km_s}\nerr = {:e}",
+        state_rtn.velocity_km_s,
+        vel_rtn_expct_km_s - state.velocity_km_s
+    );
 
-    // // Check that the return state is exactly opposite to the forward state
-    // assert!(
-    //     relative_eq!(
-    //         state_rtn.radius_km,
-    //         -state.radius_km,
-    //         epsilon = core::f64::EPSILON
-    //     ),
-    //     "pos = {}\nexp = {}\nerr = {:e}",
-    //     state_rtn.radius_km,
-    //     -state.radius_km,
-    //     state_rtn.radius_km - state.radius_km
-    // );
+    // Check that the return state is exactly opposite to the forward state
+    assert!(
+        relative_eq!(
+            state_rtn.radius_km,
+            -state.radius_km,
+            epsilon = core::f64::EPSILON
+        ),
+        "pos = {}\nexp = {}\nerr = {:e}",
+        state_rtn.radius_km,
+        -state.radius_km,
+        state_rtn.radius_km - state.radius_km
+    );
 
-    // assert!(
-    //     relative_eq!(
-    //         state_rtn.velocity_km_s,
-    //         -state.velocity_km_s,
-    //         epsilon = core::f64::EPSILON
-    //     ),
-    //     "vel = {}\nexp = {}\nerr = {:e}",
-    //     state.velocity_km_s,
-    //     -state_rtn.velocity_km_s,
-    //     state.velocity_km_s - state_rtn.velocity_km_s,
-    // );
+    assert!(
+        relative_eq!(
+            state_rtn.velocity_km_s,
+            -state.velocity_km_s,
+            epsilon = core::f64::EPSILON
+        ),
+        "vel = {}\nexp = {}\nerr = {:e}",
+        state.velocity_km_s,
+        -state_rtn.velocity_km_s,
+        state.velocity_km_s - state_rtn.velocity_km_s,
+    );
 
     // Unload spice
     spice::unload(bpc_path);
     spice::unload(spk_path);
+
+    // Finally, check that ANISE's SPKEZR works as expected.
+    let state_ezr = almanac.spkezr(EARTH, epoch, ITRF93, VENUS, None).unwrap();
+    assert_eq!(state_ezr, state_rtn);
 }
 
 #[rstest]
