@@ -425,12 +425,73 @@ impl Orbit {
     /// 2. Compute the cross product of these
     /// 3. Build the DCM with these unit vectors
     /// 4. Return the DCM structure
-    pub fn dcm_from_rcn_to_inertial(&self) -> PhysicsResult<DCM> {
+    pub fn dcm3x3_from_rcn_to_inertial(&self) -> PhysicsResult<DCM> {
         let r = self.r_hat();
         let n = self.hvec()? / self.hmag()?;
         let c = n.cross(&r);
         let rot_mat =
             Matrix3::new(r[0], r[1], r[2], c[0], c[1], c[2], n[0], n[1], n[2]).transpose();
+
+        Ok(DCM {
+            rot_mat,
+            rot_mat_dt: None,
+            from: uuid_from_epoch(self.frame.orientation_id, self.epoch),
+            to: self.frame.orientation_id,
+        })
+    }
+
+    /// Builds the rotation matrix that rotates from this state's inertial frame to this state's RCN frame (radial, cross, normal)
+    ///
+    /// # Frame warning
+    /// If the stattion is NOT in an inertial frame, then this computation is INVALID.
+    ///
+    /// # Algorithm
+    /// 1. Compute \hat{r}, \hat{h}, the unit vectors of the radius and orbital momentum.
+    /// 2. Compute the cross product of these
+    /// 3. Build the DCM with these unit vectors
+    /// 4. Return the DCM structure with a 6x6 DCM with the time derivative of the VNC frame set.
+    ///
+    /// # Note on the time derivative
+    /// If the pre or post states cannot be computed, then the time derivative of the DCM will _not_ be set.
+    /// Further note that most astrodynamics tools do *not* account for the time derivative in the RIC frame.
+    pub fn dcm_from_rcn_to_inertial(&self) -> PhysicsResult<DCM> {
+        let rot_mat_dt = if let Ok(pre) = self.at_epoch(self.epoch - Unit::Millisecond * 1) {
+            if let Ok(post) = self.at_epoch(self.epoch + Unit::Millisecond * 1) {
+                let dcm_pre = pre.dcm3x3_from_rcn_to_inertial()?;
+                let dcm_post = post.dcm3x3_from_rcn_to_inertial()?;
+                Some(0.5 * dcm_post.rot_mat - 0.5 * dcm_pre.rot_mat)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        Ok(DCM {
+            rot_mat: self.dcm3x3_from_rcn_to_inertial()?.rot_mat,
+            rot_mat_dt,
+            from: uuid_from_epoch(self.frame.orientation_id, self.epoch),
+            to: self.frame.orientation_id,
+        })
+    }
+
+    /// Builds the rotation matrix that rotates from this state's inertial frame to this state's VNC frame (velocity, normal, cross)
+    ///
+    /// # Frame warning
+    /// If the stattion is NOT in an inertial frame, then this computation is INVALID.
+    ///
+    /// # Algorithm
+    /// 1. Compute \hat{v}, \hat{h}, the unit vectors of the radius and orbital momentum.
+    /// 2. Compute the cross product of these
+    /// 3. Build the DCM with these unit vectors
+    /// 4. Return the DCM structure.
+    ///
+    pub fn dcm3x3_from_vnc_to_inertial(&self) -> PhysicsResult<DCM> {
+        let v = self.velocity_km_s / self.vmag_km_s();
+        let n = self.hvec()? / self.hmag()?;
+        let c = v.cross(&n);
+        let rot_mat =
+            Matrix3::new(v[0], v[1], v[2], n[0], n[1], n[2], c[0], c[1], c[2]).transpose();
 
         Ok(DCM {
             rot_mat,
@@ -449,17 +510,28 @@ impl Orbit {
     /// 1. Compute \hat{v}, \hat{h}, the unit vectors of the radius and orbital momentum.
     /// 2. Compute the cross product of these
     /// 3. Build the DCM with these unit vectors
-    /// 4. Return the DCM structure
+    /// 4. Compute the difference between the DCMs of the pre and post states (+/- 1 ms), to build the DCM time derivative
+    /// 4. Return the DCM structure with a 6x6 DCM with the time derivative of the VNC frame set.
+    ///
+    /// # Note on the time derivative
+    /// If the pre or post states cannot be computed, then the time derivative of the DCM will _not_ be set.
+    /// Further note that most astrodynamics tools do *not* account for the time derivative in the RIC frame.
     pub fn dcm_from_vnc_to_inertial(&self) -> PhysicsResult<DCM> {
-        let v = self.velocity_km_s / self.vmag_km_s();
-        let n = self.hvec()? / self.hmag()?;
-        let c = v.cross(&n);
-        let rot_mat =
-            Matrix3::new(v[0], v[1], v[2], n[0], n[1], n[2], c[0], c[1], c[2]).transpose();
+        let rot_mat_dt = if let Ok(pre) = self.at_epoch(self.epoch - Unit::Millisecond * 1) {
+            if let Ok(post) = self.at_epoch(self.epoch + Unit::Millisecond * 1) {
+                let dcm_pre = pre.dcm3x3_from_vnc_to_inertial()?;
+                let dcm_post = post.dcm3x3_from_vnc_to_inertial()?;
+                Some(0.5 * dcm_post.rot_mat - 0.5 * dcm_pre.rot_mat)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
 
         Ok(DCM {
-            rot_mat,
-            rot_mat_dt: None,
+            rot_mat: self.dcm3x3_from_vnc_to_inertial()?.rot_mat,
+            rot_mat_dt,
             from: uuid_from_epoch(self.frame.orientation_id, self.epoch),
             to: self.frame.orientation_id,
         })
@@ -1107,6 +1179,23 @@ impl Orbit {
         let self_in_ric = (self.dcm_from_ric_to_inertial()?.transpose() * self)?;
         let other_in_ric = (self.dcm_from_ric_to_inertial()?.transpose() * other)?;
         let mut rslt = (self_in_ric - other_in_ric)?;
+        rslt.frame.strip();
+        Ok(rslt)
+    }
+
+    /// Returns a Cartesian state representing the VNC difference between self and other, in position and velocity (with transport theorem).
+    /// Refer to dcm_from_vnc_to_inertial for details on the VNC frame.
+    ///
+    /// # Algorithm
+    /// 1. Compute the VNC DCM of self
+    /// 2. Rotate self into the VNC frame
+    /// 3. Rotation other into the VNC frame
+    /// 4. Compute the difference between these two states
+    /// 5. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`
+    pub fn vnc_difference(&self, other: &Self) -> PhysicsResult<Self> {
+        let self_in_vnc = (self.dcm_from_vnc_to_inertial()?.transpose() * self)?;
+        let other_in_vnc = (self.dcm_from_vnc_to_inertial()?.transpose() * other)?;
+        let mut rslt = (self_in_vnc - other_in_vnc)?;
         rslt.frame.strip();
         Ok(rslt)
     }

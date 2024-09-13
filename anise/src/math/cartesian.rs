@@ -8,11 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::{perp_vector, root_mean_squared, Vector3};
+use super::{perp_vector, root_mean_squared, root_sum_squared, Vector3};
 use crate::{
     astro::PhysicsResult,
     constants::SPEED_OF_LIGHT_KM_S,
-    errors::{EpochMismatchSnafu, FrameMismatchSnafu, PhysicsError},
+    errors::{EpochMismatchSnafu, FrameMismatchSnafu, MathError, PhysicsError},
     prelude::Frame,
 };
 
@@ -253,11 +253,39 @@ impl CartesianState {
                 frame2: other.frame
             }
         );
-        Ok(root_mean_squared(&self.radius_km, &other.radius_km))
+        Ok(root_sum_squared(&self.radius_km, &other.radius_km))
     }
 
     /// Returns the root mean squared (RSS) velocity difference between this state and another state, if both frames match (epoch does not need to match)
     pub fn rss_velocity_km_s(&self, other: &Self) -> PhysicsResult<f64> {
+        ensure!(
+            self.frame.ephem_origin_match(other.frame)
+                && self.frame.orient_origin_match(other.frame),
+            FrameMismatchSnafu {
+                action: "computing velocity RSS",
+                frame1: self.frame,
+                frame2: other.frame
+            }
+        );
+        Ok(root_sum_squared(&self.velocity_km_s, &other.velocity_km_s))
+    }
+
+    /// Returns the root sum squared (RMS) radius difference between this state and another state, if both frames match (epoch does not need to match)
+    pub fn rms_radius_km(&self, other: &Self) -> PhysicsResult<f64> {
+        ensure!(
+            self.frame.ephem_origin_match(other.frame)
+                && self.frame.orient_origin_match(other.frame),
+            FrameMismatchSnafu {
+                action: "computing radius RSS",
+                frame1: self.frame,
+                frame2: other.frame
+            }
+        );
+        Ok(root_mean_squared(&self.radius_km, &other.radius_km))
+    }
+
+    /// Returns the root sum squared (RMS) velocity difference between this state and another state, if both frames match (epoch does not need to match)
+    pub fn rms_velocity_km_s(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
             self.frame.ephem_origin_match(other.frame)
                 && self.frame.orient_origin_match(other.frame),
@@ -286,6 +314,81 @@ impl CartesianState {
     /// Returns the light time duration between this object and the origin of its reference frame.
     pub fn light_time(&self) -> Duration {
         (self.radius_km.norm() / SPEED_OF_LIGHT_KM_S).seconds()
+    }
+
+    /// Returns the absolute position difference in kilometer between this orbit and another.
+    /// Raises an error if the frames do not match (epochs do not need to match).
+    pub fn abs_pos_diff_km(&self, other: &Self) -> PhysicsResult<f64> {
+        ensure!(
+            self.frame.ephem_origin_match(other.frame)
+                && self.frame.orient_origin_match(other.frame),
+            FrameMismatchSnafu {
+                action: "computing velocity RSS",
+                frame1: self.frame,
+                frame2: other.frame
+            }
+        );
+
+        Ok((self.radius_km - other.radius_km).norm())
+    }
+
+    /// Returns the absolute velocity difference in kilometer per second between this orbit and another.
+    /// Raises an error if the frames do not match (epochs do not need to match).
+    pub fn abs_vel_diff_km_s(&self, other: &Self) -> PhysicsResult<f64> {
+        ensure!(
+            self.frame.ephem_origin_match(other.frame)
+                && self.frame.orient_origin_match(other.frame),
+            FrameMismatchSnafu {
+                action: "computing velocity RSS",
+                frame1: self.frame,
+                frame2: other.frame
+            }
+        );
+
+        Ok((self.velocity_km_s - other.velocity_km_s).norm())
+    }
+
+    /// Returns the absolute position and velocity differences in km and km/s between this orbit and another.
+    /// Raises an error if the frames do not match (epochs do not need to match).
+    pub fn abs_difference(&self, other: &Self) -> PhysicsResult<(f64, f64)> {
+        Ok((self.abs_pos_diff_km(other)?, self.abs_vel_diff_km_s(other)?))
+    }
+
+    /// Returns the relative position difference (unitless) between this orbit and another.
+    /// This is computed by dividing the absolute difference by the norm of this object's radius vector.
+    /// If the radius is zero, this function raises a math error.
+    /// Raises an error if the frames do not match or  (epochs do not need to match).
+    pub fn rel_pos_diff(&self, other: &Self) -> PhysicsResult<f64> {
+        if self.rmag_km() <= f64::EPSILON {
+            return Err(PhysicsError::AppliedMath {
+                source: MathError::DivisionByZero {
+                    action: "computing relative position difference",
+                },
+            });
+        }
+
+        Ok(self.abs_pos_diff_km(other)? / self.rmag_km())
+    }
+
+    /// Returns the absolute velocity difference in kilometer per second between this orbit and another.
+    /// Raises an error if the frames do not match (epochs do not need to match).
+    pub fn rel_vel_diff(&self, other: &Self) -> PhysicsResult<f64> {
+        if self.vmag_km_s() <= f64::EPSILON {
+            return Err(PhysicsError::AppliedMath {
+                source: MathError::DivisionByZero {
+                    action: "computing relative velocity difference",
+                },
+            });
+        }
+
+        Ok(self.abs_vel_diff_km_s(other)? / self.vmag_km_s())
+    }
+
+    /// Returns the relative difference between this orbit and another for the position and velocity, respectively the first and second return values.
+    /// Both return values are UNITLESS because the relative difference is computed as the absolute difference divided by the rmag and vmag of this object.
+    /// Raises an error if the frames do not match, if the position is zero or the velocity is zero.
+    pub fn rel_difference(&self, other: &Self) -> PhysicsResult<(f64, f64)> {
+        Ok((self.rel_pos_diff(other)?, self.rel_vel_diff(other)?))
     }
 }
 

@@ -4,6 +4,7 @@ use anise::astro::orbit::Orbit;
 use anise::constants::frames::EARTH_J2000;
 use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
 use anise::math::angles::{between_0_360, between_pm_180};
+use anise::math::Vector3;
 use anise::prelude::*;
 use anise::time::{Epoch, Unit};
 
@@ -134,6 +135,10 @@ fn val_state_def_circ_inc(almanac: Almanac) {
         8_191.929_999_991_808,
         "semi parameter"
     );
+    let kep = Orbit::keplerian(
+        8_191.93, 0.2, 12.85, 306.614, 314.19, -99.887_7, epoch, eme2k,
+    );
+    f64_eq!(kep.ta_deg().unwrap(), 260.1123, "ta");
 
     let ric_delta = kep.ric_difference(&kep).unwrap();
     // Check that the frame is stripped
@@ -151,13 +156,80 @@ fn val_state_def_circ_inc(almanac: Almanac) {
     f64_eq!(
         kep_rtn.rss_velocity_km_s(&kep).unwrap(),
         0.0,
-        "RIC RSS velocity"
+        "RIC RMS velocity"
+    );
+    f64_eq!(kep_rtn.rms_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
+    f64_eq!(
+        kep_rtn.rms_velocity_km_s(&kep).unwrap(),
+        0.0,
+        "RIC RMS velocity"
     );
 
-    let kep = Orbit::keplerian(
-        8_191.93, 0.2, 12.85, 306.614, 314.19, -99.887_7, epoch, eme2k,
+    let vnc_delta = kep.vnc_difference(&kep).unwrap();
+    // Check that the frame is stripped
+    assert!(vnc_delta.frame.mu_km3_s2.is_none());
+    assert!(vnc_delta.frame.shape.is_none());
+    // Check that the difference in radius magnitude and velocity are both zero
+    assert_eq!(vnc_delta.rmag_km(), 0.0);
+    assert_eq!(vnc_delta.vmag_km_s(), 0.0);
+
+    // Check that the VNC computation is reciprocal.
+    let dcm = kep.dcm_from_ric_to_inertial().unwrap();
+    let kep_ric = (dcm.transpose() * kep).unwrap();
+    let kep_rtn = (dcm * kep_ric).unwrap();
+    f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "VNC RSS radius");
+    f64_eq!(
+        kep_rtn.rss_velocity_km_s(&kep).unwrap(),
+        0.0,
+        "VNC RMS velocity"
     );
-    f64_eq!(kep.ta_deg().unwrap(), 260.1123, "ta");
+    f64_eq!(kep_rtn.rms_radius_km(&kep).unwrap(), 0.0, "VNC RSS radius");
+    f64_eq!(
+        kep_rtn.rms_velocity_km_s(&kep).unwrap(),
+        0.0,
+        "VNC RMS velocity"
+    );
+
+    // Check the relative and absolute differences
+    let (abs_pos_km, abs_vel_km_s) = kep_rtn.abs_difference(&kep).unwrap();
+    f64_eq!(
+        abs_pos_km.abs(),
+        0.0,
+        "non zero absolute position difference"
+    );
+    f64_eq!(
+        abs_vel_km_s.abs(),
+        0.0,
+        "non zero absolute velocity difference"
+    );
+
+    let (rel_pos, rel_vel) = kep_rtn.rel_difference(&kep).unwrap();
+    f64_eq!(rel_pos.abs(), 0.0, "non zero relative position difference");
+    f64_eq!(rel_vel.abs(), 0.0, "non zero relative velocity difference");
+
+    // Ensure that setting the radius or velocity to zero causes an error in relative difference
+    let mut zero_pos = kep;
+    zero_pos.radius_km = Vector3::zeros();
+    assert!(
+        zero_pos.rel_pos_diff(&kep).is_err(),
+        "radius of self must be non zero"
+    );
+    assert!(
+        kep.rel_pos_diff(&zero_pos).is_ok(),
+        "only self needs a non zero radius"
+    );
+
+    // Ensure that setting the radius or velocity to zero causes an error in relative difference
+    let mut zero_vel = kep;
+    zero_vel.velocity_km_s = Vector3::zeros();
+    assert!(
+        zero_vel.rel_vel_diff(&kep).is_err(),
+        "velocity of self must be non zero"
+    );
+    assert!(
+        kep.rel_vel_diff(&zero_vel).is_ok(),
+        "only self needs a non zero velocity"
+    );
 }
 
 #[rstest]
