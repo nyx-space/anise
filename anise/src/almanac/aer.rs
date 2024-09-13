@@ -15,6 +15,7 @@ use crate::{
     frames::Frame,
     math::angles::{between_0_360, between_pm_180},
     prelude::Orbit,
+    time::uuid_from_epoch,
 };
 
 use super::Almanac;
@@ -70,7 +71,7 @@ impl Almanac {
         }
 
         // Compute the SEZ DCM
-        let from = tx.frame.orientation_id * 1_000 + 1;
+        let from = uuid_from_epoch(tx.frame.orientation_id, rx.epoch);
         // SEZ DCM is topo to fixed
         let sez_dcm = tx
             .dcm_from_topocentric_to_body_fixed(from)

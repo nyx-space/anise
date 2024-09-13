@@ -26,8 +26,8 @@ pub mod units;
 use nalgebra::allocator::Allocator;
 use nalgebra::{DefaultAllocator, DimName, OVector};
 
-/// Returns the root mean squared (RSS) between two vectors of any dimension N.
-pub fn root_mean_squared<N: DimName>(vec_a: &OVector<f64, N>, vec_b: &OVector<f64, N>) -> f64
+/// Returns the root sum squared (RSS) between two vectors of any dimension N.
+pub fn root_sum_squared<N: DimName>(vec_a: &OVector<f64, N>, vec_b: &OVector<f64, N>) -> f64
 where
     DefaultAllocator: Allocator<N>,
 {
@@ -37,6 +37,21 @@ where
         .map(|(&x, &y)| (x - y).powi(2))
         .sum::<f64>()
         .sqrt()
+}
+
+/// Returns the root mean squared (RSS) between two vectors of any dimension N.
+pub fn root_mean_squared<N: DimName>(vec_a: &OVector<f64, N>, vec_b: &OVector<f64, N>) -> f64
+where
+    DefaultAllocator: Allocator<N>,
+{
+    let sum_of_squares = vec_a
+        .iter()
+        .zip(vec_b.iter())
+        .map(|(&x, &y)| (x - y).powi(2))
+        .sum::<f64>();
+
+    let mean_of_squares = sum_of_squares / vec_a.len() as f64;
+    mean_of_squares.sqrt()
 }
 
 /// Returns the projection of a onto b
