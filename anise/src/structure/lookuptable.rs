@@ -41,7 +41,7 @@ pub enum LutError {
     InvalidIndex { index: u32 },
 }
 
-/// A LookUpTable allows finding the [Entry] associated with either an ID or a name.
+/// A LookUpTable allows finding the [u32] ("NaifId") associated with either an ID or a name.
 ///
 /// # Note
 /// _Both_ the IDs and the name MUST be unique in the look up table.

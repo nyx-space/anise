@@ -108,6 +108,33 @@ impl Almanac {
     ) -> AlmanacResult<CartesianState> {
         self.transform(Frame::from_ephem_j2000(object), observer, epoch, ab_corr)
     }
+
+    /// Alias fo SPICE's `spkezr` where the inputs must be the NAIF IDs of the objects and frames with the caveat that the aberration is moved to the last positional argument.
+    ///
+    pub fn spk_ezr(
+        &self,
+        target: NaifId,
+        epoch: Epoch,
+        frame: NaifId,
+        observer: NaifId,
+        ab_corr: Option<Aberration>,
+    ) -> AlmanacResult<CartesianState> {
+        let tgt_j2000 = Frame::from_ephem_j2000(target);
+        let obs_j2000 = Frame::from_ephem_j2000(observer);
+
+        // Translate in J2000
+        let state = self
+            .translate(tgt_j2000, obs_j2000, epoch, ab_corr)
+            .context(EphemerisSnafu {
+                action: "transform from/to",
+            })?;
+
+        // Rotate into the desired frame
+        self.rotate_to(state, Frame::new(observer, frame))
+            .context(OrientationSnafu {
+                action: "spkerz from/to",
+            })
+    }
 }
 
 impl Almanac {

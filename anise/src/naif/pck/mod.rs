@@ -22,7 +22,7 @@ use super::daf::DafDataType;
 
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.internals"))]
-#[derive(Clone, Copy, Debug, Default, AsBytes, FromZeroes, FromBytes)]
+#[derive(Clone, Copy, Debug, Default, AsBytes, FromZeroes, FromBytes, PartialEq)]
 #[repr(C)]
 pub struct BPCSummaryRecord {
     pub start_epoch_et_s: f64,

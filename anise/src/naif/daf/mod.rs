@@ -169,9 +169,7 @@ pub enum DAFError {
         id: NaifId,
         epoch: Epoch,
     },
-    #[snafu(display(
-        "DAF/{kind}: file record is empty (ensure file is valid, e.g. do you need to run git-lfs)"
-    ))]
+    #[snafu(display("DAF/{kind}: file record {source}"))]
     FileRecord {
         kind: &'static str,
         #[snafu(backtrace)]

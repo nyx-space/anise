@@ -28,7 +28,7 @@ fn main() {
 
     // Create the directory if it doesn't exist
     if !data_path.exists() {
-        if let Err(e) = fs::create_dir_all(&data_path) {
+        if fs::create_dir_all(&data_path).is_err() {
             eprintln!("EMBEDDED EPHEM UNAVAILABLE: failed to create directory {data_path:?}");
             // Try nothing else.
             return;
