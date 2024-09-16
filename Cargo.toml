@@ -42,7 +42,7 @@ approx = "0.5.1"
 zerocopy = { version = "0.7.26", features = ["derive"] }
 bytes = "1.6.0"
 snafu = { version = "0.8.0", features = ["backtrace"] }
-lexical-core = "0.8.5"
+lexical-core = "1.0.1"
 heapless = "0.8.0"
 rstest = "0.22.0"
 pyo3 = { version = "0.21", features = ["multiple-pymethods"] }
