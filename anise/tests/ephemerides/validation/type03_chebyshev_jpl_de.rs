@@ -13,7 +13,7 @@ use anise::prelude::Aberration;
 
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
-fn validate_jplde_de440_full() {
+fn validate_jplde_de440_type3_no_aberration() {
     let file_name = "spk-type3-validation-de440".to_string();
     let comparator = CompareEphem::new(
         vec!["../data/de440_type3.bsp".to_string()],

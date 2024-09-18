@@ -43,6 +43,7 @@ jobs:
           wget -O data/de430.bsp http://public-data.nyxspace.com/anise/de430.bsp
           wget -O data/de440s.bsp http://public-data.nyxspace.com/anise/de440s.bsp
           wget -O data/de440.bsp http://public-data.nyxspace.com/anise/de440.bsp
+          wget -O data/de440_type3.bsp http://public-data.nyxspace.com/anise/de440_type3.bsp
           wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v0.4/pck08.pca
           wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v0.4/pck11.pca
           wget -O data/moon_fk.epa http://public-data.nyxspace.com/anise/v0.4/moon_fk.epa
@@ -112,6 +113,7 @@ jobs:
           wget -O data/de430.bsp http://public-data.nyxspace.com/anise/de430.bsp
           wget -O data/de440s.bsp http://public-data.nyxspace.com/anise/de440s.bsp
           wget -O data/de440.bsp http://public-data.nyxspace.com/anise/de440.bsp
+          wget -O data/de440_type3.bsp http://public-data.nyxspace.com/anise/de440_type3.bsp
           wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v0.4/pck08.pca
           wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v0.4/pck11.pca
           wget -O data/gmat-hermite.bsp http://public-data.nyxspace.com/anise/ci/gmat-hermite.bsp
@@ -182,6 +184,7 @@ jobs:
           wget -O data/de430.bsp http://public-data.nyxspace.com/anise/de430.bsp
           wget -O data/de440s.bsp http://public-data.nyxspace.com/anise/de440s.bsp
           wget -O data/de440.bsp http://public-data.nyxspace.com/anise/de440.bsp
+          wget -O data/de440_type3.bsp http://public-data.nyxspace.com/anise/de440_type3.bsp
           wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v0.4/pck08.pca
           wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v0.4/pck11.pca
           wget -O data/gmat-hermite.bsp http://public-data.nyxspace.com/anise/ci/gmat-hermite.bsp
@@ -214,6 +217,7 @@ jobs:
           cargo llvm-cov test --no-report validate_bpc_to_iau_rotations -- --nocapture --ignored
           cargo llvm-cov test --no-report validate_jplde_de440s_no_aberration --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov test --no-report validate_jplde_de440s_aberration_lt --features spkezr_validation -- --nocapture --ignored
+          cargo llvm-cov test --no-report validate_jplde_de440_type3_no_aberration --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov test --no-report validate_hermite_type13_from_gmat --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov test --no-report validate_lagrange_type9_with_varying_segment_sizes --features spkezr_validation -- --nocapture --ignored
           cargo llvm-cov test --no-report ut_embed --features embed_ephem

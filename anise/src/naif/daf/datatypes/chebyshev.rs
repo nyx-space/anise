@@ -30,9 +30,64 @@ pub struct Type2ChebyshevSet<'a> {
     pub record_data: &'a [f64],
 }
 
-impl<'a> Type2ChebyshevSet<'a> {
-    pub fn degree(&self) -> usize {
-        (self.rsize - 2) / 3 - 1
+impl<'a> fmt::Display for Type2ChebyshevSet<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "start: {:E}\tlength: {}\trsize: {}\tnum_records: {}\tlen data: {}",
+            self.init_epoch,
+            self.interval_length,
+            self.rsize,
+            self.num_records,
+            self.record_data.len()
+        )
+    }
+}
+
+#[derive(PartialEq)]
+pub struct Type3ChebyshevSet<'a> {
+    pub init_epoch: Epoch,
+    pub interval_length: Duration,
+    pub rsize: usize,
+    pub num_records: usize,
+    pub record_data: &'a [f64],
+}
+
+impl<'a> fmt::Display for Type3ChebyshevSet<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "start: {:E}\tlength: {}\trsize: {}\tnum_records: {}\tlen data: {}",
+            self.init_epoch,
+            self.interval_length,
+            self.rsize,
+            self.num_records,
+            self.record_data.len()
+        )
+    }
+}
+
+trait ChebyshevSet<'a>: PartialEq + fmt::Display {
+    fn new(
+        init_epoch: Epoch,
+        interval_length: Duration,
+        rsize: usize,
+        num_records: usize,
+        record_data: &'a [f64],
+    ) -> Self;
+
+    fn init_epoch(&self) -> Epoch;
+    fn interval_length(&self) -> Duration;
+    fn rsize(&self) -> usize;
+    fn num_records(&self) -> usize;
+    fn record_data(&self) -> &'a [f64];
+
+    fn set_init_epoch(&mut self, init_epoch: Epoch);
+    fn set_num_records(&mut self, num_records: usize);
+    fn set_record_data(&mut self, record_data: &'a [f64]);
+
+    fn degree(&self) -> usize {
+        (self.rsize() - 2) / 3 - 1
     }
 
     fn spline_idx<S: NAIFSummaryRecord>(
@@ -51,29 +106,101 @@ impl<'a> Type2ChebyshevSet<'a> {
             });
         }
 
-        let window_duration_s = self.interval_length.to_seconds();
+        let window_duration_s = self.interval_length().to_seconds();
 
         let ephem_start_delta_s = epoch.to_et_seconds() - summary.start_epoch_et_s();
 
-        Ok(((ephem_start_delta_s / window_duration_s) as usize + 1).min(self.num_records))
+        Ok(((ephem_start_delta_s / window_duration_s) as usize + 1).min(self.num_records()))
     }
 }
 
-impl<'a> fmt::Display for Type2ChebyshevSet<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "start: {:E}\tlength: {}\trsize: {}\tnum_records: {}\tlen data: {}",
-            self.init_epoch,
-            self.interval_length,
-            self.rsize,
-            self.num_records,
-            self.record_data.len()
-        )
+impl<'a> ChebyshevSet<'a> for Type2ChebyshevSet<'a> {
+    fn new(
+        init_epoch: Epoch,
+        interval_length: Duration,
+        rsize: usize,
+        num_records: usize,
+        record_data: &'a [f64],
+    ) -> Self {
+        Self {
+            init_epoch,
+            interval_length,
+            rsize,
+            num_records,
+            record_data,
+        }
+    }
+
+    fn init_epoch(&self) -> Epoch {
+        self.init_epoch
+    }
+    fn interval_length(&self) -> Duration {
+        self.interval_length
+    }
+    fn rsize(&self) -> usize {
+        self.rsize
+    }
+    fn num_records(&self) -> usize {
+        self.num_records
+    }
+    fn record_data(&self) -> &'a [f64] {
+        self.record_data
+    }
+
+    fn set_init_epoch(&mut self, init_epoch: Epoch) {
+        self.init_epoch = init_epoch;
+    }
+    fn set_num_records(&mut self, num_records: usize) {
+        self.num_records = num_records;
+    }
+    fn set_record_data(&mut self, record_data: &'a [f64]) {
+        self.record_data = record_data;
+    }
+}
+impl<'a> ChebyshevSet<'a> for Type3ChebyshevSet<'a> {
+    fn new(
+        init_epoch: Epoch,
+        interval_length: Duration,
+        rsize: usize,
+        num_records: usize,
+        record_data: &'a [f64],
+    ) -> Self {
+        Self {
+            init_epoch,
+            interval_length,
+            rsize,
+            num_records,
+            record_data,
+        }
+    }
+
+    fn init_epoch(&self) -> Epoch {
+        self.init_epoch
+    }
+    fn interval_length(&self) -> Duration {
+        self.interval_length
+    }
+    fn rsize(&self) -> usize {
+        self.rsize
+    }
+    fn num_records(&self) -> usize {
+        self.num_records
+    }
+    fn record_data(&self) -> &'a [f64] {
+        self.record_data
+    }
+    fn set_init_epoch(&mut self, init_epoch: Epoch) {
+        self.init_epoch = init_epoch;
+    }
+    fn set_num_records(&mut self, num_records: usize) {
+        self.num_records = num_records;
+    }
+    fn set_record_data(&mut self, record_data: &'a [f64]) {
+        self.record_data = record_data;
     }
 }
 
-impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
+impl<'a, T: ChebyshevSet<'a>> NAIFDataSet<'a> for T {
     type StateKind = (Vector3, Vector3);
     type RecordKind = Type2ChebyshevRecord<'a>;
     const DATASET_NAME: &'static str = "Chebyshev Type 2";
@@ -123,23 +250,23 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         let rsize = slice[slice.len() - 2] as usize;
         let num_records = slice[slice.len() - 1] as usize;
 
-        Ok(Self {
-            init_epoch: start_epoch,
+        Ok(Self::new(
+            start_epoch,
             interval_length,
             rsize,
             num_records,
-            record_data: &slice[0..slice.len() - 4],
-        })
+            &slice[0..slice.len() - 4],
+        ))
     }
 
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError> {
         Ok(Self::RecordKind::from_slice_f64(
-            self.record_data
-                .get(n * self.rsize..(n + 1) * self.rsize)
+            self.record_data()
+                .get(n * self.rsize()..(n + 1) * self.rsize())
                 .ok_or(DecodingError::InaccessibleBytes {
-                    start: n * self.rsize,
-                    end: (n + 1) * self.rsize,
-                    size: self.record_data.len(),
+                    start: n * self.rsize(),
+                    end: (n + 1) * self.rsize(),
+                    size: self.record_data().len(),
                 })?,
         ))
     }
@@ -151,7 +278,7 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
     ) -> Result<(Vector3, Vector3), InterpolationError> {
         let spline_idx = self.spline_idx(epoch, summary)?;
 
-        let window_duration_s = self.interval_length.to_seconds();
+        let window_duration_s = self.interval_length().to_seconds();
         let radius_s = window_duration_s / 2.0;
 
         // Now, build the X, Y, Z data from the record data.
@@ -179,7 +306,7 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
 
     fn check_integrity(&self) -> Result<(), IntegrityError> {
         // Verify that none of the data is invalid once when we load it.
-        for val in self.record_data {
+        for val in self.record_data() {
             if !val.is_finite() {
                 return Err(IntegrityError::SubNormal {
                     dataset: Self::DATASET_NAME,
@@ -206,23 +333,27 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         let end_idx = if let Some(end) = new_end {
             self.spline_idx(end, summary)?
         } else {
-            self.num_records - 1
+            self.num_records() - 1
         };
 
-        self.record_data = &self.record_data[start_idx * self.rsize..(end_idx + 1) * self.rsize];
-        self.num_records = (self.record_data.len() / self.rsize) - 1;
-        self.init_epoch = self.nth_record(0).unwrap().midpoint_epoch() - 0.5 * self.interval_length;
+        self.set_record_data(
+            &self.record_data()[start_idx * self.rsize()..(end_idx + 1) * self.rsize()],
+        );
+        self.set_num_records((self.record_data().len() / self.rsize()) - 1);
+        self.set_init_epoch(
+            self.nth_record(0).unwrap().midpoint_epoch() - 0.5 * self.interval_length(),
+        );
 
         Ok(self)
     }
 
     /// Builds the DAF array representing a Chebyshev Type 2 interpolation set.
     fn to_f64_daf_vec(&self) -> Result<Vec<f64>, InterpolationError> {
-        let mut data = self.record_data.to_vec();
-        data.push(self.init_epoch.to_et_seconds());
-        data.push(self.interval_length.to_seconds());
-        data.push(self.rsize as f64);
-        data.push(self.num_records as f64);
+        let mut data = self.record_data().to_vec();
+        data.push(self.init_epoch().to_et_seconds());
+        data.push(self.interval_length().to_seconds());
+        data.push(self.rsize() as f64);
+        data.push(self.num_records() as f64);
 
         Ok(data)
     }
@@ -313,213 +444,6 @@ impl<'a> NAIFDataRecord<'a> for Type3ChebyshevRecord<'a> {
             vy_coeffs: &slice[2 + num_coeffs * 4..num_coeffs * 5],
             vz_coeffs: &slice[2 + num_coeffs * 5..],
         }
-    }
-}
-
-#[derive(PartialEq)]
-pub struct Type3ChebyshevSet<'a> {
-    pub init_epoch: Epoch,
-    pub interval_length: Duration,
-    pub rsize: usize,
-    pub num_records: usize,
-    pub record_data: &'a [f64],
-}
-
-impl<'a> Type3ChebyshevSet<'a> {
-    pub fn degree(&self) -> usize {
-        (self.rsize - 2) / 3 - 1
-    }
-
-    fn spline_idx<S: NAIFSummaryRecord>(
-        &self,
-        epoch: Epoch,
-        summary: &S,
-    ) -> Result<usize, InterpolationError> {
-        if epoch < summary.start_epoch() - 1_i64.nanoseconds()
-            || epoch > summary.end_epoch() + 1_i64.nanoseconds()
-        {
-            // No need to go any further.
-            return Err(InterpolationError::NoInterpolationData {
-                req: epoch,
-                start: summary.start_epoch(),
-                end: summary.end_epoch(),
-            });
-        }
-
-        let window_duration_s = self.interval_length.to_seconds();
-
-        let ephem_start_delta_s = epoch.to_et_seconds() - summary.start_epoch_et_s();
-
-        Ok(((ephem_start_delta_s / window_duration_s) as usize + 1).min(self.num_records))
-    }
-}
-
-impl<'a> fmt::Display for Type3ChebyshevSet<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "start: {:E}\tlength: {}\trsize: {}\tnum_records: {}\tlen data: {}",
-            self.init_epoch,
-            self.interval_length,
-            self.rsize,
-            self.num_records,
-            self.record_data.len()
-        )
-    }
-}
-
-impl<'a> NAIFDataSet<'a> for Type3ChebyshevSet<'a> {
-    type StateKind = (Vector3, Vector3);
-    type RecordKind = Type2ChebyshevRecord<'a>;
-    const DATASET_NAME: &'static str = "Chebyshev Type 2";
-
-    fn from_f64_slice(slice: &'a [f64]) -> Result<Self, DecodingError> {
-        ensure!(
-            slice.len() >= 5,
-            TooFewDoublesSnafu {
-                dataset: Self::DATASET_NAME,
-                need: 5_usize,
-                got: slice.len()
-            }
-        );
-        // For this kind of record, the data is stored at the very end of the dataset
-        let seconds_since_j2000 = slice[slice.len() - 4];
-        if !seconds_since_j2000.is_finite() {
-            return Err(DecodingError::Integrity {
-                source: IntegrityError::SubNormal {
-                    dataset: Self::DATASET_NAME,
-                    variable: "seconds since J2000 ET",
-                },
-            });
-        }
-
-        let start_epoch = Epoch::from_et_seconds(seconds_since_j2000);
-
-        let interval_length_s = slice[slice.len() - 3];
-        if !interval_length_s.is_finite() {
-            return Err(DecodingError::Integrity {
-                source: IntegrityError::SubNormal {
-                    dataset: Self::DATASET_NAME,
-                    variable: "interval length in seconds",
-                },
-            });
-        } else if interval_length_s <= 0.0 {
-            return Err(DecodingError::Integrity {
-                source: IntegrityError::InvalidValue {
-                    dataset: Self::DATASET_NAME,
-                    variable: "interval length in seconds",
-                    value: interval_length_s,
-                    reason: "must be strictly greater than zero",
-                },
-            });
-        }
-
-        let interval_length = interval_length_s.seconds();
-        let rsize = slice[slice.len() - 2] as usize;
-        let num_records = slice[slice.len() - 1] as usize;
-
-        Ok(Self {
-            init_epoch: start_epoch,
-            interval_length,
-            rsize,
-            num_records,
-            record_data: &slice[0..slice.len() - 4],
-        })
-    }
-
-    fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError> {
-        Ok(Self::RecordKind::from_slice_f64(
-            self.record_data
-                .get(n * self.rsize..(n + 1) * self.rsize)
-                .ok_or(DecodingError::InaccessibleBytes {
-                    start: n * self.rsize,
-                    end: (n + 1) * self.rsize,
-                    size: self.record_data.len(),
-                })?,
-        ))
-    }
-
-    fn evaluate<S: NAIFSummaryRecord>(
-        &self,
-        epoch: Epoch,
-        summary: &S,
-    ) -> Result<(Vector3, Vector3), InterpolationError> {
-        let spline_idx = self.spline_idx(epoch, summary)?;
-
-        let window_duration_s = self.interval_length.to_seconds();
-        let radius_s = window_duration_s / 2.0;
-
-        // Now, build the X, Y, Z data from the record data.
-        let record = self
-            .nth_record(spline_idx - 1)
-            .context(InterpDecodingSnafu)?;
-
-        let normalized_time = (epoch.to_et_seconds() - record.midpoint_et_s) / radius_s;
-
-        let mut state = Vector3::zeros();
-        let mut rate = Vector3::zeros();
-
-        for (cno, coeffs) in [record.x_coeffs, record.y_coeffs, record.z_coeffs]
-            .iter()
-            .enumerate()
-        {
-            let (val, deriv) =
-                chebyshev_eval(normalized_time, coeffs, radius_s, epoch, self.degree())?;
-            state[cno] = val;
-            rate[cno] = deriv;
-        }
-
-        Ok((state, rate))
-    }
-
-    fn check_integrity(&self) -> Result<(), IntegrityError> {
-        // Verify that none of the data is invalid once when we load it.
-        for val in self.record_data {
-            if !val.is_finite() {
-                return Err(IntegrityError::SubNormal {
-                    dataset: Self::DATASET_NAME,
-                    variable: "one of the record data",
-                });
-            }
-        }
-
-        Ok(())
-    }
-
-    fn truncate<S: NAIFSummaryRecord>(
-        mut self,
-        summary: &S,
-        new_start: Option<Epoch>,
-        new_end: Option<Epoch>,
-    ) -> Result<Self, InterpolationError> {
-        let start_idx = if let Some(start) = new_start {
-            self.spline_idx(start, summary)? - 1
-        } else {
-            0
-        };
-
-        let end_idx = if let Some(end) = new_end {
-            self.spline_idx(end, summary)?
-        } else {
-            self.num_records - 1
-        };
-
-        self.record_data = &self.record_data[start_idx * self.rsize..(end_idx + 1) * self.rsize];
-        self.num_records = (self.record_data.len() / self.rsize) - 1;
-        self.init_epoch = self.nth_record(0).unwrap().midpoint_epoch() - 0.5 * self.interval_length;
-
-        Ok(self)
-    }
-
-    /// Builds the DAF array representing a Chebyshev Type 2 interpolation set.
-    fn to_f64_daf_vec(&self) -> Result<Vec<f64>, InterpolationError> {
-        let mut data = self.record_data.to_vec();
-        data.push(self.init_epoch.to_et_seconds());
-        data.push(self.interval_length.to_seconds());
-        data.push(self.rsize as f64);
-        data.push(self.num_records as f64);
-
-        Ok(data)
     }
 }
 
