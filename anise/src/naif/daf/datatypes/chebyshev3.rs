@@ -22,7 +22,7 @@ use crate::{
 };
 
 #[derive(PartialEq)]
-pub struct Type2ChebyshevSet<'a> {
+pub struct Type3ChebyshevSet<'a> {
     pub init_epoch: Epoch,
     pub interval_length: Duration,
     pub rsize: usize,
@@ -30,7 +30,7 @@ pub struct Type2ChebyshevSet<'a> {
     pub record_data: &'a [f64],
 }
 
-impl<'a> Type2ChebyshevSet<'a> {
+impl<'a> Type3ChebyshevSet<'a> {
     pub fn degree(&self) -> usize {
         (self.rsize - 2) / 3 - 1
     }
@@ -59,7 +59,7 @@ impl<'a> Type2ChebyshevSet<'a> {
     }
 }
 
-impl<'a> fmt::Display for Type2ChebyshevSet<'a> {
+impl<'a> fmt::Display for Type3ChebyshevSet<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -73,10 +73,10 @@ impl<'a> fmt::Display for Type2ChebyshevSet<'a> {
     }
 }
 
-impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
+impl<'a> NAIFDataSet<'a> for Type3ChebyshevSet<'a> {
     type StateKind = (Vector3, Vector3);
-    type RecordKind = Type2ChebyshevRecord<'a>;
-    const DATASET_NAME: &'static str = "Chebyshev Type 2";
+    type RecordKind = Type3ChebyshevRecord<'a>;
+    const DATASET_NAME: &'static str = "Chebyshev Type 3";
 
     fn from_f64_slice(slice: &'a [f64]) -> Result<Self, DecodingError> {
         ensure!(
@@ -168,10 +168,16 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
             .iter()
             .enumerate()
         {
-            let (val, deriv) =
-                chebyshev_eval(normalized_time, coeffs, radius_s, epoch, self.degree())?;
+            let (val, _) = chebyshev_eval(normalized_time, coeffs, radius_s, epoch, self.degree())?;
             state[cno] = val;
-            rate[cno] = deriv;
+        }
+
+        for (cno, coeffs) in [record.vx_coeffs, record.vy_coeffs, record.vz_coeffs]
+            .iter()
+            .enumerate()
+        {
+            let (val, _) = chebyshev_eval(normalized_time, coeffs, radius_s, epoch, self.degree())?;
+            rate[cno] = val;
         }
 
         Ok((state, rate))
@@ -228,45 +234,53 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
     }
 }
 
-pub struct Type2ChebyshevRecord<'a> {
+#[derive(PartialEq)]
+pub struct Type3ChebyshevRecord<'a> {
     pub midpoint_et_s: f64,
     pub radius: Duration,
     pub x_coeffs: &'a [f64],
     pub y_coeffs: &'a [f64],
     pub z_coeffs: &'a [f64],
+    pub vx_coeffs: &'a [f64],
+    pub vy_coeffs: &'a [f64],
+    pub vz_coeffs: &'a [f64],
 }
 
-impl<'a> Type2ChebyshevRecord<'a> {
+impl<'a> Type3ChebyshevRecord<'a> {
     pub fn midpoint_epoch(&self) -> Epoch {
         Epoch::from_et_seconds(self.midpoint_et_s)
     }
 }
 
-impl<'a> fmt::Display for Type2ChebyshevRecord<'a> {
+impl<'a> fmt::Display for Type3ChebyshevRecord<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "start: {:E}\tend: {:E}\nx: {:?}\ny: {:?}\nz: {:?}",
+            "start: {}\tend: {}\nx:  {:?}\ny:  {:?}\nz:  {:?}\nvx: {:?}\nvy: {:?}\nvz: {:?}",
             self.midpoint_epoch() - self.radius,
             self.midpoint_epoch() + self.radius,
             self.x_coeffs,
             self.y_coeffs,
-            self.z_coeffs
+            self.z_coeffs,
+            self.vx_coeffs,
+            self.vy_coeffs,
+            self.vz_coeffs
         )
     }
 }
 
-impl<'a> NAIFDataRecord<'a> for Type2ChebyshevRecord<'a> {
+impl<'a> NAIFDataRecord<'a> for Type3ChebyshevRecord<'a> {
     fn from_slice_f64(slice: &'a [f64]) -> Self {
-        let num_coeffs = (slice.len() - 2) / 3;
-        let end_x_idx = num_coeffs + 2;
-        let end_y_idx = 2 * num_coeffs + 2;
+        let num_coeffs = (slice.len() - 2) / 6;
         Self {
             midpoint_et_s: slice[0],
             radius: slice[1].seconds(),
-            x_coeffs: &slice[2..end_x_idx],
-            y_coeffs: &slice[end_x_idx..end_y_idx],
-            z_coeffs: &slice[end_y_idx..],
+            x_coeffs: &slice[2..num_coeffs],
+            y_coeffs: &slice[2 + num_coeffs..num_coeffs * 2],
+            z_coeffs: &slice[2 + num_coeffs * 2..num_coeffs * 3],
+            vx_coeffs: &slice[2 + num_coeffs * 3..num_coeffs * 4],
+            vy_coeffs: &slice[2 + num_coeffs * 4..num_coeffs * 5],
+            vz_coeffs: &slice[2 + num_coeffs * 5..],
         }
     }
 }
@@ -278,13 +292,13 @@ mod chebyshev_ut {
         naif::daf::NAIFDataSet,
     };
 
-    use super::Type2ChebyshevSet;
+    use super::Type3ChebyshevSet;
 
     #[test]
     fn too_small() {
-        if Type2ChebyshevSet::from_f64_slice(&[0.1, 0.2, 0.3, 0.4])
+        if Type3ChebyshevSet::from_f64_slice(&[0.1, 0.2, 0.3, 0.4])
             != Err(DecodingError::TooFewDoubles {
-                dataset: "Chebyshev Type 2",
+                dataset: "Chebyshev Type 3",
                 got: 4,
                 need: 5,
             })
@@ -295,14 +309,14 @@ mod chebyshev_ut {
 
     #[test]
     fn subnormal() {
-        match Type2ChebyshevSet::from_f64_slice(&[0.0, f64::INFINITY, 0.0, 0.0, 0.0]) {
+        match Type3ChebyshevSet::from_f64_slice(&[0.0, f64::INFINITY, 0.0, 0.0, 0.0]) {
             Ok(_) => panic!("test failed on invalid init_epoch"),
             Err(e) => {
                 assert_eq!(
                     e,
                     DecodingError::Integrity {
                         source: IntegrityError::SubNormal {
-                            dataset: "Chebyshev Type 2",
+                            dataset: "Chebyshev Type 3",
                             variable: "seconds since J2000 ET",
                         },
                     }
@@ -310,14 +324,14 @@ mod chebyshev_ut {
             }
         }
 
-        match Type2ChebyshevSet::from_f64_slice(&[0.0, 0.0, f64::INFINITY, 0.0, 0.0]) {
+        match Type3ChebyshevSet::from_f64_slice(&[0.0, 0.0, f64::INFINITY, 0.0, 0.0]) {
             Ok(_) => panic!("test failed on invalid interval_length"),
             Err(e) => {
                 assert_eq!(
                     e,
                     DecodingError::Integrity {
                         source: IntegrityError::SubNormal {
-                            dataset: "Chebyshev Type 2",
+                            dataset: "Chebyshev Type 3",
                             variable: "interval length in seconds",
                         },
                     }
@@ -325,14 +339,14 @@ mod chebyshev_ut {
             }
         }
 
-        match Type2ChebyshevSet::from_f64_slice(&[0.0, 0.0, -1e-16, 0.0, 0.0]) {
+        match Type3ChebyshevSet::from_f64_slice(&[0.0, 0.0, -1e-16, 0.0, 0.0]) {
             Ok(_) => panic!("test failed on invalid interval_length"),
             Err(e) => {
                 assert_eq!(
                     e,
                     DecodingError::Integrity {
                         source: IntegrityError::InvalidValue {
-                            dataset: "Chebyshev Type 2",
+                            dataset: "Chebyshev Type 3",
                             variable: "interval length in seconds",
                             value: -1e-16,
                             reason: "must be strictly greater than zero"
@@ -344,14 +358,14 @@ mod chebyshev_ut {
 
         // Load a slice whose metadata is OK but the record data is not
         let dataset =
-            Type2ChebyshevSet::from_f64_slice(&[f64::INFINITY, 0.0, 2e-16, 0.0, 0.0]).unwrap();
+            Type3ChebyshevSet::from_f64_slice(&[f64::INFINITY, 0.0, 2e-16, 0.0, 0.0]).unwrap();
         match dataset.check_integrity() {
             Ok(_) => panic!("test failed on invalid interval_length"),
             Err(e) => {
                 assert_eq!(
                     e,
                     IntegrityError::SubNormal {
-                        dataset: "Chebyshev Type 2",
+                        dataset: "Chebyshev Type 3",
                         variable: "one of the record data",
                     },
                 );
