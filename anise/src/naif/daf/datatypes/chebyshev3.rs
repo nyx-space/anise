@@ -15,7 +15,7 @@ use snafu::{ensure, ResultExt};
 use crate::{
     errors::{DecodingError, IntegrityError, TooFewDoublesSnafu},
     math::{
-        interpolation::{chebyshev_eval, InterpDecodingSnafu, InterpolationError},
+        interpolation::{chebyshev_eval_poly, InterpDecodingSnafu, InterpolationError},
         Vector3,
     },
     naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFSummaryRecord},
@@ -32,7 +32,7 @@ pub struct Type3ChebyshevSet<'a> {
 
 impl<'a> Type3ChebyshevSet<'a> {
     pub fn degree(&self) -> usize {
-        (self.rsize - 2) / 3 - 1
+        (self.rsize - 2) / 6 - 1
     }
 
     fn spline_idx<S: NAIFSummaryRecord>(
@@ -154,7 +154,6 @@ impl<'a> NAIFDataSet<'a> for Type3ChebyshevSet<'a> {
         let window_duration_s = self.interval_length.to_seconds();
         let radius_s = window_duration_s / 2.0;
 
-        // Now, build the X, Y, Z data from the record data.
         let record = self
             .nth_record(spline_idx - 1)
             .context(InterpDecodingSnafu)?;
@@ -168,7 +167,7 @@ impl<'a> NAIFDataSet<'a> for Type3ChebyshevSet<'a> {
             .iter()
             .enumerate()
         {
-            let (val, _) = chebyshev_eval(normalized_time, coeffs, radius_s, epoch, self.degree())?;
+            let val = chebyshev_eval_poly(normalized_time, coeffs, epoch, self.degree())?;
             state[cno] = val;
         }
 
@@ -176,7 +175,7 @@ impl<'a> NAIFDataSet<'a> for Type3ChebyshevSet<'a> {
             .iter()
             .enumerate()
         {
-            let (val, _) = chebyshev_eval(normalized_time, coeffs, radius_s, epoch, self.degree())?;
+            let val = chebyshev_eval_poly(normalized_time, coeffs, epoch, self.degree())?;
             rate[cno] = val;
         }
 
@@ -234,7 +233,7 @@ impl<'a> NAIFDataSet<'a> for Type3ChebyshevSet<'a> {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Type3ChebyshevRecord<'a> {
     pub midpoint_et_s: f64,
     pub radius: Duration,
@@ -272,15 +271,21 @@ impl<'a> fmt::Display for Type3ChebyshevRecord<'a> {
 impl<'a> NAIFDataRecord<'a> for Type3ChebyshevRecord<'a> {
     fn from_slice_f64(slice: &'a [f64]) -> Self {
         let num_coeffs = (slice.len() - 2) / 6;
+
+        let end_x_idx = num_coeffs + 2;
+        let end_y_idx = 2 * num_coeffs + 2;
+        let end_z_idx = 3 * num_coeffs + 2;
+        let end_vx_idx = 4 * num_coeffs + 2;
+        let end_vy_idx = 5 * num_coeffs + 2;
         Self {
             midpoint_et_s: slice[0],
             radius: slice[1].seconds(),
-            x_coeffs: &slice[2..num_coeffs],
-            y_coeffs: &slice[2 + num_coeffs..num_coeffs * 2],
-            z_coeffs: &slice[2 + num_coeffs * 2..num_coeffs * 3],
-            vx_coeffs: &slice[2 + num_coeffs * 3..num_coeffs * 4],
-            vy_coeffs: &slice[2 + num_coeffs * 4..num_coeffs * 5],
-            vz_coeffs: &slice[2 + num_coeffs * 5..],
+            x_coeffs: &slice[2..end_x_idx],
+            y_coeffs: &slice[end_x_idx..end_y_idx],
+            z_coeffs: &slice[end_y_idx..end_z_idx],
+            vx_coeffs: &slice[end_z_idx..end_vx_idx],
+            vy_coeffs: &slice[end_vx_idx..end_vy_idx],
+            vz_coeffs: &slice[end_vy_idx..],
         }
     }
 }

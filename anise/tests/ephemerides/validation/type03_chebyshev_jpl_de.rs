@@ -9,7 +9,6 @@
  */
 
 use super::{compare::*, validate::Validation};
-use anise::prelude::Aberration;
 
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]

@@ -12,7 +12,7 @@ mod chebyshev;
 mod hermite;
 mod lagrange;
 
-pub use chebyshev::chebyshev_eval;
+pub use chebyshev::{chebyshev_eval, chebyshev_eval_poly};
 pub use hermite::hermite_eval;
 use hifitime::Epoch;
 pub use lagrange::lagrange_eval;
