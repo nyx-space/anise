@@ -57,3 +57,33 @@ pub fn chebyshev_eval(
     let deriv = (w[0] + normalized_time * dw[0] - dw[1]) / spline_radius_s;
     Ok((val, deriv))
 }
+
+/// Attempts to evaluate a Chebyshev polynomial given the coefficients, returning only the value
+///
+/// # Notes
+/// 1. At this point, the splines are expected to be in Chebyshev format and no verification is done.
+pub fn chebyshev_eval_poly(
+    normalized_time: f64,
+    spline_coeffs: &[f64],
+    eval_epoch: Epoch,
+    degree: usize,
+) -> Result<f64, InterpolationError> {
+    // Workspace array
+    let mut w = [0.0_f64; 3];
+
+    for j in (2..=degree + 1).rev() {
+        w[2] = w[1];
+        w[1] = w[0];
+        w[0] = (spline_coeffs
+            .get(j - 1)
+            .ok_or(InterpolationError::MissingInterpolationData { epoch: eval_epoch })?)
+            + (2.0 * normalized_time * w[1] - w[2]);
+    }
+
+    let val = (spline_coeffs
+        .first()
+        .ok_or(InterpolationError::MissingInterpolationData { epoch: eval_epoch })?)
+        + (normalized_time * w[0]);
+
+    Ok(val)
+}

@@ -1,6 +1,6 @@
 // Start by creating the ANISE planetary data
 use anise::{
-    constants::frames::{EARTH_ITRF93, EARTH_J2000},
+    constants::frames::{EARTH_ITRF93, EARTH_J2000, SUN_J2000},
     naif::kpl::parser::convert_tpc,
     prelude::{Aberration, Almanac, Orbit, BPC, SPK},
 };
@@ -76,4 +76,32 @@ fn test_state_transformation() {
     println!("{from_state_itrf93_to_eme2k:x}");
 
     assert_eq!(orig_state, from_state_itrf93_to_eme2k);
+}
+
+#[test]
+fn test_type3_state_transformation() {
+    // Load BSP and BPC
+    let ctx = Almanac::default();
+
+    let spk = SPK::load("../data/de440_type3.bsp").unwrap();
+
+    let almanac = ctx
+        .with_spk(spk)
+        .unwrap()
+        .load("../data/pck08.pca")
+        .unwrap();
+
+    let epoch = Epoch::from_str("2021-10-29 12:34:56 TDB").unwrap();
+
+    let to_parent = almanac.translate_to_parent(EARTH_J2000, epoch).unwrap();
+
+    println!("{to_parent}");
+
+    // Ensure that we can query the type 3 chebyshev DE440 file
+
+    let state = almanac
+        .translate(EARTH_J2000, SUN_J2000, epoch, None)
+        .expect("type 3 chebyshev could not be queried");
+
+    println!("{state:x}");
 }
