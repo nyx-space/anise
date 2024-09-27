@@ -19,7 +19,7 @@ use pyo3::prelude::*;
 
 /// Stores the result of an occultation computation with the occulation percentage
 /// Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse/) for modeling details.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 #[cfg_attr(feature = "python", pyo3(get_all, set_all))]

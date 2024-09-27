@@ -239,7 +239,7 @@ mod ut_aer {
             ),
         ];
 
-        for (sno, state) in states.iter().enumerate() {
+        for (sno, state) in states.iter().copied().enumerate() {
             // Rebuild the ground station at this new epoch
             let madrid = Orbit::try_latlongalt(
                 latitude_deg,
@@ -252,7 +252,43 @@ mod ut_aer {
             .unwrap();
 
             let aer = almanac
-                .azimuth_elevation_range_sez(*state, madrid, None, None)
+                .azimuth_elevation_range_sez(state, madrid, None, None)
+                .unwrap();
+
+            if sno == 0 {
+                assert_eq!(
+                    format!("{aer}"),
+                    format!(
+                        "{}: az.: 133.599990 deg    el.: 7.237568 deg    range: 91457.271742 km    range-rate: -12.396849 km/s    obstruction: none",
+                        state.epoch
+                    )
+                );
+            }
+
+            let expect = gmat_ranges_km[sno];
+
+            // This only checks that our computation isn't total garbage.
+            assert!((aer.range_km - expect).abs() < 5.0);
+        }
+
+        // Ensure that if the state are in another frame, the results are identical.
+
+        let states = states.map(|state| almanac.transform_to(state, EARTH_ITRF93, None).unwrap());
+
+        for (sno, state) in states.iter().copied().enumerate() {
+            // Rebuild the ground station at this new epoch
+            let madrid = Orbit::try_latlongalt(
+                latitude_deg,
+                longitude_deg,
+                height_km,
+                MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
+                state.epoch,
+                iau_earth,
+            )
+            .unwrap();
+
+            let aer = almanac
+                .azimuth_elevation_range_sez(state, madrid, None, None)
                 .unwrap();
 
             if sno == 0 {

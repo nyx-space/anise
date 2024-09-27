@@ -224,12 +224,19 @@ fn spice_verif_iau_moon(almanac: Almanac) {
     assert!(rss_vel_km_s < 1e-5);
 }
 
+#[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[rstest]
-fn gh_283_multi_barycenter_and_los(almanac: Almanac) {
-    let almanac = almanac.load("../data/lro.bsp").unwrap();
+fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
+    let spk_path = "../data/lro.bsp";
+    let almanac = almanac.load(spk_path).unwrap();
 
     const LRO_ID: i32 = -85;
     let lro_frame = Frame::from_ephem_j2000(LRO_ID);
+
+    // Load into SPICE
+    spice::furnsh(spk_path);
+    spice::furnsh("../data/de440s.bsp");
+    spice::furnsh("../data/pck00008.tpc");
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 1, 1);
 
@@ -246,13 +253,21 @@ fn gh_283_multi_barycenter_and_los(almanac: Almanac) {
         "node count should be Moon, EMB, SSB"
     );
 
+    let (spice_lro_state_raw, _) = spice::spkezr(
+        &LRO_ID.to_string(),
+        epoch.to_et_seconds(),
+        "J2000",
+        "NONE",
+        "SUN",
+    );
+
     let spice_lro_state = Orbit::new(
-        -25181236.12671419,
-        133176946.34310651,
-        57755823.14607649,
-        -31.33683951,
-        -4.57447104,
-        -1.6316696,
+        spice_lro_state_raw[0],
+        spice_lro_state_raw[1],
+        spice_lro_state_raw[2],
+        spice_lro_state_raw[3],
+        spice_lro_state_raw[4],
+        spice_lro_state_raw[5],
         epoch,
         SUN_J2000,
     );
@@ -261,14 +276,14 @@ fn gh_283_multi_barycenter_and_los(almanac: Almanac) {
         .transform(lro_frame, SUN_J2000, epoch, None)
         .unwrap();
 
-    println!("ANISE\n{anise_lro_state}\nSPICE\n{spice_lro_state}");
+    println!("== VALIDATION==\nANISE\n{anise_lro_state}\nSPICE\n{spice_lro_state}");
     let rss_pos_km = anise_lro_state.rss_radius_km(&spice_lro_state).unwrap();
     let rss_vel_km_s = anise_lro_state.rss_velocity_km_s(&spice_lro_state).unwrap();
 
     dbg!(rss_pos_km, rss_vel_km_s);
 
     assert!(rss_pos_km < f64::EPSILON);
-    assert!(rss_vel_km_s < 1e-8);
+    assert!(rss_vel_km_s < 1e-15);
 
     // Compute the line of sight via the AER computation throughout a full orbit.
 
@@ -291,6 +306,16 @@ fn gh_283_multi_barycenter_and_los(almanac: Almanac) {
 
     let period = lro_state.period().unwrap();
     println!("LRO period is {period}");
+
+    // SPICE call definitions
+    let front = "MOON";
+    let fshape = "ELLIPSOID";
+    let fframe = "IAU_MOON";
+    let back = "SUN";
+    let bshape = "ELLIPSOID";
+    let bframe = "IAU_SUN";
+    let abcorr = "NONE";
+    let obsrvr = "-85";
 
     let mut prev_occult: Option<Occultation> = None;
 
@@ -324,10 +349,31 @@ fn gh_283_multi_barycenter_and_los(almanac: Almanac) {
         let rx_lro = almanac
             .transform(lro_frame, IAU_MOON_FRAME, epoch, None)
             .unwrap();
+
         // Compute the solar eclipsing
         let occult = almanac
             .solar_eclipsing(IAU_MOON_FRAME, rx_lro, None)
             .unwrap();
+
+        let spice_occult = spice::occult(
+            front,
+            fshape,
+            &fframe,
+            &back,
+            &bshape,
+            &bframe,
+            &abcorr,
+            &obsrvr,
+            epoch.to_et_seconds(),
+        );
+
+        match spice_occult {
+            0 => assert!(occult.is_visible(), "SPICE={spice_occult} BUT {occult}"),
+            1 => assert!(occult.is_partial(), "SPICE={spice_occult} BUT {occult}"),
+            3 => assert!(occult.is_obstructed(), "SPICE={spice_occult} BUT {occult}"),
+            _ => unreachable!(),
+        }
+
         if occult.is_visible() {
             if !printed_visible {
                 println!("{occult} @ {rx_lro:x}");
