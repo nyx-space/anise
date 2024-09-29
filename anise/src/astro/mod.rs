@@ -56,6 +56,11 @@ impl AzElRange {
         self.azimuth_deg.is_finite() && self.elevation_deg.is_finite() && self.range_km > 1e-6
     }
 
+    /// Returns whether there is an obstruction.
+    pub fn is_obstructed(&self) -> bool {
+        self.obstructed_by.is_some()
+    }
+
     /// Initializes a new AzElRange instance
     #[cfg(feature = "python")]
     #[new]

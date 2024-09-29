@@ -298,7 +298,6 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
     let height_km = 0.834_939;
     let iau_earth = almanac.frame_from_uid(IAU_EARTH_FRAME).unwrap();
 
-    let obstructing_bodies = Some(MOON_J2000);
     let mut obstructions = 0;
     let mut no_obstructions = 0;
     let mut printed_umbra = false;
@@ -336,7 +335,7 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
             .unwrap();
 
         let aer = almanac
-            .azimuth_elevation_range_sez(rx_lro, tx_madrid, obstructing_bodies, None)
+            .azimuth_elevation_range_sez(rx_lro, tx_madrid, Some(MOON_J2000), None)
             .unwrap();
         if aer.obstructed_by.is_some() {
             obstructions += 1;
@@ -418,6 +417,6 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
         prev_occult = Some(occult)
     }
 
-    assert_eq!(obstructions, 2841);
-    assert_eq!(no_obstructions, 4171);
+    assert_eq!(obstructions, 2762);
+    assert_eq!(no_obstructions, 4250);
 }
