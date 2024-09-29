@@ -15,8 +15,8 @@ log = { workspace = true }
 bytes = { workspace = true }
 pretty_env_logger = { workspace = true }
 egui-toast = "0.14"
-eframe = { version = "0.28" }
-egui = { version = "0.28" }
+eframe = { version = "0.29" }
+egui = { version = "0.29" }
 egui_extras = { version = "0.29", features = ["datepicker", "http", "image"] }
 catppuccin-egui = { version = "5.1", default-features = false, features = [
     "egui28",
