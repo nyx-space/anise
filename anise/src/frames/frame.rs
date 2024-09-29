@@ -11,8 +11,10 @@
 use core::fmt;
 use core::fmt::Debug;
 use serde_derive::{Deserialize, Serialize};
-use serde_dhall::StaticType;
 use snafu::ResultExt;
+
+#[cfg(feature = "metaload")]
+use serde_dhall::StaticType;
 
 use crate::astro::PhysicsResult;
 use crate::constants::celestial_objects::{
@@ -32,7 +34,8 @@ use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
 
 /// A Frame uniquely defined by its ephemeris center and orientation. Refer to FrameDetail for frames combined with parameters.
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, StaticType)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "metaload", derive(StaticType))]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(get_all, set_all))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
@@ -317,6 +320,7 @@ mod frame_ut {
         assert_eq!(format!("{EME2000:e}"), "Earth");
     }
 
+    #[cfg(feature = "metaload")]
     #[test]
     fn dhall_serde() {
         let serialized = serde_dhall::serialize(&EME2000)
