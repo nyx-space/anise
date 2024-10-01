@@ -227,11 +227,19 @@ impl CartesianState {
         Ok((lat_deg, long_deg, alt_km))
     }
 
-    /// Returns the geodetic longitude (λ) in degrees. Value is between 0 and 360 degrees.
+    /// Returns the geodetic longitude (λ) in degrees. Value is between -180 and 180 degrees.
     ///
     /// # Frame warning
     /// This state MUST be in the body fixed frame (e.g. ITRF93) prior to calling this function, or the computation is **invalid**.
     pub fn longitude_deg(&self) -> f64 {
+        between_pm_180(self.radius_km.y.atan2(self.radius_km.x).to_degrees())
+    }
+
+    /// Returns the geodetic longitude (λ) in degrees. Value is between 0 and 360 degrees.
+    ///
+    /// # Frame warning
+    /// This state MUST be in the body fixed frame (e.g. ITRF93) prior to calling this function, or the computation is **invalid**.
+    pub fn longitude_360_deg(&self) -> f64 {
         between_0_360(self.radius_km.y.atan2(self.radius_km.x).to_degrees())
     }
 
