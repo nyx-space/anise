@@ -10,6 +10,7 @@
 
 use crate::{
     astro::{Aberration, AzElRange},
+    constants::SPEED_OF_LIGHT_KM_S,
     ephemerides::{EphemerisError, EphemerisPhysicsSnafu},
     errors::{AlmanacError, EphemerisSnafu, PhysicsError},
     frames::Frame,
@@ -21,6 +22,7 @@ use crate::{
 use super::Almanac;
 use crate::errors::AlmanacResult;
 
+use hifitime::TimeUnits;
 use log::warn;
 
 use snafu::ResultExt;
@@ -120,6 +122,7 @@ impl Almanac {
             range_km: rho_sez.norm(),
             range_rate_km_s,
             obstructed_by,
+            light_time: (rho_sez.norm() / SPEED_OF_LIGHT_KM_S).seconds(),
         })
     }
 }

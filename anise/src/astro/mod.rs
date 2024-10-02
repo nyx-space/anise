@@ -13,7 +13,9 @@ use std::fmt::Display;
 use crate::errors::PhysicsError;
 use crate::frames::Frame;
 
-use hifitime::Epoch;
+use hifitime::{Duration, Epoch, TimeUnits};
+
+use crate::constants::SPEED_OF_LIGHT_KM_S;
 
 #[cfg(feature = "python")]
 use pyo3::exceptions::PyTypeError;
@@ -47,6 +49,7 @@ pub struct AzElRange {
     pub range_km: f64,
     pub range_rate_km_s: f64,
     pub obstructed_by: Option<Frame>,
+    pub light_time: Duration,
 }
 
 #[cfg_attr(feature = "python", pymethods)]
@@ -79,6 +82,7 @@ impl AzElRange {
             range_km,
             range_rate_km_s,
             obstructed_by,
+            light_time: (range_km / SPEED_OF_LIGHT_KM_S).seconds(),
         }
     }
 
