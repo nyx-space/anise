@@ -13,9 +13,7 @@ use std::fmt::Display;
 use crate::errors::PhysicsError;
 use crate::frames::Frame;
 
-use hifitime::{Duration, Epoch, TimeUnits};
-
-use crate::constants::SPEED_OF_LIGHT_KM_S;
+use hifitime::{Duration, Epoch};
 
 #[cfg(feature = "python")]
 use pyo3::exceptions::PyTypeError;
@@ -60,7 +58,7 @@ impl AzElRange {
     }
 
     /// Returns whether there is an obstruction.
-    pub fn is_obstructed(&self) -> bool {
+    pub const fn is_obstructed(&self) -> bool {
         self.obstructed_by.is_some()
     }
 
@@ -75,6 +73,9 @@ impl AzElRange {
         range_rate_km_s: f64,
         obstructed_by: Option<Frame>,
     ) -> Self {
+        use crate::constants::SPEED_OF_LIGHT_KM_S;
+        use hifitime::TimeUnits;
+
         Self {
             epoch,
             azimuth_deg,

@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use anise::astro::Occultation;
+use anise::astro::{AzElRange, Occultation};
 use anise::constants::celestial_objects::{EARTH, VENUS};
 use anise::constants::frames::{
     EARTH_ITRF93, EARTH_J2000, IAU_EARTH_FRAME, IAU_MOON_FRAME, MOON_J2000, SUN_J2000, VENUS_J2000,
@@ -317,6 +317,14 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
     let obsrvr = "-85";
 
     let mut prev_occult: Option<Occultation> = None;
+    let mut prev_aer: Option<AzElRange> = None;
+    let mut access_count = 0;
+    let mut access_start: Option<Epoch> = None;
+
+    let access_times = [
+        Unit::Minute * 4 + Unit::Second * 1,
+        Unit::Hour * 1 + Unit::Minute * 6 + 49 * Unit::Second,
+    ];
 
     for epoch in TimeSeries::inclusive(epoch, epoch + period, 1.seconds()) {
         // Rebuild the ground station at this new epoch
@@ -335,8 +343,33 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
             .unwrap();
 
         let aer = almanac
-            .azimuth_elevation_range_sez(rx_lro, tx_madrid, Some(MOON_J2000), None)
+            .azimuth_elevation_range_sez(rx_lro, tx_madrid, Some(IAU_MOON_FRAME), None)
             .unwrap();
+
+        if let Some(prev_aer) = prev_aer {
+            if prev_aer.is_obstructed() && !aer.is_obstructed() {
+                // New access
+                access_count += 1;
+                access_start = Some(aer.epoch);
+            } else if !prev_aer.is_obstructed() && aer.is_obstructed() {
+                // End of access
+                if let Some(access_start) = access_start {
+                    // We've had a full access strand.
+                    let access_end = aer.epoch;
+                    let access_duration = (access_end - access_start).round(Unit::Second * 1);
+                    println!(
+                        "#{access_count}\t{access_start} - {access_end}\t{}",
+                        access_duration
+                    );
+                    assert_eq!(access_times[access_count], access_duration);
+                }
+            }
+            // dbg!(prev_aer.is_obstructed(), aer.is_obstructed());
+        } else if !aer.is_obstructed() {
+            access_start = Some(aer.epoch);
+        }
+        prev_aer = Some(aer);
+
         if aer.obstructed_by.is_some() {
             obstructions += 1;
         } else {
@@ -415,6 +448,17 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
             println!("{occult}");
         }
         prev_occult = Some(occult)
+    }
+
+    if let Some(access_start) = access_start {
+        // We've had a full access strand.
+        let access_end = epoch + period;
+        let access_duration = (access_end - access_start).round(Unit::Second * 1);
+        println!(
+            "#{access_count}\t{access_start} - {access_end}\t{}",
+            access_duration
+        );
+        assert_eq!(access_times[access_count], access_duration);
     }
 
     assert_eq!(obstructions, 2762);

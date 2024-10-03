@@ -35,6 +35,9 @@ impl Almanac {
     /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
     /// receiver state (`rx`) seen from the transmitter state (`tx`), once converted into the SEZ frame of the transmitter.
     ///
+    /// # Warning
+    /// The obstructing body _should_ be a tri-axial ellipsoid body, e.g. IAU_MOON_FRAME.
+    ///
     /// # Algorithm
     /// 1. If any obstructing_bodies are provided, ensure that none of these are obstructing the line of sight between the receiver and transmitter.
     /// 2. Compute the SEZ (South East Zenith) frame of the transmitter.
