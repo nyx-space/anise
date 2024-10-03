@@ -12,6 +12,7 @@ use hifitime::{Epoch, Unit as TimeUnit};
 use snafu::ResultExt;
 
 use crate::{
+    constants::orientations::J2000,
     errors::{AlmanacResult, EphemerisSnafu, OrientationSnafu},
     math::{cartesian::CartesianState, units::LengthUnit, Vector3},
     orientations::OrientationPhysicsSnafu,
@@ -71,25 +72,29 @@ impl Almanac {
     #[allow(clippy::too_many_arguments)]
     pub fn transform_to(
         &self,
-        state: CartesianState,
+        mut state: CartesianState,
         observer_frame: Frame,
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<CartesianState> {
-        let state = self
+        // If the input and final rotations differ, rotate into J2000 first
+        state = if state.frame.orient_origin_match(observer_frame) {
+            state
+        } else {
+            self.rotate_to(state, state.frame.with_orient(J2000))
+                .context(OrientationSnafu {
+                    action: "transform state dcm",
+                })?
+        };
+
+        // Transform in the base frame (J2000) or the common frame
+        state = self
             .translate_to(state, observer_frame, ab_corr)
             .context(EphemerisSnafu {
                 action: "transform state",
             })?;
 
-        // Compute the frame rotation
-        let dcm = self
-            .rotate(state.frame, observer_frame, state.epoch)
-            .context(OrientationSnafu {
-                action: "transform state dcm",
-            })?;
-
-        (dcm * state)
-            .context(OrientationPhysicsSnafu {})
+        // Rotate into the observer frame
+        self.rotate_to(state, observer_frame)
             .context(OrientationSnafu {
                 action: "transform state",
             })

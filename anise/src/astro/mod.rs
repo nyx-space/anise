@@ -13,7 +13,7 @@ use std::fmt::Display;
 use crate::errors::PhysicsError;
 use crate::frames::Frame;
 
-use hifitime::Epoch;
+use hifitime::{Duration, Epoch};
 
 #[cfg(feature = "python")]
 use pyo3::exceptions::PyTypeError;
@@ -47,6 +47,7 @@ pub struct AzElRange {
     pub range_km: f64,
     pub range_rate_km_s: f64,
     pub obstructed_by: Option<Frame>,
+    pub light_time: Duration,
 }
 
 #[cfg_attr(feature = "python", pymethods)]
@@ -54,6 +55,11 @@ impl AzElRange {
     /// Returns false if the range is less than one millimeter, or any of the angles are NaN.
     pub fn is_valid(&self) -> bool {
         self.azimuth_deg.is_finite() && self.elevation_deg.is_finite() && self.range_km > 1e-6
+    }
+
+    /// Returns whether there is an obstruction.
+    pub const fn is_obstructed(&self) -> bool {
+        self.obstructed_by.is_some()
     }
 
     /// Initializes a new AzElRange instance
@@ -67,6 +73,9 @@ impl AzElRange {
         range_rate_km_s: f64,
         obstructed_by: Option<Frame>,
     ) -> Self {
+        use crate::constants::SPEED_OF_LIGHT_KM_S;
+        use hifitime::TimeUnits;
+
         Self {
             epoch,
             azimuth_deg,
@@ -74,6 +83,7 @@ impl AzElRange {
             range_km,
             range_rate_km_s,
             obstructed_by,
+            light_time: (range_km / SPEED_OF_LIGHT_KM_S).seconds(),
         }
     }
 
