@@ -80,10 +80,14 @@ pub fn chebyshev_eval_poly(
             + (2.0 * normalized_time * w[1] - w[2]);
     }
 
-    let val = (spline_coeffs
-        .first()
-        .ok_or(InterpolationError::MissingInterpolationData { epoch: eval_epoch })?)
-        + (normalized_time * w[0]);
+    // Code from chbval.c:
+    // *p = s * w[0] - w[1] + cp[0];
+    // For us, s is normalized_time, cp are the spline coeffs, and w is also the workspace.
+
+    let val = (normalized_time * w[0]) - w[1]
+        + (spline_coeffs
+            .first()
+            .ok_or(InterpolationError::MissingInterpolationData { epoch: eval_epoch })?);
 
     Ok(val)
 }
