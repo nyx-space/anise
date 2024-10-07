@@ -14,7 +14,7 @@ hifitime = { workspace = true }
 log = { workspace = true }
 bytes = { workspace = true }
 pretty_env_logger = { workspace = true }
-egui-toast = "0.14"
+egui-toast = "0.15"
 eframe = { version = "0.28" }
 egui = { version = "0.28" }
 egui_extras = { version = "0.28", features = ["datepicker", "http", "image"] }
