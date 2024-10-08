@@ -3,15 +3,13 @@ use anise::{
     naif::daf::NAIFSummaryRecord,
 };
 use eframe::egui;
-use egui::Align2;
+use egui::Theme;
 use egui_extras::{Column, TableBuilder};
-use egui_toast::{Toast, ToastKind, ToastOptions, ToastStyle, Toasts};
 use hifitime::TimeScale;
 
+use log::error;
 #[cfg(target_arch = "wasm32")]
 use poll_promise::Promise;
-
-use catppuccin_egui::FRAPPE;
 
 #[cfg(target_arch = "wasm32")]
 type AlmanacFile = Option<(String, Vec<u8>)>;
@@ -33,12 +31,12 @@ enum FileLoadResult {
 }
 
 impl UiApp {
-    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
         // Restore app state using cc.storage (requires the "persistence" feature).
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
-        // _cc.egui_ctx.set_style(Arc::new(MOCHA));
+        cc.egui_ctx.set_theme(Theme::Light);
         Self::default()
     }
 
@@ -82,23 +80,26 @@ impl UiApp {
 
 impl eframe::App for UiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        catppuccin_egui::set_theme(ctx, FRAPPE);
         ctx.set_pixels_per_point(1.25);
-
-        let mut toasts = Toasts::new()
-            .anchor(Align2::RIGHT_BOTTOM, (-10.0, -10.0)) // 10 units from the bottom right corner
-            .direction(egui::Direction::BottomUp);
 
         egui::TopBottomPanel::top("header").show(ctx, |ui| {
             ui.horizontal_centered(|ui| {
                 ui.vertical_centered(|ui| {
                     ui.heading("ANISE v0.4");
-                    ui.label("A modern rewrite of NAIF SPICE");
+                    ui.label("A modern rewrite of NASA's SPICE toolkit");
                     ui.hyperlink_to("Contact us", "https://7ug5imdtt8v.typeform.com/to/neFvVW3p");
-                    ui.hyperlink("https://www.nyxspace.com");
+                    ui.hyperlink_to("https://www.nyxspace.com", "https://www.nyxspace.com?utm_source=gui");
                     ui.label("ANISE is open-sourced under the Mozilla Public License 2.0");
                 });
             });
+        });
+
+        egui::TopBottomPanel::bottom("log").show(ctx, |ui| {
+            // draws the actual logger ui
+            egui_logger::LoggerUi::default()
+                .enable_ctx_menu(false)
+                .enable_regex(false)
+                .show(ui)
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -125,26 +126,12 @@ impl eframe::App for UiApp {
                                             FileLoadResult::NoFileSelectedYet => {
                                             }
                                             FileLoadResult::Ok((path, almanac)) => {
-                                                toasts.add(Toast {
-                                                    text: format!("Loaded {path:?}").into(),
-                                                    kind: ToastKind::Success,
-                                                    style: ToastStyle::default(),
-                                                    options: ToastOptions::default()
-                                                        .duration_in_seconds(15.0)
-                                                        .show_progress(true),
-                                                });
+                                                
                                                 self.almanac = almanac;
                                                 self.path = Some(path);
                                             }
                                             FileLoadResult::Error(e) => {
-                                                toasts.add(Toast {
-                                                    text: format!("{e}").into(),
-                                                    kind: ToastKind::Error,
-                                                    style: ToastStyle::default(),
-                                                    options: ToastOptions::default()
-                                                        .duration_in_seconds(15.0)
-                                                        .show_progress(true),
-                                                });
+                                                error!("{e}");
                                             }
                                         }
                                 }
@@ -669,10 +656,8 @@ impl eframe::App for UiApp {
                         };
                     });
                 });
-
-                // Show and update all toasts
             });
-            toasts.show(ctx);
+            
         });
     }
 }

@@ -12,11 +12,19 @@ fn main() {
         set_var(LOG_VAR, "INFO");
     }
 
-    let _ = pretty_env_logger::try_init_custom_env(LOG_VAR).is_err();
+    // Initialize the logger
+    egui_logger::builder()
+        .init()
+        .expect("Error initializing logger");
+
+    let opts = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default().with_maximized(true),
+        ..Default::default()
+    };
 
     let _ = eframe::run_native(
         "ANISE by Nyx Space",
-        eframe::NativeOptions::default(),
+        opts,
         Box::new(|cc| Ok(Box::new(UiApp::new(cc)))),
     );
 }
