@@ -1,3 +1,4 @@
+#![windows_subsystem = "windows"]
 #[allow(dead_code)]
 const LOG_VAR: &str = "ANISE_LOG";
 
@@ -18,7 +19,7 @@ fn main() {
         .expect("Error initializing logger");
 
     let opts = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_maximized(true),
+        viewport: egui::ViewportBuilder::default().with_inner_size([1024.0, 768.0]),
         ..Default::default()
     };
 

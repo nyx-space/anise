@@ -14,7 +14,6 @@ use poll_promise::Promise;
 #[cfg(target_arch = "wasm32")]
 type AlmanacFile = Option<(String, Vec<u8>)>;
 
-#[derive(Default)]
 pub struct UiApp {
     selected_time_scale: TimeScale,
     show_unix: bool,
@@ -22,6 +21,19 @@ pub struct UiApp {
     path: Option<String>,
     #[cfg(target_arch = "wasm32")]
     promise: Option<Promise<AlmanacFile>>,
+}
+
+impl Default for UiApp {
+    fn default() -> Self {
+        Self {
+            selected_time_scale: TimeScale::UTC,
+            show_unix: false,
+            almanac: Default::default(),
+            path: None,
+            #[cfg(target_arch = "wasm32")]
+            promise: Default::default(),
+        }
+    }
 }
 
 enum FileLoadResult {
@@ -36,7 +48,7 @@ impl UiApp {
         // Restore app state using cc.storage (requires the "persistence" feature).
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
-        cc.egui_ctx.set_theme(Theme::Light);
+        cc.egui_ctx.set_theme(Theme::Dark);
         Self::default()
     }
 
@@ -87,20 +99,28 @@ impl eframe::App for UiApp {
                 ui.vertical_centered(|ui| {
                     ui.heading("ANISE v0.4");
                     ui.label("A modern rewrite of NASA's SPICE toolkit");
-                    ui.hyperlink_to("Contact us", "https://7ug5imdtt8v.typeform.com/to/neFvVW3p");
-                    ui.hyperlink_to("https://www.nyxspace.com", "https://www.nyxspace.com?utm_source=gui");
-                    ui.label("ANISE is open-sourced under the Mozilla Public License 2.0");
+                    ui.hyperlink_to("Contact", "https://7ug5imdtt8v.typeform.com/to/neFvVW3p");
+                    ui.hyperlink_to(
+                        "https://www.nyxspace.com",
+                        "https://www.nyxspace.com?utm_source=gui",
+                    );
                 });
             });
         });
 
-        egui::TopBottomPanel::bottom("log").show(ctx, |ui| {
-            // draws the actual logger ui
-            egui_logger::LoggerUi::default()
-                .enable_ctx_menu(false)
-                .enable_regex(false)
-                .show(ui)
-        });
+        egui::TopBottomPanel::bottom("bottom_panel")
+            .resizable(false)
+            .min_height(0.0)
+            .show(ctx, |ui| {
+                ui.vertical_centered(|ui| {
+                    ui.heading("Run log");
+                });
+
+                egui_logger::LoggerUi::default()
+                    .enable_ctx_menu(false)
+                    .enable_regex(false)
+                    .show(ui);
+            });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::both().show(ui, |ui| {
@@ -126,7 +146,6 @@ impl eframe::App for UiApp {
                                             FileLoadResult::NoFileSelectedYet => {
                                             }
                                             FileLoadResult::Ok((path, almanac)) => {
-                                                
                                                 self.almanac = almanac;
                                                 self.path = Some(path);
                                             }
@@ -201,7 +220,7 @@ impl eframe::App for UiApp {
 
                                             ui.checkbox(
                                                 &mut self.show_unix,
-                                                "Show UNIX timestamps (in seconds)",
+                                                "UNIX timestamps",
                                             );
                                         });
                                     }
@@ -657,7 +676,6 @@ impl eframe::App for UiApp {
                     });
                 });
             });
-            
         });
     }
 }
