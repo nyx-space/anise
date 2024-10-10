@@ -1,8 +1,12 @@
+#![windows_subsystem = "windows"]
 #[allow(dead_code)]
 const LOG_VAR: &str = "ANISE_LOG";
 
 mod ui;
 use ui::UiApp;
+
+mod bpc;
+mod spk;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
@@ -12,11 +16,19 @@ fn main() {
         set_var(LOG_VAR, "INFO");
     }
 
-    let _ = pretty_env_logger::try_init_custom_env(LOG_VAR).is_err();
+    // Initialize the logger
+    egui_logger::builder()
+        .init()
+        .expect("Error initializing logger");
+
+    let opts = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default().with_inner_size([1024.0, 640.0]),
+        ..Default::default()
+    };
 
     let _ = eframe::run_native(
         "ANISE by Nyx Space",
-        eframe::NativeOptions::default(),
+        opts,
         Box::new(|cc| Ok(Box::new(UiApp::new(cc)))),
     );
 }
