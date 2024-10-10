@@ -5,6 +5,9 @@ const LOG_VAR: &str = "ANISE_LOG";
 mod ui;
 use ui::UiApp;
 
+mod bpc;
+mod spk;
+
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
     use std::env::{set_var, var};
@@ -19,7 +22,7 @@ fn main() {
         .expect("Error initializing logger");
 
     let opts = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([1024.0, 768.0]),
+        viewport: egui::ViewportBuilder::default().with_inner_size([1024.0, 640.0]),
         ..Default::default()
     };
 
