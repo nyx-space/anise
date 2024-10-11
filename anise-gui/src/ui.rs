@@ -192,11 +192,11 @@ impl eframe::App for UiApp {
                                         ui.text_edit_singleline(&mut format!("{crc}"));
 
                                         if label.ends_with("SPK") {
-                                            let num_summaries = self.almanac.spk_domains().unwrap().len();
+                                            let num_summaries = self.almanac.spk_data[0].as_ref().unwrap().data_summaries().unwrap().len();
                                             ui.label("Number of summaries");
                                             ui.label(format!("{num_summaries}"));
-                                        } else if label.ends_with("BPC") {
-                                            let num_summaries = self.almanac.bpc_domains().unwrap().len();
+                                        } else if label.ends_with("PCK") {
+                                            let num_summaries = self.almanac.bpc_data[0].as_ref().unwrap().data_summaries().unwrap().len();
                                             ui.label("Number of summaries");
                                             ui.label(format!("{num_summaries}"));
                                         }
