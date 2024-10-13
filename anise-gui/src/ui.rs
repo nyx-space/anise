@@ -1,29 +1,38 @@
-use anise::{
-    almanac::Almanac, constants::orientations::orientation_name_from_id, errors::AlmanacError,
-    naif::daf::NAIFSummaryRecord,
-};
+use anise::{almanac::Almanac, errors::AlmanacError};
 use eframe::egui;
-use egui::Align2;
+use egui::Theme;
 use egui_extras::{Column, TableBuilder};
-use egui_toast::{Toast, ToastKind, ToastOptions, ToastStyle, Toasts};
 use hifitime::TimeScale;
 
+use log::error;
 #[cfg(target_arch = "wasm32")]
 use poll_promise::Promise;
 
-use catppuccin_egui::FRAPPE;
+use crate::{bpc::bpc_ui, spk::spk_ui};
 
 #[cfg(target_arch = "wasm32")]
 type AlmanacFile = Option<(String, Vec<u8>)>;
 
-#[derive(Default)]
 pub struct UiApp {
-    selected_time_scale: TimeScale,
-    show_unix: bool,
-    almanac: Almanac,
-    path: Option<String>,
+    pub selected_time_scale: TimeScale,
+    pub show_unix: bool,
+    pub almanac: Almanac,
+    pub path: Option<String>,
     #[cfg(target_arch = "wasm32")]
     promise: Option<Promise<AlmanacFile>>,
+}
+
+impl Default for UiApp {
+    fn default() -> Self {
+        Self {
+            selected_time_scale: TimeScale::UTC,
+            show_unix: false,
+            almanac: Default::default(),
+            path: None,
+            #[cfg(target_arch = "wasm32")]
+            promise: Default::default(),
+        }
+    }
 }
 
 enum FileLoadResult {
@@ -33,12 +42,12 @@ enum FileLoadResult {
 }
 
 impl UiApp {
-    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
         // Restore app state using cc.storage (requires the "persistence" feature).
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
-        // _cc.egui_ctx.set_style(Arc::new(MOCHA));
+        cc.egui_ctx.set_theme(Theme::Dark);
         Self::default()
     }
 
@@ -82,24 +91,35 @@ impl UiApp {
 
 impl eframe::App for UiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        catppuccin_egui::set_theme(ctx, FRAPPE);
         ctx.set_pixels_per_point(1.25);
-
-        let mut toasts = Toasts::new()
-            .anchor(Align2::RIGHT_BOTTOM, (-10.0, -10.0)) // 10 units from the bottom right corner
-            .direction(egui::Direction::BottomUp);
 
         egui::TopBottomPanel::top("header").show(ctx, |ui| {
             ui.horizontal_centered(|ui| {
                 ui.vertical_centered(|ui| {
                     ui.heading("ANISE v0.4");
-                    ui.label("A modern rewrite of NAIF SPICE");
-                    ui.hyperlink_to("Contact us", "https://7ug5imdtt8v.typeform.com/to/neFvVW3p");
-                    ui.hyperlink("https://www.nyxspace.com");
-                    ui.label("ANISE is open-sourced under the Mozilla Public License 2.0");
+                    ui.label("A modern rewrite of NASA's SPICE toolkit");
+                    ui.hyperlink_to("Contact", "https://7ug5imdtt8v.typeform.com/to/neFvVW3p");
+                    ui.hyperlink_to(
+                        "https://www.nyxspace.com",
+                        "https://www.nyxspace.com?utm_source=gui",
+                    );
                 });
             });
         });
+
+        egui::TopBottomPanel::bottom("bottom_panel")
+            .resizable(false)
+            .min_height(0.0)
+            .show(ctx, |ui| {
+                ui.vertical_centered(|ui| {
+                    ui.heading("Run log");
+                });
+
+                egui_logger::LoggerUi::default()
+                    .enable_ctx_menu(false)
+                    .enable_regex(false)
+                    .show(ui);
+            });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::both().show(ui, |ui| {
@@ -125,26 +145,11 @@ impl eframe::App for UiApp {
                                             FileLoadResult::NoFileSelectedYet => {
                                             }
                                             FileLoadResult::Ok((path, almanac)) => {
-                                                toasts.add(Toast {
-                                                    text: format!("Loaded {path:?}").into(),
-                                                    kind: ToastKind::Success,
-                                                    style: ToastStyle::default(),
-                                                    options: ToastOptions::default()
-                                                        .duration_in_seconds(15.0)
-                                                        .show_progress(true),
-                                                });
                                                 self.almanac = almanac;
                                                 self.path = Some(path);
                                             }
                                             FileLoadResult::Error(e) => {
-                                                toasts.add(Toast {
-                                                    text: format!("{e}").into(),
-                                                    kind: ToastKind::Error,
-                                                    style: ToastStyle::default(),
-                                                    options: ToastOptions::default()
-                                                        .duration_in_seconds(15.0)
-                                                        .show_progress(true),
-                                                });
+                                                error!("{e}");
                                             }
                                         }
                                 }
@@ -182,10 +187,19 @@ impl eframe::App for UiApp {
                                     ui.horizontal(|ui| {
                                         ui.label("File type");
                                         ui.label(label);
-                                    });
-                                    ui.horizontal(|ui| {
+
                                         ui.label("CRC32");
                                         ui.text_edit_singleline(&mut format!("{crc}"));
+
+                                        if label.ends_with("SPK") {
+                                            let num_summaries = self.almanac.spk_data[0].as_ref().unwrap().data_summaries().unwrap().len();
+                                            ui.label("Number of summaries");
+                                            ui.label(format!("{num_summaries}"));
+                                        } else if label.ends_with("PCK") {
+                                            let num_summaries = self.almanac.bpc_data[0].as_ref().unwrap().data_summaries().unwrap().len();
+                                            ui.label("Number of summaries");
+                                            ui.label(format!("{num_summaries}"));
+                                        }
                                     });
 
                                     if label.starts_with("DAF/") {
@@ -214,292 +228,16 @@ impl eframe::App for UiApp {
 
                                             ui.checkbox(
                                                 &mut self.show_unix,
-                                                "Show UNIX timestamps (in seconds)",
+                                                "UNIX timestamps",
                                             );
                                         });
                                     }
 
                                     // Now display the data
                                     if label == "DAF/PCK" {
-                                        // We can use the summary
-                                        TableBuilder::new(ui)
-                                            .column(Column::auto().at_least(125.0).resizable(true))
-                                            .column(Column::auto().at_least(225.0).resizable(true))
-                                            .column(Column::auto().at_least(225.0).resizable(true))
-                                            .column(Column::auto().at_least(50.0).resizable(true))
-                                            .column(Column::auto().at_least(200.0).resizable(true))
-                                            .column(Column::auto().at_least(150.0).resizable(true))
-                                            .column(Column::remainder())
-                                            .header(20.0, |mut header| {
-                                                header.col(|ui| {
-                                                    ui.heading("Segment name");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("Start epoch");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("End epoch");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("Frame");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("Inertial frame");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("Validity");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("Kind");
-                                                });
-                                            })
-                                            .body(|mut body| {
-                                                let pck =
-                                                    self.almanac.bpc_data[0].as_ref().unwrap();
-
-                                                for (sno, summary) in
-                                                    pck.data_summaries().unwrap().iter().enumerate()
-                                                {
-                                                    let name_rcrd = pck.name_record().unwrap();
-                                                    let name = name_rcrd.nth_name(
-                                                        sno,
-                                                        pck.file_record().unwrap().summary_size(),
-                                                    );
-                                                    if summary.is_empty() {
-                                                        continue;
-                                                    }
-
-                                                    body.row(30.0, |mut row| {
-                                                        row.col(|ui| {
-                                                            ui.label(name);
-                                                        });
-
-                                                        row.col(|ui| {
-                                                            if self.show_unix {
-                                                                ui.text_edit_singleline(
-                                                                    &mut format!(
-                                                                        "{}",
-                                                                        summary
-                                                                            .start_epoch()
-                                                                            .to_unix_seconds()
-                                                                    ),
-                                                                );
-                                                            } else {
-                                                                ui.label(
-                                                                    summary
-                                                                        .start_epoch()
-                                                                        .to_gregorian_str(
-                                                                        self.selected_time_scale,
-                                                                    ),
-                                                                );
-                                                            };
-                                                        });
-
-                                                        row.col(|ui| {
-                                                            if self.show_unix {
-                                                                ui.text_edit_singleline(
-                                                                    &mut format!(
-                                                                        "{}",
-                                                                        summary
-                                                                            .end_epoch()
-                                                                            .to_unix_seconds()
-                                                                    ),
-                                                                );
-                                                            } else {
-                                                                ui.label(
-                                                                    summary
-                                                                        .end_epoch()
-                                                                        .to_gregorian_str(
-                                                                        self.selected_time_scale,
-                                                                    ),
-                                                                );
-                                                            };
-                                                        });
-
-                                                        row.col(
-                                                            |ui| match orientation_name_from_id(
-                                                                summary.frame_id,
-                                                            ) {
-                                                                Some(name) => {
-                                                                    ui.label(format!(
-                                                                        "{name} ({})",
-                                                                        summary.frame_id
-                                                                    ));
-                                                                }
-                                                                None => {
-                                                                    ui.label(format!(
-                                                                        "{}",
-                                                                        summary.frame_id
-                                                                    ));
-                                                                }
-                                                            },
-                                                        );
-
-                                                        row.col(
-                                                            |ui| match orientation_name_from_id(
-                                                                summary.inertial_frame_id,
-                                                            ) {
-                                                                Some(name) => {
-                                                                    ui.label(format!(
-                                                                        "{name} ({})",
-                                                                        summary.inertial_frame_id
-                                                                    ));
-                                                                }
-                                                                None => {
-                                                                    ui.label(format!(
-                                                                        "{}",
-                                                                        summary.inertial_frame_id
-                                                                    ));
-                                                                }
-                                                            },
-                                                        );
-
-                                                        row.col(|ui| {
-                                                            ui.label(format!(
-                                                                "{}",
-                                                                summary.end_epoch()
-                                                                    - summary.start_epoch()
-                                                            ));
-                                                        });
-
-                                                        row.col(|ui| {
-                                                            ui.label(format!(
-                                                                "{}",
-                                                                summary.data_type().unwrap()
-                                                            ));
-                                                        });
-                                                    });
-                                                }
-                                            });
+                                        bpc_ui(ui, &self.almanac, self.show_unix, self.selected_time_scale);
                                     } else if label == "DAF/SPK" {
-                                        TableBuilder::new(ui)
-                                            .column(Column::auto().at_least(125.0).resizable(true))
-                                            .column(Column::auto().at_least(225.0).resizable(true))
-                                            .column(Column::auto().at_least(225.0).resizable(true))
-                                            .column(Column::auto().at_least(150.0).resizable(true))
-                                            .column(Column::auto().at_least(200.0).resizable(true))
-                                            .column(Column::auto().at_least(150.0).resizable(true))
-                                            .column(Column::remainder())
-                                            .header(20.0, |mut header| {
-                                                header.col(|ui| {
-                                                    ui.heading("Segment name");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("Start epoch");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("End epoch");
-                                                });
-
-                                                header.col(|ui| {
-                                                    ui.heading("Target");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("Center");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("Validity");
-                                                });
-                                                header.col(|ui| {
-                                                    ui.heading("Kind");
-                                                });
-                                            })
-                                            .body(|mut body| {
-                                                let spk =
-                                                    self.almanac.spk_data[0].as_ref().unwrap();
-
-                                                for (sno, summary) in
-                                                    spk.data_summaries().unwrap().iter().enumerate()
-                                                {
-                                                    let name_rcrd = spk.name_record().unwrap();
-                                                    let name = name_rcrd.nth_name(
-                                                        sno,
-                                                        spk.file_record().unwrap().summary_size(),
-                                                    );
-                                                    if summary.is_empty() {
-                                                        continue;
-                                                    }
-
-                                                    body.row(30.0, |mut row| {
-                                                        row.col(|ui| {
-                                                            ui.label(name);
-                                                        });
-
-                                                        row.col(|ui| {
-                                                            if self.show_unix {
-                                                                ui.text_edit_singleline(
-                                                                    &mut format!(
-                                                                        "{}",
-                                                                        summary
-                                                                            .start_epoch()
-                                                                            .to_unix_seconds()
-                                                                    ),
-                                                                );
-                                                            } else {
-                                                                ui.label(
-                                                                    summary
-                                                                        .start_epoch()
-                                                                        .to_gregorian_str(
-                                                                        self.selected_time_scale,
-                                                                    ),
-                                                                );
-                                                            };
-                                                        });
-
-                                                        row.col(|ui| {
-                                                            if self.show_unix {
-                                                                ui.text_edit_singleline(
-                                                                    &mut format!(
-                                                                        "{}",
-                                                                        summary
-                                                                            .end_epoch()
-                                                                            .to_unix_seconds()
-                                                                    ),
-                                                                );
-                                                            } else {
-                                                                ui.label(
-                                                                    summary
-                                                                        .end_epoch()
-                                                                        .to_gregorian_str(
-                                                                        self.selected_time_scale,
-                                                                    ),
-                                                                );
-                                                            };
-                                                        });
-
-                                                        row.col(|ui| {
-                                                            ui.label(format!(
-                                                                "{} ({})",
-                                                                summary.target_frame(),
-                                                                summary.target_id
-                                                            ));
-                                                        });
-
-                                                        row.col(|ui| {
-                                                            ui.label(format!(
-                                                                "{} ({})",
-                                                                summary.center_frame(),
-                                                                summary.center_id
-                                                            ));
-                                                        });
-
-                                                        row.col(|ui| {
-                                                            ui.label(format!(
-                                                                "{}",
-                                                                summary.end_epoch()
-                                                                    - summary.start_epoch()
-                                                            ));
-                                                        });
-
-                                                        row.col(|ui| {
-                                                            ui.label(format!(
-                                                                "{}",
-                                                                summary.data_type().unwrap()
-                                                            ));
-                                                        });
-                                                    });
-                                                }
-                                            });
+                                        spk_ui(ui, &self.almanac, self.show_unix, self.selected_time_scale)
                                     } else if label == "ANISE/PCA" {
                                         TableBuilder::new(ui)
                                             .column(Column::auto().at_least(100.0).resizable(true))
@@ -669,10 +407,7 @@ impl eframe::App for UiApp {
                         };
                     });
                 });
-
-                // Show and update all toasts
             });
-            toasts.show(ctx);
         });
     }
 }

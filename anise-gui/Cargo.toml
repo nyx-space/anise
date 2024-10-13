@@ -7,6 +7,7 @@ homepage = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
 description = "A graphical user interface for ANISE"
+build = "build.rs"
 
 [dependencies]
 anise = { workspace = true }
@@ -14,15 +15,25 @@ hifitime = { workspace = true }
 log = { workspace = true }
 bytes = { workspace = true }
 pretty_env_logger = { workspace = true }
-egui-toast = "0.14"
-eframe = { version = "0.28" }
-egui = { version = "0.28" }
-egui_extras = { version = "0.28", features = ["datepicker", "http", "image"] }
-catppuccin-egui = { version = "5.1", default-features = false, features = [
-    "egui28",
-] }
+eframe = { version = "0.29" }
+egui = { version = "0.29" }
+egui_extras = { version = "0.29", features = ["datepicker", "http", "image"] }
 rfd = { version = "0.15.0" }
+egui_logger = "0.6.1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4"
 poll-promise = { version = "0.3.0", features = ["web"] }
+
+
+[target.'cfg(windows)'.build-dependencies]
+tauri-winres = "0.1"
+
+[package.metadata.tauri-winres]
+FileDescription = "Inspect SPICE SPK and PCK binary files"
+FileVersion = "0.4"
+InternalName = "ANISE-GUI.EXE"
+OriginalFilename = "ANISE-GUI.EXE"
+ProductName = "ANISE"
+ProductVersion = "0.4"
+LegalCopyright = "Copyright (C) 2021-onward Christopher Rabotin"
