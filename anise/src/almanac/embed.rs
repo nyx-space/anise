@@ -8,9 +8,10 @@ use rust_embed::Embed;
 use snafu::ResultExt;
 
 #[derive(Embed)]
-#[folder = "$CARGO_MANIFEST_DIR/../data/"]
-#[include = "de440s.bsp"]
-#[include = "pck11.pca"]
+#[cfg_attr(not(docsrs), folder = "$CARGO_MANIFEST_DIR/../data/")]
+#[cfg_attr(not(docsrs), include = "de440s.bsp")]
+#[cfg_attr(not(docsrs), include = "pck11.pca")]
+#[cfg_attr(docsrs, folder = "$OUT_DIR")]
 struct AstroData;
 
 impl Almanac {

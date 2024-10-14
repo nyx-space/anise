@@ -73,9 +73,6 @@ jobs:
       - name: Test rust_embed build
         run: |
           # Clean up the data folder as if we were on crates.io
-          cp data/.cargokeep .
-          rm -rf data/
-          mkdir data && mv .cargokeep data/.cargokeep
           cd anise # Build only the Rust library
           cargo build --features embed_ephem
           cargo build --features embed_ephem --release
