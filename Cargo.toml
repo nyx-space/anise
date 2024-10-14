@@ -24,7 +24,6 @@ exclude = [
     ".vscode",
     "*.sh",
 ]
-include = ["data/.cargokeep"]
 
 [workspace.dependencies]
 hifitime = "4.0.0-alpha"
