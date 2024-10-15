@@ -22,7 +22,12 @@ fn main() {
         .expect("Error initializing logger");
 
     let opts = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([1024.0, 640.0]),
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size([1024.0, 640.0])
+            .with_icon(
+                eframe::icon_data::from_png_bytes(&include_bytes!("../icon-128.png")[..])
+                    .unwrap(),
+            ),
         ..Default::default()
     };
 
