@@ -1,12 +1,12 @@
 extern crate pretty_env_logger as pel;
 
 use anise::astro::orbit::Orbit;
-use anise::constants::frames::EARTH_J2000;
+use anise::constants::frames::{EARTH_J2000, MOON_J2000};
 use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
 use anise::math::angles::{between_0_360, between_pm_180};
 use anise::math::Vector3;
 use anise::prelude::*;
-use anise::time::{Epoch, Unit};
+use anise::time::{Epoch, TimeSeries, Unit};
 
 use rstest::*;
 
@@ -834,4 +834,24 @@ fn b_plane_davis(almanac: Almanac) {
 
     // The following is a regression test.
     assert!(dbg!(orbit.hyperbolic_anomaly_deg().unwrap() - 149.610128737).abs() < 1e-9);
+}
+
+#[rstest]
+fn gh_regression_340(almanac: Almanac) {
+    let moon_j2k = almanac.frame_from_uid(MOON_J2000).unwrap();
+
+    let start = Epoch::from_str("2024-10-16").unwrap();
+
+    let orbit = Orbit::keplerian(
+        6142.400, // sma
+        0.6, 57.7, 270.0, 270.0, 0.0, start, moon_j2k,
+    );
+
+    for epoch in TimeSeries::inclusive(
+        start,
+        Epoch::from_str("2024-10-17").unwrap(),
+        Unit::Minute * 1,
+    ) {
+        assert!(orbit.at_epoch(epoch).is_ok(), "error on {epoch}");
+    }
 }
