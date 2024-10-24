@@ -44,7 +44,7 @@ snafu = { version = "0.8.0", features = ["backtrace"] }
 lexical-core = "1.0.1"
 heapless = "0.8.0"
 rstest = "0.23.0"
-pyo3 = { version = "0.21", features = ["multiple-pymethods"] }
+pyo3 = { version = "0.22", features = ["multiple-pymethods"] }
 pyo3-log = "0.10"
 serde = "1"
 serde_derive = "1"
