@@ -23,7 +23,7 @@ use crate::{
 use bytes::BytesMut;
 use hifitime::Epoch;
 use snafu::ResultExt;
-use zerocopy::AsBytes;
+use zerocopy::IntoBytes;
 
 impl<R: NAIFSummaryRecord> MutDAF<R> {
     /// Parse the provided bytes as a SPICE Double Array File

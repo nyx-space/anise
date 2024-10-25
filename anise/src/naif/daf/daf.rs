@@ -27,7 +27,7 @@ use hifitime::Epoch;
 use log::{debug, error, trace};
 use snafu::ResultExt;
 
-use zerocopy::AsBytes;
+use zerocopy::IntoBytes;
 use zerocopy::{FromBytes, Ref};
 
 macro_rules! io_imports {
@@ -157,13 +157,15 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
         };
 
         // The summaries are defined in the same record as the DAF summary
-        Ok(match Ref::new_slice(&rcrd_bytes[SummaryRecord::SIZE..]) {
-            Some(data) => data.into_slice(),
-            None => &{
-                R::default();
-                [] as [R; 0]
+        Ok(
+            match Ref::<_, [R]>::from_bytes(&rcrd_bytes[SummaryRecord::SIZE..]) {
+                Ok(r) => Ref::into_ref(r),
+                Err(_) => &{
+                    R::default();
+                    [] as [R; 0]
+                },
             },
-        })
+        )
     }
 
     /// Returns the summary given the name of the summary record

@@ -13,7 +13,7 @@ use crate::{
     orientations::OrientationError,
 };
 use hifitime::Epoch;
-use zerocopy::{AsBytes, FromBytes, FromZeroes};
+use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
@@ -22,7 +22,7 @@ use super::daf::DafDataType;
 
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.internals"))]
-#[derive(Clone, Copy, Debug, Default, AsBytes, FromZeroes, FromBytes, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, IntoBytes, FromBytes, KnownLayout, Immutable, PartialEq)]
 #[repr(C)]
 pub struct BPCSummaryRecord {
     pub start_epoch_et_s: f64,
