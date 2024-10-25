@@ -112,7 +112,7 @@ fn main() -> Result<(), CliErrors> {
                 }
             } else {
                 // Load the header only
-                let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
+                let file_record = FileRecord::read_from_bytes(&bytes[..FileRecord::SIZE]).unwrap();
                 match file_record.identification().context(CliFileRecordSnafu)? {
                     "PCK" => {
                         info!("Loading {path_str:?} as DAF/PCK");
@@ -194,7 +194,7 @@ fn main() -> Result<(), CliErrors> {
 fn read_and_record(path_str: PathBuf) -> Result<(bytes::Bytes, FileRecord), CliErrors> {
     let bytes = file2heap!(path_str).context(AniseSnafu)?;
     // Load the header only
-    let file_record = FileRecord::read_from(&bytes[..FileRecord::SIZE]).unwrap();
+    let file_record = FileRecord::read_from_bytes(&bytes[..FileRecord::SIZE]).unwrap();
     Ok((bytes, file_record))
 }
 

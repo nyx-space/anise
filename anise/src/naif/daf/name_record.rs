@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use zerocopy::{FromBytes, FromZeros, Immutable, IntoBytes, KnownLayout};
+use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 use crate::DBL_SIZE;
 use log::warn;

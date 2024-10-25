@@ -76,7 +76,7 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
     }
 
     pub fn file_record(&self) -> Result<FileRecord, DAFError> {
-        let file_record = FileRecord::read_from(
+        let file_record = FileRecord::read_from_bytes(
             self.bytes
                 .get(..FileRecord::SIZE)
                 .ok_or_else(|| DecodingError::InaccessibleBytes {
@@ -108,7 +108,7 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
                 size: self.bytes.len(),
             })
             .context(DecodingNameSnafu { kind: R::NAME })?;
-        Ok(NameRecord::read_from(rcrd_bytes).unwrap())
+        Ok(NameRecord::read_from_bytes(rcrd_bytes).unwrap())
     }
 
     pub fn daf_summary(&self) -> Result<SummaryRecord, DAFError> {
@@ -123,8 +123,8 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
             })
             .context(DecodingSummarySnafu { kind: R::NAME })?;
 
-        SummaryRecord::read_from(&rcrd_bytes[..SummaryRecord::SIZE])
-            .ok_or(DecodingError::Casting)
+        SummaryRecord::read_from_bytes(&rcrd_bytes[..SummaryRecord::SIZE])
+            .or(Err(DecodingError::Casting))
             .context(DecodingSummarySnafu { kind: R::NAME })
     }
 
@@ -273,27 +273,28 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
 
         let start = (this_summary.start_index() - 1) * DBL_SIZE;
         let end = this_summary.end_index() * DBL_SIZE;
-        let data: &[f64] = Ref::new_slice(
-            match self
-                .bytes
-                .get(start..end)
-                .ok_or_else(|| DecodingError::InaccessibleBytes {
-                    start,
-                    end,
-                    size: self.bytes.len(),
-                }) {
-                Ok(it) => it,
-                Err(source) => {
-                    return Err(DAFError::DecodingData {
-                        kind: R::NAME,
-                        idx,
-                        source,
-                    })
-                }
-            },
-        )
-        .unwrap()
-        .into_slice();
+        let data: &[f64] = Ref::into_ref(
+            Ref::<&[u8], [f64]>::from_bytes(
+                match self
+                    .bytes
+                    .get(start..end)
+                    .ok_or_else(|| DecodingError::InaccessibleBytes {
+                        start,
+                        end,
+                        size: self.bytes.len(),
+                    }) {
+                    Ok(it) => it,
+                    Err(source) => {
+                        return Err(DAFError::DecodingData {
+                            kind: R::NAME,
+                            idx,
+                            source,
+                        })
+                    }
+                },
+            )
+            .unwrap(),
+        );
 
         // Convert it
         S::from_f64_slice(data).context(DecodingDataSnafu { kind: R::NAME, idx })
