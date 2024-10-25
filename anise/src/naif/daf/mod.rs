@@ -15,7 +15,7 @@ use crate::{
 use core::fmt::Display;
 use hifitime::Epoch;
 use snafu::prelude::*;
-use zerocopy::{AsBytes, FromBytes};
+use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 pub(crate) const RCRD_LEN: usize = 1024;
 #[allow(clippy::module_inception)]
@@ -39,11 +39,13 @@ pub use summary_record::SummaryRecord;
 
 use self::file_record::FileRecordError;
 
-pub trait NAIFRecord: AsBytes + FromBytes + Sized + Default + Debug {
+pub trait NAIFRecord:
+    IntoBytes + FromBytes + Sized + Default + Debug + Immutable + KnownLayout
+{
     const SIZE: usize = core::mem::size_of::<Self>();
 }
 
-pub trait NAIFSummaryRecord: NAIFRecord + Copy {
+pub trait NAIFSummaryRecord: NAIFRecord + Copy + Immutable + KnownLayout {
     type Error: 'static + std::error::Error;
 
     fn start_index(&self) -> usize;

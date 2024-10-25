@@ -11,7 +11,7 @@
 use std::str::Utf8Error;
 
 use snafu::prelude::*;
-use zerocopy::{AsBytes, FromBytes, FromZeroes};
+use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 use crate::naif::Endian;
 use log::error;
@@ -42,7 +42,7 @@ pub enum FileRecordError {
     EmptyRecord,
 }
 
-#[derive(Debug, Clone, FromBytes, FromZeroes, AsBytes, PartialEq)]
+#[derive(Debug, Clone, FromBytes, KnownLayout, Immutable, IntoBytes, PartialEq)]
 #[repr(C)]
 pub struct FileRecord {
     pub id_str: [u8; 8],
