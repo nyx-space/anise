@@ -37,7 +37,6 @@ use pyo3::pyclass::CompareOp;
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "metaload", derive(StaticType))]
 #[cfg_attr(feature = "python", pyclass)]
-#[cfg_attr(feature = "python", pyo3(get_all, set_all))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Frame {
     pub ephemeris_id: NaifId,
@@ -88,10 +87,10 @@ impl Frame {
     }
 }
 
+#[cfg(feature = "python")]
 #[cfg_attr(feature = "python", pymethods)]
 impl Frame {
     /// Initializes a new [Frame] provided its ephemeris and orientation identifiers, and optionally its gravitational parameter (in km^3/s^2) and optionally its shape (cf. [Ellipsoid]).
-    #[cfg(feature = "python")]
     #[new]
     pub fn py_new(
         ephemeris_id: NaifId,
@@ -107,17 +106,14 @@ impl Frame {
         }
     }
 
-    #[cfg(feature = "python")]
     fn __str__(&self) -> String {
         format!("{self}")
     }
 
-    #[cfg(feature = "python")]
     fn __repr__(&self) -> String {
         format!("{self} (@{self:p})")
     }
 
-    #[cfg(feature = "python")]
     fn __richcmp__(&self, other: &Self, op: CompareOp) -> Result<bool, PyErr> {
         match op {
             CompareOp::Eq => Ok(self == other),
@@ -129,7 +125,6 @@ impl Frame {
     }
 
     /// Allows for pickling the object
-    #[cfg(feature = "python")]
     fn __getnewargs__(&self) -> Result<(NaifId, NaifId, Option<f64>, Option<Ellipsoid>), PyErr> {
         Ok((
             self.ephemeris_id,
@@ -139,6 +134,54 @@ impl Frame {
         ))
     }
 
+    /// :rtype: int
+    #[getter]
+    fn get_ephemeris_id(&self) -> PyResult<NaifId> {
+        Ok(self.ephemeris_id)
+    }
+    /// :type ephemeris_id: int
+    #[setter]
+    fn set_ephemeris_id(&mut self, ephemeris_id: NaifId) -> PyResult<()> {
+        self.ephemeris_id = ephemeris_id;
+        Ok(())
+    }
+    /// :rtype: int
+    #[getter]
+    fn get_orientation_id(&self) -> PyResult<NaifId> {
+        Ok(self.orientation_id)
+    }
+    /// :type orientation_id: int
+    #[setter]
+    fn set_orientation_id(&mut self, orientation_id: NaifId) -> PyResult<()> {
+        self.orientation_id = orientation_id;
+        Ok(())
+    }
+    /// :rtype: float
+    #[getter]
+    fn get_mu_km3_s2(&self) -> PyResult<Option<f64>> {
+        Ok(self.mu_km3_s2)
+    }
+    /// :type mu_km3_s2: float
+    #[setter]
+    fn set_mu_km3_s2(&mut self, mu_km3_s2: Option<f64>) -> PyResult<()> {
+        self.mu_km3_s2 = mu_km3_s2;
+        Ok(())
+    }
+    /// :rtype: Ellipsoid
+    #[getter]
+    fn get_shape(&self) -> PyResult<Option<Ellipsoid>> {
+        Ok(self.shape)
+    }
+    /// :type shape: Ellipsoid
+    #[setter]
+    fn set_shape(&mut self, shape: Option<Ellipsoid>) -> PyResult<()> {
+        self.shape = shape;
+        Ok(())
+    }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl Frame {
     /// Returns a copy of this Frame whose ephemeris ID is set to the provided ID
     pub const fn with_ephem(&self, new_ephem_id: NaifId) -> Self {
         let mut me = *self;

@@ -40,7 +40,6 @@ use super::MetaAlmanacError;
 /// then the file will not be downloaded a second time.
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
-#[cfg_attr(feature = "python", pyo3(get_all, set_all))]
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, StaticType)]
 pub struct MetaFile {
     /// URI of this meta file
@@ -296,6 +295,29 @@ impl MetaFile {
         autodelete: Option<bool>,
     ) -> Result<(), MetaAlmanacError> {
         py.allow_threads(|| self._process(autodelete.unwrap_or(false)))
+    }
+
+    /// :rtype: str
+    #[getter]
+    fn get_uri(&self) -> PyResult<String> {
+        Ok(self.uri.clone())
+    }
+    /// :type uri: str
+    #[setter]
+    fn set_uri(&mut self, uri: String) -> PyResult<()> {
+        self.uri = uri;
+        Ok(())
+    }
+    /// :rtype: int
+    #[getter]
+    fn get_crc32(&self) -> PyResult<Option<u32>> {
+        Ok(self.crc32)
+    }
+    /// :type crc32: int
+    #[setter]
+    fn set_crc32(&mut self, crc32: Option<u32>) -> PyResult<()> {
+        self.crc32 = crc32;
+        Ok(())
     }
 }
 

@@ -37,7 +37,6 @@ use super::{Almanac, MetaAlmanacError, MetaFile};
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
-#[cfg_attr(feature = "python", pyo3(get_all, set_all))]
 pub struct MetaAlmanac {
     pub files: Vec<MetaFile>,
 }
@@ -206,6 +205,18 @@ impl MetaAlmanac {
                 "{op:?} not available"
             ))),
         }
+    }
+
+    /// :rtype: typing.List
+    #[getter]
+    fn get_files(&self) -> PyResult<Vec<MetaFile>> {
+        Ok(self.files.clone())
+    }
+    /// :type files: typing.List
+    #[setter]
+    fn set_files(&mut self, files: Vec<MetaFile>) -> PyResult<()> {
+        self.files = files;
+        Ok(())
     }
 }
 
