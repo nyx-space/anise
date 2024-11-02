@@ -39,6 +39,12 @@ impl Almanac {
     ///
     /// # Note
     /// The units will be those of the underlying ephemeris data (typically km and km/s)
+    ///
+    /// :type target_frame: Orbit
+    /// :type observer_frame: Frame
+    /// :type epoch: Epoch
+    /// :type ab_corr: Aberration, optional
+    /// :rtype: Orbit
     pub fn transform(
         &self,
         target_frame: Frame,
@@ -69,6 +75,11 @@ impl Almanac {
     /// Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame
     ///
     /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_state_to` function instead to include rotations.
+    ///
+    /// :type state: Orbit
+    /// :type observer_frame: Frame
+    /// :type ab_corr: Aberration, optional
+    /// :rtype: Orbit
     #[allow(clippy::too_many_arguments)]
     pub fn transform_to(
         &self,
@@ -104,6 +115,12 @@ impl Almanac {
     ///
     /// # Note
     /// The units will be those of the underlying ephemeris data (typically km and km/s)
+    ///
+    /// :type object: int
+    /// :type observer: Frame
+    /// :type epoch: Epoch
+    /// :type ab_corr: Aberration, optional
+    /// :rtype: Orbit
     pub fn state_of(
         &self,
         object: NaifId,
@@ -116,6 +133,12 @@ impl Almanac {
 
     /// Alias fo SPICE's `spkezr` where the inputs must be the NAIF IDs of the objects and frames with the caveat that the aberration is moved to the last positional argument.
     ///
+    /// :type target: int
+    /// :type epoch: Epoch
+    /// :type frame: int
+    /// :type observer: int
+    /// :type ab_corr: Aberration, optional
+    /// :rtype: Orbit
     pub fn spk_ezr(
         &self,
         target: NaifId,

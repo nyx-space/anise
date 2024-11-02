@@ -40,10 +40,12 @@ use crate::errors::PhysicsError;
 ///
 /// The validation test `validate_jplde_de440s_aberration_lt` checks 101,000 pairs of ephemeris computations and shows that the unconverged Light Time computation matches the SPICE computations almost all the time.
 /// More specifically, the 99th percentile of error is less than 5 meters, the 75th percentile is less than one meter, and the median error is less than 2 millimeters.
+///
+/// :type name: str
+/// :rtype: Aberration
 #[derive(Copy, Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
-#[cfg_attr(feature = "python", pyo3(get_all, set_all))]
 pub struct Aberration {
     /// Indicates whether the light time calculations should be iterated upon (more precise but three times as many CPU cycles).
     pub converged: bool,
@@ -166,6 +168,43 @@ impl Aberration {
 
     fn __repr__(&self) -> String {
         format!("{self:?} (@{self:p})")
+    }
+
+    // Manual getters and setters for the stubs
+
+    /// :rtype: bool
+    #[getter]
+    fn get_converged(&self) -> PyResult<bool> {
+        Ok(self.converged)
+    }
+
+    /// :type converged: bool
+    #[setter]
+    fn set_converged(&mut self, converged: bool) -> PyResult<()> {
+        self.converged = converged;
+        Ok(())
+    }
+    /// :rtype: bool
+    #[getter]
+    fn get_stellar(&self) -> PyResult<bool> {
+        Ok(self.stellar)
+    }
+    /// :type stellar: bool
+    #[setter]
+    fn set_stellar(&mut self, stellar: bool) -> PyResult<()> {
+        self.stellar = stellar;
+        Ok(())
+    }
+    /// :rtype: bool
+    #[getter]
+    fn get_transmit_mode(&self) -> PyResult<bool> {
+        Ok(self.transmit_mode)
+    }
+    /// :type transmit_mode: bool
+    #[setter]
+    fn set_transmit_mode(&mut self, transmit_mode: bool) -> PyResult<()> {
+        self.transmit_mode = transmit_mode;
+        Ok(())
     }
 }
 

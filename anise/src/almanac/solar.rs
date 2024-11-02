@@ -55,6 +55,11 @@ impl Almanac {
     /// 1. Compute the position of the Sun as seen from the observer
     /// 2. Compute the position of the target as seen from the observer
     /// 3. Return the arccosine of the dot product of the norms of these vectors.
+    ///
+    /// :type target_id: int
+    /// :type observer_id: int
+    /// :type epoch: Epoch
+    /// :rtype: float
     pub fn sun_angle_deg(
         &self,
         target_id: NaifId,
@@ -77,6 +82,11 @@ impl Almanac {
     }
 
     /// Convenience function that calls `sun_angle_deg` with the provided frames instead of the ephemeris ID.
+    ///
+    /// :type target: Frame
+    /// :type observer: Frame
+    /// :type epoch: Epoch
+    /// :rtype: float
     pub fn sun_angle_deg_from_frame(
         &self,
         target: Frame,

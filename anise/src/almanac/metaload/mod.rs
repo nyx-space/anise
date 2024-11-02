@@ -53,7 +53,6 @@ pub enum MetaAlmanacError {
     PersistentLock { desired: String },
 }
 
-#[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
     /// Load from the provided MetaFile.
     fn _load_from_metafile(&self, mut metafile: MetaFile, autodelete: bool) -> AlmanacResult<Self> {
@@ -63,8 +62,12 @@ impl Almanac {
         })?;
         self.load(&metafile.uri)
     }
+}
 
+#[cfg_attr(feature = "python", pymethods)]
+impl Almanac {
     /// Load from the provided MetaFile, downloading it if necessary.
+    /// Set autodelete to true to automatically delete lock files. Lock files are important in multi-threaded loads.
     #[cfg(not(feature = "python"))]
     pub fn load_from_metafile(&self, metafile: MetaFile, autodelete: bool) -> AlmanacResult<Self> {
         self._load_from_metafile(metafile, autodelete)
@@ -72,6 +75,12 @@ impl Almanac {
 
     #[cfg(feature = "python")]
     /// Load from the provided MetaFile, downloading it if necessary.
+    /// Set autodelete to true to automatically delete lock files. Lock files are important in multi-threaded loads.
+    ///
+    ///
+    /// :type metafile: Metafile
+    /// :type autodelete: bool
+    /// :rtype: Almanac
     pub fn load_from_metafile(
         &mut self,
         py: Python,

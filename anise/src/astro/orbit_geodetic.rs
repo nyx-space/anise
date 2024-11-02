@@ -28,22 +28,22 @@ impl CartesianState {
     /// Creates a new Orbit from the provided semi-major axis altitude in kilometers
     #[allow(clippy::too_many_arguments)]
     pub fn try_keplerian_altitude(
-        sma_altitude: f64,
+        sma_altitude_km: f64,
         ecc: f64,
-        inc: f64,
-        raan: f64,
-        aop: f64,
-        ta: f64,
+        inc_deg: f64,
+        raan_deg: f64,
+        aop_deg: f64,
+        ta_deg: f64,
         epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
         Self::try_keplerian(
-            sma_altitude + frame.mean_equatorial_radius_km()?,
+            sma_altitude_km + frame.mean_equatorial_radius_km()?,
             ecc,
-            inc,
-            raan,
-            aop,
-            ta,
+            inc_deg,
+            raan_deg,
+            aop_deg,
+            ta_deg,
             epoch,
             frame,
         )
@@ -52,22 +52,22 @@ impl CartesianState {
     /// Creates a new Orbit from the provided altitudes of apoapsis and periapsis, in kilometers
     #[allow(clippy::too_many_arguments)]
     pub fn try_keplerian_apsis_altitude(
-        apo_alt: f64,
-        peri_alt: f64,
-        inc: f64,
-        raan: f64,
-        aop: f64,
-        ta: f64,
+        apo_alt_km: f64,
+        peri_alt_km: f64,
+        inc_deg: f64,
+        raan_deg: f64,
+        aop_deg: f64,
+        ta_deg: f64,
         epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
         Self::try_keplerian_apsis_radii(
-            apo_alt + frame.mean_equatorial_radius_km()?,
-            peri_alt + frame.mean_equatorial_radius_km()?,
-            inc,
-            raan,
-            aop,
-            ta,
+            apo_alt_km + frame.mean_equatorial_radius_km()?,
+            peri_alt_km + frame.mean_equatorial_radius_km()?,
+            inc_deg,
+            raan_deg,
+            aop_deg,
+            ta_deg,
             epoch,
             frame,
         )
@@ -115,39 +115,77 @@ impl CartesianState {
 #[cfg_attr(feature = "python", pymethods)]
 impl CartesianState {
     /// Creates a new Orbit from the provided semi-major axis altitude in kilometers
+    ///
+    /// :type sma_altitude_km: float
+    /// :type ecc: float
+    /// :type inc_deg: float
+    /// :type raan_deg: float
+    /// :type aop_deg: float
+    /// :type ta_deg: float
+    /// :type epoch: Epoch
+    /// :type frame: Frame
+    /// :rtype: Orbit
     #[allow(clippy::too_many_arguments)]
     #[cfg(feature = "python")]
     #[classmethod]
     pub fn from_keplerian_altitude(
         _cls: &Bound<'_, PyType>,
-        sma_altitude: f64,
+        sma_altitude_km: f64,
         ecc: f64,
-        inc: f64,
-        raan: f64,
-        aop: f64,
-        ta: f64,
+        inc_deg: f64,
+        raan_deg: f64,
+        aop_deg: f64,
+        ta_deg: f64,
         epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
-        Self::try_keplerian_altitude(sma_altitude, ecc, inc, raan, aop, ta, epoch, frame)
+        Self::try_keplerian_altitude(
+            sma_altitude_km,
+            ecc,
+            inc_deg,
+            raan_deg,
+            aop_deg,
+            ta_deg,
+            epoch,
+            frame,
+        )
     }
 
     /// Creates a new Orbit from the provided altitudes of apoapsis and periapsis, in kilometers
+    ///
+    /// :type apo_alt_km: float
+    /// :type peri_alt_km: float
+    /// :type inc_deg: float
+    /// :type raan_deg: float
+    /// :type aop_deg: float
+    /// :type ta_deg: float
+    /// :type epoch: Epoch
+    /// :type frame: Frame
+    /// :rtype: Orbit
     #[allow(clippy::too_many_arguments)]
     #[cfg(feature = "python")]
     #[classmethod]
     pub fn from_keplerian_apsis_altitude(
         _cls: &Bound<'_, PyType>,
-        apo_alt: f64,
-        peri_alt: f64,
-        inc: f64,
-        raan: f64,
-        aop: f64,
-        ta: f64,
+        apo_alt_km: f64,
+        peri_alt_km: f64,
+        inc_deg: f64,
+        raan_deg: f64,
+        aop_deg: f64,
+        ta_deg: f64,
         epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
-        Self::try_keplerian_apsis_altitude(apo_alt, peri_alt, inc, raan, aop, ta, epoch, frame)
+        Self::try_keplerian_apsis_altitude(
+            apo_alt_km,
+            peri_alt_km,
+            inc_deg,
+            raan_deg,
+            aop_deg,
+            ta_deg,
+            epoch,
+            frame,
+        )
     }
 
     /// Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid given the angular velocity.
@@ -155,6 +193,15 @@ impl CartesianState {
     /// **Units:** degrees, degrees, km, rad/s
     /// NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
     /// Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016
+    ///
+    ///
+    /// :type latitude_deg: float
+    /// :type longitude_deg: float
+    /// :type height_km: float
+    /// :type angular_velocity: float
+    /// :type epoch: Epoch
+    /// :type frame: Frame
+    /// :rtype: Orbit
     #[cfg(feature = "python")]
     #[classmethod]
     pub fn from_latlongalt(
@@ -177,16 +224,22 @@ impl CartesianState {
     }
 
     /// Returns the SMA altitude in km
+    ///
+    /// :rtype: float
     pub fn sma_altitude_km(&self) -> PhysicsResult<f64> {
         Ok(self.sma_km()? - self.frame.mean_equatorial_radius_km()?)
     }
 
     /// Returns the altitude of periapsis (or perigee around Earth), in kilometers.
+    ///
+    /// :rtype: float
     pub fn periapsis_altitude_km(&self) -> PhysicsResult<f64> {
         Ok(self.periapsis_km()? - self.frame.mean_equatorial_radius_km()?)
     }
 
     /// Returns the altitude of apoapsis (or apogee around Earth), in kilometers.
+    ///
+    /// :rtype: float
     pub fn apoapsis_altitude_km(&self) -> PhysicsResult<f64> {
         Ok(self.apoapsis_km()? - self.frame.mean_equatorial_radius_km()?)
     }
@@ -196,6 +249,7 @@ impl CartesianState {
     /// # Algorithm
     /// This uses the Heikkinen procedure, which is not iterative. The results match Vallado and GMAT.
     ///
+    /// :rtype: typing.Tuple
     pub fn latlongalt(&self) -> PhysicsResult<(f64, f64, f64)> {
         let a_km = self.frame.mean_equatorial_radius_km()?;
         let b_km = self.frame.shape.unwrap().polar_radius_km;
@@ -231,6 +285,8 @@ impl CartesianState {
     ///
     /// # Frame warning
     /// This state MUST be in the body fixed frame (e.g. ITRF93) prior to calling this function, or the computation is **invalid**.
+    ///
+    /// :rtype: float
     pub fn longitude_deg(&self) -> f64 {
         between_pm_180(self.radius_km.y.atan2(self.radius_km.x).to_degrees())
     }
@@ -239,6 +295,8 @@ impl CartesianState {
     ///
     /// # Frame warning
     /// This state MUST be in the body fixed frame (e.g. ITRF93) prior to calling this function, or the computation is **invalid**.
+    ///
+    /// :rtype: float
     pub fn longitude_360_deg(&self) -> f64 {
         between_0_360(self.radius_km.y.atan2(self.radius_km.x).to_degrees())
     }
@@ -247,6 +305,8 @@ impl CartesianState {
     ///
     /// # Frame warning
     /// This state MUST be in the body fixed frame (e.g. ITRF93) prior to calling this function, or the computation is **invalid**.
+    ///
+    /// :rtype: float
     pub fn latitude_deg(&self) -> PhysicsResult<f64> {
         Ok(self.latlongalt()?.0)
     }
@@ -254,6 +314,8 @@ impl CartesianState {
     /// Returns the geodetic height in km.
     ///
     /// Reference: Vallado, 4th Ed., Algorithm 12 page 172.
+    ///
+    /// :rtype: float
     pub fn height_km(&self) -> PhysicsResult<f64> {
         Ok(self.latlongalt()?.2)
     }

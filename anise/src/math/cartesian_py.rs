@@ -23,7 +23,16 @@ impl CartesianState {
     /// Creates a new Cartesian state in the provided frame at the provided Epoch.
     ///
     /// **Units:** km, km, km, km/s, km/s, km/s
-
+    ///
+    /// :type x_km: float
+    /// :type y_km: float
+    /// :type z_km: float
+    /// :type vx_km_s: float
+    /// :type vy_km_s: float
+    /// :type vz_km_s: float
+    /// :type epoch: Epoch
+    /// :type frame: Frame
+    /// :rtype: Orbit
     #[allow(clippy::too_many_arguments)]
     #[classmethod]
     pub fn from_cartesian(
@@ -43,7 +52,6 @@ impl CartesianState {
     /// Creates a new Cartesian state in the provided frame at the provided Epoch (calls from_cartesian).
     ///
     /// **Units:** km, km, km, km/s, km/s, km/s
-
     #[allow(clippy::too_many_arguments)]
     #[new]
     pub fn py_new(
@@ -59,71 +67,91 @@ impl CartesianState {
         Self::new(x_km, y_km, z_km, vx_km_s, vy_km_s, vz_km_s, epoch, frame)
     }
 
+    /// :rtype: float
     #[getter]
     fn get_x_km(&self) -> PyResult<f64> {
         Ok(self.radius_km[0])
     }
-
+    /// :type x_km: float
+    /// :rtype: None
     #[setter]
     fn set_x_km(&mut self, x_km: f64) -> PyResult<()> {
         self.radius_km[0] = x_km;
         Ok(())
     }
 
+    /// :rtype: float
     #[getter]
     fn get_y_km(&self) -> PyResult<f64> {
         Ok(self.radius_km[1])
     }
-
+    /// :type y_km: float
+    /// :rtype: None
     #[setter]
     fn set_y_km(&mut self, y_km: f64) -> PyResult<()> {
         self.radius_km[1] = y_km;
         Ok(())
     }
 
+    /// :rtype: float
     #[getter]
     fn get_z_km(&self) -> PyResult<f64> {
         Ok(self.radius_km[2])
     }
-
-    #[getter]
-    fn get_vx_km_s(&self) -> PyResult<f64> {
-        Ok(self.velocity_km_s[0])
-    }
-
-    #[setter]
-    fn set_vx_km_s(&mut self, x_km: f64) -> PyResult<()> {
-        self.velocity_km_s[0] = x_km;
-        Ok(())
-    }
-
-    #[getter]
-    fn get_vy_km_s(&self) -> PyResult<f64> {
-        Ok(self.velocity_km_s[1])
-    }
-
-    #[setter]
-    fn set_vy_km_s(&mut self, y_km: f64) -> PyResult<()> {
-        self.velocity_km_s[1] = y_km;
-        Ok(())
-    }
-
-    #[getter]
-    fn get_vz_km_s(&self) -> PyResult<f64> {
-        Ok(self.velocity_km_s[2])
-    }
-
+    /// :type z_km: float
+    /// :rtype: None
     #[setter]
     fn set_z_km(&mut self, z_km: f64) -> PyResult<()> {
         self.radius_km[2] = z_km;
         Ok(())
     }
 
+    /// :rtype: float
+    #[getter]
+    fn get_vx_km_s(&self) -> PyResult<f64> {
+        Ok(self.velocity_km_s[0])
+    }
+    /// :type vx_km_s: float
+    /// :rtype: None
+    #[setter]
+    fn set_vx_km_s(&mut self, vx_km_s: f64) -> PyResult<()> {
+        self.velocity_km_s[0] = vx_km_s;
+        Ok(())
+    }
+
+    /// :rtype: float
+    #[getter]
+    fn get_vy_km_s(&self) -> PyResult<f64> {
+        Ok(self.velocity_km_s[1])
+    }
+    /// :type vy_km_s: float
+    /// :rtype: None
+    #[setter]
+    fn set_vy_km_s(&mut self, vy_km_s: f64) -> PyResult<()> {
+        self.velocity_km_s[1] = vy_km_s;
+        Ok(())
+    }
+
+    /// :rtype: float
+    #[getter]
+    fn get_vz_km_s(&self) -> PyResult<f64> {
+        Ok(self.velocity_km_s[2])
+    }
+    /// :type vz_km_s: float
+    /// :rtype: None
+    #[setter]
+    fn set_vz_km(&mut self, vz_km_s: f64) -> PyResult<()> {
+        self.velocity_km_s[2] = vz_km_s;
+        Ok(())
+    }
+
+    /// :rtype: Epoch
     #[getter]
     fn get_epoch(&self) -> PyResult<Epoch> {
         Ok(self.epoch)
     }
 
+    /// :rtype: Frame
     #[getter]
     fn get_frame(&self) -> PyResult<Frame> {
         Ok(self.frame)
@@ -133,7 +161,6 @@ impl CartesianState {
         format!("{self}")
     }
 
-    #[cfg(feature = "python")]
     fn __repr__(&self) -> String {
         format!("{self} (@{self:p})")
     }
@@ -149,7 +176,7 @@ impl CartesianState {
     }
 
     #[allow(clippy::type_complexity)]
-    #[cfg(feature = "python")]
+    /// :rtype: typing.Tuple
     fn __getnewargs__(&self) -> Result<(f64, f64, f64, f64, f64, f64, Epoch, Frame), PyErr> {
         Ok((
             self.radius_km[0],

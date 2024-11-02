@@ -548,37 +548,61 @@ impl Orbit {
     /// NOTE: The state is defined in Cartesian coordinates as they are non-singular. This causes rounding
     /// errors when creating a state from its Keplerian orbital elements (cf. the state tests).
     /// One should expect these errors to be on the order of 1e-12.
+    ///
+    /// :type sma_km: float
+    /// :type ecc: float
+    /// :type inc_deg: float
+    /// :type raan_deg: float
+    /// :type aop_deg: float
+    /// :type ta_deg: float
+    /// :type epoch: Epoch
+    /// :type frame: Frame
+    /// :rtype: Orbit
     #[cfg(feature = "python")]
     #[classmethod]
     pub fn from_keplerian(
         _cls: &Bound<'_, PyType>,
-        sma: f64,
+        sma_km: f64,
         ecc: f64,
-        inc: f64,
-        raan: f64,
-        aop: f64,
-        ta: f64,
+        inc_deg: f64,
+        raan_deg: f64,
+        aop_deg: f64,
+        ta_deg: f64,
         epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
-        Self::try_keplerian(sma, ecc, inc, raan, aop, ta, epoch, frame)
+        Self::try_keplerian(
+            sma_km, ecc, inc_deg, raan_deg, aop_deg, ta_deg, epoch, frame,
+        )
     }
 
     /// Attempts to create a new Orbit from the provided radii of apoapsis and periapsis, in kilometers
+    ///
+    /// :type r_a_km: float
+    /// :type r_p_km: float
+    /// :type inc_deg: float
+    /// :type raan_deg: float
+    /// :type aop_deg: float
+    /// :type ta_deg: float
+    /// :type epoch: Epoch
+    /// :type frame: Frame
+    /// :rtype: Orbit
     #[cfg(feature = "python")]
     #[classmethod]
     pub fn from_keplerian_apsis_radii(
         _cls: &Bound<'_, PyType>,
-        r_a: f64,
-        r_p: f64,
-        inc: f64,
-        raan: f64,
-        aop: f64,
-        ta: f64,
+        r_a_km: f64,
+        r_p_km: f64,
+        inc_deg: f64,
+        raan_deg: f64,
+        aop_deg: f64,
+        ta_deg: f64,
         epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
-        Self::try_keplerian_apsis_radii(r_a, r_p, inc, raan, aop, ta, epoch, frame)
+        Self::try_keplerian_apsis_radii(
+            r_a_km, r_p_km, inc_deg, raan_deg, aop_deg, ta_deg, epoch, frame,
+        )
     }
 
     /// Initializes a new orbit from the Keplerian orbital elements using the mean anomaly instead of the true anomaly.
@@ -587,6 +611,16 @@ impl Orbit {
     /// This function starts by converting the mean anomaly to true anomaly, and then it initializes the orbit
     /// using the keplerian(..) method.
     /// The conversion is from GMAT's MeanToTrueAnomaly function, transliterated originally by Claude and GPT4 with human adjustments.
+    ///
+    /// :type sma_km: float
+    /// :type ecc: float
+    /// :type inc_deg: float
+    /// :type raan_deg: float
+    /// :type aop_deg: float
+    /// :type ma_deg: float
+    /// :type epoch: Epoch
+    /// :type frame: Frame
+    /// :rtype: Orbit
     #[cfg(feature = "python")]
     #[classmethod]
     pub fn from_keplerian_mean_anomaly(
@@ -606,26 +640,36 @@ impl Orbit {
     }
 
     /// Returns the orbital momentum value on the X axis
+    ///
+    /// :rtype: float
     pub fn hx(&self) -> PhysicsResult<f64> {
         Ok(self.hvec()?[0])
     }
 
     /// Returns the orbital momentum value on the Y axis
+    ///
+    /// :rtype: float
     pub fn hy(&self) -> PhysicsResult<f64> {
         Ok(self.hvec()?[1])
     }
 
     /// Returns the orbital momentum value on the Z axis
+    ///
+    /// :rtype: float
     pub fn hz(&self) -> PhysicsResult<f64> {
         Ok(self.hvec()?[2])
     }
 
     /// Returns the norm of the orbital momentum
+    ///
+    /// :rtype: float
     pub fn hmag(&self) -> PhysicsResult<f64> {
         Ok(self.hvec()?.norm())
     }
 
     /// Returns the specific mechanical energy in km^2/s^2
+    ///
+    /// :rtype: float
     pub fn energy_km2_s2(&self) -> PhysicsResult<f64> {
         ensure!(
             self.rmag_km() > f64::EPSILON,
@@ -637,12 +681,17 @@ impl Orbit {
     }
 
     /// Returns the semi-major axis in km
+    ///
+    /// :rtype: float
     pub fn sma_km(&self) -> PhysicsResult<f64> {
         // Division by zero prevented in energy_km2_s2
         Ok(-self.frame.mu_km3_s2()? / (2.0 * self.energy_km2_s2()?))
     }
 
     /// Mutates this orbit to change the SMA
+    ///
+    /// :type new_sma_km: float
+    /// :rtype: None
     pub fn set_sma_km(&mut self, new_sma_km: f64) -> PhysicsResult<()> {
         let me = Self::try_keplerian(
             new_sma_km,
@@ -661,6 +710,9 @@ impl Orbit {
     }
 
     /// Returns a copy of the state with a new SMA
+    ///
+    /// :type new_sma_km: float
+    /// :rtype: Orbit
     pub fn with_sma_km(&self, new_sma_km: f64) -> PhysicsResult<Self> {
         let mut me = *self;
         me.set_sma_km(new_sma_km)?;
@@ -668,13 +720,18 @@ impl Orbit {
     }
 
     /// Returns a copy of the state with a provided SMA added to the current one
-    pub fn add_sma_km(&self, delta_sma: f64) -> PhysicsResult<Self> {
+    ///
+    /// :type delta_sma_km: float
+    /// :rtype: Orbit
+    pub fn add_sma_km(&self, delta_sma_km: f64) -> PhysicsResult<Self> {
         let mut me = *self;
-        me.set_sma_km(me.sma_km()? + delta_sma)?;
+        me.set_sma_km(me.sma_km()? + delta_sma_km)?;
         Ok(me)
     }
 
     /// Returns the period in seconds
+    ///
+    /// :rtype: Duration
     pub fn period(&self) -> PhysicsResult<Duration> {
         Ok(2.0
             * PI
@@ -684,11 +741,16 @@ impl Orbit {
     }
 
     /// Returns the eccentricity (no unit)
+    ///
+    /// :rtype: float
     pub fn ecc(&self) -> PhysicsResult<f64> {
         Ok(self.evec()?.norm())
     }
 
     /// Mutates this orbit to change the ECC
+    ///
+    /// :type new_ecc: float
+    /// :rtype: None
     pub fn set_ecc(&mut self, new_ecc: f64) -> PhysicsResult<()> {
         let me = Self::try_keplerian(
             self.sma_km()?,
@@ -707,6 +769,9 @@ impl Orbit {
     }
 
     /// Returns a copy of the state with a new ECC
+    ///
+    /// :type new_ecc: float
+    /// :rtype: Orbit
     pub fn with_ecc(&self, new_ecc: f64) -> PhysicsResult<Self> {
         let mut me = *self;
         me.set_ecc(new_ecc)?;
@@ -714,6 +779,9 @@ impl Orbit {
     }
 
     /// Returns a copy of the state with a provided ECC added to the current one
+    ///
+    /// :type delta_ecc: float
+    /// :rtype: Orbit
     pub fn add_ecc(&self, delta_ecc: f64) -> PhysicsResult<Self> {
         let mut me = *self;
         me.set_ecc(me.ecc()? + delta_ecc)?;
@@ -721,11 +789,16 @@ impl Orbit {
     }
 
     /// Returns the inclination in degrees
+    ///
+    /// :rtype: float
     pub fn inc_deg(&self) -> PhysicsResult<f64> {
         Ok((self.hvec()?[2] / self.hmag()?).acos().to_degrees())
     }
 
     /// Mutates this orbit to change the INC
+    ///
+    /// :type new_inc_deg: float
+    /// :rtype: None
     pub fn set_inc_deg(&mut self, new_inc_deg: f64) -> PhysicsResult<()> {
         let me = Self::try_keplerian(
             self.sma_km()?,
@@ -744,6 +817,9 @@ impl Orbit {
     }
 
     /// Returns a copy of the state with a new INC
+    ///
+    /// :type new_inc_deg: float
+    /// :rtype: Orbit
     pub fn with_inc_deg(&self, new_inc_deg: f64) -> PhysicsResult<Self> {
         let mut me = *self;
         me.set_inc_deg(new_inc_deg)?;
@@ -751,6 +827,9 @@ impl Orbit {
     }
 
     /// Returns a copy of the state with a provided INC added to the current one
+    ///
+    /// :type delta_inc_deg: float
+    /// :rtype: None
     pub fn add_inc_deg(&self, delta_inc_deg: f64) -> PhysicsResult<Self> {
         let mut me = *self;
         me.set_inc_deg(me.inc_deg()? + delta_inc_deg)?;
@@ -758,6 +837,8 @@ impl Orbit {
     }
 
     /// Returns the argument of periapsis in degrees
+    ///
+    /// :rtype: float
     pub fn aop_deg(&self) -> PhysicsResult<f64> {
         let n = Vector3::new(0.0, 0.0, 1.0).cross(&self.hvec()?);
         let cos_aop = n.dot(&self.evec()?) / (n.norm() * self.ecc()?);
@@ -776,6 +857,9 @@ impl Orbit {
     }
 
     /// Mutates this orbit to change the AOP
+    ///
+    /// :type new_aop_deg: float
+    /// :rtype: None
     pub fn set_aop_deg(&mut self, new_aop_deg: f64) -> PhysicsResult<()> {
         let me = Self::try_keplerian(
             self.sma_km()?,
@@ -794,6 +878,9 @@ impl Orbit {
     }
 
     /// Returns a copy of the state with a new AOP
+    ///
+    /// :type new_aop_deg: float
+    /// :rtype: Orbit
     pub fn with_aop_deg(&self, new_aop_deg: f64) -> PhysicsResult<Self> {
         let mut me = *self;
         me.set_aop_deg(new_aop_deg)?;
@@ -801,6 +888,9 @@ impl Orbit {
     }
 
     /// Returns a copy of the state with a provided AOP added to the current one
+    ///
+    /// :type delta_aop_deg: float
+    /// :rtype: Orbit
     pub fn add_aop_deg(&self, delta_aop_deg: f64) -> PhysicsResult<Self> {
         let mut me = *self;
         me.set_aop_deg(me.aop_deg()? + delta_aop_deg)?;
@@ -808,6 +898,8 @@ impl Orbit {
     }
 
     /// Returns the right ascension of the ascending node in degrees
+    ///
+    /// :rtype: float
     pub fn raan_deg(&self) -> PhysicsResult<f64> {
         let n = Vector3::new(0.0, 0.0, 1.0).cross(&self.hvec()?);
         let cos_raan = n[0] / n.norm();
@@ -826,6 +918,9 @@ impl Orbit {
     }
 
     /// Mutates this orbit to change the RAAN
+    ///
+    /// :type new_raan_deg: float
+    /// :rtype: None
     pub fn set_raan_deg(&mut self, new_raan_deg: f64) -> PhysicsResult<()> {
         let me = Self::try_keplerian(
             self.sma_km()?,
@@ -844,6 +939,9 @@ impl Orbit {
     }
 
     /// Returns a copy of the state with a new RAAN
+    ///
+    /// :type new_raan_deg: float
+    /// :rtype: Orbit
     pub fn with_raan_deg(&self, new_raan_deg: f64) -> PhysicsResult<Self> {
         let mut me = *self;
         me.set_raan_deg(new_raan_deg)?;
@@ -851,6 +949,9 @@ impl Orbit {
     }
 
     /// Returns a copy of the state with a provided RAAN added to the current one
+    ///
+    /// :type delta_raan_deg: float
+    /// :rtype: Orbit
     pub fn add_raan_deg(&self, delta_raan_deg: f64) -> PhysicsResult<Self> {
         let mut me = *self;
         me.set_raan_deg(me.raan_deg()? + delta_raan_deg)?;
@@ -865,6 +966,8 @@ impl Orbit {
     /// LIMITATION: For an orbit whose true anomaly is (very nearly) 0.0 or 180.0, this function may return either 0.0 or 180.0 with a very small time increment.
     /// This is due to the precision of the cosine calculation: if the arccosine calculation is out of bounds, the sign of the cosine of the true anomaly is used
     /// to determine whether the true anomaly should be 0.0 or 180.0. **In other words**, there is an ambiguity in the computation in the true anomaly exactly at 180.0 and 0.0.
+    ///
+    /// :rtype: float
     pub fn ta_deg(&self) -> PhysicsResult<f64> {
         if self.ecc()? < ECC_EPSILON {
             warn!(
@@ -889,6 +992,9 @@ impl Orbit {
     }
 
     /// Mutates this orbit to change the TA
+    ///
+    /// :type new_ta_deg: float
+    /// :rtype: None
     pub fn set_ta_deg(&mut self, new_ta_deg: f64) -> PhysicsResult<()> {
         let me = Self::try_keplerian(
             self.sma_km()?,
@@ -907,11 +1013,16 @@ impl Orbit {
     }
 
     /// Returns the time derivative of the true anomaly computed as the 360.0 degrees divided by the orbital period (in seconds).
+    ///
+    /// :rtype: float
     pub fn ta_dot_deg_s(&self) -> PhysicsResult<f64> {
         Ok(360.0 / self.period()?.to_seconds())
     }
 
     /// Returns a copy of the state with a new TA
+    ///
+    /// :type new_ta_deg: float
+    /// :rtype: Orbit
     pub fn with_ta_deg(&self, new_ta_deg: f64) -> PhysicsResult<Self> {
         let mut me = *self;
         me.set_ta_deg(new_ta_deg)?;
@@ -919,6 +1030,9 @@ impl Orbit {
     }
 
     /// Returns a copy of the state with a provided TA added to the current one
+    ///
+    /// :type delta_ta_deg: float
+    /// :rtype: Orbit
     pub fn add_ta_deg(&self, delta_ta_deg: f64) -> PhysicsResult<Self> {
         let mut me = *self;
         me.set_ta_deg(me.ta_deg()? + delta_ta_deg)?;
@@ -926,6 +1040,10 @@ impl Orbit {
     }
 
     /// Returns a copy of this state with the provided apoasis and periapsis
+    ///
+    /// :type new_ra_km: float
+    /// :type new_rp_km: float
+    /// :rtype: Orbit
     pub fn with_apoapsis_periapsis_km(
         &self,
         new_ra_km: f64,
@@ -944,6 +1062,10 @@ impl Orbit {
     }
 
     /// Returns a copy of this state with the provided apoasis and periapsis added to the current values
+    ///
+    /// :type delta_ra_km: float
+    /// :type delta_rp_km: float
+    /// :rtype: Orbit
     pub fn add_apoapsis_periapsis_km(
         &self,
         delta_ra_km: f64,
@@ -962,6 +1084,8 @@ impl Orbit {
     }
 
     /// Returns the true longitude in degrees
+    ///
+    /// :rtype: float
     pub fn tlong_deg(&self) -> PhysicsResult<f64> {
         // Angles already in degrees
         Ok(between_0_360(
@@ -973,6 +1097,8 @@ impl Orbit {
     ///
     /// NOTE: If the orbit is near circular, the AoL will be computed from the true longitude
     /// instead of relying on the ill-defined true anomaly.
+    ///
+    /// :rtype: float
     pub fn aol_deg(&self) -> PhysicsResult<f64> {
         Ok(between_0_360(if self.ecc()? < ECC_EPSILON {
             self.tlong_deg()? - self.raan_deg()?
@@ -982,11 +1108,15 @@ impl Orbit {
     }
 
     /// Returns the radius of periapsis (or perigee around Earth), in kilometers.
+    ///
+    /// :rtype: float
     pub fn periapsis_km(&self) -> PhysicsResult<f64> {
         Ok(self.sma_km()? * (1.0 - self.ecc()?))
     }
 
     /// Returns the radius of apoapsis (or apogee around Earth), in kilometers.
+    ///
+    /// :rtype: float
     pub fn apoapsis_km(&self) -> PhysicsResult<f64> {
         Ok(self.sma_km()? * (1.0 + self.ecc()?))
     }
@@ -994,6 +1124,8 @@ impl Orbit {
     /// Returns the eccentric anomaly in degrees
     ///
     /// This is a conversion from GMAT's StateConversionUtil::TrueToEccentricAnomaly
+    ///
+    /// :rtype: float
     pub fn ea_deg(&self) -> PhysicsResult<f64> {
         let (sin_ta, cos_ta) = self.ta_deg()?.to_radians().sin_cos();
         let ecc_cos_ta = self.ecc()? * cos_ta;
@@ -1004,6 +1136,8 @@ impl Orbit {
     }
 
     /// Returns the flight path angle in degrees
+    ///
+    /// :rtype: float
     pub fn fpa_deg(&self) -> PhysicsResult<f64> {
         let nu = self.ta_deg()?.to_radians();
         let ecc = self.ecc()?;
@@ -1016,6 +1150,8 @@ impl Orbit {
     /// Returns the mean anomaly in degrees
     ///
     /// This is a conversion from GMAT's StateConversionUtil::TrueToMeanAnomaly
+    ///
+    /// :rtype: float
     pub fn ma_deg(&self) -> PhysicsResult<f64> {
         if self.ecc()?.abs() < ECC_EPSILON {
             Err(PhysicsError::ParabolicEccentricity { limit: ECC_EPSILON })
@@ -1036,6 +1172,8 @@ impl Orbit {
     }
 
     /// Returns the semi parameter (or semilatus rectum)
+    ///
+    /// :rtype: float
     pub fn semi_parameter_km(&self) -> PhysicsResult<f64> {
         Ok(self.sma_km()? * (1.0 - self.ecc()?.powi(2)))
     }
@@ -1047,6 +1185,8 @@ impl Orbit {
     /// The details are at the log level `info`.
     /// NOTE: Mean Brouwer Short are only defined around Earth. However, `nyx` does *not* check the
     /// main celestial body around which the state is defined (GMAT does perform this verification).
+    ///
+    /// :rtype: bool
     pub fn is_brouwer_short_valid(&self) -> PhysicsResult<bool> {
         if self.inc_deg()? > 180.0 {
             info!("Brouwer Mean Short only applicable for inclinations less than 180.0");
@@ -1064,16 +1204,22 @@ impl Orbit {
     }
 
     /// Returns the right ascension of this orbit in degrees
+    ///
+    /// :rtype: float
     pub fn right_ascension_deg(&self) -> f64 {
         between_0_360((self.radius_km.y.atan2(self.radius_km.x)).to_degrees())
     }
 
     /// Returns the declination of this orbit in degrees
+    ///
+    /// :rtype: float
     pub fn declination_deg(&self) -> f64 {
         between_pm_180((self.radius_km.z / self.rmag_km()).asin().to_degrees())
     }
 
     /// Returns the semi minor axis in km, includes code for a hyperbolic orbit
+    ///
+    /// :rtype: float
     pub fn semi_minor_axis_km(&self) -> PhysicsResult<f64> {
         if self.ecc()? <= 1.0 {
             Ok(((self.sma_km()? * self.ecc()?).powi(2) - self.sma_km()?.powi(2)).sqrt())
@@ -1084,6 +1230,8 @@ impl Orbit {
     }
 
     /// Returns the velocity declination of this orbit in degrees
+    ///
+    /// :rtype: float
     pub fn velocity_declination_deg(&self) -> f64 {
         between_pm_180(
             (self.velocity_km_s.z / self.vmag_km_s())
@@ -1093,12 +1241,17 @@ impl Orbit {
     }
 
     /// Returns the $C_3$ of this orbit in km^2/s^2
+    ///
+    /// :rtype: float
     pub fn c3_km2_s2(&self) -> PhysicsResult<f64> {
         Ok(-self.frame.mu_km3_s2()? / self.sma_km()?)
     }
 
     /// Returns the radius of periapse in kilometers for the provided turn angle of this hyperbolic orbit.
     /// Returns an error if the orbit is not hyperbolic.
+    ///
+    /// :type turn_angle_degrees: float
+    /// :rtype: float
     pub fn vinf_periapsis_km(&self, turn_angle_degrees: f64) -> PhysicsResult<f64> {
         let ecc = self.ecc()?;
         if ecc <= 1.0 {
@@ -1113,6 +1266,9 @@ impl Orbit {
 
     /// Returns the turn angle in degrees for the provided radius of periapse passage of this hyperbolic orbit
     /// Returns an error if the orbit is not hyperbolic.
+    ///
+    /// :type periapsis_km: float
+    /// :rtype: float
     pub fn vinf_turn_angle_deg(&self, periapsis_km: f64) -> PhysicsResult<f64> {
         let ecc = self.ecc()?;
         if ecc <= 1.0 {
@@ -1129,6 +1285,8 @@ impl Orbit {
 
     /// Returns the hyperbolic anomaly in degrees between 0 and 360.0
     /// Returns an error if the orbit is not hyperbolic.
+    ///
+    /// :rtype: float
     pub fn hyperbolic_anomaly_deg(&self) -> PhysicsResult<f64> {
         let ecc = self.ecc()?;
         if ecc <= 1.0 {
@@ -1148,6 +1306,8 @@ impl Orbit {
     /// This is not a true propagation of the orbit. This is akin to a two body propagation ONLY without any other force models applied.
     /// Use Nyx for high fidelity propagation.
     ///
+    /// :type new_epoch: Epoch
+    /// :rtype: Orbit
     pub fn at_epoch(&self, new_epoch: Epoch) -> PhysicsResult<Self> {
         let m0_rad = self.ma_deg()?.to_radians();
         let mt_rad = m0_rad
@@ -1175,6 +1335,9 @@ impl Orbit {
     /// 3. Rotation other into the RIC frame
     /// 4. Compute the difference between these two states
     /// 5. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`
+    ///
+    /// :type other: Orbit
+    /// :rtype: Orbit
     pub fn ric_difference(&self, other: &Self) -> PhysicsResult<Self> {
         let self_in_ric = (self.dcm_from_ric_to_inertial()?.transpose() * self)?;
         let other_in_ric = (self.dcm_from_ric_to_inertial()?.transpose() * other)?;
@@ -1192,6 +1355,9 @@ impl Orbit {
     /// 3. Rotation other into the VNC frame
     /// 4. Compute the difference between these two states
     /// 5. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`
+    ///
+    /// :type other: Orbit
+    /// :rtype: Orbit
     pub fn vnc_difference(&self, other: &Self) -> PhysicsResult<Self> {
         let self_in_vnc = (self.dcm_from_vnc_to_inertial()?.transpose() * self)?;
         let other_in_vnc = (self.dcm_from_vnc_to_inertial()?.transpose() * other)?;

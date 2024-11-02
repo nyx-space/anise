@@ -18,6 +18,9 @@ use snafu::prelude::*;
 
 #[pymethods]
 impl Almanac {
+    /// Returns the frame information (gravitational param, shape) as defined in this Almanac from an empty frame
+    /// :type uid: Frame
+    /// :rtype: Frame
     pub fn frame_info(&self, uid: Frame) -> Result<Frame, PlanetaryDataError> {
         Ok(self
             .planetary_data

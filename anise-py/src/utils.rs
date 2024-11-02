@@ -12,12 +12,10 @@ use std::path::PathBuf;
 
 use anise::naif::kpl::parser::{convert_fk as convert_fk_rs, convert_tpc as convert_tpc_rs};
 use anise::structure::dataset::DataSetError;
-use anise::structure::planetocentric::ellipsoid::Ellipsoid;
 use pyo3::{prelude::*, py_run};
 
 pub(crate) fn register_utils(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     let sm = PyModule::new_bound(parent_module.py(), "utils")?;
-    sm.add_class::<Ellipsoid>()?;
     sm.add_function(wrap_pyfunction!(convert_fk, &sm)?)?;
     sm.add_function(wrap_pyfunction!(convert_tpc, &sm)?)?;
 
@@ -30,6 +28,12 @@ pub(crate) fn register_utils(parent_module: &Bound<'_, PyModule>) -> PyResult<()
 
 /// Converts a KPL/FK file, that defines frame constants like fixed rotations, and frame name to ID mappings into the EulerParameterDataSet equivalent ANISE file.
 /// KPL/FK files must be converted into "PCA" (Planetary Constant ANISE) files before being loaded into ANISE.
+///
+/// :type fk_file_path: str
+/// :type anise_output_path: str
+/// :type show_comments: bool, optional
+/// :type overwrite: bool, optional
+/// :rtype: None
 #[pyfunction]
 fn convert_fk(
     fk_file_path: String,
@@ -49,6 +53,12 @@ fn convert_fk(
 
 /// Converts two KPL/TPC files, one defining the planetary constants as text, and the other defining the gravity parameters, into the PlanetaryDataSet equivalent ANISE file.
 /// KPL/TPC files must be converted into "PCA" (Planetary Constant ANISE) files before being loaded into ANISE.
+///
+/// :type pck_file_path: str
+/// :type gm_file_path: str
+/// :type anise_output_path: str
+/// :type overwrite: bool, optional
+/// :rtype: None
 #[pyfunction]
 fn convert_tpc(
     pck_file_path: String,

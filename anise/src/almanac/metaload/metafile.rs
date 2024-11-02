@@ -38,9 +38,12 @@ use super::MetaAlmanacError;
 /// The data is stored in the user's local temp directory (i.e. `~/.local/share/nyx-space/anise/` on Linux and `AppData/Local/nyx-space/anise/` on Windows).
 /// Prior to loading a remote resource, if the local resource exists, its CRC32 will be computed: if it matches the CRC32 of this instance of MetaFile,
 /// then the file will not be downloaded a second time.
+///
+/// :type uri: str
+/// :type crc32: int, optional
+/// :rtype: MetaFile
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
-#[cfg_attr(feature = "python", pyo3(get_all, set_all))]
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, StaticType)]
 pub struct MetaFile {
     /// URI of this meta file
@@ -290,12 +293,38 @@ impl MetaFile {
     /// Processes this MetaFile by downloading it if it's a URL.
     ///
     /// This function modified `self` and changes the URI to be the path to the downloaded file.
+    ///
+    /// :type autodelete: bool, optional
+    /// :rtype: None
     pub fn process(
         &mut self,
         py: Python,
         autodelete: Option<bool>,
     ) -> Result<(), MetaAlmanacError> {
         py.allow_threads(|| self._process(autodelete.unwrap_or(false)))
+    }
+
+    /// :rtype: str
+    #[getter]
+    fn get_uri(&self) -> PyResult<String> {
+        Ok(self.uri.clone())
+    }
+    /// :type uri: str
+    #[setter]
+    fn set_uri(&mut self, uri: String) -> PyResult<()> {
+        self.uri = uri;
+        Ok(())
+    }
+    /// :rtype: int
+    #[getter]
+    fn get_crc32(&self) -> PyResult<Option<u32>> {
+        Ok(self.crc32)
+    }
+    /// :type crc32: int
+    #[setter]
+    fn set_crc32(&mut self, crc32: Option<u32>) -> PyResult<()> {
+        self.crc32 = crc32;
+        Ok(())
     }
 }
 

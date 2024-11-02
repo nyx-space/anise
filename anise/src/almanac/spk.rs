@@ -196,6 +196,9 @@ impl Almanac {
     ///
     /// # Warning
     /// This function performs a memory allocation.
+    ///
+    /// :type id: int
+    /// :rtype: typing.List
     pub fn spk_summaries(&self, id: NaifId) -> Result<Vec<SPKSummaryRecord>, EphemerisError> {
         let mut summaries = vec![];
         for maybe_spk in self.spk_data.iter().take(self.num_loaded_spk()).rev() {
@@ -222,6 +225,9 @@ impl Almanac {
     }
 
     /// Returns the applicable domain of the request id, i.e. start and end epoch that the provided id has loaded data.
+    ///
+    /// :type id: int
+    /// :rtype: typing.Tuple
     pub fn spk_domain(&self, id: NaifId) -> Result<(Epoch, Epoch), EphemerisError> {
         let summaries = self.spk_summaries(id)?;
 
@@ -245,6 +251,8 @@ impl Almanac {
     ///
     /// # Warning
     /// This function performs a memory allocation.
+    ///
+    /// :rtype: typing.Dict
     pub fn spk_domains(&self) -> Result<HashMap<NaifId, (Epoch, Epoch)>, EphemerisError> {
         ensure!(self.num_loaded_spk() > 0, NoEphemerisLoadedSnafu);
 

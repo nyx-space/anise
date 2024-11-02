@@ -34,10 +34,15 @@ use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
 
 /// A Frame uniquely defined by its ephemeris center and orientation. Refer to FrameDetail for frames combined with parameters.
+///
+/// :type ephemeris_id: int
+/// :type orientation_id: int
+/// :type mu_km3_s2: float, optional
+/// :type shape: Ellipsoid, optional
+/// :rtype: Frame
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "metaload", derive(StaticType))]
 #[cfg_attr(feature = "python", pyclass)]
-#[cfg_attr(feature = "python", pyo3(get_all, set_all))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Frame {
     pub ephemeris_id: NaifId,
@@ -88,10 +93,10 @@ impl Frame {
     }
 }
 
+#[cfg(feature = "python")]
 #[cfg_attr(feature = "python", pymethods)]
 impl Frame {
     /// Initializes a new [Frame] provided its ephemeris and orientation identifiers, and optionally its gravitational parameter (in km^3/s^2) and optionally its shape (cf. [Ellipsoid]).
-    #[cfg(feature = "python")]
     #[new]
     pub fn py_new(
         ephemeris_id: NaifId,
@@ -107,17 +112,14 @@ impl Frame {
         }
     }
 
-    #[cfg(feature = "python")]
     fn __str__(&self) -> String {
         format!("{self}")
     }
 
-    #[cfg(feature = "python")]
     fn __repr__(&self) -> String {
         format!("{self} (@{self:p})")
     }
 
-    #[cfg(feature = "python")]
     fn __richcmp__(&self, other: &Self, op: CompareOp) -> Result<bool, PyErr> {
         match op {
             CompareOp::Eq => Ok(self == other),
@@ -129,7 +131,8 @@ impl Frame {
     }
 
     /// Allows for pickling the object
-    #[cfg(feature = "python")]
+    ///
+    /// :rtype: typing.Tuple
     fn __getnewargs__(&self) -> Result<(NaifId, NaifId, Option<f64>, Option<Ellipsoid>), PyErr> {
         Ok((
             self.ephemeris_id,
@@ -139,7 +142,58 @@ impl Frame {
         ))
     }
 
+    /// :rtype: int
+    #[getter]
+    fn get_ephemeris_id(&self) -> PyResult<NaifId> {
+        Ok(self.ephemeris_id)
+    }
+    /// :type ephemeris_id: int
+    #[setter]
+    fn set_ephemeris_id(&mut self, ephemeris_id: NaifId) -> PyResult<()> {
+        self.ephemeris_id = ephemeris_id;
+        Ok(())
+    }
+    /// :rtype: int
+    #[getter]
+    fn get_orientation_id(&self) -> PyResult<NaifId> {
+        Ok(self.orientation_id)
+    }
+    /// :type orientation_id: int
+    #[setter]
+    fn set_orientation_id(&mut self, orientation_id: NaifId) -> PyResult<()> {
+        self.orientation_id = orientation_id;
+        Ok(())
+    }
+    /// :rtype: float
+    #[getter]
+    fn get_mu_km3_s2(&self) -> PyResult<Option<f64>> {
+        Ok(self.mu_km3_s2)
+    }
+    /// :type mu_km3_s2: float
+    #[setter]
+    fn set_mu_km3_s2(&mut self, mu_km3_s2: Option<f64>) -> PyResult<()> {
+        self.mu_km3_s2 = mu_km3_s2;
+        Ok(())
+    }
+    /// :rtype: Ellipsoid
+    #[getter]
+    fn get_shape(&self) -> PyResult<Option<Ellipsoid>> {
+        Ok(self.shape)
+    }
+    /// :type shape: Ellipsoid
+    #[setter]
+    fn set_shape(&mut self, shape: Option<Ellipsoid>) -> PyResult<()> {
+        self.shape = shape;
+        Ok(())
+    }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl Frame {
     /// Returns a copy of this Frame whose ephemeris ID is set to the provided ID
+    ///
+    /// :type new_ephem_id: int
+    /// :rtype: Frame
     pub const fn with_ephem(&self, new_ephem_id: NaifId) -> Self {
         let mut me = *self;
         me.ephemeris_id = new_ephem_id;
@@ -147,6 +201,9 @@ impl Frame {
     }
 
     /// Returns a copy of this Frame whose orientation ID is set to the provided ID
+    ///
+    /// :type new_orient_id: int
+    /// :rtype: Frame
     pub const fn with_orient(&self, new_orient_id: NaifId) -> Self {
         let mut me = *self;
         me.orientation_id = new_orient_id;
@@ -154,40 +211,60 @@ impl Frame {
     }
 
     /// Returns whether this is a celestial frame
+    ///
+    /// :rtype: bool
     pub const fn is_celestial(&self) -> bool {
         self.mu_km3_s2.is_some()
     }
 
     /// Returns whether this is a geodetic frame
+    ///
+    /// :rtype: bool
     pub const fn is_geodetic(&self) -> bool {
         self.mu_km3_s2.is_some() && self.shape.is_some()
     }
 
     /// Returns true if the ephemeris origin is equal to the provided ID
+    ///
+    /// :type other_id: int
+    /// :rtype: bool
     pub const fn ephem_origin_id_match(&self, other_id: NaifId) -> bool {
         self.ephemeris_id == other_id
     }
     /// Returns true if the orientation origin is equal to the provided ID
+    ///
+    /// :type other_id: int
+    /// :rtype: bool
     pub const fn orient_origin_id_match(&self, other_id: NaifId) -> bool {
         self.orientation_id == other_id
     }
     /// Returns true if the ephemeris origin is equal to the provided frame
+    ///
+    /// :type other: Frame
+    /// :rtype: bool
     pub const fn ephem_origin_match(&self, other: Self) -> bool {
         self.ephem_origin_id_match(other.ephemeris_id)
     }
     /// Returns true if the orientation origin is equal to the provided frame
+    ///
+    /// :type other: Frame
+    /// :rtype: bool
     pub const fn orient_origin_match(&self, other: Self) -> bool {
         self.orient_origin_id_match(other.orientation_id)
     }
 
     /// Removes the graviational parameter and the shape information from this frame.
     /// Use this to prevent astrodynamical computations.
-    pub(crate) fn strip(&mut self) {
+    ///
+    /// :rtype: None
+    pub fn strip(&mut self) {
         self.mu_km3_s2 = None;
         self.shape = None;
     }
 
     /// Returns the gravitational parameters of this frame, if defined
+    ///
+    /// :rtype: float
     pub fn mu_km3_s2(&self) -> PhysicsResult<f64> {
         self.mu_km3_s2.ok_or(PhysicsError::MissingFrameData {
             action: "retrieving gravitational parameter",
@@ -197,6 +274,9 @@ impl Frame {
     }
 
     /// Returns a copy of this frame with the graviational parameter set to the new value.
+    ///
+    /// :type mu_km3_s2: float
+    /// :rtype: Frame
     pub fn with_mu_km3_s2(&self, mu_km3_s2: f64) -> Self {
         let mut me = *self;
         me.mu_km3_s2 = Some(mu_km3_s2);
@@ -204,6 +284,8 @@ impl Frame {
     }
 
     /// Returns the mean equatorial radius in km, if defined
+    ///
+    /// :rtype: float
     pub fn mean_equatorial_radius_km(&self) -> PhysicsResult<f64> {
         Ok(self
             .shape
@@ -216,6 +298,8 @@ impl Frame {
     }
 
     /// Returns the semi major radius of the tri-axial ellipoid shape of this frame, if defined
+    ///
+    /// :rtype: float
     pub fn semi_major_radius_km(&self) -> PhysicsResult<f64> {
         Ok(self
             .shape
@@ -228,6 +312,8 @@ impl Frame {
     }
 
     /// Returns the flattening ratio (unitless)
+    ///
+    /// :rtype: float
     pub fn flattening(&self) -> PhysicsResult<f64> {
         Ok(self
             .shape
@@ -240,6 +326,8 @@ impl Frame {
     }
 
     /// Returns the polar radius in km, if defined
+    ///
+    /// :rtype: float
     pub fn polar_radius_km(&self) -> PhysicsResult<f64> {
         Ok(self
             .shape

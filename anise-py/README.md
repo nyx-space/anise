@@ -123,7 +123,7 @@ if __name__ == "__main__":
 
 ```
 
-## Getting started as a developer
+## Development
  
 1. Install `maturin`, e.g. via `pipx` as `pipx install maturin`
 1. Create a virtual environment: `cd anise/anise-py && python3 -m venv .venv`
@@ -137,3 +137,16 @@ To run the development version of ANISE in a Jupyter Notebook, install ipykernel
 1. Now, build the local kernel: `python -m ipykernel install --user --name=.venv`
 1. Then, start jupyter notebook: `jupyter notebook`
 1. Open the notebook, click on the top right and make sure to choose the environment you created just a few steps above.
+
+### Generating the pyi type hints
+
+Type hints are extremely useful for Python users. Building them is a bit of manual work.
+
+1. `maturin develop` to build the latest library
+1. `python generate_stubs.py anise anise.pyi` builds the top level type hints
+1. Repeat for all submodules: `utils`, `time`, `astro`, `astro.constants` writing to a new file each time:
+    1. `python generate_stubs.py anise.astro anise.astro.pyi`
+    1. `python generate_stubs.py anise.time anise.time.pyi`
+    1. `python generate_stubs.py anise.astro.constants anise.astro.constants.pyi`
+    1. `python generate_stubs.py anise.utils anise.utils.pyi`
+1. Final, concat all of these new files back to `anise.pyi` since that's the only one used by `maturin`.

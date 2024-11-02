@@ -9,6 +9,7 @@
  */
 
 use anise::astro::AzElRange;
+use anise::astro::Occultation;
 use anise::structure::planetocentric::ellipsoid::Ellipsoid;
 use pyo3::prelude::*;
 use pyo3::py_run;
@@ -24,6 +25,7 @@ pub(crate) fn register_astro(parent_module: &Bound<'_, PyModule>) -> PyResult<()
     sm.add_class::<Frame>()?;
     sm.add_class::<Orbit>()?;
     sm.add_class::<AzElRange>()?;
+    sm.add_class::<Occultation>()?;
 
     register_constants(&sm)?;
 
