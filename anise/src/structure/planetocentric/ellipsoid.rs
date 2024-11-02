@@ -32,6 +32,11 @@ use pyo3::pyclass::CompareOp;
 /// Example: Radii of the Earth.
 ///
 ///    BODY399_RADII     = ( 6378.1366   6378.1366   6356.7519 )
+///
+/// :type semi_major_equatorial_radius_km: float
+/// :type polar_radius_km: float, optional
+/// :type semi_minor_equatorial_radius_km: float, optional
+/// :rtype: Ellipsoid
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "metaload", derive(StaticType))]
 #[cfg_attr(feature = "python", pyclass)]
@@ -106,6 +111,8 @@ impl Ellipsoid {
     }
 
     /// Allows for pickling the object
+    ///
+    /// :rtype: typing.Tuple
     fn __getnewargs__(&self) -> Result<(f64, Option<f64>, Option<f64>), PyErr> {
         Ok((
             self.semi_major_equatorial_radius_km,
@@ -158,21 +165,31 @@ impl Ellipsoid {
 #[cfg_attr(feature = "python", pymethods)]
 impl Ellipsoid {
     /// Returns the mean equatorial radius in kilometers
+    ///
+    /// :rtype: float
     pub fn mean_equatorial_radius_km(&self) -> f64 {
         (self.semi_major_equatorial_radius_km + self.semi_minor_equatorial_radius_km) / 2.0
     }
 
+    /// Returns true if the polar radius is equal to the semi minor radius.
+    ///
+    /// :rtype: bool
     pub fn is_sphere(&self) -> bool {
         self.is_spheroid()
             && (self.polar_radius_km - self.semi_minor_equatorial_radius_km).abs() < f64::EPSILON
     }
 
+    /// Returns true if the semi major and minor radii are equal
+    ///
+    /// :rtype: bool
     pub fn is_spheroid(&self) -> bool {
         (self.semi_major_equatorial_radius_km - self.semi_minor_equatorial_radius_km).abs()
             < f64::EPSILON
     }
 
     /// Returns the flattening ratio, computed from the mean equatorial radius and the polar radius
+    ///
+    /// :rtype: float
     pub fn flattening(&self) -> f64 {
         (self.mean_equatorial_radius_km() - self.polar_radius_km) / self.mean_equatorial_radius_km()
     }

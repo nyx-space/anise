@@ -18,9 +18,7 @@ For more details, <https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/abcorr.
 # SPICE Validation
 
 The validation test `validate_jplde_de440s_aberration_lt` checks 101,000 pairs of ephemeris computations and shows that the unconverged Light Time computation matches the SPICE computations almost all the time.
-More specifically, the 99th percentile of error is less than 5 meters, the 75th percentile is less than one meter, and the median error is less than 2 millimeters.
-
-# Python docstring"""
+More specifically, the 99th percentile of error is less than 5 meters, the 75th percentile is less than one meter, and the median error is less than 2 millimeters."""
     converged: bool
     stellar: bool
     transmit_mode: bool
@@ -42,9 +40,7 @@ For more details, <https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/abcorr.
 # SPICE Validation
 
 The validation test `validate_jplde_de440s_aberration_lt` checks 101,000 pairs of ephemeris computations and shows that the unconverged Light Time computation matches the SPICE computations almost all the time.
-More specifically, the 99th percentile of error is less than 5 meters, the 75th percentile is less than one meter, and the median error is less than 2 millimeters.
-
-# Python docstring"""
+More specifically, the 99th percentile of error is less than 5 meters, the 75th percentile is less than one meter, and the median error is less than 2 millimeters."""
 
     def __eq__(self, value: typing.Any) -> bool:
         """Return self==value."""
@@ -405,3 +401,41 @@ This function modified `self` and changes the URI to be the path to the download
 
     def __str__(self) -> str:
         """Return str(self)."""
+
+@typing.final
+class astro:
+    AzElRange: type = ...
+    Ellipsoid: type = ...
+    Frame: type = ...
+    Orbit: type = ...
+    __all__: list = ...
+    __name__: str = ...
+    astro.constants: module = ...
+
+@typing.final
+class time:
+    Duration: type = ...
+    Epoch: type = ...
+    LatestLeapSeconds: type = ...
+    LeapSecondsFile: type = ...
+    TimeScale: type = ...
+    TimeSeries: type = ...
+    Unit: type = ...
+    Ut1Provider: type = ...
+    __all__: list = ...
+    __name__: str = ...
+
+@typing.final
+class utils:
+
+    @staticmethod
+    def convert_fk(fk_file_path: str, anise_output_path: str, show_comments: bool=None, overwrite: bool=None) -> None:
+        """Converts a KPL/FK file, that defines frame constants like fixed rotations, and frame name to ID mappings into the EulerParameterDataSet equivalent ANISE file.
+KPL/FK files must be converted into "PCA" (Planetary Constant ANISE) files before being loaded into ANISE."""
+
+    @staticmethod
+    def convert_tpc(pck_file_path: str, gm_file_path: str, anise_output_path: str, overwrite: bool=None) -> None:
+        """Converts two KPL/TPC files, one defining the planetary constants as text, and the other defining the gravity parameters, into the PlanetaryDataSet equivalent ANISE file.
+KPL/TPC files must be converted into "PCA" (Planetary Constant ANISE) files before being loaded into ANISE."""
+    __all__: list = ...
+    __name__: str = ...

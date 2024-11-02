@@ -34,6 +34,12 @@ use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
 
 /// A Frame uniquely defined by its ephemeris center and orientation. Refer to FrameDetail for frames combined with parameters.
+///
+/// :type ephemeris_id: int
+/// :type orientation_id: int
+/// :type mu_km3_s2: float, optional
+/// :type shape: Ellipsoid, optional
+/// :rtype: Frame
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "metaload", derive(StaticType))]
 #[cfg_attr(feature = "python", pyclass)]
@@ -125,6 +131,8 @@ impl Frame {
     }
 
     /// Allows for pickling the object
+    ///
+    /// :rtype: typing.Tuple
     fn __getnewargs__(&self) -> Result<(NaifId, NaifId, Option<f64>, Option<Ellipsoid>), PyErr> {
         Ok((
             self.ephemeris_id,
@@ -183,6 +191,9 @@ impl Frame {
 #[cfg_attr(feature = "python", pymethods)]
 impl Frame {
     /// Returns a copy of this Frame whose ephemeris ID is set to the provided ID
+    ///
+    /// :type new_ephem_id: int
+    /// :rtype: Frame
     pub const fn with_ephem(&self, new_ephem_id: NaifId) -> Self {
         let mut me = *self;
         me.ephemeris_id = new_ephem_id;
@@ -190,6 +201,9 @@ impl Frame {
     }
 
     /// Returns a copy of this Frame whose orientation ID is set to the provided ID
+    ///
+    /// :type new_orient_id: int
+    /// :rtype: Frame
     pub const fn with_orient(&self, new_orient_id: NaifId) -> Self {
         let mut me = *self;
         me.orientation_id = new_orient_id;
@@ -197,40 +211,60 @@ impl Frame {
     }
 
     /// Returns whether this is a celestial frame
+    ///
+    /// :rtype: bool
     pub const fn is_celestial(&self) -> bool {
         self.mu_km3_s2.is_some()
     }
 
     /// Returns whether this is a geodetic frame
+    ///
+    /// :rtype: bool
     pub const fn is_geodetic(&self) -> bool {
         self.mu_km3_s2.is_some() && self.shape.is_some()
     }
 
     /// Returns true if the ephemeris origin is equal to the provided ID
+    ///
+    /// :type other_id: int
+    /// :rtype: bool
     pub const fn ephem_origin_id_match(&self, other_id: NaifId) -> bool {
         self.ephemeris_id == other_id
     }
     /// Returns true if the orientation origin is equal to the provided ID
+    ///
+    /// :type other_id: int
+    /// :rtype: bool
     pub const fn orient_origin_id_match(&self, other_id: NaifId) -> bool {
         self.orientation_id == other_id
     }
     /// Returns true if the ephemeris origin is equal to the provided frame
+    ///
+    /// :type other: Frame
+    /// :rtype: bool
     pub const fn ephem_origin_match(&self, other: Self) -> bool {
         self.ephem_origin_id_match(other.ephemeris_id)
     }
     /// Returns true if the orientation origin is equal to the provided frame
+    ///
+    /// :type other: Frame
+    /// :rtype: bool
     pub const fn orient_origin_match(&self, other: Self) -> bool {
         self.orient_origin_id_match(other.orientation_id)
     }
 
     /// Removes the graviational parameter and the shape information from this frame.
     /// Use this to prevent astrodynamical computations.
-    pub(crate) fn strip(&mut self) {
+    ///
+    /// :rtype: None
+    pub fn strip(&mut self) {
         self.mu_km3_s2 = None;
         self.shape = None;
     }
 
     /// Returns the gravitational parameters of this frame, if defined
+    ///
+    /// :rtype: float
     pub fn mu_km3_s2(&self) -> PhysicsResult<f64> {
         self.mu_km3_s2.ok_or(PhysicsError::MissingFrameData {
             action: "retrieving gravitational parameter",
@@ -240,6 +274,9 @@ impl Frame {
     }
 
     /// Returns a copy of this frame with the graviational parameter set to the new value.
+    ///
+    /// :type mu_km3_s2: float
+    /// :rtype: Frame
     pub fn with_mu_km3_s2(&self, mu_km3_s2: f64) -> Self {
         let mut me = *self;
         me.mu_km3_s2 = Some(mu_km3_s2);
@@ -247,6 +284,8 @@ impl Frame {
     }
 
     /// Returns the mean equatorial radius in km, if defined
+    ///
+    /// :rtype: float
     pub fn mean_equatorial_radius_km(&self) -> PhysicsResult<f64> {
         Ok(self
             .shape
@@ -259,6 +298,8 @@ impl Frame {
     }
 
     /// Returns the semi major radius of the tri-axial ellipoid shape of this frame, if defined
+    ///
+    /// :rtype: float
     pub fn semi_major_radius_km(&self) -> PhysicsResult<f64> {
         Ok(self
             .shape
@@ -271,6 +312,8 @@ impl Frame {
     }
 
     /// Returns the flattening ratio (unitless)
+    ///
+    /// :rtype: float
     pub fn flattening(&self) -> PhysicsResult<f64> {
         Ok(self
             .shape
@@ -283,6 +326,8 @@ impl Frame {
     }
 
     /// Returns the polar radius in km, if defined
+    ///
+    /// :rtype: float
     pub fn polar_radius_km(&self) -> PhysicsResult<f64> {
         Ok(self
             .shape

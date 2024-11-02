@@ -133,7 +133,6 @@ impl CartesianState {
         format!("{self}")
     }
 
-    #[cfg(feature = "python")]
     fn __repr__(&self) -> String {
         format!("{self} (@{self:p})")
     }
@@ -149,7 +148,7 @@ impl CartesianState {
     }
 
     #[allow(clippy::type_complexity)]
-    #[cfg(feature = "python")]
+    /// :rtype: typing.Tuple
     fn __getnewargs__(&self) -> Result<(f64, f64, f64, f64, f64, f64, Epoch, Frame), PyErr> {
         Ok((
             self.radius_km[0],

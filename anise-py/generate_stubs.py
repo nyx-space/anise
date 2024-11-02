@@ -72,8 +72,6 @@ def module_stubs(module: Any) -> ast.Module:
         element_path = [module.__name__, member_name]
         if member_name.startswith("__"):
             pass
-        elif member_name.startswith("DoraStatus"):
-            pass
         elif inspect.isclass(member_value):
             classes.append(
                 class_stubs(member_name, member_value, element_path, types_to_import)
@@ -242,7 +240,7 @@ def function_stub(
     decorator_list = []
     if in_class and hasattr(fn_def, "__self__"):
         decorator_list.append(ast.Name("staticmethod"))
-    
+
     print(f"Documenting {fn_name}")
 
     return ast.FunctionDef(
@@ -271,7 +269,7 @@ def arguments_stub(
     real_parameters: Mapping[str, inspect.Parameter] = inspect.signature(
         callable_def
     ).parameters
-    
+
     if callable_name == "__init__":
         real_parameters = {
             "self": inspect.Parameter("self", inspect.Parameter.POSITIONAL_ONLY),
@@ -290,7 +288,16 @@ def arguments_stub(
         for name, t in zip(param_names, builtin[0]):
             parsed_param_types[name] = t
 
-    elif callable_name in ["__add__", "__sub__", "__div__", "__mul__", "__radd__", "__rsub__", "__rdiv__", "__rmul__"]:
+    elif callable_name in [
+        "__add__",
+        "__sub__",
+        "__div__",
+        "__mul__",
+        "__radd__",
+        "__rsub__",
+        "__rdiv__",
+        "__rmul__",
+    ]:
         return ast.arguments(posonlyargs=[], args=[], defaults=[], kwonlyargs=[])
 
     # Types from comment
@@ -375,7 +382,16 @@ def returns_stub(
         # Don't document errors
         return
 
-    if callable_name in ["__add__", "__sub__", "__div__", "__mul__", "__radd__", "__rsub__", "__rdiv__", "__rmul__"]:
+    if callable_name in [
+        "__add__",
+        "__sub__",
+        "__div__",
+        "__mul__",
+        "__radd__",
+        "__rsub__",
+        "__rdiv__",
+        "__rmul__",
+    ]:
         return
     m = re.findall(r"^ *:rtype: *([^\n]*) *$", doc, re.MULTILINE)
     if len(m) == 0:
