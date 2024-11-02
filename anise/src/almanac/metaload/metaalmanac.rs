@@ -34,6 +34,9 @@ use super::{Almanac, MetaAlmanacError, MetaFile};
 /// If the URI is a remote path, the MetaAlmanac will first check if the file exists locally. If it exists, it will check that the CRC32 checksum of this file matches that of the specs.
 /// If it does not match, the file will be downloaded again. If no CRC32 is provided but the file exists, then the MetaAlmanac will fetch the remote file and overwrite the existing file.
 /// The downloaded path will be stored in the "AppData" folder.
+///
+/// :type maybe_path: str, optional
+/// :rtype: MetaAlmanac
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
@@ -92,7 +95,6 @@ impl MetaAlmanac {
     ///
     /// Note that the `earth_latest_high_prec.bpc` file is regularly updated daily (or so). As such,
     /// if queried at some future time, the Earth rotation parameters may have changed between two queries.
-    ///
     #[cfg(not(feature = "python"))]
     pub fn latest() -> AlmanacResult<Almanac> {
         Self::default().process(true)
@@ -118,6 +120,8 @@ impl FromStr for MetaAlmanac {
 #[allow(deprecated_in_future)]
 impl MetaAlmanac {
     /// Dumps the configured Meta Almanac into a Dhall string.
+    ///
+    /// :rtype: str
     pub fn dumps(&self) -> Result<String, MetaAlmanacError> {
         // Define the Dhall type
         let dhall_type: SimpleType =
@@ -148,6 +152,9 @@ impl MetaAlmanac {
     }
 
     /// Loads the provided string as a Dhall configuration to build a MetaAlmanac
+    ///
+    /// :type s: str
+    /// :rtype: MetaAlmanac
     #[classmethod]
     fn loads(_cls: &Bound<'_, PyType>, s: String) -> Result<Self, MetaAlmanacError> {
         Self::from_str(&s)
@@ -167,6 +174,10 @@ impl MetaAlmanac {
     /// Note that the `earth_latest_high_prec.bpc` file is regularly updated daily (or so). As such,
     /// if queried at some future time, the Earth rotation parameters may have changed between two queries.
     ///
+    /// Set `autodelete` to true to delete lock file if a dead lock is detected after 10 seconds.
+    ///
+    /// :type autodelete: bool, optional
+    /// :rtype: MetaAlmanac
     #[classmethod]
     fn latest(
         _cls: &Bound<'_, PyType>,
@@ -185,6 +196,9 @@ impl MetaAlmanac {
     /// where multiple processes download the data at the same time. Set `autodelete` to true to delete
     /// this lock file if a dead lock is detected after 10 seconds. Set this flag to false if you have
     /// more than ten processes which may attempt to download files in parallel.
+    ///
+    /// :type autodelete: bool, optional
+    /// :rtype: Almanac
     pub fn process(&mut self, py: Python, autodelete: Option<bool>) -> AlmanacResult<Almanac> {
         py.allow_threads(|| self._process(autodelete.unwrap_or(true)))
     }

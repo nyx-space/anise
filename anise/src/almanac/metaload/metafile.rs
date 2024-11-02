@@ -38,6 +38,10 @@ use super::MetaAlmanacError;
 /// The data is stored in the user's local temp directory (i.e. `~/.local/share/nyx-space/anise/` on Linux and `AppData/Local/nyx-space/anise/` on Windows).
 /// Prior to loading a remote resource, if the local resource exists, its CRC32 will be computed: if it matches the CRC32 of this instance of MetaFile,
 /// then the file will not be downloaded a second time.
+///
+/// :type uri: str
+/// :type crc32: int, optional
+/// :rtype: MetaFile
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, StaticType)]
@@ -289,6 +293,9 @@ impl MetaFile {
     /// Processes this MetaFile by downloading it if it's a URL.
     ///
     /// This function modified `self` and changes the URI to be the path to the downloaded file.
+    ///
+    /// :type autodelete: bool, optional
+    /// :rtype: None
     pub fn process(
         &mut self,
         py: Python,

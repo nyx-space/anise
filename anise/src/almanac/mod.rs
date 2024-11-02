@@ -55,10 +55,10 @@ mod embed;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
-/// An Almanac contains all of the loaded SPICE and ANISE data.
+/// An Almanac contains all of the loaded SPICE and ANISE data. It is the context for all computations.
 ///
-/// # Limitations
-/// The stack space required depends on the maximum number of each type that can be loaded.
+/// :type path: str
+/// :rtype: Almanac
 #[derive(Clone, Default)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
@@ -201,6 +201,9 @@ impl Almanac {
 #[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
     /// Generic function that tries to load the provided path guessing to the file type.
+    ///
+    /// :type path: str
+    /// :rtype: Almanac
     pub fn load(&self, path: &str) -> AlmanacResult<Self> {
         // Load the data onto the heap
         let bytes = file2heap!(path).context(LoadingSnafu {
@@ -237,6 +240,13 @@ impl Almanac {
 
     /// Pretty prints the description of this Almanac, showing everything by default. Default time scale is TDB.
     /// If any parameter is set to true, then nothing other than that will be printed.
+    ///
+    /// :type spk: bool, optional
+    /// :type bpc: bool, optional
+    /// :type planetary: bool, optional
+    /// :type time_scale: TimeScale, optional
+    /// :type round_time: bool, optional
+    /// :rtype: None
     pub fn describe(
         &self,
         spk: Option<bool>,

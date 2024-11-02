@@ -58,6 +58,11 @@ impl Almanac {
     /// - `tau` is a parameter that determines the intersection point along the line of sight.
     /// - The condition `(1.0 - tau) * r1sq + r1dotr2 * tau <= ob_mean_eq_radius_km^2` checks if the line of sight is within the obstructing body's radius, indicating an obstruction.
     ///
+    /// :type observer: Orbit
+    /// :type observed: Orbit
+    /// :type obstructing_body: Frame
+    /// :type ab_corr: Aberration, optional
+    /// :rtype: bool
     pub fn line_of_sight_obstructed(
         &self,
         observer: Orbit,
@@ -114,6 +119,12 @@ impl Almanac {
     /// A 100%  percent occultation means that the back object is fully hidden from the observer because of the front frame (i.e. _umbra_ if the back object is the Sun).
     /// A value in between means that the back object is partially hidden from the observser (i.e. _penumbra_ if the back object is the Sun).
     /// Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse/) for modeling details.
+    ///
+    /// :type back_frame: Frame
+    /// :type front_frame: Frame
+    /// :type observer: Orbit
+    /// :type ab_corr: Aberration, optional
+    /// :rtype: Occultation
     pub fn occultation(
         &self,
         mut back_frame: Frame,
@@ -281,6 +292,11 @@ impl Almanac {
     ///
     /// This function calls `occultation` where the back object is the Sun in the J2000 frame, and the front object
     /// is the provided eclipsing frame.
+    ///
+    /// :type eclipsing_frame: Frame
+    /// :type observer: Orbit
+    /// :type ab_corr: Aberration, optional
+    /// :rtype: Occultation
     pub fn solar_eclipsing(
         &self,
         eclipsing_frame: Frame,
@@ -290,7 +306,8 @@ impl Almanac {
         self.occultation(SUN_J2000, eclipsing_frame, observer, ab_corr)
     }
 }
-// Compute the area of the circular segment of radius r and chord length d
+
+/// Compute the area of the circular segment of radius r and chord length d
 fn circ_seg_area(r: f64, d: f64) -> f64 {
     r.powi(2) * (d / r).acos() - d * (r.powi(2) - d.powi(2)).sqrt()
 }

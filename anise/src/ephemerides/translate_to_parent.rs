@@ -112,6 +112,10 @@ impl Almanac {
 #[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
     /// Performs the GEOMETRIC translation to the parent. Use translate_from_to for aberration.
+    ///
+    /// :type source: Frame
+    /// :type epoch: Epoch
+    /// :rtype: Orbit
     pub fn translate_to_parent(
         &self,
         source: Frame,

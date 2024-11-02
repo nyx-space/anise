@@ -40,8 +40,7 @@ use crate::errors::PhysicsError;
 ///
 /// The validation test `validate_jplde_de440s_aberration_lt` checks 101,000 pairs of ephemeris computations and shows that the unconverged Light Time computation matches the SPICE computations almost all the time.
 /// More specifically, the 99th percentile of error is less than 5 meters, the 75th percentile is less than one meter, and the median error is less than 2 millimeters.
-/// 
-/// # Python docstring
+///
 /// :type name: str
 /// :rtype: Aberration
 #[derive(Copy, Clone, Default, PartialEq, Eq)]

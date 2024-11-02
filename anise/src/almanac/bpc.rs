@@ -182,6 +182,12 @@ impl Almanac {
 #[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
     /// Returns a vector of the summaries whose ID matches the desired `id`, in the order in which they will be used, i.e. in reverse loading order.
+    ///
+    /// # Warning
+    /// This function performs a memory allocation.
+    ///
+    /// :type id: int
+    /// :rtype: typing.List
     pub fn bpc_summaries(&self, id: NaifId) -> Result<Vec<BPCSummaryRecord>, OrientationError> {
         let mut summaries = vec![];
 
@@ -208,6 +214,9 @@ impl Almanac {
     }
 
     /// Returns the applicable domain of the request id, i.e. start and end epoch that the provided id has loaded data.
+    ///
+    /// :type id: int
+    /// :rtype: typing.Tuple
     pub fn bpc_domain(&self, id: NaifId) -> Result<(Epoch, Epoch), OrientationError> {
         let summaries = self.bpc_summaries(id)?;
 
@@ -231,6 +240,8 @@ impl Almanac {
     ///
     /// # Warning
     /// This function performs a memory allocation.
+    ///
+    /// :rtype: typing.Dict
     pub fn bpc_domains(&self) -> Result<HashMap<NaifId, (Epoch, Epoch)>, OrientationError> {
         ensure!(self.num_loaded_bpc() > 0, NoOrientationsLoadedSnafu);
 
