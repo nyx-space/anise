@@ -30,6 +30,16 @@ use pyo3::prelude::*;
 /// Regardless of the constructor used, this struct stores all the state information in Cartesian coordinates as these are always non singular.
 ///
 /// Unless noted otherwise, algorithms are from GMAT 2016a [StateConversionUtil.cpp](https://github.com/ChristopherRabotin/GMAT/blob/37201a6290e7f7b941bc98ee973a527a5857104b/src/base/util/StateConversionUtil.cpp).
+///
+/// :type x_km: float
+/// :type y_km: float
+/// :type z_km: float
+/// :type vx_km_s: float
+/// :type vy_km_s: float
+/// :type vz_km_s: float
+/// :type epoch: Epoch
+/// :type frame: Frame
+/// :rtype: Orbit
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "python", pyclass(name = "Orbit"))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
@@ -218,16 +228,23 @@ impl CartesianState {
 #[cfg_attr(feature = "python", pymethods)]
 impl CartesianState {
     /// Returns the magnitude of the radius vector in km
+    ///
+    /// :rtype: float
     pub fn rmag_km(&self) -> f64 {
         self.radius_km.norm()
     }
 
     /// Returns the magnitude of the velocity vector in km/s
+    ///
+    /// :rtype: float
     pub fn vmag_km_s(&self) -> f64 {
         self.velocity_km_s.norm()
     }
 
     /// Returns the distance in kilometers between this state and another state, if both frame match (epoch does not need to match).
+    ///
+    /// :type other: Orbit
+    /// :rtype: float
     pub fn distance_to_km(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
             self.frame.ephem_origin_match(other.frame)
@@ -243,6 +260,9 @@ impl CartesianState {
     }
 
     /// Returns the root mean squared (RSS) radius difference between this state and another state, if both frames match (epoch does not need to match)
+    ///
+    /// :type other: Orbit
+    /// :rtype: float
     pub fn rss_radius_km(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
             self.frame.ephem_origin_match(other.frame)
@@ -257,6 +277,9 @@ impl CartesianState {
     }
 
     /// Returns the root mean squared (RSS) velocity difference between this state and another state, if both frames match (epoch does not need to match)
+    ///
+    /// :type other: Orbit
+    /// :rtype: float
     pub fn rss_velocity_km_s(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
             self.frame.ephem_origin_match(other.frame)
@@ -271,6 +294,9 @@ impl CartesianState {
     }
 
     /// Returns the root sum squared (RMS) radius difference between this state and another state, if both frames match (epoch does not need to match)
+    ///
+    /// :type other: Orbit
+    /// :rtype: float
     pub fn rms_radius_km(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
             self.frame.ephem_origin_match(other.frame)
@@ -285,6 +311,9 @@ impl CartesianState {
     }
 
     /// Returns the root sum squared (RMS) velocity difference between this state and another state, if both frames match (epoch does not need to match)
+    ///
+    /// :type other: Orbit
+    /// :rtype: float
     pub fn rms_velocity_km_s(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
             self.frame.ephem_origin_match(other.frame)
@@ -299,6 +328,11 @@ impl CartesianState {
     }
 
     /// Returns whether this orbit and another are equal within the specified radial and velocity absolute tolerances
+    ///
+    /// :type other: Orbit
+    /// :type radial_tol_km: float
+    /// :type velocity_tol_km_s: float
+    /// :rtype: bool
     pub fn eq_within(&self, other: &Self, radial_tol_km: f64, velocity_tol_km_s: f64) -> bool {
         self.epoch == other.epoch
             && (self.radius_km.x - other.radius_km.x).abs() < radial_tol_km
@@ -312,12 +346,17 @@ impl CartesianState {
     }
 
     /// Returns the light time duration between this object and the origin of its reference frame.
+    ///
+    /// :rtype: Duration
     pub fn light_time(&self) -> Duration {
         (self.radius_km.norm() / SPEED_OF_LIGHT_KM_S).seconds()
     }
 
     /// Returns the absolute position difference in kilometer between this orbit and another.
     /// Raises an error if the frames do not match (epochs do not need to match).
+    ///
+    /// :type other: Orbit
+    /// :rtype: float
     pub fn abs_pos_diff_km(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
             self.frame.ephem_origin_match(other.frame)
@@ -334,6 +373,9 @@ impl CartesianState {
 
     /// Returns the absolute velocity difference in kilometer per second between this orbit and another.
     /// Raises an error if the frames do not match (epochs do not need to match).
+    ///
+    /// :type other: Orbit
+    /// :rtype: float
     pub fn abs_vel_diff_km_s(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
             self.frame.ephem_origin_match(other.frame)
@@ -350,6 +392,9 @@ impl CartesianState {
 
     /// Returns the absolute position and velocity differences in km and km/s between this orbit and another.
     /// Raises an error if the frames do not match (epochs do not need to match).
+    ///
+    /// :type other: Orbit
+    /// :rtype: typing.Tuple
     pub fn abs_difference(&self, other: &Self) -> PhysicsResult<(f64, f64)> {
         Ok((self.abs_pos_diff_km(other)?, self.abs_vel_diff_km_s(other)?))
     }
@@ -358,6 +403,9 @@ impl CartesianState {
     /// This is computed by dividing the absolute difference by the norm of this object's radius vector.
     /// If the radius is zero, this function raises a math error.
     /// Raises an error if the frames do not match or  (epochs do not need to match).
+    ///
+    /// :type other: Orbit
+    /// :rtype: float
     pub fn rel_pos_diff(&self, other: &Self) -> PhysicsResult<f64> {
         if self.rmag_km() <= f64::EPSILON {
             return Err(PhysicsError::AppliedMath {
@@ -372,6 +420,9 @@ impl CartesianState {
 
     /// Returns the absolute velocity difference in kilometer per second between this orbit and another.
     /// Raises an error if the frames do not match (epochs do not need to match).
+    ///
+    /// :type other: Orbit
+    /// :rtype: float
     pub fn rel_vel_diff(&self, other: &Self) -> PhysicsResult<f64> {
         if self.vmag_km_s() <= f64::EPSILON {
             return Err(PhysicsError::AppliedMath {
@@ -387,6 +438,9 @@ impl CartesianState {
     /// Returns the relative difference between this orbit and another for the position and velocity, respectively the first and second return values.
     /// Both return values are UNITLESS because the relative difference is computed as the absolute difference divided by the rmag and vmag of this object.
     /// Raises an error if the frames do not match, if the position is zero or the velocity is zero.
+    ///
+    /// :type other: Orbit
+    /// :rtype: typing.Tuple
     pub fn rel_difference(&self, other: &Self) -> PhysicsResult<(f64, f64)> {
         Ok((self.rel_pos_diff(other)?, self.rel_vel_diff(other)?))
     }
