@@ -269,8 +269,8 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
         // Start by doing a binary search on the epoch registry to limit the search space in the total number of epochs.
         // TODO: use the epoch registry to reduce the search space
         // Check that we even have interpolation data for that time
-        if epoch.to_et_seconds() + 1e-9 < self.epoch_data[0]
-            || epoch.to_et_seconds() - 1e-9 > *self.epoch_data.last().unwrap()
+        if epoch.to_et_seconds() < self.epoch_data[0] - 1e-7
+            || epoch.to_et_seconds() > *self.epoch_data.last().unwrap() + 1e-7
         {
             return Err(InterpolationError::NoInterpolationData {
                 req: epoch,
