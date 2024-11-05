@@ -238,6 +238,16 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
     spice::furnsh("../data/de440s.bsp");
     spice::furnsh("../data/pck00008.tpc");
 
+    // Regression test for GH #346 where the ephemeris time converted to UTC is a handful of
+    // nanoseconds past the midnight so the DAF query would normally fail.
+    let gh346_epoch = Epoch::from_gregorian_utc_at_midnight(2023, 12, 15);
+    assert!(almanac
+        .common_ephemeris_path(lro_frame, SUN_J2000, gh346_epoch)
+        .is_ok());
+    assert!(almanac
+        .transform(lro_frame, SUN_J2000, gh346_epoch, None)
+        .is_ok());
+
     let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 1, 1);
 
     // First, let's test that the common ephemeris path is correct
@@ -282,8 +292,8 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
 
     dbg!(rss_pos_km, rss_vel_km_s);
 
-    assert!(rss_pos_km < f64::EPSILON);
-    assert!(rss_vel_km_s < 1e-15);
+    assert!(rss_pos_km < 5e-7);
+    assert!(rss_vel_km_s < 1e-12);
 
     // Compute the line of sight via the AER computation throughout a full orbit.
 

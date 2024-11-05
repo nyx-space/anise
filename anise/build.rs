@@ -15,7 +15,7 @@ fn main() {
 
     let embedded_files = [
         (
-            "http://public-data.nyxspace.com/anise/v0.4/pck11.pca",
+            "http://public-data.nyxspace.com/anise/v0.5/pck11.pca",
             format!("{}/../data/pck11.pca", env!("CARGO_MANIFEST_DIR")),
         ),
         (
