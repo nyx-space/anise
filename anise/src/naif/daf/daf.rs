@@ -23,7 +23,7 @@ use core::fmt::Debug;
 use core::hash::Hash;
 use core::marker::PhantomData;
 use core::ops::Deref;
-use hifitime::Epoch;
+use hifitime::{Epoch, Unit};
 use log::{debug, error, trace};
 use snafu::ResultExt;
 
@@ -185,7 +185,9 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
     ) -> Result<(&R, usize), DAFError> {
         let (summary, idx) = self.summary_from_name(name)?;
 
-        if epoch >= summary.start_epoch() && epoch <= summary.end_epoch() {
+        if epoch >= summary.start_epoch() - Unit::Nanosecond * 100
+            && epoch <= summary.end_epoch() + Unit::Nanosecond * 100
+        {
             Ok((summary, idx))
         } else {
             error!("No summary {name} valid at epoch {epoch}");
@@ -214,7 +216,9 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
         // so we can't just call `summary_from_id`.
         for (idx, summary) in self.data_summaries()?.iter().enumerate() {
             if summary.id() == id {
-                if epoch >= summary.start_epoch() && epoch <= summary.end_epoch() {
+                if epoch >= summary.start_epoch() - Unit::Nanosecond * 100
+                    && epoch <= summary.end_epoch() + Unit::Nanosecond * 100
+                {
                     trace!("Found {id} in position {idx}: {summary:?}");
                     return Ok((summary, idx));
                 } else {
