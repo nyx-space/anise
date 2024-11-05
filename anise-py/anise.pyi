@@ -312,7 +312,7 @@ The MetaAlmanac will download the DE440s.bsp file, the PCK0008.PCA, the full Moo
 
 # File list
 - <http://public-data.nyxspace.com/anise/de440s.bsp>
-- <http://public-data.nyxspace.com/anise/v0.4/pck08.pca>
+- <http://public-data.nyxspace.com/anise/v0.5/pck08.pca>
 - <http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc>
 - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc>
 

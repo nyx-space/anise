@@ -4,7 +4,7 @@
     , uri = "http://public-data.nyxspace.com/anise/de440s.bsp"
     }
   , { crc32 = Some 3072159656
-    , uri = "http://public-data.nyxspace.com/anise/v0.4/pck08.pca"
+    , uri = "http://public-data.nyxspace.com/anise/v0.5/pck08.pca"
     }
   , { crc32 = None Natural
     , uri =

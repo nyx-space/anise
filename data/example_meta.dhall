@@ -9,7 +9,7 @@ let Meta
 
 let NyxAsset
     : Text -> Text
-    = \(file : Text) -> "http://public-data.nyxspace.com/anise/v0.4/${file}"
+    = \(file : Text) -> "http://public-data.nyxspace.com/anise/v0.5/${file}"
 
 let JplAsset
     : Text -> Text
