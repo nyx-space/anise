@@ -58,6 +58,15 @@ pub fn bpc_ui(
                         ui.label(name);
                     });
 
+                    row.col(|ui| match orientation_name_from_id(summary.frame_id) {
+                        Some(name) => {
+                            ui.label(format!("{name} ({})", summary.frame_id));
+                        }
+                        None => {
+                            ui.label(format!("{}", summary.frame_id));
+                        }
+                    });
+
                     row.col(|ui| {
                         if show_unix {
                             ui.text_edit_singleline(&mut format!(
@@ -78,15 +87,6 @@ pub fn bpc_ui(
                         } else {
                             ui.label(summary.end_epoch().to_gregorian_str(selected_time_scale));
                         };
-                    });
-
-                    row.col(|ui| match orientation_name_from_id(summary.frame_id) {
-                        Some(name) => {
-                            ui.label(format!("{name} ({})", summary.frame_id));
-                        }
-                        None => {
-                            ui.label(format!("{}", summary.frame_id));
-                        }
                     });
 
                     row.col(
