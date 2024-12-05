@@ -157,7 +157,7 @@ fn test_anise_conversion() {
     let path = "../target/gm_pck_08.anise";
 
     // Test saving
-    dataset.save_as(&PathBuf::from(path), true).unwrap();
+    dataset.save_as(&Path::from(path), true).unwrap();
 
     // Test reloading
     let bytes = file2heap!(path).unwrap();
