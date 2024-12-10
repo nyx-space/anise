@@ -34,7 +34,7 @@ pub struct LagrangeSetType8<'a> {
     pub record_data: &'a [f64],
 }
 
-impl<'a> fmt::Display for LagrangeSetType8<'a> {
+impl fmt::Display for LagrangeSetType8<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -145,7 +145,7 @@ pub struct LagrangeSetType9<'a> {
     pub epoch_registry: &'a [f64],
 }
 
-impl<'a> fmt::Display for LagrangeSetType9<'a> {
+impl fmt::Display for LagrangeSetType9<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
