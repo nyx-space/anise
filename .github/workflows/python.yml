@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         target: [x86_64, x86, aarch64, armv7, ppc64le]
@@ -30,17 +30,13 @@ jobs:
           wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v0.5/pck08.pca
           wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v0.5/pck11.pca
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python 3.9 on ${{ matrix.target }} 
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
-      - name: Fix openssl regression
-        run: cargo update openssl-src --precise 300.3.1+3.3.1
-
+          python-version: "3.9"
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
-        continue-on-error: ${{ matrix.target == 's390x' }}
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter

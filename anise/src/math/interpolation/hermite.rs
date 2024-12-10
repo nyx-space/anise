@@ -68,7 +68,7 @@ use super::{InterpolationError, MAX_SAMPLES};
 /// # Runtime verifications
 /// 1. Ensure that all provided arrays are of the same size.
 /// 2. Ensure that there are no more than 32 items to interpolate.
-/// 3. Ensure no division by zero errors (zero is set to core::f64::EPSILON, which is about 2e-16).
+/// 3. Ensure no division by zero errors (zero is set to f64::EPSILON, which is about 2e-16).
 pub fn hermite_eval(
     xs: &[f64],
     ys: &[f64],

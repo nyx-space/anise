@@ -30,7 +30,7 @@ pub struct Type2ChebyshevSet<'a> {
     pub record_data: &'a [f64],
 }
 
-impl<'a> Type2ChebyshevSet<'a> {
+impl Type2ChebyshevSet<'_> {
     pub fn degree(&self) -> usize {
         (self.rsize - 2) / 3 - 1
     }
@@ -59,7 +59,7 @@ impl<'a> Type2ChebyshevSet<'a> {
     }
 }
 
-impl<'a> fmt::Display for Type2ChebyshevSet<'a> {
+impl fmt::Display for Type2ChebyshevSet<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -236,13 +236,13 @@ pub struct Type2ChebyshevRecord<'a> {
     pub z_coeffs: &'a [f64],
 }
 
-impl<'a> Type2ChebyshevRecord<'a> {
+impl Type2ChebyshevRecord<'_> {
     pub fn midpoint_epoch(&self) -> Epoch {
         Epoch::from_et_seconds(self.midpoint_et_s)
     }
 }
 
-impl<'a> fmt::Display for Type2ChebyshevRecord<'a> {
+impl fmt::Display for Type2ChebyshevRecord<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
