@@ -34,7 +34,7 @@ pub struct HermiteSetType12<'a> {
     pub record_data: &'a [f64],
 }
 
-impl<'a> fmt::Display for HermiteSetType12<'a> {
+impl fmt::Display for HermiteSetType12<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -149,13 +149,13 @@ pub struct HermiteSetType13<'a> {
     pub epoch_registry: &'a [f64],
 }
 
-impl<'a> HermiteSetType13<'a> {
+impl HermiteSetType13<'_> {
     pub fn degree(&self) -> usize {
         2 * self.samples - 1
     }
 }
 
-impl<'a> fmt::Display for HermiteSetType13<'a> {
+impl fmt::Display for HermiteSetType13<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,

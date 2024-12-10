@@ -149,7 +149,7 @@ fn de440s_transform_verif_venus2emb() {
         relative_eq!(
             state_rtn.radius_km,
             -state.radius_km,
-            epsilon = core::f64::EPSILON
+            epsilon = f64::EPSILON
         ),
         "pos = {}\nexp = {}\nerr = {:e}",
         state_rtn.radius_km,
@@ -161,7 +161,7 @@ fn de440s_transform_verif_venus2emb() {
         relative_eq!(
             state_rtn.velocity_km_s,
             -state.velocity_km_s,
-            epsilon = core::f64::EPSILON
+            epsilon = f64::EPSILON
         ),
         "vel = {}\nexp = {}\nerr = {:e}",
         state.velocity_km_s,
@@ -400,12 +400,12 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
         let spice_occult = spice::occult(
             front,
             fshape,
-            &fframe,
-            &back,
-            &bshape,
-            &bframe,
-            &abcorr,
-            &obsrvr,
+            fframe,
+            back,
+            bshape,
+            bframe,
+            abcorr,
+            obsrvr,
             epoch.to_et_seconds(),
         );
 
