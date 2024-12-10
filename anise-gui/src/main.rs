@@ -6,7 +6,9 @@ mod ui;
 use ui::UiApp;
 
 mod bpc;
+mod epa;
 mod spk;
+mod pca;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
@@ -25,7 +27,7 @@ fn main() {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1024.0, 640.0])
             .with_icon(
-                eframe::icon_data::from_png_bytes(&include_bytes!("../icon-128.png")[..]).unwrap(),
+                eframe::icon_data::from_png_bytes(&include_bytes!("../icon-256.png")[..]).unwrap(),
             ),
         ..Default::default()
     };
