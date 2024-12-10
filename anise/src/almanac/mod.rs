@@ -252,6 +252,7 @@ impl Almanac {
         spk: Option<bool>,
         bpc: Option<bool>,
         planetary: Option<bool>,
+        eulerparams: Option<bool>,
         time_scale: Option<TimeScale>,
         round_time: Option<bool>,
     ) {
@@ -291,6 +292,13 @@ impl Almanac {
 
         if planetary.unwrap_or(!print_any) {
             println!("=== PLANETARY DATA ==\n{}", self.planetary_data.describe());
+        }
+
+        if eulerparams.unwrap_or(!print_any) {
+            println!(
+                "=== EULER PARAMETER DATA ==\n{}",
+                self.euler_param_data.describe()
+            );
         }
     }
 }

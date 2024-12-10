@@ -7,8 +7,8 @@ use ui::UiApp;
 
 mod bpc;
 mod epa;
-mod spk;
 mod pca;
+mod spk;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {

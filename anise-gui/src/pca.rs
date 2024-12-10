@@ -1,10 +1,7 @@
 use anise::prelude::Almanac;
 use egui_extras::{Column, TableBuilder};
 
-pub fn pca_ui(
-    ui: &mut egui::Ui,
-    almanac: &Almanac,
-) {
+pub fn pca_ui(ui: &mut egui::Ui, almanac: &Almanac) {
     TableBuilder::new(ui)
         .column(Column::auto().at_least(100.0).resizable(true))
         .column(Column::auto().at_least(50.0).resizable(true))
