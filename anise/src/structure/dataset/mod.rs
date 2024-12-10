@@ -41,6 +41,7 @@ io_imports!();
 
 mod datatype;
 mod error;
+mod pretty_print;
 
 pub use datatype::DataSetType;
 pub use error::DataSetError;
