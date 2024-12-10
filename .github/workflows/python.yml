@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         target: [x86_64, x86, aarch64, armv7, ppc64le]
@@ -30,10 +30,10 @@ jobs:
           wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v0.5/pck08.pca
           wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v0.5/pck11.pca
 
-      - name: Setup Python ${{ matrix.python-version }} on ${{ matrix.target }} 
+      - name: Setup Python 3.9 on ${{ matrix.target }} 
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.version }}
+          python-version: "3.9"
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
