@@ -66,6 +66,8 @@ impl Frames {
     #[classattr]
     const MOON_ME_FRAME: Frame = MOON_ME_FRAME;
     #[classattr]
+    const MOON_ME_DE421_FRAME: Frame = MOON_ME_DE421_FRAME;
+    #[classattr]
     const MOON_PA_FRAME: Frame = MOON_PA_FRAME;
     #[classattr]
     const IAU_MOON_FRAME: Frame = IAU_MOON_FRAME;
@@ -101,6 +103,8 @@ impl Orientations {
     const IAU_MOON: i32 = IAU_MOON;
     #[classattr]
     const MOON_ME: i32 = MOON_ME;
+    #[classattr]
+    const MOON_ME_DE421: i32 = MOON_ME_DE421;
     #[classattr]
     const MOON_PA: i32 = MOON_PA;
     #[classattr]
