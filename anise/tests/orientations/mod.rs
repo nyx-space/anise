@@ -2,8 +2,11 @@ use std::path::PathBuf;
 
 use anise::constants::frames::{
     EARTH_ITRF93, EME2000, IAU_JUPITER_FRAME, IAU_MOON_FRAME, JUPITER_BARYCENTER_J2000, MOON_J2000,
+    MOON_ME_DE421_FRAME, MOON_PA_FRAME,
 };
-use anise::constants::orientations::{ECLIPJ2000, IAU_JUPITER, IAU_MOON, ITRF93, J2000};
+use anise::constants::orientations::{
+    ECLIPJ2000, IAU_JUPITER, IAU_MOON, ITRF93, J2000, MOON_ME_DE421, MOON_PA,
+};
 use anise::math::rotation::DCM;
 use anise::math::Matrix3;
 use anise::naif::kpl::parser::convert_tpc;
@@ -299,6 +302,53 @@ fn regression_test_issue_112_test_iau_jupiter() {
             -0.0145957925699357,
             -0.4303182657298211,
             0.9025592241058392,
+        ),
+        rot_mat_dt: None,
+    };
+
+    assert_eq!(dcm.to, IAU_JUPITER);
+    assert_eq!(dcm.from, J2000);
+
+    assert!(
+        (dcm.rot_mat - spice_dcm.rot_mat).norm() < 1e-9,
+        "dcm error! got: {}want:{}err = {:.3e}: {:.3e}",
+        dcm.rot_mat,
+        spice_dcm.rot_mat,
+        (dcm.rot_mat - spice_dcm.rot_mat).norm(),
+        dcm.rot_mat - spice_dcm.rot_mat
+    );
+}
+
+#[test]
+fn regression_test_issue_357_test_moon_me_j2k() {
+    use core::str::FromStr;
+
+    let almanac = Almanac::new("../data/pck11.pca")
+        .unwrap()
+        .load("../data/moon_fk.epa")
+        .unwrap()
+        .load("../data/moon_pa_de440_200625.bpc")
+        .unwrap();
+
+    let epoch = Epoch::from_str("2024-01-01 22:28:39").unwrap();
+
+    let dcm = almanac
+        .rotate(MOON_PA_FRAME, MOON_ME_DE421_FRAME, epoch)
+        .unwrap();
+
+    let spice_dcm = DCM {
+        from: MOON_PA,
+        to: MOON_ME_DE421,
+        rot_mat: Matrix3::new(
+            9.99999873e-01,
+            3.29286000e-04,
+            -3.80869119e-04,
+            -3.29285422e-04,
+            9.99999946e-01,
+            1.57985579e-06,
+            3.80869619e-04,
+            -1.45444094e-06,
+            9.99999927e-01,
         ),
         rot_mat_dt: None,
     };

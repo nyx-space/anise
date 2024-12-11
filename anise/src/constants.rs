@@ -227,7 +227,7 @@ pub mod orientations {
     /// High fidelity Moon Principal Axes orientation frame (used for gravity field and mass concentrations), requires the Moon PA BPC kernel
     pub const MOON_PA: NaifId = 31000;
     /// High fidelity Moon Principal Axes orientation frame of the DE421 (used for gravity field and mass concentrations), requires the Moon PA BPC kernel
-    pub const MOON_ME_DE421: NaifID = 31007;
+    pub const MOON_ME_DE421: NaifId = 31007;
     pub const IAU_MARS: NaifId = 499;
     pub const IAU_JUPITER: NaifId = 599;
     pub const IAU_SATURN: NaifId = 699;
