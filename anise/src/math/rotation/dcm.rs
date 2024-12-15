@@ -26,6 +26,12 @@ use pyo3::prelude::*;
 
 /// Defines a direction cosine matrix from one frame ID to another frame ID, optionally with its time derivative.
 /// It provides a number of run-time checks that prevent invalid rotations.
+///
+/// :type np_rot_mat: numpy.array
+/// :type from_id: int
+/// :type to_id: int
+/// :type np_rot_mat_dt: numpy.array, optional
+/// :rtype: DCM
 #[derive(Copy, Clone, Debug, Default)]
 #[cfg_attr(feature = "python", pyclass(name = "DCM"))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.rotation"))]
@@ -166,10 +172,12 @@ impl DCM {
 
     /// Returns whether the `rot_mat` of this DCM is a valid rotation matrix.
     /// The criteria for validity are:
-    /// -- The columns of the matrix are unit vectors, within a specified tolerance.
-    /// -- The determinant of the matrix formed by unitizing the columns of the input matrix is 1, within a specified tolerance. This criterion ensures that the columns of the matrix are nearly orthogonal, and that they form a right-handed basis.
+    /// -- The columns of the matrix are unit vectors, within a specified tolerance (unit_tol).
+    /// -- The determinant of the matrix formed by unitizing the columns of the input matrix is 1, within a specified tolerance. This criterion ensures that the columns of the matrix are nearly orthogonal, and that they form a right-handed basis (det_tol).
     /// [Source: SPICE's rotation.req](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/rotation.html#Validating%20a%20rotation%20matrix)
     ///
+    /// :type unit_tol: float
+    /// :type det_tol: float
     /// :rtype: bool
     pub fn is_valid(&self, unit_tol: f64, det_tol: f64) -> bool {
         for col in self.rot_mat.column_iter() {

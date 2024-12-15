@@ -1,4 +1,5 @@
 import typing
+import numpy
 
 _all__: list = ["time", "astro", "utils", "Aberration", "Almanac", "MetaAlmanac", "MetaFile"]
 

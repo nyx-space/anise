@@ -144,9 +144,10 @@ Type hints are extremely useful for Python users. Building them is a bit of manu
 
 1. `maturin develop` to build the latest library
 1. `python generate_stubs.py anise anise.pyi` builds the top level type hints
-1. Repeat for all submodules: `utils`, `time`, `astro`, `astro.constants` writing to a new file each time:
+1. Repeat for all submodules: `utils`, `time`, `astro`, `astro.constants`, `rotation` writing to a new file each time:
     1. `python generate_stubs.py anise.astro anise.astro.pyi`
     1. `python generate_stubs.py anise.time anise.time.pyi`
     1. `python generate_stubs.py anise.astro.constants anise.astro.constants.pyi`
     1. `python generate_stubs.py anise.utils anise.utils.pyi`
+    1. `python generate_stubs.py anise.rotation anise.rotation.pyi`
 1. Final, concat all of these new files back to `anise.pyi` since that's the only one used by `maturin`.

@@ -4,6 +4,7 @@ import pickle
 from anise import Almanac, MetaAlmanac
 from anise.astro import *
 from anise.astro.constants import Frames
+from anise.rotation import DCM
 from anise.time import Epoch
 
 from os import environ
@@ -71,6 +72,9 @@ def test_state_transformation():
         assert dcm.rot_mat.shape == (3, 3)
         assert dcm.rot_mat_dt.shape == (3, 3)
         print(f"== {func} ==\n{dcm}")
+        # Test rebuilding the DCM from its parts
+        dcm_rebuilt = DCM(dcm.rot_mat, dcm.from_id, dcm.to_id, dcm.rot_mat_dt)
+        assert dcm_rebuilt == dcm
     
     topo_dcm = orig_state.dcm_from_topocentric_to_body_fixed(123)
     assert topo_dcm.get_state_dcm().shape == (6, 6)
