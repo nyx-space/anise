@@ -29,14 +29,14 @@ impl DCM {
         to_id: NaifId,
         np_rot_mat_dt: Option<PyReadonlyArray2<'py, f64>>,
     ) -> PyResult<Self> {
-        if np_rot_mat.shape() != &[3, 3] {
+        if np_rot_mat.shape() != [3, 3] {
             return Err(PyErr::new::<PyTypeError, _>("rotation matrix must be 3x3"));
         }
 
         let rot_mat = Matrix3::from_row_iterator(np_rot_mat.as_array().iter().copied());
 
         let rot_mat_dt = if let Some(np_rot_mat_dt) = np_rot_mat_dt {
-            if np_rot_mat_dt.shape() != &[3, 3] {
+            if np_rot_mat_dt.shape() != [3, 3] {
                 return Err(PyErr::new::<PyTypeError, _>("rotation matrix must be 3x3"));
             }
             Some(Matrix3::from_row_iterator(

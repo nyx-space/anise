@@ -20,8 +20,8 @@ use pyo3::py_run;
 
 mod astro;
 mod constants;
-mod utils;
 mod rotations;
+mod utils;
 
 /// A Python module implemented in Rust.
 #[pymodule]
