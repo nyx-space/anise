@@ -15,8 +15,6 @@ use pyo3::py_run;
 pub(crate) fn register_rotation(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     let sm = PyModule::new_bound(parent_module.py(), "rotation")?;
     sm.add_class::<DCM>()?;
-    //  sm.add_class::<Quaternion>()?;
-    //  sm.add_class::<MRP>()?;
 
     Python::with_gil(|py| {
         py_run!(py, sm, "import sys; sys.modules['anise.rotation'] = sm");

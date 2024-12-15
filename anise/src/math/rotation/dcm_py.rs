@@ -37,7 +37,9 @@ impl DCM {
 
         let rot_mat_dt = if let Some(np_rot_mat_dt) = np_rot_mat_dt {
             if np_rot_mat_dt.shape() != [3, 3] {
-                return Err(PyErr::new::<PyTypeError, _>("rotation matrix must be 3x3"));
+                return Err(PyErr::new::<PyTypeError, _>(
+                    "rotation matrix time derivative must be 3x3",
+                ));
             }
             Some(Matrix3::from_row_iterator(
                 np_rot_mat_dt.as_array().iter().copied(),
