@@ -62,6 +62,8 @@ def test_state_transformation():
     assert abs(orig_state.raan_deg() - 306.614) < 1e-10
     assert abs(orig_state.tlong_deg() - 0.6916999999999689) < 1e-10
 
+    assert orig_state.cartesian_pos_vel().shape == (6,)
+
     # Ensure we can call all of the DCM functions
     for func in ["dcm_from_ric_to_inertial", "dcm_from_rcn_to_inertial", "dcm_from_vnc_to_inertial"]:
         dcm = getattr(orig_state, func)()
