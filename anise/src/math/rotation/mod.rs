@@ -20,6 +20,9 @@ pub use dcm::DCM;
 pub use mrp::MRP;
 pub use quaternion::Quaternion;
 
+#[cfg(feature = "python")]
+mod dcm_py;
+
 pub trait Rotation: TryInto<Quaternion> {}
 
 /// Build a 3x3 rotation matrix around the X axis

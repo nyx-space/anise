@@ -62,6 +62,19 @@ def test_state_transformation():
     assert abs(orig_state.raan_deg() - 306.614) < 1e-10
     assert abs(orig_state.tlong_deg() - 0.6916999999999689) < 1e-10
 
+    # Ensure we can call all of the DCM functions
+    for func in ["dcm_from_ric_to_inertial", "dcm_from_rcn_to_inertial", "dcm_from_vnc_to_inertial"]:
+        dcm = getattr(orig_state, func)()
+        assert dcm.get_state_dcm().shape == (6, 6)
+        assert dcm.rot_mat.shape == (3, 3)
+        assert dcm.rot_mat_dt.shape == (3, 3)
+        print(f"== {func} ==\n{dcm}")
+    
+    topo_dcm = orig_state.dcm_from_topocentric_to_body_fixed(123)
+    assert topo_dcm.get_state_dcm().shape == (6, 6)
+    assert topo_dcm.rot_mat.shape == (3, 3)
+    assert topo_dcm.rot_mat_dt is None
+
     # In Python, we can set the aberration to None
     aberration = None
 
@@ -139,7 +152,7 @@ def test_frame_defs():
 
 
 if __name__ == "__main__":
-    test_meta_load()
-    test_exports()
-    test_frame_defs()
+    # test_meta_load()
+    # test_exports()
+    # test_frame_defs()
     test_state_transformation()
