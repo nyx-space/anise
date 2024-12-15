@@ -3,7 +3,7 @@ resolver = "2"
 members = ["anise", "anise-cli", "anise-gui", "anise-py"]
 
 [workspace.package]
-version = "0.5.0"
+version = "0.5.1"
 edition = "2021"
 authors = ["Christopher Rabotin <christopher.rabotin@gmail.com>"]
 description = "ANISE provides a toolkit and files for Attitude, Navigation, Instrument, Spacecraft, and Ephemeris data. It's a modern replacement of NAIF SPICE file."
@@ -33,24 +33,19 @@ der = { version = "0.7.8", features = ["derive", "alloc", "real"] }
 log = "0.4"
 pretty_env_logger = "0.5"
 tabled = "=0.17"
-const_format = "0.2"
 nalgebra = { version = "0.33", default-features = true, features = [
     "serde-serialize",
 ] }
-approx = "0.5.1"
 zerocopy = { version = "0.8.0", features = ["derive"] }
 bytes = "1.6.0"
 snafu = { version = "0.8.0", features = ["backtrace"] }
-lexical-core = "1.0.1"
-heapless = "0.8.0"
 rstest = "0.23.0"
 pyo3 = { version = "0.22", features = ["multiple-pymethods"] }
 pyo3-log = "0.11"
-serde = "1"
-serde_derive = "1"
-serde_dhall = "0.12"
+numpy = "0.22"
+ndarray = ">= 0.15, < 0.17"
 
-anise = { version = "0.5.0", path = "anise", default-features = false }
+anise = { version = "0.5.1", path = "anise", default-features = false }
 
 [profile.bench]
 debug = true

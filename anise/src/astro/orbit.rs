@@ -309,7 +309,11 @@ impl Orbit {
                 / self.frame.mu_km3_s2()?,
         )
     }
+}
 
+#[allow(clippy::too_many_arguments)]
+#[cfg_attr(feature = "python", pymethods)]
+impl Orbit {
     /// Builds the rotation matrix that rotates from the topocentric frame (SEZ) into the body fixed frame of this state.
     ///
     /// # Frame warning
@@ -536,11 +540,7 @@ impl Orbit {
             to: self.frame.orientation_id,
         })
     }
-}
 
-#[allow(clippy::too_many_arguments)]
-#[cfg_attr(feature = "python", pymethods)]
-impl Orbit {
     /// Creates a new Orbit around the provided Celestial or Geoid frame from the Keplerian orbital elements.
     ///
     /// **Units:** km, none, degrees, degrees, degrees, degrees

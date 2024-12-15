@@ -21,7 +21,20 @@ use super::{r1, r2, r3, Quaternion, Rotation};
 use core::fmt;
 use core::ops::Mul;
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
+/// Defines a direction cosine matrix from one frame ID to another frame ID, optionally with its time derivative.
+/// It provides a number of run-time checks that prevent invalid rotations.
+///
+/// :type np_rot_mat: numpy.array
+/// :type from_id: int
+/// :type to_id: int
+/// :type np_rot_mat_dt: numpy.array, optional
+/// :rtype: DCM
 #[derive(Copy, Clone, Debug, Default)]
+#[cfg_attr(feature = "python", pyclass(name = "DCM"))]
+#[cfg_attr(feature = "python", pyo3(module = "anise.rotation"))]
 pub struct DCM {
     /// The rotation matrix itself
     pub rot_mat: Matrix3,
@@ -84,7 +97,7 @@ impl DCM {
         }
     }
 
-    /// Returns the 6x6 DCM to rotate a state, if the time derivative of this DCM exists.
+    /// Returns the 6x6 DCM to rotate a state. If the time derivative of this DCM is defined, this 6x6 accounts for the transport theorem.
     pub fn state_dcm(&self) -> Matrix6 {
         let mut full_dcm = Matrix6::zeros();
         for i in 0..6 {
@@ -115,25 +128,6 @@ impl DCM {
         }
     }
 
-    /// Returns whether this rotation is identity, checking first the frames and then the rotation matrix (but ignores its time derivative)
-    pub fn is_identity(&self) -> bool {
-        self.to == self.from || (self.rot_mat - Matrix3::identity()).norm() < 1e-8
-    }
-
-    /// Returns whether the `rot_mat` of this DCM is a valid rotation matrix.
-    /// The criteria for validity are:
-    /// -- The columns of the matrix are unit vectors, within a specified tolerance.
-    /// -- The determinant of the matrix formed by unitizing the columns of the input matrix is 1, within a specified tolerance. This criterion ensures that the columns of the matrix are nearly orthogonal, and that they form a right-handed basis.
-    /// [Source: SPICE's rotation.req](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/rotation.html#Validating%20a%20rotation%20matrix)
-    pub fn is_valid(&self, unit_tol: f64, det_tol: f64) -> bool {
-        for col in self.rot_mat.column_iter() {
-            if (col.norm() - 1.0).abs() > unit_tol {
-                return false;
-            }
-        }
-        (self.rot_mat.determinant() - 1.0).abs() < det_tol
-    }
-
     /// Multiplies this DCM with another one WITHOUT checking if the frames match.
     pub(crate) fn mul_unchecked(&self, other: Self) -> Self {
         let mut rslt = *self;
@@ -152,7 +146,14 @@ impl DCM {
         }
         rslt
     }
+}
 
+// Methods shared with Python
+#[cfg_attr(feature = "python", pymethods)]
+impl DCM {
+    /// Returns the transpose of this DCM
+    ///
+    /// :rtype: DCM
     pub fn transpose(&self) -> Self {
         Self {
             rot_mat: self.rot_mat.transpose(),
@@ -160,6 +161,31 @@ impl DCM {
             to: self.from,
             from: self.to,
         }
+    }
+
+    /// Returns whether this rotation is identity, checking first the frames and then the rotation matrix (but ignores its time derivative)
+    ///
+    /// :rtype: bool
+    pub fn is_identity(&self) -> bool {
+        self.to == self.from || (self.rot_mat - Matrix3::identity()).norm() < 1e-8
+    }
+
+    /// Returns whether the `rot_mat` of this DCM is a valid rotation matrix.
+    /// The criteria for validity are:
+    /// -- The columns of the matrix are unit vectors, within a specified tolerance (unit_tol).
+    /// -- The determinant of the matrix formed by unitizing the columns of the input matrix is 1, within a specified tolerance. This criterion ensures that the columns of the matrix are nearly orthogonal, and that they form a right-handed basis (det_tol).
+    /// [Source: SPICE's rotation.req](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/rotation.html#Validating%20a%20rotation%20matrix)
+    ///
+    /// :type unit_tol: float
+    /// :type det_tol: float
+    /// :rtype: bool
+    pub fn is_valid(&self, unit_tol: f64, det_tol: f64) -> bool {
+        for col in self.rot_mat.column_iter() {
+            if (col.norm() - 1.0).abs() > unit_tol {
+                return false;
+            }
+        }
+        (self.rot_mat.determinant() - 1.0).abs() < det_tol
     }
 }
 

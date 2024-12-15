@@ -13,26 +13,25 @@ all-features = true
 rustdoc-ars = ["--cfg", "docrs", "--generate-link-to-definition"]
 
 [dependencies]
-lexical-core = { workspace = true }
 hifitime = { workspace = true }
 memmap2 = { workspace = true }
 crc32fast = { workspace = true }
 der = { workspace = true }
 log = { workspace = true }
-pretty_env_logger = { workspace = true }
-const_format = { workspace = true }
 nalgebra = { workspace = true }
-approx = { workspace = true }
 zerocopy = { workspace = true }
 bytes = { workspace = true }
 snafu = { workspace = true }
-heapless = { workspace = true }
-rstest = { workspace = true }
+const_format = "0.2"
+heapless = "0.8.0"
+# Optional dependencies follow
 pyo3 = { workspace = true, optional = true }
 pyo3-log = { workspace = true, optional = true }
+numpy = { workspace = true, optional = true }
+ndarray = { workspace = true, optional = true }
 url = { version = "2.5.0", optional = true }
-serde = { workspace = true }
-serde_derive = { workspace = true }
+serde = "1"
+serde_derive = "1"
 serde_dhall = { version = "0.12", optional = true }
 reqwest = { version = "0.12.0", optional = true, features = ["blocking"] }
 platform-dirs = { version = "0.3.0", optional = true }
@@ -49,6 +48,9 @@ parquet = "53.0.0"
 arrow = "53.0.0"
 criterion = "0.5"
 iai = "0.1"
+pretty_env_logger = { workspace = true }
+rstest = { workspace = true }
+approx = "0.5.1"
 polars = { version = "0.45.1", features = ["lazy", "parquet"] }
 rayon = "1.7"
 serde_yaml = "0.9.30"
@@ -58,11 +60,11 @@ reqwest = { version = "0.12", features = ["blocking"], optional = true }
 
 [features]
 default = ["metaload"]
-# Enabling this flag significantly increases compilation times due to Arrow and Polars.
-spkezr_validation = []
-python = ["pyo3", "pyo3-log"]
+python = ["pyo3", "pyo3-log", "numpy", "ndarray"]
 metaload = ["url", "reqwest/blocking", "platform-dirs", "regex", "serde_dhall"]
 embed_ephem = ["rust-embed", "reqwest/blocking"]
+# Enabling this flag significantly increases compilation times due to Arrow and Polars.
+spkezr_validation = []
 
 [[bench]]
 name = "iai_jpl_ephemerides"
