@@ -42,7 +42,7 @@ snafu = { version = "0.8.0", features = ["backtrace"] }
 rstest = "0.23.0"
 pyo3 = { version = "0.22", features = ["multiple-pymethods"] }
 pyo3-log = "0.11"
-numpy = "0.22"
+numpy = "0.23"
 ndarray = ">= 0.15, < 0.17"
 
 anise = { version = "0.5.1", path = "anise", default-features = false }
