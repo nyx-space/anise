@@ -88,8 +88,6 @@ impl Almanac {
             } else if dcm_bwrd.to == cur_dcm.to {
                 dcm_bwrd = (dcm_bwrd.transpose() * cur_dcm).context(OrientationPhysicsSnafu)?;
             } else {
-                dbg!(dcm_bwrd);
-                dbg!(dcm_fwrd);
                 return Err(OrientationError::Unreachable);
             }
 

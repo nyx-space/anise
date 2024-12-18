@@ -226,8 +226,14 @@ pub mod orientations {
     pub const MOON_ME: NaifId = 31001;
     /// High fidelity Moon Principal Axes orientation frame (used for gravity field and mass concentrations), requires the Moon PA BPC kernel
     pub const MOON_PA: NaifId = 31000;
-    /// High fidelity Moon Principal Axes orientation frame of the DE421 (used for gravity field and mass concentrations), requires the Moon PA BPC kernel
+    /// High fidelity Moon Mean Earth orientation frame of the DE421 (used for cartography), requires the Moon PA BPC kernel
     pub const MOON_ME_DE421: NaifId = 31007;
+    /// High fidelity Moon Mean Earth orientation frame of the DE440 (used for cartography), requires the Moon PA BPC kernel moon_pa_de440_200625.bpc.
+    pub const MOON_ME_DE440_ME421: NaifId = 31009;
+    /// High fidelity Moon Principal Axes orientation frame of the DE421 (used for gravity field and mass concentrations), requires the Moon PA BPC kernel
+    pub const MOON_PA_DE421: NaifId = 31008;
+    /// High fidelity Moon Principal Axes orientation frame of the DE440 (used for gravity field and mass concentrations), requires the Moon PA BPC kernel moon_pa_de440_200625. Note that the ID is the same as the MOON_PA_DE421.
+    pub const MOON_PA_DE440: NaifId = 31008;
     pub const IAU_MARS: NaifId = 499;
     pub const IAU_JUPITER: NaifId = 599;
     pub const IAU_SATURN: NaifId = 699;
@@ -325,8 +331,14 @@ pub mod frames {
     pub const MOON_ME_FRAME: Frame = Frame::new(MOON, MOON_ME);
     /// High fidelity Moon Mean Earth equator body fixed frame (used for cartography), requires the Moon PA BPC kernel
     pub const MOON_ME_DE421_FRAME: Frame = Frame::new(MOON, MOON_ME_DE421);
+    /// High fidelity Moon Mean Earth equator body fixed frame of the DE440 (used for cartography), requires the Moon PA BPC kernel moon_pa_de440_200625.bpc.
+    pub const MOON_ME_DE440_ME421_FRAME: Frame = Frame::new(MOON, MOON_ME_DE440_ME421);
     /// High fidelity Moon Principal Axes body fixed frame (used for gravity field and mass concentrations), requires the Moon PA BPC kernel
     pub const MOON_PA_FRAME: Frame = Frame::new(MOON, MOON_PA);
+    /// High fidelity Moon Mean Earth equator body fixed frame (used for cartography), requires the Moon PA BPC kernel
+    pub const MOON_PA_DE421_FRAME: Frame = Frame::new(MOON, MOON_PA_DE421);
+    /// High fidelity Moon Mean Earth equator body fixed frame (used for cartography), requires the Moon PA BPC kernel moon_pa_de440_200625. Note that the ID is the same as the MOON_PA_DE421.
+    pub const MOON_PA_DE440_FRAME: Frame = Frame::new(MOON, MOON_PA_DE440);
     pub const IAU_MARS_FRAME: Frame = Frame::new(MARS, IAU_MARS);
     pub const IAU_JUPITER_FRAME: Frame = Frame::new(JUPITER, IAU_JUPITER);
     pub const IAU_SATURN_FRAME: Frame = Frame::new(SATURN, IAU_SATURN);

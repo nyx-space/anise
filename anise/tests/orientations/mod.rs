@@ -2,10 +2,10 @@ use std::path::PathBuf;
 
 use anise::constants::frames::{
     EARTH_ITRF93, EME2000, IAU_JUPITER_FRAME, IAU_MOON_FRAME, JUPITER_BARYCENTER_J2000, MOON_J2000,
-    MOON_ME_DE421_FRAME, MOON_PA_FRAME,
+    MOON_PA_DE421_FRAME, MOON_PA_DE440_FRAME, MOON_PA_FRAME,
 };
 use anise::constants::orientations::{
-    ECLIPJ2000, IAU_JUPITER, IAU_MOON, ITRF93, J2000, MOON_ME_DE421, MOON_PA,
+    ECLIPJ2000, IAU_JUPITER, IAU_MOON, ITRF93, J2000, MOON_PA, MOON_PA_DE421, MOON_PA_DE440,
 };
 use anise::math::rotation::DCM;
 use anise::math::Matrix3;
@@ -325,36 +325,66 @@ fn regression_test_issue_357_test_moon_me_j2k() {
 
     let almanac = Almanac::new("../data/pck11.pca")
         .unwrap()
-        .load("../data/moon_fk.epa")
+        .load("../data/moon_fk_de440.epa")
         .unwrap()
         .load("../data/moon_pa_de440_200625.bpc")
         .unwrap();
 
+    // STATUS:
+    // The data in the Moon FK is incorrect because it relates the 31007 frame to 301.
+    // But the text file relates it to the Moon PA frame using its TKFRAME definition.
+    // At the very least, this will require a change in the EPA file.
+
     let epoch = Epoch::from_str("2024-01-01 22:28:39").unwrap();
 
     let dcm = almanac
-        .rotate(MOON_PA_FRAME, MOON_ME_DE421_FRAME, epoch)
+        .rotate(MOON_PA_DE440_FRAME, MOON_J2000, epoch)
         .unwrap();
 
-    let spice_dcm = DCM {
-        from: MOON_PA,
-        to: MOON_ME_DE421,
-        rot_mat: Matrix3::new(
-            9.99999873e-01,
-            3.29286000e-04,
-            -3.80869119e-04,
-            -3.29285422e-04,
-            9.99999946e-01,
-            1.57985579e-06,
-            3.80869619e-04,
-            -1.45444094e-06,
-            9.99999927e-01,
-        ),
-        rot_mat_dt: None,
-    };
+    /*
+        In [10]: sp.sxform("MOON_PA_DE440", "J2000", my_et)
+    Out[10]:
+    array([[ 9.78289320e-01,  2.07027066e-01, -9.47625902e-03,
+             0.00000000e+00,  0.00000000e+00,  0.00000000e+00],
+           [-1.95463789e-01,  9.06520407e-01, -3.74185328e-01,
+             0.00000000e+00,  0.00000000e+00,  0.00000000e+00],
+           [-6.88760685e-02,  3.67913775e-01,  9.27305527e-01,
+             0.00000000e+00,  0.00000000e+00,  0.00000000e+00],
+           [ 5.51091888e-07, -2.60415126e-06, -2.62517851e-10,
+             9.78289320e-01,  2.07027066e-01, -9.47625902e-03],
+           [ 2.41301211e-06,  5.20281183e-07, -2.93451776e-11,
+            -1.95463789e-01,  9.06520407e-01, -3.74185328e-01],
+           [ 9.79597415e-07,  1.83424192e-07, -1.45240394e-11,
+            -6.88760685e-02,  3.67913775e-01,  9.27305527e-01]])
 
-    assert_eq!(dcm.to, IAU_JUPITER);
-    assert_eq!(dcm.from, J2000);
+         */
+
+    let spice_dcm = DCM {
+        from: MOON_PA_DE440,
+        to: J2000,
+        rot_mat: Matrix3::new(
+            9.78289320e-01,
+            2.07027066e-01,
+            -9.47625902e-03,
+            -1.95463789e-01,
+            9.06520407e-01,
+            -3.74185328e-01,
+            -6.88760685e-02,
+            3.67913775e-01,
+            9.27305527e-01,
+        ),
+        rot_mat_dt: Some(Matrix3::new(
+            5.51091888e-07,
+            -2.60415126e-06,
+            -2.62517851e-10,
+            2.41301211e-06,
+            5.20281183e-07,
+            -2.93451776e-11,
+            9.79597415e-07,
+            1.83424192e-07,
+            -1.45240394e-11,
+        )),
+    };
 
     assert!(
         (dcm.rot_mat - spice_dcm.rot_mat).norm() < 1e-9,

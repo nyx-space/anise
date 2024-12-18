@@ -64,6 +64,12 @@ For convenience, Nyx Space provides a few important SPICE files on a public buck
 
 You may load any of these using the `load()` shortcut that will determine the file type upon loading, e.g. `let almanac = Almanac::new("pck08.pca").unwrap();` or in Python `almanac = Almanac("pck08.pca")`. To automatically download remote assets, from the Nyx Cloud or elsewhere, use the MetaAlmanac: `almanac = MetaAlmanac("ci_config.dhall").process()` in Python.
 
+### Moon frames
+
+Astrodynamicists use three main body fixed frames at the Moon, all suitable for computing latitude and longitude that represent fixed points on the surface of the Moon. The IAU Moon frame is a low-fidelity body-fixed frame. The Moon Principal Axes frames, Moon PA, is used to represent the mass concentrations of the Moon, and therefore is the frame to use for gravity fields defined as spherical harmonics at the Moon. Finally, the Moon Mean Earth frame, Moon ME, is the cartographic frame: images of the Moon centered on a latitude and longitude are almost always provided in the Moon ME frame.
+
+As per the [`moon_de440_220930.txt`](./data/moon_de440_220930.txt) documentation, you should use the provided `moon_fk_de440.epa` file with the `moon_pa_de440_200625.bpc` and `de440.bsp` (or `de440s.bsp`).
+
 ## Contributing
 
 Contributions to ANISE are welcome! Whether it's in the form of feature requests, bug reports, code contributions, or documentation improvements, every bit of help is greatly appreciated.
