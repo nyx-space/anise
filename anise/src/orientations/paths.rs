@@ -131,22 +131,17 @@ impl Almanac {
             inertial_frame_id = match self.bpc_summary_at_epoch(inertial_frame_id, epoch) {
                 Ok((summary, _, _)) => summary.inertial_frame_id,
                 Err(_) => {
-                    match self.planetary_data.get_by_id(source.orientation_id) {
+                    // Not available as a BPC, so let's see if there's planetary data for it.
+                    match self.planetary_data.get_by_id(inertial_frame_id) {
                         Ok(planetary_data) => planetary_data.parent_id,
                         Err(_) => {
                             // Finally, let's see if it's in the loaded Euler Parameters.
                             self.euler_param_data
-                                .get_by_id(source.orientation_id)
+                                .get_by_id(inertial_frame_id)
                                 .context(OrientationDataSetSnafu)?
                                 .from
                         }
                     }
-                    // // Not available as a BPC, so let's see if there's planetary data for it.
-                    // let planetary_data = self
-                    //     .planetary_data
-                    //     .get_by_id(inertial_frame_id)
-                    //     .context(OrientationDataSetSnafu)?;
-                    // planetary_data.parent_id
                 }
             };
             dbg!(inertial_frame_id);

@@ -405,6 +405,34 @@ fn regression_test_issue_357_test_moon_me_j2k() {
       */
 
     // Repeat for Moon ME
+
+    // Check the path first
+    let moon_pa_path = almanac
+        .orientation_path_to_root(MOON_PA_DE440_FRAME, epoch)
+        .unwrap();
+
+    assert_eq!(moon_pa_path.0, 1, "Moon PA is defined wrt J2000");
+    assert_eq!(
+        moon_pa_path.1[0].unwrap(),
+        1,
+        "Moon PA is defined wrt J2000"
+    );
+
+    let moon_me_path = almanac
+        .orientation_path_to_root(MOON_ME_DE440_ME421_FRAME, epoch)
+        .unwrap();
+    assert_eq!(moon_me_path.0, 2, "Moon ME is defined wrt Moon PA");
+    assert_eq!(
+        moon_pa_path.1[0].unwrap(),
+        31008,
+        "Moon ME is defined wrt Moon PA"
+    );
+    assert_eq!(
+        moon_pa_path.1[1].unwrap(),
+        1,
+        "Moon PA is defined wrt J2000"
+    );
+
     let dcm = almanac
         .rotate(MOON_PA_DE440_FRAME, MOON_ME_DE440_ME421_FRAME, epoch)
         .unwrap();
