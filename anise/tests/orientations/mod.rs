@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use anise::constants::frames::{
     EARTH_ITRF93, EME2000, IAU_JUPITER_FRAME, IAU_MOON_FRAME, JUPITER_BARYCENTER_J2000, MOON_J2000,
-    MOON_PA_DE421_FRAME, MOON_PA_DE440_FRAME, MOON_PA_FRAME,
+    MOON_ME_DE440_ME421_FRAME, MOON_ME_FRAME, MOON_PA_DE421_FRAME, MOON_PA_DE440_FRAME,
+    MOON_PA_FRAME,
 };
 use anise::constants::orientations::{
     ECLIPJ2000, IAU_JUPITER, IAU_MOON, ITRF93, J2000, MOON_PA, MOON_PA_DE421, MOON_PA_DE440,
@@ -330,11 +331,6 @@ fn regression_test_issue_357_test_moon_me_j2k() {
         .load("../data/moon_pa_de440_200625.bpc")
         .unwrap();
 
-    // STATUS:
-    // The data in the Moon FK is incorrect because it relates the 31007 frame to 301.
-    // But the text file relates it to the Moon PA frame using its TKFRAME definition.
-    // At the very least, this will require a change in the EPA file.
-
     let epoch = Epoch::from_str("2024-01-01 22:28:39").unwrap();
 
     let dcm = almanac
@@ -384,6 +380,67 @@ fn regression_test_issue_357_test_moon_me_j2k() {
             1.83424192e-07,
             -1.45240394e-11,
         )),
+    };
+
+    assert!(
+        (dcm.rot_mat - spice_dcm.rot_mat).norm() < 1e-9,
+        "dcm error! got: {}want:{}err = {:.3e}: {:.3e}",
+        dcm.rot_mat,
+        spice_dcm.rot_mat,
+        (dcm.rot_mat - spice_dcm.rot_mat).norm(),
+        dcm.rot_mat - spice_dcm.rot_mat
+    );
+
+    // STATUS:
+    // Max recursion depth because the inertial frame ID is probably incorrectly set.
+    // The test above only works because it's a single hop of 31008!
+
+    /*
+     Frame Name                  Relative to          Type   Frame ID
+    -------------------------   -----------------    -----  --------
+    MOON_PA                     MOON_PA_DE440        FIXED  31010
+    MOON_ME                     MOON_ME_DE440_ME421  FIXED  31011
+    MOON_PA_DE440               ICRF/J2000           PCK    31008
+    MOON_ME_DE440_ME421         MOON_PA_DE440        FIXED  31009
+      */
+
+    // Repeat for Moon ME
+    let dcm = almanac
+        .rotate(MOON_PA_DE440_FRAME, MOON_ME_DE440_ME421_FRAME, epoch)
+        .unwrap();
+
+    /*
+            In [9]: sp.sxform("MOON_PA_DE440", "MOON_ME", my_et)
+    Out[9]:
+    array([[ 9.99999873e-01, -3.28958658e-04,  3.81521208e-04,
+             0.00000000e+00,  0.00000000e+00,  0.00000000e+00],
+           [ 3.28959197e-04,  9.99999946e-01, -1.35020600e-06,
+             0.00000000e+00,  0.00000000e+00,  0.00000000e+00],
+           [-3.81520743e-04,  1.47571074e-06,  9.99999927e-01,
+             0.00000000e+00,  0.00000000e+00,  0.00000000e+00],
+           [ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,
+             9.99999873e-01, -3.28958658e-04,  3.81521208e-04],
+           [ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,
+             3.28959197e-04,  9.99999946e-01, -1.35020600e-06],
+           [ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,
+            -3.81520743e-04,  1.47571074e-06,  9.99999927e-01]])
+             */
+
+    let spice_dcm = DCM {
+        from: MOON_PA_DE440,
+        to: J2000,
+        rot_mat: Matrix3::new(
+            9.99999873e-01,
+            -3.28958658e-04,
+            3.81521208e-04,
+            3.28959197e-04,
+            9.99999946e-01,
+            -1.35020600e-06,
+            -3.81520743e-04,
+            1.47571074e-06,
+            9.99999927e-01,
+        ),
+        rot_mat_dt: None,
     };
 
     assert!(
