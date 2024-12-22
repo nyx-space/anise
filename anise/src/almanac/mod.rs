@@ -130,7 +130,7 @@ impl Almanac {
             if let Ok(fileid) = file_record.identification() {
                 return match fileid {
                     "PCK" => {
-                        info!("Loading {} as DAF/PCK", path.or(Some("bytes")).unwrap());
+                        info!("Loading {} as DAF/PCK", path.unwrap_or("bytes"));
                         let bpc = BPC::parse(bytes)
                             .context(BPCSnafu {
                                 action: "parsing bytes",
@@ -143,7 +143,7 @@ impl Almanac {
                         })
                     }
                     "SPK" => {
-                        info!("Loading {} as DAF/SPK", path.or(Some("bytes")).unwrap());
+                        info!("Loading {} as DAF/SPK", path.unwrap_or("bytes"));
                         let spk = SPK::parse(bytes)
                             .context(SPKSnafu {
                                 action: "parsing bytes",
@@ -176,7 +176,7 @@ impl Almanac {
                     })?;
                     info!(
                         "Loading {} as ANISE spacecraft data",
-                        path.or(Some("bytes")).unwrap()
+                        path.unwrap_or("bytes")
                     );
                     Ok(self.with_spacecraft_data(dataset))
                 }
@@ -187,7 +187,7 @@ impl Almanac {
                             action: "loading as planetary data",
                         }
                     })?;
-                    info!("Loading {} as ANISE/PCA", path.or(Some("bytes")).unwrap());
+                    info!("Loading {} as ANISE/PCA", path.unwrap_or("bytes"));
                     Ok(self.with_planetary_data(dataset))
                 }
                 DataSetType::EulerParameterData => {
@@ -197,7 +197,7 @@ impl Almanac {
                             action: "loading Euler parameters",
                         }
                     })?;
-                    info!("Loading {} as ANISE/EPA", path.or(Some("bytes")).unwrap());
+                    info!("Loading {} as ANISE/EPA", path.unwrap_or("bytes"));
                     Ok(self.with_euler_parameters(dataset))
                 }
             }
