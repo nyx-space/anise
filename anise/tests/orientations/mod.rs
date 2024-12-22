@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
 use anise::constants::frames::{
-    EARTH_ITRF93, EME2000, IAU_JUPITER_FRAME, IAU_MOON_FRAME, JUPITER_BARYCENTER_J2000, MOON_J2000,
-    MOON_ME_DE440_ME421_FRAME, MOON_ME_FRAME, MOON_PA_DE421_FRAME, MOON_PA_DE440_FRAME,
-    MOON_PA_FRAME,
+    EARTH_ITRF93, EARTH_J2000, EME2000, IAU_JUPITER_FRAME, IAU_MOON_FRAME,
+    JUPITER_BARYCENTER_J2000, MOON_J2000, MOON_ME_DE440_ME421_FRAME, MOON_ME_FRAME,
+    MOON_PA_DE421_FRAME, MOON_PA_DE440_FRAME, MOON_PA_FRAME,
 };
 use anise::constants::orientations::{
     ECLIPJ2000, IAU_JUPITER, IAU_MOON, ITRF93, J2000, MOON_PA, MOON_PA_DE421, MOON_PA_DE440,
@@ -329,6 +329,8 @@ fn regression_test_issue_357_test_moon_me_j2k() {
         .load("../data/moon_fk_de440.epa")
         .unwrap()
         .load("../data/moon_pa_de440_200625.bpc")
+        .unwrap()
+        .load("../data/de440s.bsp")
         .unwrap();
 
     let epoch = Epoch::from_str("2024-01-01 22:28:39").unwrap();
@@ -475,4 +477,29 @@ fn regression_test_issue_357_test_moon_me_j2k() {
         (dcm.rot_mat - spice_dcm.rot_mat).norm(),
         dcm.rot_mat - spice_dcm.rot_mat
     );
+
+    // Verification of functionality.
+    // Build an orbit in the Earth J2000 frame and transform it into the Moon ME frame to get its latitude and longitude.
+    let epoch = Epoch::from_str("2024-09-22T08:45:22 UTC").unwrap();
+    // This state is identical in ANISE and SPICE, queried from a BSP.
+    let orbit_moon_j2k = Orbit::new(
+        638.053603,
+        -1776.813629,
+        195.147575,
+        -0.017910,
+        -0.181449,
+        -1.584180,
+        epoch,
+        MOON_J2000,
+    );
+    // Transform to Earth J2000.
+    let orbit_earth_j2k = almanac
+        .transform_to(orbit_moon_j2k, EARTH_J2000, None)
+        .unwrap();
+    // Compute the LLA in the Moon ME frame, used for cartography.
+    let orbit_moon_me = almanac
+        .transform_to(orbit_earth_j2k, MOON_ME_DE440_ME421_FRAME, None)
+        .unwrap();
+    let (lat, long, alt) = orbit_moon_me.latlongalt().unwrap();
+    dbg!(lat, long, alt);
 }
