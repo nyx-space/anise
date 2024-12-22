@@ -419,7 +419,11 @@ fn regression_test_issue_357_test_moon_me_j2k() {
     let moon_me_path = almanac
         .orientation_path_to_root(MOON_ME_DE440_ME421_FRAME, epoch)
         .unwrap();
-    assert_eq!(moon_me_path.0, 2, "Moon ME is defined wrt Moon PA");
+    assert_eq!(
+        moon_me_path.0, 2,
+        "Moon ME is defined wrt Moon PA: {:?}",
+        moon_me_path.1
+    );
     assert_eq!(
         moon_me_path.1[0].unwrap(),
         31008,
