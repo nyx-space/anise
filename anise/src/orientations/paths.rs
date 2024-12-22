@@ -106,7 +106,7 @@ impl Almanac {
                         self.euler_param_data
                             .get_by_id(source.orientation_id)
                             .context(OrientationDataSetSnafu)?
-                            .from
+                            .to
                     }
                 }
             }
@@ -139,12 +139,11 @@ impl Almanac {
                             self.euler_param_data
                                 .get_by_id(inertial_frame_id)
                                 .context(OrientationDataSetSnafu)?
-                                .from
+                                .to
                         }
                     }
                 }
             };
-            dbg!(inertial_frame_id);
 
             of_path[of_path_len] = Some(inertial_frame_id);
             of_path_len += 1;

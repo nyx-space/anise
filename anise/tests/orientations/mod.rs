@@ -391,10 +391,6 @@ fn regression_test_issue_357_test_moon_me_j2k() {
         dcm.rot_mat - spice_dcm.rot_mat
     );
 
-    // STATUS:
-    // Max recursion depth because the inertial frame ID is probably incorrectly set.
-    // The test above only works because it's a single hop of 31008!
-
     /*
      Frame Name                  Relative to          Type   Frame ID
     -------------------------   -----------------    -----  --------
@@ -423,12 +419,12 @@ fn regression_test_issue_357_test_moon_me_j2k() {
         .unwrap();
     assert_eq!(moon_me_path.0, 2, "Moon ME is defined wrt Moon PA");
     assert_eq!(
-        moon_pa_path.1[0].unwrap(),
+        moon_me_path.1[0].unwrap(),
         31008,
         "Moon ME is defined wrt Moon PA"
     );
     assert_eq!(
-        moon_pa_path.1[1].unwrap(),
+        moon_me_path.1[1].unwrap(),
         1,
         "Moon PA is defined wrt J2000"
     );

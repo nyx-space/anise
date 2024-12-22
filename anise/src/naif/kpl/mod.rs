@@ -51,6 +51,13 @@ impl KPLValue {
             _ => whatever!("can only convert Integer to i32 but this is {self:?}"),
         }
     }
+
+    pub fn to_string(&self) -> Result<String, Whatever> {
+        match self {
+            KPLValue::String(data) => Ok(data.clone()),
+            _ => whatever!("can only convert Integer to i32 but this is {self:?}"),
+        }
+    }
 }
 
 impl From<f64> for KPLValue {

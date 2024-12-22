@@ -47,6 +47,7 @@ jobs:
           wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v0.5/pck08.pca
           wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v0.5/pck11.pca
           wget -O data/moon_fk.epa http://public-data.nyxspace.com/anise/v0.5/moon_fk.epa
+          wget -O data/moon_fk_de440.epa http://public-data.nyxspace.com/anise/v0.5/moon_fk_de440.epa
           wget -O data/moon_pa_de440_200625.bpc http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc
           wget -O data/gmat-hermite.bsp http://public-data.nyxspace.com/anise/ci/gmat-hermite.bsp
           wget -O data/gmat-hermite-big-endian.bsp http://public-data.nyxspace.com/anise/ci/gmat-hermite-big-endian.bsp

@@ -203,7 +203,7 @@ mod fk_ut {
         use crate::math::rotation::{r1, r2, r3, DCM};
         let dataset = convert_fk("../data/moon_080317.txt", false).unwrap();
 
-        assert_eq!(dataset.len(), 3, "expected three items");
+        assert_eq!(dataset.len(), 5, "expected three items");
 
         // Check that we've correctly set the names.
         let moon_me = dataset.get_by_name("MOON_ME_DE421").unwrap();
@@ -217,7 +217,7 @@ mod fk_ut {
             * r2((78.56 / 3600.0_f64).to_radians())
             * r1((0.30 / 3600.0_f64).to_radians());
         assert!((DCM::from(moon_me).rot_mat - expected).norm() < 1e-10);
-        println!("{}", dataset.crc32());
+        println!("CRC32 = {}", dataset.crc32());
         dataset
             .save_as(&PathBuf::from_str("../data/moon_fk.epa").unwrap(), true)
             .unwrap();
@@ -231,7 +231,7 @@ mod fk_ut {
         use crate::math::rotation::{r1, r2, r3, DCM};
         let dataset = convert_fk("../data/moon_de440_220930.txt", false).unwrap();
 
-        assert_eq!(dataset.len(), 3, "expected three items");
+        assert_eq!(dataset.len(), 4, "expected three items");
 
         // Check that we've correctly set the names.
         let moon_me = dataset.get_by_name("MOON_ME_DE440_ME421").unwrap();
@@ -245,7 +245,7 @@ mod fk_ut {
             * r2((78.6944 / 3600.0_f64).to_radians())
             * r1((0.2785 / 3600.0_f64).to_radians());
         assert!((DCM::from(moon_me).rot_mat - expected).norm() < 1e-10);
-        println!("{}", dataset.crc32()); // 879707574
+        println!("CRC32 = {}", dataset.crc32()); // 879707574
         dataset
             .save_as(
                 &PathBuf::from_str("../data/moon_fk_de440.epa").unwrap(),

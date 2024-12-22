@@ -374,7 +374,6 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
                     assert_eq!(access_times[access_count], access_duration);
                 }
             }
-            // dbg!(prev_aer.is_obstructed(), aer.is_obstructed());
         } else if !aer.is_obstructed() {
             access_start = Some(aer.epoch);
         }

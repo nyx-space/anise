@@ -6,8 +6,8 @@
   , { crc32 = Some 0x8213b6e9
     , uri = "http://public-data.nyxspace.com/anise/v0.5/pck11.pca"
     }
-  , { crc32 = Some 0xb93ba21
-    , uri = "http://public-data.nyxspace.com/anise/v0.5/moon_fk.epa"
+  , { crc32 = Some 0x6f0ad74c
+    , uri = "http://public-data.nyxspace.com/anise/v0.5/moon_fk_de440.epa"
     }
   , { crc32 = Some 0xcde5ca7d
     , uri = "http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc"
