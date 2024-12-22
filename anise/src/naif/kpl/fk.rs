@@ -78,7 +78,10 @@ impl KPLItem for FKItem {
 #[cfg(test)]
 mod fk_ut {
 
-    use crate::naif::kpl::parser::convert_fk;
+    use crate::{
+        constants::orientations::{MOON_ME_DE421, MOON_ME_DE440_ME421},
+        naif::kpl::parser::convert_fk,
+    };
 
     use super::{FKItem, KPLValue, Parameter};
 
@@ -200,10 +203,12 @@ mod fk_ut {
         use crate::math::rotation::{r1, r2, r3, DCM};
         let dataset = convert_fk("../data/moon_080317.txt", false).unwrap();
 
-        assert_eq!(dataset.len(), 3, "expected three items");
+        assert_eq!(dataset.len(), 5, "expected three items");
 
         // Check that we've correctly set the names.
         let moon_me = dataset.get_by_name("MOON_ME_DE421").unwrap();
+        let moon_me_by_id = dataset.get_by_id(MOON_ME_DE421).unwrap();
+        assert_eq!(moon_me_by_id, moon_me);
         // From the file:
         // TKFRAME_31007_ANGLES = (67.92   78.56   0.30 )
         // TKFRAME_31007_AXES   = (3,      2,      1    )
@@ -212,9 +217,40 @@ mod fk_ut {
             * r2((78.56 / 3600.0_f64).to_radians())
             * r1((0.30 / 3600.0_f64).to_radians());
         assert!((DCM::from(moon_me).rot_mat - expected).norm() < 1e-10);
-        println!("{}", dataset.crc32());
+        println!("CRC32 = {}", dataset.crc32());
         dataset
             .save_as(&PathBuf::from_str("../data/moon_fk.epa").unwrap(), true)
+            .unwrap();
+    }
+
+    #[test]
+    fn build_de440_moon_fk() {
+        use std::path::PathBuf;
+        use std::str::FromStr;
+
+        use crate::math::rotation::{r1, r2, r3, DCM};
+        let dataset = convert_fk("../data/moon_de440_220930.txt", false).unwrap();
+
+        assert_eq!(dataset.len(), 4, "expected three items");
+
+        // Check that we've correctly set the names.
+        let moon_me = dataset.get_by_name("MOON_ME_DE440_ME421").unwrap();
+        let moon_me_by_id = dataset.get_by_id(MOON_ME_DE440_ME421).unwrap();
+        assert_eq!(moon_me_by_id, moon_me);
+        // From the file:
+        // TKFRAME_31009_ANGLES  = ( 67.8526   78.6944   0.2785 )
+        // TKFRAME_31009_AXES    = (3,      2,      1    )
+        // These angles are in arcseconds.
+        let expected = r3((67.8526 / 3600.0_f64).to_radians())
+            * r2((78.6944 / 3600.0_f64).to_radians())
+            * r1((0.2785 / 3600.0_f64).to_radians());
+        assert!((DCM::from(moon_me).rot_mat - expected).norm() < 1e-10);
+        println!("CRC32 = {}", dataset.crc32()); // 879707574
+        dataset
+            .save_as(
+                &PathBuf::from_str("../data/moon_fk_de440.epa").unwrap(),
+                true,
+            )
             .unwrap();
     }
 }

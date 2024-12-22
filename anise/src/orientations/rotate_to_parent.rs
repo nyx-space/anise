@@ -52,7 +52,7 @@ impl Almanac {
 
                 trace!("rotate {source} wrt to {new_frame} @ {epoch:E}");
 
-                // This should not fail because we've fetched the spk_no from above with the spk_summary_at_epoch call.
+                // This should not fail because we've fetched the bpc_no from above with the bpc_summary_at_epoch call.
                 let bpc_data = self.bpc_data[bpc_no]
                     .as_ref()
                     .ok_or(OrientationError::Unreachable)?;
@@ -103,22 +103,34 @@ impl Almanac {
                 })
             }
             Err(_) => {
-                trace!("query {source} wrt to its parent @ {epoch:E} using planetary data");
                 // Not available as a BPC, so let's see if there's planetary data for it.
-                let planetary_data = self
-                    .planetary_data
-                    .get_by_id(source.orientation_id)
-                    .context(OrientationDataSetSnafu)?;
+                match self.planetary_data.get_by_id(source.orientation_id) {
+                    Ok(planetary_data) => {
+                        println!(
+                            "query {source} wrt to its parent @ {epoch:E} using planetary data"
+                        );
+                        // Fetch the parent info
+                        let system_data =
+                            match self.planetary_data.get_by_id(planetary_data.parent_id) {
+                                Ok(parent) => parent,
+                                Err(_) => planetary_data,
+                            };
 
-                // Fetch the parent info
-                let system_data = match self.planetary_data.get_by_id(planetary_data.parent_id) {
-                    Ok(parent) => parent,
-                    Err(_) => planetary_data,
-                };
-
-                planetary_data
-                    .rotation_to_parent(epoch, &system_data)
-                    .context(OrientationPhysicsSnafu)
+                        planetary_data
+                            .rotation_to_parent(epoch, &system_data)
+                            .context(OrientationPhysicsSnafu)
+                    }
+                    Err(_) => {
+                        println!("query {source} wrt to its parent @ {epoch:E} using Euler parameter data");
+                        // Finally, let's see if it's in the loaded Euler Parameters.
+                        // We can call `into` because EPs can be converted directly into DCMs.
+                        Ok(self
+                            .euler_param_data
+                            .get_by_id(source.orientation_id)
+                            .context(OrientationDataSetSnafu)?
+                            .into())
+                    }
+                }
             }
         }
     }

@@ -19,7 +19,7 @@ use std::path::Path;
 use log::{error, info, warn};
 
 use crate::constants::orientations::J2000;
-use crate::math::rotation::{r1, r2, r3, DCM};
+use crate::math::rotation::{r1, r2, r3, Quaternion, DCM};
 use crate::math::Matrix3;
 use crate::naif::kpl::fk::FKItem;
 use crate::naif::kpl::tpc::TPCItem;
@@ -320,13 +320,29 @@ pub fn convert_fk<P: AsRef<Path> + fmt::Debug>(
 
     let assignments = parse_file::<_, FKItem>(fk_file_path, show_comments)?;
 
+    let mut ids_to_update = Vec::new();
+
     // Add all of the data into the data set
     for (id, item) in assignments {
         if !item.data.contains_key(&Parameter::Angles)
             && !item.data.contains_key(&Parameter::Matrix)
         {
-            warn!("{id} contains neither angles nor matrix, cannot convert to Euler Parameter");
-            continue;
+            let mut warn = false;
+            if let Some(class) = item.data.get(&Parameter::Class) {
+                if class.to_i32().unwrap() == 2 {
+                    // BPC based frame, insert as-is.
+                    // Class 2 need a BPC for the full rotation.
+                    dataset.push(Quaternion::identity(id, id), Some(id), item.name.as_deref())?;
+                } else {
+                    warn = true;
+                }
+            } else {
+                warn = true;
+            }
+            if warn {
+                warn!("{id} contains neither angles nor matrix, cannot convert to Euler Parameter");
+                continue;
+            }
         } else if let Some(angles) = item.data.get(&Parameter::Angles) {
             let unit = item
                 .data
@@ -343,7 +359,21 @@ pub fn convert_fk<P: AsRef<Path> + fmt::Debug>(
             }
             // Build the quaternion from the Euler matrices
             let from = id;
-            let to = item.data[&Parameter::Center].to_i32().unwrap();
+            let mut to = item.data[&Parameter::Center].to_i32().unwrap();
+            if let Some(class) = item.data.get(&Parameter::Class) {
+                if class.to_i32().unwrap() == 4 {
+                    // This is a relative frame.
+                    let relative_to = item.data.get(&Parameter::Relative).ok_or(DataSetError::Conversion {
+                        action: format!("frame {id} is class 4 relative to, but the RELATIVE_TO token was not found"),
+                    })?.to_string().unwrap();
+                    if let Ok(parent) = dataset.get_by_name(&relative_to) {
+                        to = parent.to;
+                    } else {
+                        // Not found yet, let's mark it as an ID to revisit.
+                        ids_to_update.push((id, relative_to.clone()));
+                    }
+                }
+            }
 
             let mut dcm = Matrix3::identity();
 
@@ -391,8 +421,29 @@ pub fn convert_fk<P: AsRef<Path> + fmt::Debug>(
                 rot_mat,
                 rot_mat_dt: None,
             };
+
             dataset.push(dcm.into(), Some(id), item.name.as_deref())?;
         }
+    }
+
+    // Finally, let's update the frames of the IDs defined as relative.
+    for (id, relative_to) in ids_to_update {
+        let parent_idx = dataset
+            .lut
+            .by_name
+            .get(&(relative_to.as_str().try_into().unwrap()))
+            .ok_or(DataSetError::Conversion {
+                action: format!(
+                    "frame {id} is class 4 relative to `{relative_to}`, but that frame is not found"
+                ),
+            })?;
+
+        let parent_id = dataset.data[(*parent_idx) as usize].to;
+
+        // Modify this EP.
+        let this_idx = dataset.lut.by_id[&id];
+        let mut this_q = dataset.data[this_idx as usize];
+        this_q.from = parent_id;
     }
 
     dataset.set_crc32();

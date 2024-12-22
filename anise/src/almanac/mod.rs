@@ -116,7 +116,12 @@ impl Almanac {
         me
     }
 
+    /// Loads the provides bytes as one of the data types supported in ANISE.
     pub fn load_from_bytes(&self, bytes: Bytes) -> AlmanacResult<Self> {
+        self._load_from_bytes(bytes, None)
+    }
+
+    fn _load_from_bytes(&self, bytes: Bytes, path: Option<&str>) -> AlmanacResult<Self> {
         // Try to load as a SPICE DAF first (likely the most typical use case)
 
         // Load the header only
@@ -125,7 +130,7 @@ impl Almanac {
             if let Ok(fileid) = file_record.identification() {
                 return match fileid {
                     "PCK" => {
-                        info!("Loading as DAF/PCK");
+                        info!("Loading {} as DAF/PCK", path.unwrap_or("bytes"));
                         let bpc = BPC::parse(bytes)
                             .context(BPCSnafu {
                                 action: "parsing bytes",
@@ -138,7 +143,7 @@ impl Almanac {
                         })
                     }
                     "SPK" => {
-                        info!("Loading as DAF/SPK");
+                        info!("Loading {} as DAF/SPK", path.unwrap_or("bytes"));
                         let spk = SPK::parse(bytes)
                             .context(SPKSnafu {
                                 action: "parsing bytes",
@@ -169,6 +174,10 @@ impl Almanac {
                             action: "loading as spacecraft data",
                         }
                     })?;
+                    info!(
+                        "Loading {} as ANISE spacecraft data",
+                        path.unwrap_or("bytes")
+                    );
                     Ok(self.with_spacecraft_data(dataset))
                 }
                 DataSetType::PlanetaryData => {
@@ -178,6 +187,7 @@ impl Almanac {
                             action: "loading as planetary data",
                         }
                     })?;
+                    info!("Loading {} as ANISE/PCA", path.unwrap_or("bytes"));
                     Ok(self.with_planetary_data(dataset))
                 }
                 DataSetType::EulerParameterData => {
@@ -187,6 +197,7 @@ impl Almanac {
                             action: "loading Euler parameters",
                         }
                     })?;
+                    info!("Loading {} as ANISE/EPA", path.unwrap_or("bytes"));
                     Ok(self.with_euler_parameters(dataset))
                 }
             }
@@ -209,16 +220,17 @@ impl Almanac {
         let bytes = file2heap!(path).context(LoadingSnafu {
             path: path.to_string(),
         })?;
-        info!("Loading almanac from {path}");
-        self.load_from_bytes(bytes).map_err(|e| match e {
-            AlmanacError::GenericError { err } => {
-                // Add the path to the error
-                AlmanacError::GenericError {
-                    err: format!("with {path}: {err}"),
+
+        self._load_from_bytes(bytes, Some(path))
+            .map_err(|e| match e {
+                AlmanacError::GenericError { err } => {
+                    // Add the path to the error
+                    AlmanacError::GenericError {
+                        err: format!("with {path}: {err}"),
+                    }
                 }
-            }
-            _ => e,
-        })
+                _ => e,
+            })
     }
 
     /// Initializes a new Almanac from the provided file path, guessing at the file type

@@ -23,7 +23,9 @@ mod rotations;
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
 pub enum OrientationError {
-    /// Somehow you've entered code that should not be reachable, please file a bug.
+    #[snafu(display(
+        "somehow you've entered code that should not be reachable, please file a bug."
+    ))]
     Unreachable,
     #[snafu(display(
          "could not load BPC because all {max_slots} are used (modify `MAX_LOADED_BPCS` at build time)"
