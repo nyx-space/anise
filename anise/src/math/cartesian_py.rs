@@ -13,6 +13,8 @@
 use super::cartesian::CartesianState;
 use crate::prelude::Frame;
 use hifitime::Epoch;
+use ndarray::Array1;
+use numpy::PyArray1;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
@@ -155,6 +157,17 @@ impl CartesianState {
     #[getter]
     fn get_frame(&self) -> PyResult<Frame> {
         Ok(self.frame)
+    }
+
+    /// Returns this state as a Cartesian vector of size 6 in [km, km, km, km/s, km/s, km/s]
+    ///
+    /// Note that the time is **not** returned in the vector.
+    fn cartesian_pos_vel<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
+        let data: Vec<f64> = self.to_cartesian_pos_vel().iter().copied().collect();
+
+        let state = Array1::from_iter(data);
+
+        Ok(PyArray1::<f64>::from_owned_array_bound(py, state))
     }
 
     fn __str__(&self) -> String {

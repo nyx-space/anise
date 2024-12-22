@@ -46,7 +46,6 @@ impl BPCSummaryRecord {
     }
 
     /// Returns the start epoch of this BPC Summary
-
     pub fn end_epoch(&self) -> Epoch {
         <Self as NAIFSummaryRecord>::end_epoch(self)
     }

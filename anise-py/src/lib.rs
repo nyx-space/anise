@@ -20,6 +20,7 @@ use pyo3::py_run;
 
 mod astro;
 mod constants;
+mod rotation;
 mod utils;
 
 /// A Python module implemented in Rust.
@@ -29,6 +30,7 @@ fn anise(m: &Bound<'_, PyModule>) -> PyResult<()> {
     register_time_module(m)?;
     astro::register_astro(m)?;
     utils::register_utils(m)?;
+    rotation::register_rotation(m)?;
     m.add_class::<Almanac>()?;
     m.add_class::<Aberration>()?;
     m.add_class::<MetaAlmanac>()?;
