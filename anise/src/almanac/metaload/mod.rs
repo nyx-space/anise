@@ -54,25 +54,23 @@ pub enum MetaAlmanacError {
 }
 
 impl Almanac {
-    /// Load from the provided MetaFile.
-    fn _load_from_metafile(&self, mut metafile: MetaFile, autodelete: bool) -> AlmanacResult<Self> {
+    /// Load from the provided MetaFile, downloading it if necessary.
+    /// Set autodelete to true to automatically delete lock files. Lock files are important in multi-threaded loads.
+    pub fn load_from_metafile(
+        &self,
+        mut metafile: MetaFile,
+        autodelete: bool,
+    ) -> AlmanacResult<Self> {
         metafile._process(autodelete).context(MetaSnafu {
             fno: 0_usize,
             file: metafile.clone(),
         })?;
         self.load(&metafile.uri)
     }
-
-    /// Load from the provided MetaFile, downloading it if necessary.
-    /// Set autodelete to true to automatically delete lock files. Lock files are important in multi-threaded loads.
-    #[cfg(not(feature = "python"))]
-    pub fn load_from_metafile(&self, metafile: MetaFile, autodelete: bool) -> AlmanacResult<Self> {
-        self._load_from_metafile(metafile, autodelete)
-    }
 }
 
 #[cfg(feature = "python")]
-#[cfg_attr(feature = "python", pymethods)]
+#[pymethods]
 impl Almanac {
     /// Load from the provided MetaFile, downloading it if necessary.
     /// Set autodelete to true to automatically delete lock files. Lock files are important in multi-threaded loads.
@@ -81,13 +79,14 @@ impl Almanac {
     /// :type metafile: Metafile
     /// :type autodelete: bool
     /// :rtype: Almanac
-    fn load_from_metafile(
+    #[pyo3(name = "load_from_metafile")]
+    fn py_load_from_metafile(
         &mut self,
         py: Python,
         metafile: MetaFile,
         autodelete: bool,
     ) -> AlmanacResult<Self> {
-        py.allow_threads(|| self._load_from_metafile(metafile, autodelete))
+        py.allow_threads(|| self.load_from_metafile(metafile, autodelete))
     }
 }
 
@@ -113,7 +112,7 @@ mod meta_test {
         assert!(meta._process(true).is_ok());
         // Test that loading from an invalid URI reports an error
         assert!(almanac
-            ._load_from_metafile(
+            .load_from_metafile(
                 MetaFile {
                     uri: "http://example.com/non/existing.pca".to_string(),
                     crc32: None
