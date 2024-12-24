@@ -57,9 +57,13 @@ impl MetaAlmanac {
     }
 
     /// Fetch all of the URIs and return a loaded Almanac
-    pub(crate) fn _process(&mut self, autodelete: bool) -> AlmanacResult<Almanac> {
+    /// When downloading the data, ANISE will create a temporarily lock file to prevent race conditions
+    /// where multiple processes download the data at the same time. Set `autodelete` to true to delete
+    /// this lock file if a dead lock is detected after 10 seconds. Set this flag to false if you have
+    /// more than ten processes which may attempt to download files in parallel.
+    pub fn process(&mut self, autodelete: bool) -> AlmanacResult<Almanac> {
         for (fno, file) in self.files.iter_mut().enumerate() {
-            file._process(autodelete).context(MetaSnafu {
+            file.process(autodelete).context(MetaSnafu {
                 fno,
                 file: file.clone(),
             })?;
@@ -70,16 +74,6 @@ impl MetaAlmanac {
             ctx = ctx.load(&uri.uri)?;
         }
         Ok(ctx)
-    }
-
-    /// Fetch all of the URIs and return a loaded Almanac
-    /// When downloading the data, ANISE will create a temporarily lock file to prevent race conditions
-    /// where multiple processes download the data at the same time. Set `autodelete` to true to delete
-    /// this lock file if a dead lock is detected after 10 seconds. Set this flag to false if you have
-    /// more than ten processes which may attempt to download files in parallel.
-    #[cfg(not(feature = "python"))]
-    pub fn process(&mut self, autodelete: bool) -> AlmanacResult<Almanac> {
-        self._process(autodelete)
     }
 
     /// Returns an Almanac loaded from the latest NAIF data via the `default` MetaAlmanac.
@@ -95,7 +89,6 @@ impl MetaAlmanac {
     ///
     /// Note that the `earth_latest_high_prec.bpc` file is regularly updated daily (or so). As such,
     /// if queried at some future time, the Earth rotation parameters may have changed between two queries.
-    #[cfg(not(feature = "python"))]
     pub fn latest() -> AlmanacResult<Almanac> {
         Self::default().process(true)
     }
@@ -144,6 +137,7 @@ impl MetaAlmanac {
 impl MetaAlmanac {
     /// Loads the provided path as a Dhall file. If no path is provided, creates an empty MetaAlmanac that can store MetaFiles.
     #[new]
+    #[pyo3(signature=(maybe_path=None))]
     pub fn py_new(maybe_path: Option<String>) -> Result<Self, MetaAlmanacError> {
         match maybe_path {
             Some(path) => Self::new(path),
@@ -179,13 +173,15 @@ impl MetaAlmanac {
     /// :type autodelete: bool, optional
     /// :rtype: MetaAlmanac
     #[classmethod]
-    fn latest(
+    #[pyo3(name = "latest")]
+    #[pyo3(signature=(autodelete=None))]
+    fn py_latest(
         _cls: &Bound<'_, PyType>,
         py: Python,
         autodelete: Option<bool>,
     ) -> AlmanacResult<Almanac> {
         let mut meta = Self::default();
-        py.allow_threads(|| match meta._process(autodelete.unwrap_or(false)) {
+        py.allow_threads(|| match meta.process(autodelete.unwrap_or(false)) {
             Ok(almanac) => Ok(almanac),
             Err(e) => Err(e),
         })
@@ -199,8 +195,10 @@ impl MetaAlmanac {
     ///
     /// :type autodelete: bool, optional
     /// :rtype: Almanac
-    pub fn process(&mut self, py: Python, autodelete: Option<bool>) -> AlmanacResult<Almanac> {
-        py.allow_threads(|| self._process(autodelete.unwrap_or(true)))
+    #[pyo3(name = "process")]
+    #[pyo3(signature=(autodelete=None))]
+    pub fn py_process(&mut self, py: Python, autodelete: Option<bool>) -> AlmanacResult<Almanac> {
+        py.allow_threads(|| self.process(autodelete.unwrap_or(true)))
     }
 
     fn __str__(&self) -> String {

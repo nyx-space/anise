@@ -359,19 +359,16 @@ pub fn convert_fk<P: AsRef<Path> + fmt::Debug>(
             }
             // Build the quaternion from the Euler matrices
             let from = id;
-            let mut to = item.data[&Parameter::Center].to_i32().unwrap();
+            let to = item.data[&Parameter::Center].to_i32().unwrap();
             if let Some(class) = item.data.get(&Parameter::Class) {
                 if class.to_i32().unwrap() == 4 {
                     // This is a relative frame.
                     let relative_to = item.data.get(&Parameter::Relative).ok_or(DataSetError::Conversion {
                         action: format!("frame {id} is class 4 relative to, but the RELATIVE_TO token was not found"),
                     })?.to_string().unwrap();
-                    if let Ok(parent) = dataset.get_by_name(&relative_to) {
-                        to = parent.to;
-                    } else {
-                        // Not found yet, let's mark it as an ID to revisit.
-                        ids_to_update.push((id, relative_to.clone()));
-                    }
+
+                    // Always mark as something to update later.
+                    ids_to_update.push((id, relative_to.clone()));
                 }
             }
 
@@ -441,9 +438,10 @@ pub fn convert_fk<P: AsRef<Path> + fmt::Debug>(
         let parent_id = dataset.data[(*parent_idx) as usize].to;
 
         // Modify this EP.
-        let this_idx = dataset.lut.by_id[&id];
-        let mut this_q = dataset.data[this_idx as usize];
-        this_q.from = parent_id;
+        let index = dataset.lut.by_id.get(&id).unwrap();
+        // Grab the data
+        let this_q = dataset.data.get_mut(*index as usize).unwrap();
+        this_q.to = parent_id;
     }
 
     dataset.set_crc32();

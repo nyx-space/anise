@@ -19,7 +19,7 @@ use super::DAFError;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(eq, eq_int))]
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(u8)]
 pub enum DataType {

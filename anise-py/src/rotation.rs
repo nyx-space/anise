@@ -13,7 +13,7 @@ use pyo3::prelude::*;
 use pyo3::py_run;
 
 pub(crate) fn register_rotation(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
-    let sm = PyModule::new_bound(parent_module.py(), "rotation")?;
+    let sm = PyModule::new(parent_module.py(), "rotation")?;
     sm.add_class::<DCM>()?;
 
     Python::with_gil(|py| {

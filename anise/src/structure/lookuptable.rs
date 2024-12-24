@@ -47,7 +47,7 @@ pub enum LutError {
 /// _Both_ the IDs and the name MUST be unique in the look up table.
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct LookUpTable<const ENTRIES: usize> {
-    /// Unique IDs of each item in the
+    /// Unique IDs of each item in the LUT
     pub by_id: FnvIndexMap<NaifId, u32, ENTRIES>,
     /// Corresponding index for each hash
     pub by_name: FnvIndexMap<String<32>, u32, ENTRIES>,

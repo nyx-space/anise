@@ -190,7 +190,7 @@ impl UsualConstants {
 }
 
 pub(crate) fn register_constants(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
-    let sm = PyModule::new_bound(parent_module.py(), "astro.constants")?;
+    let sm = PyModule::new(parent_module.py(), "astro.constants")?;
     sm.add_class::<CelestialObjects>()?;
     sm.add_class::<Frames>()?;
     sm.add_class::<Orientations>()?;

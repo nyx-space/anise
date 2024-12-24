@@ -98,6 +98,7 @@ impl Frame {
 impl Frame {
     /// Initializes a new [Frame] provided its ephemeris and orientation identifiers, and optionally its gravitational parameter (in km^3/s^2) and optionally its shape (cf. [Ellipsoid]).
     #[new]
+    #[pyo3(signature=(ephemeris_id, orientation_id, mu_km3_s2=None, shape=None))]
     pub fn py_new(
         ephemeris_id: NaifId,
         orientation_id: NaifId,
