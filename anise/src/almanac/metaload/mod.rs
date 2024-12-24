@@ -104,12 +104,12 @@ mod meta_test {
         let mut meta = MetaAlmanac::default();
         println!("{meta:?}");
 
-        let almanac = meta._process(true).unwrap();
+        let almanac = meta.process(true).unwrap();
         // Shows everything in this Almanac
         almanac.describe(None, None, None, None, None, None);
 
         // Process again to confirm that the CRC check works
-        assert!(meta._process(true).is_ok());
+        assert!(meta.process(true).is_ok());
         // Test that loading from an invalid URI reports an error
         assert!(almanac
             .load_from_metafile(

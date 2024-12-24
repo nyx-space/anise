@@ -344,28 +344,28 @@ mod ut_metafile {
             uri: "C:\\Users\\me\\meta.dhall".to_string(),
             crc32: None,
         };
-        assert!(window_path._process(true).is_ok());
+        assert!(window_path.process(true).is_ok());
         assert_eq!(window_path.uri, "C:\\Users\\me\\meta.dhall".to_string());
 
         let mut file_prefix_path = MetaFile {
             uri: "fIlE:///Users/me/meta.dhall".to_string(),
             crc32: None,
         };
-        assert!(file_prefix_path._process(true).is_ok());
+        assert!(file_prefix_path.process(true).is_ok());
         assert_eq!(file_prefix_path.uri, "/Users/me/meta.dhall".to_string());
 
         let mut unix_abs_path = MetaFile {
             uri: "/Users/me/meta.dhall".to_string(),
             crc32: None,
         };
-        assert!(unix_abs_path._process(true).is_ok());
+        assert!(unix_abs_path.process(true).is_ok());
         assert_eq!(unix_abs_path.uri, "/Users/me/meta.dhall".to_string());
 
         let mut unix_rel_path = MetaFile {
             uri: "../Users/me/meta.dhall".to_string(),
             crc32: None,
         };
-        assert!(unix_rel_path._process(true).is_ok());
+        assert!(unix_rel_path.process(true).is_ok());
         assert_eq!(unix_rel_path.uri, "../Users/me/meta.dhall".to_string());
     }
 
@@ -376,14 +376,14 @@ mod ut_metafile {
             uri: "env:USER/.cargo/env".to_string(),
             crc32: None,
         };
-        user_path._process(false).unwrap();
+        user_path.process(false).unwrap();
         assert_eq!(user_path.uri, env::var("USER").unwrap() + "/.cargo/env");
 
         let mut unknown_path = MetaFile {
             uri: "env:BLAH_BLAH_NO_EXIST/.cargo/env".to_string(),
             crc32: None,
         };
-        unknown_path._process(false).unwrap();
+        unknown_path.process(false).unwrap();
         assert_eq!(
             unknown_path.uri,
             "env:BLAH_BLAH_NO_EXIST/.cargo/env".to_string()
