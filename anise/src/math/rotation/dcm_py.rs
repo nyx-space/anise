@@ -23,6 +23,7 @@ use pyo3::types::PyType;
 #[pymethods]
 impl DCM {
     #[new]
+    #[pyo3(signature=(np_rot_mat, from_id, to_id, np_rot_mat_dt=None))]
     pub fn py_new<'py>(
         np_rot_mat: PyReadonlyArray2<'py, f64>,
         from_id: NaifId,

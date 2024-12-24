@@ -61,7 +61,7 @@ impl Almanac {
         mut metafile: MetaFile,
         autodelete: bool,
     ) -> AlmanacResult<Self> {
-        metafile._process(autodelete).context(MetaSnafu {
+        metafile.process(autodelete).context(MetaSnafu {
             fno: 0_usize,
             file: metafile.clone(),
         })?;

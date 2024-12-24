@@ -79,6 +79,7 @@ impl AzElRange {
 impl AzElRange {
     /// Initializes a new AzElRange instance
     #[new]
+    #[pyo3(signature=(epoch, azimuth_deg, elevation_deg, range_km, range_rate_km_s, obstructed_by=None))]
     pub fn py_new(
         epoch: Epoch,
         azimuth_deg: f64,

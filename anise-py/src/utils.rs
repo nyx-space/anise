@@ -35,6 +35,7 @@ pub(crate) fn register_utils(parent_module: &Bound<'_, PyModule>) -> PyResult<()
 /// :type overwrite: bool, optional
 /// :rtype: None
 #[pyfunction]
+#[pyo3(signature = (fk_file_path, anise_output_path, show_comments=None, overwrite=None))]
 fn convert_fk(
     fk_file_path: String,
     anise_output_path: String,
@@ -60,6 +61,7 @@ fn convert_fk(
 /// :type overwrite: bool, optional
 /// :rtype: None
 #[pyfunction]
+#[pyo3(signature = (pck_file_path, gm_file_path, anise_output_path, overwrite=None))]
 fn convert_tpc(
     pck_file_path: String,
     gm_file_path: String,

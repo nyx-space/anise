@@ -74,6 +74,7 @@ impl Ellipsoid {
     /// All units are in kilometers. If the semi minor equatorial radius is not provided, a bi-axial spheroid will be created using the semi major equatorial radius as
     /// the equatorial radius and using the provided polar axis radius. If only the semi major equatorial radius is provided, a perfect sphere will be built.
     #[new]
+    #[pyo3(signature=(semi_major_equatorial_radius_km, polar_radius_km=None, semi_minor_equatorial_radius_km=None))]
     fn py_new(
         semi_major_equatorial_radius_km: f64,
         polar_radius_km: Option<f64>,

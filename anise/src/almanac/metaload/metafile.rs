@@ -56,12 +56,7 @@ impl MetaFile {
     /// Processes this MetaFile by downloading it if it's a URL and sets this structure's `uri` field to the local path
     ///
     /// This function modified `self` and changes the URI to be the path to the downloaded file.
-    #[cfg(not(feature = "python"))]
     pub fn process(&mut self, autodelete: bool) -> Result<(), MetaAlmanacError> {
-        self._process(autodelete)
-    }
-
-    pub(crate) fn _process(&mut self, autodelete: bool) -> Result<(), MetaAlmanacError> {
         // First, parse environment variables if any.
         self.uri = replace_env_vars(&self.uri);
         match Url::parse(&self.uri) {
@@ -268,6 +263,7 @@ impl MetaFile {
 impl MetaFile {
     /// Builds a new MetaFile from the provided URI and optionally its CRC32 checksum.
     #[new]
+    #[pyo3(signature=(uri, crc32=None))]
     pub fn py_new(uri: String, crc32: Option<u32>) -> Self {
         Self { uri, crc32 }
     }
@@ -296,12 +292,13 @@ impl MetaFile {
     ///
     /// :type autodelete: bool, optional
     /// :rtype: None
-    pub fn process(
+    #[pyo3(name = "process", signature=(autodelete=None))]
+    pub fn py_process(
         &mut self,
         py: Python,
         autodelete: Option<bool>,
     ) -> Result<(), MetaAlmanacError> {
-        py.allow_threads(|| self._process(autodelete.unwrap_or(false)))
+        py.allow_threads(|| self.process(autodelete.unwrap_or(false)))
     }
 
     /// :rtype: str
