@@ -26,7 +26,8 @@ exclude = [
 ]
 
 [workspace.dependencies]
-hifitime = "4.0.1"
+# hifitime = "4.0.1"
+hifitime = { path = "../hifitime" }
 memmap2 = "0.9.4"
 crc32fast = "1.4.2"
 der = { version = "0.7.8", features = ["derive", "alloc", "real"] }
@@ -40,9 +41,9 @@ zerocopy = { version = "0.8.0", features = ["derive"] }
 bytes = "1.6.0"
 snafu = { version = "0.8.0", features = ["backtrace"] }
 rstest = "0.23.0"
-pyo3 = { version = "0.22", features = ["multiple-pymethods"] }
-pyo3-log = "0.11"
-numpy = "0.22"
+pyo3 = { version = "0.23", features = ["multiple-pymethods"] }
+pyo3-log = "0.12"
+numpy = "0.23"
 ndarray = ">= 0.15, < 0.17"
 
 anise = { version = "0.5.1", path = "anise", default-features = false }

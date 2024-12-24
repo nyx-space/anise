@@ -129,7 +129,7 @@ impl DCM {
         // Create an ndarray Array2 (row-major order)
         let rot_mat = Array2::from_shape_vec((3, 3), data).unwrap();
 
-        let py_rot_mat = PyArray2::<f64>::from_owned_array_bound(py, rot_mat);
+        let py_rot_mat = PyArray2::<f64>::from_owned_array(py, rot_mat);
 
         Ok(py_rot_mat)
     }
@@ -152,7 +152,7 @@ impl DCM {
         // Create an ndarray Array2 (row-major order)
         let rot_mat_dt = Array2::from_shape_vec((3, 3), data).unwrap();
 
-        let py_rot_mat_dt = PyArray2::<f64>::from_owned_array_bound(py, rot_mat_dt);
+        let py_rot_mat_dt = PyArray2::<f64>::from_owned_array(py, rot_mat_dt);
 
         Ok(Some(py_rot_mat_dt))
     }
@@ -179,7 +179,7 @@ impl DCM {
         // Create an ndarray Array2 (row-major order)
         let state_dcm = Array2::from_shape_vec((6, 6), data).unwrap();
 
-        let pt_state_dcm = PyArray2::<f64>::from_owned_array_bound(py, state_dcm);
+        let pt_state_dcm = PyArray2::<f64>::from_owned_array(py, state_dcm);
 
         Ok(pt_state_dcm)
     }

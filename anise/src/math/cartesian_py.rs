@@ -167,7 +167,7 @@ impl CartesianState {
 
         let state = Array1::from_iter(data);
 
-        Ok(PyArray1::<f64>::from_owned_array_bound(py, state))
+        Ok(PyArray1::<f64>::from_owned_array(py, state))
     }
 
     fn __str__(&self) -> String {
