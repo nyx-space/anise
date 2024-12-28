@@ -8,8 +8,9 @@
  * Documentation: https://nyxspace.com/
  */
 use der::{Decode, Encode, Reader, Writer};
+use serde_derive::{Deserialize, Serialize};
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SRPData {
     /// Solar radiation pressure area in m^2
     pub area_m2: f64,

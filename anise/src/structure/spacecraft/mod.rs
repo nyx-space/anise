@@ -22,6 +22,8 @@ pub use mass::Mass;
 pub use srp::SRPData;
 
 /// Spacecraft constants can store the same spacecraft constant data as the CCSDS Orbit Parameter Message (OPM) and CCSDS Attitude Parameter Messages (APM)
+///
+/// Note: Spacecraft does not implement `serde` because the name is a fixed size string, which can't be serde'd trivially.
 #[derive(Clone, Default, Debug, PartialEq)]
 pub struct SpacecraftData {
     /// Name is used as the input for the hashing function

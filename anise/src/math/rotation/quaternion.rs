@@ -16,6 +16,7 @@ use core::fmt;
 use core::ops::Mul;
 use der::{Decode, Encode, Reader, Writer};
 use nalgebra::Matrix4x3;
+use serde::{Deserialize, Serialize};
 use snafu::ensure;
 
 use super::EPSILON_RAD;
@@ -54,7 +55,7 @@ pub type Quaternion = EulerParameter;
 ///
 /// # Usage
 /// Importantly, ANISE prevents the composition of two Euler Parameters if the frames do not match.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct EulerParameter {
     pub w: f64,
     pub x: f64,

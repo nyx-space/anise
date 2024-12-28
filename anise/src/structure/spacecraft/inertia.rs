@@ -9,11 +9,12 @@
  */
 use der::{Decode, Encode, Reader, Writer};
 use nalgebra::Matrix3;
+use serde_derive::{Deserialize, Serialize};
 
 use crate::NaifId;
 
 /// Inertial tensor definition
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Inertia {
     /// Inertia tensor reference frame hash
     pub orientation_id: NaifId,

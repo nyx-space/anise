@@ -8,6 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
     constants::{
         celestial_objects::celestial_name_from_id, orientations::orientation_name_from_id,
@@ -20,10 +22,7 @@ pub use super::Frame;
 
 /// A unique frame reference that only contains enough information to build the actual Frame object.
 /// It cannot be used for any computations, is it be used in any structure apart from error structures.
-///
-/// # Usage note
-/// You should almost always prefer Frame over FrameRef unless you will
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FrameUid {
     pub ephemeris_id: NaifId,
     pub orientation_id: NaifId,
