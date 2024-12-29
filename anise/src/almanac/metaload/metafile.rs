@@ -147,7 +147,7 @@ impl MetaFile {
                                                         self.uri = dest_path_s;
                                                         return Ok(());
                                                     } else {
-                                                        info!("Discarding cached {dest_path_s} - CRC32 differ (got {computed_crc32:x}, expected {crc32:x})");
+                                                        info!("Discarding cached {dest_path_s} - CRC32 differ (got 0x{computed_crc32:x}, expected 0x{crc32:x})");
                                                     }
                                                 }
                                             }
@@ -206,7 +206,7 @@ impl MetaFile {
                                                             file.write_all(&bytes).unwrap();
 
                                                             info!(
-                                                                 "Saved {url} to {} (CRC32 = {crc32:x})",
+                                                                 "Saved {url} to {} (CRC32 = 0x{crc32:x})",
                                                                  dest_path.to_str().unwrap()
                                                              );
 
