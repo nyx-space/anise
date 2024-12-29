@@ -54,12 +54,12 @@ impl Orbit {
     /// One should expect these errors to be on the order of 1e-12.
     #[allow(clippy::too_many_arguments)]
     pub fn try_keplerian(
-        sma: f64,
+        sma_km: f64,
         ecc: f64,
-        inc: f64,
-        raan: f64,
-        aop: f64,
-        ta: f64,
+        inc_deg: f64,
+        raan_deg: f64,
+        aop_deg: f64,
+        ta_deg: f64,
         epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
@@ -74,14 +74,14 @@ impl Orbit {
         } else {
             ecc
         };
-        let sma = if ecc > 1.0 && sma > 0.0 {
+        let sma = if ecc > 1.0 && sma_km > 0.0 {
             warn!("eccentricity > 1 (hyperbolic) BUT SMA > 0 (elliptical): sign of SMA changed");
-            sma * -1.0
-        } else if ecc < 1.0 && sma < 0.0 {
+            sma_km * -1.0
+        } else if ecc < 1.0 && sma_km < 0.0 {
             warn!("eccentricity < 1 (elliptical) BUT SMA < 0 (hyperbolic): sign of SMA changed");
-            sma * -1.0
+            sma_km * -1.0
         } else {
-            sma
+            sma_km
         };
         if (sma * (1.0 - ecc)).abs() < 1e-3 {
             // GMAT errors below one meter. Let's warn for below that, but not panic, might be useful for landing scenarios?
@@ -92,14 +92,14 @@ impl Orbit {
             ParabolicEccentricitySnafu { limit: ECC_EPSILON }
         );
         if ecc > 1.0 {
-            let ta_deg = between_0_360(ta);
+            let ta_deg = between_0_360(ta_deg);
             ensure!(
                 ta_deg <= (PI - (1.0 / ecc).acos()).to_degrees(),
                 HyperbolicTrueAnomalySnafu { ta_deg }
             );
         }
         ensure!(
-            (1.0 + ecc * ta.to_radians().cos()).is_finite(),
+            (1.0 + ecc * ta_deg.to_radians().cos()).is_finite(),
             InfiniteValueSnafu {
                 action: "computing radius of orbit"
             }
@@ -109,28 +109,28 @@ impl Orbit {
         // The conversion algorithm itself comes from GMAT's StateConversionUtil::ComputeKeplToCart
         // NOTE: GMAT supports mean anomaly instead of true anomaly, but only for backward compatibility reasons
         // so it isn't supported here.
-        let inc = inc.to_radians();
-        let raan = raan.to_radians();
-        let aop = aop.to_radians();
-        let ta = ta.to_radians();
-        let p = sma * (1.0 - ecc.powi(2));
+        let inc_rad = inc_deg.to_radians();
+        let raan_rad = raan_deg.to_radians();
+        let aop_rad = aop_deg.to_radians();
+        let ta_rad = ta_deg.to_radians();
+        let p_km = sma * (1.0 - ecc.powi(2));
 
-        ensure!(p.abs() >= f64::EPSILON, ParabolicSemiParamSnafu { p });
+        ensure!(p_km.abs() >= f64::EPSILON, ParabolicSemiParamSnafu { p_km });
 
         // NOTE: At this point GMAT computes 1+ecc**2 and checks whether it's very small.
         // It then reports that the radius may be too large. We've effectively already done
         // this check above (and panicked if needed), so it isn't repeated here.
-        let radius = p / (1.0 + ecc * ta.cos());
-        let (sin_aop_ta, cos_aop_ta) = (aop + ta).sin_cos();
-        let (sin_inc, cos_inc) = inc.sin_cos();
-        let (sin_raan, cos_raan) = raan.sin_cos();
-        let (sin_aop, cos_aop) = aop.sin_cos();
+        let radius = p_km / (1.0 + ecc * ta_rad.cos());
+        let (sin_aop_ta, cos_aop_ta) = (aop_rad + ta_rad).sin_cos();
+        let (sin_inc, cos_inc) = inc_rad.sin_cos();
+        let (sin_raan, cos_raan) = raan_rad.sin_cos();
+        let (sin_aop, cos_aop) = aop_rad.sin_cos();
         let x = radius * (cos_aop_ta * cos_raan - cos_inc * sin_aop_ta * sin_raan);
         let y = radius * (cos_aop_ta * sin_raan + cos_inc * sin_aop_ta * cos_raan);
         let z = radius * sin_aop_ta * sin_inc;
-        let sqrt_gm_p = (mu_km3_s2 / p).sqrt();
-        let cos_ta_ecc = ta.cos() + ecc;
-        let sin_ta = ta.sin();
+        let sqrt_gm_p = (mu_km3_s2 / p_km).sqrt();
+        let cos_ta_ecc = ta_rad.cos() + ecc;
+        let sin_ta = ta_rad.sin();
 
         let vx = sqrt_gm_p * cos_ta_ecc * (-sin_aop * cos_raan - cos_inc * sin_raan * cos_aop)
             - sqrt_gm_p * sin_ta * (cos_aop * cos_raan - cos_inc * sin_raan * sin_aop);
@@ -149,31 +149,31 @@ impl Orbit {
     /// Attempts to create a new Orbit from the provided radii of apoapsis and periapsis, in kilometers
     #[allow(clippy::too_many_arguments)]
     pub fn try_keplerian_apsis_radii(
-        r_a: f64,
-        r_p: f64,
-        inc: f64,
-        raan: f64,
-        aop: f64,
-        ta: f64,
+        r_a_km: f64,
+        r_p_km: f64,
+        inc_deg: f64,
+        raan_deg: f64,
+        aop_deg: f64,
+        ta_deg: f64,
         epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
         ensure!(
-            r_a > f64::EPSILON,
+            r_a_km > f64::EPSILON,
             RadiusSnafu {
                 action: "radius of apoapsis is negative"
             }
         );
         ensure!(
-            r_p > f64::EPSILON,
+            r_p_km > f64::EPSILON,
             RadiusSnafu {
                 action: "radius of periapsis is negative"
             }
         );
         // The two checks above ensure that sma > 0
-        let sma = (r_a + r_p) / 2.0;
-        let ecc = r_a / sma - 1.0;
-        Self::try_keplerian(sma, ecc, inc, raan, aop, ta, epoch, frame)
+        let sma = (r_a_km + r_p_km) / 2.0;
+        let ecc = r_a_km / sma - 1.0;
+        Self::try_keplerian(sma, ecc, inc_deg, raan_deg, aop_deg, ta_deg, epoch, frame)
     }
 
     /// Attempts to create a new Orbit around the provided frame from the borrowed state vector
@@ -196,31 +196,37 @@ impl Orbit {
     /// One should expect these errors to be on the order of 1e-12.
     #[allow(clippy::too_many_arguments)]
     pub fn keplerian(
-        sma: f64,
+        sma_km: f64,
         ecc: f64,
-        inc: f64,
-        raan: f64,
-        aop: f64,
-        ta: f64,
+        inc_deg: f64,
+        raan_deg: f64,
+        aop_deg: f64,
+        ta_deg: f64,
         epoch: Epoch,
         frame: Frame,
     ) -> Self {
-        Self::try_keplerian(sma, ecc, inc, raan, aop, ta, epoch, frame).unwrap()
+        Self::try_keplerian(
+            sma_km, ecc, inc_deg, raan_deg, aop_deg, ta_deg, epoch, frame,
+        )
+        .unwrap()
     }
 
     /// Creates a new Orbit from the provided radii of apoapsis and periapsis, in kilometers
     #[allow(clippy::too_many_arguments)]
     pub fn keplerian_apsis_radii(
-        r_a: f64,
-        r_p: f64,
-        inc: f64,
-        raan: f64,
-        aop: f64,
-        ta: f64,
+        r_a_km: f64,
+        r_p_km: f64,
+        inc_deg: f64,
+        raan_deg: f64,
+        aop_deg: f64,
+        ta_deg: f64,
         epoch: Epoch,
         frame: Frame,
     ) -> Self {
-        Self::try_keplerian_apsis_radii(r_a, r_p, inc, raan, aop, ta, epoch, frame).unwrap()
+        Self::try_keplerian_apsis_radii(
+            r_a_km, r_p_km, inc_deg, raan_deg, aop_deg, ta_deg, epoch, frame,
+        )
+        .unwrap()
     }
 
     /// Initializes a new orbit from the Keplerian orbital elements using the mean anomaly instead of the true anomaly.

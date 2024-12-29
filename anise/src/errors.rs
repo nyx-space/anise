@@ -191,8 +191,8 @@ pub enum PhysicsError {
     },
     #[snafu(display("parabolic orbits are physically impossible and the eccentricity calculated to be within {limit:e} of 1.0"))]
     ParabolicEccentricity { limit: f64 },
-    #[snafu(display("parabolic orbits are physically impossible and the semilatus rectum (semi-parameter) calculated to be {p}"))]
-    ParabolicSemiParam { p: f64 },
+    #[snafu(display("parabolic orbits are physically impossible and the semilatus rectum (semi-parameter) calculated to be {p_km} km"))]
+    ParabolicSemiParam { p_km: f64 },
     #[snafu(display("hyperbolic true anomaly is physically impossible: {ta_deg} deg"))]
     HyperbolicTrueAnomaly { ta_deg: f64 },
     #[snafu(display("calculation requires hyperbolic orbit, but its eccentricity is {ecc}"))]

@@ -267,7 +267,7 @@ impl Default for MetaAlmanac {
                         .join("v0.5/moon_fk_de440.epa")
                         .unwrap()
                         .to_string(),
-                    crc32: Some(0x6f0ad74c),
+                    crc32: Some(0x21633903),
                 },
                 MetaFile {
                     uri: nyx_cloud_stor
