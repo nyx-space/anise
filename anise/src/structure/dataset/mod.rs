@@ -558,7 +558,7 @@ mod dataset_ut {
                 i_xz_kgm2: -15.0,
                 i_yz_kgm2: 30.0,
             }),
-            masses: Some(Mass::from_dry_and_prop_masses(150.0, 50.6)),
+            mass: Some(Mass::from_dry_and_prop_masses(150.0, 50.6)),
             drag_data: Some(DragData::default()),
         };
         let srp_sc = SpacecraftData {
@@ -701,7 +701,7 @@ mod dataset_ut {
                 i_xz_kgm2: -15.0,
                 i_yz_kgm2: 30.0,
             }),
-            masses: Some(Mass::from_dry_and_prop_masses(150.0, 50.6)),
+            mass: Some(Mass::from_dry_and_prop_masses(150.0, 50.6)),
             drag_data: Some(DragData::default()),
         };
         let srp_sc = SpacecraftData {
@@ -756,10 +756,10 @@ mod dataset_ut {
 
         // Check that we can set by ID
         let mut repr = dataset.get_by_id(-50).unwrap();
-        repr.masses.as_mut().unwrap().dry_mass_kg = 100.5;
+        repr.mass.as_mut().unwrap().dry_mass_kg = 100.5;
         dataset.set_by_id(-50, repr).unwrap();
         assert_eq!(
-            dataset.get_by_id(-50).unwrap().masses.unwrap().dry_mass_kg,
+            dataset.get_by_id(-50).unwrap().mass.unwrap().dry_mass_kg,
             100.5,
             "value was not modified"
         );
@@ -772,7 +772,7 @@ mod dataset_ut {
         assert!(dataset.get_by_id(-50).is_err());
         // Check that we can fetch that data as we modified it.
         assert_eq!(
-            dataset.get_by_id(-52).unwrap().masses.unwrap().dry_mass_kg,
+            dataset.get_by_id(-52).unwrap().mass.unwrap().dry_mass_kg,
             100.5,
             "value not reachable after reid"
         );
