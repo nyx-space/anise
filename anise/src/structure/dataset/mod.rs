@@ -551,14 +551,14 @@ mod dataset_ut {
             }),
             inertia: Some(Inertia {
                 orientation_id: -20,
-                i_11_kgm2: 120.0,
-                i_22_kgm2: 180.0,
-                i_33_kgm2: 220.0,
-                i_12_kgm2: 20.0,
-                i_13_kgm2: -15.0,
-                i_23_kgm2: 30.0,
+                i_xx_kgm2: 120.0,
+                i_yy_kgm2: 180.0,
+                i_zz_kgm2: 220.0,
+                i_xy_kgm2: 20.0,
+                i_xz_kgm2: -15.0,
+                i_yz_kgm2: 30.0,
             }),
-            mass_kg: Some(Mass::from_dry_and_fuel_masses(150.0, 50.6)),
+            mass: Some(Mass::from_dry_and_prop_masses(150.0, 50.6)),
             drag_data: Some(DragData::default()),
         };
         let srp_sc = SpacecraftData {
@@ -598,10 +598,10 @@ mod dataset_ut {
 
         // Build the lookup table
         dataset
-            .push(srp_sc.clone(), Some(-20), Some("SRP spacecraft"))
+            .push(srp_sc, Some(-20), Some("SRP spacecraft"))
             .unwrap();
         dataset
-            .push(full_sc.clone(), Some(-50), Some("Full spacecraft"))
+            .push(full_sc, Some(-50), Some("Full spacecraft"))
             .unwrap();
 
         dataset.set_crc32();
@@ -633,7 +633,7 @@ mod dataset_ut {
         // Grab a copy of the original data
         let mut sc = dataset.get_by_name("SRP spacecraft").unwrap();
         sc.srp_data.as_mut().unwrap().coeff_reflectivity = 1.1;
-        dataset.set_by_name("SRP spacecraft", sc.clone()).unwrap();
+        dataset.set_by_name("SRP spacecraft", sc).unwrap();
         // Ensure that we've modified only that entry
         assert_eq!(
             dataset.get_by_name("Full spacecraft").unwrap(),
@@ -651,7 +651,7 @@ mod dataset_ut {
             1.1,
             "value was not modified"
         );
-        assert!(dataset.set_by_name("Unavailable SC", sc.clone()).is_err());
+        assert!(dataset.set_by_name("Unavailable SC", sc).is_err());
 
         // Test renaming by name
         dataset
@@ -694,14 +694,14 @@ mod dataset_ut {
             }),
             inertia: Some(Inertia {
                 orientation_id: -20,
-                i_11_kgm2: 120.0,
-                i_22_kgm2: 180.0,
-                i_33_kgm2: 220.0,
-                i_12_kgm2: 20.0,
-                i_13_kgm2: -15.0,
-                i_23_kgm2: 30.0,
+                i_xx_kgm2: 120.0,
+                i_yy_kgm2: 180.0,
+                i_zz_kgm2: 220.0,
+                i_xy_kgm2: 20.0,
+                i_xz_kgm2: -15.0,
+                i_yz_kgm2: 30.0,
             }),
-            mass_kg: Some(Mass::from_dry_and_fuel_masses(150.0, 50.6)),
+            mass: Some(Mass::from_dry_and_prop_masses(150.0, 50.6)),
             drag_data: Some(DragData::default()),
         };
         let srp_sc = SpacecraftData {
@@ -713,19 +713,19 @@ mod dataset_ut {
 
         let mut dataset = DataSet::<SpacecraftData, 16>::default();
         dataset
-            .push(srp_sc.clone(), Some(-20), Some("SRP spacecraft"))
+            .push(srp_sc, Some(-20), Some("SRP spacecraft"))
             .unwrap();
 
         dataset
-            .push(full_sc.clone(), Some(-50), Some("Full spacecraft"))
+            .push(full_sc, Some(-50), Some("Full spacecraft"))
             .unwrap();
 
         // Pushing without name as ID -51
-        dataset.push(full_sc.clone(), Some(-51), None).unwrap();
+        dataset.push(full_sc, Some(-51), None).unwrap();
 
         // Pushing without ID
         dataset
-            .push(srp_sc.clone(), None, Some("ID less SRP spacecraft"))
+            .push(srp_sc, None, Some("ID less SRP spacecraft"))
             .unwrap();
 
         // Make sure to set the CRC32.
@@ -756,14 +756,14 @@ mod dataset_ut {
 
         // Check that we can set by ID
         let mut repr = dataset.get_by_id(-50).unwrap();
-        repr.mass_kg.as_mut().unwrap().dry_mass_kg = 100.5;
-        dataset.set_by_id(-50, repr.clone()).unwrap();
+        repr.mass.as_mut().unwrap().dry_mass_kg = 100.5;
+        dataset.set_by_id(-50, repr).unwrap();
         assert_eq!(
-            dataset.get_by_id(-50).unwrap().mass_kg.unwrap().dry_mass_kg,
+            dataset.get_by_id(-50).unwrap().mass.unwrap().dry_mass_kg,
             100.5,
             "value was not modified"
         );
-        assert!(dataset.set_by_id(111, repr.clone()).is_err());
+        assert!(dataset.set_by_id(111, repr).is_err());
         // Test renaming by ID
         dataset.lut.reid(-50, -52).unwrap();
         // Calling this a second time will lead to an error
@@ -772,7 +772,7 @@ mod dataset_ut {
         assert!(dataset.get_by_id(-50).is_err());
         // Check that we can fetch that data as we modified it.
         assert_eq!(
-            dataset.get_by_id(-52).unwrap().mass_kg.unwrap().dry_mass_kg,
+            dataset.get_by_id(-52).unwrap().mass.unwrap().dry_mass_kg,
             100.5,
             "value not reachable after reid"
         );

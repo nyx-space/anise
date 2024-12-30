@@ -106,9 +106,7 @@ impl Almanac {
                 // Not available as a BPC, so let's see if there's planetary data for it.
                 match self.planetary_data.get_by_id(source.orientation_id) {
                     Ok(planetary_data) => {
-                        println!(
-                            "query {source} wrt to its parent @ {epoch:E} using planetary data"
-                        );
+                        trace!("query {source} wrt to its parent @ {epoch:E} using planetary data");
                         // Fetch the parent info
                         let system_data =
                             match self.planetary_data.get_by_id(planetary_data.parent_id) {
@@ -121,7 +119,7 @@ impl Almanac {
                             .context(OrientationPhysicsSnafu)
                     }
                     Err(_) => {
-                        println!("query {source} wrt to its parent @ {epoch:E} using Euler parameter data");
+                        trace!("query {source} wrt to its parent @ {epoch:E} using Euler parameter data");
                         // Finally, let's see if it's in the loaded Euler Parameters.
                         // We can call `into` because EPs can be converted directly into DCMs.
                         Ok(self

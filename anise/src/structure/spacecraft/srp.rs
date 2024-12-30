@@ -12,10 +12,19 @@ use serde_derive::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SRPData {
-    /// Solar radiation pressure area in m^2
+    /// Solar radiation pressure area in m^2 -- default 0.0
     pub area_m2: f64,
-    /// Solar radiation pressure coefficient of reflectivity (C_r)
+    /// Solar radiation pressure coefficient of reflectivity (C_r) -- default 1.8
     pub coeff_reflectivity: f64,
+}
+
+impl SRPData {
+    pub fn from_area(area_m2: f64) -> Self {
+        Self {
+            area_m2,
+            ..Default::default()
+        }
+    }
 }
 
 impl Default for SRPData {

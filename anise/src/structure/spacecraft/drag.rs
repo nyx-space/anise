@@ -12,10 +12,19 @@ use serde_derive::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DragData {
-    /// Atmospheric drag area in m^2
+    /// Atmospheric drag area in m^2 -- default 0.0
     pub area_m2: f64,
-    /// Drag coefficient (C_d)
+    /// Drag coefficient (C_d) -- default 2.2
     pub coeff_drag: f64,
+}
+
+impl DragData {
+    pub fn from_area(area_m2: f64) -> Self {
+        Self {
+            area_m2,
+            ..Default::default()
+        }
+    }
 }
 
 impl Default for DragData {
