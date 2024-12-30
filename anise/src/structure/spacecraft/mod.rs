@@ -22,10 +22,10 @@ pub use mass::Mass;
 pub use srp::SRPData;
 
 /// Spacecraft constants can store the some of the spacecraft constant data as the CCSDS Orbit Parameter Message (OPM) and CCSDS Attitude Parameter Messages (APM)
-#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SpacecraftData {
     /// Mass of the spacecraft in kg
-    pub mass_kg: Option<Mass>,
+    pub masses: Option<Mass>,
     /// Solar radiation pressure data
     pub srp_data: Option<SRPData>,
     /// Atmospheric drag data
@@ -49,7 +49,7 @@ impl SpacecraftData {
     fn available_data(&self) -> u8 {
         let mut bits: u8 = 0;
 
-        if self.mass_kg.is_some() {
+        if self.masses.is_some() {
             bits |= 1 << 0;
         }
         if self.srp_data.is_some() {
@@ -70,7 +70,7 @@ impl Encode for SpacecraftData {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let available_flags = self.available_data();
         available_flags.encoded_len()?
-            + self.mass_kg.encoded_len()?
+            + self.masses.encoded_len()?
             + self.srp_data.encoded_len()?
             + self.drag_data.encoded_len()?
             + self.inertia.encoded_len()?
@@ -78,7 +78,7 @@ impl Encode for SpacecraftData {
 
     fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         self.available_data().encode(encoder)?;
-        self.mass_kg.encode(encoder)?;
+        self.masses.encode(encoder)?;
         self.srp_data.encode(encoder)?;
         self.drag_data.encode(encoder)?;
         self.inertia.encode(encoder)
@@ -114,7 +114,7 @@ impl<'a> Decode<'a> for SpacecraftData {
         };
 
         Ok(Self {
-            mass_kg,
+            masses: mass_kg,
             srp_data,
             drag_data,
             inertia,
@@ -171,7 +171,7 @@ mod spacecraft_constants_ut {
     #[test]
     fn sc_with_mass_only() {
         let repr = SpacecraftData {
-            mass_kg: Some(Mass::default()),
+            masses: Some(Mass::default()),
             ..Default::default()
         };
 
@@ -207,14 +207,14 @@ mod spacecraft_constants_ut {
             }),
             inertia: Some(Inertia {
                 orientation_id: -20,
-                i_11_kgm2: 120.0,
-                i_22_kgm2: 180.0,
-                i_33_kgm2: 220.0,
-                i_12_kgm2: 20.0,
-                i_13_kgm2: -15.0,
-                i_23_kgm2: 30.0,
+                i_xx_kgm2: 120.0,
+                i_yy_kgm2: 180.0,
+                i_zz_kgm2: 220.0,
+                i_xy_kgm2: 20.0,
+                i_xz_kgm2: -15.0,
+                i_yz_kgm2: 30.0,
             }),
-            mass_kg: Some(Mass::from_dry_and_fuel_masses(150.0, 50.6)),
+            masses: Some(Mass::from_dry_and_prop_masses(150.0, 50.6)),
             ..Default::default()
         };
 
@@ -235,14 +235,14 @@ mod spacecraft_constants_ut {
             }),
             inertia: Some(Inertia {
                 orientation_id: -20,
-                i_11_kgm2: 120.0,
-                i_22_kgm2: 180.0,
-                i_33_kgm2: 220.0,
-                i_12_kgm2: 20.0,
-                i_13_kgm2: -15.0,
-                i_23_kgm2: 30.0,
+                i_xx_kgm2: 120.0,
+                i_yy_kgm2: 180.0,
+                i_zz_kgm2: 220.0,
+                i_xy_kgm2: 20.0,
+                i_xz_kgm2: -15.0,
+                i_yz_kgm2: 30.0,
             }),
-            mass_kg: Some(Mass::from_dry_and_fuel_masses(150.0, 50.6)),
+            masses: Some(Mass::from_dry_and_prop_masses(150.0, 50.6)),
             drag_data: Some(DragData::default()),
         };
 
