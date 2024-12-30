@@ -660,8 +660,8 @@ mod cartesian_state_ut {
         let frame = EARTH_J2000;
         let state = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
 
-        let serialized = serde_yaml::to_string(&state).unwrap();
-        let rtn: CartesianState = serde_yaml::from_str(&serialized).unwrap();
+        let serialized = serde_yml::to_string(&state).unwrap();
+        let rtn: CartesianState = serde_yml::from_str(&serialized).unwrap();
 
         assert_eq!(rtn, state);
     }

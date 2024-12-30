@@ -207,3 +207,7 @@ ANISE is heavily inspired by the NAIF SPICE toolkit and its excellent documentat
 ## Contact
 
 For any inquiries, feedback, or discussions, please [open an issue here](https://github.com/nyx-space/anise/issues) or contact the maintainer at christopher.rabotin@gmail.com.
+
+## Versioning
+
+ANISE abides by the Rust versioning rules for dependencies but not necessarily for dev-dependencies. Please open a ticket if this causes an issue.
