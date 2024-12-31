@@ -21,6 +21,10 @@ use crate::math::units::*;
 use crate::math::Vector3;
 use crate::prelude::Frame;
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
+#[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
     /// Returns the 6x6 DCM needed to rotation the `from_frame` to the `to_frame`.
     ///
@@ -124,7 +128,9 @@ impl Almanac {
 
         (dcm * state).context(OrientationPhysicsSnafu {})
     }
+}
 
+impl Almanac {
     /// Rotates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame
     ///
     /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_state_to` function instead to include rotations.
