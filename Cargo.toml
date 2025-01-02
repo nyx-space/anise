@@ -39,7 +39,7 @@ nalgebra = { version = "0.33", default-features = true, features = [
 zerocopy = { version = "0.8.0", features = ["derive"] }
 bytes = "1.6.0"
 snafu = { version = "0.8.0", features = ["backtrace"] }
-rstest = "0.23.0"
+rstest = "0.24.0"
 pyo3 = { version = "0.23", features = ["multiple-pymethods"] }
 pyo3-log = "0.12"
 numpy = "0.23"
