@@ -27,7 +27,7 @@ poll-promise = { version = "0.3.0", features = ["web"] }
 
 
 [target.'cfg(windows)'.build-dependencies]
-tauri-winres = "0.1"
+tauri-winres = "0.2"
 
 [package.metadata.tauri-winres]
 FileDescription = "Inspect SPICE SPK and PCK binary files"
