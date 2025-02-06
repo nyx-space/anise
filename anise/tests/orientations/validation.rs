@@ -22,7 +22,7 @@ use anise::{
     naif::kpl::parser::convert_tpc,
     prelude::{Almanac, Frame, BPC},
 };
-use hifitime::{Duration, Epoch, TimeSeries, TimeUnits};
+use hifitime::{Duration, Epoch, TimeScale, TimeSeries, TimeUnits};
 use spice::cstr;
 
 // Allow up to two arcsecond of error (or 0.12 microradians), but check test results for actualized error
@@ -81,7 +81,7 @@ fn validate_iau_rotation_to_parent() {
                 spice::c::sxform_c(
                     cstr!("J2000"),
                     cstr!(format!("{frame:o}")),
-                    epoch.to_tdb_seconds(),
+                    epoch.to_et_seconds(),
                     rot_data.as_mut_ptr(),
                 );
             }
@@ -228,7 +228,7 @@ fn validate_bpc_rotation_to_parent() {
             spice::c::sxform_c(
                 cstr!("ECLIPJ2000"),
                 cstr!("ITRF93"),
-                epoch.to_tdb_seconds(),
+                epoch.to_et_seconds(),
                 rot_data.as_mut_ptr(),
             );
         }
@@ -344,7 +344,7 @@ fn validate_j2000_ecliptic() {
             spice::c::sxform_c(
                 cstr!("J2000"),
                 cstr!("ECLIPJ2000"),
-                epoch.to_tdb_seconds(),
+                epoch.to_et_seconds(),
                 rot_data.as_mut_ptr(),
             );
         }
@@ -419,14 +419,10 @@ fn validate_bpc_rotations() {
     let mut actual_max_uvec_err_deg = 0.0;
     let mut actual_max_err_deg = 0.0;
 
-    // This BPC file start in 2011 and ends in 2022.
-    for (num, epoch) in TimeSeries::inclusive(
-        Epoch::from_tdb_duration(0.11.centuries()),
-        Epoch::from_tdb_duration(0.2.centuries()),
-        1.days(),
-    )
-    .enumerate()
-    {
+    // This BPC file start in 2011 and ends in 2023.
+    let start = Epoch::from_gregorian_utc_at_midnight(2000, 1, 2);
+    let end = Epoch::from_gregorian_at_midnight(2025, 5, 1, TimeScale::ET);
+    for (num, epoch) in TimeSeries::inclusive(start, end, 1.days()).enumerate() {
         let dcm = almanac.rotate(EARTH_ITRF93, EME2000, epoch).unwrap();
 
         let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];
@@ -434,7 +430,7 @@ fn validate_bpc_rotations() {
             spice::c::sxform_c(
                 cstr!("ITRF93"),
                 cstr!("J2000"),
-                epoch.to_tdb_seconds(),
+                epoch.to_et_seconds(),
                 rot_data.as_mut_ptr(),
             );
         }
@@ -471,7 +467,8 @@ fn validate_bpc_rotations() {
             rot_mat_dt,
         };
 
-        if num == 0 {
+        if end - epoch < 1.days() {
+            println!("{epoch}");
             println!("ANISE: {dcm}{}", dcm.rot_mat_dt.unwrap());
             println!("SPICE: {spice_dcm}{}", spice_dcm.rot_mat_dt.unwrap());
 
@@ -578,7 +575,7 @@ fn validate_bpc_to_iau_rotations() {
                 spice::c::sxform_c(
                     cstr!("ITRF93"),
                     cstr!(spice_name),
-                    epoch.to_tdb_seconds(),
+                    epoch.to_et_seconds(),
                     rot_data.as_mut_ptr(),
                 );
             }
@@ -719,7 +716,7 @@ fn validate_bpc_to_iau_rotations() {
                 spice::c::sxform_c(
                     cstr!(format!("{frame:o}")),
                     cstr!("ITRF93"),
-                    epoch.to_tdb_seconds(),
+                    epoch.to_et_seconds(),
                     rot_data.as_mut_ptr(),
                 );
             }
