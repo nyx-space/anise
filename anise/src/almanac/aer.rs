@@ -16,7 +16,6 @@ use crate::{
     frames::Frame,
     math::angles::{between_0_360, between_pm_180},
     prelude::Orbit,
-    time::uuid_from_epoch,
 };
 
 use super::Almanac;
@@ -81,10 +80,9 @@ impl Almanac {
         }
 
         // Compute the SEZ DCM
-        let from = uuid_from_epoch(tx.frame.orientation_id, rx.epoch);
         // SEZ DCM is topo to fixed
         let sez_dcm = tx
-            .dcm_from_topocentric_to_body_fixed(from)
+            .dcm_from_topocentric_to_body_fixed(-1)
             .context(EphemerisPhysicsSnafu { action: "" })
             .context(EphemerisSnafu {
                 action: "computing SEZ DCM for AER",
@@ -96,7 +94,7 @@ impl Almanac {
                 action: "transforming transmitter to SEZ",
             })?;
 
-        // Convert the receiver into the transmitter frame.
+        // Convert the receiver into the body fixed transmitter frame.
         let rx_in_tx_frame = self.transform_to(rx, tx.frame, ab_corr)?;
         // Convert into SEZ frame
         let rx_sez = (sez_dcm.transpose() * rx_in_tx_frame)
@@ -105,12 +103,16 @@ impl Almanac {
                 action: "transforming received to SEZ",
             })?;
 
-        // Compute the range ρ.
+        // Convert transmitter and receiver into the transmitter frame
+        let rx_in_tx_frame = self.transform_to(rx, tx.frame, ab_corr)?;
+
+        // Compute the range ρ in the SEZ frame for az/el
         let rho_sez = rx_sez.radius_km - tx_sez.radius_km;
+        // And in the inertial frame for range and range-rate
+        let rho_tx_frame = rx_in_tx_frame.radius_km - tx.radius_km;
 
         // Compute the range-rate \dot ρ
-        let range_rate_km_s =
-            rho_sez.dot(&(rx_sez.velocity_km_s - tx_sez.velocity_km_s)) / rho_sez.norm();
+        let range_rate_km_s = rho_tx_frame.dot(&rx_in_tx_frame.velocity_km_s) / rho_tx_frame.norm();
 
         // Finally, compute the elevation (math is the same as declination)
         // Source: Vallado, section 4.4.3
@@ -127,7 +129,7 @@ impl Almanac {
             epoch: tx.epoch,
             azimuth_deg,
             elevation_deg,
-            range_km: rho_sez.norm(),
+            range_km: rho_tx_frame.norm(),
             range_rate_km_s,
             obstructed_by,
             light_time: (rho_sez.norm() / SPEED_OF_LIGHT_KM_S).seconds(),

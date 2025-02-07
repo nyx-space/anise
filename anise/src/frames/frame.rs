@@ -91,6 +91,15 @@ impl Frame {
         self.shape = Some(shape);
         self
     }
+
+    /// Returns a copy of this frame with the graviational parameter and the shape information from this frame.
+    /// Use this to prevent astrodynamical computations.
+    ///
+    /// :rtype: None
+    pub fn stripped(mut self) -> Self {
+        self.strip();
+        self
+    }
 }
 
 #[cfg(feature = "python")]

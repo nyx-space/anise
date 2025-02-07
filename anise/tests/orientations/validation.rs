@@ -666,7 +666,7 @@ fn validate_bpc_to_iau_rotations() {
                 dcm.rot_mat - rot_mat
             );
 
-            // Check the derivative with a slightly tighet constraint
+            // Check the derivative with a slightly tighter constraint
             assert!(
                 (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm()
                     < DCM_EPSILON * 0.1,

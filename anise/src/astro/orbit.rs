@@ -322,18 +322,50 @@ impl Orbit {
 impl Orbit {
     /// Builds the rotation matrix that rotates from the topocentric frame (SEZ) into the body fixed frame of this state.
     ///
-    /// # Frame warning
-    /// If the state is NOT in a body fixed frame (i.e. ITRF93), then this computation is INVALID.
+    /// # Frame warnings
+    /// + If the state is NOT in a body fixed frame (i.e. ITRF93), then this computation is INVALID.
+    /// + (Usually) no time derivative can be computed: the orbit is expected to be a body fixed frame where the `at_epoch` function will fail. Exceptions for Moon body fixed frames.
     ///
-    /// # Arguments
-    /// + `from`: ID of this new frame, must be unique if it'll be added to the Almanac. Only used to set the "from" frame of the DCM.
+    /// # UNUSED Arguments
+    /// + `from`: ID of this new frame. Only used to set the "from" frame of the DCM. -- No longer used since 0.5.3
     ///
     /// # Source
     /// From the GMAT MathSpec, page 30 section 2.6.9 and from `Calculate_RFT` in `TopocentricAxes.cpp`, this returns the
     /// rotation matrix from the topocentric frame (SEZ) to body fixed frame.
     /// In the GMAT MathSpec notation, R_{IF} is the DCM from body fixed to inertial. Similarly, R{FT} is from topocentric
     /// to body fixed.
-    pub fn dcm_from_topocentric_to_body_fixed(&self, from: NaifId) -> PhysicsResult<DCM> {
+    pub fn dcm_from_topocentric_to_body_fixed(&self, _from: NaifId) -> PhysicsResult<DCM> {
+        let rot_mat_dt = if let Ok(pre) = self.at_epoch(self.epoch - Unit::Second * 1) {
+            if let Ok(post) = self.at_epoch(self.epoch + Unit::Second * 1) {
+                let dcm_pre = pre.dcm3x3_from_topocentric_to_body_fixed()?;
+                let dcm_post = post.dcm3x3_from_topocentric_to_body_fixed()?;
+                Some(0.5 * dcm_post.rot_mat - 0.5 * dcm_pre.rot_mat)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        Ok(DCM {
+            rot_mat: self.dcm3x3_from_topocentric_to_body_fixed()?.rot_mat,
+            rot_mat_dt,
+            from: uuid_from_epoch(self.frame.orientation_id, self.epoch),
+            to: self.frame.orientation_id,
+        })
+    }
+
+    /// Builds the rotation matrix that rotates from the topocentric frame (SEZ) into the body fixed frame of this state.
+    ///
+    /// # Frame warning
+    /// If the state is NOT in a body fixed frame (i.e. ITRF93), then this computation is INVALID.
+    ///
+    /// # Source
+    /// From the GMAT MathSpec, page 30 section 2.6.9 and from `Calculate_RFT` in `TopocentricAxes.cpp`, this returns the
+    /// rotation matrix from the topocentric frame (SEZ) to body fixed frame.
+    /// In the GMAT MathSpec notation, R_{IF} is the DCM from body fixed to inertial. Similarly, R{FT} is from topocentric
+    /// to body fixed.
+    pub fn dcm3x3_from_topocentric_to_body_fixed(&self) -> PhysicsResult<DCM> {
         if (self.radius_km.x.powi(2) + self.radius_km.y.powi(2)).sqrt() < 1e-3 {
             warn!("SEZ frame ill-defined when close to the poles");
         }
@@ -357,7 +389,7 @@ impl Orbit {
         Ok(DCM {
             rot_mat,
             rot_mat_dt: None,
-            from,
+            from: uuid_from_epoch(self.frame.orientation_id, self.epoch),
             to: self.frame.orientation_id,
         })
     }
