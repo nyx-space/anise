@@ -103,15 +103,16 @@ impl Almanac {
                 action: "transforming received to SEZ",
             })?;
 
-        // Convert transmitter and receiver into the transmitter frame
+        // Convert receiver into the transmitter frame
         let rx_in_tx_frame = self.transform_to(rx, tx.frame, ab_corr)?;
 
         // Compute the range ρ in the SEZ frame for az/el
         let rho_sez = rx_sez.radius_km - tx_sez.radius_km;
-        // And in the inertial frame for range and range-rate
+        // And in the body-fixed transmitter frame for range and range-rate.
+        // While the norms of these vectors are identical, we need the exact vectors themselves for the range rate calculation.
         let rho_tx_frame = rx_in_tx_frame.radius_km - tx.radius_km;
 
-        // Compute the range-rate \dot ρ
+        // Compute the range-rate \dot ρ. Note that rx_in_tx_frame is already the relative velocity of rx wrt tx!
         let range_rate_km_s = rho_tx_frame.dot(&rx_in_tx_frame.velocity_km_s) / rho_tx_frame.norm();
 
         // Finally, compute the elevation (math is the same as declination)
@@ -129,7 +130,7 @@ impl Almanac {
             epoch: tx.epoch,
             azimuth_deg,
             elevation_deg,
-            range_km: rho_tx_frame.norm(),
+            range_km: rho_sez.norm(),
             range_rate_km_s,
             obstructed_by,
             light_time: (rho_sez.norm() / SPEED_OF_LIGHT_KM_S).seconds(),
