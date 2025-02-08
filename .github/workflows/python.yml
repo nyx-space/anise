@@ -244,9 +244,21 @@ jobs:
     if: github.ref_type == 'tag'
     needs: [linux, windows, macos-13, macos-14, sdist]
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
-          name: wheels
+          name: wheels-sdist
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheels-linux
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheels-windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheels-macos-13
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheels-macos-14
 
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
