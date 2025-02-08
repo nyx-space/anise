@@ -59,9 +59,9 @@ jobs:
             fi
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-linux
           path: anise-py/dist
 
       - name: pytest
@@ -126,9 +126,9 @@ jobs:
           working-directory: anise-py
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-windows
           path: anise-py/dist
       
       - name: pytest
@@ -161,9 +161,9 @@ jobs:
           working-directory: anise-py
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-macos-13
           path: anise-py/dist
       
       - name: pytest
@@ -196,9 +196,9 @@ jobs:
           working-directory: anise-py
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-macos-14
           path: anise-py/dist
       
       - name: pytest
@@ -233,9 +233,9 @@ jobs:
           working-directory: anise-py
 
       - name: Upload sdist
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-sdist
           path: anise-py/dist
 
   release:
