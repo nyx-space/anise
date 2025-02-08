@@ -50,7 +50,7 @@ jobs:
             - uses: dtolnay/rust-toolchain@stable
     
             - name: Set up cargo cache
-              uses: Swatinem/rust-cache@v2
+              uses: Swatinem/rust-cache@v2.7.7
     
             - name: Build Windows executable
               run: cargo build --release --bin anise-gui --workspace --exclude anise-py
