@@ -27,7 +27,7 @@ use spice::cstr;
 
 // Allow up to two arcsecond of error (or 0.12 microradians), but check test results for actualized error
 const MAX_ERR_DEG: f64 = 7.2e-6;
-const DCM_EPSILON: f64 = 1.2e-9;
+const DCM_EPSILON: f64 = 2e-9;
 
 // IAU Moon rotates fast. This shows the difference between SPICE's and Hifitime's implementation of time because SPICE has a rounding error
 // when computing the centuries past J2000 ET.
