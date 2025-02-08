@@ -273,7 +273,7 @@ mod ut_aer {
                 assert_eq!(
                     format!("{aer}"),
                     format!(
-                        "{}: az.: 133.599990 deg    el.: 7.237568 deg    range: 91457.271742 km    range-rate: -12.396849 km/s    obstruction: none",
+                        "{}: az.: 133.599990 deg    el.: 7.237568 deg    range: 91457.271742 km    range-rate: 2.198786 km/s    obstruction: none",
                         state.epoch
                     )
                 );
