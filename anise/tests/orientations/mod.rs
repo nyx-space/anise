@@ -51,7 +51,7 @@ fn test_single_bpc() {
         "wrong start epoch"
     );
     assert!(
-        (end - Epoch::from_gregorian_utc_at_midnight(2025, 5, 4)).abs() < 50.0_f64.microseconds(),
+        (end - Epoch::from_gregorian_utc_at_midnight(2023, 1, 11)).abs() < 50.0_f64.microseconds(),
         "wrong end epoch: {end:?}"
     );
 

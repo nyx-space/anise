@@ -7,7 +7,7 @@
     }
   , { crc32 = None Natural
     , uri =
-        "http://public-data.nyxspace.com/anise/ci/earth_latest_high_prec-2025-05-04.bpc"
+        "http://public-data.nyxspace.com/anise/ci/earth_latest_high_prec-2023-09-08.bpc"
     }
   ]
 }

@@ -421,7 +421,7 @@ fn validate_bpc_rotations() {
 
     // This BPC file start in 2011 and ends in 2023.
     let start = Epoch::from_gregorian_utc_at_midnight(2000, 1, 2);
-    let end = Epoch::from_gregorian_at_midnight(2025, 5, 1, TimeScale::ET);
+    let end = Epoch::from_gregorian_at_midnight(2023, 1, 1, TimeScale::ET);
     for (num, epoch) in TimeSeries::inclusive(start, end, 1.days()).enumerate() {
         let dcm = almanac.rotate(EARTH_ITRF93, EME2000, epoch).unwrap();
 
