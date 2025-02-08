@@ -1,4 +1,3 @@
--- Default Almanac
 { files =
   [ { crc32 = Some 1921414410
     , uri = "http://public-data.nyxspace.com/anise/de440s.bsp"

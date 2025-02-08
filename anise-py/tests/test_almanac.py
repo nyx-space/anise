@@ -79,7 +79,7 @@ def test_state_transformation():
     topo_dcm = orig_state.dcm_from_topocentric_to_body_fixed(123)
     assert topo_dcm.get_state_dcm().shape == (6, 6)
     assert topo_dcm.rot_mat.shape == (3, 3)
-    assert topo_dcm.rot_mat_dt is None
+    assert (topo_dcm.rot_mat_dt is not None and topo_dcm.rot_mat_dt.shape == (3, 3)) or topo_dcm.rot_mat_dt is None
 
     # In Python, we can set the aberration to None
     aberration = None

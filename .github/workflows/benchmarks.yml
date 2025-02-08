@@ -49,7 +49,7 @@ jobs:
         run: cargo bench --bench "crit_planetary_data" --workspace --exclude anise-py
 
       - name: Save benchmark artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: jpl-development-ephemerides-benchmark
-          path: target/criterion/**/report/*
+          path: target/criterion/**/report/
