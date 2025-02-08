@@ -61,7 +61,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-linux
+          name: wheels-linux-${{ matrix.target }}
           path: anise-py/dist
 
       - name: pytest
@@ -128,7 +128,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-windows
+          name: wheels-windows-${{ matrix.target }}
           path: anise-py/dist
       
       - name: pytest
@@ -244,21 +244,7 @@ jobs:
     if: github.ref_type == 'tag'
     needs: [linux, windows, macos-13, macos-14, sdist]
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: wheels-sdist
-      - uses: actions/download-artifact@v4
-        with:
-          name: wheels-linux
-      - uses: actions/download-artifact@v4
-        with:
-          name: wheels-windows
-      - uses: actions/download-artifact@v4
-        with:
-          name: wheels-macos-13
-      - uses: actions/download-artifact@v4
-        with:
-          name: wheels-macos-14
+      - uses: actions/download-artifact@v4 # No `name` to download all artifacts.
 
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
