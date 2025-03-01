@@ -86,3 +86,45 @@ Anything testable appears to be low priority.
 
 ### mod.rs
 Anything testable appears to be low priority.
+
+## anise/src/astro
+### aberration.rs
+- `pub fn new(flag: &str) -> PhysicsResult<Option<Self>>`
+- `stellar_aberration(target_pos_km: Vector3, obs_wrt_ssb_vel_km_s: Vector3, ab_corr: Aberration) -> PhysicsResult<Vector3>`
+
+### mod.rs
+- `pub fn is_valid(&self) -> bool`
+- `pub fn py_new(epoch: Epoch,azimuth_deg: f64,elevation_deg: f64,range_km: f64,range_rate_km_s: f64,obstructed_by: Option<Frame>,) -> Self`
+- `fn set_range_km(&mut self, range_km: f64) -> PyResult<()>`
+
+### occultation.rs
+- `pub fn factor(&self) -> f64`
+- `pub fn is_visible(&self) -> bool`
+- `pub fn is_obstructed(&self) -> bool`
+- `pub fn is_partial(&self) -> bool`
+
+### orbit.rs
+- `pub fn try_keplerian(sma_km: f64,ecc: f64,inc_deg: f64,raan_deg: f64,aop_deg: f64,ta_deg: f64,epoch: Epoch,frame: Frame,) -> PhysicsResult<Self>`
+- `pub fn try_keplerian_apsis_radii(r_a_km: f64,r_p_km: f64,inc_deg: f64,raan_deg: f64,aop_deg: f64,ta_deg: f64,epoch: Epoch,frame: Frame,) -> PhysicsResult<Self>`
+- `pub fn try_keplerian_mean_anomaly(sma_km: f64,ecc: f64,inc_deg: f64,raan_deg: f64,aop_deg: f64,ma_deg: f64,epoch: Epoch,frame: Frame,) -> - PhysicsResult<Self>`
+- `pub fn hvec(&self) -> PhysicsResult<Vector3>`
+- `pub fn evec(&self) -> Result<Vector3, PhysicsError>`
+- `pub fn ta_deg(&self) -> PhysicsResult<f64>`
+- `pub fn energy_km2_s2(&self) -> PhysicsResult<f64>`
+- `pub fn sma_km(&self) -> PhysicsResult<f64>`
+- `pub fn ecc(&self) -> PhysicsResult<f64>`
+- `pub fn period(&self) -> PhysicsResult<Duration>`
+- `pub fn set_sma_km(&mut self, new_sma_km: f64) -> PhysicsResult<()>`
+- `pub fn set_ecc(&mut self, new_ecc: f64) -> PhysicsResult<()>`
+- `pub fn set_inc_deg(&mut self, new_inc_deg: f64) -> PhysicsResult<()>`
+
+### orbit_geodedic.rs
+- `pub fn try_keplerian_altitude(sma_altitude_km: f64,ecc: f64,inc_deg: f64,raan_deg: f64,aop_deg: f64,ta_deg: f64,epoch: Epoch,frame: Frame,) -> PhysicsResult<Self>`
+- `pub fn try_keplerian_apsis_altitude(apo_alt_km: f64,peri_alt_km: f64,inc_deg: f64,raan_deg: f64,aop_deg: f64,ta_deg: f64,epoch: Epoch,frame: Frame,) -> PhysicsResult<Self>`
+- `pub fn try_latlongalt(latitude_deg: f64,longitude_deg: f64,height_km: f64,angular_velocity_deg_s: f64,epoch: Epoch,frame: Frame,) -> PhysicsResult<Self>`
+- `pub fn latlongalt(&self) -> PhysicsResult<(f64, f64, f64)>`
+
+### utils.rs
+- `pub fn compute_mean_to_true_anomaly_rad(ma_radians: f64, ecc: f64) -> PhysicsResult<f64>`
+
+## anise/src/almanac
