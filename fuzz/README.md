@@ -67,3 +67,22 @@ Anything testable appears to be low priority.
 ### rotation.rs
 - `rotate(&self, from_frame: Frame, to_frame: Frame, epoch: Epoch) -> Result<DCM, OrientationError>`
 - `pub fn rotate_state_to(&self, position: Vector3, velocity: Vector3, from_frame: Frame, to_frame: Frame, epoch: Epoch, distance_unit: LengthUnit, time_unit: TimeUnit) -> Result<CartesianState, OrientationError>`
+
+
+## anise/src/ephemerides
+### translate_to_parent.rs
+- `pub fn translate_to_parent(&self, source: Frame, epoch: Epoch, ) -> Result<CartesianState, EphemerisError>`
+
+### translations.rs
+- `pub fn translate(&self,target_frame: Frame,mut observer_frame: Frame,epoch: Epoch,ab_corr: Option<Aberration>,) -> Result<CartesianState, EphemerisError>`
+- `pub fn translate_geometric(&self,target_frame: Frame,observer_frame: Frame,epoch: Epoch,) -> Result<CartesianState, EphemerisError>`
+- `pub fn translate_to(&self,state: CartesianState,mut observer_frame: Frame,ab_corr: Option<Aberration>,) -> Result<CartesianState, EphemerisError>`
+- `pub fn translate_state_to(&self,position: Vector3,velocity: Vector3,from_frame: Frame,observer_frame: Frame,epoch: Epoch,ab_corr: Option<Aberration>,distance_unit: LengthUnit,time_unit: TimeUnit,) -> Result<CartesianState, EphemerisError>`
+
+### paths.rs
+- `try_find_ephemeris_root(&self) -> Result<NaifId, EphemerisError>`
+- `pub fn ephemeris_path_to_root(&self,source: Frame,epoch: Epoch,) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH]), EphemerisError>`
+- `pub fn common_ephemeris_path(&self,from_frame: Frame,to_frame: Frame,epoch: Epoch,) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH], NaifId), EphemerisError>`
+
+### mod.rs
+Anything testable appears to be low priority.
