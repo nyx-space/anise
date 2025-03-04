@@ -15,11 +15,11 @@ hifitime = { workspace = true }
 log = { workspace = true }
 bytes = { workspace = true }
 pretty_env_logger = { workspace = true }
-eframe = { version = "0.30" }
-egui = { version = "0.30" }
-egui_extras = { version = "0.30", features = ["datepicker", "http", "image"] }
+eframe = { version = "0.31" }
+egui = { version = "0.31" }
+egui_extras = { version = "0.31", features = ["datepicker", "http", "image"] }
 rfd = { version = "0.15.0" }
-egui_logger = "0.6.2"
+egui_logger = "0.6.3"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4"
