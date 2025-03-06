@@ -1,15 +1,16 @@
-#[cfg(feature = "embed_ephem")]
-use rust_embed::Embed;
+use std::{
+    fs::{self, File},
+    io::Write,
+    path::Path,
+    time::Duration,
+};
+
+// #[cfg(feature = "embed_ephem")]
+// use rust_embed::Embed;
 
 #[cfg(feature = "embed_ephem")]
-fn main() {
+fn embed_ephem() {
     // Download the files to embed at build time.
-    use std::{
-        fs::{self, File},
-        io::Write,
-        path::Path,
-        time::Duration,
-    };
     let client = reqwest::blocking::Client::builder()
         .connect_timeout(Duration::from_secs(30))
         .timeout(Duration::from_secs(30))
@@ -55,7 +56,10 @@ fn main() {
     }
 }
 
-#[cfg(not(feature = "embed_ephem"))]
 fn main() {
-    // Nothing to do if we aren't embedded files.
+    if !std::env::var("RUSTDOC").is_ok() {
+        // crates.io + docrs (docker..) fails with embed ephem feature..
+        #[cfg(feature = "embed_ephem")]
+        embed_ephem();
+    }
 }
