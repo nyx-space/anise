@@ -5,9 +5,6 @@ use std::{
     time::Duration,
 };
 
-// #[cfg(feature = "embed_ephem")]
-// use rust_embed::Embed;
-
 #[cfg(feature = "embed_ephem")]
 fn embed_ephem() {
     // Download the files to embed at build time.
