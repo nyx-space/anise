@@ -1,4 +1,7 @@
 #[cfg(feature = "embed_ephem")]
+use rust_embed::Embed;
+
+#[cfg(feature = "embed_ephem")]
 fn main() {
     // Download the files to embed at build time.
     use std::{
