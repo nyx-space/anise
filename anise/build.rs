@@ -1,12 +1,12 @@
-use std::{
-    fs::{self, File},
-    io::Write,
-    path::Path,
-    time::Duration,
-};
-
 #[cfg(feature = "embed_ephem")]
 fn embed_ephem() {
+    use std::{
+        fs::{self, File},
+        io::Write,
+        path::Path,
+        time::Duration,
+    };
+
     // Download the files to embed at build time.
     let client = reqwest::blocking::Client::builder()
         .connect_timeout(Duration::from_secs(30))
@@ -54,7 +54,7 @@ fn embed_ephem() {
 }
 
 fn main() {
-    if !std::env::var("RUSTDOC").is_ok() {
+    if std::env::var("RUSTDOC").is_err() {
         // crates.io + docrs (docker..) fails with embed ephem feature..
         #[cfg(feature = "embed_ephem")]
         embed_ephem();
