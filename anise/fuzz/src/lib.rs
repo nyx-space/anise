@@ -2,6 +2,7 @@ use anise::naif::kpl::{Parameter, KPLValue};
 use anise::naif::kpl::fk::FKItem;
 use anise::naif::kpl::parser::Assignment;
 use anise::naif::kpl::tpc::TPCItem;
+use anise::math::rotation::DCM;
 use libfuzzer_sys::arbitrary;
 use std::collections::HashMap;
 
@@ -130,6 +131,25 @@ impl From<ArbitraryTPCItem> for TPCItem {
         Self {
             body_id: val.body_id,
             data
+        }
+    }
+}
+
+#[derive(arbitrary::Arbitrary, Debug)]
+pub struct ArbitraryDCM {
+    pub rot_mat: [[f64; 3]; 3],
+    pub from: i32,
+    pub to: i32,
+    pub rot_mat_dt: Option<[[f64; 3]; 3]>,
+}
+
+impl From<ArbitraryDCM> for DCM {
+    fn from(val: ArbitraryDCM) -> Self {
+        Self {
+            rot_mat: val.rot_mat.into(),
+            from: val.from,
+            to: val.to,
+            rot_mat_dt: val.rot_mat_dt.map(|m| m.into()),
         }
     }
 }

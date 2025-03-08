@@ -121,3 +121,10 @@ path = "fuzz_targets/convert_tpc_items.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "rotation_dcm_to_quaternion"
+path = "fuzz_targets/rotation_dcm_to_quaternion.rs"
+test = false
+doc = false
+bench = false

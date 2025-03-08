@@ -1,3 +1,31 @@
+# Cargo Fuzz
+
+cargo-fuzz is a development focused subcommand for fuzz testing with libFuzzer. For more details, refer to https://github.com/rust-fuzz/cargo-fuzz.
+
+
+## Setup
+
+`cargo-fuzz` requires a nightly version of the Rust compiler, as it is dependent on `libfuzzer-sys`. Please consider how this can affect your system before continuing.
+
+### Installation
+
+Start by installing by running `cargo install cargo-fuzz`.
+
+### Setup Nightly Compiler
+
+Install the nightly toolchain with `rustup toolchain install nightly`.
+
+Set the nightly toolcahin as the default for _your current working directory_ with `rustup override set nightly`.
+
+
+## Running
+
+To run the fuzz tests, simply run `cargo fuzz run <fuzz-test-name>`.
+
+If you want to limit the total runtime you can append a `-- -max_total_time=<seconds>` to the run command. You'll want to a `cargo fuzz build <fuzz-test-name>` first to avoid it impacting the max time.
+
+
+# Legacy Info - To be Deleted (frames, math, and orientation)
 ## anise/src/frames
 ### frame.rs
 - `from_name(center: &str, ref_frame: &str) -> Result<Self, AlmanacError>`
