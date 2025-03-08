@@ -13,6 +13,10 @@ libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
 [dependencies.anise]
 path = ".."
 
+[lib]
+name = "anise_fuzz"
+path = "src/lib.rs"
+
 [[bin]]
 name = "fuzz_metadata"
 path = "fuzz_targets/fuzz_metadata.rs"
