@@ -110,3 +110,10 @@ path = "fuzz_targets/convert_fk_items.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "convert_tpc_items"
+path = "fuzz_targets/convert_tpc_items.rs"
+test = false
+doc = false
+bench = false
