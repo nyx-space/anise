@@ -89,3 +89,17 @@ path = "fuzz_targets/fkitem_parse.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "kpl_parse_bytes_fkitem"
+path = "fuzz_targets/kpl_parse_bytes_fkitem.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "kpl_parse_bytes_tpcitem"
+path = "fuzz_targets/kpl_parse_bytes_tpcitem.rs"
+test = false
+doc = false
+bench = false
