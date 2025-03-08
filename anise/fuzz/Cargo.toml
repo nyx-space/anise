@@ -40,3 +40,31 @@ path = "fuzz_targets/euler_parameter_dataset.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "parse_spk"
+path = "fuzz_targets/parse_spk.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_bpc"
+path = "fuzz_targets/parse_bpc.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_mut_bpc"
+path = "fuzz_targets/parse_mut_bpc.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_mut_spk"
+path = "fuzz_targets/parse_mut_spk.rs"
+test = false
+doc = false
+bench = false
