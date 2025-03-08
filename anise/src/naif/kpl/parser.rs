@@ -322,10 +322,14 @@ pub fn convert_fk<P: AsRef<Path> + fmt::Debug>(
     fk_file_path: P,
     show_comments: bool,
 ) -> Result<EulerParameterDataSet, DataSetError> {
-    let mut dataset = EulerParameterDataSet::default();
-
     let assignments = parse_file::<_, FKItem>(fk_file_path, show_comments)?;
+    convert_fk_items(assignments)
+}
 
+pub fn convert_fk_items(
+    assignments: HashMap<i32, FKItem>,
+) -> Result<EulerParameterDataSet, DataSetError> {
+    let mut dataset = EulerParameterDataSet::default();
     let mut ids_to_update = Vec::new();
 
     // Add all of the data into the data set
