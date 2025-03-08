@@ -8,7 +8,7 @@ edition = "2021"
 cargo-fuzz = true
 
 [dependencies]
-libfuzzer-sys = "0.4"
+libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
 
 [dependencies.anise]
 path = ".."
@@ -65,6 +65,20 @@ bench = false
 [[bin]]
 name = "parse_mut_spk"
 path = "fuzz_targets/parse_mut_spk.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fkitem_extract_key"
+path = "fuzz_targets/fkitem_extract_key.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tpcitem_extract_key"
+path = "fuzz_targets/tpcitem_extract_key.rs"
 test = false
 doc = false
 bench = false
