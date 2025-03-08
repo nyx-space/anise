@@ -82,3 +82,10 @@ path = "fuzz_targets/tpcitem_extract_key.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "fkitem_parse"
+path = "fuzz_targets/fkitem_parse.rs"
+test = false
+doc = false
+bench = false
