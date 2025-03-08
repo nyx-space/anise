@@ -150,10 +150,16 @@ pub fn convert_tpc<P: AsRef<Path> + fmt::Debug>(
     pck: P,
     gm: P,
 ) -> Result<PlanetaryDataSet, DataSetError> {
-    let mut dataset = PlanetaryDataSet::default();
-
     let gravity_data = parse_file::<_, TPCItem>(gm, false)?;
-    let mut planetary_data = parse_file::<_, TPCItem>(pck, false)?;
+    let planetary_data = parse_file::<_, TPCItem>(pck, false)?;
+    convert_tpc_items(planetary_data, gravity_data)
+}
+
+pub fn convert_tpc_items(
+    mut planetary_data: HashMap<i32, TPCItem>,
+    gravity_data: HashMap<i32, TPCItem>,
+) -> Result<PlanetaryDataSet, DataSetError> {
+    let mut dataset = PlanetaryDataSet::default();
 
     for (key, value) in gravity_data {
         if let Some(planet_data) = planetary_data.get_mut(&key) {
