@@ -1,13 +1,15 @@
-#[cfg(feature = "embed_ephem")]
-fn embed_ephem() {
+#[cfg(doc)]
+fn main() {}
+
+#[cfg(not(doc))]
+fn main() {
+    // Download the files to embed at build time.
     use std::{
         fs::{self, File},
         io::Write,
         path::Path,
         time::Duration,
     };
-
-    // Download the files to embed at build time.
     let client = reqwest::blocking::Client::builder()
         .connect_timeout(Duration::from_secs(30))
         .timeout(Duration::from_secs(30))
@@ -50,13 +52,5 @@ fn embed_ephem() {
             File::create(&dest_path).expect(&format!("could not create the data path {dest_path}"));
         file.write_all(&bytes)
             .expect(&format!("could not write asset data to {dest_path}"));
-    }
-}
-
-fn main() {
-    if std::env::var("RUSTDOC").is_err() {
-        // crates.io + docrs (docker..) fails with embed ephem feature..
-        #[cfg(feature = "embed_ephem")]
-        embed_ephem();
     }
 }

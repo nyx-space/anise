@@ -8,10 +8,10 @@ use rust_embed::Embed;
 use snafu::ResultExt;
 
 #[derive(Embed)]
-#[cfg_attr(not(docsrs), folder = "$CARGO_MANIFEST_DIR/../data/")]
-#[cfg_attr(not(docsrs), include = "de440s.bsp")]
-#[cfg_attr(not(docsrs), include = "pck11.pca")]
-#[cfg_attr(docsrs, folder = "$OUT_DIR")]
+#[cfg_attr(folder = "$CARGO_MANIFEST_DIR/../data/")]
+#[cfg_attr(include = "de440s.bsp")]
+#[cfg_attr(include = "pck11.pca")]
+#[cfg_attr(folder = "$OUT_DIR")]
 struct AstroData;
 
 impl Almanac {
@@ -23,6 +23,7 @@ impl Almanac {
         let pck11 = AstroData::get("pck11.pca").ok_or(AlmanacError::GenericError {
             err: "could not find pck11.pca in embedded files".to_string(),
         })?;
+
         let almanac = Almanac {
             planetary_data: PlanetaryDataSet::try_from_bytes(pck11.data.as_ref()).context(
                 TLDataSetSnafu {
