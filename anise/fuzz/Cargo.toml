@@ -103,3 +103,10 @@ path = "fuzz_targets/kpl_parse_bytes_tpcitem.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "convert_fk_items"
+path = "fuzz_targets/convert_fk_items.rs"
+test = false
+doc = false
+bench = false
