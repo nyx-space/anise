@@ -1,8 +1,13 @@
-#[cfg(doc)]
-fn main() {}
+fn main() {
+    #[cfg(not(doc))]
+    #[cfg(feature = "embed_ephem")]
+    embed_ephem();
+}
 
 #[cfg(not(doc))]
-fn main() {
+#[cfg(feature = "embed_ephem")]
+fn embed_ephem() {
+
     // Download the files to embed at build time.
     use std::{
         fs::{self, File},
