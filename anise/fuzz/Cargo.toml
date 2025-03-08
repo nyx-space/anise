@@ -19,3 +19,24 @@ path = "fuzz_targets/fuzz_metadata.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "spacecraft_dataset"
+path = "fuzz_targets/spacecraft_dataset.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "planetary_dataset"
+path = "fuzz_targets/planetary_dataset.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "euler_parameter_dataset"
+path = "fuzz_targets/euler_parameter_dataset.rs"
+test = false
+doc = false
+bench = false
