@@ -86,8 +86,14 @@ pub fn parse_file<P: AsRef<Path> + fmt::Debug, I: KPLItem>(
 ) -> Result<HashMap<i32, I>, DataSetError> {
     let file =
         File::open(&file_path).unwrap_or_else(|_| panic!("Failed to open file {file_path:?}"));
-    let reader = BufReader::new(file);
+    let mut reader = BufReader::new(file);
+    parse_bytes(&mut reader, show_comments)
+}
 
+pub fn parse_bytes<R: BufRead, I: KPLItem>(
+    reader: &mut R,
+    show_comments: bool,
+) -> Result<HashMap<i32, I>, DataSetError> {
     let mut block_type = BlockType::Comment;
     let mut assignments = vec![];
 
