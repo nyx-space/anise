@@ -1,20 +1,11 @@
 #![no_main]
-use anise::naif::kpl::{KPLItem, fk::FKItem, parser::Assignment};
+use anise::naif::kpl::{KPLItem, fk::FKItem};
 
 use libfuzzer_sys::fuzz_target;
-use libfuzzer_sys::arbitrary;
 
-#[derive(arbitrary::Arbitrary, Debug)]
-struct ArbitraryAssignment {
-    pub keyword: String,
-    pub value: String,
-}
+use anise_fuzz::ArbitraryAssignment;
 
 fuzz_target!(|data: ArbitraryAssignment| {
-    let assignment = Assignment {
-        keyword: data.keyword,
-        value: data.value,
-    };
-
+    let assignment = data.into();
     let _ = FKItem::extract_key(&assignment);
 });
