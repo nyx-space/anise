@@ -1,0 +1,123 @@
+[package]
+name = "anise-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
+
+[dependencies.anise]
+path = ".."
+
+[lib]
+name = "anise_fuzz"
+path = "src/lib.rs"
+
+[[bin]]
+name = "fuzz_metadata"
+path = "fuzz_targets/fuzz_metadata.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "spacecraft_dataset"
+path = "fuzz_targets/spacecraft_dataset.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "planetary_dataset"
+path = "fuzz_targets/planetary_dataset.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "euler_parameter_dataset"
+path = "fuzz_targets/euler_parameter_dataset.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_spk"
+path = "fuzz_targets/parse_spk.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_bpc"
+path = "fuzz_targets/parse_bpc.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_mut_bpc"
+path = "fuzz_targets/parse_mut_bpc.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_mut_spk"
+path = "fuzz_targets/parse_mut_spk.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fkitem_extract_key"
+path = "fuzz_targets/fkitem_extract_key.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tpcitem_extract_key"
+path = "fuzz_targets/tpcitem_extract_key.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fkitem_parse"
+path = "fuzz_targets/fkitem_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "kpl_parse_bytes_fkitem"
+path = "fuzz_targets/kpl_parse_bytes_fkitem.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "kpl_parse_bytes_tpcitem"
+path = "fuzz_targets/kpl_parse_bytes_tpcitem.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "convert_fk_items"
+path = "fuzz_targets/convert_fk_items.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "convert_tpc_items"
+path = "fuzz_targets/convert_tpc_items.rs"
+test = false
+doc = false
+bench = false
