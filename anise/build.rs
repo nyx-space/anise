@@ -7,7 +7,6 @@ fn main() {
 #[cfg(not(doc))]
 #[cfg(feature = "embed_ephem")]
 fn embed_ephem() {
-
     // Download the files to embed at build time.
     use std::{
         fs::{self, File},
