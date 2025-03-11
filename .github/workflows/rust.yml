@@ -240,15 +240,8 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Build documentation with read-only data folder
-        run: |
-          docker run --rm \
-            -v "${{ github.workspace }}:/source" \
-            -v "${{ github.workspace }}/data:/source/data:ro" \
-            -w /source \
-            -e RUSTDOC=1 \
-            rust:latest \
-            bash -c 'cd anise && cargo doc --no-deps'
+      - name: Build documentation checking no git diff
+        run: cargo doc --no-deps --features embed_ephem && git status --porcelain
 
   release:
     name: Release
