@@ -9,6 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
+hifitime = { workspace = true }
 
 [dependencies.anise]
 path = ".."
@@ -125,6 +126,13 @@ bench = false
 [[bin]]
 name = "rotation_dcm_to_quaternion"
 path = "fuzz_targets/rotation_dcm_to_quaternion.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "orientations_paths_path"
+path = "fuzz_targets/orientations_paths_path.rs"
 test = false
 doc = false
 bench = false

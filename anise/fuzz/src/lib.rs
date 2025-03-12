@@ -3,7 +3,9 @@ use anise::naif::kpl::fk::FKItem;
 use anise::naif::kpl::parser::Assignment;
 use anise::naif::kpl::tpc::TPCItem;
 use anise::math::rotation::DCM;
+use anise::frames::Frame;
 use libfuzzer_sys::arbitrary;
+use hifitime::Epoch;
 use std::collections::HashMap;
 
 #[derive(arbitrary::Arbitrary, Debug)]
@@ -150,6 +152,34 @@ impl From<ArbitraryDCM> for DCM {
             from: val.from,
             to: val.to,
             rot_mat_dt: val.rot_mat_dt.map(|m| m.into()),
+        }
+    }
+}
+
+#[derive(arbitrary::Arbitrary, Debug)]
+pub struct ArbitraryEpoch {
+    pub seconds_since_1900_utc: f64,
+}
+
+impl From<ArbitraryEpoch> for Epoch {
+    fn from(val: ArbitraryEpoch) -> Self {
+        Epoch::from_utc_seconds(val.seconds_since_1900_utc)
+    }
+}
+
+#[derive(arbitrary::Arbitrary, Debug)]
+pub struct ArbitraryFrame {
+    pub ephemeris_id: i32,
+    pub orientation_id: i32,
+}
+
+impl From<ArbitraryFrame> for Frame {
+    fn from(val: ArbitraryFrame) -> Self {
+        Self {
+            ephemeris_id: val.ephemeris_id,
+            orientation_id: val.orientation_id,
+            mu_km3_s2: None,
+            shape: None,
         }
     }
 }
