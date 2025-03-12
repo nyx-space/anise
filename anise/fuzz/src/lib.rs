@@ -2,11 +2,15 @@ use anise::naif::kpl::{Parameter, KPLValue};
 use anise::naif::kpl::fk::FKItem;
 use anise::naif::kpl::parser::Assignment;
 use anise::naif::kpl::tpc::TPCItem;
+use anise::naif::daf::daf::DAF;
+use anise::naif::pck::BPCSummaryRecord;
 use anise::math::rotation::DCM;
 use anise::frames::Frame;
 use libfuzzer_sys::arbitrary;
 use hifitime::Epoch;
+use bytes::Bytes;
 use std::collections::HashMap;
+use std::marker::PhantomData;
 
 #[derive(arbitrary::Arbitrary, Debug)]
 pub struct ArbitraryAssignment {
@@ -180,6 +184,22 @@ impl From<ArbitraryFrame> for Frame {
             orientation_id: val.orientation_id,
             mu_km3_s2: None,
             shape: None,
+        }
+    }
+}
+
+#[derive(arbitrary::Arbitrary, Debug)]
+pub struct ArbitraryBPC {
+    pub bytes: Vec<u8>,
+    pub crc32_checksum: u32,
+}
+
+impl From<ArbitraryBPC> for DAF<BPCSummaryRecord> {
+    fn from(val: ArbitraryBPC) -> Self {
+        DAF {
+            bytes: Bytes::from(val.bytes),
+            crc32_checksum: val.crc32_checksum,
+            _daf_type: PhantomData,
         }
     }
 }
