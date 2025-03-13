@@ -1,12 +1,5 @@
-fn main() {
-    #[cfg(not(doc))]
-    #[cfg(feature = "embed_ephem")]
-    embed_ephem();
-}
-
-#[cfg(not(doc))]
 #[cfg(feature = "embed_ephem")]
-fn embed_ephem() {
+fn main() {
     // Download the files to embed at build time.
     use std::{
         fs::{self, File},
@@ -34,26 +27,32 @@ fn embed_ephem() {
     let data_path = Path::new(&env!("CARGO_MANIFEST_DIR")).join("../data");
 
     // Create the directory if it doesn't exist
-    if !data_path.exists() && fs::create_dir_all(&data_path).is_err() {
-        eprintln!("EMBEDDED EPHEM UNAVAILABLE: failed to create directory {data_path:?}");
-        // Try nothing else.
-        return;
+    if !data_path.exists() {
+        if fs::create_dir_all(&data_path).is_err() {
+            eprintln!("EMBEDDED EPHEM UNAVAILABLE: failed to create directory {data_path:?}");
+            // Try nothing else.
+            return;
+        }
     }
 
     for (url, dest_path) in embedded_files {
         let resp = client
             .get(url)
             .send()
-            .unwrap_or_else(|e| panic!("could not download {url}: {}", e));
+            .expect(&format!("could not download {url}"));
 
         let bytes = resp
             .bytes()
-            .unwrap_or_else(|e| panic!("could not read bytes from {url}: {}", e));
+            .expect(&format!("could not read bytes from {url}"));
 
-        let mut file = File::create(&dest_path)
-            .unwrap_or_else(|e| panic!("could not create the data path {dest_path}: {}", e));
-
+        let mut file =
+            File::create(&dest_path).expect(&format!("could not create the data path {dest_path}"));
         file.write_all(&bytes)
-            .unwrap_or_else(|e| panic!("could not write asset to {dest_path}: {}", e));
+            .expect(&format!("could not write asset data to {dest_path}"));
     }
+}
+
+#[cfg(not(feature = "embed_ephem"))]
+fn main() {
+    // Nothing to do if we aren't embedded files.
 }
