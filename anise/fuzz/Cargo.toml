@@ -9,6 +9,8 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
+bytes = "1.1"
+hifitime = "3.7.0"
 
 [dependencies.anise]
 path = ".."
@@ -118,6 +120,20 @@ bench = false
 [[bin]]
 name = "convert_tpc_items"
 path = "fuzz_targets/convert_tpc_items.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "load_from_bytes"
+path = "fuzz_targets/load_from_bytes.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "describe"
+path = "fuzz_targets/describe.rs"
 test = false
 doc = false
 bench = false
