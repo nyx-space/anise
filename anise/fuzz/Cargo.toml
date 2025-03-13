@@ -144,3 +144,10 @@ path = "fuzz_targets/orientations_paths_root.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "orientations_rotations_rotate"
+path = "fuzz_targets/orientations_rotations_rotate.rs"
+test = false
+doc = false
+bench = false
