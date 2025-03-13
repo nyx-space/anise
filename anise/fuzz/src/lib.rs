@@ -5,6 +5,7 @@ use anise::naif::kpl::tpc::TPCItem;
 use anise::naif::daf::daf::DAF;
 use anise::naif::pck::BPCSummaryRecord;
 use anise::math::rotation::DCM;
+use anise::math::rotation::MRP;
 use anise::math::rotation::Quaternion;
 use anise::math::Vector3;
 use anise::frames::Frame;
@@ -232,5 +233,26 @@ pub struct ArbitraryVector3 {
 impl From<ArbitraryVector3> for Vector3 {
     fn from(val: ArbitraryVector3) -> Self {
         Vector3::new(val.x, val.y, val.z)
+    }
+}
+
+#[derive(arbitrary::Arbitrary, Debug)]
+pub struct ArbitraryMRP {
+    pub s0: f64,
+    pub s1: f64,
+    pub s2: f64,
+    pub from: i32,
+    pub to: i32,
+}
+
+impl From<ArbitraryMRP> for MRP {
+    fn from(val: ArbitraryMRP) -> Self {
+        MRP {
+            s0: val.s0,
+            s1: val.s1,
+            s2: val.s2,
+            from: val.from,
+            to: val.to,
+        }
     }
 }

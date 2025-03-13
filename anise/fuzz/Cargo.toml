@@ -165,3 +165,10 @@ path = "fuzz_targets/rotation_quaternion_mul.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "rotation_mrp_normalize"
+path = "fuzz_targets/rotation_mrp_normalize.rs"
+test = false
+doc = false
+bench = false
