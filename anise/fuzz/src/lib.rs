@@ -5,6 +5,8 @@ use anise::naif::kpl::tpc::TPCItem;
 use anise::naif::daf::daf::DAF;
 use anise::naif::pck::BPCSummaryRecord;
 use anise::math::rotation::DCM;
+use anise::math::rotation::Quaternion;
+use anise::math::Vector3;
 use anise::frames::Frame;
 use libfuzzer_sys::arbitrary;
 use hifitime::Epoch;
@@ -201,5 +203,34 @@ impl From<ArbitraryBPC> for DAF<BPCSummaryRecord> {
             crc32_checksum: val.crc32_checksum,
             _daf_type: PhantomData,
         }
+    }
+}
+
+#[derive(arbitrary::Arbitrary, Debug)]
+pub struct ArbitraryQuaternion {
+    pub w: f64,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+    pub from: i32,
+    pub to: i32,
+}
+
+impl From<ArbitraryQuaternion> for Quaternion {
+    fn from(val: ArbitraryQuaternion) -> Self {
+        Quaternion::new(val.w, val.x, val.y, val.z, val.from, val.to)
+    }
+}
+
+#[derive(arbitrary::Arbitrary, Debug)]
+pub struct ArbitraryVector3 {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+
+impl From<ArbitraryVector3> for Vector3 {
+    fn from(val: ArbitraryVector3) -> Self {
+        Vector3::new(val.x, val.y, val.z)
     }
 }

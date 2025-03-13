@@ -158,3 +158,10 @@ path = "fuzz_targets/rotation_dcm_partialeq.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "rotation_quaternion_mul"
+path = "fuzz_targets/rotation_quaternion_mul.rs"
+test = false
+doc = false
+bench = false
