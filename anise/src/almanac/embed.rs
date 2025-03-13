@@ -8,6 +8,7 @@ use rust_embed::Embed;
 use snafu::ResultExt;
 
 #[derive(Embed)]
+#[cfg(not(doc))]
 #[cfg_attr(folder = "$CARGO_MANIFEST_DIR/../data/")]
 #[cfg_attr(include = "de440s.bsp")]
 #[cfg_attr(include = "pck11.pca")]
