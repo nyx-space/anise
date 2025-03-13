@@ -151,3 +151,10 @@ path = "fuzz_targets/orientations_rotations_rotate.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "rotation_dcm_partialeq"
+path = "fuzz_targets/rotation_dcm_partialeq.rs"
+test = false
+doc = false
+bench = false
