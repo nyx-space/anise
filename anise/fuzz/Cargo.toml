@@ -172,3 +172,10 @@ path = "fuzz_targets/rotation_mrp_normalize.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "rotation_mrp_partialeq"
+path = "fuzz_targets/rotation_mrp_partialeq.rs"
+test = false
+doc = false
+bench = false
