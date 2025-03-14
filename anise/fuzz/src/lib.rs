@@ -2,8 +2,18 @@ use anise::naif::kpl::{Parameter, KPLValue};
 use anise::naif::kpl::fk::FKItem;
 use anise::naif::kpl::parser::Assignment;
 use anise::naif::kpl::tpc::TPCItem;
+use anise::naif::daf::daf::DAF;
+use anise::naif::pck::BPCSummaryRecord;
+use anise::math::rotation::DCM;
+use anise::math::rotation::MRP;
+use anise::math::rotation::Quaternion;
+use anise::math::Vector3;
+use anise::frames::Frame;
 use libfuzzer_sys::arbitrary;
+use hifitime::Epoch;
+use bytes::Bytes;
 use std::collections::HashMap;
+use std::marker::PhantomData;
 
 #[derive(arbitrary::Arbitrary, Debug)]
 pub struct ArbitraryAssignment {
@@ -134,4 +144,115 @@ impl From<ArbitraryTPCItem> for TPCItem {
     }
 }
 
+#[derive(arbitrary::Arbitrary, Debug)]
+pub struct ArbitraryDCM {
+    pub rot_mat: [[f64; 3]; 3],
+    pub from: i32,
+    pub to: i32,
+    pub rot_mat_dt: Option<[[f64; 3]; 3]>,
+}
 
+impl From<ArbitraryDCM> for DCM {
+    fn from(val: ArbitraryDCM) -> Self {
+        Self {
+            rot_mat: val.rot_mat.into(),
+            from: val.from,
+            to: val.to,
+            rot_mat_dt: val.rot_mat_dt.map(|m| m.into()),
+        }
+    }
+}
+
+#[derive(arbitrary::Arbitrary, Debug)]
+pub struct ArbitraryEpoch {
+    pub seconds_since_1900_utc: f64,
+}
+
+impl From<ArbitraryEpoch> for Epoch {
+    fn from(val: ArbitraryEpoch) -> Self {
+        Epoch::from_utc_seconds(val.seconds_since_1900_utc)
+    }
+}
+
+#[derive(arbitrary::Arbitrary, Debug)]
+pub struct ArbitraryFrame {
+    pub ephemeris_id: i32,
+    pub orientation_id: i32,
+}
+
+impl From<ArbitraryFrame> for Frame {
+    fn from(val: ArbitraryFrame) -> Self {
+        Self {
+            ephemeris_id: val.ephemeris_id,
+            orientation_id: val.orientation_id,
+            mu_km3_s2: None,
+            shape: None,
+        }
+    }
+}
+
+#[derive(arbitrary::Arbitrary, Debug)]
+pub struct ArbitraryBPC {
+    pub bytes: Vec<u8>,
+    pub crc32_checksum: u32,
+}
+
+impl From<ArbitraryBPC> for DAF<BPCSummaryRecord> {
+    fn from(val: ArbitraryBPC) -> Self {
+        DAF {
+            bytes: Bytes::from(val.bytes),
+            crc32_checksum: val.crc32_checksum,
+            _daf_type: PhantomData,
+        }
+    }
+}
+
+#[derive(arbitrary::Arbitrary, Debug)]
+pub struct ArbitraryQuaternion {
+    pub w: f64,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+    pub from: i32,
+    pub to: i32,
+}
+
+impl From<ArbitraryQuaternion> for Quaternion {
+    fn from(val: ArbitraryQuaternion) -> Self {
+        Quaternion::new(val.w, val.x, val.y, val.z, val.from, val.to)
+    }
+}
+
+#[derive(arbitrary::Arbitrary, Debug)]
+pub struct ArbitraryVector3 {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+
+impl From<ArbitraryVector3> for Vector3 {
+    fn from(val: ArbitraryVector3) -> Self {
+        Vector3::new(val.x, val.y, val.z)
+    }
+}
+
+#[derive(arbitrary::Arbitrary, Debug)]
+pub struct ArbitraryMRP {
+    pub s0: f64,
+    pub s1: f64,
+    pub s2: f64,
+    pub from: i32,
+    pub to: i32,
+}
+
+impl From<ArbitraryMRP> for MRP {
+    fn from(val: ArbitraryMRP) -> Self {
+        MRP {
+            s0: val.s0,
+            s1: val.s1,
+            s2: val.s2,
+            from: val.from,
+            to: val.to,
+        }
+    }
+}

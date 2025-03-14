@@ -9,8 +9,8 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
-bytes = "1.1"
-hifitime = "3.7.0"
+hifitime = { workspace = true }
+bytes = "1.0"
 
 [dependencies.anise]
 path = ".."
@@ -125,9 +125,65 @@ doc = false
 bench = false
 
 [[bin]]
+<<<<<<< HEAD
 name = "load_from_bytes"
 path = "fuzz_targets/load_from_bytes.rs"
+=======
+name = "rotation_dcm_to_quaternion"
+path = "fuzz_targets/rotation_dcm_to_quaternion.rs"
+>>>>>>> stephan/fuzz
 test = false
 doc = false
 bench = false
 
+<<<<<<< HEAD
+=======
+[[bin]]
+name = "orientations_paths_path"
+path = "fuzz_targets/orientations_paths_path.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "orientations_paths_root"
+path = "fuzz_targets/orientations_paths_root.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "orientations_rotations_rotate"
+path = "fuzz_targets/orientations_rotations_rotate.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rotation_dcm_partialeq"
+path = "fuzz_targets/rotation_dcm_partialeq.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rotation_quaternion_mul"
+path = "fuzz_targets/rotation_quaternion_mul.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rotation_mrp_normalize"
+path = "fuzz_targets/rotation_mrp_normalize.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rotation_mrp_partialeq"
+path = "fuzz_targets/rotation_mrp_partialeq.rs"
+test = false
+doc = false
+bench = false
+>>>>>>> stephan/fuzz
