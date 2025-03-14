@@ -131,9 +131,3 @@ test = false
 doc = false
 bench = false
 
-[[bin]]
-name = "describe"
-path = "fuzz_targets/describe.rs"
-test = false
-doc = false
-bench = false
