@@ -4,6 +4,7 @@ use anise::naif::kpl::parser::Assignment;
 use anise::naif::kpl::tpc::TPCItem;
 use anise::naif::daf::daf::DAF;
 use anise::naif::pck::BPCSummaryRecord;
+use anise::naif::spk::SPKSummaryRecord;
 use anise::math::rotation::DCM;
 use anise::math::rotation::MRP;
 use anise::math::rotation::Quaternion;
@@ -190,7 +191,7 @@ impl From<ArbitraryFrame> for Frame {
         }
     }
 }
-
+/* Stephan's arbitraryBPC
 #[derive(arbitrary::Arbitrary, Debug)]
 pub struct ArbitraryBPC {
     pub bytes: Vec<u8>,
@@ -205,6 +206,111 @@ impl From<ArbitraryBPC> for DAF<BPCSummaryRecord> {
             _daf_type: PhantomData,
         }
     }
+}
+*/
+
+#[derive(Arbitrary, Debug)]
+pub struct ArbitraryBPCSummaryRecord {
+    pub start_epoch_et_s: f64,
+    pub end_epoch_et_s: f64,
+    pub frame_id: i32,
+    pub inertial_frame_id: i32,
+    pub data_type_i: i32,
+    pub start_idx: i32,
+    pub end_idx: i32,
+    pub unused: i32,
+}
+
+impl From<ArbitraryBPCSummaryRecord> for BPCSummaryRecord {
+    fn from(rec: ArbitraryBPCSummaryRecord) -> Self {
+        BPCSummaryRecord {
+            start_epoch_et_s: rec.start_epoch_et_s,
+            end_epoch_et_s: rec.end_epoch_et_s,
+            frame_id: rec.frame_id,
+            inertial_frame_id: rec.inertial_frame_id,
+            data_type_i: rec.data_type_i,
+            start_idx: rec.start_idx,
+            end_idx: rec.end_idx,
+            unused: rec.unused,
+        }
+    }
+}
+
+#[derive(Arbitrary, Debug)]
+pub struct ArbitraryBPC {
+    #[arbitrary(with = arbitrary_bpc)]
+    pub inner: DAF<BPCSummaryRecord>,
+}
+
+fn arbitrary_bpc(u: &mut Unstructured) -> arbitrary::Result<DAF<BPCSummaryRecord>> {
+    // Generate random number of summary records (0-MAX_LOADED_BPCS for safety)
+    let num_records = u.int_in_range(0..=7)?;
+    let mut summaries = Vec::with_capacity(num_records);
+    
+    // Generate arbitrary BPC summary records
+    for _ in 0..num_records {
+        summaries.push(ArbitraryBPCSummaryRecord::arbitrary(u)?.into());
+    }
+
+    // Generate random data buffer, max 4kb?
+    let data_size = u.int_in_range(0..=4096)?;
+    let mut data = vec![0u8; data_size];
+    u.fill_buffer(&mut data)?;
+
+    // Create BPC with potentially invalid data to test error paths
+    Ok(DAF::<BPCSummaryRecord>::new(summaries, data.into()))
+}
+
+#[derive(Arbitrary, Debug)]
+pub struct ArbitrarySPKSummaryRecord {
+    pub start_epoch_et_s: f64,
+    pub end_epoch_et_s: f64,
+    pub target_id: i32,
+    pub center_id: i32,
+    pub frame_id: i32,
+    pub data_type_i: i32,
+    pub start_idx: i32,
+    pub end_idx: i32, 
+}
+
+impl From<ArbitrarySPKSummaryRecord> for SPKSummaryRecord {
+    fn from(rec: ArbitrarySPKSummaryRecord) -> Self {
+        SPKSummaryRecord {
+            start_epoch_et_s: rec.start_epoch_et_s,
+            end_epoch_et_s: rec.end_epoch_et_s,
+            target_id: rec.target_id,
+            center_id: rec.center_id,
+            frame_id: rec.frame_id,
+            data_type_i: rec.data_type_i,
+            start_idx: rec.start_idx,
+            end_idx: rec.end_idx,
+        }
+    }
+}
+
+#[derive(Arbitrary, Debug)]
+pub struct ArbitrarySPK {
+    #[arbitrary(with = arbitrary_spk)]
+    pub inner: DAF<SPKSummaryRecord>,
+}
+
+fn arbitrary_spk(u: &mut Unstructured) -> arbitrary::Result<DAF<SPKSummaryRecord>> {
+    // Generate random number of summary records (0-MAX_LOADED_SPKS for safety)
+    let num_records = u.int_in_range(0..=31)?;
+    let mut summaries = Vec::with_capacity(num_records);
+    
+    // Generate arbitrary summary records
+    for _ in 0..num_records {
+        summaries.push(ArbitrarySPKSummaryRecord::arbitrary(u)?.into());
+    }
+
+    // Generate random data buffer, max 4kb?
+    let data_size = u.int_in_range(0..=4096)?;
+    let mut data = vec![0u8; data_size];
+    u.fill_buffer(&mut data)?;
+
+    // Create SPK with potentially invalid data to test error paths
+    Ok(DAF::<SPKSummaryRecord>::new(summaries, data.into()))
 }
 
 #[derive(arbitrary::Arbitrary, Debug)]
@@ -256,3 +362,67 @@ impl From<ArbitraryMRP> for MRP {
         }
     }
 }
+
+#[derive(arbitrary::Arbitrary, Debug)]
+pub struct ArbitrarySPK {
+    #[arbitrary(with = arbitrary_spk_bytes)]
+    bytes: Vec<u8>,
+}
+
+fn arbitrary_spk_bytes(u: &mut arbitrary::Unstructured) -> arbitrary::Result<Vec<u8>> {
+    let mut bytes = Vec::new();
+    
+    // Generate valid SPK header
+    let file_record = FileRecord {
+        identification: "SPK".to_string(),
+        format_version: *u.choose(&[1, 2])?,
+        start_epoch_et_s: u.arbitrary()?,
+        end_epoch_et_s: u.arbitrary()?,
+    };
+    bytes.extend(file_record.as_bytes());
+    
+    // Generate 1-5 segments
+    for _ in 0..u.int_in_range(1..=5)? {
+        let summary = SPKSummaryRecord {
+            target_id: u.arbitrary()?,
+            center_id: u.arbitrary()?,
+            start_epoch_et_s: u.arbitrary()?,
+            end_epoch_et_s: u.arbitrary()?,
+            data_type: *u.choose(&[1, 2, 3])?, // Valid SPK data types
+        };
+        bytes.extend(summary.as_bytes());
+        
+        // Generate random segment data (128-1024 bytes)
+        bytes.extend(u.bytes(u.int_in_range(128..=1024)?)?);
+    }
+    
+    // Compute and append CRC32 checksum
+    let mut hasher = crc32fast::Hasher::new();
+    hasher.update(&bytes);
+    bytes.extend(&hasher.finalize().to_le_bytes());
+    
+    Ok(bytes)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
