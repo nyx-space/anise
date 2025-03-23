@@ -193,3 +193,17 @@ path = "fuzz_targets/almanac_describe.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "try_find_ephemeris_root"
+path = "fuzz_targets/try_find_ephemeris_root.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "common_ephemeris_path"
+path = "fuzz_targets/common_ephemeris_path.rs"
+test = false
+doc = false
+bench = false
