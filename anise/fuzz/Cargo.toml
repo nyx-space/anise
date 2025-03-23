@@ -8,7 +8,6 @@ edition = "2021"
 cargo-fuzz = true
 
 [dependencies]
-bytes.workspace = true
 libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
 hifitime = { workspace = true }
 bytes = "1.0"
