@@ -239,11 +239,18 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+    
+      - name: Install nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
 
       - name: Build documentation checking no git diff
         run: |
             cd anise
-            cargo doc --no-deps --features embed_ephem && git status --porcelain
+            RUSTDOCFLAGS="--cfg docrs" \
+                cargo +nightly doc --no-deps --features embed_ephem && git status --porcelain
 
   release:
     name: Release
