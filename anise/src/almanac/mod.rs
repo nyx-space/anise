@@ -48,8 +48,8 @@ pub mod metaload;
 #[cfg(feature = "python")]
 mod python;
 
+#[cfg(not(doc))]
 #[cfg(feature = "embed_ephem")]
-#[cfg_attr(docsrs, doc(cfg(feature = "embed_ephem")))]
 mod embed;
 
 #[cfg(feature = "python")]
