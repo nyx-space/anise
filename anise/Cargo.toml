@@ -10,7 +10,7 @@ description = "Core of the ANISE library"
 
 [package.metadata.docs.rs]
 all-features = true
-rustdoc-ars = ["--cfg", "docrs", "--generate-link-to-definition"]
+rustdoc-args = ["--cfg", "docrs", "--generate-link-to-definition"]
 
 [dependencies]
 hifitime = { workspace = true }
