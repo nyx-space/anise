@@ -8,6 +8,6 @@ use anise_fuzz::ArbitraryAssignment;
 fuzz_target!(|data: ArbitraryAssignment| {
     let assignment = data.into();
     let mut item = FKItem::default();
-    let _ = item.parse(assignment);
+    item.parse(assignment);
 });
 
