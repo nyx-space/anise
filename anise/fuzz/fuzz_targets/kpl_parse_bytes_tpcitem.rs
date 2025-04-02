@@ -10,4 +10,3 @@ fuzz_target!(|data: &[u8]| {
     let show_comments = false;
     let _ = parse_bytes::<_, TPCItem>(&mut reader, show_comments);
 });
-

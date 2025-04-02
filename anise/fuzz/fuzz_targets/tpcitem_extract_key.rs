@@ -1,5 +1,5 @@
 #![no_main]
-use anise::naif::kpl::{KPLItem, tpc::TPCItem};
+use anise::naif::kpl::{tpc::TPCItem, KPLItem};
 
 use libfuzzer_sys::fuzz_target;
 
@@ -9,4 +9,3 @@ fuzz_target!(|data: ArbitraryAssignment| {
     let assignment = data.into();
     let _ = TPCItem::extract_key(&assignment);
 });
-

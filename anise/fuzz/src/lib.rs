@@ -1,14 +1,14 @@
-use anise::naif::kpl::{Parameter, KPLValue};
+use anise::frames::Frame;
+use anise::math::rotation::Quaternion;
+use anise::math::rotation::DCM;
+use anise::math::rotation::MRP;
+use anise::math::Vector3;
 use anise::naif::kpl::fk::FKItem;
 use anise::naif::kpl::parser::Assignment;
 use anise::naif::kpl::tpc::TPCItem;
-use anise::math::rotation::DCM;
-use anise::math::rotation::MRP;
-use anise::math::rotation::Quaternion;
-use anise::math::Vector3;
-use anise::frames::Frame;
-use libfuzzer_sys::arbitrary;
+use anise::naif::kpl::{KPLValue, Parameter};
 use hifitime::Epoch;
+use libfuzzer_sys::arbitrary;
 use std::collections::HashMap;
 
 #[derive(arbitrary::Arbitrary, Debug)]
@@ -64,8 +64,12 @@ impl From<ArbitraryParameter> for Parameter {
             ArbitraryParameter::PoleDec => Parameter::PoleDec,
             ArbitraryParameter::Radii => Parameter::Radii,
             ArbitraryParameter::PrimeMeridian => Parameter::PrimeMeridian,
-            ArbitraryParameter::GeoMagNorthPoleCenterDipoleLatitude => Parameter::GeoMagNorthPoleCenterDipoleLatitude,
-            ArbitraryParameter::GeoMagNorthPoleCenterDipoleLongitude => Parameter::GeoMagNorthPoleCenterDipoleLongitude,
+            ArbitraryParameter::GeoMagNorthPoleCenterDipoleLatitude => {
+                Parameter::GeoMagNorthPoleCenterDipoleLatitude
+            }
+            ArbitraryParameter::GeoMagNorthPoleCenterDipoleLongitude => {
+                Parameter::GeoMagNorthPoleCenterDipoleLongitude
+            }
             ArbitraryParameter::GravitationalParameter => Parameter::GravitationalParameter,
             ArbitraryParameter::Class => Parameter::Class,
             ArbitraryParameter::Center => Parameter::Center,
@@ -102,12 +106,13 @@ impl From<ArbitraryKPLValue> for KPLValue {
 pub struct ArbitraryFKItem {
     pub body_id: Option<i32>,
     pub name: Option<String>,
-    pub data: HashMap<ArbitraryParameter, ArbitraryKPLValue>
+    pub data: HashMap<ArbitraryParameter, ArbitraryKPLValue>,
 }
 
 impl From<ArbitraryFKItem> for FKItem {
     fn from(val: ArbitraryFKItem) -> Self {
-        let data = val.data
+        let data = val
+            .data
             .into_iter()
             .map(|(param, val)| (param.into(), val.into()))
             .collect();
@@ -115,7 +120,7 @@ impl From<ArbitraryFKItem> for FKItem {
         Self {
             body_id: val.body_id,
             name: val.name,
-            data
+            data,
         }
     }
 }
@@ -123,19 +128,20 @@ impl From<ArbitraryFKItem> for FKItem {
 #[derive(arbitrary::Arbitrary, Debug)]
 pub struct ArbitraryTPCItem {
     pub body_id: Option<i32>,
-    pub data: HashMap<ArbitraryParameter, ArbitraryKPLValue>
+    pub data: HashMap<ArbitraryParameter, ArbitraryKPLValue>,
 }
 
 impl From<ArbitraryTPCItem> for TPCItem {
     fn from(val: ArbitraryTPCItem) -> Self {
-        let data = val.data
+        let data = val
+            .data
             .into_iter()
             .map(|(param, val)| (param.into(), val.into()))
             .collect();
 
         Self {
             body_id: val.body_id,
-            data
+            data,
         }
     }
 }

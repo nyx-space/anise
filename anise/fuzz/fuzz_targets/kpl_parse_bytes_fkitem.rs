@@ -1,6 +1,6 @@
 #![no_main]
-use anise::naif::kpl::parser::parse_bytes;
 use anise::naif::kpl::fk::FKItem;
+use anise::naif::kpl::parser::parse_bytes;
 use std::io::BufReader;
 
 use libfuzzer_sys::fuzz_target;

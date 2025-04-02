@@ -6,7 +6,10 @@ use libfuzzer_sys::fuzz_target;
 
 use anise_fuzz::ArbitraryTPCItem;
 
-fuzz_target!(|data: (HashMap<i32, ArbitraryTPCItem>, HashMap<i32, ArbitraryTPCItem>)| {
+fuzz_target!(|data: (
+    HashMap<i32, ArbitraryTPCItem>,
+    HashMap<i32, ArbitraryTPCItem>
+)| {
     let (planetary_data, gravity_data) = data;
     let planetary_data = planetary_data
         .into_iter()
@@ -18,4 +21,3 @@ fuzz_target!(|data: (HashMap<i32, ArbitraryTPCItem>, HashMap<i32, ArbitraryTPCIt
         .collect();
     let _ = convert_tpc_items(planetary_data, gravity_data);
 });
-
