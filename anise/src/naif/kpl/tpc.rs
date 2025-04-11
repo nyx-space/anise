@@ -26,7 +26,7 @@ impl KPLItem for TPCItem {
     fn extract_key(data: &Assignment) -> i32 {
         if data.keyword.starts_with("BODY") {
             let parts: Vec<&str> = data.keyword.split('_').collect();
-            parts[0][4..].parse::<i32>().unwrap()
+            parts[0][4..].parse::<i32>().unwrap_or(-1)
         } else {
             -1
         }
