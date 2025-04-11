@@ -33,7 +33,7 @@ impl KPLItem for FKItem {
                     Ok(frame_id) => frame_id,
                     Err(_) => {
                         // The frame ID is not in the key, so we must be a name key.
-                        data.value.trim().parse::<i32>().unwrap()
+                        data.value.trim().parse::<i32>().unwrap_or(-1)
                     }
                 },
                 None => -1,
