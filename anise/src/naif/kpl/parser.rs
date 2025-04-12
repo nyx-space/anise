@@ -290,11 +290,13 @@ pub fn convert_tpc_items(
                                             ..Default::default()
                                         }
                                     }
-                                    _ => return Err(DataSetError::Conversion {
-                                        action: format!(
+                                    _ => {
+                                        return Err(DataSetError::Conversion {
+                                            action: format!(
                                             "expected Matrix as PoleRa parameter but got {data:?}"
                                         ),
-                                    }),
+                                        })
+                                    }
                                 }
                             }
                             None => {
@@ -315,12 +317,20 @@ pub fn convert_tpc_items(
                         {
                             let phase_deg =
                                 match planetary_data.data.get(&Parameter::MaxPhaseDegree) {
-                                    Some(val) => (val.to_i32().unwrap() + 1) as usize,
+                                    Some(val) => {
+                                        (val.to_i32().map_err(|_| DataSetError::Conversion {
+                                            action: format!(
+                                                "MaxPhaseDegree must be an Integer but was {val:?}"
+                                            ),
+                                        })? + 1) as usize
+                                    }
                                     None => 2,
                                 };
                             let nut_prec_data = nut_prec_val.to_vec_f64().map_err(|_| {
                                 DataSetError::Conversion {
-                                    action: "NutPrecAngles must be a Matrix".to_owned(),
+                                    action: format!(
+                                        "NutPrecAngles must be a Matrix but was {nut_prec_val:?}"
+                                    ),
                                 }
                             })?;
                             let mut coeffs = [PhaseAngle::<0>::default(); MAX_NUT_PREC_ANGLES];
