@@ -270,17 +270,21 @@ pub fn convert_tpc_items(
                                 }
                                 KPLValue::Float(_) => {
                                     return Err(DataSetError::Conversion {
-                                        action: "expected Matrix as PoleRa paremter but got float".to_owned(),
+                                        action: "expected Matrix as PoleRa paremter but got float"
+                                            .to_owned(),
                                     })
                                 }
                                 KPLValue::Integer(_) => {
                                     return Err(DataSetError::Conversion {
-                                        action: "expected Matrix as PoleRa paremter but got integer".to_owned(),
+                                        action:
+                                            "expected Matrix as PoleRa paremter but got integer"
+                                                .to_owned(),
                                     })
                                 }
                                 KPLValue::String(_) => {
                                     return Err(DataSetError::Conversion {
-                                        action: "expected Matrix as PoleRa paremter but got string".to_owned(),
+                                        action: "expected Matrix as PoleRa paremter but got string"
+                                            .to_owned(),
                                     })
                                 }
                             },
@@ -305,7 +309,10 @@ pub fn convert_tpc_items(
                                     Some(val) => (val.to_i32().unwrap() + 1) as usize,
                                     None => 2,
                                 };
-                            let nut_prec_data = nut_prec_val.to_vec_f64().unwrap();
+                            let nut_prec_data =
+                                nut_prec_val.to_vec_f64().map_err(|_| DataSetError::Conversion {
+                                    action: "NutPrecAngles must be a Matrix".to_owned(),
+                                })?;
                             let mut coeffs = [PhaseAngle::<0>::default(); MAX_NUT_PREC_ANGLES];
                             let mut num = 0;
                             for (i, nut_prec) in nut_prec_data.chunks(phase_deg).enumerate() {
