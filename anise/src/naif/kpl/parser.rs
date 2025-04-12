@@ -206,88 +206,113 @@ pub fn convert_tpc_items(
                         };
 
                         let mut constant = match planetary_data.data.get(&Parameter::PoleRa) {
-                            Some(data) => match data {
-                                KPLValue::Matrix(pole_ra_data) => {
-                                    let mut pole_ra_data = pole_ra_data.clone();
-                                    if let Some(coeffs) =
-                                        planetary_data.data.get(&Parameter::NutPrecRa)
-                                    {
-                                        pole_ra_data.extend(coeffs.to_vec_f64().unwrap());
-                                    }
-                                    let pola_ra = PhaseAngle::maybe_new(&pole_ra_data);
+                            Some(data) => {
+                                match data {
+                                    KPLValue::Matrix(pole_ra_data) => {
+                                        let mut pole_ra_data = pole_ra_data.clone();
+                                        if let Some(coeffs) =
+                                            planetary_data.data.get(&Parameter::NutPrecRa)
+                                        {
+                                            pole_ra_data.extend(coeffs.to_vec_f64().map_err(|_| {
+                                            DataSetError::Conversion { action: format!("NutPrecRa coefficients must be a matrix but was {coeffs:?}") }
+                                        })?);
+                                        }
+                                        let pola_ra = PhaseAngle::maybe_new(&pole_ra_data);
 
-                                    let mut pola_dec_data: Vec<f64> = planetary_data.data
-                                        [&Parameter::PoleDec]
-                                        .to_vec_f64()
-                                        .unwrap();
-                                    if let Some(coeffs) =
-                                        planetary_data.data.get(&Parameter::NutPrecDec)
-                                    {
-                                        pola_dec_data.extend(coeffs.to_vec_f64().unwrap());
-                                    }
-                                    let pola_dec = PhaseAngle::maybe_new(&pola_dec_data);
-
-                                    let mut prime_mer_data: Vec<f64> = planetary_data.data
-                                        [&Parameter::PrimeMeridian]
-                                        .to_vec_f64()
-                                        .unwrap();
-                                    if let Some(coeffs) =
-                                        planetary_data.data.get(&Parameter::NutPrecPm)
-                                    {
-                                        prime_mer_data.extend(coeffs.to_vec_f64().unwrap());
-                                    }
-                                    let prime_mer = PhaseAngle::maybe_new(&prime_mer_data);
-
-                                    let long_axis =
-                                        match planetary_data.data.get(&Parameter::LongAxis) {
-                                            Some(val) => match val {
-                                                KPLValue::Float(data) => Some(*data),
-                                                KPLValue::Matrix(data) => Some(data[0]),
-                                                _ => panic!(
-                                                "long axis must be float or matrix, got {val:?}"
+                                        let pole_dec_data = planetary_data
+                                            .data
+                                            .get(&Parameter::PoleDec)
+                                            .ok_or(DataSetError::Conversion {
+                                                action: "missing PoleDec parameter".to_owned(),
+                                            })?;
+                                        let mut pola_dec_data: Vec<f64> = pole_dec_data
+                                            .to_vec_f64()
+                                            .map_err(|_| DataSetError::Conversion {
+                                                action: format!(
+                                                "PoleDec must be a matrix but was {pole_dec_data:?}"
                                             ),
-                                            },
-                                            None => None,
-                                        };
+                                            })?;
+                                        if let Some(coeffs) =
+                                            planetary_data.data.get(&Parameter::NutPrecDec)
+                                        {
+                                            pola_dec_data.extend(coeffs.to_vec_f64().map_err(|_| {
+                                            DataSetError::Conversion { action: format!("NutPrecDec coefficients must be a matrix but was {coeffs:?}") }
+                                        })?);
+                                        }
+                                        let pola_dec = PhaseAngle::maybe_new(&pola_dec_data);
 
-                                    PlanetaryData {
-                                        object_id,
-                                        parent_id: if [199, 299].contains(&object_id) {
-                                            J2000
-                                        } else if object_id > 100 {
-                                            object_id / 100
-                                        } else {
-                                            J2000
-                                        },
-                                        mu_km3_s2: *mu_km3_s2,
-                                        shape: ellipsoid,
-                                        pole_right_ascension: pola_ra,
-                                        pole_declination: pola_dec,
-                                        prime_meridian: prime_mer,
-                                        long_axis,
-                                        ..Default::default()
+                                        let prime_mer_data = planetary_data
+                                            .data
+                                            .get(&Parameter::PrimeMeridian)
+                                            .ok_or(DataSetError::Conversion {
+                                                action: "missing PrimeMeridian parameter"
+                                                    .to_owned(),
+                                            })?;
+                                        let mut prime_mer_data: Vec<f64> = prime_mer_data
+                                        .to_vec_f64()
+                                        .map_err(|_| DataSetError::Conversion { action: format!("PrimeMeridian must be a matrix but was {prime_mer_data:?}") })?;
+                                        if let Some(coeffs) =
+                                            planetary_data.data.get(&Parameter::NutPrecPm)
+                                        {
+                                            prime_mer_data.extend(coeffs.to_vec_f64().map_err(|_| DataSetError::Conversion { action: format!("NutPrecPm must be a matrix but was {coeffs:?}") })?);
+                                        }
+                                        let prime_mer = PhaseAngle::maybe_new(&prime_mer_data);
+
+                                        let long_axis =
+                                            match planetary_data.data.get(&Parameter::LongAxis) {
+                                                Some(val) => match val {
+                                                    KPLValue::Float(data) => Some(*data),
+                                                    KPLValue::Matrix(data) => Some(data[0]),
+                                                    _ => return Err(DataSetError::Conversion {
+                                                        action: format!(
+                                                            "long axis must be float or matrix, got {val:?}"
+                                                        ),
+                                                    }),
+                                                },
+                                                None => None,
+                                            };
+
+                                        PlanetaryData {
+                                            object_id,
+                                            parent_id: if [199, 299].contains(&object_id) {
+                                                J2000
+                                            } else if object_id > 100 {
+                                                object_id / 100
+                                            } else {
+                                                J2000
+                                            },
+                                            mu_km3_s2: *mu_km3_s2,
+                                            shape: ellipsoid,
+                                            pole_right_ascension: pola_ra,
+                                            pole_declination: pola_dec,
+                                            prime_meridian: prime_mer,
+                                            long_axis,
+                                            ..Default::default()
+                                        }
+                                    }
+                                    KPLValue::Float(_) => {
+                                        return Err(DataSetError::Conversion {
+                                            action:
+                                                "expected Matrix as PoleRa paremter but got float"
+                                                    .to_owned(),
+                                        })
+                                    }
+                                    KPLValue::Integer(_) => {
+                                        return Err(DataSetError::Conversion {
+                                            action:
+                                                "expected Matrix as PoleRa paremter but got integer"
+                                                    .to_owned(),
+                                        })
+                                    }
+                                    KPLValue::String(_) => {
+                                        return Err(DataSetError::Conversion {
+                                            action:
+                                                "expected Matrix as PoleRa paremter but got string"
+                                                    .to_owned(),
+                                        })
                                     }
                                 }
-                                KPLValue::Float(_) => {
-                                    return Err(DataSetError::Conversion {
-                                        action: "expected Matrix as PoleRa paremter but got float"
-                                            .to_owned(),
-                                    })
-                                }
-                                KPLValue::Integer(_) => {
-                                    return Err(DataSetError::Conversion {
-                                        action:
-                                            "expected Matrix as PoleRa paremter but got integer"
-                                                .to_owned(),
-                                    })
-                                }
-                                KPLValue::String(_) => {
-                                    return Err(DataSetError::Conversion {
-                                        action: "expected Matrix as PoleRa paremter but got string"
-                                            .to_owned(),
-                                    })
-                                }
-                            },
+                            }
                             None => {
                                 // Assume not rotation data available
                                 PlanetaryData {
@@ -309,7 +334,11 @@ pub fn convert_tpc_items(
                                     Some(val) => (val.to_i32().unwrap() + 1) as usize,
                                     None => 2,
                                 };
-                            let nut_prec_data = nut_prec_val.to_vec_f64().unwrap();
+                            let nut_prec_data = nut_prec_val.to_vec_f64().map_err(|_| {
+                                DataSetError::Conversion {
+                                    action: "NutPrecAngles must be a Matrix".to_owned(),
+                                }
+                            })?;
                             let mut coeffs = [PhaseAngle::<0>::default(); MAX_NUT_PREC_ANGLES];
                             let mut num = 0;
                             for (i, nut_prec) in nut_prec_data.chunks(phase_deg).enumerate() {
