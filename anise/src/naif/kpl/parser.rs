@@ -354,7 +354,8 @@ pub fn convert_fk_items(
         {
             let mut warn = false;
             if let Some(class) = item.data.get(&Parameter::Class) {
-                if class.to_i32().unwrap() == 2 {
+                let class_val = class.to_i32().map_err(|_| DataSetError::Conversion { action: format!("Class must be an Integer but was {class:?}") })?;
+                if class_val == 2 {
                     // BPC based frame, insert as-is.
                     // Class 2 need a BPC for the full rotation.
                     dataset.push(Quaternion::identity(id, id), Some(id), item.name.as_deref())?;
