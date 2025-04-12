@@ -432,10 +432,7 @@ pub fn convert_fk_items(
             let axes = axes.to_vec_f64().map_err(|_| DataSetError::Conversion {
                 action: format!("Axes must be a Matrix but was {axes:?}"),
             })?;
-            for (i, rot) in axes
-                .iter()
-                .enumerate()
-            {
+            for (i, rot) in axes.iter().enumerate() {
                 let this_dcm = if rot == &1.0 {
                     r1(angle_data[i].to_radians())
                 } else if rot == &2.0 {
@@ -456,7 +453,9 @@ pub fn convert_fk_items(
 
             dataset.push(q, Some(id), item.name.as_deref())?;
         } else if let Some(matrix) = item.data.get(&Parameter::Matrix) {
-            let mat_data = matrix.to_vec_f64().unwrap();
+            let mat_data = matrix.to_vec_f64().map_err(|_| DataSetError::Conversion {
+                action: format!("Matrix parameter must be a Matrix but was {matrix:?}"),
+            })?;
             let rot_mat = Matrix3::new(
                 mat_data[0],
                 mat_data[1],
@@ -468,9 +467,19 @@ pub fn convert_fk_items(
                 mat_data[7],
                 mat_data[8],
             );
+            let center = item
+                .data
+                .get(&Parameter::Center)
+                .ok_or(DataSetError::Conversion {
+                    action: "missing Center parameter".to_owned(),
+                })?;
+            let to = center.to_i32().map_err(|_| DataSetError::Conversion {
+                action: format!("Center parameter must be an Integer but was {center:?}"),
+            })?;
+
             let dcm = DCM {
                 from: id,
-                to: item.data[&Parameter::Center].to_i32().unwrap(),
+                to,
                 rot_mat,
                 rot_mat_dt: None,
             };
