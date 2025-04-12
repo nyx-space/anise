@@ -456,6 +456,11 @@ pub fn convert_fk_items(
             let mat_data = matrix.to_vec_f64().map_err(|_| DataSetError::Conversion {
                 action: format!("Matrix parameter must be a Matrix but was {matrix:?}"),
             })?;
+            if mat_data.len() != 9 {
+                return Err(DataSetError::Conversion {
+                    action: format!("Matrix data must be length 9 but was {}", mat_data.len()),
+                });
+            }
             let rot_mat = Matrix3::new(
                 mat_data[0],
                 mat_data[1],
