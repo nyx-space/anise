@@ -321,17 +321,28 @@ pub fn convert_tpc_items(
                         if let Some(nut_prec_val) =
                             planetary_data.data.get(&Parameter::NutPrecAngles)
                         {
-                            let phase_deg =
-                                match planetary_data.data.get(&Parameter::MaxPhaseDegree) {
-                                    Some(val) => {
+                            let phase_deg = match planetary_data
+                                .data
+                                .get(&Parameter::MaxPhaseDegree)
+                            {
+                                Some(val) => {
+                                    let deg =
                                         (val.to_i32().map_err(|_| DataSetError::Conversion {
                                             action: format!(
                                                 "MaxPhaseDegree must be an Integer but was {val:?}"
                                             ),
-                                        })? + 1) as usize
+                                        })? + 1) as usize;
+
+                                    if deg == 0 {
+                                        return Err(DataSetError::Conversion {
+                                            action: "PhaseDegree must be non-zero".to_owned(),
+                                        });
                                     }
-                                    None => 2,
-                                };
+
+                                    deg
+                                }
+                                None => 2,
+                            };
                             let nut_prec_data = nut_prec_val.to_vec_f64().map_err(|_| {
                                 DataSetError::Conversion {
                                     action: format!(
