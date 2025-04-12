@@ -268,7 +268,21 @@ pub fn convert_tpc_items(
                                         ..Default::default()
                                     }
                                 }
-                                _ => unreachable!(),
+                                KPLValue::Float(_) => {
+                                    return Err(DataSetError::Conversion {
+                                        action: "expected Matrix as PoleRa paremter but got float".to_owned(),
+                                    })
+                                }
+                                KPLValue::Integer(_) => {
+                                    return Err(DataSetError::Conversion {
+                                        action: "expected Matrix as PoleRa paremter but got integer".to_owned(),
+                                    })
+                                }
+                                KPLValue::String(_) => {
+                                    return Err(DataSetError::Conversion {
+                                        action: "expected Matrix as PoleRa paremter but got string".to_owned(),
+                                    })
+                                }
                             },
                             None => {
                                 // Assume not rotation data available
