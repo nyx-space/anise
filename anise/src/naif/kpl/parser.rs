@@ -309,13 +309,14 @@ pub fn convert_tpc_items(
                                     Some(val) => (val.to_i32().unwrap() + 1) as usize,
                                     None => 2,
                                 };
-                            let nut_prec_data =
-                                nut_prec_val.to_vec_f64().map_err(|_| DataSetError::Conversion {
-                                    action: "NutPrecAngles must be a Matrix".to_owned(),
-                                })?;
+                            let nut_prec_data = nut_prec_val.to_vec_f64().unwrap();
                             let mut coeffs = [PhaseAngle::<0>::default(); MAX_NUT_PREC_ANGLES];
                             let mut num = 0;
                             for (i, nut_prec) in nut_prec_data.chunks(phase_deg).enumerate() {
+                                if nut_prec.len() < 2 {
+                                    return Err(DataSetError::Conversion { action: format!("expected nut prec data to be array of length 2 but was {}", nut_prec.len()) });
+                                }
+
                                 coeffs[i] = PhaseAngle::<0> {
                                     offset_deg: nut_prec[0],
                                     rate_deg: nut_prec[1],
