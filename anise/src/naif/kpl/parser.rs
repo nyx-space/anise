@@ -197,7 +197,7 @@ pub fn convert_tpc_items(
                                 _ => {
                                     return Err(DataSetError::Conversion {
                                         action: format!(
-                                            "radii_km should be float or matrix, got {radii_km:?}"
+                                            "Radii should be float or matrix, got {radii_km:?}"
                                         ),
                                     })
                                 }
