@@ -192,7 +192,13 @@ pub fn convert_tpc_items(
                                         semi_minor_equatorial_radius_km: radii_km[1],
                                         polar_radius_km: radii_km[2],
                                     }),
-                                    _ => unreachable!(),
+                                    len => {
+                                        return Err(DataSetError::Conversion {
+                                            action: format!(
+                                                "Radii matrix should be length 2 or 3 but was {len}"
+                                            ),
+                                        })
+                                    }
                                 },
                                 _ => {
                                     return Err(DataSetError::Conversion {
