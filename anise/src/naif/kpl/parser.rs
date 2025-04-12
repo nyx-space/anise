@@ -290,27 +290,11 @@ pub fn convert_tpc_items(
                                             ..Default::default()
                                         }
                                     }
-                                    KPLValue::Float(_) => {
-                                        return Err(DataSetError::Conversion {
-                                            action:
-                                                "expected Matrix as PoleRa paremter but got float"
-                                                    .to_owned(),
-                                        })
-                                    }
-                                    KPLValue::Integer(_) => {
-                                        return Err(DataSetError::Conversion {
-                                            action:
-                                                "expected Matrix as PoleRa paremter but got integer"
-                                                    .to_owned(),
-                                        })
-                                    }
-                                    KPLValue::String(_) => {
-                                        return Err(DataSetError::Conversion {
-                                            action:
-                                                "expected Matrix as PoleRa paremter but got string"
-                                                    .to_owned(),
-                                        })
-                                    }
+                                    _ => return Err(DataSetError::Conversion {
+                                        action: format!(
+                                            "expected Matrix as PoleRa parameter but got {data:?}"
+                                        ),
+                                    }),
                                 }
                             }
                             None => {
