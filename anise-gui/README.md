@@ -20,7 +20,7 @@ Inspect an Binary PCK file (BPC) ([video link](http://public-data.nyxspace.com/a
 
 ### Native
 
-To build the GUI natively to your platform, just run `cargo build --bin anise-gui` from anywhere in the repo. You'll need to have Rust installed.
+To build the GUI natively to your platform, from inside the `anise-gui` subdirectory, run `cargo build`. You'll need to have Rust installed.
 
 To run it, use `cargo run` instead of `cargo build`. Keep in mind that if building from a [distrobox](https://github.com/89luca89/distrobox), you will need to exit the distrobox to execute the program. Rust does not require dynamic loading of libraries, so it should work on any platform without issue.
 
