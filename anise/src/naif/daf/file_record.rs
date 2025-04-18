@@ -92,7 +92,7 @@ impl FileRecord {
     }
 
     pub fn summary_size(&self) -> usize {
-        (self.nd + (self.ni + 1) / 2) as usize
+        (self.nd + self.ni.div_ceil(2)) as usize
     }
 
     pub fn identification(&self) -> Result<&str, FileRecordError> {

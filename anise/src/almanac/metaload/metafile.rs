@@ -74,7 +74,10 @@ impl MetaFile {
                     return Ok(());
                 }
                 // Build the path for this file.
-                match url.path_segments().and_then(|segments| segments.last()) {
+                match url
+                    .path_segments()
+                    .and_then(|mut segments| segments.next_back())
+                {
                     Some(remote_file_path) => {
                         match Path::new(remote_file_path).file_name() {
                             Some(file_name) => {
