@@ -130,7 +130,10 @@ def test_state_transformation():
 
 def test_convert_tpc():
     """Attempt to reproduce GH issue #339"""
-    os.remove("test_constants.tpc")
+    try:
+        os.remove("test_constants.tpc")
+    except FileNotFoundError:
+        pass
 
     # First call to convert_tpc works
     convert_tpc("data/pck00011.tpc", "data/gm_de440.tpc", "test_constants.tpc")
