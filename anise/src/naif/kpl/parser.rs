@@ -68,9 +68,9 @@ impl Assignment {
             KPLValue::String(self.value.clone())
         } else {
             // We have exactly one item, let's try to convert it as an integer first
-            if let Ok(as_int) = vec[0].replace("D", "E").parse::<i32>() {
+            if let Ok(as_int) = vec[0].parse::<i32>() {
                 KPLValue::Integer(as_int)
-            } else if let Ok(as_f64) = vec[0].replace("D", "E").parse::<f64>() {
+            } else if let Ok(as_f64) = vec[0].strip().replace("D", "E").parse::<f64>() {
                 KPLValue::Float(as_f64)
             } else {
                 // Darn, let's default to string
