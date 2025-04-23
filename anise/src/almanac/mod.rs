@@ -32,7 +32,7 @@ use core::fmt;
 pub const MAX_LOADED_SPKS: usize = 32;
 pub const MAX_LOADED_BPCS: usize = 8;
 pub const MAX_SPACECRAFT_DATA: usize = 16;
-pub const MAX_PLANETARY_DATA: usize = 64;
+pub const MAX_PLANETARY_DATA: usize = 128;
 
 pub mod aer;
 pub mod bpc;
