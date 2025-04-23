@@ -309,17 +309,17 @@ pub fn convert_tpc_items(
                         info!("Added {object_id}");
                     }
                     _ => error!(
-                        "expected gravity parameter to be a float but got {mu_km3_s2_value:?}"
+                        "skipping {object_id}: gravity data is {mu_km3_s2_value:?} (want float)"
                     ),
                 }
             }
             None => {
-                warn!("Skipping {object_id}: no gravity data")
+                warn!("skipping {object_id}: no gravity data")
             }
         }
     }
 
-    println!("Added {} items", dataset.lut.by_id.len());
+    info!("added {} items", dataset.lut.by_id.len());
 
     dataset.set_crc32();
     dataset.metadata = Metadata::default();

@@ -147,8 +147,9 @@ def test_convert_tpc():
     new_meta.files = [constants_file,]
     almanac = new_meta.process()
 
-    # This fails:
     earth_j2k = almanac.frame_info(Frames.EARTH_J2000)
+    assert earth_j2k.mu_km3_s2 != None
+    almanac.describe()
 
 def test_meta_load():
     data_path = Path(__file__).parent.joinpath("..", "..", "data", "local.dhall")
