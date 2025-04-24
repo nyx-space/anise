@@ -1,11 +1,13 @@
+import os
 from pathlib import Path
 import pickle
 
-from anise import Almanac, MetaAlmanac
+from anise import Almanac, MetaAlmanac, MetaFile
 from anise.astro import *
 from anise.astro.constants import Frames
 from anise.rotation import DCM
 from anise.time import Epoch
+from anise.utils import convert_tpc
 
 from os import environ
 
@@ -125,6 +127,29 @@ def test_state_transformation():
     # Cannot yet pickle Epoch, so we can't pickle an Orbit yet
     # cf. https://github.com/nyx-space/hifitime/issues/270
 
+
+def test_convert_tpc():
+    """Attempt to reproduce GH issue #339"""
+    try:
+        os.remove("test_constants.tpc")
+    except FileNotFoundError:
+        pass
+
+    # First call to convert_tpc works
+    convert_tpc("data/pck00011.tpc", "data/gm_de440.tpc", "test_constants.tpc")
+
+    # Second call, with overwrite enabled, also works
+    convert_tpc("data/pck00011.tpc", "data/gm_de440.tpc", "test_constants.tpc", overwrite=True)
+
+    # Try to load the constants file
+    constants_file = MetaFile("test_constants.tpc")
+    new_meta = MetaAlmanac()
+    new_meta.files = [constants_file,]
+    almanac = new_meta.process()
+
+    earth_j2k = almanac.frame_info(Frames.EARTH_J2000)
+    assert earth_j2k.mu_km3_s2 != None
+    almanac.describe()
 
 def test_meta_load():
     data_path = Path(__file__).parent.joinpath("..", "..", "data", "local.dhall")

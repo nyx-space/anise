@@ -70,7 +70,7 @@ impl Assignment {
             // We have exactly one item, let's try to convert it as an integer first
             if let Ok(as_int) = vec[0].parse::<i32>() {
                 KPLValue::Integer(as_int)
-            } else if let Ok(as_f64) = vec[0].parse::<f64>() {
+            } else if let Ok(as_f64) = vec[0].trim().replace("D", "E").parse::<f64>() {
                 KPLValue::Float(as_f64)
             } else {
                 // Darn, let's default to string
@@ -191,7 +191,13 @@ pub fn convert_tpc_items(
                                     }),
                                     _ => unreachable!(),
                                 },
-                                _ => panic!("radii_km should be float or matrix, got {radii_km:?}"),
+                                _ => {
+                                    return Err(DataSetError::Conversion {
+                                        action: format!(
+                                            "radii_km should be float or matrix, got {radii_km:?}"
+                                        ),
+                                    })
+                                }
                             },
                             None => None,
                         };
@@ -303,17 +309,17 @@ pub fn convert_tpc_items(
                         info!("Added {object_id}");
                     }
                     _ => error!(
-                        "expected gravity parameter to be a float but got {mu_km3_s2_value:?}"
+                        "skipping {object_id}: gravity data is {mu_km3_s2_value:?} (want float)"
                     ),
                 }
             }
             None => {
-                warn!("Skipping {object_id}: no gravity data")
+                warn!("skipping {object_id}: no gravity data")
             }
         }
     }
 
-    println!("Added {} items", dataset.lut.by_id.len());
+    info!("added {} items", dataset.lut.by_id.len());
 
     dataset.set_crc32();
     dataset.metadata = Metadata::default();

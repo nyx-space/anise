@@ -172,8 +172,8 @@ pub fn hermite_eval(
             /*  physical XVALS array, in which the abscissa values are not */
             /*  repeated. */
 
-            let xi = (i + 1) / 2;
-            let xij = (i + j + 1) / 2;
+            let xi = i.div_ceil(2);
+            let xij = (i + j).div_ceil(2);
             let c1 = xs[xij - 1] - x_eval;
             let c2 = x_eval - xs[xi - 1];
             let denom = xs[xij - 1] - xs[xi - 1];

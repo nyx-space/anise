@@ -24,7 +24,7 @@ pub enum DataSetError {
         action: &'static str,
         source: DecodingError,
     },
-    #[snafu(display("input/output error while {action}"))]
+    #[snafu(display("input/output error while {action}, {source}"))]
     IO {
         action: &'static str,
         source: IOError,
