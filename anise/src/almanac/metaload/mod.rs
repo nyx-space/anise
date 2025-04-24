@@ -20,7 +20,6 @@ use crate::{
     errors::{AlmanacResult, MetaSnafu},
     prelude::InputOutputError,
 };
-use reqwest::StatusCode;
 use snafu::prelude::*;
 
 #[cfg(feature = "python")]
@@ -39,8 +38,8 @@ pub enum MetaAlmanacError {
         what: &'static str,
         source: InputOutputError,
     },
-    #[snafu(display("fetching {uri} returned {status}"))]
-    FetchError { status: StatusCode, uri: String },
+    #[snafu(display("fetching {uri} returned {error}"))]
+    FetchError { error: String, uri: String },
     #[snafu(display("connection {uri} returned {error}"))]
     CnxError { uri: String, error: String },
     #[snafu(display("error parsing `{path}` as Dhall config: {err}"))]

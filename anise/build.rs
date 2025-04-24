@@ -7,11 +7,11 @@ fn main() {
         path::Path,
         time::Duration,
     };
-    let client = reqwest::blocking::Client::builder()
-        .connect_timeout(Duration::from_secs(30))
-        .timeout(Duration::from_secs(30))
+
+    let client: ureq::Agent = ureq::Agent::config_builder()
+        .timeout_global(Some(Duration::from_secs(30)))
         .build()
-        .unwrap();
+        .into();
 
     let embedded_files = [
         (
@@ -36,13 +36,14 @@ fn main() {
     }
 
     for (url, dest_path) in embedded_files {
-        let resp = client
+        let mut resp = client
             .get(url)
-            .send()
+            .call()
             .expect(&format!("could not download {url}"));
 
         let bytes = resp
-            .bytes()
+            .body_mut()
+            .read_to_vec()
             .expect(&format!("could not read bytes from {url}"));
 
         let mut file =
