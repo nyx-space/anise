@@ -10,6 +10,7 @@ fn main() {
 
     let client: ureq::Agent = ureq::Agent::config_builder()
         .timeout_global(Some(Duration::from_secs(30)))
+        .output_buffer_size(1024 * 1024 * 200) // 200 MB limit
         .build()
         .into();
 
