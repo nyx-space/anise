@@ -624,16 +624,9 @@ fn de440s_translation_verif_aberrations() {
 #[cfg(feature = "metaload")]
 #[test]
 fn type9_lagrange_query() {
-    use std::env;
-
     use anise::almanac::metaload::MetaFile;
     use anise::constants::frames::EARTH_J2000;
     use anise::prelude::Frame;
-
-    if env::var("LAGRANGE_BSP").is_err() {
-        // Skip this test if the env var is not defined.
-        return;
-    }
 
     let lagrange_meta = MetaFile {
         uri: "http://public-data.nyxspace.com/anise/ci/env:LAGRANGE_BSP".to_string(),
@@ -644,7 +637,7 @@ fn type9_lagrange_query() {
         .load_from_metafile(lagrange_meta, true)
         .unwrap();
 
-    let obj_id = -10;
+    let obj_id = -10000001;
     let obj_frame = Frame::from_ephem_j2000(obj_id);
 
     let (start, end) = almanac.spk_domain(obj_id).unwrap();
@@ -654,13 +647,13 @@ fn type9_lagrange_query() {
         .translate(
             obj_frame,
             EARTH_J2000,
-            start + 1.159_f64.seconds(),
+            start + (end - start) * 0.5,
             Aberration::NONE,
         )
         .unwrap();
 
-    let expected_pos_km = Vector3::new(-7338.44373643, 3159.7629953, 760.74472775);
-    let expected_vel_km_s = Vector3::new(-7.21781188, -5.26834555, -4.12581558);
+    let expected_pos_km = Vector3::new(7085.552475081904, -411.1158195637765, 1249.6278240807296);
+    let expected_vel_km_s = Vector3::new(0.4233108394072995, 7.340392343353408, 1.0663332935193193);
 
     dbg!(state.radius_km - expected_pos_km);
     dbg!(state.velocity_km_s - expected_vel_km_s);
@@ -683,16 +676,11 @@ fn type9_lagrange_query() {
 
     // Query near the end, but not in the registry either
     let state = almanac
-        .translate(
-            obj_frame,
-            EARTH_J2000,
-            end - 1159.56_f64.seconds(),
-            Aberration::NONE,
-        )
+        .translate(obj_frame, EARTH_J2000, end, Aberration::NONE)
         .unwrap();
 
-    let expected_pos_km = Vector3::new(10106.15561792, -166810.06321791, -95547.93140678);
-    let expected_vel_km_s = Vector3::new(0.43375448, -1.07193959, -0.55979951);
+    let expected_pos_km = Vector3::new(7047.357439588854, -821.0037354278901, 1196.005310897085);
+    let expected_vel_km_s = Vector3::new(0.8470865234229608, 7.306239102592624, 1.1303623819046622);
 
     dbg!(state.radius_km - expected_pos_km);
     dbg!(state.velocity_km_s - expected_vel_km_s);
