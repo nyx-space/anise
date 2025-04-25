@@ -63,12 +63,12 @@ jobs:
 
       - name: Test debug
         env:
-          LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
+          LAGRANGE_BSP: ${{ vars.LAGRANGE_BSP }}
         run: cargo test --workspace --exclude anise-gui --exclude anise-py
 
       - name: Test release
         env:
-          LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
+          LAGRANGE_BSP: ${{ vars.LAGRANGE_BSP }}
         run: cargo test --release --workspace --exclude anise-gui --exclude anise-py
       
       - name: Test rust_embed build
@@ -143,7 +143,7 @@ jobs:
 
       - name: Rust-SPICE Lagrange validation
         env:
-          LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
+          LAGRANGE_BSP: ${{ vars.LAGRANGE_BSP }}
         run: RUST_BACKTRACE=1 cargo test validate_lagrange_type9_with_varying_segment_sizes --features spkezr_validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
 
       - name: Rust-SPICE PCK validation
@@ -209,7 +209,7 @@ jobs:
 
       - name: Generate coverage report
         env:
-          LAGRANGE_BSP: ${{ secrets.LAGRANGE_BSP }}
+          LAGRANGE_BSP: ${{ vars.LAGRANGE_BSP }}
           RUSTFLAGS: --cfg __ui_tests
         run: |
           cd anise # Prevent the workspace flag

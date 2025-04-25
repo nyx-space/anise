@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        target: [x86_64, x86, aarch64]
+        target: [x86_64, x86]
     steps:
       - uses: actions/checkout@v4
         

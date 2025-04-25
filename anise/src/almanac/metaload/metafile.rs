@@ -178,14 +178,13 @@ impl MetaFile {
                                             let _ = remove_file(lock_path);
                                         };
 
-                                        let client = reqwest::blocking::Client::builder()
-                                            .connect_timeout(Duration::from_secs(30))
-                                            .timeout(Duration::from_secs(30))
+                                        let client: ureq::Agent = ureq::Agent::config_builder()
+                                            .timeout_global(Some(Duration::from_secs(30)))
                                             .build()
-                                            .unwrap();
+                                            .into();
 
-                                        match client.get(url.clone()).send() {
-                                            Ok(resp) => {
+                                        match client.get(self.uri.clone()).call() {
+                                            Ok(mut resp) => {
                                                 if resp.status().is_success() {
                                                     // Downloaded the file, let's store it locally.
                                                     match File::create(&dest_path) {
@@ -204,7 +203,17 @@ impl MetaFile {
                                                         }
                                                         Ok(mut file) => {
                                                             // Created the file, let's write the bytes.
-                                                            let bytes = resp.bytes().unwrap();
+                                                            let bytes = resp
+                                                                .body_mut()
+                                                                .with_config()
+                                                                .limit(1024 * 1024 * 200) // 200 MB limit
+                                                                .read_to_vec()
+                                                                .map_err(|e| {
+                                                                    MetaAlmanacError::FetchError {
+                                                                        error: format!("{e:?}"),
+                                                                        uri: self.uri.clone(),
+                                                                    }
+                                                                })?;
                                                             let crc32 = crc32fast::hash(&bytes);
                                                             file.write_all(&bytes).unwrap();
 
@@ -230,7 +239,10 @@ impl MetaFile {
                                                 } else {
                                                     del_lock_file();
                                                     Err(MetaAlmanacError::FetchError {
-                                                        status: resp.status(),
+                                                        error: format!(
+                                                            "status = {}",
+                                                            resp.status()
+                                                        ),
                                                         uri: self.uri.clone(),
                                                     })
                                                 }
