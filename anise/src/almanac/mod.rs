@@ -181,9 +181,9 @@ impl Almanac {
                         dataset_type,
                         path.unwrap_or("bytes")
                     );
-                    return Err(AlmanacError::GenericError {
+                    Err(AlmanacError::GenericError {
                         err: "Encountered DataSetType::NotApplicable, which is not supported for loading".to_string(),
-                    });
+                    })
                 }
                 DataSetType::SpacecraftData => {
                     // Decode as spacecraft data
