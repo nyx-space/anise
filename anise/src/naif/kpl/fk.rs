@@ -49,13 +49,22 @@ impl KPLItem for FKItem {
 
     fn parse(&mut self, data: Assignment) {
         if data.keyword.starts_with("FRAME_") || data.keyword.starts_with("TKFRAME_") {
+            if data.value.is_empty() {
+                warn!("Empty value for `{}` -- ignoring", data.keyword);
+                return;
+            }
+
             match self.body_id {
                 None => {
                     // The data always starts with the definition of the frame
                     // So if the body isn't set, it'll be the first item to set
                     let next_ = data.keyword.find('_').unwrap();
                     self.name = Some(data.keyword[next_ + 1..].to_string());
-                    self.body_id = Some(data.value.parse::<i32>().unwrap());
+                    if let Ok(parsed_id) = data.value.parse::<i32>() {
+                        self.body_id = Some(parsed_id);
+                    } else {
+                        warn!("Failed to parse body ID from value `{}`", data.value);
+                    }
                 }
                 Some(body_id) => {
                     // The parameter starts with the ID of the frame.
