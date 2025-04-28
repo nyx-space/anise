@@ -53,10 +53,13 @@ impl Encode for DataSetType {
 impl<'a> Decode<'a> for DataSetType {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         let asu8: u8 = decoder.decode()?;
-        DataSetType::try_from(asu8)
-            .map_err(|_| { der::Error::new(
-                der::ErrorKind::Value { tag: der::Tag::Integer },
-                der::Length::ONE            
-        )})
+        DataSetType::try_from(asu8).map_err(|_| {
+            der::Error::new(
+                der::ErrorKind::Value {
+                    tag: der::Tag::Integer,
+                },
+                der::Length::ONE,
+            )
+        })
     }
 }

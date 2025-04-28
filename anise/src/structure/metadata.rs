@@ -95,10 +95,14 @@ impl<'a> Decode<'a> for Metadata {
         let anise_version = decoder.decode()?;
         let dataset_type = decoder.decode()?;
         let creation_date = Epoch::from_str(decoder.decode::<Utf8StringRef<'a>>()?.as_str())
-            .map_err(|_| { der::Error::new(
-                der::ErrorKind::Value { tag: der::Tag::Integer },
-                der::Length::ONE,
-            )})?;
+            .map_err(|_| {
+                der::Error::new(
+                    der::ErrorKind::Value {
+                        tag: der::Tag::Integer,
+                    },
+                    der::Length::ONE,
+                )
+            })?;
         let orig_str = decoder.decode::<Utf8StringRef<'a>>()?.as_str();
         let originator = orig_str[..MAX_ORIGINATOR_LEN.min(orig_str.len())]
             .try_into()

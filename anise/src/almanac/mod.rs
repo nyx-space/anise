@@ -165,11 +165,13 @@ impl Almanac {
 
         if let Ok(metadata) = Metadata::decode_header(&bytes) {
             // Use `try_from` to validate the dataset type
-            let dataset_type = DataSetType::try_from(metadata.dataset_type as u8)
-                .map_err(|err| AlmanacError::GenericError {
-                    err: format!("Invalid dataset type: {}", err),
+            let dataset_type =
+                DataSetType::try_from(metadata.dataset_type as u8).map_err(|err| {
+                    AlmanacError::GenericError {
+                        err: format!("Invalid dataset type: {}", err),
+                    }
                 })?;
-                
+
             // Now, we can load this depending on the kind of data that it is
             match dataset_type {
                 DataSetType::NotApplicable => {
