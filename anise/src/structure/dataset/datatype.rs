@@ -20,14 +20,16 @@ pub enum DataSetType {
     EulerParameterData,
 }
 
-impl From<u8> for DataSetType {
-    fn from(val: u8) -> Self {
+impl TryFrom<u8> for DataSetType {
+    type Error = &'static str;
+
+    fn try_from(val: u8) -> Result<Self, Self::Error> {
         match val {
-            0 => DataSetType::NotApplicable,
-            1 => DataSetType::SpacecraftData,
-            2 => DataSetType::PlanetaryData,
-            3 => DataSetType::EulerParameterData,
-            _ => panic!("Invalid value for DataSetType {val}"),
+            0 => Ok(DataSetType::NotApplicable),
+            1 => Ok(DataSetType::SpacecraftData),
+            2 => Ok(DataSetType::PlanetaryData),
+            3 => Ok(DataSetType::EulerParameterData),
+            _ => Err("Invalid value for DataSetType"),
         }
     }
 }
@@ -51,6 +53,10 @@ impl Encode for DataSetType {
 impl<'a> Decode<'a> for DataSetType {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         let asu8: u8 = decoder.decode()?;
-        Ok(Self::from(asu8))
+        DataSetType::try_from(asu8)
+            .map_err(|_| { der::Error::new(
+                der::ErrorKind::Value { tag: der::Tag::Integer },
+                der::Length::ONE            
+        )})
     }
 }
