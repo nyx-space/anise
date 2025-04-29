@@ -164,9 +164,25 @@ impl Almanac {
         }
 
         if let Ok(metadata) = Metadata::decode_header(&bytes) {
+            // Use `try_from` to validate the dataset type
+            let dataset_type =
+                DataSetType::try_from(metadata.dataset_type as u8).map_err(|err| {
+                    AlmanacError::GenericError {
+                        err: format!("Invalid dataset type: {err}"),
+                    }
+                })?;
+
             // Now, we can load this depending on the kind of data that it is
-            match metadata.dataset_type {
-                DataSetType::NotApplicable => unreachable!("no such ANISE data yet"),
+            match dataset_type {
+                DataSetType::NotApplicable => {
+                    // Not something that can be decoded
+                    Err(AlmanacError::GenericError {
+                        err: format!(
+                            "Unsupported dataset type: DataSetType::NotApplicable in {}",
+                            path.unwrap_or("bytes")
+                        ),
+                    })
+                }
                 DataSetType::SpacecraftData => {
                     // Decode as spacecraft data
                     let dataset = SpacecraftDataSet::try_from_bytes(bytes).context({
