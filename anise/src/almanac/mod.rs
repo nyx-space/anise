@@ -177,10 +177,7 @@ impl Almanac {
                 DataSetType::NotApplicable => {
                     // Not something that can be decoded
                     Err(AlmanacError::GenericError {
-                        err: format!(
-                            "Unsupported dataset type: DataSetType::NotApplicable in {}",
-                            path.unwrap_or("bytes")
-                        ),
+                        err: format!("Malformed dataset type in {}", path.unwrap_or("bytes")),
                     })
                 }
                 DataSetType::SpacecraftData => {
