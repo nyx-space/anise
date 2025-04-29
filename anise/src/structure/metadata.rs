@@ -98,7 +98,7 @@ impl<'a> Decode<'a> for Metadata {
             .map_err(|_| {
                 der::Error::new(
                     der::ErrorKind::Value {
-                        tag: der::Tag::Integer,
+                        tag: der::Tag::Utf8String,
                     },
                     der::Length::ONE,
                 )
