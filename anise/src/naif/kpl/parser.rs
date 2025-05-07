@@ -98,7 +98,10 @@ pub fn parse_bytes<R: BufRead, I: KPLItem>(
     let mut assignments = vec![];
 
     for line in reader.lines() {
-        let line = line.expect("Failed to read line");
+        let line = match line {
+            Ok(l) => l,
+            Err(_) => continue, // skip lines that can't be read (invalid UTF-8)
+        };
         let tline = line.trim();
 
         if tline.starts_with("\\begintext") {
