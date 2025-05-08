@@ -58,9 +58,21 @@ impl<const ENTRIES: usize> LookUpTable<ENTRIES> {
         self.by_id
             .insert(id, index)
             .map_err(|_| LutError::IdLutFull { max_slots: ENTRIES })?;
+    
+        let name_key: String<KEY_NAME_LEN> = name
+            .try_into()
+            .map_err(|_| LutError::UnknownName {
+                name: name.try_into().unwrap_or_else(|_| {
+                    let mut fallback = String::<KEY_NAME_LEN>::new();
+                    fallback.push_str("InvalidName").ok();
+                    fallback
+                }),
+            })?;
+    
         self.by_name
-            .insert(name.try_into().unwrap(), index)
+            .insert(name_key, index)
             .map_err(|_| LutError::NameLutFull { max_slots: ENTRIES })?;
+    
         Ok(())
     }
 
@@ -252,7 +264,7 @@ impl<'a, const ENTRIES: usize> Decode<'a> for LookUpTable<ENTRIES> {
         }
 
         for (name, entry) in names.iter().zip(name_entries.iter()) {
-            let key = core::str::from_utf8(name.as_bytes()).unwrap();
+            let key = core::str::from_utf8(name.as_bytes())?;
             lut.by_name
                 .insert(
                     key[..KEY_NAME_LEN.min(key.len())].try_into().unwrap(),

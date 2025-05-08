@@ -432,6 +432,17 @@ pub fn convert_fk_items(
             let axes = axes.to_vec_f64().map_err(|_| DataSetError::Conversion {
                 action: format!("Axes must be a Matrix but was {axes:?}"),
             })?;
+
+            if axes.len() != angle_data.len() {
+                return Err(DataSetError::Conversion {
+                    action: format!(
+                        "Mismatch between axes length ({}) and angle_data length ({})",
+                        axes.len(),
+                        angle_data.len()
+                    ),
+                });
+            }
+
             for (i, rot) in axes.iter().enumerate() {
                 let this_dcm = if rot == &1.0 {
                     r1(angle_data[i].to_radians())
