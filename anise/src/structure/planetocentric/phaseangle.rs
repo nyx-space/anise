@@ -29,21 +29,22 @@ pub struct PhaseAngle<const N: usize> {
 
 impl<const N: usize> PhaseAngle<N> {
     pub fn maybe_new(data: &[f64]) -> Option<Self> {
-        if data.is_empty() {
-            None
-        } else {
-            let mut coeffs = [0.0; N];
-            for (i, coeff) in data.iter().skip(3).enumerate() {
-                coeffs[i] = *coeff;
-            }
-            Some(Self {
-                offset_deg: data[0],
-                rate_deg: *data.get(1).unwrap_or(&0.0),
-                accel_deg: *data.get(2).unwrap_or(&0.0),
-                coeffs_count: (data.len() as u8).saturating_sub(3),
-                coeffs,
-            })
+        if data.len() < 3 || data.len() - 3 > N {
+            return None;
         }
+
+        let mut coeffs = [0.0; N];
+        for (i, coeff) in data.iter().skip(3).enumerate() {
+            coeffs[i] = *coeff;
+        }
+
+        Some(Self {
+            offset_deg: data[0],
+            rate_deg: *data.get(1).unwrap_or(&0.0),
+            accel_deg: *data.get(2).unwrap_or(&0.0),
+            coeffs_count: (data.len() as u8).saturating_sub(3),
+            coeffs,
+        })
     }
 
     /// Evaluates this phase angle in degrees provided the epoch
