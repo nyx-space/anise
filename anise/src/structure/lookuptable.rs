@@ -58,21 +58,20 @@ impl<const ENTRIES: usize> LookUpTable<ENTRIES> {
         self.by_id
             .insert(id, index)
             .map_err(|_| LutError::IdLutFull { max_slots: ENTRIES })?;
-    
-        let name_key: String<KEY_NAME_LEN> = name
-            .try_into()
-            .map_err(|_| LutError::UnknownName {
+
+        let name_key: String<KEY_NAME_LEN> =
+            name.try_into().map_err(|_| LutError::UnknownName {
                 name: name.try_into().unwrap_or_else(|_| {
                     let mut fallback = String::<KEY_NAME_LEN>::new();
                     fallback.push_str("InvalidName").ok();
                     fallback
                 }),
             })?;
-    
+
         self.by_name
             .insert(name_key, index)
             .map_err(|_| LutError::NameLutFull { max_slots: ENTRIES })?;
-    
+
         Ok(())
     }
 
