@@ -354,7 +354,10 @@ pub fn convert_fk_items(
         {
             let mut warn = false;
             if let Some(class) = item.data.get(&Parameter::Class) {
-                if class.to_i32().unwrap() == 2 {
+                let class_val = class.to_i32().map_err(|_| DataSetError::Conversion {
+                    action: format!("Class must be an Integer but was {class:?}"),
+                })?;
+                if class_val == 2 {
                     // BPC based frame, insert as-is.
                     // Class 2 need a BPC for the full rotation.
                     dataset.push(Quaternion::identity(id, id), Some(id), item.name.as_deref())?;
@@ -375,7 +378,9 @@ pub fn convert_fk_items(
                 .ok_or(DataSetError::Conversion {
                     action: format!("no unit data for FK ID {id}"),
                 })?;
-            let mut angle_data = angles.to_vec_f64().unwrap();
+            let mut angle_data = angles.to_vec_f64().map_err(|_| DataSetError::Conversion {
+                action: format!("Angle data must be a Matrix but was {angles:?}"),
+            })?;
             if unit == &KPLValue::String("ARCSECONDS".to_string()) {
                 // Convert the angles data into degrees
                 for item in &mut angle_data {
@@ -384,13 +389,32 @@ pub fn convert_fk_items(
             }
             // Build the quaternion from the Euler matrices
             let from = id;
-            let to = item.data[&Parameter::Center].to_i32().unwrap();
+            let to = item
+                .data
+                .get(&Parameter::Center)
+                .ok_or(DataSetError::Conversion {
+                    action: "missing Center parameter".to_owned(),
+                })?;
+            let to = to.to_i32().map_err(|_| DataSetError::Conversion {
+                action: format!("Center parameter must be an Integer but was {to:?}"),
+            })?;
             if let Some(class) = item.data.get(&Parameter::Class) {
-                if class.to_i32().unwrap() == 4 {
+                let class_val = class.to_i32().map_err(|_| DataSetError::Conversion {
+                    action: format!("Class must be an Integer but was {class:?}"),
+                })?;
+                if class_val == 4 {
                     // This is a relative frame.
                     let relative_to = item.data.get(&Parameter::Relative).ok_or(DataSetError::Conversion {
                         action: format!("frame {id} is class 4 relative to, but the RELATIVE_TO token was not found"),
-                    })?.to_string().unwrap();
+                    })?;
+                    let relative_to =
+                        relative_to
+                            .to_string()
+                            .map_err(|_| DataSetError::Conversion {
+                                action: format!(
+                                    "Relative must be a String but was {relative_to:?}"
+                                ),
+                            })?;
 
                     // Always mark as something to update later.
                     ids_to_update.push((id, relative_to.clone()));
@@ -399,12 +423,27 @@ pub fn convert_fk_items(
 
             let mut dcm = Matrix3::identity();
 
-            for (i, rot) in item.data[&Parameter::Axes]
-                .to_vec_f64()
-                .unwrap()
-                .iter()
-                .enumerate()
-            {
+            let axes = item
+                .data
+                .get(&Parameter::Axes)
+                .ok_or(DataSetError::Conversion {
+                    action: "Missing Axes parameter".to_owned(),
+                })?;
+            let axes = axes.to_vec_f64().map_err(|_| DataSetError::Conversion {
+                action: format!("Axes must be a Matrix but was {axes:?}"),
+            })?;
+
+            if axes.len() != angle_data.len() {
+                return Err(DataSetError::Conversion {
+                    action: format!(
+                        "Mismatch between axes length ({}) and angle_data length ({})",
+                        axes.len(),
+                        angle_data.len()
+                    ),
+                });
+            }
+
+            for (i, rot) in axes.iter().enumerate() {
                 let this_dcm = if rot == &1.0 {
                     r1(angle_data[i].to_radians())
                 } else if rot == &2.0 {
@@ -425,7 +464,14 @@ pub fn convert_fk_items(
 
             dataset.push(q, Some(id), item.name.as_deref())?;
         } else if let Some(matrix) = item.data.get(&Parameter::Matrix) {
-            let mat_data = matrix.to_vec_f64().unwrap();
+            let mat_data = matrix.to_vec_f64().map_err(|_| DataSetError::Conversion {
+                action: format!("Matrix parameter must be a Matrix but was {matrix:?}"),
+            })?;
+            if mat_data.len() != 9 {
+                return Err(DataSetError::Conversion {
+                    action: format!("Matrix data must be length 9 but was {}", mat_data.len()),
+                });
+            }
             let rot_mat = Matrix3::new(
                 mat_data[0],
                 mat_data[1],
@@ -437,9 +483,19 @@ pub fn convert_fk_items(
                 mat_data[7],
                 mat_data[8],
             );
+            let center = item
+                .data
+                .get(&Parameter::Center)
+                .ok_or(DataSetError::Conversion {
+                    action: "missing Center parameter".to_owned(),
+                })?;
+            let to = center.to_i32().map_err(|_| DataSetError::Conversion {
+                action: format!("Center parameter must be an Integer but was {center:?}"),
+            })?;
+
             let dcm = DCM {
                 from: id,
-                to: item.data[&Parameter::Center].to_i32().unwrap(),
+                to,
                 rot_mat,
                 rot_mat_dt: None,
             };
