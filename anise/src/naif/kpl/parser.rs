@@ -264,19 +264,25 @@ pub fn convert_tpc_items(
                                         }
                                         let prime_mer = PhaseAngle::maybe_new(&prime_mer_data);
 
-                                        let long_axis =
-                                            match planetary_data.data.get(&Parameter::LongAxis) {
-                                                Some(val) => match val {
-                                                    KPLValue::Float(data) => Some(*data),
-                                                    KPLValue::Matrix(data) => Some(data[0]),
-                                                    _ => return Err(DataSetError::Conversion {
-                                                        action: format!(
-                                                            "long axis must be float or matrix, got {val:?}"
-                                                        ),
-                                                    }),
-                                                },
-                                                None => None,
-                                            };
+                                        let long_axis = match planetary_data.data.get(&Parameter::LongAxis) {
+                                            Some(val) => match val {
+                                                KPLValue::Float(data) => Some(*data),
+                                                KPLValue::Matrix(data) => {
+                                                    if data.is_empty() {
+                                                        return Err(DataSetError::Conversion {
+                                                            action: "long axis matrix is empty".to_string(),
+                                                        });
+                                                    }
+                                                    Some(data[0])
+                                                }
+                                                _ => return Err(DataSetError::Conversion {
+                                                    action: format!(
+                                                        "long axis must be float or matrix, got {val:?}"
+                                                    ),
+                                                }),
+                                            },
+                                            None => None,
+                                        };
 
                                         PlanetaryData {
                                             object_id,
@@ -351,6 +357,23 @@ pub fn convert_tpc_items(
                                 }
                             })?;
                             let mut coeffs = [PhaseAngle::<0>::default(); MAX_NUT_PREC_ANGLES];
+
+                            if let Some(expected_len) = coeffs.len().checked_mul(phase_deg) {
+                                if expected_len != nut_prec_data.len() {
+                                    return Err(DataSetError::Conversion {
+                                        action: format!(
+                                            "Mismatch between expected data length (coeffs.len() * phase_deg = {}) and nut_prec_data length ({})",
+                                            expected_len,
+                                            nut_prec_data.len()
+                                        ),
+                                    });
+                                }
+                            } else {
+                                return Err(DataSetError::Conversion {
+                                    action: "Overflow occurred while calculating expected data length (coeffs.len() * phase_deg)".to_string(),
+                                });
+                            }
+
                             let mut num = 0;
                             for (i, nut_prec) in nut_prec_data.chunks(phase_deg).enumerate() {
                                 if nut_prec.len() < 2 {
