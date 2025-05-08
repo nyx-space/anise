@@ -356,28 +356,26 @@ pub fn convert_tpc_items(
                                     ),
                                 }
                             })?;
-                            let mut coeffs = [PhaseAngle::<0>::default(); MAX_NUT_PREC_ANGLES];
 
-                            if let Some(expected_len) = coeffs.len().checked_mul(phase_deg) {
-                                if expected_len != nut_prec_data.len() {
+                            let mut coeffs = [PhaseAngle::<0>::default(); MAX_NUT_PREC_ANGLES];
+                            let mut num = 0;
+                            for (i, nut_prec) in nut_prec_data.chunks(phase_deg).enumerate() {
+                                if i >= coeffs.len() {
                                     return Err(DataSetError::Conversion {
                                         action: format!(
-                                            "Mismatch between expected data length (coeffs.len() * phase_deg = {}) and nut_prec_data length ({})",
-                                            expected_len,
-                                            nut_prec_data.len()
+                                            "Index {} exceeds the maximum number of nutation precession angles ({})",
+                                            i, coeffs.len()
                                         ),
                                     });
                                 }
-                            } else {
-                                return Err(DataSetError::Conversion {
-                                    action: "Overflow occurred while calculating expected data length (coeffs.len() * phase_deg)".to_string(),
-                                });
-                            }
 
-                            let mut num = 0;
-                            for (i, nut_prec) in nut_prec_data.chunks(phase_deg).enumerate() {
                                 if nut_prec.len() < 2 {
-                                    return Err(DataSetError::Conversion { action: format!("expected nut prec data to be array of length 2 but was {}", nut_prec.len()) });
+                                    return Err(DataSetError::Conversion {
+                                        action: format!(
+                                            "Expected nut prec data to be array of length 2 but was {}",
+                                            nut_prec.len()
+                                        ),
+                                    });
                                 }
 
                                 coeffs[i] = PhaseAngle::<0> {
