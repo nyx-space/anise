@@ -219,7 +219,7 @@ impl CompareEphem {
             ctx = ctx.with_spk(spk).unwrap();
         }
 
-        info!("Pairs in comparator: {:?}", &pairs);
+        info!("Pairs in comparator (count: {}): {:?}", pairs.len(), &pairs);
 
         let mut i: usize = 0;
         let mut err_count: usize = 0;
