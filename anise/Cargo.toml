@@ -23,7 +23,7 @@ zerocopy = { workspace = true }
 bytes = { workspace = true }
 snafu = { workspace = true }
 const_format = "0.2"
-heapless = "0.8.0"
+heapless = "0.9.0"
 # Optional dependencies follow
 pyo3 = { workspace = true, optional = true }
 pyo3-log = { workspace = true, optional = true }
