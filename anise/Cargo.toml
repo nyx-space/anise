@@ -53,7 +53,7 @@ iai = "0.1"
 pretty_env_logger = { workspace = true }
 rstest = { workspace = true }
 approx = "0.5.1"
-polars = { version = "0.46.0", features = ["lazy", "parquet"] }
+polars = { version = "0.47.1", features = ["lazy", "parquet"] }
 rayon = "1.7"
 serde_yml = "0.0.12"
 
