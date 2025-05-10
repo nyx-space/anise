@@ -36,7 +36,7 @@ impl Validation {
                 col("Absolute difference")
                     .quantile(
                         Expr::Literal(polars::prelude::LiteralValue::Float64(0.25)),
-                        QuantileInterpolOptions::Higher,
+                        QuantileMethod::Higher,
                     )
                     .alias("q25 abs err"),
                 col("Absolute difference").mean().alias("mean abs err"),
@@ -44,13 +44,13 @@ impl Validation {
                 col("Absolute difference")
                     .quantile(
                         Expr::Literal(polars::prelude::LiteralValue::Float64(0.75)),
-                        QuantileInterpolOptions::Higher,
+                        QuantileMethod::Higher,
                     )
                     .alias("q75 abs err"),
                 col("Absolute difference")
                     .quantile(
                         Expr::Literal(polars::prelude::LiteralValue::Float64(0.99)),
-                        QuantileInterpolOptions::Higher,
+                        QuantileMethod::Higher,
                     )
                     .alias("q99 abs err"),
                 max("Absolute difference").alias("max abs err"),
