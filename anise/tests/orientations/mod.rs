@@ -523,7 +523,11 @@ fn regression_test_issue_431_test() {
 
     let epoch = Epoch::from_str("2022-06-29 00:00:00 TDB").unwrap();
 
-    almanac
+    let expected = almanac
+        .translate(EARTH_J2000, MOON_PA_DE421_FRAME, epoch, None)
+        .unwrap();
+
+    let computed = almanac
         .translate_state_to(
             Vector3::zeros(),
             Vector3::zeros(),
@@ -536,5 +540,5 @@ fn regression_test_issue_431_test() {
         )
         .unwrap();
 
-    assert!(true);
+    assert_eq!(expected, computed);
 }

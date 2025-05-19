@@ -234,23 +234,16 @@ impl Almanac {
         distance_unit: LengthUnit,
         time_unit: TimeUnit,
     ) -> Result<CartesianState, EphemerisError> {
-        // Compute the frame translation
-        let frame_state = self.translate(from_frame, observer_frame, epoch, ab_corr)?;
-        dbg!(frame_state);
-
         let dist_unit_factor = LengthUnit::Kilometer.from_meters() * distance_unit.to_meters();
         let time_unit_factor = time_unit.in_seconds();
 
-        let input_state = CartesianState {
+        let state = CartesianState {
             radius_km: position * dist_unit_factor,
             velocity_km_s: velocity * dist_unit_factor / time_unit_factor,
             epoch,
             frame: from_frame,
         };
-        dbg!(input_state);
 
-        (input_state + frame_state).context(EphemerisPhysicsSnafu {
-            action: "translating states (likely a bug!)",
-        })
+        self.translate_to(state, observer_frame, ab_corr)
     }
 }
