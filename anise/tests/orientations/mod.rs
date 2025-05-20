@@ -2,13 +2,14 @@ use std::path::PathBuf;
 
 use anise::constants::frames::{
     EARTH_ITRF93, EARTH_J2000, EME2000, IAU_JUPITER_FRAME, IAU_MOON_FRAME,
-    JUPITER_BARYCENTER_J2000, MOON_J2000, MOON_ME_DE440_ME421_FRAME, MOON_PA_DE440_FRAME,
+    JUPITER_BARYCENTER_J2000, MOON_J2000, MOON_ME_DE440_ME421_FRAME, MOON_PA_DE421_FRAME,
+    MOON_PA_DE440_FRAME,
 };
 use anise::constants::orientations::{
     ECLIPJ2000, IAU_JUPITER, IAU_MOON, ITRF93, J2000, MOON_PA_DE440,
 };
 use anise::math::rotation::DCM;
-use anise::math::Matrix3;
+use anise::math::{Matrix3, Vector3};
 use anise::naif::kpl::parser::convert_tpc;
 
 use anise::prelude::*;
@@ -505,4 +506,39 @@ fn regression_test_issue_357_test_moon_me_j2k() {
         .unwrap();
     let (lat, long, alt) = orbit_moon_me.latlongalt().unwrap();
     dbg!(lat, long, alt);
+}
+
+#[test]
+fn regression_test_issue_431_test() {
+    use core::str::FromStr;
+
+    let almanac = Almanac::new("../data/pck11.pca")
+        .unwrap()
+        .load("../data/moon_fk_de440.epa")
+        .unwrap()
+        .load("../data/moon_pa_de440_200625.bpc")
+        .unwrap()
+        .load("../data/de440s.bsp")
+        .unwrap();
+
+    let epoch = Epoch::from_str("2022-06-29 00:00:00 TDB").unwrap();
+
+    let expected = almanac
+        .translate(EARTH_J2000, MOON_PA_DE421_FRAME, epoch, None)
+        .unwrap();
+
+    let computed = almanac
+        .translate_state_to(
+            Vector3::zeros(),
+            Vector3::zeros(),
+            EARTH_J2000,
+            MOON_PA_DE421_FRAME,
+            epoch,
+            None,
+            LengthUnit::Kilometer,
+            TimeUnit::Second,
+        )
+        .unwrap();
+
+    assert_eq!(expected, computed);
 }
