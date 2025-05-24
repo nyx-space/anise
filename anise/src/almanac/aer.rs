@@ -140,7 +140,12 @@ impl Almanac {
 
 #[cfg(test)]
 mod ut_aer {
+    use std::path::Path;
+
+    use hifitime::Unit;
+
     use crate::astro::orbit::Orbit;
+    use crate::astro::AzElRange;
     use crate::constants::frames::{EARTH_ITRF93, EARTH_J2000, IAU_EARTH_FRAME};
     use crate::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
     use crate::math::cartesian::CartesianState;
@@ -186,7 +191,11 @@ mod ut_aer {
         let longitude_deg = 4.250_556;
         let height_km = 0.834_939;
 
-        let almanac = MetaAlmanac::latest().unwrap();
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../data/ci_config.dhall");
+        let almanac = MetaAlmanac::new(path.to_str().unwrap().to_string())
+            .unwrap()
+            .process(false)
+            .unwrap();
 
         let iau_earth = almanac.frame_from_uid(IAU_EARTH_FRAME).unwrap();
         let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
@@ -198,6 +207,54 @@ mod ut_aer {
             1.073_229_118_411_670_2e5,
             1.145_516_751_191_464_7e5,
             1.265_739_190_638_930_7e5,
+        ];
+
+        let regression_data = [
+            AzElRange {
+                epoch: Epoch::from_str("2023-11-16T13:35:30.231999909 UTC").unwrap(),
+                azimuth_deg: 133.59998745846255,
+                elevation_deg: 7.23756749931629,
+                range_km: 91457.2680164461,
+                range_rate_km_s: 2.198785823156608,
+                obstructed_by: None,
+                light_time: 305068608 * Unit::Nanosecond,
+            },
+            AzElRange {
+                epoch: Epoch::from_str("2023-11-16T14:41:30.231999930 UTC").unwrap(),
+                azimuth_deg: 145.20134040829316,
+                elevation_deg: 15.541883052027405,
+                range_km: 99963.52694785153,
+                range_rate_km_s: 2.1050771837046436,
+                obstructed_by: None,
+                light_time: 333442434 * Unit::Nanosecond,
+            },
+            AzElRange {
+                epoch: Epoch::from_str("2023-11-16T15:40:30.231999839 UTC").unwrap(),
+                azimuth_deg: 157.35605910179052,
+                elevation_deg: 21.262025972059224,
+                range_km: 107320.26696466877,
+                range_rate_km_s: 2.0559576546712433,
+                obstructed_by: None,
+                light_time: 357981877 * Unit::Nanosecond,
+            },
+            AzElRange {
+                epoch: Epoch::from_str("2023-11-16T16:39:30.232000062 UTC").unwrap(),
+                azimuth_deg: 171.0253271744456,
+                elevation_deg: 24.777800273900453,
+                range_km: 114548.0748997545,
+                range_rate_km_s: 2.0308909733778924,
+                obstructed_by: None,
+                light_time: 382091249 * Unit::Nanosecond,
+            },
+            AzElRange {
+                epoch: Epoch::from_str("2023-11-16T18:18:30.231999937 UTC").unwrap(),
+                azimuth_deg: 195.44253883914308,
+                elevation_deg: 24.63526601848747,
+                range_km: 126569.46572408297,
+                range_rate_km_s: 2.021336308601692,
+                obstructed_by: None,
+                light_time: 422190293 * Unit::Nanosecond,
+            },
         ];
 
         let states = [
@@ -273,7 +330,7 @@ mod ut_aer {
                 assert_eq!(
                     format!("{aer}"),
                     format!(
-                        "{}: az.: 133.599990 deg    el.: 7.237568 deg    range: 91457.271742 km    range-rate: 2.198786 km/s    obstruction: none",
+                        "{}: az.: 133.599987 deg    el.: 7.237567 deg    range: 91457.268016 km    range-rate: 2.198786 km/s    obstruction: none",
                         state.epoch
                     )
                 );
@@ -281,11 +338,15 @@ mod ut_aer {
 
             let expect = gmat_ranges_km[sno];
 
-            // This only checks that our computation isn't total garbage.
+            // The verification test was generated years ago using different data than in this test.
+            // However, it's been validated in real-world cislunar operations, the best kind of validation.
+            // Let's confirm that the data is not garbage compared to GMAT...
             assert!((aer.range_km - expect).abs() < 5.0);
+            // ... and assert a regression check too
+            assert_eq!(aer, regression_data[sno], "{sno} differ");
         }
 
-        // Ensure that if the state are in another frame, the results are identical.
+        // Ensure that if the state are in another frame, the results are (nearly) identical.
 
         let states = states.map(|state| almanac.transform_to(state, EARTH_ITRF93, None).unwrap());
 
@@ -309,7 +370,7 @@ mod ut_aer {
                 assert_eq!(
                     format!("{aer}"),
                     format!(
-                        "{}: az.: 133.599990 deg    el.: 7.237568 deg    range: 91457.271742 km    range-rate: 2.198786 km/s    obstruction: none",
+                        "{}: az.: 133.599987 deg    el.: 7.237567 deg    range: 91457.268016 km    range-rate: 2.198786 km/s    obstruction: none",
                         state.epoch
                     )
                 );
@@ -317,8 +378,27 @@ mod ut_aer {
 
             let expect = gmat_ranges_km[sno];
 
-            // This only checks that our computation isn't total garbage.
+            // The verification test was generated years ago using different data than in this test.
+            // However, it's been validated in real-world cislunar operations, the best kind of validation.
+            // Let's confirm that the data is not garbage compared to GMAT...
             assert!((aer.range_km - expect).abs() < 5.0);
+            // ... and assert a regression check too, with some small error for the transformation
+            assert!(
+                (aer.range_km - regression_data[sno].range_km).abs() < 1e-10,
+                "{sno}"
+            );
+            assert!(
+                (aer.range_rate_km_s - regression_data[sno].range_rate_km_s).abs() < 1e-10,
+                "{sno}"
+            );
+            assert!(
+                (aer.elevation_deg - regression_data[sno].elevation_deg).abs() < 1e-10,
+                "{sno}"
+            );
+            assert!(
+                (aer.azimuth_deg - regression_data[sno].azimuth_deg).abs() < 1e-10,
+                "{sno}"
+            );
         }
     }
 }
