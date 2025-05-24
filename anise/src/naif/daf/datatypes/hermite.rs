@@ -17,6 +17,7 @@ use crate::math::interpolation::{
     hermite_eval, InterpDecodingSnafu, InterpolationError, MAX_SAMPLES,
 };
 use crate::naif::daf::NAIFSummaryRecord;
+use crate::math::interpolation::StridedDataAccess;
 use crate::{
     math::{cartesian::CartesianState, Vector3},
     naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord},
@@ -24,6 +25,221 @@ use crate::{
 };
 
 use super::posvel::PositionVelocityRecord;
+
+/// Provides strided access to a specific component (e.g., X-position, Y-velocity)
+/// within a slice of state data records.
+///
+/// This accessor treats a portion of a larger `state_data` slice as a sequence of records,
+/// each with a defined `record_stride`, and allows access to a specific `component_offset`
+/// within each record in that sequence.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ComponentAccessor<'a> {
+    data: &'a [f64],         // Reference to the full state_data slice
+    start_record_idx: usize, // The index of the first record in `data` that this accessor views
+    num_records: usize,      // The number of records in this accessor's view
+    component_offset: usize, // Offset within each record to access the specific component (0 for X, 1 for Y, etc.)
+    record_stride: usize,    // Number of f64s per complete record (e.g., 6 for PositionVelocityRecord)
+}
+
+impl<'a> ComponentAccessor<'a> {
+    /// Creates a new `ComponentAccessor`.
+    ///
+    /// # Arguments
+    /// * `data`: The underlying slice of f64 data containing all state records.
+    /// * `start_record_idx`: The starting record index in `data` for the window this accessor covers.
+    /// * `num_records`: The number of records this accessor will expose.
+    /// * `component_offset`: The 0-indexed offset of the component within each record
+    ///   (e.g., 0 for X, 1 for Y, ..., 5 for Vz in a PositionVelocityRecord).
+    /// * `record_stride`: The total number of f64 values that make up one full record.
+    pub fn new(
+        data: &'a [f64],
+        start_record_idx: usize,
+        num_records: usize,
+        component_offset: usize,
+        record_stride: usize,
+    ) -> Self {
+        // Basic validation: component_offset must be less than record_stride.
+        assert!(component_offset < record_stride, "Component offset must be less than record stride.");
+        // Further validation: check if the access window is within the bounds of `data`.
+        // The last accessed element via this accessor (conceptually) would be for the
+        // (num_records - 1)-th record in the window.
+        // Its data index would be:
+        // (start_record_idx + num_records - 1) * record_stride + component_offset
+        if num_records > 0 {
+             assert!(
+                (start_record_idx + num_records -1) * record_stride + component_offset < data.len(),
+                "ComponentAccessor window exceeds bounds of underlying data slice."
+            );
+        } else {
+            // If num_records is 0, it's an empty accessor, which is fine.
+            // start_record_idx can be anything if num_records is 0, but for consistency,
+            // let's ensure that start_record_idx * record_stride + component_offset doesn't cause issues
+            // if data is also empty. However, data.len() handles empty data slice fine.
+            // This case is generally okay.
+        }
+
+
+        Self {
+            data,
+            start_record_idx,
+            num_records,
+            component_offset,
+            record_stride,
+        }
+    }
+}
+
+impl<'a> StridedDataAccess for ComponentAccessor<'a> {
+    /// Returns the number of records (and thus, component values) this accessor covers.
+    #[inline]
+    fn len(&self) -> usize {
+        self.num_records
+    }
+
+    /// Returns `true` if this accessor covers zero records.
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.num_records == 0
+    }
+
+    /// Retrieves the component value for the `index`-th record in this accessor's window.
+    ///
+    /// `index` is 0-based relative to the start of the window defined by `start_record_idx`
+    /// and `num_records`.
+    ///
+    /// # Panics
+    /// Panics if `index` is out of bounds (i.e., `index >= self.num_records`).
+    #[inline]
+    fn get(&self, index: usize) -> f64 {
+        if index >= self.num_records {
+            panic!(
+                "Index out of bounds for ComponentAccessor: index was {}, but len is {}",
+                index, self.num_records
+            );
+        }
+        // Calculate the actual index in the underlying `data` slice.
+        // This formula correctly navigates to the start of the `index`-th record
+        // within the window (which is `start_record_idx + index` in absolute record terms)
+        // and then applies the component offset.
+        let data_idx = (self.start_record_idx + index) * self.record_stride + self.component_offset;
+        self.data[data_idx]
+    }
+}
+
+
+/// A container to provide easy access to Hermite interpolation data points.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HermiteInterpolationData<'a> {
+    /// Full slice of state data, where each record is contiguous (e.g., [X, Y, Z, Vx, Vy, Vz]).
+    state_data: &'a [f64],
+    /// Full slice of epoch data corresponding to each record in `state_data`.
+    epoch_data: &'a [f64],
+    /// Index of the first record in `state_data` and `epoch_data` to be included in this interpolation window.
+    first_record_idx: usize,
+    /// The number of records from `first_record_idx` to be included in this interpolation window.
+    num_records_in_window: usize,
+}
+
+impl<'a> HermiteInterpolationData<'a> {
+    /// Creates a new `HermiteInterpolationData` instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `state_data`: A slice of `f64` containing all state vectors.
+    /// * `epoch_data`: A slice of `f64` containing all epochs corresponding to each state vector.
+    /// * `first_record_idx`: The starting record index within `state_data` and `epoch_data` for this interpolation window.
+    /// * `num_records_in_window`: The number of records to include in this window.
+    pub fn new(
+        state_data: &'a [f64],
+        epoch_data: &'a [f64],
+        first_record_idx: usize,
+        num_records_in_window: usize,
+    ) -> Self {
+        // Bounds for epoch_data are implicitly checked by the slice operation in epochs().
+        // Bounds for state_data are implicitly checked by ComponentAccessor's constructor.
+        Self {
+            state_data,
+            epoch_data,
+            first_record_idx,
+            num_records_in_window,
+        }
+    }
+
+    /// Returns a slice of the epochs for the interpolation window.
+    /// The bounds are checked by `evaluate` before this struct is created.
+    pub fn epochs(&self) -> &'a [f64] {
+        &self.epoch_data[self.first_record_idx .. self.first_record_idx + self.num_records_in_window]
+    }
+
+    /// Stride of a complete PositionVelocityRecord in f64 units.
+    const RECORD_STRIDE: usize = PositionVelocityRecord::SIZE / DBL_SIZE; // This is 6
+
+    /// Returns a `ComponentAccessor` for the X components of position vectors.
+    pub fn x_accessor(&self) -> ComponentAccessor<'a> {
+        ComponentAccessor::new(
+            self.state_data,
+            self.first_record_idx,
+            self.num_records_in_window,
+            0, // component_offset for X
+            Self::RECORD_STRIDE,
+        )
+    }
+
+    /// Returns a `ComponentAccessor` for the Y components of position vectors.
+    pub fn y_accessor(&self) -> ComponentAccessor<'a> {
+        ComponentAccessor::new(
+            self.state_data,
+            self.first_record_idx,
+            self.num_records_in_window,
+            1, // component_offset for Y
+            Self::RECORD_STRIDE,
+        )
+    }
+
+    /// Returns a `ComponentAccessor` for the Z components of position vectors.
+    pub fn z_accessor(&self) -> ComponentAccessor<'a> {
+        ComponentAccessor::new(
+            self.state_data,
+            self.first_record_idx,
+            self.num_records_in_window,
+            2, // component_offset for Z
+            Self::RECORD_STRIDE,
+        )
+    }
+
+    /// Returns a `ComponentAccessor` for the X components of velocity vectors.
+    pub fn vx_accessor(&self) -> ComponentAccessor<'a> {
+        ComponentAccessor::new(
+            self.state_data,
+            self.first_record_idx,
+            self.num_records_in_window,
+            3, // component_offset for Vx
+            Self::RECORD_STRIDE,
+        )
+    }
+
+    /// Returns a `ComponentAccessor` for the Y components of velocity vectors.
+    pub fn vy_accessor(&self) -> ComponentAccessor<'a> {
+        ComponentAccessor::new(
+            self.state_data,
+            self.first_record_idx,
+            self.num_records_in_window,
+            4, // component_offset for Vy
+            Self::RECORD_STRIDE,
+        )
+    }
+
+    /// Returns a `ComponentAccessor` for the Z components of velocity vectors.
+    pub fn vz_accessor(&self) -> ComponentAccessor<'a> {
+        ComponentAccessor::new(
+            self.state_data,
+            self.first_record_idx,
+            self.num_records_in_window,
+            5, // component_offset for Vz
+            Self::RECORD_STRIDE,
+        )
+    }
+}
 
 #[derive(PartialEq)]
 pub struct HermiteSetType12<'a> {
@@ -293,58 +509,58 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
             }
             Err(idx) => {
                 // We didn't find it, so let's build an interpolation here.
-                let num_left = self.samples / 2;
+                // `idx` is the index of the first epoch GREATER than the requested epoch.
+                // `self.samples` (from HermiteSetType13) is the DESIRED number of points for interpolation.
 
-                // Ensure that we aren't fetching out of the window
-                let mut first_idx = idx.saturating_sub(num_left);
-                let last_idx = self.num_records.min(first_idx + self.samples);
+                // Determine the starting index (`first_idx`) for our window of points.
+                // Try to center the window around `idx`.
+                let mut first_idx = idx.saturating_sub(self.samples / 2);
 
-                // Check that we have enough samples
-                if last_idx == self.num_records {
-                    first_idx = last_idx - 2 * num_left;
+                // Adjust `first_idx` if the window [first_idx, first_idx + self.samples) would extend
+                // beyond the total number of records (`self.num_records`).
+                // If so, shift `first_idx` to the left so the window ends at `self.num_records`.
+                // Ensure `first_idx` does not become negative (guaranteed by saturating_sub).
+                if first_idx + self.samples > self.num_records {
+                    first_idx = self.num_records.saturating_sub(self.samples);
                 }
+                // After this, if self.num_records < self.samples, first_idx will be 0.
 
-                // Statically allocated arrays of the maximum number of samples
-                let mut epochs = [0.0; MAX_SAMPLES];
-                let mut xs = [0.0; MAX_SAMPLES];
-                let mut ys = [0.0; MAX_SAMPLES];
-                let mut zs = [0.0; MAX_SAMPLES];
-                let mut vxs = [0.0; MAX_SAMPLES];
-                let mut vys = [0.0; MAX_SAMPLES];
-                let mut vzs = [0.0; MAX_SAMPLES];
-                for (cno, idx) in (first_idx..last_idx).enumerate() {
-                    let record = self.nth_record(idx).context(InterpDecodingSnafu)?;
-                    xs[cno] = record.x_km;
-                    ys[cno] = record.y_km;
-                    zs[cno] = record.z_km;
-                    vxs[cno] = record.vx_km_s;
-                    vys[cno] = record.vy_km_s;
-                    vzs[cno] = record.vz_km_s;
-                    epochs[cno] = self.epoch_data[idx];
-                }
+                // Determine the actual number of samples available for this interpolation window.
+                // This can be less than `self.samples` if `self.num_records` is small or
+                // if `self.num_records < self.samples`.
+                let actual_samples_for_window = (self.num_records - first_idx).min(self.samples);
 
-                // TODO: Build a container that uses the underlying data and provides an index into it.
+                // Create the data provider for the interpolation window.
+                // The `samples` field within `interp_window_data` will be `actual_samples_for_window`.
+                let interp_window_data = HermiteInterpolationData::new(
+                    self.state_data,
+                    self.epoch_data,
+                    first_idx,
+                    actual_samples_for_window,
+                );
 
-                // Build the interpolation polynomials making sure to limit the slices to exactly the number of items we actually used
-                // The other ones are zeros, which would cause the interpolation function to fail.
+                // Build the interpolation polynomials using data from HermiteInterpolationData.
+                // The accessor methods return ComponentAccessor instances.
+                let epochs_slice = interp_window_data.epochs();
+
                 let (x_km, vx_km_s) = hermite_eval(
-                    &epochs[..self.samples],
-                    &xs[..self.samples],
-                    &vxs[..self.samples],
+                    epochs_slice,
+                    &interp_window_data.x_accessor(),
+                    &interp_window_data.vx_accessor(),
                     epoch.to_et_seconds(),
                 )?;
 
                 let (y_km, vy_km_s) = hermite_eval(
-                    &epochs[..self.samples],
-                    &ys[..self.samples],
-                    &vys[..self.samples],
+                    epochs_slice,
+                    &interp_window_data.y_accessor(),
+                    &interp_window_data.vy_accessor(),
                     epoch.to_et_seconds(),
                 )?;
 
                 let (z_km, vz_km_s) = hermite_eval(
-                    &epochs[..self.samples],
-                    &zs[..self.samples],
-                    &vzs[..self.samples],
+                    epochs_slice,
+                    &interp_window_data.z_accessor(),
+                    &interp_window_data.vz_accessor(),
                     epoch.to_et_seconds(),
                 )?;
 
@@ -398,6 +614,253 @@ mod hermite_ut {
     };
 
     use super::HermiteSetType13;
+    use crate::naif::spk::summary::SPKSummaryRecord;
+    use crate::math::Vector3;
+    use hifitime::Epoch;
+
+    // Helper function to create HermiteSetType13 instances for tests
+    // Making it 'static for simplicity in tests by leaking the data.
+    fn create_test_hermite_set(
+        state_vecs: Vec<[f64; 6]>,
+        epoch_secs: Vec<f64>,
+        interpolation_samples: usize,
+        epoch_registry_secs: Option<Vec<f64>>,
+    ) -> HermiteSetType13<'static> {
+        let num_records = state_vecs.len();
+        assert_eq!(
+            num_records,
+            epoch_secs.len(),
+            "Mismatch between state vector count and epoch count"
+        );
+
+        let mut state_data_flat: Vec<f64> = Vec::new();
+        for sv in state_vecs {
+            state_data_flat.extend_from_slice(&sv);
+        }
+
+        let mut full_slice_data = state_data_flat;
+        full_slice_data.extend_from_slice(&epoch_secs);
+
+        if let Some(reg_secs) = epoch_registry_secs {
+            full_slice_data.extend_from_slice(&reg_secs);
+        }
+        // else, epoch_registry slice will be empty if get is called with start == end
+
+        let samples_stored = (interpolation_samples.max(1) - 1) as f64; // Max(1) because stored as samples-1
+        full_slice_data.push(samples_stored);
+        full_slice_data.push(num_records as f64);
+
+        let leaked_slice: &'static [f64] = Box::leak(full_slice_data.into_boxed_slice());
+        HermiteSetType13::from_f64_slice(leaked_slice).unwrap()
+    }
+
+    const EPSILON: f64 = 1e-9;
+
+    #[test]
+    fn evaluate_exact_epoch_match() {
+        let states = vec![
+            [1.0, 2.0, 3.0, 0.1, 0.2, 0.3],
+            [4.0, 5.0, 6.0, 0.4, 0.5, 0.6],
+            [7.0, 8.0, 9.0, 0.7, 0.8, 0.9],
+        ];
+        let epochs = vec![0.0, 10.0, 20.0];
+        let hermite_set = create_test_hermite_set(states.clone(), epochs.clone(), 2, None);
+
+        let target_epoch = Epoch::from_et_seconds(10.0);
+        let dummy_summary = SPKSummaryRecord::default();
+
+        match hermite_set.evaluate(target_epoch, &dummy_summary) {
+            Ok((pos, vel)) => {
+                assert_eq!(pos.x, states[1][0]);
+                assert_eq!(pos.y, states[1][1]);
+                assert_eq!(pos.z, states[1][2]);
+                assert_eq!(vel.x, states[1][3]);
+                assert_eq!(vel.y, states[1][4]);
+                assert_eq!(vel.z, states[1][5]);
+            }
+            Err(e) => panic!("Evaluation failed: {:?}", e),
+        }
+    }
+
+    #[test]
+    fn evaluate_basic_interpolation() {
+        // Record 1: (0,0,0) v=(0,0,0) at t=0
+        // Record 2: (10,0,0) v=(0,0,0) at t=10
+        // Interpolate at t=5. Expected pos: (5,0,0), vel: (0,0,0)
+        // This works because with 0 velocities, Hermite simplifies to linear interpolation for position.
+        // And velocity should be 0 if both endpoint velocities are 0.
+        let states = vec![
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        ];
+        let epochs = vec![0.0, 10.0];
+        // Uses 2 samples for interpolation (minimum for Hermite with 2 points)
+        let hermite_set = create_test_hermite_set(states, epochs, 2, None); 
+
+        let target_epoch = Epoch::from_et_seconds(5.0);
+        let dummy_summary = SPKSummaryRecord::default();
+
+        match hermite_set.evaluate(target_epoch, &dummy_summary) {
+            Ok((pos, vel)) => {
+                assert!((pos.x - 5.0).abs() < EPSILON);
+                assert!((pos.y - 0.0).abs() < EPSILON);
+                assert!((pos.z - 0.0).abs() < EPSILON);
+                assert!((vel.x - 0.0).abs() < EPSILON);
+                assert!((vel.y - 0.0).abs() < EPSILON);
+                assert!((vel.z - 0.0).abs() < EPSILON);
+            }
+            Err(e) => panic!("Evaluation failed: {:?}", e),
+        }
+    }
+    
+    #[test]
+    fn evaluate_basic_interpolation_with_velocity() {
+        // Record 1: (0,0,0) v=(1,0,0) at t=0
+        // Record 2: (10,0,0) v=(1,0,0) at t=10
+        // Interpolate at t=5.
+        // Position: p(s) = p0*h00(s) + p1*h01(s) + v0*h10(s)*dt + v1*h11(s)*dt
+        // Velocity: v(s) = p0*h00'(s)/dt + p1*h01'(s)/dt + v0*h10'(s) + v1*h11'(s)
+        // For s=0.5 (midpoint):
+        // h00(0.5)=0.5, h01(0.5)=0.5
+        // h10(0.5)=0.25, h11(0.5)=-0.25
+        // dt = 10.0
+        // Expected pos.x = 0*0.5 + 10*0.5 + 1*0.25*10 + 1*(-0.25)*10 = 0 + 5 + 2.5 - 2.5 = 5.0
+        // Expected vel.x: v(s) = ( (p1-p0)/dt * h00_prime_normalized(s) + ... )
+        // h00'(s) = 6s^2-6s => h00'(0.5) = 6*0.25 - 3 = 1.5 - 3 = -1.5
+        // h01'(s) = -6s^2+6s => h01'(0.5) = -1.5 + 3 = 1.5
+        // h10'(s) = 3s^2-4s+1 => h10'(0.5) = 3*0.25 - 2 + 1 = 0.75 - 2 + 1 = -0.25
+        // h11'(s) = 3s^2-2s   => h11'(0.5) = 3*0.25 - 1 = 0.75 - 1 = -0.25
+        // vel.x = ( (10-0)/10 * (-1.5) + (0-10)/10 * (1.5) ) -> this is not how hermite_eval calculates velocity.
+        // hermite_eval returns v(t) from derivative of p(t) polynomial.
+        // v(t) = (p0/dt)*h00'(s) + (p1/dt)*h01'(s) + v0*h10'(s) + v1*h11'(s)
+        // vel.x = (0/10)*(-1.5) + (10/10)*(1.5) + 1*(-0.25) + 1*(-0.25) = 0 + 1.5 - 0.25 - 0.25 = 1.0
+        let states = vec![
+            [0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+        ];
+        let epochs = vec![0.0, 10.0];
+        let hermite_set = create_test_hermite_set(states, epochs, 2, None);
+
+        let target_epoch = Epoch::from_et_seconds(5.0);
+        let dummy_summary = SPKSummaryRecord::default();
+
+        match hermite_set.evaluate(target_epoch, &dummy_summary) {
+            Ok((pos, vel)) => {
+                assert!((pos.x - 5.0).abs() < EPSILON, "pos.x: {}", pos.x);
+                assert!((pos.y - 0.0).abs() < EPSILON, "pos.y: {}", pos.y);
+                assert!((pos.z - 0.0).abs() < EPSILON, "pos.z: {}", pos.z);
+                assert!((vel.x - 1.0).abs() < EPSILON, "vel.x: {}", vel.x);
+                assert!((vel.y - 0.0).abs() < EPSILON, "vel.y: {}", vel.y);
+                assert!((vel.z - 0.0).abs() < EPSILON, "vel.z: {}", vel.z);
+            }
+            Err(e) => panic!("Evaluation failed: {:?}", e),
+        }
+    }
+
+    #[test]
+    fn evaluate_near_beginning() {
+        let states = vec![
+            [1.0, 1.0, 1.0, 0.1, 0.1, 0.1],
+            [2.0, 2.0, 2.0, 0.2, 0.2, 0.2],
+            [3.0, 3.0, 3.0, 0.3, 0.3, 0.3],
+            [4.0, 4.0, 4.0, 0.4, 0.4, 0.4],
+        ];
+        let epochs = vec![0.0, 10.0, 20.0, 30.0];
+        // Request 4 samples, have 4 records.
+        let hermite_set = create_test_hermite_set(states.clone(), epochs.clone(), 4, None);
+
+        // Target epoch is 1.0, very close to the first epoch (0.0).
+        // first_idx should be 0, actual_samples_for_window should be 4.
+        // HermiteInterpolationData will use records at index 0, 1, 2, 3.
+        let target_epoch = Epoch::from_et_seconds(1.0);
+        let dummy_summary = SPKSummaryRecord::default();
+
+        match hermite_set.evaluate(target_epoch, &dummy_summary) {
+            Ok((pos, vel)) => {
+                // Check that results are finite and somewhat plausible (close to first record)
+                assert!(pos.x.is_finite() && pos.y.is_finite() && pos.z.is_finite());
+                assert!(vel.x.is_finite() && vel.y.is_finite() && vel.z.is_finite());
+                // Position should be close to states[0][0..3]
+                assert!((pos.x - states[0][0]).abs() < 0.5, "pos.x: {}", pos.x); // Looser check
+            }
+            Err(e) => panic!("Evaluation failed: {:?}", e),
+        }
+    }
+
+    #[test]
+    fn evaluate_near_end() {
+        let states = vec![
+            [1.0, 1.0, 1.0, 0.1, 0.1, 0.1],
+            [2.0, 2.0, 2.0, 0.2, 0.2, 0.2],
+            [3.0, 3.0, 3.0, 0.3, 0.3, 0.3],
+            [4.0, 4.0, 4.0, 0.4, 0.4, 0.4],
+        ];
+        let epochs = vec![0.0, 10.0, 20.0, 30.0];
+        let hermite_set = create_test_hermite_set(states.clone(), epochs.clone(), 4, None);
+
+        // Target epoch 29.0, close to last epoch (30.0)
+        // first_idx should be 0 (since 4 samples from 4 records means all are used).
+        // HermiteInterpolationData will use records at index 0,1,2,3.
+        let target_epoch = Epoch::from_et_seconds(29.0);
+        let dummy_summary = SPKSummaryRecord::default();
+
+        match hermite_set.evaluate(target_epoch, &dummy_summary) {
+            Ok((pos, vel)) => {
+                assert!(pos.x.is_finite() && pos.y.is_finite() && pos.z.is_finite());
+                assert!(vel.x.is_finite() && vel.y.is_finite() && vel.z.is_finite());
+                // Position should be close to states[3][0..3]
+                assert!((pos.x - states[3][0]).abs() < 0.5, "pos.x: {}", pos.x); // Looser check
+            }
+            Err(e) => panic!("Evaluation failed: {:?}", e),
+        }
+    }
+
+    #[test]
+    fn evaluate_dataset_smaller_than_samples() {
+        let states = vec![
+            [1.0, 2.0, 3.0, 0.1, 0.2, 0.3], // Record 0
+            [4.0, 5.0, 6.0, 0.4, 0.5, 0.6], // Record 1
+        ];
+        let epochs = vec![0.0, 10.0];
+        // Request 4 samples for interpolation, but only 2 records are available.
+        let hermite_set = create_test_hermite_set(states.clone(), epochs.clone(), 4, None);
+
+        // first_idx should be 0.
+        // actual_samples_for_window should be 2.
+        // HermiteInterpolationData will use records at index 0, 1.
+        let target_epoch = Epoch::from_et_seconds(5.0); // Midpoint
+        let dummy_summary = SPKSummaryRecord::default();
+
+        match hermite_set.evaluate(target_epoch, &dummy_summary) {
+            Ok((pos, vel)) => {
+                // Similar to basic_interpolation with 0 velocity, expect linear interpolation
+                // P(5.0) = (P(0.0) + P(10.0))/2 = ([1,2,3] + [4,5,6])/2 = [2.5, 3.5, 4.5]
+                // V(5.0) = (V(0.0) + V(10.0))/2 for Hermite with matching end vels, but here it's more complex.
+                // Since hermite_eval is used with only 2 points, it should still give a result.
+                // For position with 0 velocities at endpoints:
+                // P(5.0) = (P0 + P1)/2 = ( (1.0+4.0)/2, (2.0+5.0)/2, (3.0+6.0)/2 ) = (2.5, 3.5, 4.5)
+                // For velocity with 0 velocities at endpoints:
+                // V(5.0) = (V0 + V1)/2 + some_term_proportional_to (P1-P0).
+                // V(s) = (p0/dt)h00'(s) + (p1/dt)h01'(s) + v0*h10'(s) + v1*h11'(s)
+                // s = 0.5, dt = 10.0
+                // h00'(0.5) = -1.5, h01'(0.5) = 1.5, h10'(0.5) = -0.25, h11'(0.5) = -0.25
+                // vx = (1.0/10.0)*(-1.5) + (4.0/10.0)*(1.5) + (0.1)*(-0.25) + (0.4)*(-0.25)
+                //    = -0.15 + 0.6 - 0.025 - 0.1 = 0.325
+                assert!((pos.x - 2.5).abs() < EPSILON, "pos.x: {}", pos.x);
+                assert!((pos.y - 3.5).abs() < EPSILON, "pos.y: {}", pos.y);
+                assert!((pos.z - 4.5).abs() < EPSILON, "pos.z: {}", pos.z);
+                
+                let expected_vx = (states[0][0]/10.0)*(-1.5) + (states[1][0]/10.0)*(1.5) + states[0][3]*(-0.25) + states[1][3]*(-0.25);
+                let expected_vy = (states[0][1]/10.0)*(-1.5) + (states[1][1]/10.0)*(1.5) + states[0][4]*(-0.25) + states[1][4]*(-0.25);
+                let expected_vz = (states[0][2]/10.0)*(-1.5) + (states[1][2]/10.0)*(1.5) + states[0][5]*(-0.25) + states[1][5]*(-0.25);
+
+                assert!((vel.x - expected_vx).abs() < EPSILON, "vel.x: {}, expected_vx: {}", vel.x, expected_vx);
+                assert!((vel.y - expected_vy).abs() < EPSILON, "vel.y: {}, expected_vy: {}", vel.y, expected_vy);
+                assert!((vel.z - expected_vz).abs() < EPSILON, "vel.z: {}, expected_vz: {}", vel.z, expected_vz);
+            }
+            Err(e) => panic!("Evaluation failed: {:?}", e),
+        }
+    }
 
     #[test]
     fn too_small() {
