@@ -360,18 +360,21 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 let mut vxs = [0.0; MAX_SAMPLES];
                 let mut vys = [0.0; MAX_SAMPLES];
                 let mut vzs = [0.0; MAX_SAMPLES];
-                for (cno, idx) in (first_idx..last_idx).enumerate() {
-                    let record = self.nth_record(idx).context(InterpDecodingSnafu)?;
-                    xs[cno] = record.x_km;
-                    ys[cno] = record.y_km;
-                    zs[cno] = record.z_km;
-                    vxs[cno] = record.vx_km_s;
-                    vys[cno] = record.vy_km_s;
-                    vzs[cno] = record.vz_km_s;
-                    epochs[cno] = self.epoch_data[idx];
-                }
 
-                // TODO: Build a container that uses the underlying data and provides an index into it.
+                const STRIDE: usize = 6;
+                let num_actual_samples = last_idx - first_idx;
+                for i in 0..num_actual_samples {
+                    let current_epoch_data_idx = first_idx + i;
+                    let record_offset_in_state_data = current_epoch_data_idx * STRIDE;
+
+                    xs[i] = self.state_data[record_offset_in_state_data];
+                    ys[i] = self.state_data[record_offset_in_state_data + 1];
+                    zs[i] = self.state_data[record_offset_in_state_data + 2];
+                    vxs[i] = self.state_data[record_offset_in_state_data + 3];
+                    vys[i] = self.state_data[record_offset_in_state_data + 4];
+                    vzs[i] = self.state_data[record_offset_in_state_data + 5];
+                    epochs[i] = self.epoch_data[current_epoch_data_idx];
+                }
 
                 // Build the interpolation polynomials making sure to limit the slices to exactly the number of items we actually used
                 // The other ones are zeros, which would cause the interpolation function to fail.
