@@ -2,7 +2,7 @@ use anise::{constants::frames::EARTH_J2000, file2heap, prelude::*};
 use criterion::{criterion_group, criterion_main, Criterion};
 use std::hint::black_box;
 
-const NUM_QUERIES: f64 = 100.0;
+const NUM_QUERIES: f64 = 1000.0;
 
 fn benchmark_spice_single_hop_type13_hermite(time_it: TimeSeries) {
     // SPICE load
@@ -32,8 +32,8 @@ fn benchmark_anise_single_hop_type13_hermite(ctx: &Almanac, time_it: TimeSeries)
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-    let start_epoch = Epoch::from_gregorian_at_noon(2000, 1, 1, TimeScale::UTC);
-    let end_epoch = Epoch::from_gregorian_hms(2000, 1, 1, 15, 0, 0, TimeScale::UTC);
+    let start_epoch = Epoch::from_gregorian_at_noon(2023, 12, 15, TimeScale::UTC);
+    let end_epoch = Epoch::from_gregorian_at_midnight(2024, 1, 9, TimeScale::UTC);
     let time_step = ((end_epoch - start_epoch).to_seconds() / NUM_QUERIES).seconds();
     let time_it = TimeSeries::exclusive(start_epoch, end_epoch - time_step, time_step);
 
