@@ -6,7 +6,7 @@ const NUM_QUERIES: f64 = 100.0;
 
 fn benchmark_spice_single_hop_type13_hermite(time_it: TimeSeries) {
     // SPICE load
-    spice::furnsh("../data/gmat-hermite.bsp");
+    spice::furnsh("../data/lro.bsp");
 
     for epoch in time_it {
         black_box(spice::spkezr(
@@ -18,7 +18,7 @@ fn benchmark_spice_single_hop_type13_hermite(time_it: TimeSeries) {
         ));
     }
 
-    spice::unload("../data/gmat-hermite.bsp");
+    spice::unload("../data/lro.bsp");
 }
 
 fn benchmark_anise_single_hop_type13_hermite(ctx: &Almanac, time_it: TimeSeries) {
@@ -41,7 +41,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
 
-    let buf = file2heap!("../data/gmat-hermite.bsp").unwrap();
+    let buf = file2heap!("../data/lro.bsp").unwrap();
     let spacecraft = SPK::parse(buf).unwrap();
 
     let ctx = Almanac::from_spk(spk)
