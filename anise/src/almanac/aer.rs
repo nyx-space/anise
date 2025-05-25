@@ -191,7 +191,7 @@ mod ut_aer {
         let longitude_deg = 4.250_556;
         let height_km = 0.834_939;
 
-        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../data/ci_config.dhall");
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../data/aer_regression.dhall");
         let almanac = MetaAlmanac::new(path.to_str().unwrap().to_string())
             .unwrap()
             .process(false)
