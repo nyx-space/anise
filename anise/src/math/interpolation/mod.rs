@@ -28,7 +28,7 @@ pub trait StridedDataAccess {
     ///
     /// Panics if `index` is out of bounds.
     fn get(&self, index: usize) -> f64; // TODO: Consider returning Option<f64> or Result<f64, Error> for robustness if needed
-    
+
     /// Returns the number of elements accessible.
     fn len(&self) -> usize;
 
@@ -64,39 +64,36 @@ pub(crate) const MAX_SAMPLES: usize = 32;
 #[snafu(visibility(pub(crate)))]
 pub enum InterpolationError {
     #[snafu(display("decoding error during interpolation: {source}"))]
-    Decoding {
+    InterpDecoding {
         #[snafu(backtrace)]
         source: DecodingError,
     },
     #[snafu(display("math error during interpolation: {source}"))]
-    Math {
+    InterpMath {
         #[snafu(backtrace)]
         source: MathError,
     },
     #[snafu(display("requested epoch {req} is outside the valid range [{start}, {end}]"))]
-    EpochOutOfRange {
+    NoInterpolationData {
         req: Epoch,
         start: Epoch,
         end: Epoch,
     },
-    #[snafu(display("no interpolation data for {epoch}, but prior checks succeeded (check integrity of the data?)"))]
-    MissingDataForEpoch { epoch: Epoch },
-    #[snafu(display("inconsistent interpolation data: {reason}"))]
-    InconsistentData { reason: &'static str },
+    #[snafu(display("no interpolation data to {epoch}, but prior checks succeeded (check integrity of the data?)"))]
+    MissingInterpolationData { epoch: Epoch },
+    #[snafu(display("interpolation data corrupted: {what}"))]
+    CorruptedData { what: &'static str },
     #[snafu(display("not enough samples for interpolation: need at least 2, got {got}"))]
     NotEnoughSamples { got: usize },
     #[snafu(display("too many samples for interpolation: max is {max_samples}, got {got}"))]
     TooManySamples { max_samples: usize, got: usize },
-    #[snafu(display("{operation} is unsupported for {kind}"))]
+    #[snafu(display("{op} is unsupported for {kind}"))]
     UnsupportedOperation {
         kind: &'static str,
-        operation: &'static str,
+        op: &'static str,
     },
     #[snafu(display(
-        "{dataset} is not yet supported -- see https://github.com/nyx-space/anise/issues/{issue_no}"
+        "{dataset} is not yet supported -- see https://github.com/nyx-space/anise/issues/{issue}"
     ))]
-    UnimplementedType {
-        issue_no: u32,
-        dataset: &'static str,
-    },
+    UnimplementedType { issue: u32, dataset: &'static str },
 }
