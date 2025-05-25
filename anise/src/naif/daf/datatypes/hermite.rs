@@ -285,47 +285,46 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
             });
         }
 
-        let et_target = epoch.to_et_seconds();
+        // let et_target = epoch.to_et_seconds();
 
         // Now, perform a binary search on the epochs themselves.
-        // match self.epoch_data.binary_search_by(|epoch_et| {
+        match self.epoch_data.binary_search_by(|epoch_et| {
+            // let (search_data_slice, slice_offset) = if self.epoch_registry.is_empty() {
+            //     // No registry, search the entire epoch_data
+            //     (self.epoch_data, 0)
+            // } else {
+            //     // Use epoch_registry to narrow down the search space.
+            //     // dir_idx is the index of the first registry epoch such that epoch_registry[dir_idx] >= et_target.
+            //     let dir_idx = self
+            //         .epoch_registry
+            //         .partition_point(|&reg_epoch| reg_epoch < et_target);
 
-        let (search_data_slice, slice_offset) = if self.epoch_registry.is_empty() {
-            // No registry, search the entire epoch_data
-            (self.epoch_data, 0)
-        } else {
-            // Use epoch_registry to narrow down the search space.
-            // dir_idx is the index of the first registry epoch such that epoch_registry[dir_idx] >= et_target.
-            let dir_idx = self
-                .epoch_registry
-                .partition_point(|&reg_epoch| reg_epoch < et_target);
+            //     let sub_array_start_idx = if dir_idx == 0 {
+            //         // et_target <= self.epoch_registry[0] (i.e., et_target is before or at the first directory epoch, E_100).
+            //         // Search in the first block of epoch_data (indices 0-99, or up to num_records-1).
+            //         0
+            //     } else {
+            //         // self.epoch_registry[dir_idx - 1] < et_target.
+            //         // The block of 100 epochs in epoch_data starts with the epoch corresponding to
+            //         // the (dir_idx-1)-th entry in epoch_registry. This is E_(dir_idx * 100).
+            //         // Its 0-based index in epoch_data is (dir_idx * 100) - 1.
+            //         (dir_idx * 100) - 1
+            //     };
 
-            let sub_array_start_idx = if dir_idx == 0 {
-                // et_target <= self.epoch_registry[0] (i.e., et_target is before or at the first directory epoch, E_100).
-                // Search in the first block of epoch_data (indices 0-99, or up to num_records-1).
-                0
-            } else {
-                // self.epoch_registry[dir_idx - 1] < et_target.
-                // The block of 100 epochs in epoch_data starts with the epoch corresponding to
-                // the (dir_idx-1)-th entry in epoch_registry. This is E_(dir_idx * 100).
-                // Its 0-based index in epoch_data is (dir_idx * 100) - 1.
-                (dir_idx * 100) - 1
-            };
+            //     // The block is at most 100 records long, or fewer if at the end of epoch_data.
+            //     // Ensure end index does not exceed total number of records.
+            //     let sub_array_end_idx = (sub_array_start_idx + 99).min(self.num_records - 1);
 
-            // The block is at most 100 records long, or fewer if at the end of epoch_data.
-            // Ensure end index does not exceed total number of records.
-            let sub_array_end_idx = (sub_array_start_idx + 99).min(self.num_records - 1);
+            //     // It's possible num_records is small enough that sub_array_start_idx is already past sub_array_end_idx if not careful,
+            //     // however, epoch_registry is non-empty only if num_records >= 100 (approx), so sub_array_start_idx should be valid.
+            //     // The slice must be valid, e.g. start <= end.
+            //     (
+            //         &self.epoch_data[sub_array_start_idx..=sub_array_end_idx.max(sub_array_start_idx)],
+            //         sub_array_start_idx,
+            //     )
+            // };
 
-            // It's possible num_records is small enough that sub_array_start_idx is already past sub_array_end_idx if not careful,
-            // however, epoch_registry is non-empty only if num_records >= 100 (approx), so sub_array_start_idx should be valid.
-            // The slice must be valid, e.g. start <= end.
-            (
-                &self.epoch_data[sub_array_start_idx..=sub_array_end_idx.max(sub_array_start_idx)],
-                sub_array_start_idx,
-            )
-        };
-
-        match search_data_slice.binary_search_by(|epoch_et| {
+            // match search_data_slice.binary_search_by(|epoch_et| {
             epoch_et
                 .partial_cmp(&epoch.to_et_seconds())
                 .expect("epochs in Hermite data is now NaN or infinite but was not before")
@@ -333,14 +332,14 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
             Ok(idx) => {
                 // Oh wow, this state actually exists, no interpolation needed!
                 Ok(self
-                    .nth_record(idx + slice_offset)
+                    .nth_record(idx)
                     .context(InterpDecodingSnafu)?
                     .to_pos_vel())
             }
             Err(idx) => {
                 // We didn't find et_target exactly. `idx` is the insertion point in `search_data_slice`.
                 // Convert `idx` (local insertion point) to an absolute index in `self.epoch_data`.
-                let absolute_insertion_idx = idx + slice_offset;
+                let absolute_insertion_idx = idx;
                 let num_left = self.samples / 2;
 
                 // Ensure that we aren't fetching out of the window
