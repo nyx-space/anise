@@ -386,10 +386,10 @@ impl<R: NAIFSummaryRecord, W: MutKind> Hash for GenericDAF<R, W> {
 impl<R: NAIFSummaryRecord> DAF<R> {
     /// Parse the provided bytes as a SPICE Double Array File
     pub fn parse<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DAFError> {
-        // let crc32_checksum = crc32fast::hash(&bytes);
+        let crc32_checksum = crc32fast::hash(&bytes);
         let me = Self {
             bytes: Bytes::copy_from_slice(&bytes),
-            crc32_checksum: 0,
+            crc32_checksum,
             _daf_type: PhantomData,
         };
         // Check that these calls will succeed.
