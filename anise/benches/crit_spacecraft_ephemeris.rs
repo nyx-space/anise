@@ -10,7 +10,7 @@ fn benchmark_spice_single_hop_type13_hermite(time_it: TimeSeries) {
 
     for epoch in time_it {
         black_box(spice::spkezr(
-            "-10000001",
+            "-85",
             epoch.to_et_seconds(),
             "J2000",
             "NONE",
@@ -22,7 +22,7 @@ fn benchmark_spice_single_hop_type13_hermite(time_it: TimeSeries) {
 }
 
 fn benchmark_anise_single_hop_type13_hermite(ctx: &Almanac, time_it: TimeSeries) {
-    let my_sc_j2k = Frame::from_ephem_j2000(-10000001);
+    let my_sc_j2k = Frame::from_ephem_j2000(-85);
     for epoch in time_it {
         black_box(
             ctx.translate_geometric(my_sc_j2k, EARTH_J2000, epoch)
