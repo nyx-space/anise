@@ -59,7 +59,6 @@
 /* -    SPICELIB Version 1.0.0, 01-MAR-2000 (NJB) */
 
 use crate::errors::MathError;
-use log::error;
 
 use super::{InterpolationError, MAX_SAMPLES};
 
@@ -84,7 +83,6 @@ pub fn hermite_eval(
             what: "list of abscissas (xs) is empty",
         });
     } else if xs.len() > MAX_SAMPLES {
-        error!("More than {MAX_SAMPLES} samples provided, which is the maximum number of items allowed for a Hermite interpolation");
         return Err(InterpolationError::CorruptedData {
             what: "list of abscissas (xs) contains more items than MAX_SAMPLES (32)",
         });
@@ -92,7 +90,7 @@ pub fn hermite_eval(
 
     // At this point, we know that the lengths of items is correct, so we can directly address them without worry for overflowing the array.
 
-    let work: &mut [f64] = &mut [0.0; 8 * MAX_SAMPLES];
+    let work: &mut [f64] = &mut [0.0; 4 * MAX_SAMPLES];
     let n: usize = xs.len();
 
     /*  Copy the input array into WORK.  After this, the first column */

@@ -49,7 +49,7 @@ rust-spice = "0.7.6"
 parquet = "55.0.0"
 arrow = "55.0.0"
 criterion = "0.6"
-iai = "0.1"
+iai-callgrind = "0.14"
 pretty_env_logger = { workspace = true }
 rstest = { workspace = true }
 approx = "0.5.1"
@@ -73,7 +73,11 @@ embed_ephem = ["rust-embed", "ureq"]
 spkezr_validation = []
 
 [[bench]]
-name = "iai_jpl_ephemerides"
+name = "iai_jpl_ephemeris"
+harness = false
+
+[[bench]]
+name = "iai_spacecraft_ephemeris"
 harness = false
 
 [[bench]]

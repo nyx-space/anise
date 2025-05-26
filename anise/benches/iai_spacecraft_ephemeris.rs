@@ -1,7 +1,8 @@
 use anise::{constants::frames::EARTH_J2000, file2heap, prelude::*};
+use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use std::hint::black_box;
 
-use iai::black_box;
-
+#[library_benchmark]
 fn benchmark_spice_single_hop_type13_hermite() {
     let epoch = Epoch::from_gregorian_hms(2023, 12, 15, 14, 0, 0, TimeScale::UTC);
 
@@ -21,6 +22,7 @@ fn benchmark_spice_single_hop_type13_hermite() {
     spice::unload("../data/de440s.bsp");
 }
 
+#[library_benchmark]
 fn benchmark_anise_single_hop_type13_hermite() {
     let epoch = Epoch::from_gregorian_hms(2023, 12, 15, 14, 0, 0, TimeScale::UTC);
 
@@ -44,7 +46,5 @@ fn benchmark_anise_single_hop_type13_hermite() {
     );
 }
 
-iai::main!(
-    benchmark_spice_single_hop_type13_hermite,
-    benchmark_anise_single_hop_type13_hermite
-);
+library_benchmark_group!(name = bench_spacecraft_ephem; benchmarks = benchmark_anise_single_hop_type13_hermite, benchmark_spice_single_hop_type13_hermite);
+main!(library_benchmark_groups = bench_spacecraft_ephem);
