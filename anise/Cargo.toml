@@ -49,13 +49,15 @@ rust-spice = "0.7.6"
 parquet = "55.0.0"
 arrow = "55.0.0"
 criterion = "0.6"
-iai = "0.1"
+iai-callgrind = "0.14"
 pretty_env_logger = { workspace = true }
 rstest = { workspace = true }
 approx = "0.5.1"
 polars = { version = "0.46.0", features = ["lazy", "parquet"] }
 rayon = "1.7"
 serde_yml = "0.0.12"
+rand_pcg = "0.9.0"
+rand = "0.9.1"
 
 [build-dependencies]
 ureq = { version = "3.0.10", default-features = false, optional = true, features = [
@@ -71,7 +73,11 @@ embed_ephem = ["rust-embed", "ureq"]
 spkezr_validation = []
 
 [[bench]]
-name = "iai_jpl_ephemerides"
+name = "iai_jpl_ephemeris"
+harness = false
+
+[[bench]]
+name = "iai_spacecraft_ephemeris"
 harness = false
 
 [[bench]]
