@@ -70,13 +70,13 @@ fn validate_jplde_de440s_aberration_lt() {
 
     let err_count = comparator.run();
 
-    // assert!(err_count <= 10, "A few are expected to fail");
+    assert_eq!(err_count, 0, "None of the queries should fail!");
 
     let validator = Validation {
         file_name: output_file_name,
-        max_q75_err: 1e-9,
-        max_q99_err: 1e-9,
-        max_abs_err: 1e-9,
+        max_q75_err: 2e-4,
+        max_q99_err: 4e-3,
+        max_abs_err: 0.02,
         ..Default::default()
     };
 

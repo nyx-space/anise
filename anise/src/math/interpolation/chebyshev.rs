@@ -114,22 +114,24 @@ pub fn chebyshev_eval_spice_style(
 
     if n == 0 {
         // Or handle as per existing chebyshev_eval if it has specific error for empty coeffs
-        return Err(InterpolationError::MissingInterpolationData { epoch: hifitime::Epoch::from_gregorian_tai(1970, 1, 1, 0, 0, 0, 0) }); // Placeholder epoch
+        return Err(InterpolationError::MissingInterpolationData {
+            epoch: hifitime::Epoch::from_gregorian_tai(1970, 1, 1, 0, 0, 0, 0),
+        }); // Placeholder epoch
     }
-
 
     let mut b0 = 0.0;
     let mut b1 = 0.0;
-    let mut b2 = 0.0;
+    let mut b2;
     let mut db0 = 0.0;
     let mut db1 = 0.0;
-    let mut db2 = 0.0;
+    let mut db2;
 
     // Iterate from the second-to-last coefficient down to the second coefficient (index 1)
     // The loop should go from index n-1 down to 1 if coeffs are [c0, ..., c_{n-1}]
     // Original C code: j from degp+1 down to 2. cp[j-1] -> cp[degp] ... cp[1]
     // degp = n-1. So j from n down to 2. coeffs[j-1] -> coeffs[n-1] ... coeffs[1]
-    for i in (1..n).rev() { // Processes coeffs[n-1], ..., coeffs[1]
+    for i in (1..n).rev() {
+        // Processes coeffs[n-1], ..., coeffs[1]
         b2 = b1;
         b1 = b0;
         b0 = 2.0 * tau * b1 - b2 + coeffs[i];
@@ -143,7 +145,7 @@ pub fn chebyshev_eval_spice_style(
     // val = tau * b0 - b1 + cp[0]
     // deriv = (tau * db0 - db1 + b0) / xradius
     // However, the provided code from the issue for the derivative is:
-    // let velocity = (2.0 * db0) / spline_radius_s; 
+    // let velocity = (2.0 * db0) / spline_radius_s;
     // This matches the logic in CSPICE's chbder_ which is used for Type 2 SPK records for velocity.
     // chbint_ (for position) uses: val = tau * b0 - b1 + cp[0].
     // chbder_ (for velocity) uses: deriv = (tau * db0 - db1 + b0) / xradius.
@@ -167,6 +169,7 @@ pub fn chebyshev_eval_spice_style(
     // I will use the formula from the prompt: (2.0 * db0) / spline_radius_s.
 
     let position = tau * b0 - b1 + coeffs[0];
-    let velocity = (2.0 * db0) / spline_radius_s; 
+    // let velocity = (2.0 * db0) / spline_radius_s;
+    let velocity = (tau * db0 - db1 + b0) / spline_radius_s;
     Ok((position, velocity))
 }
