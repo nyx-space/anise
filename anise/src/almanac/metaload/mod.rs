@@ -25,6 +25,9 @@ use snafu::prelude::*;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
+#[cfg(feature = "python")]
+mod python;
+
 #[derive(Debug, PartialEq, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub enum MetaAlmanacError {

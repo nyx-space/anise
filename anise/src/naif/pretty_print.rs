@@ -43,7 +43,7 @@ pub struct SpkRow {
 
 pub trait NAIFPrettyPrint {
     fn describe(&self) -> String {
-        self.describe_in(TimeScale::TDB, None)
+        self.describe_in(TimeScale::ET, None)
     }
 
     fn describe_in(&self, time_scale: TimeScale, round: Option<bool>) -> String;

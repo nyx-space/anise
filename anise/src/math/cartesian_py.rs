@@ -162,6 +162,7 @@ impl CartesianState {
     /// Returns this state as a Cartesian vector of size 6 in [km, km, km, km/s, km/s, km/s]
     ///
     /// Note that the time is **not** returned in the vector.
+    /// :rtype: numpy.array
     fn cartesian_pos_vel<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
         let data: Vec<f64> = self.to_cartesian_pos_vel().iter().copied().collect();
 

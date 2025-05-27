@@ -334,6 +334,9 @@ impl Orbit {
     /// rotation matrix from the topocentric frame (SEZ) to body fixed frame.
     /// In the GMAT MathSpec notation, R_{IF} is the DCM from body fixed to inertial. Similarly, R{FT} is from topocentric
     /// to body fixed.
+    ///
+    /// :type _from: float
+    /// :rtype: DCM
     pub fn dcm_from_topocentric_to_body_fixed(&self, _from: NaifId) -> PhysicsResult<DCM> {
         let rot_mat_dt = if let Ok(pre) = self.at_epoch(self.epoch - Unit::Second * 1) {
             if let Ok(post) = self.at_epoch(self.epoch + Unit::Second * 1) {
@@ -365,6 +368,8 @@ impl Orbit {
     /// rotation matrix from the topocentric frame (SEZ) to body fixed frame.
     /// In the GMAT MathSpec notation, R_{IF} is the DCM from body fixed to inertial. Similarly, R{FT} is from topocentric
     /// to body fixed.
+    ///
+    /// :rtype: DCM
     pub fn dcm3x3_from_topocentric_to_body_fixed(&self) -> PhysicsResult<DCM> {
         if (self.radius_km.x.powi(2) + self.radius_km.y.powi(2)).sqrt() < 1e-3 {
             warn!("SEZ frame ill-defined when close to the poles");
@@ -411,6 +416,8 @@ impl Orbit {
     /// # Note on the time derivative
     /// If the pre or post states cannot be computed, then the time derivative of the DCM will _not_ be set.
     /// Further note that most astrodynamics tools do *not* account for the time derivative in the RIC frame.
+    ///
+    /// :rtype: DCM
     pub fn dcm_from_ric_to_inertial(&self) -> PhysicsResult<DCM> {
         let rot_mat_dt = if let Ok(pre) = self.at_epoch(self.epoch - Unit::Millisecond * 1) {
             if let Ok(post) = self.at_epoch(self.epoch + Unit::Millisecond * 1) {
@@ -442,6 +449,8 @@ impl Orbit {
     /// 2. Build the i vector as the cross product of \hat{r} and c
     /// 3. Build the RIC DCM as a 3x3 of the columns [\hat{r}, \hat{i}, \hat{c}]
     /// 4. Return the DCM structure **without** accounting for the transport theorem.
+    ///
+    /// :rtype: DCM
     pub fn dcm3x3_from_ric_to_inertial(&self) -> PhysicsResult<DCM> {
         let r_hat = self.r_hat();
         let c_hat = self.hvec()? / self.hmag()?;
@@ -467,6 +476,8 @@ impl Orbit {
     /// 2. Compute the cross product of these
     /// 3. Build the DCM with these unit vectors
     /// 4. Return the DCM structure
+    ///
+    /// :rtype: DCM
     pub fn dcm3x3_from_rcn_to_inertial(&self) -> PhysicsResult<DCM> {
         let r = self.r_hat();
         let n = self.hvec()? / self.hmag()?;
@@ -496,6 +507,8 @@ impl Orbit {
     /// # Note on the time derivative
     /// If the pre or post states cannot be computed, then the time derivative of the DCM will _not_ be set.
     /// Further note that most astrodynamics tools do *not* account for the time derivative in the RIC frame.
+    ///
+    /// :rtype: DCM
     pub fn dcm_from_rcn_to_inertial(&self) -> PhysicsResult<DCM> {
         let rot_mat_dt = if let Ok(pre) = self.at_epoch(self.epoch - Unit::Millisecond * 1) {
             if let Ok(post) = self.at_epoch(self.epoch + Unit::Millisecond * 1) {
@@ -528,6 +541,7 @@ impl Orbit {
     /// 3. Build the DCM with these unit vectors
     /// 4. Return the DCM structure.
     ///
+    /// :rtype: DCM
     pub fn dcm3x3_from_vnc_to_inertial(&self) -> PhysicsResult<DCM> {
         let v = self.velocity_km_s / self.vmag_km_s();
         let n = self.hvec()? / self.hmag()?;
@@ -558,6 +572,8 @@ impl Orbit {
     /// # Note on the time derivative
     /// If the pre or post states cannot be computed, then the time derivative of the DCM will _not_ be set.
     /// Further note that most astrodynamics tools do *not* account for the time derivative in the RIC frame.
+    ///
+    /// :rtype: DCM
     pub fn dcm_from_vnc_to_inertial(&self) -> PhysicsResult<DCM> {
         let rot_mat_dt = if let Ok(pre) = self.at_epoch(self.epoch - Unit::Millisecond * 1) {
             if let Ok(post) = self.at_epoch(self.epoch + Unit::Millisecond * 1) {

@@ -26,10 +26,6 @@ use log::warn;
 
 use snafu::ResultExt;
 
-#[cfg(feature = "python")]
-use pyo3::prelude::*;
-
-#[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
     /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
     /// receiver state (`rx`) seen from the transmitter state (`tx`), once converted into the SEZ frame of the transmitter.
@@ -45,12 +41,6 @@ impl Almanac {
     /// 5. Compute the range as the norm of the difference between these two position vectors.
     /// 6. Compute the elevation, and ensure it is between +/- 180 degrees.
     /// 7. Compute the azimuth with a quadrant check, and ensure it is between 0 and 360 degrees.
-    ///
-    /// :type rx: Orbit
-    /// :type tx: Orbit
-    /// :type obstructing_body: Frame, optional
-    /// :type ab_corr: Aberration, optional
-    /// :rtype: AzElRange
     pub fn azimuth_elevation_range_sez(
         &self,
         rx: Orbit,

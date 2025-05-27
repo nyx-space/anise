@@ -21,10 +21,6 @@ use crate::math::units::*;
 use crate::math::Vector3;
 use crate::prelude::Frame;
 
-#[cfg(feature = "python")]
-use pyo3::prelude::*;
-
-#[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
     /// Returns the 6x6 DCM needed to rotation the `from_frame` to the `to_frame`.
     ///

@@ -220,14 +220,8 @@ impl Almanac {
             })
         }
     }
-}
 
-#[cfg_attr(feature = "python", pymethods)]
-impl Almanac {
     /// Generic function that tries to load the provided path guessing to the file type.
-    ///
-    /// :type path: str
-    /// :rtype: Almanac
     pub fn load(&self, path: &str) -> AlmanacResult<Self> {
         // Load the data onto the heap
         let bytes = file2heap!(path).context(LoadingSnafu {
@@ -246,32 +240,8 @@ impl Almanac {
             })
     }
 
-    /// Initializes a new Almanac from the provided file path, guessing at the file type
-    #[cfg(feature = "python")]
-    #[new]
-    pub fn py_new(path: &str) -> AlmanacResult<Self> {
-        Self::new(path)
-    }
-
-    #[cfg(feature = "python")]
-    fn __str__(&self) -> String {
-        format!("{self}")
-    }
-
-    #[cfg(feature = "python")]
-    fn __repr__(&self) -> String {
-        format!("{self} (@{self:p})")
-    }
-
     /// Pretty prints the description of this Almanac, showing everything by default. Default time scale is TDB.
     /// If any parameter is set to true, then nothing other than that will be printed.
-    ///
-    /// :type spk: bool, optional
-    /// :type bpc: bool, optional
-    /// :type planetary: bool, optional
-    /// :type time_scale: TimeScale, optional
-    /// :type round_time: bool, optional
-    /// :rtype: None
     pub fn describe(
         &self,
         spk: Option<bool>,
