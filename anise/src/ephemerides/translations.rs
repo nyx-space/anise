@@ -26,10 +26,6 @@ use crate::prelude::Frame;
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
 pub const MAX_TREE_DEPTH: usize = 8;
 
-#[cfg(feature = "python")]
-use pyo3::prelude::*;
-
-#[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
     /// Returns the Cartesian state of the target frame as seen from the observer frame at the provided epoch, and optionally given the aberration correction.
     ///
@@ -216,9 +212,7 @@ impl Almanac {
         new_state.frame = observer_frame.with_orient(state.frame.orientation_id);
         Ok(new_state)
     }
-}
 
-impl Almanac {
     /// Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame
     ///
     /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_state_to` function instead to include rotations.

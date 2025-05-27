@@ -20,7 +20,9 @@ def test_state_transformation():
 
     if environ.get("CI", False):
         # Load from meta kernel to not use Git LFS quota
-        data_path = Path(__file__).parent.joinpath("..", "..", "data", "ci_config.dhall")
+        data_path = Path(__file__).parent.joinpath(
+            "..", "..", "data", "ci_config.dhall"
+        )
         meta = MetaAlmanac(str(data_path))
         print(meta)
         # Process the files to be loaded
@@ -30,7 +32,7 @@ def test_state_transformation():
             if "lfs" in str(e):
                 # Must be some LFS error in the CI again
                 return
-            raise # Otherwise, raise the error!
+            raise  # Otherwise, raise the error!
     else:
         data_path = Path(__file__).parent.joinpath("..", "..", "data")
         # Must ensure that the path is a string
@@ -68,7 +70,11 @@ def test_state_transformation():
     assert orig_state.cartesian_pos_vel().shape == (6,)
 
     # Ensure we can call all of the DCM functions
-    for func in ["dcm_from_ric_to_inertial", "dcm_from_rcn_to_inertial", "dcm_from_vnc_to_inertial"]:
+    for func in [
+        "dcm_from_ric_to_inertial",
+        "dcm_from_rcn_to_inertial",
+        "dcm_from_vnc_to_inertial",
+    ]:
         dcm = getattr(orig_state, func)()
         assert dcm.get_state_dcm().shape == (6, 6)
         assert dcm.rot_mat.shape == (3, 3)
@@ -77,11 +83,13 @@ def test_state_transformation():
         # Test rebuilding the DCM from its parts
         dcm_rebuilt = DCM(dcm.rot_mat, dcm.from_id, dcm.to_id, dcm.rot_mat_dt)
         assert dcm_rebuilt == dcm
-    
+
     topo_dcm = orig_state.dcm_from_topocentric_to_body_fixed(123)
     assert topo_dcm.get_state_dcm().shape == (6, 6)
     assert topo_dcm.rot_mat.shape == (3, 3)
-    assert (topo_dcm.rot_mat_dt is not None and topo_dcm.rot_mat_dt.shape == (3, 3)) or topo_dcm.rot_mat_dt is None
+    assert (
+        topo_dcm.rot_mat_dt is not None and topo_dcm.rot_mat_dt.shape == (3, 3)
+    ) or topo_dcm.rot_mat_dt is None
 
     # In Python, we can set the aberration to None
     aberration = None
@@ -96,9 +104,7 @@ def test_state_transformation():
     assert abs(state_itrf93.height_km() - 1814.503598063825) < 1e-10
 
     # Convert back
-    from_state_itrf93_to_eme2k = ctx.transform_to(
-        state_itrf93, Frames.EARTH_J2000, aberration
-    )
+    from_state_itrf93_to_eme2k = ctx.transform_to(state_itrf93, Frames.EARTH_J2000)
 
     print(from_state_itrf93_to_eme2k)
 
@@ -124,8 +130,24 @@ def test_state_transformation():
     # Pickling test
     pickle.loads(pickle.dumps(eme2k)) == eme2k
     pickle.loads(pickle.dumps(eme2k.shape)) == eme2k.shape
-    # Cannot yet pickle Epoch, so we can't pickle an Orbit yet
-    # cf. https://github.com/nyx-space/hifitime/issues/270
+    # Cannot pickle across module boundaries =(
+    # pickle.loads(pickle.dumps(paris)) == paris
+
+    # Function export test
+    for fname in [
+        "transform",
+        "transform_to",
+        "translate",
+        "translate_to",
+        "translate_geometric",
+        "spk_ezr",
+        "state_of",
+        "solar_eclipsing",
+        "occultation",
+        "line_of_sight_obstructed",
+        "azimuth_elevation_range_sez",
+    ]:
+        assert hasattr(ctx, fname)
 
 
 def test_convert_tpc():
@@ -139,17 +161,22 @@ def test_convert_tpc():
     convert_tpc("data/pck00011.tpc", "data/gm_de440.tpc", "test_constants.tpc")
 
     # Second call, with overwrite enabled, also works
-    convert_tpc("data/pck00011.tpc", "data/gm_de440.tpc", "test_constants.tpc", overwrite=True)
+    convert_tpc(
+        "data/pck00011.tpc", "data/gm_de440.tpc", "test_constants.tpc", overwrite=True
+    )
 
     # Try to load the constants file
     constants_file = MetaFile("test_constants.tpc")
     new_meta = MetaAlmanac()
-    new_meta.files = [constants_file,]
+    new_meta.files = [
+        constants_file,
+    ]
     almanac = new_meta.process()
 
     earth_j2k = almanac.frame_info(Frames.EARTH_J2000)
     assert earth_j2k.mu_km3_s2 != None
     almanac.describe()
+
 
 def test_meta_load():
     data_path = Path(__file__).parent.joinpath("..", "..", "data", "local.dhall")
@@ -186,4 +213,5 @@ if __name__ == "__main__":
     # test_meta_load()
     # test_exports()
     # test_frame_defs()
+    test_convert_tpc()
     test_state_transformation()

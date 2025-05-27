@@ -24,10 +24,6 @@ use crate::errors::AlmanacResult;
 
 use snafu::ResultExt;
 
-#[cfg(feature = "python")]
-use pyo3::prelude::*;
-
-#[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
     /// Computes whether the line of sight between an observer and an observed Cartesian state is obstructed by the obstructing body.
     /// Returns true if the obstructing body is in the way, false otherwise.
