@@ -16,7 +16,8 @@ use crate::{
     astro::{Aberration, AzElRange, Occultation},
     ephemerides::EphemerisError,
     errors::AlmanacResult,
-    math::cartesian::CartesianState,
+    math::{cartesian::CartesianState, rotation::DCM},
+    orientations::OrientationError,
     prelude::{Frame, Orbit},
     NaifId,
 };
@@ -59,6 +60,7 @@ impl Almanac {
     /// :type spk: bool, optional
     /// :type bpc: bool, optional
     /// :type planetary: bool, optional
+    /// :type eulerparams: bool, optional
     /// :type time_scale: TimeScale, optional
     /// :type round_time: bool, optional
     /// :rtype: None
@@ -409,5 +411,51 @@ impl Almanac {
         ab_corr: Option<Aberration>,
     ) -> Result<CartesianState, EphemerisError> {
         self.translate_to(state, observer_frame, ab_corr)
+    }
+
+    /// Returns the 6x6 DCM needed to rotation the `from_frame` to the `to_frame`.
+    ///
+    /// # Warning
+    /// This function only performs the rotation and no translation whatsoever. Use the `transform_from_to` function instead to include rotations.
+    ///
+    /// # Note
+    /// This function performs a recursion of no more than twice the MAX_TREE_DEPTH.
+    ///
+    /// :type from_frame: Frame
+    /// :type to_frame: Frame
+    /// :type epoch: Epoch
+    /// :rtype: DCM
+    #[pyo3(name = "rotate", signature=(
+        from_frame,
+        to_frame,
+        epoch,
+    ))]
+    pub fn py_rotate(
+        &self,
+        from_frame: Frame,
+        to_frame: Frame,
+        epoch: Epoch,
+    ) -> Result<DCM, OrientationError> {
+        self.rotate(from_frame, to_frame, epoch)
+    }
+
+    /// Rotates the provided Cartesian state into the requested observer frame
+    ///
+    /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_to` function instead to include rotations.
+    ///
+    /// :type state: CartesianState
+    /// :type observer_frame: Frame
+    /// :rtype: CartesianState
+    #[pyo3(name = "rotate_to", signature=(
+        state,
+        observer_frame,
+    ))]
+    #[allow(clippy::too_many_arguments)]
+    pub fn py_rotate_to(
+        &self,
+        state: CartesianState,
+        observer_frame: Frame,
+    ) -> Result<CartesianState, OrientationError> {
+        self.rotate_to(state, observer_frame)
     }
 }

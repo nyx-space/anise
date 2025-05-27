@@ -107,7 +107,7 @@ This function performs a memory allocation."""
 # Warning
 This function performs a memory allocation."""
 
-    def describe(self, spk: bool=None, bpc: bool=None, planetary: bool=None, time_scale: TimeScale=None, round_time: bool=None) -> None:
+    def describe(self, spk: bool=None, bpc: bool=None, planetary: bool=None, eulerparams: bool=None, time_scale: TimeScale=None, round_time: bool=None) -> None:
         """Pretty prints the description of this Almanac, showing everything by default. Default time scale is TDB.
 If any parameter is set to true, then nothing other than that will be printed."""
 
@@ -159,6 +159,20 @@ A 100%  percent occultation means that the back object is fully hidden from the 
 A value in between means that the back object is partially hidden from the observser (i.e. _penumbra_ if the back object is the Sun).
 Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse/) for modeling details."""
 
+    def rotate(self, from_frame: Frame, to_frame: Frame, epoch: Epoch) -> DCM:
+        """Returns the 6x6 DCM needed to rotation the `from_frame` to the `to_frame`.
+
+# Warning
+This function only performs the rotation and no translation whatsoever. Use the `transform_from_to` function instead to include rotations.
+
+# Note
+This function performs a recursion of no more than twice the MAX_TREE_DEPTH."""
+
+    def rotate_to(self, state: CartesianState, observer_frame: Frame) -> CartesianState:
+        """Rotates the provided Cartesian state into the requested observer frame
+
+**WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_to` function instead to include rotations."""
+
     def solar_eclipsing(self, eclipsing_frame: Frame, observer: Orbit, ab_corr: Aberration=None) -> Occultation:
         """Computes the solar eclipsing of the observer due to the eclipsing_frame.
 
@@ -183,7 +197,7 @@ This function performs a memory allocation."""
 # Warning
 This function performs a memory allocation."""
 
-    def state_of(self, object: int, observer: Frame, epoch: Epoch, ab_corr: Aberration=None) -> Orbit:
+    def state_of(self, object_id: int, observer: Frame, epoch: Epoch, ab_corr: Aberration=None) -> Orbit:
         """Returns the Cartesian state of the object as seen from the provided observer frame (essentially `spkezr`).
 
 # Note
@@ -407,8 +421,6 @@ This function modified `self` and changes the URI to be the path to the download
 
 @typing.final
 class astro:
-    _all__: list = ["constants", "AzElRange", "Ellipsoid", "Occultation", "Orbit"]
-
     @typing.final
     class AzElRange:
         """A structure that stores the result of Azimuth, Elevation, Range, Range rate calculation."""
@@ -715,6 +727,127 @@ class astro:
 
         def c3_km2_s2(self) -> float:
             """Returns the $C_3$ of this orbit in km^2/s^2"""
+
+        def cartesian_pos_vel(self) -> numpy.array:
+            """Returns this state as a Cartesian vector of size 6 in [km, km, km, km/s, km/s, km/s]
+
+    Note that the time is **not** returned in the vector."""
+
+        def dcm3x3_from_rcn_to_inertial(self) -> DCM:
+            """Builds the rotation matrix that rotates from this state's inertial frame to this state's RCN frame (radial, cross, normal)
+
+    # Frame warning
+    If the stattion is NOT in an inertial frame, then this computation is INVALID.
+
+    # Algorithm
+    1. Compute \\hat{r}, \\hat{h}, the unit vectors of the radius and orbital momentum.
+    2. Compute the cross product of these
+    3. Build the DCM with these unit vectors
+    4. Return the DCM structure"""
+
+        def dcm3x3_from_ric_to_inertial(self) -> DCM:
+            """Builds the rotation matrix that rotates from this state's inertial frame to this state's RIC frame
+
+    # Frame warning
+    If the state is NOT in an inertial frame, then this computation is INVALID.
+
+    # Algorithm
+    1. Build the c vector as the normalized orbital momentum vector
+    2. Build the i vector as the cross product of \\hat{r} and c
+    3. Build the RIC DCM as a 3x3 of the columns [\\hat{r}, \\hat{i}, \\hat{c}]
+    4. Return the DCM structure **without** accounting for the transport theorem."""
+
+        def dcm3x3_from_topocentric_to_body_fixed(self) -> DCM:
+            """Builds the rotation matrix that rotates from the topocentric frame (SEZ) into the body fixed frame of this state.
+
+    # Frame warning
+    If the state is NOT in a body fixed frame (i.e. ITRF93), then this computation is INVALID.
+
+    # Source
+    From the GMAT MathSpec, page 30 section 2.6.9 and from `Calculate_RFT` in `TopocentricAxes.cpp`, this returns the
+    rotation matrix from the topocentric frame (SEZ) to body fixed frame.
+    In the GMAT MathSpec notation, R_{IF} is the DCM from body fixed to inertial. Similarly, R{FT} is from topocentric
+    to body fixed."""
+
+        def dcm3x3_from_vnc_to_inertial(self) -> DCM:
+            """Builds the rotation matrix that rotates from this state's inertial frame to this state's VNC frame (velocity, normal, cross)
+
+    # Frame warning
+    If the stattion is NOT in an inertial frame, then this computation is INVALID.
+
+    # Algorithm
+    1. Compute \\hat{v}, \\hat{h}, the unit vectors of the radius and orbital momentum.
+    2. Compute the cross product of these
+    3. Build the DCM with these unit vectors
+    4. Return the DCM structure."""
+
+        def dcm_from_rcn_to_inertial(self) -> DCM:
+            """Builds the rotation matrix that rotates from this state's inertial frame to this state's RCN frame (radial, cross, normal)
+
+    # Frame warning
+    If the stattion is NOT in an inertial frame, then this computation is INVALID.
+
+    # Algorithm
+    1. Compute \\hat{r}, \\hat{h}, the unit vectors of the radius and orbital momentum.
+    2. Compute the cross product of these
+    3. Build the DCM with these unit vectors
+    4. Return the DCM structure with a 6x6 DCM with the time derivative of the VNC frame set.
+
+    # Note on the time derivative
+    If the pre or post states cannot be computed, then the time derivative of the DCM will _not_ be set.
+    Further note that most astrodynamics tools do *not* account for the time derivative in the RIC frame."""
+
+        def dcm_from_ric_to_inertial(self) -> DCM:
+            """Builds the rotation matrix that rotates from this state's inertial frame to this state's RIC frame
+
+    # Frame warning
+    If the state is NOT in an inertial frame, then this computation is INVALID.
+
+    # Algorithm
+    1. Compute the state data one millisecond before and one millisecond assuming two body dynamics
+    2. Compute the DCM for this state, and the pre and post states
+    3. Build the c vector as the normalized orbital momentum vector
+    4. Build the i vector as the cross product of \\hat{r} and c
+    5. Build the RIC DCM as a 3x3 of the columns [\\hat{r}, \\hat{i}, \\hat{c}], for the post, post, and current states
+    6. Compute the difference between the DCMs of the pre and post states, to build the DCM time derivative
+    7. Return the DCM structure with a 6x6 state DCM.
+
+    # Note on the time derivative
+    If the pre or post states cannot be computed, then the time derivative of the DCM will _not_ be set.
+    Further note that most astrodynamics tools do *not* account for the time derivative in the RIC frame."""
+
+        def dcm_from_topocentric_to_body_fixed(self, _from: float) -> DCM:
+            """Builds the rotation matrix that rotates from the topocentric frame (SEZ) into the body fixed frame of this state.
+
+    # Frame warnings
+    + If the state is NOT in a body fixed frame (i.e. ITRF93), then this computation is INVALID.
+    + (Usually) no time derivative can be computed: the orbit is expected to be a body fixed frame where the `at_epoch` function will fail. Exceptions for Moon body fixed frames.
+
+    # UNUSED Arguments
+    + `from`: ID of this new frame. Only used to set the "from" frame of the DCM. -- No longer used since 0.5.3
+
+    # Source
+    From the GMAT MathSpec, page 30 section 2.6.9 and from `Calculate_RFT` in `TopocentricAxes.cpp`, this returns the
+    rotation matrix from the topocentric frame (SEZ) to body fixed frame.
+    In the GMAT MathSpec notation, R_{IF} is the DCM from body fixed to inertial. Similarly, R{FT} is from topocentric
+    to body fixed."""
+
+        def dcm_from_vnc_to_inertial(self) -> DCM:
+            """Builds the rotation matrix that rotates from this state's inertial frame to this state's VNC frame (velocity, normal, cross)
+
+    # Frame warning
+    If the stattion is NOT in an inertial frame, then this computation is INVALID.
+
+    # Algorithm
+    1. Compute \\hat{v}, \\hat{h}, the unit vectors of the radius and orbital momentum.
+    2. Compute the cross product of these
+    3. Build the DCM with these unit vectors
+    4. Compute the difference between the DCMs of the pre and post states (+/- 1 ms), to build the DCM time derivative
+    4. Return the DCM structure with a 6x6 DCM with the time derivative of the VNC frame set.
+
+    # Note on the time derivative
+    If the pre or post states cannot be computed, then the time derivative of the DCM will _not_ be set.
+    Further note that most astrodynamics tools do *not* account for the time derivative in the RIC frame."""
 
         def declination_deg(self) -> float:
             """Returns the declination of this orbit in degrees"""
@@ -1023,6 +1156,7 @@ class astro:
         def __str__(self) -> str:
             """Return str(self)."""
     
+    @typing.final
     class constants:
         @typing.final
         class CelestialObjects:
@@ -1065,7 +1199,11 @@ class astro:
             MARS_BARYCENTER_J2000: Frame = ...
             MERCURY_J2000: Frame = ...
             MOON_J2000: Frame = ...
+            MOON_ME_DE421_FRAME: Frame = ...
+            MOON_ME_DE440_ME421_FRAME: Frame = ...
             MOON_ME_FRAME: Frame = ...
+            MOON_PA_DE421_FRAME: Frame = ...
+            MOON_PA_DE440_FRAME: Frame = ...
             MOON_PA_FRAME: Frame = ...
             NEPTUNE_BARYCENTER_J2000: Frame = ...
             PLUTO_BARYCENTER_J2000: Frame = ...
@@ -1090,13 +1228,18 @@ class astro:
             ITRF93: int = ...
             J2000: int = ...
             MOON_ME: int = ...
+            MOON_ME_DE421: int = ...
+            MOON_ME_DE440_ME421: int = ...
             MOON_PA: int = ...
+            MOON_PA_DE421: int = ...
+            MOON_PA_DE440: int = ...
 
         @typing.final
         class UsualConstants:
             MEAN_EARTH_ANGULAR_VELOCITY_DEG_S: float = ...
             MEAN_MOON_ANGULAR_VELOCITY_DEG_S: float = ...
             SPEED_OF_LIGHT_KM_S: float = ...
+
 
 @typing.final
 class time:
@@ -2201,10 +2344,8 @@ KPL/TPC files must be converted into "PCA" (Planetary Constant ANISE) files befo
     __all__: list = ...
     __name__: str = ...
 
-
 @typing.final
 class rotation:
-
     @typing.final
     class DCM:
         """Defines a direction cosine matrix from one frame ID to another frame ID, optionally with its time derivative.

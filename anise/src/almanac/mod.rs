@@ -220,9 +220,7 @@ impl Almanac {
             })
         }
     }
-}
 
-impl Almanac {
     /// Generic function that tries to load the provided path guessing to the file type.
     pub fn load(&self, path: &str) -> AlmanacResult<Self> {
         // Load the data onto the heap
