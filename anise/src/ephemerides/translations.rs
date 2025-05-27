@@ -42,12 +42,6 @@ impl Almanac {
     ///
     /// # Note
     /// This function performs a recursion of no more than twice the [MAX_TREE_DEPTH].
-    ///
-    /// :type target_frame: Orbit
-    /// :type observer_frame: Frame
-    /// :type epoch: Epoch
-    /// :type ab_corr: Aberration, optional
-    /// :rtype: Orbit
     pub fn translate(
         &self,
         target_frame: Frame,
@@ -172,11 +166,6 @@ impl Almanac {
     }
 
     /// Returns the geometric position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in km, the velocity in km/s, and the acceleration in km/s^2.
-    ///
-    /// :type target_frame: Orbit
-    /// :type observer_frame: Frame
-    /// :type epoch: Epoch
-    /// :rtype: Orbit
     pub fn translate_geometric(
         &self,
         target_frame: Frame,
@@ -189,11 +178,6 @@ impl Almanac {
     /// Translates the provided Cartesian state into the requested observer frame
     ///
     /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_to` function instead to include rotations.
-    ///
-    /// :type state: Orbit
-    /// :type observer_frame: Frame
-    /// :type ab_corr: Aberration, optional
-    /// :rtype: Orbit
     #[allow(clippy::too_many_arguments)]
     pub fn translate_to(
         &self,
