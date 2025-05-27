@@ -15,7 +15,7 @@ use snafu::{ensure, ResultExt};
 use crate::{
     errors::{DecodingError, IntegrityError, TooFewDoublesSnafu},
     math::{
-        interpolation::{chebyshev_eval, InterpDecodingSnafu, InterpolationError},
+        interpolation::{chebyshev_eval_spice_style, InterpDecodingSnafu, InterpolationError},
         Vector3,
     },
     naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFSummaryRecord},
@@ -168,8 +168,7 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
             .iter()
             .enumerate()
         {
-            let (val, deriv) =
-                chebyshev_eval(normalized_time, coeffs, radius_s, epoch, self.degree())?;
+            let (val, deriv) = chebyshev_eval_spice_style(normalized_time, coeffs, radius_s)?;
             state[cno] = val;
             rate[cno] = deriv;
         }
