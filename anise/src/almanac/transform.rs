@@ -12,7 +12,10 @@ use hifitime::{Epoch, Unit as TimeUnit};
 use snafu::ResultExt;
 
 use crate::{
-    constants::orientations::J2000,
+    constants::{
+        frames::{EARTH_J2000, SUN_J2000},
+        orientations::J2000,
+    },
     errors::{AlmanacResult, EphemerisSnafu, OrientationSnafu},
     math::{cartesian::CartesianState, units::LengthUnit, Vector3},
     orientations::OrientationPhysicsSnafu,
@@ -177,5 +180,40 @@ impl Almanac {
             .context(OrientationSnafu {
                 action: "transform provided state",
             })
+    }
+
+    /// Returns the unitary 3D vector between two [Frame]s (solid bodies) at desired [Epoch]
+    pub fn unit_vector_km(
+        &self,
+        target_frame: Frame,
+        observer_frame: Frame,
+        epoch: Epoch,
+        ab_corr: Option<Aberration>,
+    ) -> AlmanacResult<Vector3> {
+        let transform = self.transform(target_frame, observer_frame, epoch, ab_corr)?;
+        Ok(Vector3::new(
+            transform.radius_km.x,
+            transform.radius_km.y,
+            transform.radius_km.z,
+        ))
+    }
+
+    /// Returns the unitary 3D vector between desired [Frame] (solid body) and the Sun at desired [Epoch]
+    pub fn sun_unit_vector_km(
+        &self,
+        epoch: Epoch,
+        observer_frame: Frame,
+        ab_corr: Option<Aberration>,
+    ) -> AlmanacResult<Vector3> {
+        self.unit_vector_km(SUN_J2000, observer_frame, epoch, ab_corr)
+    }
+
+    /// Returns the unitary 3D vector between Earth and Sun at desired [Epoch].
+    pub fn earth_sun_unit_vector_km(
+        &self,
+        epoch: Epoch,
+        ab_corr: Option<Aberration>,
+    ) -> AlmanacResult<Vector3> {
+        self.unit_vector_km(SUN_J2000, EARTH_J2000, epoch, ab_corr)
     }
 }
