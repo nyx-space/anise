@@ -183,37 +183,34 @@ impl Almanac {
     }
 
     /// Returns the unitary 3D vector between two [Frame]s (solid bodies) at desired [Epoch]
-    pub fn unit_vector_km(
+    pub fn unit_vector(
         &self,
         target_frame: Frame,
         observer_frame: Frame,
         epoch: Epoch,
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<Vector3> {
-        let transform = self.transform(target_frame, observer_frame, epoch, ab_corr)?;
-        Ok(Vector3::new(
-            transform.radius_km.x,
-            transform.radius_km.y,
-            transform.radius_km.z,
-        ))
+        let state = self.transform(target_frame, observer_frame, epoch, ab_corr)?;
+        let normalized = state.radius_km / state.rmag_km();
+        Ok(Vector3::new(normalized.x, normalized.y, normalized.z))
     }
 
     /// Returns the unitary 3D vector between desired [Frame] (solid body) and the Sun at desired [Epoch]
-    pub fn sun_unit_vector_km(
+    pub fn sun_unit_vector(
         &self,
         epoch: Epoch,
         observer_frame: Frame,
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<Vector3> {
-        self.unit_vector_km(SUN_J2000, observer_frame, epoch, ab_corr)
+        self.unit_vector(SUN_J2000, observer_frame, epoch, ab_corr)
     }
 
     /// Returns the unitary 3D vector between Earth and Sun at desired [Epoch].
-    pub fn earth_sun_unit_vector_km(
+    pub fn earth_sun_unit_vector(
         &self,
         epoch: Epoch,
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<Vector3> {
-        self.unit_vector_km(SUN_J2000, EARTH_J2000, epoch, ab_corr)
+        self.unit_vector(SUN_J2000, EARTH_J2000, epoch, ab_corr)
     }
 }
