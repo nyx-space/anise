@@ -191,7 +191,7 @@ impl Almanac {
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<Vector3> {
         let state = self.transform(target_frame, observer_frame, epoch, ab_corr)?;
-        let normalized = state.radius_km / state.rmag_km();
+        Ok(state.radius_km / state.rmag_km())
         Ok(Vector3::new(normalized.x, normalized.y, normalized.z))
     }
 
