@@ -192,7 +192,6 @@ impl Almanac {
     ) -> AlmanacResult<Vector3> {
         let state = self.transform(target_frame, observer_frame, epoch, ab_corr)?;
         Ok(state.radius_km / state.rmag_km())
-        Ok(Vector3::new(normalized.x, normalized.y, normalized.z))
     }
 
     /// Returns the unitary 3D vector between desired [Frame] (solid body) and the Sun at desired [Epoch]
