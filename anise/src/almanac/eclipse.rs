@@ -301,6 +301,30 @@ impl Almanac {
     ) -> AlmanacResult<Occultation> {
         self.occultation(SUN_J2000, eclipsing_frame, observer, ab_corr)
     }
+
+    /// Computes the Beta angle (β) for a given orbital state, in degrees. A Beta angle of 0° indicates that the orbit plane is edge-on to the Sun, leading to maximum eclipse time. Conversely, a Beta angle of +90° or -90° means the orbit plane is face-on to the Sun, resulting in continuous sunlight exposure and no eclipses.
+    ///
+    /// The Beta angle (β) is defined as the angle between the orbit plane of a spacecraft and the vector from the central body (e.g., Earth) to the Sun. In simpler terms, it measures how much of the time a satellite in orbit is exposed to direct sunlight.
+    /// The mathematical formula for the Beta angle is: β=arcsin(h⋅usun​)
+    /// Where:
+    /// - h is the unit vector of the orbital momentum.
+    /// - usun​ is the unit vector pointing from the central body to the Sun.
+    ///
+    /// Original code from GMAT, <https://github.com/ChristopherRabotin/GMAT/blob/GMAT-R2022a/src/gmatutil/util/CalculationUtilities.cpp#L209-L219>
+    ///
+    /// :type state: Orbit
+    /// :type ab_corr: Aberration, optional
+    /// :rtype: float
+    pub fn beta_angle_deg(&self, state: Orbit, ab_corr: Option<Aberration>) -> AlmanacResult<f64> {
+        let u_sun = self.sun_unit_vector(state.epoch, state.frame, ab_corr)?;
+        let orbit_mom = state.hvec().map_err(|e| AlmanacError::GenericError {
+            err: format!("{e}"),
+        })? / state.hmag().map_err(|e| AlmanacError::GenericError {
+            err: format!("{e}"),
+        })?;
+
+        Ok(orbit_mom.dot(&u_sun).asin().to_degrees())
+    }
 }
 
 /// Compute the area of the circular segment of radius r and chord length d
