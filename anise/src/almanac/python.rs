@@ -225,6 +225,27 @@ impl Almanac {
         self.solar_eclipsing(eclipsing_frame, observer, ab_corr)
     }
 
+    /// Computes the Beta angle (β) for a given orbital state, in degrees. A Beta angle of 0° indicates that the orbit plane is edge-on to the Sun, leading to maximum eclipse time. Conversely, a Beta angle of +90° or -90° means the orbit plane is face-on to the Sun, resulting in continuous sunlight exposure and no eclipses.
+    ///
+    /// The Beta angle (β) is defined as the angle between the orbit plane of a spacecraft and the vector from the central body (e.g., Earth) to the Sun. In simpler terms, it measures how much of the time a satellite in orbit is exposed to direct sunlight.
+    /// The mathematical formula for the Beta angle is: β=arcsin(h⋅usun​)
+    /// Where:
+    /// - h is the unit vector of the orbital momentum.
+    /// - usun​ is the unit vector pointing from the central body to the Sun.
+    ///
+    /// Original code from GMAT, <https://github.com/ChristopherRabotin/GMAT/blob/GMAT-R2022a/src/gmatutil/util/CalculationUtilities.cpp#L209-L219>
+    ///
+    /// :type state: Orbit
+    /// :type ab_corr: Aberration, optional
+    /// :rtype: float
+    #[pyo3(name = "beta_angle_deg", signature=(
+        state,
+        ab_corr=None,
+    ))]
+    fn py_beta_angle_deg(&self, state: Orbit, ab_corr: Option<Aberration>) -> AlmanacResult<f64> {
+        self.beta_angle_deg(state, ab_corr)
+    }
+
     /// Returns the Cartesian state needed to transform the `from_frame` to the `to_frame`.
     ///
     /// # SPICE Compatibility

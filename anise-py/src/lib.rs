@@ -12,8 +12,9 @@ use ::anise::almanac::metaload::{MetaAlmanac, MetaFile};
 use ::anise::almanac::Almanac;
 use ::anise::astro::Aberration;
 use hifitime::leap_seconds::{LatestLeapSeconds, LeapSecondsFile};
-use hifitime::prelude::*;
+use hifitime::python::{PyDurationError, PyHifitimeError, PyParsingError};
 use hifitime::ut1::Ut1Provider;
+use hifitime::{prelude::*, MonthName, Polynomial};
 
 use pyo3::prelude::*;
 use pyo3::py_run;
@@ -50,6 +51,12 @@ fn register_time_module(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     sm.add_class::<LatestLeapSeconds>()?;
     sm.add_class::<LeapSecondsFile>()?;
     sm.add_class::<Ut1Provider>()?;
+    sm.add_class::<MonthName>()?;
+    sm.add_class::<PyHifitimeError>()?;
+    sm.add_class::<PyDurationError>()?;
+    sm.add_class::<PyParsingError>()?;
+    sm.add_class::<Polynomial>()?;
+    sm.add_class::<Weekday>()?;
 
     Python::with_gil(|py| {
         py_run!(py, sm, "import sys; sys.modules['anise.time'] = sm");

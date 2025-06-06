@@ -92,6 +92,17 @@ The obstructing body _should_ be a tri-axial ellipsoid body, e.g. IAU_MOON_FRAME
 6. Compute the elevation, and ensure it is between +/- 180 degrees.
 7. Compute the azimuth with a quadrant check, and ensure it is between 0 and 360 degrees."""
 
+    def beta_angle_deg(self, state: Orbit, ab_corr: Aberration=None) -> float:
+        """Computes the Beta angle (β) for a given orbital state, in degrees. A Beta angle of 0° indicates that the orbit plane is edge-on to the Sun, leading to maximum eclipse time. Conversely, a Beta angle of +90° or -90° means the orbit plane is face-on to the Sun, resulting in continuous sunlight exposure and no eclipses.
+
+The Beta angle (β) is defined as the angle between the orbit plane of a spacecraft and the vector from the central body (e.g., Earth) to the Sun. In simpler terms, it measures how much of the time a satellite in orbit is exposed to direct sunlight.
+The mathematical formula for the Beta angle is: β=arcsin(h⋅usun\u200b)
+Where:
+- h is the unit vector of the orbital momentum.
+- usun\u200b is the unit vector pointing from the central body to the Sun.
+
+Original code from GMAT, <https://github.com/ChristopherRabotin/GMAT/blob/GMAT-R2022a/src/gmatutil/util/CalculationUtilities.cpp#L209-L219>"""
+
     def bpc_domain(self, id: int) -> typing.Tuple:
         """Returns the applicable domain of the request id, i.e. start and end epoch that the provided id has loaded data."""
 
