@@ -223,6 +223,13 @@ impl CartesianState {
         )
     }
 
+    /// Returns the altitude in km
+    ///
+    /// :rtype: float
+    pub fn altitude_km(&self) -> PhysicsResult<f64> {
+        Ok(self.rmag_km() - self.frame.mean_equatorial_radius_km()?)
+    }
+
     /// Returns the SMA altitude in km
     ///
     /// :rtype: float

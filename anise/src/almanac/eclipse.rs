@@ -53,12 +53,6 @@ impl Almanac {
     /// - `r1dotr2` is the dot product of `r1` and `r2`.
     /// - `tau` is a parameter that determines the intersection point along the line of sight.
     /// - The condition `(1.0 - tau) * r1sq + r1dotr2 * tau <= ob_mean_eq_radius_km^2` checks if the line of sight is within the obstructing body's radius, indicating an obstruction.
-    ///
-    /// :type observer: Orbit
-    /// :type observed: Orbit
-    /// :type obstructing_body: Frame
-    /// :type ab_corr: Aberration, optional
-    /// :rtype: bool
     pub fn line_of_sight_obstructed(
         &self,
         observer: Orbit,
@@ -115,12 +109,6 @@ impl Almanac {
     /// A 100%  percent occultation means that the back object is fully hidden from the observer because of the front frame (i.e. _umbra_ if the back object is the Sun).
     /// A value in between means that the back object is partially hidden from the observser (i.e. _penumbra_ if the back object is the Sun).
     /// Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse/) for modeling details.
-    ///
-    /// :type back_frame: Frame
-    /// :type front_frame: Frame
-    /// :type observer: Orbit
-    /// :type ab_corr: Aberration, optional
-    /// :rtype: Occultation
     pub fn occultation(
         &self,
         mut back_frame: Frame,
@@ -300,6 +288,26 @@ impl Almanac {
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<Occultation> {
         self.occultation(SUN_J2000, eclipsing_frame, observer, ab_corr)
+    }
+
+    /// Computes the Beta angle (β) for a given orbital state, in degrees. A Beta angle of 0° indicates that the orbit plane is edge-on to the Sun, leading to maximum eclipse time. Conversely, a Beta angle of +90° or -90° means the orbit plane is face-on to the Sun, resulting in continuous sunlight exposure and no eclipses.
+    ///
+    /// The Beta angle (β) is defined as the angle between the orbit plane of a spacecraft and the vector from the central body (e.g., Earth) to the Sun. In simpler terms, it measures how much of the time a satellite in orbit is exposed to direct sunlight.
+    /// The mathematical formula for the Beta angle is: β=arcsin(h⋅usun​)
+    /// Where:
+    /// - h is the unit vector of the orbital momentum.
+    /// - usun​ is the unit vector pointing from the central body to the Sun.
+    ///
+    /// Original code from GMAT, <https://github.com/ChristopherRabotin/GMAT/blob/GMAT-R2022a/src/gmatutil/util/CalculationUtilities.cpp#L209-L219>
+    pub fn beta_angle_deg(&self, state: Orbit, ab_corr: Option<Aberration>) -> AlmanacResult<f64> {
+        let u_sun = self.sun_unit_vector(state.epoch, state.frame, ab_corr)?;
+        let orbit_mom = state.hvec().map_err(|e| AlmanacError::GenericError {
+            err: format!("{e}"),
+        })? / state.hmag().map_err(|e| AlmanacError::GenericError {
+            err: format!("{e}"),
+        })?;
+
+        Ok(orbit_mom.dot(&u_sun).asin().to_degrees())
     }
 }
 
