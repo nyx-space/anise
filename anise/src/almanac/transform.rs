@@ -65,9 +65,7 @@ impl Almanac {
             })
     }
 
-    /// Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame
-    ///
-    /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_state_to` function instead to include rotations.
+    /// Returns the provided state as seen from the observer frame, given the aberration.
     pub fn transform_to(
         &self,
         mut state: CartesianState,

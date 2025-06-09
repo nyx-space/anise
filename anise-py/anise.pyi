@@ -92,6 +92,15 @@ The obstructing body _should_ be a tri-axial ellipsoid body, e.g. IAU_MOON_FRAME
 6. Compute the elevation, and ensure it is between +/- 180 degrees.
 7. Compute the azimuth with a quadrant check, and ensure it is between 0 and 360 degrees."""
 
+    def azimuth_elevation_range_sez_many(self, rx_tx_states: List[Orbit], obstructing_body: Frame=None, ab_corr: Aberration=None) -> List[AzElRange]:
+        """Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
+receiver states (first item in tuple) seen from the transmitter state (second item in states tuple), once converted into the SEZ frame of the transmitter.
+
+Note: if any computation fails, the error will be printed to the stderr.
+Note: the output AER will be chronologically sorted, regardless of transmitter.
+
+Refer to [azimuth_elevation_range_sez] for details."""
+
     def beta_angle_deg(self, state: Orbit, ab_corr: Aberration=None) -> float:
         """Computes the Beta angle (β) for a given orbital state, in degrees. A Beta angle of 0° indicates that the orbit plane is edge-on to the Sun, leading to maximum eclipse time. Conversely, a Beta angle of +90° or -90° means the orbit plane is face-on to the Sun, resulting in continuous sunlight exposure and no eclipses.
 
@@ -190,6 +199,14 @@ This function performs a recursion of no more than twice the MAX_TREE_DEPTH."""
 This function calls `occultation` where the back object is the Sun in the J2000 frame, and the front object
 is the provided eclipsing frame."""
 
+    def solar_eclipsing_many(self, eclipsing_frame: Frame, observers: List[Orbit], ab_corr: Aberration=None) -> List[Occultation]:
+        """Computes the solar eclipsing of all the observers due to the eclipsing_frame, computed in parallel under the hood.
+
+Note: if any computation fails, the error will be printed to the stderr.
+Note: the output AER will be chronologically sorted, regardless of transmitter.
+
+Refer to [solar_eclipsing] for details."""
+
     def spk_domain(self, id: int) -> typing.Tuple:
         """Returns the applicable domain of the request id, i.e. start and end epoch that the provided id has loaded data."""
 
@@ -269,10 +286,21 @@ will return exactly the same data as the spkerz SPICE call.
 # Note
 The units will be those of the underlying ephemeris data (typically km and km/s)"""
 
-    def transform_to(self, state: Orbit, observer_frame: Frame, ab_corr: Aberration=None) -> Orbit:
-        """Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame
+    def transform_many(self, target_frame: Orbit, observer_frame: Frame, time_series: TimeSeries, ab_corr: Aberration=None) -> List[Orbit]:
+        """Returns a chronologically sorted list of the Cartesian states that transform the `from_frame` to the `to_frame` for each epoch of the time series, computed in parallel under the hood.
+Note: if any transformation fails, the error will be printed to the stderr.
 
-**WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_state_to` function instead to include rotations."""
+Refer to [transform] for details."""
+
+    def transform_many_to(self, states: List[Orbit], observer_frame: Frame, ab_corr: Aberration=None) -> List[Orbit]:
+        """Returns a chronologically sorted list of the provided states as seen from the observer frame, given the aberration.
+Note: if any transformation fails, the error will be printed to the stderr.
+Note: the input ordering is lost: the output states will not be in the same order as the input states if these are not chronologically sorted!
+
+Refer to [transform_to] for details."""
+
+    def transform_to(self, state: Orbit, observer_frame: Frame, ab_corr: Aberration=None) -> Orbit:
+        """Returns the provided state as seen from the observer frame, given the aberration."""
 
     def translate(self, target_frame: Orbit, observer_frame: Frame, epoch: Epoch, ab_corr: Aberration=None) -> Orbit:
         """Returns the Cartesian state of the target frame as seen from the observer frame at the provided epoch, and optionally given the aberration correction.
@@ -2409,26 +2437,26 @@ class rotation:
         def transpose(self) -> DCM:
             """Returns the transpose of this DCM"""
 
-        def __eq__(self, value: typing.Any) -> bool:
-            """Return self==value."""
+    def __eq__(self, value: typing.Any) -> bool:
+        """Return self==value."""
 
-        def __ge__(self, value: typing.Any) -> bool:
-            """Return self>=value."""
+    def __ge__(self, value: typing.Any) -> bool:
+        """Return self>=value."""
 
-        def __gt__(self, value: typing.Any) -> bool:
-            """Return self>value."""
+    def __gt__(self, value: typing.Any) -> bool:
+        """Return self>value."""
 
-        def __le__(self, value: typing.Any) -> bool:
-            """Return self<=value."""
+    def __le__(self, value: typing.Any) -> bool:
+        """Return self<=value."""
 
-        def __lt__(self, value: typing.Any) -> bool:
-            """Return self<value."""
+    def __lt__(self, value: typing.Any) -> bool:
+        """Return self<value."""
 
-        def __ne__(self, value: typing.Any) -> bool:
-            """Return self!=value."""
+    def __ne__(self, value: typing.Any) -> bool:
+        """Return self!=value."""
 
-        def __repr__(self) -> str:
-            """Return repr(self)."""
+    def __repr__(self) -> str:
+        """Return repr(self)."""
 
-        def __str__(self) -> str:
-            """Return str(self)."""
+    def __str__(self) -> str:
+        """Return str(self)."""
