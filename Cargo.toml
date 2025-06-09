@@ -44,6 +44,7 @@ pyo3 = { version = "0.25", features = ["multiple-pymethods"] }
 pyo3-log = "0.12"
 numpy = "0.25"
 ndarray = ">= 0.15, < 0.17"
+rayon = "1.10.0"
 
 anise = { version = "0.6.1", path = "anise", default-features = false }
 

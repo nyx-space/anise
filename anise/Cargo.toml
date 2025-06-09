@@ -43,6 +43,7 @@ rust-embed = { version = "8.4.0", features = [
     "include-exclude",
 ], optional = true }
 regex = { version = "1.10.5", optional = true }
+rayon = { workspace = true, optional = true } # Only used when building with Python
 
 [dev-dependencies]
 rust-spice = "0.7.6"
@@ -66,7 +67,7 @@ ureq = { version = "3.0.10", default-features = false, optional = true, features
 
 [features]
 default = ["metaload"]
-python = ["pyo3", "pyo3-log", "numpy", "ndarray"]
+python = ["pyo3", "pyo3-log", "numpy", "ndarray", "rayon"]
 metaload = ["url", "ureq", "platform-dirs", "regex", "serde_dhall"]
 embed_ephem = ["rust-embed", "ureq"]
 # Enabling this flag significantly increases compilation times due to Arrow and Polars.

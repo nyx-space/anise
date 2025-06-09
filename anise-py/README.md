@@ -1,6 +1,6 @@
 # ANISE (Attitude, Navigation, Instrument, Spacecraft, Ephemeris)
 
-ANISE is a rewrite of the core functionalities of the NAIF SPICE toolkit with enhanced performance, and ease of use, while leveraging Rust's safety and speed.
+ANISE is a modern rewrite of the core functionalities of the NAIF SPICE toolkit with enhanced features, and ease of use, while leveraging Rust's safety and speed.
 
 [**Please fill out our user survey**](https://7ug5imdtt8v.typeform.com/to/qYDB14Hj)
 
@@ -10,6 +10,7 @@ In the realm of space exploration, navigation, and astrophysics, precise and eff
 
 + Loading SPK, BPC, PCK, FK, and TPC files.
 + High-precision translations, rotations, and their combination (rigid body transformations).
++ Querying SPICE files in parallel at incredible speeds (~ 125,000 queries per second), search for the functions with the `many` keyword
 + Comprehensive time system conversions using the hifitime library (including TT, TAI, ET, TDB, UTC, GPS time, and more).
 
 ANISE stands validated against the traditional SPICE toolkit, ensuring accuracy and reliability, with translations achieving machine precision (2e-16) and rotations presenting minimal error (less than two arcseconds in the pointing of the rotation axis and less than one arcsecond in the angle about this rotation axis).
