@@ -21,8 +21,9 @@ use crate::{
     prelude::{Frame, Orbit},
     NaifId,
 };
-use hifitime::{Epoch, TimeScale};
+use hifitime::{Epoch, TimeScale, TimeSeries};
 use pyo3::prelude::*;
+use rayon::prelude::*;
 use snafu::prelude::*;
 
 #[pymethods]
@@ -278,6 +279,43 @@ impl Almanac {
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<CartesianState> {
         self.transform(target_frame, observer_frame, epoch, ab_corr)
+    }
+
+    /// Returns a dictionary of the Epoch to the Cartesian states that transform the `from_frame` to the `to_frame` for each epoch of the time series, computed in parallel under the hood.
+    ///
+    /// Refer to [transform] for details.
+    ///
+    /// :type target_frame: Orbit
+    /// :type observer_frame: Frame
+    /// :type epoch: Epoch
+    /// :type ab_corr: Aberration, optional
+    /// :rtype: Orbit
+    #[pyo3(name = "transform_many", signature=(
+        target_frame,
+        observer_frame,
+        time_series,
+        ab_corr=None,
+    ))]
+    fn py_transform_many<'py>(
+        &self,
+        target_frame: Frame,
+        observer_frame: Frame,
+        time_series: TimeSeries,
+        ab_corr: Option<Aberration>,
+    ) -> Vec<Option<CartesianState>> {
+        time_series
+            .par_bridge()
+            .map(|epoch| {
+                self.transform(target_frame, observer_frame, epoch, ab_corr)
+                    .map_or_else(
+                        |e| {
+                            println!("{e}");
+                            None
+                        },
+                        |state| Some(state),
+                    )
+            })
+            .collect::<Vec<Option<CartesianState>>>()
     }
 
     /// Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame

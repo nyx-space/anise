@@ -6,7 +6,7 @@ from anise import Almanac, MetaAlmanac, MetaFile
 from anise.astro import *
 from anise.astro.constants import Frames
 from anise.rotation import DCM
-from anise.time import Epoch
+from anise.time import Duration, Epoch, TimeSeries, Unit
 from anise.utils import convert_tpc
 
 from os import environ
@@ -27,7 +27,7 @@ def test_state_transformation():
         print(meta)
         # Process the files to be loaded
         try:
-            ctx = meta.process()
+            almanac = meta.process()
         except Exception as e:
             if "lfs" in str(e):
                 # Must be some LFS error in the CI again
@@ -36,14 +36,14 @@ def test_state_transformation():
     else:
         data_path = Path(__file__).parent.joinpath("..", "..", "data")
         # Must ensure that the path is a string
-        ctx = Almanac(str(data_path.joinpath("de440s.bsp")))
+        almanac = Almanac(str(data_path.joinpath("de440s.bsp")))
         # Let's add another file here -- note that the Almanac will load into a NEW variable, so we must overwrite it!
         # This prevents memory leaks (yes, I promise)
-        ctx = ctx.load(str(data_path.joinpath("pck08.pca"))).load(
+        almanac = almanac.load(str(data_path.joinpath("pck08.pca"))).load(
             str(data_path.joinpath("earth_latest_high_prec.bpc"))
         )
 
-    eme2k = ctx.frame_info(Frames.EME2000)
+    eme2k = almanac.frame_info(Frames.EME2000)
     assert eme2k.mu_km3_s2() == 398600.435436096
     assert eme2k.shape.polar_radius_km == 6356.75
     assert abs(eme2k.shape.flattening() - 0.0033536422844278) < 2e-16
@@ -94,7 +94,7 @@ def test_state_transformation():
     # In Python, we can set the aberration to None
     aberration = None
 
-    state_itrf93 = ctx.transform_to(orig_state, Frames.EARTH_ITRF93, aberration)
+    state_itrf93 = almanac.transform_to(orig_state, Frames.EARTH_ITRF93, aberration)
 
     print(orig_state)
     print(state_itrf93)
@@ -104,7 +104,7 @@ def test_state_transformation():
     assert abs(state_itrf93.height_km() - 1814.503598063825) < 1e-10
 
     # Convert back
-    from_state_itrf93_to_eme2k = ctx.transform_to(state_itrf93, Frames.EARTH_J2000)
+    from_state_itrf93_to_eme2k = almanac.transform_to(state_itrf93, Frames.EARTH_J2000)
 
     print(from_state_itrf93_to_eme2k)
 
@@ -113,7 +113,7 @@ def test_state_transformation():
     # Demo creation of a ground station
     mean_earth_angular_velocity_deg_s = 0.004178079012116429
     # Grab the loaded frame info
-    itrf93 = ctx.frame_info(Frames.EARTH_ITRF93)
+    itrf93 = almanac.frame_info(Frames.EARTH_ITRF93)
     paris = Orbit.from_latlongalt(
         48.8566,
         2.3522,
@@ -147,7 +147,30 @@ def test_state_transformation():
         "line_of_sight_obstructed",
         "azimuth_elevation_range_sez",
     ]:
-        assert hasattr(ctx, fname)
+        assert hasattr(almanac, fname)
+
+    # Test the parallel function calls
+    start = Epoch("2021-10-29 12:34:56 TDB")
+    stop = Epoch("2022-10-29 12:34:56 TDB")
+    time_series = TimeSeries(
+        start,
+        stop,
+        Duration("1 min"),
+        False,
+    )
+
+    tick = Epoch.system_now()
+
+    states = almanac.transform_many(
+        Frames.EARTH_J2000,
+        Frames.SUN_J2000,
+        time_series,
+        None,
+    )
+
+    clock_time = Epoch.system_now().timedelta(tick)
+    print(f"Queried {len(states)} states in {clock_time}")
+    assert len(states) == int(stop.timedelta(start).to_unit(Unit.Minute))
 
 
 def test_convert_tpc():
@@ -213,5 +236,5 @@ if __name__ == "__main__":
     # test_meta_load()
     # test_exports()
     # test_frame_defs()
-    test_convert_tpc()
+    # test_convert_tpc()
     test_state_transformation()
