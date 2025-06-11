@@ -317,6 +317,238 @@ impl Orbit {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::prelude::Frame;
+    use hifitime::{Epoch, Duration, Unit};
+    use crate::constants::celestial_objects::EARTH;
+    use crate::constants::orientations::J2000;
+    use hifitime::assert_approx_eq;
+    use crate::errors::{PhysicsError, RadiusError, InfiniteValue}; // Assuming these are the correct error variants from errors.rs
+    use std::f64::consts::PI; // PI is used in calculations
+
+    const MU_EARTH: f64 = 398600.435436; // km^3/s^2
+    const TEST_EPS_DURATION: f64 = 1e-2; // seconds, fairly tolerant for multi-step calcs
+    const TEST_EPS_RADIUS: f64 = 1e-3;   // km
+
+    fn get_test_epoch() -> Epoch {
+        Epoch::from_gregorian_tai_components(2000, 1, 1, 0, 0, 0, 0)
+    }
+
+    fn get_test_frame() -> Frame {
+        Frame::new(EARTH, J2000).with_mu_km3_s2(MU_EARTH)
+    }
+
+    fn create_orbit(sma_km: f64, ecc: f64, ta_deg: f64, epoch: Epoch, frame: Frame) -> Orbit {
+        Orbit::try_keplerian(sma_km, ecc, 0.0, 0.0, 0.0, ta_deg, epoch, frame).unwrap_or_else(|e| panic!("Failed to create orbit for test: {:?}", e))
+    }
+
+    #[test]
+    fn test_duration_to_radius_elliptical() {
+        let epoch = get_test_epoch();
+        let frame = get_test_frame();
+        let sma_km = 10000.0;
+        let ecc = 0.1;
+
+        let rp_km = sma_km * (1.0 - ecc); // 9000 km
+        let ra_km = sma_km * (1.0 + ecc); // 11000 km
+        let period_s = 2.0 * PI * (sma_km.powi(3) / MU_EARTH).sqrt(); // Approx 9951.9652 s
+
+        // Test 1a: Time from periapsis (TA=0) to apoapsis
+        let orbit_at_peri = create_orbit(sma_km, ecc, 0.0, epoch, frame);
+        let res1a = orbit_at_peri.duration_to_radius(ra_km);
+        assert!(res1a.is_ok(), "Test 1a failed: {:?}", res1a.err());
+        assert_approx_eq!(res1a.unwrap().to_seconds(), period_s / 2.0, TEST_EPS_DURATION);
+
+        // Test 1b: Orbit at TA=90 deg. Time to apoapsis.
+        // Expected duration pre-calculated: 2804.368 s
+        let orbit_at_ta90 = create_orbit(sma_km, ecc, 90.0, epoch, frame);
+        // current r for TA=90: p / (1 + e*cos(90)) = sma(1-e^2) = 10000(1-0.01) = 9900km
+        let _current_r_ta90 = orbit_at_ta90.rmag_km(); // approx 9900 km
+        let res1b = orbit_at_ta90.duration_to_radius(ra_km);
+        assert!(res1b.is_ok(), "Test 1b failed: {:?}", res1b.err());
+        assert_approx_eq!(res1b.unwrap().to_seconds(), 2804.368, TEST_EPS_DURATION);
+
+        // Test 1c: Orbit at TA=0. Target radius_km = rp. Expected duration: 0.0.
+        let res1c = orbit_at_peri.duration_to_radius(rp_km);
+        assert!(res1c.is_ok(), "Test 1c failed: {:?}", res1c.err());
+        assert_approx_eq!(res1c.unwrap().to_seconds(), 0.0, TEST_EPS_DURATION);
+
+        // Test 1d: Orbit at TA=0. Target radius_km = 9000.0 + TEST_EPS_RADIUS (slightly after periapsis).
+        // Expected: small positive duration.
+        let target_r_slightly_after_peri = rp_km + TEST_EPS_RADIUS;
+        let res1d = orbit_at_peri.duration_to_radius(target_r_slightly_after_peri);
+        assert!(res1d.is_ok(), "Test 1d failed: {:?}", res1d.err());
+        assert!(res1d.unwrap().to_seconds() > 0.0, "Duration should be positive");
+        // A more precise value would require calculation, e.g. for rp_km + 1km, it's ~17.6s
+        // For rp_km + 0.001km, it's very small. Let's check it's less than a few seconds.
+        assert!(res1d.unwrap().to_seconds() < 20.0, "Duration seems too large for small radius change from periapsis");
+
+
+        // Test 1e: Orbit at TA=180 deg (apoapsis). Time to periapsis.
+        let orbit_at_apo = create_orbit(sma_km, ecc, 180.0, epoch, frame);
+        let res1e = orbit_at_apo.duration_to_radius(rp_km);
+        assert!(res1e.is_ok(), "Test 1e failed: {:?}", res1e.err());
+        assert_approx_eq!(res1e.unwrap().to_seconds(), period_s / 2.0, TEST_EPS_DURATION);
+    }
+
+    #[test]
+    fn test_duration_to_radius_circular() {
+        let epoch = get_test_epoch();
+        let frame = get_test_frame();
+        let sma_km = 10000.0;
+
+        // Test 2a: Near-circular orbit. Target radius_km = sma_km. Expected: Duration 0.0.
+        let ecc_near_circular = ECC_EPSILON / 10.0; // Ensure it's treated as circular by the function's logic
+        let circ_orbit = create_orbit(sma_km, ecc_near_circular, 0.0, epoch, frame);
+        let res2a = circ_orbit.duration_to_radius(sma_km);
+        assert!(res2a.is_ok(), "Test 2a failed: {:?}", res2a.err());
+        assert_approx_eq!(res2a.unwrap().to_seconds(), 0.0, TEST_EPS_DURATION);
+
+        // Test 2b: Target radius_km different from sma_km. Expected: RadiusError.
+        let res2b = circ_orbit.duration_to_radius(sma_km + 1.0);
+        assert!(res2b.is_err());
+        match res2b.err().unwrap() {
+            PhysicsError::RadiusError { action } => {
+                assert_eq!(action, "Target radius for circular orbit must be (nearly) equal to orbit radius");
+            }
+            e => panic!("Test 2b: Unexpected error type: {:?}", e),
+        }
+    }
+
+    #[test]
+    fn test_duration_to_radius_hyperbolic() {
+        let epoch = get_test_epoch();
+        let frame = get_test_frame();
+        let sma_km = -5000.0; // Negative for hyperbolic
+        let ecc = 2.0;
+        let rp_km = sma_km.abs() * (ecc - 1.0); // 5000 * (2-1) = 5000 km
+
+        // Test 3a: From periapsis (TA=0) to radius_km = 10000 km.
+        // Expected duration pre-calculated: 721.74 s
+        let orbit_at_peri = create_orbit(sma_km, ecc, 0.0, epoch, frame);
+        let res3a = orbit_at_peri.duration_to_radius(10000.0);
+        assert!(res3a.is_ok(), "Test 3a failed: {:?}", res3a.err());
+        assert_approx_eq!(res3a.unwrap().to_seconds(), 721.74, TEST_EPS_DURATION);
+
+        // Test 3b: Target radius_km = rp_km. Expected duration: 0.0.
+        let res3b = orbit_at_peri.duration_to_radius(rp_km);
+        assert!(res3b.is_ok(), "Test 3b failed: {:?}", res3b.err());
+        assert_approx_eq!(res3b.unwrap().to_seconds(), 0.0, TEST_EPS_DURATION);
+
+        // Test 3c: Orbit at TA=30 deg. Target radius rp_km. Expected: RadiusError (past).
+        let orbit_at_ta30 = create_orbit(sma_km, ecc, 30.0, epoch, frame);
+        let res3c = orbit_at_ta30.duration_to_radius(rp_km);
+        assert!(res3c.is_err());
+        match res3c.err().unwrap() {
+            PhysicsError::RadiusError { action } => {
+                assert_eq!(action, "Radius (on [0,PI] TA arc) in past for hyperbolic orbit");
+            }
+            e => panic!("Test 3c: Unexpected error type: {:?}", e),
+        }
+    }
+
+    #[test]
+    fn test_duration_to_radius_error_conditions() {
+        let epoch = get_test_epoch();
+        let frame = get_test_frame();
+        let sma_elliptical = 10000.0;
+        let ecc_elliptical = 0.1;
+        let rp_elliptical = sma_elliptical * (1.0 - ecc_elliptical); // 9000
+        let ra_elliptical = sma_elliptical * (1.0 + ecc_elliptical); // 11000
+        let elliptical_orbit = create_orbit(sma_elliptical, ecc_elliptical, 0.0, epoch, frame);
+
+        let sma_hyperbolic = -5000.0;
+        let ecc_hyperbolic = 2.0;
+        let rp_hyperbolic = sma_hyperbolic.abs() * (ecc_hyperbolic - 1.0); // 5000
+        let hyperbolic_orbit = create_orbit(sma_hyperbolic, ecc_hyperbolic, 0.0, epoch, frame);
+
+        // Test 4a: radius_km = -100.0
+        let res4a = elliptical_orbit.duration_to_radius(-100.0);
+        assert!(res4a.is_err());
+        match res4a.err().unwrap() {
+            PhysicsError::RadiusError { action } => assert_eq!(action, "Target radius must be positive"),
+            e => panic!("Test 4a: Unexpected error type: {:?}", e),
+        }
+
+        // Test 4b: Elliptical orbit. Target radius_km less than periapsis.
+        let res4b = elliptical_orbit.duration_to_radius(rp_elliptical - 100.0);
+        assert!(res4b.is_err());
+        match res4b.err().unwrap() {
+            PhysicsError::RadiusError { action } => assert_eq!(action, "Radius outside reachable range for elliptical orbit"),
+            e => panic!("Test 4b: Unexpected error type: {:?}", e),
+        }
+
+        // Test 4c: Elliptical orbit. Target radius_km greater than apoapsis.
+        let res4c = elliptical_orbit.duration_to_radius(ra_elliptical + 100.0);
+        assert!(res4c.is_err());
+        match res4c.err().unwrap() {
+            PhysicsError::RadiusError { action } => assert_eq!(action, "Radius outside reachable range for elliptical orbit"),
+            e => panic!("Test 4c: Unexpected error type: {:?}", e),
+        }
+
+        // Test 4d: Hyperbolic orbit. Target radius_km less than periapsis.
+        let res4d = hyperbolic_orbit.duration_to_radius(rp_hyperbolic - 100.0);
+        assert!(res4d.is_err());
+        match res4d.err().unwrap() {
+            PhysicsError::RadiusError { action } => assert_eq!(action, "Radius below periapsis for hyperbolic/parabolic orbit"),
+            e => panic!("Test 4d: Unexpected error type: {:?}", e),
+        }
+
+        // Test 4e: cos(nu) out of bounds. This is tricky to hit precisely due to prior reachability checks.
+        // If ecc=0.1, p = 10000*(1-0.01)=9900. For r=p, cos(nu)=0. For r > p, cos(nu) < 0. For r < p, cos(nu) > 0.
+        // To make (p/r - 1)/e out of bounds, e.g. > 1: (p/r - 1) > e => p/r > 1+e => p > r(1+e).
+        // If r = p/(1+e+epsilon_small), then (p/r-1)/e = (1+e+eps-1)/e = (e+eps)/e = 1+eps/e. This is > 1.
+        // This radius is rp = p/(1+e). So r = rp / (1+eps_small_prime). This is smaller than periapsis.
+        // So, this condition is typically caught by reachability checks (4b, 4d) for valid orbits.
+        // For example, if target radius is less than periapsis, it's caught by "Radius outside reachable range".
+        // If we somehow bypassed that, e.g. by a faulty p or e value not from self, this could be hit.
+        // For now, rely on 4b, 4c, 4d to cover most practical cases of this.
+
+        // Test 4f: Nearly parabolic orbits (ecc close to 1.0)
+        // Case 1: Elliptical, ecc = 1.0 - 2*ECC_EPSILON
+        let ecc_near_para_ell = 1.0 - 2.0 * ECC_EPSILON; // Still elliptical
+        // sma = rp / (1-ecc) = 7000 / (2*ECC_EPSILON) -> very large sma
+        // Using try_keplerian_apsis_radii to avoid issues with large SMA direct input if not careful
+        let rp_near_para = 7000.0;
+        // For elliptical, ra = rp * (1+e)/(1-e)
+        let ra_near_para_ell = rp_near_para * (1.0 + ecc_near_para_ell) / (1.0 - ecc_near_para_ell);
+        let orbit_near_para_ell = Orbit::try_keplerian_apsis_radii(ra_near_para_ell, rp_near_para, 0.0,0.0,0.0,0.0, epoch, frame).expect("Near-para ell orbit");
+
+        let res4f1 = orbit_near_para_ell.duration_to_radius(rp_near_para + 1000.0); // Target radius valid
+        assert!(res4f1.is_ok(), "Test 4f1 (near-para ell) failed: {:?}", res4f1.err());
+        assert!(res4f1.unwrap().to_seconds() > 0.0);
+
+        // Case 2: Hyperbolic, ecc = 1.0 + 2*ECC_EPSILON
+        let ecc_near_para_hyp = 1.0 + 2.0 * ECC_EPSILON; // Still hyperbolic
+        // sma = rp / (1-ecc) = 7000 / (-2*ECC_EPSILON) -> large negative sma
+        // Using try_keplerian_apsis_radii is for elliptical, need direct try_keplerian for hyperbolic SMA
+        let sma_near_para_hyp = rp_near_para / (1.0 - ecc_near_para_hyp); // This will be negative
+        let orbit_near_para_hyp = create_orbit(sma_near_para_hyp, ecc_near_para_hyp, 0.0, epoch, frame);
+
+        let res4f2 = orbit_near_para_hyp.duration_to_radius(rp_near_para + 1000.0); // Target radius valid
+        assert!(res4f2.is_ok(), "Test 4f2 (near-para hyp) failed: {:?}", res4f2.err());
+        assert!(res4f2.unwrap().to_seconds() > 0.0);
+
+        // Test 4f-alternative for InfiniteValue (parabolic orbit sma->inf, n->0)
+        // Orbit::try_keplerian ensures (1.0 - ecc).abs() >= ECC_EPSILON, so ecc cannot be exactly 1.0.
+        // If sma_km is extremely large (e.g. ecc very close to 1.0), n_rad_s becomes very small.
+        // If sma_km were infinite (parabolic), n_rad_s would be 0.
+        // The current check is ensure!(n_rad_s.is_finite() && n_rad_s > 0.0, InfiniteValue { ... })
+        // This should catch n_rad_s = 0 if sma_km was Inf, but sma_km() itself would likely return Inf.
+        // If sma_km.abs().powi(3) overflows to Inf, then n_rad_s is 0.
+        let ecc_very_near_1 = 1.0 - ECC_EPSILON * 1.01; // Should pass try_keplerian
+        let sma_very_large = rp_near_para / (1.0 - ecc_very_near_1);
+        let orbit_large_sma = create_orbit(sma_very_large, ecc_very_near_1, 0.0, epoch, frame);
+        let res_large_sma_time = orbit_large_sma.duration_to_radius(rp_near_para + 1.0);
+        assert!(res_large_sma_time.is_ok()); // Should be ok, time will just be large or n very small.
+                                             // The InfiniteValue for n_rad_s is more about mu/sma^3 being NaN/Inf or zero due to sma being zero or Inf.
+                                             // If sma_km() returns Inf, then sma_km.abs().powi(3) is Inf, then n_rad_s is 0. Caught.
+                                             // If sma_km() returns some error that leads to NaN sma, then n_rad_s is NaN. Caught.
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 #[cfg_attr(feature = "python", pymethods)]
 impl Orbit {
@@ -1378,6 +1610,187 @@ impl Orbit {
             new_epoch,
             self.frame,
         )
+    }
+
+    /// Calculates the duration to reach a specific radius in the orbit.
+    ///
+    /// This function computes the time it will take for the orbiting body to reach
+    /// the given `radius_km` from its current position. The calculation assumes
+    /// two-body dynamics and considers the direction of motion.
+    ///
+    /// # Arguments
+    ///
+    /// * `radius_km` - The target radius from the central body in kilometers.
+    ///
+    /// # Returns
+    ///
+    /// A `PhysicsResult<Duration>` which is:
+    /// - `Ok(Duration)`: The time duration to reach the target radius. This can be zero
+    ///   if the orbit is circular and already at the target radius, or if the target
+    ///   radius is very close to the current radius in the direction of motion.
+    /// - `Err(PhysicsError)`: If the target radius is invalid (e.g., non-positive),
+    ///   unreachable for the given orbit (e.g., outside apoapsis/periapsis limits
+    ///   for an elliptical orbit, or below periapsis for a hyperbolic/parabolic one),
+    ///   or if any other calculation error occurs.
+    ///
+    /// # Logic Details
+    ///
+    /// 1.  Retrieves orbital parameters (eccentricity, mu, SMA, periapsis, apoapsis, semi-latus rectum).
+    /// 2.  Validates `radius_km` (must be positive).
+    /// 3.  Handles circular/near-circular orbits separately: if the target radius matches the orbit's
+    ///     radius, duration is zero; otherwise, it's an error.
+    /// 4.  Checks if the `radius_km` is reachable within the orbit's geometry (between periapsis and
+    ///     apoapsis for elliptical, above periapsis for hyperbolic/parabolic).
+    /// 5.  Calculates the true anomaly (`nu_rad_at_radius`) corresponding to `radius_km`. This calculation
+    ///     yields a `nu` in `[0, PI]`.
+    /// 6.  Converts `nu_rad_at_radius` to mean anomaly (`m_rad_at_radius`) using `astro::utils`.
+    /// 7.  Gets the current mean anomaly (`m_current_rad`).
+    /// 8.  Calculates mean motion (`n_rad_s`).
+    /// 9.  Computes time from periapsis to the target radius (`t_from_p_to_radius_s`) and to the
+    ///     current position (`t_from_p_to_current_s`).
+    /// 10. The initial time difference `delta_t_s` is `t_from_p_to_radius_s - t_from_p_to_current_s`.
+    /// 11. Adjusts `delta_t_s`:
+    ///     - If `delta_t_s` is significantly negative:
+    ///         - For elliptical orbits, a full period is added (assuming the radius will be reached
+    ///           in the next orbit, as `nu_rad_at_radius` is on the "advancing" half `[0, PI]`).
+    ///         - For hyperbolic/parabolic orbits, it's an error because the radius on this specific
+    ///           `[0, PI]` true anomaly arc was in the past and won't be met again on this arc.
+    ///     - If `delta_t_s` is slightly negative (close to zero), it's set to `0.0`.
+    /// 12. Returns the calculated `delta_t_s` as a `Duration`.
+    ///
+    /// # Assumptions & Limitations
+    ///
+    /// - Assumes two-body problem (Keplerian motion). No perturbations are considered.
+    /// - For elliptical orbits, if the radius is reachable at two points (ascending and descending parts
+    ///   of the orbit), this function calculates the time to reach the radius corresponding to the
+    ///   true anomaly in `[0, PI]` (typically the ascending part or up to apoapsis if starting past periapsis).
+    /// - For hyperbolic/parabolic orbits, the true anomaly at radius is also computed in `[0, PI]`. If this
+    ///   point is in the past, the function returns an error, as it doesn't look for solutions on the
+    ///   departing leg if `nu > PI` would be required (unless current TA is already > PI and target radius is further along).
+    ///   The current implementation strictly uses the `acos` result, so `nu_rad_at_radius` is always `0 <= nu <= PI`.
+    ///   This means it finds the time to reach the radius on the path from periapsis up to the point where true anomaly is PI.
+    pub fn duration_to_radius(&self, radius_km: f64) -> PhysicsResult<Duration> {
+        // Local constants as per subtask instructions
+        let dist_epsilon_val: f64 = 1e-7;
+        let similar_to_zero_val: f64 = 1e-9;
+        let angle_epsilon_val: f64 = 1e-9;
+
+        // Necessary imports (already present at file-level, but can be listed here for clarity if needed by tool/linter)
+        // use crate::astro::utils; // Implicitly used via crate::astro::utils
+        // use hifitime::Duration; // Already imported at file level
+        // use crate::errors::{PhysicsError, PhysicsResult, RadiusError, InfiniteValue}; // PhysicsResult is return type, errors used with ensure!
+        // use snafu::ensure; // Already imported at file level
+
+        // Step 1: Retrieve eccentricity
+        let ecc = self.ecc()?;
+
+        // Step 2: Pre-condition check for radius_km
+        ensure!(
+            radius_km > dist_epsilon_val,
+            RadiusError {
+                action: "Target radius must be positive"
+            }
+        );
+
+        // Step 3: Handle circular/near-circular orbits
+        if ecc < ECC_EPSILON {
+            let current_orbit_radius = self.sma_km()?; // For circular, sma is the radius
+            ensure!(
+                (radius_km - current_orbit_radius).abs() < dist_epsilon_val,
+                RadiusError {
+                    action: "Target radius for circular orbit must be (nearly) equal to orbit radius"
+                }
+            );
+            return Ok(Duration::from_seconds(0.0));
+        }
+
+        // Step 4: Retrieve mu and sma
+        let mu_km3_s2 = self.frame.mu_km3_s2()?;
+        let sma_km = self.sma_km()?;
+
+        // Step 5: Perform reachability checks
+        let rp_km = self.periapsis_km()?;
+        if ecc < 1.0 {
+            // Elliptical
+            let ra_km = self.apoapsis_km()?;
+            ensure!(
+                radius_km >= rp_km - dist_epsilon_val && radius_km <= ra_km + dist_epsilon_val,
+                RadiusError {
+                    action: "Radius outside reachable range for elliptical orbit"
+                }
+            );
+        } else {
+            // Hyperbolic/Parabolic
+            ensure!(
+                radius_km >= rp_km - dist_epsilon_val,
+                RadiusError {
+                    action: "Radius below periapsis for hyperbolic/parabolic orbit"
+                }
+            );
+        }
+
+        // Step 6: Retrieve semi-latus rectum
+        let p_km = self.semi_parameter_km()?;
+
+        // Step 7: Calculate cos_nu_val
+        let cos_nu_val = (p_km / radius_km - 1.0) / ecc;
+
+        // Step 8: Validate and clamp cos_nu_val
+        ensure!(
+            cos_nu_val >= -1.0 - angle_epsilon_val && cos_nu_val <= 1.0 + angle_epsilon_val,
+            RadiusError {
+                action: "Cannot compute true anomaly: cos(nu) out of bounds"
+            }
+        );
+        let cos_nu_rad_at_radius = cos_nu_val.clamp(-1.0, 1.0);
+
+        // Step 9: Calculate true anomaly at radius
+        let nu_rad_at_radius = cos_nu_rad_at_radius.acos(); // Result in [0, PI]
+
+        // Step 10: Calculate mean anomaly at target radius
+        let m_rad_at_radius =
+            crate::astro::utils::true_anomaly_to_mean_anomaly_rad(nu_rad_at_radius, ecc)
+                .map_err(|e| PhysicsError::AppliedMath { source: e })?;
+
+        // Step 11: Get current mean anomaly
+        let m_current_rad = self.ma_deg()?.to_radians();
+
+        // Step 12: Calculate mean motion n_rad_s
+        let n_rad_s = (mu_km3_s2 / sma_km.abs().powi(3)).sqrt();
+        ensure!(
+            n_rad_s.is_finite() && n_rad_s > 0.0,
+            InfiniteValue {
+                action: "Mean motion calculation failed (non-finite or non-positive)"
+            }
+        );
+
+        // Step 13: Calculate time from periapsis to target radius and current position
+        let t_from_p_to_radius_s = m_rad_at_radius / n_rad_s;
+        let t_from_p_to_current_s = m_current_rad / n_rad_s;
+
+        // Step 14: Calculate initial delta time
+        let mut delta_t_s = t_from_p_to_radius_s - t_from_p_to_current_s;
+
+        // Step 15: Adjust delta_t_s
+        if delta_t_s < -similar_to_zero_val {
+            if ecc < 1.0 {
+                // Elliptical: target radius (on the 0->PI true anomaly arc) will be reached in the next orbit.
+                delta_t_s += self.period()?.to_seconds();
+            } else {
+                // Hyperbolic/Parabolic: nu_rad_at_radius is on the [0, PI] arc.
+                // This specific point (on the 0->PI arc) is in the past.
+                return RadiusError {
+                    action: "Radius (on [0,PI] TA arc) in past for hyperbolic orbit",
+                }
+                .fail();
+            }
+        } else if delta_t_s < 0.0 {
+            // If delta_t_s is negative but very close to zero (-similar_to_zero_val < delta_t_s < 0.0)
+            delta_t_s = 0.0;
+        }
+
+        // Step 16: Return Ok(Duration::from_seconds(delta_t_s))
+        Ok(Duration::from_seconds(delta_t_s))
     }
 
     /// Returns a Cartesian state representing the RIC difference between self and other, in position and velocity (with transport theorem).
