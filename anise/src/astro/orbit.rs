@@ -13,7 +13,7 @@ use super::PhysicsResult;
 
 use crate::{
     errors::{
-        HyperbolicTrueAnomalySnafu, InfiniteValueSnafu, ParabolicEccentricitySnafu,
+        HyperbolicTrueAnomalySnafu, InfiniteValueSnafu, MathError, ParabolicEccentricitySnafu,
         ParabolicSemiParamSnafu, PhysicsError, RadiusSnafu, VelocitySnafu,
     },
     math::{
@@ -25,7 +25,7 @@ use crate::{
     prelude::{uuid_from_epoch, Frame},
     NaifId,
 };
-use core::f64::consts::PI;
+use core::f64::consts::{PI, TAU};
 
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits, Unit};
@@ -37,7 +37,7 @@ use pyo3::prelude::*;
 #[cfg(feature = "python")]
 use pyo3::types::PyType;
 
-/// If an orbit has an eccentricity below the following value, it is considered circular (only affects warning messages)
+/// If an orbit has an eccentricity below the following value, it is considered circular.
 pub const ECC_EPSILON: f64 = 1e-11;
 
 /// A helper type alias, but no assumptions are made on the underlying validity of the frame.
@@ -787,8 +787,7 @@ impl Orbit {
     ///
     /// :rtype: Duration
     pub fn period(&self) -> PhysicsResult<Duration> {
-        Ok(2.0
-            * PI
+        Ok(TAU
             * (self.sma_km()?.powi(3) / self.frame.mu_km3_s2()?)
                 .sqrt()
                 .seconds())
@@ -904,7 +903,7 @@ impl Orbit {
                 Ok(0.0)
             }
         } else if self.evec()?[2] < 0.0 {
-            Ok((2.0 * PI - aop).to_degrees())
+            Ok((TAU - aop).to_degrees())
         } else {
             Ok(aop.to_degrees())
         }
@@ -965,7 +964,7 @@ impl Orbit {
                 Ok(0.0)
             }
         } else if n[1] < 0.0 {
-            Ok((2.0 * PI - raan).to_degrees())
+            Ok((TAU - raan).to_degrees())
         } else {
             Ok(raan.to_degrees())
         }
@@ -1039,7 +1038,7 @@ impl Orbit {
                 Ok(0.0)
             }
         } else if self.radius_km.dot(&self.velocity_km_s) < 0.0 {
-            Ok((2.0 * PI - ta).to_degrees())
+            Ok((TAU - ta).to_degrees())
         } else {
             Ok(ta.to_degrees())
         }
@@ -1299,6 +1298,30 @@ impl Orbit {
     /// :rtype: float
     pub fn c3_km2_s2(&self) -> PhysicsResult<f64> {
         Ok(-self.frame.mu_km3_s2()? / self.sma_km()?)
+    }
+
+    /// Returns the Longitude of the Ascending Node (LTAN), or an error of equatorial orbits
+    ///
+    /// :rtype: float
+    pub fn ltan_deg(&self) -> PhysicsResult<f64> {
+        let n = Vector3::new(0.0, 0.0, 1.0).cross(&self.hvec()?);
+
+        if n.norm_squared() < f64::EPSILON {
+            return Err(PhysicsError::AppliedMath {
+                source: MathError::DomainError {
+                    value: n.norm_squared(),
+                    msg: "orbit is equatorial",
+                },
+            });
+        }
+
+        let mut ltan = n.y.atan2(n.x);
+
+        if ltan < 0.0 {
+            ltan += TAU;
+        }
+
+        Ok(ltan.to_degrees())
     }
 
     /// Returns the radius of periapse in kilometers for the provided turn angle of this hyperbolic orbit.

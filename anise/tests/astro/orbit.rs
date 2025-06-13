@@ -855,3 +855,21 @@ fn gh_regression_340(almanac: Almanac) {
         assert!(orbit.at_epoch(epoch).is_ok(), "error on {epoch}");
     }
 }
+
+#[rstest]
+fn misc_verif(almanac: Almanac) {
+    let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
+
+    // Blue Ghost landing day!
+    let epoch = Epoch::from_gregorian_utc_at_noon(2025, 3, 2);
+
+    // LTAN
+    let prograde = Orbit::new(0.0, 7000.0, 0.0, -1.0, 0.0, 7.5, epoch, eme2k);
+    f64_eq!(prograde.ltan_deg().unwrap(), 90.0, "prograde LTAN");
+
+    let retrograde = Orbit::new(0.0, -7000.0, 0.0, -1.0, 0.0, 7.5, epoch, eme2k);
+    f64_eq!(retrograde.ltan_deg().unwrap(), 270.0, "retrograde LTAN");
+
+    let equatorial = Orbit::keplerian(7000.0, 1e-4, 1e-12, 270.0, 45.0, 76.0, epoch, eme2k);
+    assert!(equatorial.ltan_deg().is_err())
+}
