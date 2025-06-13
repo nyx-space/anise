@@ -143,7 +143,7 @@ impl Almanac {
     ))]
     fn py_azimuth_elevation_range_sez_many(
         &self,
-        py: Python, // New parameter
+        py: Python,
         rx_tx_states: Vec<(CartesianState, CartesianState)>,
         obstructing_body: Option<Frame>,
         ab_corr: Option<Aberration>,
@@ -153,15 +153,15 @@ impl Almanac {
                 .par_iter()
                 .filter_map(|(rx, tx)| {
                     self.azimuth_elevation_range_sez(*rx, *tx, obstructing_body, ab_corr)
-                    .map_or_else(
-                        |e| {
-                            println!("{e}");
-                            None
-                        },
-                        |aer| Some(aer),
-                    )
-            })
-            .collect::<Vec<AzElRange>>();
+                        .map_or_else(
+                            |e| {
+                                println!("{e}");
+                                None
+                            },
+                            |aer| Some(aer),
+                        )
+                })
+                .collect::<Vec<AzElRange>>();
             rslt.sort_by(|aer_a, aer_b| aer_a.epoch.cmp(&aer_b.epoch));
             rslt
         })
@@ -286,7 +286,7 @@ impl Almanac {
     ))]
     fn py_solar_eclipsing_many(
         &self,
-        py: Python, // New parameter
+        py: Python,
         eclipsing_frame: Frame,
         observers: Vec<Orbit>,
         ab_corr: Option<Aberration>,
@@ -296,15 +296,15 @@ impl Almanac {
                 .par_iter()
                 .filter_map(|observer| {
                     self.solar_eclipsing(eclipsing_frame, *observer, ab_corr)
-                    .map_or_else(
-                        |e| {
-                            println!("{e}");
-                            None
-                        },
-                        |aer| Some(aer),
-                    )
-            })
-            .collect::<Vec<Occultation>>();
+                        .map_or_else(
+                            |e| {
+                                println!("{e}");
+                                None
+                            },
+                            |aer| Some(aer),
+                        )
+                })
+                .collect::<Vec<Occultation>>();
             rslt.sort_by(|aer_a, aer_b| aer_a.epoch.cmp(&aer_b.epoch));
             rslt
         })
@@ -383,7 +383,7 @@ impl Almanac {
     ))]
     fn py_transform_many<'py>(
         &self,
-        py: Python, // New parameter
+        py: Python,
         target_frame: Frame,
         observer_frame: Frame,
         time_series: TimeSeries,
@@ -394,15 +394,15 @@ impl Almanac {
                 .par_bridge()
                 .filter_map(|epoch| {
                     self.transform(target_frame, observer_frame, epoch, ab_corr)
-                    .map_or_else(
-                        |e| {
-                            eprintln!("{e}");
-                            None
-                        },
-                        |state| Some(state),
-                    )
-            })
-            .collect::<Vec<CartesianState>>();
+                        .map_or_else(
+                            |e| {
+                                eprintln!("{e}");
+                                None
+                            },
+                            |state| Some(state),
+                        )
+                })
+                .collect::<Vec<CartesianState>>();
             states.sort_by(|state_a, state_b| state_a.epoch.cmp(&state_b.epoch));
             states
         })
@@ -445,7 +445,7 @@ impl Almanac {
     ))]
     fn py_transform_many_to(
         &self,
-        py: Python, // New parameter
+        py: Python,
         states: Vec<CartesianState>,
         observer_frame: Frame,
         ab_corr: Option<Aberration>,
@@ -455,15 +455,15 @@ impl Almanac {
                 .par_iter()
                 .filter_map(|state| {
                     self.transform_to(*state, observer_frame, ab_corr)
-                    .map_or_else(
-                        |e| {
-                            println!("{e}");
-                            None
-                        },
-                        |state| Some(state),
-                    )
-            })
-            .collect::<Vec<CartesianState>>();
+                        .map_or_else(
+                            |e| {
+                                println!("{e}");
+                                None
+                            },
+                            |state| Some(state),
+                        )
+                })
+                .collect::<Vec<CartesianState>>();
             rslt.sort_by(|state_a, state_b| state_a.epoch.cmp(&state_b.epoch));
             rslt
         })
