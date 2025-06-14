@@ -7,10 +7,8 @@ import plotly.express as px
 
 
 def is_on_github_actions():
-  if "CI" not in environ or not environ["CI"] or "GITHUB_RUN_ID" not in environ:
-    return False
-  else:
-    return True
+    return ("CI" in environ and environ["CI"] and "GITHUB_RUN_ID" in environ)
+
 
 if __name__ == '__main__':
 
@@ -36,7 +34,7 @@ if __name__ == '__main__':
 
             plt = px.scatter(subset,
                              x='ET Epoch (s)',
-                             y=f'Absolute difference',
+                             y='Absolute difference',
                              color='source frame',
                              title=f"Validation of {name} for {kind}")
 
