@@ -134,6 +134,7 @@ pub trait NAIFDataRecord<'a>: Display {
 /// Errors associated with handling NAIF DAF files
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
+#[non_exhaustive]
 pub enum DAFError {
     #[snafu(display("No DAF/{kind} data have been loaded"))]
     NoDAFLoaded { kind: &'static str },
@@ -142,12 +143,14 @@ pub enum DAFError {
     #[snafu(display("DAF/{kind}: summary {id} not present"))]
     SummaryIdError { kind: &'static str, id: NaifId },
     #[snafu(display(
-        "DAF/{kind}: summary {id} not present or does not cover requested epoch of {epoch}"
+        "DAF/{kind}: summary {id} valid from {start} to {end} but not at requested {epoch}"
     ))]
     SummaryIdAtEpochError {
         kind: &'static str,
         id: NaifId,
         epoch: Epoch,
+        start: Epoch,
+        end: Epoch,
     },
     #[snafu(display("DAF/{kind}: summary `{name}` not present"))]
     SummaryNameError { kind: &'static str, name: String },
@@ -252,13 +255,23 @@ impl PartialEq for DAFError {
                     kind: l_kind,
                     id: l_id,
                     epoch: l_epoch,
+                    start: l_start,
+                    end: l_end,
                 },
                 Self::SummaryIdAtEpochError {
                     kind: r_kind,
                     id: r_id,
                     epoch: r_epoch,
+                    start: r_start,
+                    end: r_end,
                 },
-            ) => l_kind == r_kind && l_id == r_id && l_epoch == r_epoch,
+            ) => {
+                l_kind == r_kind
+                    && l_id == r_id
+                    && l_epoch == r_epoch
+                    && l_start == r_start
+                    && l_end == r_end
+            }
             (
                 Self::SummaryNameError {
                     kind: l_kind,

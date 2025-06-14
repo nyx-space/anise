@@ -120,7 +120,9 @@ impl Almanac {
             }
         }
 
-        error!("Almanac: No summary {id} valid at epoch {epoch}");
+        // If the ID is not present at all, spk_domain will report it.
+        let (start, end) = self.spk_domain(id)?;
+        error!("Almanac: summary {id} valid from {start} to {end} but not at requested {epoch}");
         // If we're reached this point, there is no relevant summary at this epoch.
         Err(EphemerisError::SPK {
             action: "searching for SPK summary",
@@ -128,6 +130,8 @@ impl Almanac {
                 kind: "SPK",
                 id,
                 epoch,
+                start,
+                end,
             },
         })
     }

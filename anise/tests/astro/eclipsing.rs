@@ -56,9 +56,9 @@ fn verif_beta_angle_eclipse_time(almanac: Almanac) {
             let orbit = Orbit::try_keplerian_altitude(
                 alt_km, ecc, inc_deg, raan_deg, aop_deg, ta_deg, epoch, eme2k,
             )
-            .expect(&format!(
-                "init failed with alt_km = {alt_km}; inc_deg = {inc_deg}; ecc = {ecc}"
-            ));
+            .unwrap_or_else(|_| {
+                panic!("init failed with alt_km = {alt_km}; inc_deg = {inc_deg}; ecc = {ecc}")
+            });
 
             let mut eclipse_duration = 0.0.seconds();
             let mut sum_beta_angles = 0.0;

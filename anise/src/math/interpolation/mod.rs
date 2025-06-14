@@ -26,6 +26,7 @@ pub(crate) const MAX_SAMPLES: usize = 32;
 
 #[derive(Copy, Clone, Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
+#[non_exhaustive]
 pub enum InterpolationError {
     #[snafu(display("decoding error during interpolation: {source}"))]
     InterpDecoding {

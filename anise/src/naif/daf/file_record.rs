@@ -20,6 +20,7 @@ use super::NAIFRecord;
 
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
+#[non_exhaustive]
 pub enum FileRecordError {
     #[snafu(display("issue: endian of file does not match the endian order of the machine"))]
     WrongEndian,

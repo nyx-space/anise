@@ -12,6 +12,7 @@ use super::utils::compute_mean_to_true_anomaly_rad;
 use super::PhysicsResult;
 
 use crate::{
+    astro::utils::true_anomaly_to_mean_anomaly_rad,
     errors::{
         HyperbolicTrueAnomalySnafu, InfiniteValueSnafu, MathError, ParabolicEccentricitySnafu,
         ParabolicSemiParamSnafu, PhysicsError, RadiusSnafu, VelocitySnafu,
@@ -793,6 +794,13 @@ impl Orbit {
                 .seconds())
     }
 
+    /// Returns the mean motion in degrees per seconds
+    ///
+    /// :rtype: float
+    pub fn mean_motion_deg_s(&self) -> PhysicsResult<f64> {
+        Ok((self.frame.mu_km3_s2()? / self.sma_km()?.abs().powi(3)).sqrt())
+    }
+
     /// Returns the eccentricity (no unit)
     ///
     /// :rtype: float
@@ -1401,6 +1409,127 @@ impl Orbit {
             new_epoch,
             self.frame,
         )
+    }
+
+    /// Calculates the duration to reach a specific radius in the orbit.
+    ///
+    /// This function computes the time it will take for the orbiting body to reach
+    /// the given `radius_km` from its current position. The calculation assumes
+    /// two-body dynamics and considers the direction of motion.
+    ///
+    /// # Assumptions & Limitations
+    ///
+    /// - Assumes pure Keplerian motion.
+    /// - For elliptical orbits, if the radius is reachable at two points (ascending and descending parts
+    ///   of the orbit), this function calculates the time to reach the radius corresponding to the
+    ///   true anomaly in `[0, PI]` (typically the ascending part or up to apoapsis if starting past periapsis).
+    /// - For circular orbits, if the radius is within the apoapse and periapse, then a duration of zero is returned.
+    /// - For hyperbolic/parabolic orbits, the true anomaly at radius is also computed in `[0, PI]`. If this
+    ///   point is in the past, the function returns an error, as it doesn't look for solutions on the
+    ///   departing leg if `nu > PI` would be required (unless current TA is already > PI and target radius is further along).
+    ///   The current implementation strictly uses the `acos` result, so `nu_rad_at_radius` is always `0 <= nu <= PI`.
+    ///   This means it finds the time to reach the radius on the path from periapsis up to the point where true anomaly is PI.
+    pub fn duration_to_radius(&self, radius_km: f64) -> PhysicsResult<Duration> {
+        // Pre-condition check for radius_km
+        ensure!(
+            radius_km.is_sign_positive(),
+            RadiusSnafu {
+                action: "target radius must be positive"
+            }
+        );
+
+        let ecc = self.ecc()?;
+
+        // Reachability checks
+        let rp_km = self.periapsis_km()?;
+        if ecc < 1.0 {
+            // Elliptical
+            let ra_km = self.apoapsis_km()?;
+            ensure!(
+                radius_km >= rp_km && radius_km <= ra_km,
+                RadiusSnafu {
+                    action: "radius not within apoapse and periapse"
+                }
+            );
+            if ecc < ECC_EPSILON {
+                // If within ra and rp, but circular, we'll assert zero duration to reach.
+                return Ok(Duration::from_seconds(0.0));
+            }
+        } else {
+            // Hyperbolic
+            ensure!(
+                radius_km >= rp_km,
+                RadiusSnafu {
+                    action: "radius below periapsis for hyperbolic orbit"
+                }
+            );
+        }
+
+        // Retrieve semi-latus rectum
+        let p_km = self.semi_parameter_km()?;
+
+        // Calculate cos_nu_val
+        let cos_nu_val = (p_km / radius_km - 1.0) / ecc;
+
+        // Validate and clamp cos_nu_val
+        ensure!(
+            (-1.0 - 1e-9..1.0 + 1e-9).contains(&cos_nu_val),
+            RadiusSnafu {
+                action: "cannot compute true anomaly at desired radius: cos(nu) out of bounds"
+            }
+        );
+
+        let cos_nu_rad_at_radius = cos_nu_val.clamp(-1.0, 1.0);
+
+        // Calculate true anomaly at radius
+        let nu_rad_at_radius = cos_nu_rad_at_radius.acos();
+
+        // Calculate mean anomaly at target radius
+        let m_rad_at_radius = true_anomaly_to_mean_anomaly_rad(nu_rad_at_radius, ecc)
+            .map_err(|e| PhysicsError::AppliedMath { source: e })?;
+
+        // Get current mean anomaly
+        let m_current_rad = self.ma_deg()?.to_radians();
+
+        // Calculate mean motion n_rad_s
+        let n_rad_s = self.mean_motion_deg_s()?;
+
+        if !n_rad_s.is_finite() || n_rad_s <= 0.0 {
+            return Err(PhysicsError::AppliedMath {
+                source: MathError::DomainError {
+                    value: n_rad_s,
+                    msg: "mean motion computation failed",
+                },
+            });
+        }
+
+        // Step 13: Calculate time from periapsis to target radius and current position
+        let t_from_p_to_radius_s = m_rad_at_radius / n_rad_s;
+        let t_from_p_to_current_s = m_current_rad / n_rad_s;
+
+        // Step 14: Calculate initial delta time
+        let mut delta_t_s = t_from_p_to_radius_s - t_from_p_to_current_s;
+
+        // Step 15: Adjust delta_t_s
+        if delta_t_s < -1e-9 {
+            if ecc < 1.0 {
+                // Elliptical: target radius (on the 0->PI true anomaly arc) will be reached in the next orbit.
+                delta_t_s += self.period()?.to_seconds();
+            } else {
+                // Hyperbolic/Parabolic: nu_rad_at_radius is on the [0, PI] arc.
+                // This specific point (on the 0->PI arc) is in the past.
+                return RadiusSnafu {
+                    action: "Radius (on [0,PI] TA arc) in past for hyperbolic orbit",
+                }
+                .fail();
+            }
+        } else if delta_t_s < 0.0 {
+            // If delta_t_s is negative but very close to zero (-1e-9 < delta_t_s < 0.0)
+            delta_t_s = 0.0;
+        }
+
+        // Step 16: Return Ok(Duration::from_seconds(delta_t_s))
+        Ok(Duration::from_seconds(delta_t_s))
     }
 
     /// Returns a Cartesian state representing the RIC difference between self and other, in position and velocity (with transport theorem).

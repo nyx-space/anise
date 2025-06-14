@@ -22,6 +22,7 @@ pub const KEY_NAME_LEN: usize = 32;
 
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
+#[non_exhaustive]
 pub enum LutError {
     #[snafu(display(
         "ID LUT is full with all {max_slots} taken (increase ENTRIES at build time)"

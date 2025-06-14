@@ -18,6 +18,7 @@ use crate::{
 
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
+#[non_exhaustive]
 pub enum PlanetaryDataError {
     #[snafu(display("when {action}, {source}"))]
     PlanetaryDataSet {
