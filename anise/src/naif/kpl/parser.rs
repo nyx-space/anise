@@ -125,7 +125,7 @@ pub fn parse_bytes<R: BufRead, I: KPLItem>(
                 };
                 assignments.push(assignment);
             } else if let Some(mut assignment) = assignments.pop() {
-                // This is a continuation of the previous line, so let's grab the data and append the value we're reding now.
+                // This is a continuation of the previous line, so let's grab the data and append the value we're reading now.
                 // We're adding the full line with all of the extra spaces because the parsing needs those delimiters to not bunch together all of the floats.
                 assignment.value += &line;
                 assignments.push(assignment);

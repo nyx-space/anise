@@ -219,7 +219,7 @@ fn spice_verif_iau_moon(almanac: Almanac) {
     dbg!(rss_pos_km, rss_vel_km_s);
 
     // ANISE uses hifitime which is more precise than SPICE at time computations.
-    // The Moon angular acceleration is expressed in centuries sicne J2000, where Hifitime does not suffer from rounding errors.
+    // The Moon angular acceleration is expressed in centuries since J2000, where Hifitime does not suffer from rounding errors.
     assert!(rss_pos_km < 0.004);
     assert!(rss_vel_km_s < 1e-5);
 }
