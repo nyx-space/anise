@@ -1473,7 +1473,7 @@ impl Orbit {
 
         // Validate and clamp cos_nu_val
         ensure!(
-            cos_nu_val >= -1.0 - 1e-9 && cos_nu_val < 1.0 + 1e-9,
+            (-1.0 - 1e-9..1.0 + 1e-9).contains(&cos_nu_val),
             RadiusSnafu {
                 action: "cannot compute true anomaly at desired radius: cos(nu) out of bounds"
             }
