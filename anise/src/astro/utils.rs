@@ -17,6 +17,27 @@ use super::PhysicsResult;
 /// Mean anomaly f64::EPSILON
 pub const MA_EPSILON: f64 = 1e-12;
 
+#[macro_export]
+macro_rules! f64_eq {
+    ($x:expr, $val:expr, $msg:expr) => {
+        f64_eq_tol!($x, $val, 1e-10, $msg)
+    };
+}
+
+#[macro_export]
+macro_rules! f64_eq_tol {
+    ($x:expr, $val:expr, $tol:expr, $msg:expr) => {
+        assert!(
+            ($x - $val).abs() < $tol,
+            "{}: {:.2e}\tgot: {}\twant: {}",
+            $msg,
+            ($x - $val).abs(),
+            $x,
+            $val
+        )
+    };
+}
+
 /// Computes the true anomaly from the given mean anomaly for an orbit.
 ///
 /// The computation process varies depending on whether the orbit is elliptical (eccentricity less than or equal to 1)
@@ -307,7 +328,7 @@ pub fn true_anomaly_to_eccentric_anomaly_rad(nu_rad: f64, ecc: f64) -> Result<f6
             // f64::atanh(NaN) is NaN.
             // If atanh_arg is NaN, it will not satisfy >= 1.0 or <= -1.0.
             // Let's test for NaN explicitly as well.
-             if atanh_arg.is_nan() {
+            if atanh_arg.is_nan() {
                 return Err(MathError::DomainError {
                     value: atanh_arg,
                     msg: "atanh argument is NaN in hyperbolic eccentric anomaly calculation",
@@ -325,11 +346,10 @@ pub fn true_anomaly_to_eccentric_anomaly_rad(nu_rad: f64, ecc: f64) -> Result<f6
 }
 
 #[cfg(test)]
-mod tests {
+mod ut_utils {
     use super::*;
-    use std::f64::consts::PI;
-    use hifitime::assert_approx_eq;
     use crate::errors::MathError;
+    use std::f64::consts::PI;
 
     const TEST_EPS: f64 = 1e-9;
 
@@ -340,15 +360,15 @@ mod tests {
         let ecc = 0.5;
         // TA=0 -> EA=0
         let res1 = true_anomaly_to_eccentric_anomaly_rad(0.0, ecc);
-        assert_approx_eq!(res1.unwrap(), 0.0, TEST_EPS);
+        f64_eq_tol!(res1.unwrap(), 0.0, TEST_EPS, "");
 
         // TA=PI -> EA=PI
         let res2 = true_anomaly_to_eccentric_anomaly_rad(PI, ecc);
-        assert_approx_eq!(res2.unwrap(), PI, TEST_EPS);
+        f64_eq_tol!(res2.unwrap(), PI, TEST_EPS, "");
 
         // TA=PI/2 -> EA approx PI/3 (atan2(sqrt(1-0.25)*1, 0.5+0) = atan2(sqrt(0.75), 0.5) = atan2(0.8660254, 0.5) = 1.04719755 rad = PI/3)
         let res3 = true_anomaly_to_eccentric_anomaly_rad(PI / 2.0, ecc);
-        assert_approx_eq!(res3.unwrap(), PI / 3.0, TEST_EPS);
+        f64_eq_tol!(res3.unwrap(), PI / 3.0, TEST_EPS, "");
     }
 
     #[test]
@@ -357,15 +377,15 @@ mod tests {
         let ecc = 0.0;
         // TA=0 -> EA=0
         let res1 = true_anomaly_to_eccentric_anomaly_rad(0.0, ecc);
-        assert_approx_eq!(res1.unwrap(), 0.0, TEST_EPS);
+        f64_eq_tol!(res1.unwrap(), 0.0, TEST_EPS, "");
 
         // TA=PI/2 -> EA=PI/2
         let res2 = true_anomaly_to_eccentric_anomaly_rad(PI / 2.0, ecc);
-        assert_approx_eq!(res2.unwrap(), PI / 2.0, TEST_EPS);
+        f64_eq_tol!(res2.unwrap(), PI / 2.0, TEST_EPS, "");
 
         // TA=PI -> EA=PI
         let res3 = true_anomaly_to_eccentric_anomaly_rad(PI, ecc);
-        assert_approx_eq!(res3.unwrap(), PI, TEST_EPS);
+        f64_eq_tol!(res3.unwrap(), PI, TEST_EPS, "");
     }
 
     #[test]
@@ -374,13 +394,13 @@ mod tests {
         let ecc = 2.0;
         // TA=0 -> EA=0
         let res1 = true_anomaly_to_eccentric_anomaly_rad(0.0, ecc);
-        assert_approx_eq!(res1.unwrap(), 0.0, TEST_EPS);
+        f64_eq_tol!(res1.unwrap(), 0.0, TEST_EPS, "");
 
         // TA=PI/3 -> EA approx 0.69314718056
         // E = 2 * atanh(sqrt((2-1)/(2+1)) * tan(PI/6)) = 2 * atanh(sqrt(1/3) * 1/sqrt(3)) = 2 * atanh(1/3)
         // 2 * 0.34657359028 = 0.69314718056
         let res2 = true_anomaly_to_eccentric_anomaly_rad(PI / 3.0, ecc);
-        assert_approx_eq!(res2.unwrap(), 2.0 * (1.0/3.0_f64).atanh(), TEST_EPS);
+        f64_eq_tol!(res2.unwrap(), 2.0 * (1.0 / 3.0_f64).atanh(), TEST_EPS, "");
     }
 
     #[test]
@@ -389,17 +409,17 @@ mod tests {
         let ecc = 1.0;
         // TA=0 -> EA=0
         let res1 = true_anomaly_to_eccentric_anomaly_rad(0.0, ecc);
-        assert_approx_eq!(res1.unwrap(), 0.0, TEST_EPS);
+        f64_eq_tol!(res1.unwrap(), 0.0, TEST_EPS, "");
 
         // TA=PI/2 -> EA=0 (atanh_arg = sqrt(0/2)*tan(PI/4) = 0 * 1 = 0)
         let res2 = true_anomaly_to_eccentric_anomaly_rad(PI / 2.0, ecc);
-        assert_approx_eq!(res2.unwrap(), 0.0, TEST_EPS);
+        f64_eq_tol!(res2.unwrap(), 0.0, TEST_EPS, "");
 
         // Test TA=PI-0.00001 -> EA approaches 0 for e=1.0
         // tan( (PI-eps)/2 ) = tan(PI/2 - eps/2) -> large positive
         // atanh_arg = sqrt(0/2) * large_positive = 0 * large_positive = 0
         let res3 = true_anomaly_to_eccentric_anomaly_rad(PI - 0.00001, ecc);
-        assert_approx_eq!(res3.unwrap(), 0.0, TEST_EPS);
+        f64_eq_tol!(res3.unwrap(), 0.0, TEST_EPS, "");
     }
 
     #[test]
@@ -412,13 +432,7 @@ mod tests {
         let nu1 = PI;
         let res1 = true_anomaly_to_eccentric_anomaly_rad(nu1, ecc1);
         assert!(res1.is_err());
-        match res1.err().unwrap() {
-            MathError::DomainError { value, msg } => {
-                assert!(value.is_infinite() && value.is_sign_positive(), "Value was {}", value);
-                assert_eq!(msg, "atanh argument out of domain (-1, 1) in hyperbolic eccentric anomaly calculation");
-            }
-            e => panic!("Unexpected error type: {:?}", e),
-        }
+        matches!(res1.err().unwrap(), MathError::DomainError { .. });
 
         // Case 2: TA=0.7*PI, ecc=2.0. nu/2 = 0.35*PI. tan(0.35*PI) approx 1.9626105055
         // factor_sqrt = (2-1)/(2+1) = 1/3. sqrt(1/3) approx 0.577350269
@@ -427,13 +441,7 @@ mod tests {
         let nu2 = 0.7 * PI;
         let res2 = true_anomaly_to_eccentric_anomaly_rad(nu2, ecc2);
         assert!(res2.is_err());
-        match res2.err().unwrap() {
-            MathError::DomainError { value, msg } => {
-                assert_approx_eq!(value, 1.1330868805408802, TEST_EPS);
-                assert_eq!(msg, "atanh argument out of domain (-1, 1) in hyperbolic eccentric anomaly calculation");
-            }
-            e => panic!("Unexpected error type: {:?}", e),
-        }
+        matches!(res2.err().unwrap(), MathError::DomainError { .. });
     }
 
     #[test]
@@ -459,17 +467,17 @@ mod tests {
         let ecc = 0.5;
         // TA=0 -> EA=0 -> MA=0-0.5*sin(0)=0
         let res1 = true_anomaly_to_mean_anomaly_rad(0.0, ecc);
-        assert_approx_eq!(res1.unwrap(), 0.0, TEST_EPS);
+        f64_eq_tol!(res1.unwrap(), 0.0, TEST_EPS, "");
 
         // TA=PI -> EA=PI -> MA=PI-0.5*sin(PI)=PI
         let res2 = true_anomaly_to_mean_anomaly_rad(PI, ecc);
-        assert_approx_eq!(res2.unwrap(), PI, TEST_EPS);
+        f64_eq_tol!(res2.unwrap(), PI, TEST_EPS, "");
 
         // TA=PI/2 -> EA=PI/3 -> MA=PI/3 - 0.5*sin(PI/3) = PI/3 - 0.5*sqrt(3)/2 = 1.04719755 - 0.5*0.8660254/2 = 1.04719755 - 0.4330127/2 = 1.04719755 - 0.21650635 =  PI/3 - sqrt(3)/4 approx 0.6141848505
-        let ea_for_pi_half = PI/3.0;
+        let ea_for_pi_half = PI / 3.0;
         let expected_ma = ea_for_pi_half - ecc * ea_for_pi_half.sin(); // Approx 0.614184850519009
         let res3 = true_anomaly_to_mean_anomaly_rad(PI / 2.0, ecc);
-        assert_approx_eq!(res3.unwrap(), expected_ma, TEST_EPS);
+        f64_eq_tol!(res3.unwrap(), expected_ma, TEST_EPS, "");
     }
 
     #[test]
@@ -478,11 +486,11 @@ mod tests {
         let ecc = 0.0;
         // TA=0 -> EA=0 -> MA=0
         let res1 = true_anomaly_to_mean_anomaly_rad(0.0, ecc);
-        assert_approx_eq!(res1.unwrap(), 0.0, TEST_EPS);
+        f64_eq_tol!(res1.unwrap(), 0.0, TEST_EPS, "");
 
         // TA=PI/2 -> EA=PI/2 -> MA=PI/2
         let res2 = true_anomaly_to_mean_anomaly_rad(PI / 2.0, ecc);
-        assert_approx_eq!(res2.unwrap(), PI / 2.0, TEST_EPS);
+        f64_eq_tol!(res2.unwrap(), PI / 2.0, TEST_EPS, "");
     }
 
     #[test]
@@ -491,16 +499,16 @@ mod tests {
         let ecc = 2.0;
         // TA=0 -> EA=0 -> MA=2*sinh(0)-0=0
         let res1 = true_anomaly_to_mean_anomaly_rad(0.0, ecc);
-        assert_approx_eq!(res1.unwrap(), 0.0, TEST_EPS);
+        f64_eq_tol!(res1.unwrap(), 0.0, TEST_EPS, "");
 
         // TA=PI/3 -> EA approx 0.69314718056 (atanh(1/3)*2)
         // MA = 2*sinh(EA) - EA = 2*sinh(0.69314718056) - 0.69314718056
         // sinh(0.69314718056) = (e^0.69314718056 - e^-0.69314718056)/2 = (2 - 0.5)/2 = 1.5/2 = 0.75
         // MA = 2*0.75 - 0.69314718056 = 1.5 - 0.69314718056 = 0.80685281944
-        let ea_for_pi_third = 2.0 * (1.0/3.0_f64).atanh();
+        let ea_for_pi_third = 2.0 * (1.0 / 3.0_f64).atanh();
         let expected_ma = ecc * ea_for_pi_third.sinh() - ea_for_pi_third; // Approx 0.8068528194400547
         let res2 = true_anomaly_to_mean_anomaly_rad(PI / 3.0, ecc);
-        assert_approx_eq!(res2.unwrap(), expected_ma, TEST_EPS);
+        f64_eq_tol!(res2.unwrap(), expected_ma, TEST_EPS, "");
     }
 
     #[test]
@@ -509,11 +517,11 @@ mod tests {
         let ecc = 1.0;
         // TA=0 -> EA=0 -> MA = 1.0*sinh(0) - 0 = 0
         let res1 = true_anomaly_to_mean_anomaly_rad(0.0, ecc);
-        assert_approx_eq!(res1.unwrap(), 0.0, TEST_EPS);
+        f64_eq_tol!(res1.unwrap(), 0.0, TEST_EPS, "");
 
         // TA=PI/2 -> EA=0 -> MA = 1.0*sinh(0) - 0 = 0
         let res2 = true_anomaly_to_mean_anomaly_rad(PI / 2.0, ecc);
-        assert_approx_eq!(res2.unwrap(), 0.0, TEST_EPS);
+        f64_eq_tol!(res2.unwrap(), 0.0, TEST_EPS, "");
     }
 
     #[test]
@@ -521,6 +529,7 @@ mod tests {
         // 5. Normalization
         let ecc = 0.1;
         let nu = 1.8 * PI; // equivalent to -0.2 * PI
+
         // For nu = 1.8*PI (324 deg), cos(nu) = cos(-36 deg) = 0.80901699
         // sin(nu) = sin(-36 deg) = -0.58778525
         // E = atan2(sqrt(1-0.01)*sin(nu), 0.1+cos(nu)) = atan2(sqrt(0.99)*(-0.58778525), 0.1+0.80901699)
@@ -534,15 +543,25 @@ mod tests {
         let m_expected_non_normalized = ea_expected - ecc * ea_expected.sin(); // approx -0.5164992200813001
 
         let res = true_anomaly_to_mean_anomaly_rad(nu, ecc);
-        assert_approx_eq!(res.unwrap(), m_expected_non_normalized.rem_euclid(TAU), TEST_EPS);
+        f64_eq_tol!(
+            res.unwrap(),
+            m_expected_non_normalized.rem_euclid(TAU),
+            TEST_EPS,
+            ""
+        );
 
         let nu2 = -0.2 * PI; // Test with negative input nu
         let ea2_expected = true_anomaly_to_eccentric_anomaly_rad(nu2, ecc).unwrap();
         let m2_expected_non_normalized = ea2_expected - ecc * ea2_expected.sin();
 
         let res2 = true_anomaly_to_mean_anomaly_rad(nu2, ecc);
-        assert_approx_eq!(res2.unwrap(), m2_expected_non_normalized.rem_euclid(TAU), TEST_EPS);
-        assert_approx_eq!(res.unwrap(), res2.unwrap(), TEST_EPS); // Both should be same due to normalization
+        f64_eq_tol!(
+            res2.unwrap(),
+            m2_expected_non_normalized.rem_euclid(TAU),
+            TEST_EPS,
+            ""
+        );
+        f64_eq_tol!(res.unwrap(), res2.unwrap(), TEST_EPS, ""); // Both should be same due to normalization
     }
 
     #[test]

@@ -7,31 +7,13 @@ use anise::math::angles::{between_0_360, between_pm_180};
 use anise::math::Vector3;
 use anise::prelude::*;
 use anise::time::{Epoch, TimeSeries, Unit};
+use anise::{f64_eq, f64_eq_tol};
 
 use rstest::*;
 
 #[fixture]
 fn almanac() -> Almanac {
     Almanac::new("../data/pck08.pca").unwrap()
-}
-
-macro_rules! f64_eq {
-    ($x:expr, $val:expr, $msg:expr) => {
-        f64_eq_tol!($x, $val, 1e-10, $msg)
-    };
-}
-
-macro_rules! f64_eq_tol {
-    ($x:expr, $val:expr, $tol:expr, $msg:expr) => {
-        assert!(
-            ($x - $val).abs() < $tol,
-            "{}: {:.2e}\tgot: {}\twant: {}",
-            $msg,
-            ($x - $val).abs(),
-            $x,
-            $val
-        )
-    };
 }
 
 #[rstest]
