@@ -197,7 +197,7 @@ def test_convert_tpc():
     almanac = new_meta.process()
 
     earth_j2k = almanac.frame_info(Frames.EARTH_J2000)
-    assert earth_j2k.mu_km3_s2 != None
+    assert earth_j2k.mu_km3_s2 is not None
     almanac.describe()
 
 

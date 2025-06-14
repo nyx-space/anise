@@ -28,4 +28,3 @@ for epoch, rslt in [(pre_prenumbra_start_et, 0), (prenumbra_start_et, 1), (prenu
     # Compute occultation
     occult = sp.occult(front, fshape, fframe, back, bshape, bframe, abcorr, obsrvr, epoch)
     assert occult == rslt, f"want {rslt} got {occult}"
-
