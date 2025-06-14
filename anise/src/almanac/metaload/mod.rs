@@ -30,6 +30,7 @@ mod python;
 
 #[derive(Debug, PartialEq, Snafu)]
 #[snafu(visibility(pub(crate)))]
+#[non_exhaustive]
 pub enum MetaAlmanacError {
     #[snafu(display("could not create the cache folder for ANISE, please use a relative path"))]
     AppDirError,

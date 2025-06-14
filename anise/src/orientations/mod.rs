@@ -22,6 +22,7 @@ mod rotations;
 
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
+#[non_exhaustive]
 pub enum OrientationError {
     #[snafu(display(
         "somehow you've entered code that should not be reachable, please file a bug."

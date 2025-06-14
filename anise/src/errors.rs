@@ -66,6 +66,7 @@ pub type AlmanacResult<T> = Result<T, AlmanacError>;
 
 #[derive(Debug, PartialEq, Snafu)]
 #[snafu(visibility(pub(crate)))]
+#[non_exhaustive]
 pub enum InputOutputError {
     /// Raised for an error in reading or writing the file(s)
     IOError { kind: IOErrorKind },
@@ -75,6 +76,7 @@ pub enum InputOutputError {
 
 #[derive(Copy, Clone, Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
+#[non_exhaustive]
 pub enum DecodingError {
     #[snafu(display(
         "could not decode {dataset} data -- need at least {need} doubles but found {got}"
@@ -107,6 +109,7 @@ pub enum DecodingError {
 
 #[derive(Copy, Clone, PartialEq, Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
+#[non_exhaustive]
 pub enum IntegrityError {
     /// Data checksum differs from expected checksum
     ChecksumInvalid { expected: u32, computed: u32 },
@@ -139,6 +142,7 @@ pub enum IntegrityError {
 
 #[derive(Copy, Clone, PartialEq, Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
+#[non_exhaustive]
 pub enum MathError {
     #[snafu(display("prevented a division by zero when {action}"))]
     DivisionByZero { action: &'static str },
@@ -150,6 +154,7 @@ pub enum MathError {
 
 #[derive(Copy, Clone, Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
+#[non_exhaustive]
 pub enum PhysicsError {
     /// Somehow you've entered code that should not be reachable, please file a bug.
     Unreachable,

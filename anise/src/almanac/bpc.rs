@@ -21,6 +21,7 @@ use crate::naif::pck::BPCSummaryRecord;
 use crate::naif::BPC;
 use crate::orientations::{NoOrientationsLoadedSnafu, OrientationError};
 use crate::{naif::daf::DAFError, NaifId};
+use log::error;
 
 use super::{Almanac, MAX_LOADED_BPCS};
 
@@ -113,13 +114,18 @@ impl Almanac {
             }
         }
 
+        // If the ID is not present at all, bpc_domain will report it.
+        let (start, end) = self.bpc_domain(id)?;
+        error!("Almanac: summary {id} valid from {start} to {end} but not at requested {epoch}");
         // If we're reached this point, there is no relevant summary at this epoch.
         Err(OrientationError::BPC {
-            action: "searching for BPC summary",
+            action: "searching for SPK summary",
             source: DAFError::SummaryIdAtEpochError {
                 kind: "BPC",
                 id,
                 epoch,
+                start,
+                end,
             },
         })
     }

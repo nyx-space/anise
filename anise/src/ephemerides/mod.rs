@@ -22,6 +22,7 @@ pub mod translations;
 
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub))]
+#[non_exhaustive]
 pub enum EphemerisError {
     /// Somehow you've entered code that should not be reachable, please file a bug.
     Unreachable,

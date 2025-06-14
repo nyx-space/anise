@@ -8,6 +8,7 @@ use std::io::Error as IOError;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
+#[non_exhaustive]
 pub enum DataSetError {
     #[snafu(display("when {action}, {source}"))]
     DataSetLut {
