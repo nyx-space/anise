@@ -4,7 +4,7 @@ import pickle
 
 from anise import Almanac, MetaAlmanac, MetaFile
 from anise.astro import *
-from anise.astro.constants import Frames
+from anise.constants import Frames
 from anise.rotation import DCM
 from anise.time import Duration, Epoch, TimeSeries, Unit
 from anise.utils import convert_tpc

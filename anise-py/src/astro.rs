@@ -12,15 +12,14 @@ use anise::astro::AzElRange;
 use anise::astro::Occultation;
 use anise::structure::planetocentric::ellipsoid::Ellipsoid;
 use pyo3::prelude::*;
-use pyo3::py_run;
 
 use anise::astro::orbit::Orbit;
 use anise::frames::Frame;
 
 use super::constants::register_constants;
 
-pub(crate) fn register_astro(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
-    let sm = PyModule::new(parent_module.py(), "astro")?;
+#[pymodule]
+pub(crate) fn _astro(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
     sm.add_class::<Ellipsoid>()?;
     sm.add_class::<Frame>()?;
     sm.add_class::<Orbit>()?;
@@ -29,10 +28,5 @@ pub(crate) fn register_astro(parent_module: &Bound<'_, PyModule>) -> PyResult<()
 
     register_constants(&sm)?;
 
-    Python::with_gil(|py| {
-        py_run!(py, sm, "import sys; sys.modules['anise.astro'] = sm");
-    });
-
-    parent_module.add_submodule(&sm)?;
     Ok(())
 }

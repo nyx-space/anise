@@ -219,3 +219,14 @@ pub(crate) fn register_constants(parent_module: &Bound<'_, PyModule>) -> PyResul
     parent_module.add_submodule(&sm)?;
     Ok(())
 }
+
+// NOTE: Constant is both in anise.astro.constants and anise.constants
+#[pymodule]
+pub(crate) fn _constants(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
+    sm.add_class::<CelestialObjects>()?;
+    sm.add_class::<Frames>()?;
+    sm.add_class::<Orientations>()?;
+    sm.add_class::<UsualConstants>()?;
+
+    Ok(())
+}
