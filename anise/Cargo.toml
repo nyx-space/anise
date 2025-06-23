@@ -50,7 +50,7 @@ rust-spice = "0.7.6"
 parquet = "55.0.0"
 arrow = "55.0.0"
 criterion = "0.6"
-iai-callgrind = "0.14"
+iai-callgrind = "0.15"
 pretty_env_logger = { workspace = true }
 rstest = { workspace = true }
 approx = "0.5.1"
