@@ -4,13 +4,15 @@ import pickle
 
 from anise import Almanac, MetaAlmanac, MetaFile
 from anise.astro import *
-from anise.astro.constants import Frames
+from anise.constants import Frames
 from anise.rotation import DCM
 from anise.time import Duration, Epoch, TimeSeries, Unit
 from anise.utils import convert_tpc
 
 from os import environ
 
+# For compatibility with version 0.6.x, check we can import the constants from anise.astro as well
+from anise.astro.constants import Frames
 
 def test_state_transformation():
     """

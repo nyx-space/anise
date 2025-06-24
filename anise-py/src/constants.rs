@@ -14,7 +14,6 @@ use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG
 use anise::constants::usual_planetary_constants::MEAN_MOON_ANGULAR_VELOCITY_DEG_S;
 use anise::constants::SPEED_OF_LIGHT_KM_S;
 use pyo3::prelude::*;
-use pyo3::py_run;
 
 use anise::constants::frames::*;
 use anise::frames::Frame;
@@ -201,21 +200,13 @@ impl UsualConstants {
     const SPEED_OF_LIGHT_KM_S: f64 = SPEED_OF_LIGHT_KM_S;
 }
 
-pub(crate) fn register_constants(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
-    let sm = PyModule::new(parent_module.py(), "astro.constants")?;
+// NOTE: Constant is both in anise.astro.constants and anise.constants
+#[pymodule]
+pub(crate) fn constants(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
     sm.add_class::<CelestialObjects>()?;
     sm.add_class::<Frames>()?;
     sm.add_class::<Orientations>()?;
     sm.add_class::<UsualConstants>()?;
 
-    Python::with_gil(|py| {
-        py_run!(
-            py,
-            sm,
-            "import sys; sys.modules['anise.astro.constants'] = sm"
-        );
-    });
-
-    parent_module.add_submodule(&sm)?;
     Ok(())
 }

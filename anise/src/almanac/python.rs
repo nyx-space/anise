@@ -133,10 +133,10 @@ impl Almanac {
     ///
     /// Refer to [azimuth_elevation_range_sez] for details.
     ///
-    /// :type rx_tx_states: List[Orbit]
+    /// :type rx_tx_states: typing.List[Orbit]
     /// :type obstructing_body: Frame, optional
     /// :type ab_corr: Aberration, optional
-    /// :rtype: List[AzElRange]
+    /// :rtype: typing.List[AzElRange]
     #[pyo3(name = "azimuth_elevation_range_sez_many", signature=(
         rx_tx_states,
         obstructing_body=None, ab_corr=None
@@ -276,9 +276,9 @@ impl Almanac {
     /// Refer to [solar_eclipsing] for details.
     ///
     /// :type eclipsing_frame: Frame
-    /// :type observers: List[Orbit]
+    /// :type observers: typing.List[Orbit]
     /// :type ab_corr: Aberration, optional
-    /// :rtype: List[Occultation]
+    /// :rtype: typing.List[Occultation]
     #[pyo3(name = "solar_eclipsing_many", signature=(
         eclipsing_frame,
         observers,
@@ -374,7 +374,7 @@ impl Almanac {
     /// :type observer_frame: Frame
     /// :type time_series: TimeSeries
     /// :type ab_corr: Aberration, optional
-    /// :rtype: List[Orbit]
+    /// :rtype: typing.List[Orbit]
     #[pyo3(name = "transform_many", signature=(
         target_frame,
         observer_frame,
@@ -434,10 +434,10 @@ impl Almanac {
     ///
     /// Refer to [transform_to] for details.
     ///
-    /// :type states: List[Orbit]
+    /// :type states: typing.List[Orbit]
     /// :type observer_frame: Frame
     /// :type ab_corr: Aberration, optional
-    /// :rtype: List[Orbit]
+    /// :rtype: typing.List[Orbit]
     #[pyo3(name = "transform_many_to", signature=(
         states,
         observer_frame,

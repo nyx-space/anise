@@ -10,16 +10,10 @@
 
 use anise::math::rotation::DCM;
 use pyo3::prelude::*;
-use pyo3::py_run;
 
-pub(crate) fn register_rotation(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
-    let sm = PyModule::new(parent_module.py(), "rotation")?;
+#[pymodule]
+pub(crate) fn rotation(_py: Python, sm: &Bound<PyModule>) -> PyResult<()> {
     sm.add_class::<DCM>()?;
 
-    Python::with_gil(|py| {
-        py_run!(py, sm, "import sys; sys.modules['anise.rotation'] = sm");
-    });
-
-    parent_module.add_submodule(&sm)?;
     Ok(())
 }

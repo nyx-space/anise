@@ -16,8 +16,7 @@ use hifitime::python::{PyDurationError, PyHifitimeError, PyParsingError};
 use hifitime::ut1::Ut1Provider;
 use hifitime::{prelude::*, MonthName, Polynomial};
 
-use pyo3::prelude::*;
-use pyo3::py_run;
+use pyo3::{prelude::*, wrap_pymodule};
 
 mod astro;
 mod constants;
@@ -26,12 +25,15 @@ mod utils;
 
 /// A Python module implemented in Rust.
 #[pymodule]
+#[pyo3(name = "_anise")]
 fn anise(m: &Bound<'_, PyModule>) -> PyResult<()> {
     pyo3_log::init();
-    register_time_module(m)?;
-    astro::register_astro(m)?;
-    utils::register_utils(m)?;
-    rotation::register_rotation(m)?;
+    m.add_wrapped(wrap_pymodule!(time))?;
+    m.add_wrapped(wrap_pymodule!(astro::astro))?;
+    m.add_wrapped(wrap_pymodule!(constants::constants))?;
+    m.add_wrapped(wrap_pymodule!(utils::utils))?;
+    m.add_wrapped(wrap_pymodule!(rotation::rotation))?;
+
     m.add_class::<Almanac>()?;
     m.add_class::<Aberration>()?;
     m.add_class::<MetaAlmanac>()?;
@@ -40,9 +42,8 @@ fn anise(m: &Bound<'_, PyModule>) -> PyResult<()> {
 }
 
 /// Reexport hifitime as anise.time
-fn register_time_module(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
-    let sm = PyModule::new(parent_module.py(), "time")?;
-
+#[pymodule]
+fn time(_py: Python, sm: &Bound<PyModule>) -> PyResult<()> {
     sm.add_class::<Epoch>()?;
     sm.add_class::<TimeScale>()?;
     sm.add_class::<TimeSeries>()?;
@@ -57,10 +58,5 @@ fn register_time_module(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     sm.add_class::<PyParsingError>()?;
     sm.add_class::<Polynomial>()?;
     sm.add_class::<Weekday>()?;
-
-    Python::with_gil(|py| {
-        py_run!(py, sm, "import sys; sys.modules['anise.time'] = sm");
-    });
-    parent_module.add_submodule(&sm)?;
     Ok(())
 }

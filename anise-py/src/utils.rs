@@ -12,17 +12,13 @@ use std::path::PathBuf;
 
 use anise::naif::kpl::parser::{convert_fk as convert_fk_rs, convert_tpc as convert_tpc_rs};
 use anise::structure::dataset::DataSetError;
-use pyo3::{prelude::*, py_run};
+use pyo3::prelude::*;
 
-pub(crate) fn register_utils(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
-    let sm = PyModule::new(parent_module.py(), "utils")?;
-    sm.add_function(wrap_pyfunction!(convert_fk, &sm)?)?;
-    sm.add_function(wrap_pyfunction!(convert_tpc, &sm)?)?;
+#[pymodule]
+pub(crate) fn utils(_py: Python, sm: &Bound<PyModule>) -> PyResult<()> {
+    sm.add_function(wrap_pyfunction!(convert_fk, sm)?)?;
+    sm.add_function(wrap_pyfunction!(convert_tpc, sm)?)?;
 
-    Python::with_gil(|py| {
-        py_run!(py, sm, "import sys; sys.modules['anise.utils'] = sm");
-    });
-    parent_module.add_submodule(&sm)?;
     Ok(())
 }
 
