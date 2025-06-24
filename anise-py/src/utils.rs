@@ -15,7 +15,7 @@ use anise::structure::dataset::DataSetError;
 use pyo3::prelude::*;
 
 #[pymodule]
-pub(crate) fn _utils(_py: Python, sm: &Bound<PyModule>) -> PyResult<()> {
+pub(crate) fn utils(_py: Python, sm: &Bound<PyModule>) -> PyResult<()> {
     sm.add_function(wrap_pyfunction!(convert_fk, sm)?)?;
     sm.add_function(wrap_pyfunction!(convert_tpc, sm)?)?;
 

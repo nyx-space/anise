@@ -6,7 +6,7 @@ __all__ = [
     "constants",
     "time",
     "rotation",
-    "utils"
+    "utils",
     # root
     "Aberration",
     "Almanac",

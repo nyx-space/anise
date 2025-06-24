@@ -11,6 +11,8 @@ from anise.utils import convert_tpc
 
 from os import environ
 
+# For compatibility with version 0.6.x, check we can import the constants from anise.astro as well
+from anise.astro.constants import Frames
 
 def test_state_transformation():
     """

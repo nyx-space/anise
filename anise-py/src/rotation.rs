@@ -12,7 +12,7 @@ use anise::math::rotation::DCM;
 use pyo3::prelude::*;
 
 #[pymodule]
-pub(crate) fn _rotation(_py: Python, sm: &Bound<PyModule>) -> PyResult<()> {
+pub(crate) fn rotation(_py: Python, sm: &Bound<PyModule>) -> PyResult<()> {
     sm.add_class::<DCM>()?;
 
     Ok(())

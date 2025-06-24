@@ -15,18 +15,22 @@ use pyo3::prelude::*;
 
 use anise::astro::orbit::Orbit;
 use anise::frames::Frame;
+use pyo3::wrap_pymodule;
 
-use super::constants::register_constants;
+// use super::constants::register_constants;
 
 #[pymodule]
-pub(crate) fn _astro(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
+pub(crate) fn astro(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
     sm.add_class::<Ellipsoid>()?;
     sm.add_class::<Frame>()?;
     sm.add_class::<Orbit>()?;
     sm.add_class::<AzElRange>()?;
     sm.add_class::<Occultation>()?;
 
-    register_constants(&sm)?;
+    // Also add the constants as a submodule to astro for backward compatibility
+    sm.add_wrapped(wrap_pymodule!(crate::constants::constants))?;
+
+    // register_constants(&sm)?;
 
     Ok(())
 }

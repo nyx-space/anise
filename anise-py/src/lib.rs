@@ -25,13 +25,14 @@ mod utils;
 
 /// A Python module implemented in Rust.
 #[pymodule]
+#[pyo3(name = "_anise")]
 fn anise(m: &Bound<'_, PyModule>) -> PyResult<()> {
     pyo3_log::init();
-    m.add_wrapped(wrap_pymodule!(_time))?;
-    m.add_wrapped(wrap_pymodule!(astro::_astro))?;
-    m.add_wrapped(wrap_pymodule!(constants::_constants))?;
-    m.add_wrapped(wrap_pymodule!(utils::_utils))?;
-    m.add_wrapped(wrap_pymodule!(rotation::_rotation))?;
+    m.add_wrapped(wrap_pymodule!(time))?;
+    m.add_wrapped(wrap_pymodule!(astro::astro))?;
+    m.add_wrapped(wrap_pymodule!(constants::constants))?;
+    m.add_wrapped(wrap_pymodule!(utils::utils))?;
+    m.add_wrapped(wrap_pymodule!(rotation::rotation))?;
 
     m.add_class::<Almanac>()?;
     m.add_class::<Aberration>()?;
@@ -42,7 +43,7 @@ fn anise(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
 /// Reexport hifitime as anise.time
 #[pymodule]
-fn _time(_py: Python, sm: &Bound<PyModule>) -> PyResult<()> {
+fn time(_py: Python, sm: &Bound<PyModule>) -> PyResult<()> {
     sm.add_class::<Epoch>()?;
     sm.add_class::<TimeScale>()?;
     sm.add_class::<TimeSeries>()?;
