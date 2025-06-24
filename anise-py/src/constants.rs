@@ -14,7 +14,6 @@ use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG
 use anise::constants::usual_planetary_constants::MEAN_MOON_ANGULAR_VELOCITY_DEG_S;
 use anise::constants::SPEED_OF_LIGHT_KM_S;
 use pyo3::prelude::*;
-use pyo3::py_run;
 
 use anise::constants::frames::*;
 use anise::frames::Frame;
