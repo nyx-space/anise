@@ -1,8 +1,7 @@
 import typing
-from typing import List
+
 
 from anise.astro import AzElRange, Frame, Occultation, Orbit
-from anise.astro import Orbit as CartesianState
 from anise.time import Epoch, TimeScale, TimeSeries
 from anise.rotation import DCM
 
@@ -95,7 +94,7 @@ The obstructing body _should_ be a tri-axial ellipsoid body, e.g. IAU_MOON_FRAME
 6. Compute the elevation, and ensure it is between +/- 180 degrees.
 7. Compute the azimuth with a quadrant check, and ensure it is between 0 and 360 degrees."""
 
-    def azimuth_elevation_range_sez_many(self, rx_tx_states: List[Orbit], obstructing_body: Frame=None, ab_corr: Aberration=None) -> List[AzElRange]:
+    def azimuth_elevation_range_sez_many(self, rx_tx_states: typing.List[Orbit], obstructing_body: Frame=None, ab_corr: Aberration=None) -> typing.List[AzElRange]:
         """Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
 receiver states (first item in tuple) seen from the transmitter state (second item in states tuple), once converted into the SEZ frame of the transmitter.
 
@@ -170,7 +169,7 @@ Algorithm (source: Algorithm 35 of Vallado, 4th edition, page 308.):
     def load(self, path: str) -> Almanac:
         """Generic function that tries to load the provided path guessing to the file type."""
 
-    def load_from_metafile(self, metafile: Metafile, autodelete: bool) -> Almanac:
+    def load_from_metafile(self, metafile: MetaFile, autodelete: bool) -> Almanac:
         """Load from the provided MetaFile, downloading it if necessary.
 Set autodelete to true to automatically delete lock files. Lock files are important in multi-threaded loads."""
 
@@ -191,7 +190,7 @@ This function only performs the rotation and no translation whatsoever. Use the 
 # Note
 This function performs a recursion of no more than twice the MAX_TREE_DEPTH."""
 
-    def rotate_to(self, state: CartesianState, observer_frame: Frame) -> CartesianState:
+    def rotate_to(self, state: Orbit, observer_frame: Frame) -> Orbit:
         """Rotates the provided Cartesian state into the requested observer frame
 
 **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_to` function instead to include rotations."""
@@ -202,7 +201,7 @@ This function performs a recursion of no more than twice the MAX_TREE_DEPTH."""
 This function calls `occultation` where the back object is the Sun in the J2000 frame, and the front object
 is the provided eclipsing frame."""
 
-    def solar_eclipsing_many(self, eclipsing_frame: Frame, observers: List[Orbit], ab_corr: Aberration=None) -> List[Occultation]:
+    def solar_eclipsing_many(self, eclipsing_frame: Frame, observers: typing.List[Orbit], ab_corr: Aberration=None) -> typing.List[Occultation]:
         """Computes the solar eclipsing of all the observers due to the eclipsing_frame, computed in parallel under the hood.
 
 Note: if any computation fails, the error will be printed to the stderr.
@@ -289,13 +288,13 @@ will return exactly the same data as the spkerz SPICE call.
 # Note
 The units will be those of the underlying ephemeris data (typically km and km/s)"""
 
-    def transform_many(self, target_frame: Orbit, observer_frame: Frame, time_series: TimeSeries, ab_corr: Aberration=None) -> List[Orbit]:
+    def transform_many(self, target_frame: Orbit, observer_frame: Frame, time_series: TimeSeries, ab_corr: Aberration=None) -> typing.List[Orbit]:
         """Returns a chronologically sorted list of the Cartesian states that transform the `from_frame` to the `to_frame` for each epoch of the time series, computed in parallel under the hood.
 Note: if any transformation fails, the error will be printed to the stderr.
 
 Refer to [transform] for details."""
 
-    def transform_many_to(self, states: List[Orbit], observer_frame: Frame, ab_corr: Aberration=None) -> List[Orbit]:
+    def transform_many_to(self, states: typing.List[Orbit], observer_frame: Frame, ab_corr: Aberration=None) -> typing.List[Orbit]:
         """Returns a chronologically sorted list of the provided states as seen from the observer frame, given the aberration.
 Note: if any transformation fails, the error will be printed to the stderr.
 Note: the input ordering is lost: the output states will not be in the same order as the input states if these are not chronologically sorted!

@@ -630,9 +630,9 @@ impl Almanac {
     ///
     /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_to` function instead to include rotations.
     ///
-    /// :type state: CartesianState
+    /// :type state: Orbit
     /// :type observer_frame: Frame
-    /// :rtype: CartesianState
+    /// :rtype: Orbit
     #[pyo3(name = "rotate_to", signature=(
         state,
         observer_frame,
