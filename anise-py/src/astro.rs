@@ -17,8 +17,6 @@ use anise::astro::orbit::Orbit;
 use anise::frames::Frame;
 use pyo3::wrap_pymodule;
 
-// use super::constants::register_constants;
-
 #[pymodule]
 pub(crate) fn astro(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
     sm.add_class::<Ellipsoid>()?;
@@ -29,8 +27,6 @@ pub(crate) fn astro(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Also add the constants as a submodule to astro for backward compatibility
     sm.add_wrapped(wrap_pymodule!(crate::constants::constants))?;
-
-    // register_constants(&sm)?;
 
     Ok(())
 }

@@ -1429,6 +1429,9 @@ impl Orbit {
     ///   departing leg if `nu > PI` would be required (unless current TA is already > PI and target radius is further along).
     ///   The current implementation strictly uses the `acos` result, so `nu_rad_at_radius` is always `0 <= nu <= PI`.
     ///   This means it finds the time to reach the radius on the path from periapsis up to the point where true anomaly is PI.
+    ///
+    /// :type radius_km: float
+    /// :rtype: Duration
     pub fn duration_to_radius(&self, radius_km: f64) -> PhysicsResult<Duration> {
         // Pre-condition check for radius_km
         ensure!(
