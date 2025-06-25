@@ -3,6 +3,7 @@ from anise._anise import (
     Almanac,
     MetaAlmanac,
     MetaFile,
+    exec_gui,
     time,
     astro,
     constants,
@@ -22,4 +23,6 @@ __all__ = [
     "Almanac",
     "MetaAlmanac",
     "MetaFile",
+    # functions
+    "exec_gui",
 ]

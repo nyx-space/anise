@@ -11,6 +11,8 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dynamic = ["version"]
+[project.scripts]
+anise-gui = "anise:exec_gui"
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
