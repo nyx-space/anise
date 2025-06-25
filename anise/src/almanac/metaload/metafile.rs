@@ -84,7 +84,6 @@ impl MetaFile {
                                 match AppDirs::new(Some("nyx-space/anise"), true) {
                                     Some(app_dir) => {
                                         // Check whether the path currently exists.
-
                                         if !app_dir.data_dir.exists() {
                                             // Create the folders
                                             create_dir_all(&app_dir.data_dir).map_err(|e| {

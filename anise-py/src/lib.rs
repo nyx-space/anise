@@ -16,9 +16,10 @@ use hifitime::python::{PyDurationError, PyHifitimeError, PyParsingError};
 use hifitime::ut1::Ut1Provider;
 use hifitime::{prelude::*, MonthName, Polynomial};
 
-use pyo3::{prelude::*, wrap_pymodule};
+use pyo3::{prelude::*, wrap_pyfunction, wrap_pymodule};
 
 mod astro;
+mod bin;
 mod constants;
 mod rotation;
 mod utils;
@@ -33,6 +34,7 @@ fn anise(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pymodule!(constants::constants))?;
     m.add_wrapped(wrap_pymodule!(utils::utils))?;
     m.add_wrapped(wrap_pymodule!(rotation::rotation))?;
+    m.add_wrapped(wrap_pyfunction!(bin::exec_gui))?;
 
     m.add_class::<Almanac>()?;
     m.add_class::<Aberration>()?;
