@@ -19,10 +19,15 @@ use std::process::Command;
 #[pyfunction]
 pub(crate) fn exec_gui() -> Result<(), MetaAlmanacError> {
     if ["windows", "linux"].contains(&OS) {
+        let crc32 = match OS {
+            "linux" => Some(0x2046a9b7),
+            "windows" => Some(0xac191672),
+            _ => unreachable!(),
+        };
         // Attempt to download from the public site.
         let mut gui = MetaFile {
             uri: format!("http://public-data.nyxspace.com/anise/v0.6/anise-gui-{OS}.exe"),
-            crc32: None,
+            crc32,
         };
         gui.process(true)?;
         make_executable(&gui.uri).expect("could not make ANISE GUI executable");
@@ -34,7 +39,7 @@ pub(crate) fn exec_gui() -> Result<(), MetaAlmanacError> {
     } else {
         Err(MetaAlmanacError::FetchError {
             error: format!("{OS} not supported by ANISE GUI"),
-            uri: format!("http://public-data.nyxspace.com/anise/v0.5/anise-gui-{OS}.exe"),
+            uri: format!("http://public-data.nyxspace.com/anise/v0.6/anise-gui-{OS}.exe"),
         })
     }
 }
