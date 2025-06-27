@@ -137,7 +137,14 @@ impl Almanac {
 
                 for _ in 0..num_it {
                     let epoch_lt = epoch + lt_sign * one_way_lt_s * TimeUnit::Second;
-                    let tgt_ssb = self.translate(target_frame, SSB_J2000, epoch_lt, None)?;
+                    let tgt_ssb = self
+                        .translate(target_frame, SSB_J2000, epoch_lt, None)
+                        .map_err(|e| EphemerisError::LightTimeCorrection {
+                            epoch,
+                            epoch_lt,
+                            ab_corr,
+                            source: Box::new(e),
+                        })?;
                     let tgt_ssb_pos_km = tgt_ssb.radius_km;
                     let tgt_ssb_vel_km_s = tgt_ssb.velocity_km_s;
 

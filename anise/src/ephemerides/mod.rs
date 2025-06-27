@@ -12,8 +12,8 @@ use hifitime::Epoch;
 use snafu::prelude::*;
 
 use crate::{
-    errors::PhysicsError, math::interpolation::InterpolationError, naif::daf::DAFError,
-    prelude::FrameUid, NaifId,
+    astro::Aberration, errors::PhysicsError, math::interpolation::InterpolationError,
+    naif::daf::DAFError, prelude::FrameUid, NaifId,
 };
 
 pub mod paths;
@@ -56,6 +56,14 @@ pub enum EphemerisError {
     EphemInterpolation {
         #[snafu(backtrace)]
         source: InterpolationError,
+    },
+    #[snafu(display("{ab_corr} corrects epoch from {epoch} to {epoch_lt}, but {source}"))]
+    LightTimeCorrection {
+        epoch: Epoch,
+        epoch_lt: Epoch,
+        ab_corr: Aberration,
+        #[snafu(source(from(EphemerisError, Box::new)))] // This ensures the source error is boxed
+        source: Box<EphemerisError>,
     },
     #[snafu(display("unknown name associated with NAIF ID {id}"))]
     IdToName { id: NaifId },

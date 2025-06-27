@@ -343,7 +343,7 @@ fn replace_env_vars(input: &str) -> String {
     let re = Regex::new(r"env:([A-Z_][A-Z0-9_]*)").unwrap();
     re.replace_all(input, |caps: &regex::Captures| {
         let var_name = &caps[1];
-        env::var(var_name).unwrap_or_else(|_| format!("env:{}", var_name))
+        env::var(var_name).unwrap_or_else(|_| format!("env:{var_name}"))
     })
     .to_string()
 }

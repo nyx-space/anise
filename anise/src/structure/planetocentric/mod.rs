@@ -355,7 +355,7 @@ impl fmt::Display for PlanetaryData {
         write!(f, "{orientation_name}")?;
         match self.shape {
             Some(shape) => {
-                write!(f, " (μ = {} km^3/s^2, {})", self.mu_km3_s2, shape)?;
+                write!(f, " (μ = {} km^3/s^2, {shape})", self.mu_km3_s2)?;
             }
             None => {
                 write!(f, " (μ = {} km^3/s^2)", self.mu_km3_s2)?;
@@ -363,13 +363,13 @@ impl fmt::Display for PlanetaryData {
         }
 
         if let Some(ra) = self.pole_right_ascension {
-            write!(f, " RA = {}", ra)?;
+            write!(f, " RA = {ra}")?;
         }
         if let Some(dec) = self.pole_declination {
-            write!(f, " Dec = {}", dec)?;
+            write!(f, " Dec = {dec}")?;
         }
         if let Some(pm) = self.prime_meridian {
-            write!(f, " PM = {}", pm)?;
+            write!(f, " PM = {pm}")?;
         }
         if self.num_nut_prec_angles > 0 {
             write!(f, " + {} nut/prec angles", self.num_nut_prec_angles)?;
