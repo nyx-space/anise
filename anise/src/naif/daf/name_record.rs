@@ -45,10 +45,7 @@ impl NameRecord {
         match core::str::from_utf8(this_name) {
             Ok(name) => name.trim(),
             Err(e) => {
-                warn!(
-                    "malformed name record: `{e}` from {:?}! Using `UNNAMED OBJECT` instead",
-                    this_name
-                );
+                warn!("malformed name record: `{e}` from {this_name:?}!",);
                 "UNNAMED OBJECT"
             }
         }

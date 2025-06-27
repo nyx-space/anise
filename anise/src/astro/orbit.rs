@@ -54,6 +54,7 @@ impl Orbit {
     /// errors when creating a state from its Keplerian orbital elements (cf. the state tests).
     /// One should expect these errors to be on the order of 1e-12.
     #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::neg_multiply)]
     pub fn try_keplerian(
         sma_km: f64,
         ecc: f64,
