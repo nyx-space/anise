@@ -137,7 +137,21 @@ impl Almanac {
 
                 for _ in 0..num_it {
                     let epoch_lt = epoch + lt_sign * one_way_lt_s * TimeUnit::Second;
-                    let tgt_ssb = self.translate(target_frame, SSB_J2000, epoch_lt, None)?;
+                    let tgt_ssb = self
+                        .translate(target_frame, SSB_J2000, epoch_lt, None)
+                        .map_err(|e| {
+                            // Note: EphemerisError::LightTimeLookupFailed might need to be super::EphemerisError::...
+                            // depending on how EphemerisError is imported in this file.
+                            // Assuming `use super::EphemerisError;` or `use crate::ephemerides::EphemerisError;` is present.
+                            // The file already has `use super::EphemerisError;`
+                            EphemerisError::LightTimeLookupFailed {
+                                original_epoch: epoch,
+                                corrected_epoch: epoch_lt,
+                                target_id: target_frame.id, // Frame struct has a public `id: NaifId`
+                                aberration_mode: format!("{}", ab_corr), // Aberration struct implements Display
+                                source_error: e, // The #[snafu(source(from(...)))] in definition handles boxing
+                            }
+                        })?;
                     let tgt_ssb_pos_km = tgt_ssb.radius_km;
                     let tgt_ssb_vel_km_s = tgt_ssb.velocity_km_s;
 

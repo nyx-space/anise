@@ -57,6 +57,15 @@ pub enum EphemerisError {
         #[snafu(backtrace)]
         source: InterpolationError,
     },
+    #[snafu(display("Failed to retrieve ephemeris for target {target_id} (NAIF ID) at light-time corrected epoch {corrected_epoch} (original epoch: {original_epoch}, mode: '{aberration_mode}'). This often occurs if the corrected time is outside the available data range for the target. Original error: {source_error}"))]
+    LightTimeLookupFailed {
+        original_epoch: Epoch,
+        corrected_epoch: Epoch,
+        target_id: NaifId,
+        aberration_mode: String,
+        #[snafu(source(from(EphemerisError, Box::new)))] // This ensures the source error is boxed
+        source_error: Box<EphemerisError>,
+    },
     #[snafu(display("unknown name associated with NAIF ID {id}"))]
     IdToName { id: NaifId },
     #[snafu(display("unknown NAIF ID associated with `{name}`"))]
