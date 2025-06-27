@@ -17,6 +17,8 @@ use anise::astro::orbit::Orbit;
 use anise::frames::Frame;
 use pyo3::wrap_pymodule;
 
+mod solar_time;
+
 #[pymodule]
 pub(crate) fn astro(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
     sm.add_class::<Ellipsoid>()?;
@@ -27,6 +29,8 @@ pub(crate) fn astro(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Also add the constants as a submodule to astro for backward compatibility
     sm.add_wrapped(wrap_pymodule!(crate::constants::constants))?;
+    // Add the solar_time submodule
+    solar_time::solar_time_module(_py, sm)?;
 
     Ok(())
 }

@@ -39,6 +39,7 @@ pub mod bpc;
 pub mod eclipse;
 pub mod planetary;
 pub mod solar;
+pub mod solar_time;
 pub mod spk;
 pub mod transform;
 

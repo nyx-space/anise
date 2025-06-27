@@ -219,3 +219,20 @@ impl From<IOErrorKind> for InputOutputError {
         Self::IOError { kind }
     }
 }
+
+use hifitime::TimeScale;
+use thiserror::Error;
+
+#[derive(Debug, Error, PartialEq)]
+pub enum SpiceError {
+    #[error("Invalid time scale: expected {expected:?}, got {actual:?}")]
+    BadTimeScale {
+        expected: TimeScale,
+        actual: TimeScale,
+    },
+    #[error("Invalid longitude value: {val}")]
+    InvalidLongitude { val: f64 },
+    #[error("Unsupported NAIF ID for this operation: {id:?}")]
+    UnsupportedBody { id: NaifId },
+    // TODO: Add other error variants as needed during implementation
+}
