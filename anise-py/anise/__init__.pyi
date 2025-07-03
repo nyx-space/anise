@@ -1,10 +1,5 @@
 import typing
 
-
-from anise.astro import AzElRange, Frame, Occultation, Orbit
-from anise.time import Epoch, TimeScale, TimeSeries
-from anise.rotation import DCM
-
 @typing.final
 class Aberration:
     """Represents the aberration correction options in ANISE.
@@ -274,7 +269,7 @@ Obs. -- Target
     def sun_angle_deg_from_frame(self, target: Frame, observer: Frame, epoch: Epoch) -> float:
         """Convenience function that calls `sun_angle_deg` with the provided frames instead of the ephemeris ID."""
 
-    def transform(self, target_frame: Orbit, observer_frame: Frame, epoch: Epoch, ab_corr: Aberration=None) -> Orbit:
+    def transform(self, target_frame: Frame, observer_frame: Frame, epoch: Epoch, ab_corr: Aberration=None) -> Orbit:
         """Returns the Cartesian state needed to transform the `from_frame` to the `to_frame`.
 
 # SPICE Compatibility
@@ -288,7 +283,7 @@ will return exactly the same data as the spkerz SPICE call.
 # Note
 The units will be those of the underlying ephemeris data (typically km and km/s)"""
 
-    def transform_many(self, target_frame: Orbit, observer_frame: Frame, time_series: TimeSeries, ab_corr: Aberration=None) -> typing.List[Orbit]:
+    def transform_many(self, target_frame: Frame, observer_frame: Frame, time_series: TimeSeries, ab_corr: Aberration=None) -> typing.List[Orbit]:
         """Returns a chronologically sorted list of the Cartesian states that transform the `from_frame` to the `to_frame` for each epoch of the time series, computed in parallel under the hood.
 Note: if any transformation fails, the error will be printed to the stderr.
 
@@ -304,7 +299,7 @@ Refer to [transform_to] for details."""
     def transform_to(self, state: Orbit, observer_frame: Frame, ab_corr: Aberration=None) -> Orbit:
         """Returns the provided state as seen from the observer frame, given the aberration."""
 
-    def translate(self, target_frame: Orbit, observer_frame: Frame, epoch: Epoch, ab_corr: Aberration=None) -> Orbit:
+    def translate(self, target_frame: Frame, observer_frame: Frame, epoch: Epoch, ab_corr: Aberration=None) -> Orbit:
         """Returns the Cartesian state of the target frame as seen from the observer frame at the provided epoch, and optionally given the aberration correction.
 
 # SPICE Compatibility
@@ -321,7 +316,7 @@ This function only performs the translation and no rotation whatsoever. Use the 
 # Note
 This function performs a recursion of no more than twice the [MAX_TREE_DEPTH]."""
 
-    def translate_geometric(self, target_frame: Orbit, observer_frame: Frame, epoch: Epoch) -> Orbit:
+    def translate_geometric(self, target_frame: Frame, observer_frame: Frame, epoch: Epoch) -> Orbit:
         """Returns the geometric position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in km, the velocity in km/s, and the acceleration in km/s^2."""
 
     def translate_to(self, state: Orbit, observer_frame: Frame, ab_corr: Aberration=None) -> Orbit:
@@ -459,3 +454,5 @@ This function modified `self` and changes the URI to be the path to the download
 
     def __str__(self) -> str:
         """Return str(self)."""
+
+def exec_gui():...

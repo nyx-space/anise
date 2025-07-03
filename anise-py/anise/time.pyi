@@ -16,7 +16,7 @@ As such, the largest negative duration that can be represented sets the centurie
 
 (Python documentation hints)"""
 
-    def __init__(self, string_repr: str) -> Duration:
+    def __init__(self, string_repr: str) -> None:
         """Defines generally usable durations for nanosecond precision valid for 32,768 centuries in either direction, and only on 80 bits / 10 octets.
 
 **Important conventions:**
@@ -89,7 +89,7 @@ assert_eq!(two_hours_three_min.ceil(1.seconds()), two_hours_three_min + 1.second
 assert_eq!(two_hours_three_min.ceil(1.hours() + 5.minutes()), 2.hours() + 10.minutes());
 ```"""
 
-    def decompose(self) -> typing.Tuple:
+    def decompose(self) -> tuple:
         """Decomposes a Duration in its sign, days, hours, minutes, seconds, ms, us, ns"""
 
     def floor(self, duration: Duration) -> Duration:
@@ -172,7 +172,7 @@ assert_eq!(two_hours_three_min.round(1.hours() + 5.minutes()), 2.hours() + 10.mi
 + 1 if the number is positive
 + -1 if the number is negative"""
 
-    def to_parts(self) -> typing.Tuple:
+    def to_parts(self) -> tuple:
         """Returns the centuries and nanoseconds of this duration
 NOTE: These items are not public to prevent incorrect durations from being created by modifying the values of the structure directly."""
 
@@ -277,7 +277,7 @@ Refer to the appropriate functions for initializing this Epoch from different ti
     duration: Duration
     time_scale: TimeScale
 
-    def __init__(self, string_repr: str) -> Epoch:
+    def __init__(self, string_repr: str) -> None:
         """Defines a nanosecond-precision Epoch.
 
 Refer to the appropriate functions for initializing this Epoch from different time scales or representations.
@@ -303,6 +303,16 @@ assert_eq!(
 e.ceil(3.minutes()),
 Epoch::from_gregorian_tai_hms(2022, 10, 3, 17, 45, 0)
 );
+```"""
+
+    def day_of_month(self) -> int:
+        """Returns the number of days since the start of the Gregorian month in the current time scale.
+
+# Example
+```
+use hifitime::Epoch;
+let dt = Epoch::from_gregorian_tai_at_midnight(2025, 7, 3);
+assert_eq!(dt.day_of_month(), 3);
 ```"""
 
     def day_of_year(self) -> float:
@@ -974,6 +984,9 @@ NOTE: This function will return an error if the centuries past GPST time are not
     def to_gpst_seconds(self) -> float:
         """Returns seconds past GPS Time Epoch, defined as UTC midnight of January 5th to 6th 1980 (cf. <https://gssc.esa.int/navipedia/index.php/Time_References_in_GNSS#GPS_Time_.28GPST.29>)."""
 
+    def to_gregorian(self, time_scale: TimeScale=None) -> tuple:
+        """Converts the Epoch to the Gregorian parts in the (optionally) provided time scale as (year, month, day, hour, minute, second)."""
+
     def to_gst_days(self) -> float:
         """Returns days past GST (Galileo) Time Epoch,
 starting on August 21st 1999 Midnight UT
@@ -1088,7 +1101,7 @@ NOTE: This function will return an error if the centuries past QZSST time are no
     def to_tai_duration(self) -> Duration:
         """Returns this time in a Duration past J1900 counted in TAI"""
 
-    def to_tai_parts(self) -> typing.Tuple:
+    def to_tai_parts(self) -> tuple:
         """Returns the TAI parts of this duration"""
 
     def to_tai_seconds(self) -> float:
@@ -1119,7 +1132,7 @@ past J2000, one cannot solve the revert the operation analytically. Instead, we 
     def to_tdb_seconds(self) -> float:
         """Returns the Dynamic Barycentric Time (TDB) (higher fidelity SPICE ephemeris time) whose epoch is 2000 JAN 01 noon TAI (cf. <https://gssc.esa.int/navipedia/index.php/Transformations_between_Time_Systems#TDT_-_TDB.2C_TCB>)"""
 
-    def to_time_of_week(self) -> typing.Tuple[int]:
+    def to_time_of_week(self) -> tuple:
         """Converts this epoch into the time of week, represented as a rolling week counter into that time scale
 and the number of nanoseconds elapsed in current week (since closest Sunday midnight).
 This is usually how GNSS receivers describe a timestamp."""
@@ -1186,10 +1199,70 @@ Several time scales do _not_ have a reference day that's on a Monday, e.g. BDT."
     def weekday_utc(self) -> Weekday:
         """Returns weekday in UTC timescale"""
 
+    def with_hms(self, hours: int, minutes: int, seconds: int) -> Epoch:
+        """Returns a copy of self where the time is set to the provided hours, minutes, seconds
+Invalid number of hours, minutes, and seconds will overflow into their higher unit.
+Warning: this does _not_ set the subdivisions of second to zero."""
+
+    def with_hms_from(self, other: Epoch) -> Epoch:
+        """Returns a copy of self where the hours, minutes, seconds is set to the time of the provided epoch but the
+sub-second parts are kept from the current epoch.
+
+```
+use hifitime::prelude::*;
+
+let epoch = Epoch::from_gregorian_utc(2022, 12, 01, 10, 11, 12, 13);
+let other_utc = Epoch::from_gregorian_utc(2024, 12, 01, 20, 21, 22, 23);
+let other = other_utc.to_time_scale(TimeScale::TDB);
+
+assert_eq!(
+epoch.with_hms_from(other),
+Epoch::from_gregorian_utc(2022, 12, 01, 20, 21, 22, 13)
+);
+```"""
+
+    def with_hms_strict(self, hours: int, minutes: int, seconds: int) -> Epoch:
+        """Returns a copy of self where the time is set to the provided hours, minutes, seconds
+Invalid number of hours, minutes, and seconds will overflow into their higher unit.
+Warning: this will set the subdivisions of seconds to zero."""
+
+    def with_hms_strict_from(self, other: Epoch) -> Epoch:
+        """Returns a copy of self where the time is set to the time of the other epoch but the subseconds are set to zero.
+
+```
+use hifitime::prelude::*;
+
+let epoch = Epoch::from_gregorian_utc(2022, 12, 01, 10, 11, 12, 13);
+let other_utc = Epoch::from_gregorian_utc(2024, 12, 01, 20, 21, 22, 23);
+let other = other_utc.to_time_scale(TimeScale::TDB);
+
+assert_eq!(
+epoch.with_hms_strict_from(other),
+Epoch::from_gregorian_utc(2022, 12, 01, 20, 21, 22, 0)
+);
+```"""
+
+    def with_time_from(self, other: Epoch) -> Epoch:
+        """Returns a copy of self where all of the time components (hours, minutes, seconds, and sub-seconds) are set to the time of the provided epoch.
+
+```
+use hifitime::prelude::*;
+
+let epoch = Epoch::from_gregorian_utc(2022, 12, 01, 10, 11, 12, 13);
+let other_utc = Epoch::from_gregorian_utc(2024, 12, 01, 20, 21, 22, 23);
+// If the other Epoch is in another time scale, it does not matter, it will be converted to the correct time scale.
+let other = other_utc.to_time_scale(TimeScale::TDB);
+
+assert_eq!(
+epoch.with_time_from(other),
+Epoch::from_gregorian_utc(2022, 12, 01, 20, 21, 22, 23)
+);
+```"""
+
     def year(self) -> int:
         """Returns the number of Gregorian years of this epoch in the current time scale."""
 
-    def year_days_of_year(self) -> typing.Tuple:
+    def year_days_of_year(self) -> tuple:
         """Returns the year and the days in the year so far (days of year)."""
 
     def __add__():
@@ -1268,34 +1341,43 @@ set self.__traceback__ to tb and return self."""
 
 @typing.final
 class LatestLeapSeconds:
-    """List of leap seconds from <https://www.ietf.org/timezones/data/leap-seconds.list>.
+    """List of leap seconds from <https://data.iana.org/time-zones/data/leap-seconds.list>.
 This list corresponds the number of seconds in TAI to the UTC offset and to whether it was an announced leap second or not.
 The unannoucned leap seconds come from dat.c in the SOFA library."""
 
     def __init__(self) -> None:
-        """List of leap seconds from <https://www.ietf.org/timezones/data/leap-seconds.list>.
+        """List of leap seconds from <https://data.iana.org/time-zones/data/leap-seconds.list>.
 This list corresponds the number of seconds in TAI to the UTC offset and to whether it was an announced leap second or not.
 The unannoucned leap seconds come from dat.c in the SOFA library."""
+
+    def is_up_to_date(self) -> bool:
+        """Downloads the latest leap second list from IANA, and returns whether the embedded leap seconds are still up to date
+
+```
+use hifitime::leap_seconds::LatestLeapSeconds;
+
+assert!(LatestLeapSeconds::default().is_up_to_date().unwrap(), "Hifitime needs to update its leap seconds list!");
+```"""
 
     def __repr__(self) -> str:
         """Return repr(self)."""
 
 @typing.final
 class LeapSecondsFile:
-    """A leap second provider that uses an IERS formatted leap seconds file.
+    """A leap second provider that uses an IERS formatted leap seconds file."""
 
-(Python documentation hints)"""
-
-    def __init__(self, path: str) -> LeapSecondsFile:
-        """A leap second provider that uses an IERS formatted leap seconds file.
-
-(Python documentation hints)"""
+    def __init__(self, path: str) -> None:
+        """A leap second provider that uses an IERS formatted leap seconds file."""
 
     def __repr__(self) -> str:
         """Return repr(self)."""
 
 @typing.final
 class MonthName:
+    """Defines Month names, can be initialized either from its variant or its integer (1 for January)."""
+
+    def __init__(self, month: int) -> None:
+        """Defines Month names, can be initialized either from its variant or its integer (1 for January)."""
 
     def __eq__(self, value: typing.Any) -> bool:
         """Return self==value."""
@@ -1463,7 +1545,7 @@ class TimeSeries:
 
 (Python documentation hints)"""
 
-    def __init__(self, start: Epoch, end: Epoch, step: Duration, inclusive: bool) -> TimeSeries:
+    def __init__(self, start: Epoch, end: Epoch, step: Duration, inclusive: bool) -> None:
         """An iterator of a sequence of evenly spaced Epochs.
 
 (Python documentation hints)"""
