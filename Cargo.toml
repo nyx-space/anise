@@ -26,7 +26,7 @@ exclude = [
 ]
 
 [workspace.dependencies]
-hifitime = "4.1.1"
+hifitime = "4.1.2"
 memmap2 = "0.9.4"
 crc32fast = "1.4.2"
 der = { version = "0.7.8", features = ["derive", "alloc", "real"] }
