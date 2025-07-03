@@ -344,7 +344,7 @@ impl Almanac {
     /// # Note
     /// The units will be those of the underlying ephemeris data (typically km and km/s)
     ///
-    /// :type target_frame: Orbit
+    /// :type target_frame: Frame
     /// :type observer_frame: Frame
     /// :type epoch: Epoch
     /// :type ab_corr: Aberration, optional
@@ -370,7 +370,7 @@ impl Almanac {
     ///
     /// Refer to [transform] for details.
     ///
-    /// :type target_frame: Orbit
+    /// :type target_frame: Frame
     /// :type observer_frame: Frame
     /// :type time_series: TimeSeries
     /// :type ab_corr: Aberration, optional
@@ -537,7 +537,7 @@ impl Almanac {
     /// # Note
     /// This function performs a recursion of no more than twice the [MAX_TREE_DEPTH].
     ///
-    /// :type target_frame: Orbit
+    /// :type target_frame: Frame
     /// :type observer_frame: Frame
     /// :type epoch: Epoch
     /// :type ab_corr: Aberration, optional
@@ -560,7 +560,7 @@ impl Almanac {
 
     /// Returns the geometric position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in km, the velocity in km/s, and the acceleration in km/s^2.
     ///
-    /// :type target_frame: Orbit
+    /// :type target_frame: Frame
     /// :type observer_frame: Frame
     /// :type epoch: Epoch
     /// :rtype: Orbit
