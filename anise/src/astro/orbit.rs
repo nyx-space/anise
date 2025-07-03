@@ -337,7 +337,7 @@ impl Orbit {
     /// In the GMAT MathSpec notation, R_{IF} is the DCM from body fixed to inertial. Similarly, R{FT} is from topocentric
     /// to body fixed.
     ///
-    /// :type _from: float
+    /// :type _from: int
     /// :rtype: DCM
     pub fn dcm_from_topocentric_to_body_fixed(&self, _from: NaifId) -> PhysicsResult<DCM> {
         let rot_mat_dt = if let Ok(pre) = self.at_epoch(self.epoch - Unit::Second * 1) {

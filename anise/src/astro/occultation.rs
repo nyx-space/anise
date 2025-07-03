@@ -87,7 +87,7 @@ impl Occultation {
     fn get_percentage(&self) -> PyResult<f64> {
         Ok(self.percentage)
     }
-    /// :type epoch: Epoch
+    /// :type percentage: float
     #[setter]
     fn set_percentage(&mut self, percentage: f64) -> PyResult<()> {
         self.percentage = percentage;
