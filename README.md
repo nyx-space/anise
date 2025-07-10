@@ -2,6 +2,8 @@
 
 ANISE is a rewrite of the core functionalities of the NAIF SPICE toolkit with enhanced performance, and ease of use, while leveraging Rust's safety and speed.
 
+![ANISE LOGO](./ANISE-logo.png)
+
 [**Please fill out our user survey**](https://7ug5imdtt8v.typeform.com/to/qYDB14Hj)
 
 ## Introduction
