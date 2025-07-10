@@ -29,8 +29,8 @@ pub struct FrameUid {
     pub orientation_id: i32,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
-pub enum Vector {
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub enum VectorExpr {
     Fixed {
         x: f64,
         y: f64,
@@ -45,15 +45,16 @@ pub enum Vector {
         to_frame: FrameUid,
     },
     CrossProduct {
-        a: Box<Vector>,
-        b: Box<Vector>,
+        a: Box<VectorExpr>,
+        b: Box<VectorExpr>,
     },
 }
 
 use std::collections::HashMap;
 // Manual implementation of StaticType for the recursive Vector enum.
-impl StaticType for Vector {
-    // This function defines the Dhall type that corresponds to our Rust type.
+#[allow(unconditional_recursion)]
+impl StaticType for VectorExpr {
+    // This function defines the Dhall type that corresponds to our Rust type
     fn static_type() -> SimpleType {
         let mut fields = HashMap::new();
         fields.insert(
@@ -98,10 +99,8 @@ impl StaticType for Vector {
             "CrossProduct".to_string(),
             Some(SimpleType::Record(
                 [
-                    // HERE is the magic: instead of calling Vector::static_type()
-                    // and causing infinite recursion, we use the placeholder.
-                    ("a".to_string(), recursive_type.clone()),
-                    ("b".to_string(), recursive_type.clone()),
+                    ("a".to_string(), Self::static_type()),
+                    ("b".to_string(), Self::static_type()),
                 ]
                 .iter()
                 .cloned()
@@ -109,5 +108,81 @@ impl StaticType for Vector {
             )),
         );
         SimpleType::Union(fields)
+    }
+}
+
+#[cfg(test)]
+mod ut_vector_dhall {
+
+    use crate::{
+        analysis::{FrameUid, VectorExpr},
+        errors::VelocitySnafu,
+    };
+
+    #[test]
+    fn test_vector_expr_fixed() {
+        let v = VectorExpr::Fixed {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        };
+        let v_str = serde_dhall::serialize(&v).to_string().unwrap();
+        println!("{v_str:?}");
+        let v_deser: VectorExpr = serde_dhall::from_str(&v_str).parse().unwrap();
+        assert_eq!(v_deser, v); // This fails because I am not serializing it correctly.
+    }
+
+    #[test]
+    fn test_vector_expr_state() {
+        let pos = VectorExpr::Position {
+            from_frame: FrameUid {
+                ephemeris_id: 399,
+                orientation_id: 0,
+            },
+            to_frame: FrameUid {
+                ephemeris_id: 301,
+                orientation_id: 0,
+            },
+        };
+
+        let pos_str = serde_dhall::serialize(&pos).to_string().unwrap();
+        println!("{pos_str:?}");
+        let v_deser: VectorExpr = serde_dhall::from_str(&pos_str).parse().unwrap();
+        assert_eq!(v_deser, pos);
+    }
+
+    #[test]
+    fn test_vector_expr_cross() {
+        let pos = VectorExpr::Position {
+            from_frame: FrameUid {
+                ephemeris_id: 399,
+                orientation_id: 0,
+            },
+            to_frame: FrameUid {
+                ephemeris_id: 301,
+                orientation_id: 0,
+            },
+        };
+
+        let vel = VectorExpr::Velocity {
+            from_frame: FrameUid {
+                ephemeris_id: 399,
+                orientation_id: 0,
+            },
+            to_frame: FrameUid {
+                ephemeris_id: 301,
+                orientation_id: 0,
+            },
+        };
+
+        let h_vec = VectorExpr::CrossProduct {
+            a: Box::new(pos),
+            b: Box::new(vel),
+        };
+
+        let h_vec_str = serde_dhall::serialize(&h_vec).to_string().unwrap();
+        println!("{h_vec_str:?}");
+        let v_deser: VectorExpr = serde_dhall::from_str(&h_vec_str).parse().unwrap();
+        assert_eq!(v_deser, h_vec);
     }
 }
