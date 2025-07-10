@@ -4,6 +4,8 @@ ANISE is a rewrite of the core functionalities of the NAIF SPICE toolkit with en
 
 [**Please fill out our user survey**](https://7ug5imdtt8v.typeform.com/to/qYDB14Hj)
 
+![ANISE LOGO](./ANISE-logo.png)
+
 ## Introduction
 
 In the realm of space exploration, navigation, and astrophysics, precise and efficient computation of spacecraft position, orientation, and time is critical. ANISE, standing for "Attitude, Navigation, Instrument, Spacecraft, Ephemeris," offers a Rust-native approach to these challenges. This toolkit provides a suite of functionalities including but not limited to:

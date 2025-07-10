@@ -23,6 +23,7 @@ exclude = [
     ".venv",
     ".vscode",
     "*.sh",
+    "*.png"
 ]
 
 [workspace.dependencies]
