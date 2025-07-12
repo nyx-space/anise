@@ -114,10 +114,26 @@ impl StaticType for VectorExpr {
 #[cfg(test)]
 mod ut_vector_dhall {
 
-    use crate::{
-        analysis::{FrameUid, VectorExpr},
-        errors::VelocitySnafu,
-    };
+    use serde_dhall::SimpleType;
+
+    use crate::analysis::{FrameUid, VectorExpr};
+
+    fn build_type() -> SimpleType {
+        let ty: SimpleType = serde_dhall::from_str(
+            r#"
+let FrameUid = {ephemeris_id: Integer, orientation_id: Integer }
+
+let VectorExpr =
+        < Fixed : { x : Double, y : Double, z : Double }
+        | Position : { from_frame : FrameUid, to_frame : FrameUid }
+        | Velocity : { from_frame : FrameUid, to_frame : FrameUid }
+        >       
+        in VectorExpr"#,
+        )
+        .parse()
+        .unwrap();
+        ty
+    }
 
     #[test]
     fn test_vector_expr_fixed() {
@@ -126,7 +142,10 @@ mod ut_vector_dhall {
             y: 2.0,
             z: 3.0,
         };
-        let v_str = serde_dhall::serialize(&v).to_string().unwrap();
+        let v_str = serde_dhall::serialize(&v)
+            .type_annotation(&build_type())
+            .to_string()
+            .unwrap();
         println!("{v_str:?}");
         let v_deser: VectorExpr = serde_dhall::from_str(&v_str).parse().unwrap();
         assert_eq!(v_deser, v); // This fails because I am not serializing it correctly.
@@ -145,7 +164,10 @@ mod ut_vector_dhall {
             },
         };
 
-        let pos_str = serde_dhall::serialize(&pos).to_string().unwrap();
+        let pos_str = serde_dhall::serialize(&pos)
+            .type_annotation(&build_type())
+            .to_string()
+            .unwrap();
         println!("{pos_str:?}");
         let v_deser: VectorExpr = serde_dhall::from_str(&pos_str).parse().unwrap();
         assert_eq!(v_deser, pos);
@@ -180,7 +202,10 @@ mod ut_vector_dhall {
             b: Box::new(vel),
         };
 
-        let h_vec_str = serde_dhall::serialize(&h_vec).to_string().unwrap();
+        let h_vec_str = serde_dhall::serialize(&h_vec)
+            .type_annotation(&build_type())
+            .to_string()
+            .unwrap();
         println!("{h_vec_str:?}");
         let v_deser: VectorExpr = serde_dhall::from_str(&h_vec_str).parse().unwrap();
         assert_eq!(v_deser, h_vec);
