@@ -2,6 +2,8 @@
 
 ANISE is a rewrite of the core functionalities of the NAIF SPICE toolkit with enhanced performance, and ease of use, while leveraging Rust's safety and speed.
 
+ANISE was used throughout the operations of the Firefly Blue Ghost lunar lander, from launch until successful landing. As such, the library is now considered NASA Technology Readiness Level (TRL) 9.
+
 [**Please fill out our user survey**](https://7ug5imdtt8v.typeform.com/to/qYDB14Hj)
 
 ## Introduction
@@ -188,6 +190,140 @@ For convenience, Nyx Space provides a few important SPICE files on a public buck
 + [moon_fk_de440.epa](http://public-data.nyxspace.com/anise/v0.5/moon_fk_de440.epa): Euler Parameter ANISE (`epa`) kernel, built from the JPL Moon Frame Kernel `moon_080317.txt`
 
 You may load any of these using the `load()` shortcut that will determine the file type upon loading, e.g. `let almanac = Almanac::new("pck08.pca").unwrap();` or in Python `almanac = Almanac("pck08.pca")`. To automatically download remote assets, from the Nyx Cloud or elsewhere, use the MetaAlmanac: `almanac = MetaAlmanac("ci_config.dhall").process(true)` in Python.
+
+## How-To Guides
+
+### Calculate Azimuth, Elevation, and Range
+
+To calculate the azimuth, elevation, and range of a spacecraft from a ground station, you can use the `azimuth_elevation_range_sez` function. This function takes the spacecraft's orbit, the ground station's orbit, and the desired frames as input.
+
+```rust
+use anise::prelude::*;
+use anise::constants::frames::{IAU_EARTH_FRAME, EME2000};
+use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
+use hifitime::Epoch;
+use core::str::FromStr;
+
+// Define location of DSN DSS-65 in Madrid, Spain
+const DSS65_LATITUDE_DEG: f64 = 40.427_222;
+const DSS65_LONGITUDE_DEG: f64 = 4.250_556;
+const DSS65_HEIGHT_KM: f64 = 0.834_939;
+
+let almanac = Almanac::default()
+    .load("../data/earth_latest_high_prec.bpc")
+    .unwrap()
+    .load("../data/pck11.pca")
+    .unwrap()
+    .load("../data/de430.bsp")
+    .unwrap();
+
+let eme2k = almanac.frame_from_uid(EME2000).unwrap();
+
+let rx = Orbit::new(
+    58643.769540,
+    -61696.435624,
+    -36178.745722,
+    2.148654,
+    -1.202489,
+    -0.714016,
+    Epoch::from_str("2023-11-16T13:35:30.231999909 UTC").unwrap(),
+    eme2k,
+);
+
+// Rebuild the ground stations
+let tx = Orbit::try_latlongalt(
+    DSS65_LATITUDE_DEG,
+    DSS65_LONGITUDE_DEG,
+    DSS65_HEIGHT_KM,
+    MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
+    rx.epoch,
+    almanac.frame_from_uid(IAU_EARTH_FRAME).unwrap(),
+)
+.unwrap();
+
+let aer = almanac
+    .azimuth_elevation_range_sez(rx, tx, None, None)
+    .unwrap();
+
+println!("{:?}", aer);
+```
+
+### Determine Solar Eclipsing
+
+You can determine if a spacecraft is in a solar eclipse using the `solar_eclipsing` function. This function returns an `Occultation` enum, which can be `Visible`, `Partial`, or `Obstructed`.
+
+```rust
+use anise::prelude::*;
+use anise::constants::frames::EARTH_J2000;
+use hifitime::Epoch;
+
+let almanac = Almanac::new("../data/de440s.bsp").unwrap().load("../data/pck08.pca").unwrap();
+let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 1, 1);
+let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
+let orbit = Orbit::try_keplerian_altitude(
+    500.0, 0.01, 1.0, 72.0, 45.0, 270.0, epoch, eme2k,
+).unwrap();
+
+let occult = almanac
+    .solar_eclipsing(
+        EARTH_J2000,
+        orbit.at_epoch(epoch).expect("two body prop failed"),
+        None,
+    )
+    .unwrap();
+
+println!("{:?}", occult);
+```
+
+### Transform Between Frames
+
+ANISE allows you to transform an orbit from one frame to another using the `transform_to` function.
+
+```rust
+use anise::prelude::*;
+use anise::constants::frames::{EARTH_ITRF93, EARTH_J2000};
+use hifitime::Epoch;
+use core::str::FromStr;
+
+let almanac = Almanac::default()
+    .load("../data/de440.bsp")
+    .unwrap()
+    .load("../data/earth_latest_high_prec.bpc")
+    .unwrap()
+    .load("../data/pck08.pca")
+    .unwrap();
+
+let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
+let epoch = Epoch::from_str("2021-10-29 12:34:56 TDB").unwrap();
+
+let orig_state = Orbit::keplerian(
+    8_191.93, 1e-6, 12.85, 306.614, 314.19, 99.887_7, epoch, eme2k,
+);
+
+// Transform that into another frame.
+let state_itrf93 = almanac
+    .transform_to(orig_state, EARTH_ITRF93, Aberration::NONE)
+    .unwrap();
+
+println!("{:?}", state_itrf93);
+```
+
+### Rotate Between Orientations
+
+You can get the rotation matrix between two orientation frames using the `rotate` function.
+
+```rust
+use anise::prelude::*;
+use anise::constants::frames::{EARTH_ITRF93, EME2000};
+use hifitime::Epoch;
+use core::str::FromStr;
+
+let almanac = Almanac::from_bpc(BPC::load("../data/earth_latest_high_prec.bpc").unwrap()).unwrap();
+let epoch = Epoch::from_str("2019-03-01T04:02:51.0 ET").unwrap();
+let dcm = almanac.rotate(EARTH_ITRF93, EME2000, epoch).unwrap();
+
+println!("{:?}", dcm);
+```
 
 ## Contributing
 
