@@ -4,7 +4,7 @@
 
 Tired of the usual complexities in spacecraft navigation? ANISE is a fresh, Rust-powered alternative to the NAIF SPICE toolkit, engineered for performance, safety, and ease of use.
 
-![ANISE LOGO](./ANIS-logo.png)
+![ANISE LOGO](./ANISE-logo.png)
 
 **NASA TRL 9**: ANISE was used throughout the operations of the Firefly Blue Ghost lunar lander, from launch until successful landing.
 
@@ -67,13 +67,13 @@ We rigorously validate ANISE against SPICE. Our validation workflow runs over 10
 
 Nyx Space provides several important SPICE files for your convenience:
 
-* **de440s.bsp**: JPL's latest ephemeris dataset (1900-20250).
-* **de440.bsp**: JPL's long-term ephemeris dataset.
-* **pck08.pca**: Planetary constants kernel, built from JPL's gravitational data and planetary constants file.
-* **pck11.pca**: An alternative planetary constants kernel.
-* **moon_fk_de440.epa**: A Moon frame kernel built from JPL data.
+* **[de440s.bsp](http://public-data.nyxspace.com/anise/de440s.bsp)**: JPL's latest ephemeris dataset (1900-20250).
+* **[de440.bsp](http://public-data.nyxspace.com/anise/de440.bsp)**: JPL's long-term ephemeris dataset.
+* **[pck08.pca](http://public-data.nyxspace.com/anise/v0.5/pck08.pca)**: Planetary constants kernel, built from JPL's gravitational data and planetary constants file.
+* **[pck11.pca](http://public-data.nyxspace.com/anise/v0.5/pck11.pca)**: An alternative planetary constants kernel.
+* **[moon_fk_de440.epa](http://public-data.nyxspace.com/anise/v0.5/moon_fk_de440.epa)**: A Moon frame kernel built from JPL data.
 
-You can load any of these with a simple `load()` command, which automatically determines the file type. For example: `let almanac = Almanac::new("pck08.pca").unwrap();` in Rust, or `almanac = Almanac("pck08.pca")` in Python. To automatically download remote assets, use the `MetaAlmanac`: `almanac = MetaAlmanac("ci_config.dhall").process()` in Python.
+almanac = MetaAlmanac("ci_config.dhall").process(True)
 
 ### Understanding Moon Frames
 
