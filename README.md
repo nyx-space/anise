@@ -1,92 +1,104 @@
-# ANISE (Attitude, Navigation, Instrument, Spacecraft, Ephemeris)
+# ANISE: Attitude, Navigation, Instrument, Spacecraft, Ephemeris
 
-ANISE is a rewrite of the core functionalities of the NAIF SPICE toolkit with enhanced performance, and ease of use, while leveraging Rust's safety and speed.
+## A modern, high-performance toolkit for space mission design and operations.
 
-![ANISE LOGO](./ANISE-logo.png)
+Tired of the usual complexities in spacecraft navigation? ANISE is a fresh, Rust-powered alternative to the NAIF SPICE toolkit, engineered for performance, safety, and ease of use.
+
+![ANISE LOGO](./ANIS-logo.png)
+
+**NASA TRL 9**: ANISE was used throughout the operations of the Firefly Blue Ghost lunar lander, from launch until successful landing.
 
 [**Please fill out our user survey**](https://7ug5imdtt8v.typeform.com/to/qYDB14Hj)
 
-## Introduction
+## Why ANISE?
 
-In the realm of space exploration, navigation, and astrophysics, precise and efficient computation of spacecraft position, orientation, and time is critical. ANISE, standing for "Attitude, Navigation, Instrument, Spacecraft, Ephemeris," offers a Rust-native approach to these challenges. This toolkit provides a suite of functionalities including but not limited to:
+Space missions demand precision. ANISE delivers. It handles the critical calculations of spacecraft position, orientation, and time with validated, high-precision accuracy. Whether you're plotting a trajectory to Mars or orienting a satellite, ANISE provides the tools you need to get it right.
 
-+ Loading SPK, BPC, PCK, FK, and TPC files.
-+ High-precision translations, rotations, and their combination (rigid body transformations).
-+ Comprehensive time system conversions using the hifitime library (including TT, TAI, ET, TDB, UTC, GPS time, and more).
+Here's what you can do with ANISE:
 
-ANISE stands validated against the traditional SPICE toolkit, ensuring accuracy and reliability, with translations achieving machine precision (2e-16) and rotations presenting minimal error (less than two arcseconds in the pointing of the rotation axis and less than one arcsecond in the angle about this rotation axis).
+* **Load and process essential space data files**: SPK, BPC, PCK, FK, and TPC.
+* **Perform high-precision calculations**: Translations, rotations, and rigid body transformations.
+* **Seamlessly convert between time systems**: TT, TAI, ET, TDB, UTC, GPS, and more, powered by the `hifitime` library.
 
-## Features
+Validated against the traditional SPICE toolkit, ANISE achieves machine precision (2e-16) for translations and minimal error for rotations (less than two arcseconds in pointing, one arcsecond in angle).
 
-+ **High Precision**: Matches SPICE to machine precision in translations and minimal errors in rotations.
-+ **Time System Conversions**: Extensive support for various time systems crucial in astrodynamics.
-+ **Rust Efficiency**: Harnesses the speed and safety of Rust for space computations.
-+ **Multi-threaded:** Yup! Forget about mutexes and race conditions you're used to in SPICE, ANISE _guarantees_ that you won't have any race conditions.
-+ **Frame safety**: ANISE checks all frames translations or rotations are physically valid before performing any computation, even internally.
-+ **Auto-downloading capability**: ANISE simplifies your workflow by automatically downloading the latest Earth orientation parameters, or any other SPICE or ANISE file from a remote location, seamlessly integrating them into the `Almanac` for immediate use.
+## Key Features
 
-## Interfaces
+* **High Precision**: Get the accuracy you need, matching SPICE to machine precision in translations and minimal errors in rotations.
+* **Time System Mastery**: Extensive support for all the time systems crucial in astrodynamics.
+* **Rust Performance**: Harness the speed and safety of Rust for your space computations.
+* **Built for Concurrency**: Say goodbye to the mutexes and race conditions of older toolkits. ANISE guarantees thread safety.
+* **Frame Safety**: ANISE ensures that all frame translations and rotations are physically valid before any computation, preventing costly errors.
+* **Automatic Data Acquisition**: Simplify your workflow. ANISE can automatically download the latest Earth orientation parameters or any other SPICE or ANISE file from a remote source and integrate it for immediate use.
+
+## Get Started in Your Language of Choice
 
 ### Rust
 
-ANISE is developed in Rust, leveraging Rust's robust features such as memory safety, efficient concurrency handling, a superb test framework, and excellent error management. These capabilities ensure that all ANISE features are highly reliable and secure from the outset. Being native to Rust, these features are available first within the Rust ecosystem, offering cutting-edge functionality to Rust developers. They are then integrated into other interfaces. If there is a feature in Rust that has yet to be ported into the language of your choice, please open a Github issue.
+ANISE is built in Rust, giving you direct access to its full range of features, including memory safety, efficient concurrency, a powerful testing framework, and robust error handling. If you're a Rust developer, you're getting the best of ANISE, first.
 
-Refer to the [Rust README](./anise/README.md) for further details. The Rust API documentation is available on <https://docs.rs/anise/latest/anise/>.
+Dive into the [Rust README](./anise/README.md) for more, or check out the [API documentation](https://docs.rs/anise/latest/anise/).
 
 ### Python
 
-Although ANISE is primarily developed in Rust, it offers first-class support for Python, recognizing that many users will interact with ANISE through its Python interface. This integration ensures that Python users can leverage most of ANISE's capabilities without compromise. If you encounter any limitations or missing features in the Python support, we encourage you to open a GitHub issue to help us improve the interface.
+We get it. Python is everywhere in the space community. That's why ANISE has first-class support for Python, so you can leverage its power without leaving your favorite environment. If you find a feature missing, let us know by opening a GitHub issue.
 
-For Python-specific tutorials and resources, please refer to the [Python README](./anise-py/README.md), which includes Jupyter notebook tutorials tailored for Python users.
+For tutorials and resources, head over to the [Python README](./anise-py/README.md) and our Jupyter notebooks.
 
 ### GUI
 
-ANISE provides a graphical interface to inspect SPK, BPC, and PCA (Planetary Constant ANISE) files. Allows you to check the start/end times of the segments (shown in whichever time scale you want, including UNIX UTC seconds).
+Need to inspect your data files? ANISE provides a graphical interface for SPK, BPC, and PCA (Planetary Constant ANISE) files. You can quickly check segment start and end times in any time scale, including UNIX UTC seconds.
 
-Refer to the [GUI](./anise-gui/README.md) README for details.
+Find out more in the [GUI README](./anise-gui/README.md).
 
-## Validation
+### C++
+
+Coming soon! C++ bindings are in progress.
+
+## Validated and Reliable
 
 [![ANISE Validation](https://github.com/nyx-space/anise/actions/workflows/rust.yml/badge.svg)](https://github.com/nyx-space/anise/actions/workflows/rust.yml)
 
-ANISE is validated by running the same queries in ANISE and in SPICE (single threaded) in the _Validation_ step linked above. This workflow validates 101,000 BSP queries in the DE440.BSP file, and 7305 queries each frame in the PCK08 file (every day for 20 years), along with thousands of rotations from Earth high precision BPC file.
+We rigorously validate ANISE against SPICE. Our validation workflow runs over 100,000 queries on the DE440.bsp file, 7,305 queries for each frame in the PCK08 file (covering 20 years of data), and thousands of rotations from Earth's high-precision BPC file.
 
-**Note:** The PCK data comes from the IAU Reports, which publishes angle, angle rate, and angle acceleration data, expressed in centuries past the J2000 reference epoch.
-ANISE uses Hifitime for time conversions. Hifitime's reliance solely on integers for all time computations eliminates the risk of rounding errors. In contrast, SPICE utilizes floating-point values, which introduces rounding errors in calculations like centuries past J2000. Consequently, you might observe a discrepancy of up to 1 millidegree in rotation angles between SPICE and ANISE. However, this difference is a testament to ANISE's superior precision.
+**A Note on Precision**: The PCK data from the IAU is based on angle, rate, and acceleration data expressed in centuries past J2000. SPICE uses floating-point values for these calculations, which can introduce rounding errors. ANISE, using `hifitime`, relies on integer arithmetic for all time computations, eliminating this risk. You might see discrepancies of up to 1 millidegree in rotation angles, but this is a sign of ANISE's higher precision.
 
-## Resources / Assets
+## Resources and Assets
 
-For convenience, Nyx Space provides a few important SPICE files on a public bucket:
+Nyx Space provides several important SPICE files for your convenience:
 
-+ [de440s.bsp](http://public-data.nyxspace.com/anise/de440s.bsp): JPL's latest ephemeris dataset from 1900 until 20250
-+ [de440.bsp](http://public-data.nyxspace.com/anise/de440.bsp): JPL's latest long-term ephemeris dataset
-+ [pck08.pca](http://public-data.nyxspace.com/anise/v0.5/pck08.pca): planetary constants ANISE (`pca`) kernel, built from the JPL gravitational data [gm_de431.tpc](http://public-data.nyxspace.com/anise/gm_de431.tpc) and JPL's plantary constants file [pck00008.tpc](http://public-data.nyxspace.com/anise/pck00008.tpc)
-+ [pck11.pca](http://public-data.nyxspace.com/anise/v0.5/pck11.pca): planetary constants ANISE (`pca`) kernel, built from the JPL gravitational data [gm_de431.tpc](http://public-data.nyxspace.com/anise/gm_de431.tpc) and JPL's plantary constants file [pck00011.tpc](http://public-data.nyxspace.com/anise/pck00011.tpc)
-+ [moon_fk_de440.epa](http://public-data.nyxspace.com/anise/v0.5/moon_fk_de440.epa): Euler Parameter ANISE (`epa`) kernel, built from the JPL Moon Frame Kernel `moon_080317.txt`
+* **de440s.bsp**: JPL's latest ephemeris dataset (1900-20250).
+* **de440.bsp**: JPL's long-term ephemeris dataset.
+* **pck08.pca**: Planetary constants kernel, built from JPL's gravitational data and planetary constants file.
+* **pck11.pca**: An alternative planetary constants kernel.
+* **moon_fk_de440.epa**: A Moon frame kernel built from JPL data.
 
-You may load any of these using the `load()` shortcut that will determine the file type upon loading, e.g. `let almanac = Almanac::new("pck08.pca").unwrap();` or in Python `almanac = Almanac("pck08.pca")`. To automatically download remote assets, from the Nyx Cloud or elsewhere, use the MetaAlmanac: `almanac = MetaAlmanac("ci_config.dhall").process()` in Python.
+You can load any of these with a simple `load()` command, which automatically determines the file type. For example: `let almanac = Almanac::new("pck08.pca").unwrap();` in Rust, or `almanac = Almanac("pck08.pca")` in Python. To automatically download remote assets, use the `MetaAlmanac`: `almanac = MetaAlmanac("ci_config.dhall").process()` in Python.
 
-### Moon frames
+### Understanding Moon Frames
 
-Astrodynamicists use three main body fixed frames at the Moon, all suitable for computing latitude and longitude that represent fixed points on the surface of the Moon. The IAU Moon frame is a low-fidelity body-fixed frame. The Moon Principal Axes frames, Moon PA, is used to represent the mass concentrations of the Moon, and therefore is the frame to use for gravity fields defined as spherical harmonics at the Moon. Finally, the Moon Mean Earth frame, Moon ME, is the cartographic frame: images of the Moon centered on a latitude and longitude are almost always provided in the Moon ME frame.
+Astrodynamicists use three main body-fixed frames for the Moon:
 
-As per the [`moon_de440_220930.txt`](./data/moon_de440_220930.txt) documentation, you should use the provided `moon_fk_de440.epa` file with the `moon_pa_de440_200625.bpc` and `de440.bsp` (or `de440s.bsp`).
+* **IAU Moon**: A low-fidelity frame.
+* **Moon Principal Axes (PA)**: Used for representing mass concentrations and gravity fields.
+* **Moon Mean Earth (ME)**: The cartographic frame, used for images of the lunar surface.
+
+For accurate work, use the provided `moon_fk_de440.epa` file with `moon_pa_de440_200625.bpc` and `de440.bsp` (or `de440s.bsp`), as recommended in the [`moon_de440_220930.txt`](./data/moon_de440_220930.txt) documentation.
 
 ## Contributing
 
-Contributions to ANISE are welcome! Whether it's in the form of feature requests, bug reports, code contributions, or documentation improvements, every bit of help is greatly appreciated.
+ANISE is an open-source project, and we welcome contributions! Whether you want to request a feature, report a bug, contribute code, or improve the documentation, we appreciate your help.
 
 ## License
 
-ANISE is distributed under the Mozilla Public License 2.0 (MPL-2.0), offering a balanced approach to open-source by allowing the use of source code within both open and proprietary software. MPL-2.0 requires that modifications to the covered code be released under the same license, thus ensuring improvements remain open-source. However, it allows the combining of the covered software with proprietary parts, providing flexibility for both academic and commercial integrations.
+ANISE is distributed under the Mozilla Public License 2.0 (MPL-2.0). This license allows you to use ANISE in both open and proprietary software, with the requirement that any modifications to the ANISE source code are also released under the MPL-2.0.
 
-For more details, please see the [full text of the license](./LICENSE) or read [a summary by Github](https://choosealicense.com/licenses/mpl-2.0/).
+For more details, see the [full license text](./LICENSE) or a [summary on GitHub](https://choosealicense.com/licenses/mpl-2.0/).
 
 ## Acknowledgements
 
 ANISE is heavily inspired by the NAIF SPICE toolkit and its excellent documentation.
 
-
 ## Contact
 
-For any inquiries, feedback, or discussions, please [open an issue here](https://github.com/nyx-space/anise/issues) or contact the maintainer at christopher.rabotin@gmail.com.
+Have questions or feedback? [Open an issue on GitHub](https://github.com/nyx-space/anise/issues) or email the maintainer at christopher.rabotin@gmail.com.
