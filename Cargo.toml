@@ -30,7 +30,7 @@ exclude = [
 hifitime = "4.1.2"
 memmap2 = "0.9.4"
 crc32fast = "1.4.2"
-der = { version = "0.7.8", features = ["derive", "alloc", "real"] }
+der = { version = "0.8", features = ["derive", "alloc", "real"] }
 log = "0.4"
 pretty_env_logger = "0.5"
 tabled = "=0.20"
