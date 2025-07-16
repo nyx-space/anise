@@ -230,7 +230,7 @@ let rx = Orbit::new(
     eme2k,
 );
 
-// Rebuild the ground stations
+// Build the ground station state
 let tx = Orbit::try_latlongalt(
     DSS65_LATITUDE_DEG,
     DSS65_LONGITUDE_DEG,
@@ -296,9 +296,9 @@ let almanac = Almanac::default()
 let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
 let epoch = Epoch::from_str("2021-10-29 12:34:56 TDB").unwrap();
 
-let orig_state = Orbit::keplerian(
+let orig_state = Orbit::try_keplerian(
     8_191.93, 1e-6, 12.85, 306.614, 314.19, 99.887_7, epoch, eme2k,
-);
+).unwrap();
 
 // Transform that into another frame.
 let state_itrf93 = almanac
