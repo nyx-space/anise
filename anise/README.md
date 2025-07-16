@@ -209,13 +209,7 @@ const DSS65_LATITUDE_DEG: f64 = 40.427_222;
 const DSS65_LONGITUDE_DEG: f64 = 4.250_556;
 const DSS65_HEIGHT_KM: f64 = 0.834_939;
 
-let almanac = Almanac::default()
-    .load("../data/earth_latest_high_prec.bpc")
-    .unwrap()
-    .load("../data/pck11.pca")
-    .unwrap()
-    .load("../data/de430.bsp")
-    .unwrap();
+let almanac = MetaAlmanac::latest().unwrap();
 
 let eme2k = almanac.frame_from_uid(EME2000).unwrap();
 
@@ -245,7 +239,7 @@ let aer = almanac
     .azimuth_elevation_range_sez(rx, tx, None, None)
     .unwrap();
 
-println!("{:?}", aer);
+println!("{aer}");
 ```
 
 ### Determine Solar Eclipsing
@@ -272,7 +266,7 @@ let occult = almanac
     )
     .unwrap();
 
-println!("{:?}", occult);
+println!("{occult}");
 ```
 
 ### Transform Between Frames
@@ -285,13 +279,7 @@ use anise::constants::frames::{EARTH_ITRF93, EARTH_J2000};
 use hifitime::Epoch;
 use core::str::FromStr;
 
-let almanac = Almanac::default()
-    .load("../data/de440.bsp")
-    .unwrap()
-    .load("../data/earth_latest_high_prec.bpc")
-    .unwrap()
-    .load("../data/pck08.pca")
-    .unwrap();
+let almanac = MetaAlmanac::latest().unwrap();
 
 let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
 let epoch = Epoch::from_str("2021-10-29 12:34:56 TDB").unwrap();
@@ -305,7 +293,7 @@ let state_itrf93 = almanac
     .transform_to(orig_state, EARTH_ITRF93, Aberration::NONE)
     .unwrap();
 
-println!("{:?}", state_itrf93);
+println!("{state_itrf93}");
 ```
 
 ### Rotate Between Orientations
@@ -322,7 +310,7 @@ let almanac = Almanac::from_bpc(BPC::load("../data/earth_latest_high_prec.bpc").
 let epoch = Epoch::from_str("2019-03-01T04:02:51.0 ET").unwrap();
 let dcm = almanac.rotate(EARTH_ITRF93, EME2000, epoch).unwrap();
 
-println!("{:?}", dcm);
+println!("{dcm}");
 ```
 
 ## Contributing
