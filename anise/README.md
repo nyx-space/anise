@@ -183,7 +183,7 @@ ANISE uses Hifitime for time conversions. Hifitime's reliance solely on integers
 
 For convenience, Nyx Space provides a few important SPICE files on a public bucket:
 
-+ [de440s.bsp](http://public-data.nyxspace.com/anise/de440s.bsp): JPL's latest ephemeris dataset from 1900 until 2050
++ [de440s.bsp](http://public-data.nyxspace.com/anise/de440s.bsp): JPL's latest short-term ephemeris dataset from 1900 until 2050
 + [de440.bsp](http://public-data.nyxspace.com/anise/de440.bsp): JPL's latest long-term ephemeris dataset
 + [pck08.pca](http://public-data.nyxspace.com/anise/v0.5/pck08.pca): planetary constants ANISE (`pca`) kernel, built from the JPL gravitational data [gm_de431.tpc](http://public-data.nyxspace.com/anise/gm_de431.tpc) and JPL's plantary constants file [pck00008.tpc](http://public-data.nyxspace.com/anise/pck00008.tpc)
 + [pck11.pca](http://public-data.nyxspace.com/anise/v0.5/pck11.pca): planetary constants ANISE (`pca`) kernel, built from the JPL gravitational data [gm_de431.tpc](http://public-data.nyxspace.com/anise/gm_de431.tpc) and JPL's plantary constants file [pck00011.tpc](http://public-data.nyxspace.com/anise/pck00011.tpc)
