@@ -36,15 +36,8 @@ jobs:
       - name: Install CSPICE
         run: sh dev-env-setup.sh && cd .. # Return to root
 
-      - uses: taiki-e/install-action@cargo-binstall
       - name: Install iai-callgrind-runner
-        run: |
-          version=$(cargo metadata --format-version=1 |\
-            jq '.packages[] | select(.name == "iai-callgrind").version' |\
-            tr -d '"'
-          )
-          cargo binstall --no-confirm iai-callgrind-runner --version $version
-          sudo apt-get install -y valgrind
+        run: cargo install iai-callgrind-runner --version 0.15.2
 
 
       - name: Bench JPL Ephemerides
