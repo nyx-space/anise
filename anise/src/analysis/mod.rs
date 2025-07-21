@@ -12,15 +12,7 @@
 //       2. Rebuild the angular momentum vector to demonstrate the cross product.
 
 use serde_derive::{Deserialize, Serialize};
-use serde_dhall::{SimpleType, StaticType};
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, StaticType)]
-pub struct MetaFile {
-    /// URI of this meta file
-    pub uri: String,
-    /// Optionally specify the CRC32 of this file, which will be checked prior to loading.
-    pub crc32: Option<u32>,
-}
+use serde_dhall::StaticType;
 
 // Temp: add static type to the current frameuid
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, StaticType)]
@@ -29,7 +21,7 @@ pub struct FrameUid {
     pub orientation_id: i32,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq, StaticType)]
 pub enum VectorExpr {
     Fixed {
         x: f64,
@@ -44,96 +36,30 @@ pub enum VectorExpr {
         from_frame: FrameUid,
         to_frame: FrameUid,
     },
-    CrossProduct {
-        a: Box<VectorExpr>,
-        b: Box<VectorExpr>,
-    },
 }
 
-use std::collections::HashMap;
-// Manual implementation of StaticType for the recursive Vector enum.
-#[allow(unconditional_recursion)]
-impl StaticType for VectorExpr {
-    // This function defines the Dhall type that corresponds to our Rust type
-    fn static_type() -> SimpleType {
-        let mut fields = HashMap::new();
-        fields.insert(
-            "Fixed".to_string(),
-            // The type for the `Fixed` variant is a record.
-            Some(SimpleType::Record(
-                [
-                    ("x".to_string(), SimpleType::Natural), // Using Natural as a stand-in for f64
-                    ("y".to_string(), SimpleType::Natural),
-                    ("z".to_string(), SimpleType::Natural),
-                ]
-                .iter()
-                .cloned()
-                .collect(),
-            )),
-        );
-        fields.insert(
-            "Position".to_string(),
-            Some(SimpleType::Record(
-                [
-                    ("from_frame".to_string(), FrameUid::static_type()),
-                    ("to_frame".to_string(), FrameUid::static_type()),
-                ]
-                .iter()
-                .cloned()
-                .collect(),
-            )),
-        );
-        fields.insert(
-            "Velocity".to_string(),
-            Some(SimpleType::Record(
-                [
-                    ("from_frame".to_string(), FrameUid::static_type()),
-                    ("to_frame".to_string(), FrameUid::static_type()),
-                ]
-                .iter()
-                .cloned()
-                .collect(),
-            )),
-        );
-        fields.insert(
-            "CrossProduct".to_string(),
-            Some(SimpleType::Record(
-                [
-                    ("a".to_string(), Self::static_type()),
-                    ("b".to_string(), Self::static_type()),
-                ]
-                .iter()
-                .cloned()
-                .collect(),
-            )),
-        );
-        SimpleType::Union(fields)
-    }
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, StaticType)]
+pub enum VectorMath {
+    Identity { v: VectorExpr },
+    CrossProduct { a: VectorExpr, b: VectorExpr },
+    DotProduct { a: VectorExpr, b: VectorExpr },
+    AngleBetween { a: VectorExpr, b: VectorExpr },
 }
+// Consider having only CrossProduct as a VectorMath and moving the other variants to Calculations... really this ought to be recursive but it isn't supported by the dhall crate yet.
+// The calculations would also include the state parameters, and would necessarily return a f64.
+// I could, yet again, try to serialize in another format. Maybe toml?
+
+/*
+So, if you look at `Topo` and `Mu` (aka `Rec`), and apply each of them to a functor (say `VectorExpr`), you get `List (VectorExpr Natural)` and `âˆ€(a : Type) â†’ (VectorExpr a â†’ a) â†’ a`, respectively. `Topo` holds a list of nodes that each refer to other indices in the list for their children â€“ it can represent finite directed graphs (including with cycles). `Mu` suspends the value as a function that says â€œif you can tell me how to turn one node into the result type, I can turn the whole tree into that result typeâ€ (i.e., induction) â€“ `Mu` can only represent finite trees (not graphs, and of course no cycles). A similar but less abstract type than `Mu` is `Fix`, but it canâ€™t be defined in Dhall. `Fix VectorExpr` would partially normalize to `VectorExpr (Fix VectorExpr)`, and if you try to fully normalize it, you get in trouble, with `VectorExpr (VectorExpr (VectorExpr (VectorExpr â€¦)))`. But, itâ€™s basically the same as writing a directly-recursive `enum VectorExpr { ..., CrossProduct { a: Box<VectorExpr>, b: Box<VectorExpr>, }`.
+*/
 
 #[cfg(test)]
 mod ut_vector_dhall {
 
+    use crate::analysis::{FrameUid, VectorExpr, VectorMath};
+    use crate::prelude::Almanac;
+    use rstest::*;
     use serde_dhall::SimpleType;
-
-    use crate::analysis::{FrameUid, VectorExpr};
-
-    fn build_type() -> SimpleType {
-        let ty: SimpleType = serde_dhall::from_str(
-            r#"
-let FrameUid = {ephemeris_id: Integer, orientation_id: Integer }
-
-let VectorExpr =
-        < Fixed : { x : Double, y : Double, z : Double }
-        | Position : { from_frame : FrameUid, to_frame : FrameUid }
-        | Velocity : { from_frame : FrameUid, to_frame : FrameUid }
-        >       
-        in VectorExpr"#,
-        )
-        .parse()
-        .unwrap();
-        ty
-    }
 
     #[test]
     fn test_vector_expr_fixed() {
@@ -142,13 +68,14 @@ let VectorExpr =
             y: 2.0,
             z: 3.0,
         };
-        let v_str = serde_dhall::serialize(&v)
-            .type_annotation(&build_type())
+        let m = VectorMath::Identity { v };
+        let v_str = serde_dhall::serialize(&m)
+            .static_type_annotation()
             .to_string()
             .unwrap();
         println!("{v_str:?}");
-        let v_deser: VectorExpr = serde_dhall::from_str(&v_str).parse().unwrap();
-        assert_eq!(v_deser, v); // This fails because I am not serializing it correctly.
+        let v_deser: VectorMath = serde_dhall::from_str(&v_str).parse().unwrap();
+        assert_eq!(v_deser, m);
     }
 
     #[test]
@@ -165,7 +92,7 @@ let VectorExpr =
         };
 
         let pos_str = serde_dhall::serialize(&pos)
-            .type_annotation(&build_type())
+            .static_type_annotation()
             .to_string()
             .unwrap();
         println!("{pos_str:?}");
@@ -197,17 +124,37 @@ let VectorExpr =
             },
         };
 
-        let h_vec = VectorExpr::CrossProduct {
-            a: Box::new(pos),
-            b: Box::new(vel),
-        };
+        let h_vec = VectorMath::CrossProduct { a: pos, b: vel };
 
         let h_vec_str = serde_dhall::serialize(&h_vec)
-            .type_annotation(&build_type())
+            .static_type_annotation()
             .to_string()
             .unwrap();
         println!("{h_vec_str:?}");
-        let v_deser: VectorExpr = serde_dhall::from_str(&h_vec_str).parse().unwrap();
+        let v_deser: VectorMath = serde_dhall::from_str(&h_vec_str).parse().unwrap();
         assert_eq!(v_deser, h_vec);
+    }
+
+    #[fixture]
+    pub fn almanac() -> Almanac {
+        use std::path::PathBuf;
+
+        let manifest_dir =
+            PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or(".".to_string()));
+
+        Almanac::new(
+            &manifest_dir
+                .clone()
+                .join("../data/de440s.bsp")
+                .to_string_lossy(),
+        )
+        .unwrap()
+        .load(
+            &manifest_dir
+                .clone()
+                .join("../data/pck08.pca")
+                .to_string_lossy(),
+        )
+        .unwrap()
     }
 }
