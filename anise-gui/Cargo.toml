@@ -19,7 +19,7 @@ eframe = { version = "0.31" }
 egui = { version = "0.31" }
 egui_extras = { version = "0.31", features = ["datepicker", "http", "image"] }
 rfd = { version = "0.15.0" }
-egui_logger = "0.7.0"
+egui_logger = "0.8.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4"
