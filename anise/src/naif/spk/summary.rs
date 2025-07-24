@@ -66,6 +66,12 @@ impl SPKSummaryRecord {
         Frame::from(self.center_frame_uid())
     }
 
+    /// Returns the data type of this SPK Summary
+    #[cfg(feature = "python")]
+    pub fn datatype(&self) -> Result<DafDataType, <Self as NAIFSummaryRecord>::Error> {
+        <Self as NAIFSummaryRecord>::data_type(self)
+    }
+
     /// Returns the start epoch of this SPK Summary
     #[cfg(feature = "python")]
     pub fn start_epoch(&self) -> Epoch {
