@@ -136,6 +136,9 @@ def test_state_transformation():
     # Cannot pickle across module boundaries =(
     # pickle.loads(pickle.dumps(paris)) == paris
 
+    # Test that we can get the SPK data type
+    almanac.spk_summaries(301)[0].datatype()
+
     # Function export test
     for fname in [
         "transform",
@@ -149,6 +152,8 @@ def test_state_transformation():
         "occultation",
         "line_of_sight_obstructed",
         "azimuth_elevation_range_sez",
+        "spk_domains",
+        "spk_summaries",
     ]:
         assert hasattr(almanac, fname)
 
