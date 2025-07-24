@@ -1,8 +1,2 @@
 [env]
 CSPICE_DIR = {value = "./cspice/", relative = true}
-
-[target.x86_64-unknown-linux-gnu]
-rustflags = [
-    "-L", "/usr/lib/python3.12/config-3.12-x86_64-linux-gnu/",
-    "-l", "python3.12"
-]
