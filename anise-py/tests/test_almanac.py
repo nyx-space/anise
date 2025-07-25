@@ -137,7 +137,7 @@ def test_state_transformation():
     # pickle.loads(pickle.dumps(paris)) == paris
 
     # Test that we can get the SPK data type
-    almanac.spk_summaries(301)[0].datatype()
+    assert int(almanac.spk_summaries(301)[0].datatype()) == 2, "not shown as type 2"
 
     # Function export test
     for fname in [
