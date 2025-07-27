@@ -62,8 +62,8 @@ fn validate_iau_rotation_to_parent() {
         IAU_MARS_FRAME,
         IAU_JUPITER_FRAME,
         IAU_SATURN_FRAME,
-        // IAU_URANUS_FRAME, // TODO: https://github.com/nyx-space/anise/issues/185
-        // IAU_NEPTUNE_FRAME,
+        IAU_URANUS_FRAME,
+        IAU_NEPTUNE_FRAME,
     ] {
         for (num, epoch) in TimeSeries::inclusive(
             Epoch::from_tdb_duration(Duration::ZERO),
