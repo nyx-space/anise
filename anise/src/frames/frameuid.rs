@@ -20,9 +20,13 @@ use core::fmt;
 
 pub use super::Frame;
 
+#[cfg(feature = "analysis")]
+use serde_dhall::StaticType;
+
 /// A unique frame reference that only contains enough information to build the actual Frame object.
 /// It cannot be used for any computations, is it be used in any structure apart from error structures.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "analysis", derive(StaticType))]
 pub struct FrameUid {
     pub ephemeris_id: NaifId,
     pub orientation_id: NaifId,

@@ -11,55 +11,96 @@
 // FOCI: 1. Build the angle between two objects, defined in the loaded Almanac.
 //       2. Rebuild the angular momentum vector to demonstrate the cross product.
 
+use crate::prelude::FrameUid;
 use serde_derive::{Deserialize, Serialize};
 use serde_dhall::StaticType;
 
-// Temp: add static type to the current frameuid
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, StaticType)]
-pub struct FrameUid {
-    pub ephemeris_id: i32,
-    pub orientation_id: i32,
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, StaticType)]
+pub struct State {
+    from_frame: FrameUid,
+    to_frame: FrameUid,
 }
 
+/// VectorExpr defines a vector expression, which can either be computed from a state, or from a fixed definition.
+/// It will eventually support building new reference frames at runtime using a CrossProduct operation.
 #[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq, StaticType)]
 pub enum VectorExpr {
-    Fixed {
-        x: f64,
-        y: f64,
-        z: f64,
-    }, // Unitless vector, for arbitrary computations
-    Position {
-        from_frame: FrameUid,
-        to_frame: FrameUid,
-    },
-    Velocity {
-        from_frame: FrameUid,
-        to_frame: FrameUid,
-    },
+    Fixed { x: f64, y: f64, z: f64 }, // Unitless vector, for arbitrary computations
+    Position(State),
+    Velocity(State),
+    OrbitalMomentum(State),
+    EccentricityVector(State), /* TODO: Once https://github.com/Nadrieril/dhall-rust/issues/242 is closed
+                               CrossProduct {
+                                  a: Box<Self>,
+                                  b: Box<Self>,
+                               },*/
 }
 
+/// VectorScalar defines a scalar computation from a (set of) vector expression(s).
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, StaticType)]
-pub enum VectorMath {
-    Identity { v: VectorExpr },
-    CrossProduct { a: VectorExpr, b: VectorExpr },
+pub enum VectorScalar {
+    Norm { v: VectorExpr },
+    NormSquared { v: VectorExpr },
     DotProduct { a: VectorExpr, b: VectorExpr },
     AngleBetween { a: VectorExpr, b: VectorExpr },
 }
-// Consider having only CrossProduct as a VectorMath and moving the other variants to Calculations... really this ought to be recursive but it isn't supported by the dhall crate yet.
-// The calculations would also include the state parameters, and would necessarily return a f64.
-// I could, yet again, try to serialize in another format. Maybe toml?
 
-/*
-So, if you look at `Topo` and `Mu` (aka `Rec`), and apply each of them to a functor (say `VectorExpr`), you get `List (VectorExpr Natural)` and `âˆ€(a : Type) â†’ (VectorExpr a â†’ a) â†’ a`, respectively. `Topo` holds a list of nodes that each refer to other indices in the list for their children â€“ it can represent finite directed graphs (including with cycles). `Mu` suspends the value as a function that says â€œif you can tell me how to turn one node into the result type, I can turn the whole tree into that result typeâ€ (i.e., induction) â€“ `Mu` can only represent finite trees (not graphs, and of course no cycles). A similar but less abstract type than `Mu` is `Fix`, but it canâ€™t be defined in Dhall. `Fix VectorExpr` would partially normalize to `VectorExpr (Fix VectorExpr)`, and if you try to fully normalize it, you get in trouble, with `VectorExpr (VectorExpr (VectorExpr (VectorExpr â€¦)))`. But, itâ€™s basically the same as writing a directly-recursive `enum VectorExpr { ..., CrossProduct { a: Box<VectorExpr>, b: Box<VectorExpr>, }`.
-*/
+/// Orbital element defines all of the supported orbital elements in ANISE, which are all built from a State.
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, StaticType)]
+pub enum OrbitalElement {
+    SemiMajorAxis(State),
+    RAAN(State),
+    Eccentricity(State),
+}
+
+/// Defines how to build an orthogonal frame from custom vector expressions
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, StaticType)]
+pub enum OrthogonalFrame {
+    CrossProductXY { x: VectorExpr, y: VectorExpr },
+    CrossProductXZ { x: VectorExpr, z: VectorExpr },
+    CrossProductYZ { y: VectorExpr, z: VectorExpr },
+}
+
+/// Defines a runtime reference frame from an orthogonal frame, allowing it to be normalized or some vectors negated.
+/// Note that if trying to negate a vector that isn't used in the definition of the orthogonal frame, an error will be raised.
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, StaticType)]
+pub struct ReferenceFrame {
+    pub frame: OrthogonalFrame,
+    pub negate_x: bool,
+    pub negate_y: bool,
+    pub negate_z: bool,
+}
 
 #[cfg(test)]
 mod ut_vector_dhall {
 
-    use crate::analysis::{FrameUid, VectorExpr, VectorMath};
+    use crate::analysis::{FrameUid, VectorExpr, VectorScalar};
     use crate::prelude::Almanac;
     use rstest::*;
     use serde_dhall::SimpleType;
+
+    #[fixture]
+    pub fn almanac() -> Almanac {
+        use std::path::PathBuf;
+
+        let manifest_dir =
+            PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or(".".to_string()));
+
+        Almanac::new(
+            &manifest_dir
+                .clone()
+                .join("../data/de440s.bsp")
+                .to_string_lossy(),
+        )
+        .unwrap()
+        .load(
+            &manifest_dir
+                .clone()
+                .join("../data/pck08.pca")
+                .to_string_lossy(),
+        )
+        .unwrap()
+    }
 
     #[test]
     fn test_vector_expr_fixed() {
@@ -68,13 +109,13 @@ mod ut_vector_dhall {
             y: 2.0,
             z: 3.0,
         };
-        let m = VectorMath::Identity { v };
+        let m = VectorScalar::Identity { v };
         let v_str = serde_dhall::serialize(&m)
             .static_type_annotation()
             .to_string()
             .unwrap();
         println!("{v_str:?}");
-        let v_deser: VectorMath = serde_dhall::from_str(&v_str).parse().unwrap();
+        let v_deser: VectorScalar = serde_dhall::from_str(&v_str).parse().unwrap();
         assert_eq!(v_deser, m);
     }
 
@@ -124,37 +165,14 @@ mod ut_vector_dhall {
             },
         };
 
-        let h_vec = VectorMath::CrossProduct { a: pos, b: vel };
+        let h_vec = VectorScalar::CrossProduct { a: pos, b: vel };
 
         let h_vec_str = serde_dhall::serialize(&h_vec)
             .static_type_annotation()
             .to_string()
             .unwrap();
         println!("{h_vec_str:?}");
-        let v_deser: VectorMath = serde_dhall::from_str(&h_vec_str).parse().unwrap();
+        let v_deser: VectorScalar = serde_dhall::from_str(&h_vec_str).parse().unwrap();
         assert_eq!(v_deser, h_vec);
-    }
-
-    #[fixture]
-    pub fn almanac() -> Almanac {
-        use std::path::PathBuf;
-
-        let manifest_dir =
-            PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or(".".to_string()));
-
-        Almanac::new(
-            &manifest_dir
-                .clone()
-                .join("../data/de440s.bsp")
-                .to_string_lossy(),
-        )
-        .unwrap()
-        .load(
-            &manifest_dir
-                .clone()
-                .join("../data/pck08.pca")
-                .to_string_lossy(),
-        )
-        .unwrap()
     }
 }

@@ -14,9 +14,9 @@ extern crate const_format;
 extern crate hifitime;
 extern crate log;
 
-// TODO: Move behind crate feature
-pub mod analysis;
 pub mod almanac;
+#[cfg(feature = "analysis")]
+pub mod analysis;
 pub mod astro;
 pub mod constants;
 pub mod ephemerides;
