@@ -237,8 +237,8 @@ pub mod orientations {
     pub const IAU_MARS: NaifId = 499;
     pub const IAU_JUPITER: NaifId = 599;
     pub const IAU_SATURN: NaifId = 699;
-    pub const IAU_NEPTUNE: NaifId = 799;
-    pub const IAU_URANUS: NaifId = 899;
+    pub const IAU_URANUS: NaifId = 799;
+    pub const IAU_NEPTUNE: NaifId = 899;
 
     /// Angle between J2000 to solar system ecliptic J2000 ([ECLIPJ2000]), in radians (about 23.43929 degrees). Apply this rotation about the X axis (R1)
     pub const J2000_TO_ECLIPJ2000_ANGLE_RAD: f64 = 0.40909280422232897;
