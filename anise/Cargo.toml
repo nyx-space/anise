@@ -45,6 +45,7 @@ rust-embed = { version = "8.4.0", features = [
 ], optional = true }
 regex = { version = "1.10.5", optional = true }
 rayon = { workspace = true, optional = true } # Only used when building with Python
+serde-lexpr = "0.1.3"
 
 [dev-dependencies]
 rust-spice = "0.7.6"

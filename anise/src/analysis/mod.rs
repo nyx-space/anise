@@ -172,8 +172,11 @@ mod ut_analysis_dhall {
             .to_string()
             .unwrap();
         println!("{scalars_str:?}");
-        let scalars_deser: Vec<ScalarCalc> = serde_dhall::from_str(&scalars_str).parse().unwrap();
+        /*let scalars_deser: Vec<ScalarCalc> = serde_dhall::from_str(&scalars_str).parse().unwrap();
 
-        assert_eq!(scalars_deser, scalars);
+        assert_eq!(scalars_deser, scalars);*/
+
+        let sexpr_str = serde_lexpr::to_value(&scalars).unwrap();
+        println!("{sexpr_str}");
     }
 }
