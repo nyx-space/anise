@@ -38,11 +38,12 @@ pub enum VectorExpr {
 
 /// VectorScalar defines a scalar computation from a (set of) vector expression(s).
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, StaticType)]
-pub enum VectorScalar {
-    Norm { v: VectorExpr },
-    NormSquared { v: VectorExpr },
+pub enum ScalarCalc {
+    Norm(VectorExpr),
+    NormSquared(VectorExpr),
     DotProduct { a: VectorExpr, b: VectorExpr },
     AngleBetween { a: VectorExpr, b: VectorExpr },
+    OrbitalElement(OrbitalElement),
 }
 
 /// Orbital element defines all of the supported orbital elements in ANISE, which are all built from a State.
@@ -53,7 +54,8 @@ pub enum OrbitalElement {
     Eccentricity(State),
 }
 
-/// Defines how to build an orthogonal frame from custom vector expressions
+/*  OrthogonalFrame also requires recursive types.
+// Defines how to build an orthogonal frame from custom vector expressions
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, StaticType)]
 pub enum OrthogonalFrame {
     CrossProductXY { x: VectorExpr, y: VectorExpr },
@@ -70,14 +72,15 @@ pub struct ReferenceFrame {
     pub negate_y: bool,
     pub negate_z: bool,
 }
+*/
 
 #[cfg(test)]
-mod ut_vector_dhall {
+mod ut_analysis_dhall {
 
-    use crate::analysis::{FrameUid, VectorExpr, VectorScalar};
+    use crate::analysis::{FrameUid, ScalarCalc, State, VectorExpr};
     use crate::prelude::Almanac;
     use rstest::*;
-    use serde_dhall::SimpleType;
+    use serde_dhall::StaticType;
 
     #[fixture]
     pub fn almanac() -> Almanac {
@@ -109,19 +112,18 @@ mod ut_vector_dhall {
             y: 2.0,
             z: 3.0,
         };
-        let m = VectorScalar::Identity { v };
-        let v_str = serde_dhall::serialize(&m)
+        let v_str = serde_dhall::serialize(&v)
             .static_type_annotation()
             .to_string()
             .unwrap();
         println!("{v_str:?}");
-        let v_deser: VectorScalar = serde_dhall::from_str(&v_str).parse().unwrap();
-        assert_eq!(v_deser, m);
+        let v_deser: VectorExpr = serde_dhall::from_str(&v_str).parse().unwrap();
+        assert_eq!(v_deser, v);
     }
 
     #[test]
     fn test_vector_expr_state() {
-        let pos = VectorExpr::Position {
+        let state = State {
             from_frame: FrameUid {
                 ephemeris_id: 399,
                 orientation_id: 0,
@@ -131,6 +133,7 @@ mod ut_vector_dhall {
                 orientation_id: 0,
             },
         };
+        let pos = VectorExpr::Position(state);
 
         let pos_str = serde_dhall::serialize(&pos)
             .static_type_annotation()
@@ -142,37 +145,35 @@ mod ut_vector_dhall {
     }
 
     #[test]
-    fn test_vector_expr_cross() {
-        let pos = VectorExpr::Position {
+    fn test_orbit_calculation() {
+        let state_m2e = State {
             from_frame: FrameUid {
-                ephemeris_id: 399,
+                ephemeris_id: 301,
                 orientation_id: 0,
             },
             to_frame: FrameUid {
-                ephemeris_id: 301,
+                ephemeris_id: 399,
                 orientation_id: 0,
             },
         };
 
-        let vel = VectorExpr::Velocity {
-            from_frame: FrameUid {
-                ephemeris_id: 399,
-                orientation_id: 0,
-            },
-            to_frame: FrameUid {
-                ephemeris_id: 301,
-                orientation_id: 0,
-            },
-        };
+        let pos_m2e = VectorExpr::Position(state_m2e);
 
-        let h_vec = VectorScalar::CrossProduct { a: pos, b: vel };
+        let expr_type = VectorExpr::static_type().to_string();
+        println!("{expr_type}");
 
-        let h_vec_str = serde_dhall::serialize(&h_vec)
+        let scalars = vec![
+            ScalarCalc::OrbitalElement(crate::analysis::OrbitalElement::SemiMajorAxis(state_m2e)),
+            ScalarCalc::Norm(pos_m2e),
+        ];
+
+        let scalars_str = serde_dhall::serialize(&scalars)
             .static_type_annotation()
             .to_string()
             .unwrap();
-        println!("{h_vec_str:?}");
-        let v_deser: VectorScalar = serde_dhall::from_str(&h_vec_str).parse().unwrap();
-        assert_eq!(v_deser, h_vec);
+        println!("{scalars_str:?}");
+        let scalars_deser: Vec<ScalarCalc> = serde_dhall::from_str(&scalars_str).parse().unwrap();
+
+        assert_eq!(scalars_deser, scalars);
     }
 }
