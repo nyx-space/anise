@@ -39,7 +39,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --find-interpreter --compression-level 0
+          args: --release --out dist --find-interpreter
           manylinux: auto
           working-directory: anise-py
           before-script-linux: |
@@ -121,7 +121,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --find-interpreter --compression-level 0
+          args: --release --out dist --find-interpreter
           sccache: 'true'
           working-directory: anise-py
 
