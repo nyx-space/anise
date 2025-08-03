@@ -18,7 +18,6 @@ use crate::naif::daf::NAIFSummaryRecord;
 use crate::{
     math::Vector3,
     naif::daf::{NAIFDataRecord, NAIFDataSet},
-    DBL_SIZE,
 };
 
 // Length of a single modified difference type 1 record.
@@ -69,14 +68,10 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
                 size: slice.len()
             }
         );
-        let record_data = &slice[0..num_records * MD1_RCRD_LEN];
-        let epoch_data = &slice[num_records..2 * num_records * DBL_SIZE];
-        let epoch_registry_len = slice.len().saturating_sub(2 * num_records * (DBL_SIZE - 1));
-        let epoch_registry = if epoch_registry_len > 0 {
-            &slice[2 * num_records..2 * num_records + epoch_registry_len]
-        } else {
-            &[0.0; 0]
-        };
+        let idx = num_records * MD1_RCRD_LEN;
+        let record_data = &slice[..idx];
+        let epoch_data = &slice[idx..idx + num_records];
+        let epoch_registry = &slice[idx + num_records..slice.len() - 2];
 
         Ok(Self {
             num_records,
@@ -292,7 +287,7 @@ impl<'a> ModifiedDiffRecord<'a> {
                 2 => self.ref_vz_km_s,
                 _ => unreachable!(),
             };
-            vel_km_s[i + 3] = refvel + delta * poly_sum_vel;
+            vel_km_s[i] = refvel + delta * poly_sum_vel;
         }
 
         (pos_km, vel_km_s)
