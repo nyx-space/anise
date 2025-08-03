@@ -69,6 +69,14 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
             }
         );
         let idx = num_records * MD1_RCRD_LEN;
+        ensure!(
+            idx + num_records <= slice.len() - 2,
+            InaccessibleBytesSnafu {
+                start: 0_usize,
+                end: idx + num_records + 2,
+                size: slice.len(),
+            }
+        );
         let record_data = &slice[..idx];
         let epoch_data = &slice[idx..idx + num_records];
         let epoch_registry = &slice[idx + num_records..slice.len() - 2];
@@ -82,6 +90,13 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
     }
 
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError> {
+        if self.num_records == 0 {
+            return Err(DecodingError::InaccessibleBytes {
+                start: n,
+                end: n + 1,
+                size: 0,
+            });
+        }
         let rcrd_len = self.record_data.len() / self.num_records;
         Ok(Self::RecordKind::from_slice_f64(
             self.record_data
@@ -101,11 +116,7 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
     ) -> Result<Self::StateKind, InterpolationError> {
         // Start by doing a binary search on the epoch registry to limit the search space in the total number of epochs.
         if self.epoch_data.is_empty() {
-            return Err(InterpolationError::NoInterpolationData {
-                req: epoch,
-                start: Epoch::from_et_seconds(self.epoch_data[0]),
-                end: Epoch::from_et_seconds(*self.epoch_data.last().unwrap()),
-            });
+            return Err(InterpolationError::MissingInterpolationData { epoch });
         }
         // Check that we even have interpolation data for that time
         if epoch.to_et_seconds() < self.epoch_data[0] - 1e-7
@@ -160,7 +171,7 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
                 .expect("epochs in Modified Diff data is now NaN or infinite but was not before")
         }) {
             Ok(idx) => idx + slice_offset,
-            Err(idx) => idx + slice_offset,
+            Err(idx) => idx.saturating_sub(1) + slice_offset,
         };
 
         let record = self.nth_record(rcrd_idx).context(InterpDecodingSnafu)?;
@@ -222,14 +233,14 @@ impl<'a> ModifiedDiffRecord<'a> {
         let mut w = [0.0; 17];
 
         // Initialize the first set of W terms with reciprocals.
-        for j in 0..self.kqmax1 as usize {
-            w[j] = 1.0 / ((j + 1) as f64);
+        for (j, mut_w) in w.iter_mut().enumerate().take(self.kqmax1 as usize) {
+            *mut_w = 1.0 / ((j + 1) as f64);
         }
 
         // This is the core recurrence relation. It builds the values of the
         // position basis polynomials evaluated at the time `delta`.
         let mut ks = self.kqmax1 as usize - 1;
-        for jx in 1..(mq2 + 1.0) as usize {
+        for jx in 1..(mq2 + 1.0).max(0.0) as usize {
             for j in 0..jx {
                 w[j + ks] = fc[j] * w[j + ks - 1] - wc[j] * w[j + ks];
             }
@@ -264,7 +275,7 @@ impl<'a> ModifiedDiffRecord<'a> {
 
         // 5. Compute the W(k) terms for velocity interpolation.
         let ks = 1;
-        for jx in 1..mq2 as usize + 1 {
+        for jx in 1..(mq2 + 1.0).max(0.0) as usize {
             for j in 0..jx {
                 w[j + ks] = fc[j] * w[j + ks - 1] - wc[j] * w[j + ks];
             }
@@ -275,10 +286,10 @@ impl<'a> ModifiedDiffRecord<'a> {
             let component_order = self.kq[i] as usize;
             let mut poly_sum_vel = 0.0;
 
-            for j in 0..component_order {
+            for (j, wj) in w.iter().enumerate().take(component_order) {
                 // The index into the flat dt block is the same as for position.
                 let dt_idx = i * 15 + j;
-                poly_sum_vel += self.mod_diff_array[dt_idx] * w[j];
+                poly_sum_vel += self.mod_diff_array[dt_idx] * wj;
             }
 
             let refvel = match i {
