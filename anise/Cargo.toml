@@ -47,7 +47,7 @@ rayon = { workspace = true, optional = true } # Only used when building with Pyt
 
 [dev-dependencies]
 rust-spice = "0.7.6"
-parquet = "55.0.0"
+parquet = "56.0.0"
 arrow = "55.0.0"
 criterion = "0.7"
 iai-callgrind = "0.16"
