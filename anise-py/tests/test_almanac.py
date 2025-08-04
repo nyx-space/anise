@@ -42,9 +42,7 @@ def test_state_transformation():
         almanac = Almanac(str(data_path.joinpath("de440s.bsp")))
         # Let's add another file here -- note that the Almanac will load into a NEW variable, so we must overwrite it!
         # This prevents memory leaks (yes, I promise)
-        almanac = almanac.load(str(data_path.joinpath("pck08.pca"))).load(
-            str(data_path.joinpath("earth_latest_high_prec.bpc"))
-        )
+        almanac = almanac.load(str(data_path.joinpath("pck08.pca")))
 
     eme2k = almanac.frame_info(Frames.EME2000)
     assert eme2k.mu_km3_s2() == 398600.435436096

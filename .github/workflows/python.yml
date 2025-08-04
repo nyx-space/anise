@@ -18,6 +18,7 @@ jobs:
     strategy:
       matrix:
         target: [x86_64, x86]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
         
@@ -30,10 +31,10 @@ jobs:
           wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v0.5/pck08.pca
           wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v0.5/pck11.pca
 
-      - name: Setup Python 3.9 on ${{ matrix.target }} 
+      - name: Setup Python ${{ matrix.python-version }} on ${{ matrix.target }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: ${{ matrix.python-version }}
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -61,7 +62,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-linux-${{ matrix.target }}
+          name: wheels-linux-${{ matrix.target }}-${{ matrix.python-version }}
           path: anise-py/dist
 
       - name: pytest
@@ -107,6 +108,7 @@ jobs:
     strategy:
       matrix:
         target: [x64, x86]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -114,7 +116,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.target }}
 
       - name: Build wheels
@@ -128,7 +130,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-windows-${{ matrix.target }}
+          name: wheels-windows-${{ matrix.target }}-${{ matrix.python-version }}
           path: anise-py/dist
       
       - name: pytest
@@ -141,43 +143,12 @@ jobs:
           pip install pytest numpy
           pytest
 
-  macos-13: # last available x86_64 macos runner
-    runs-on: macos-13
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          target: x86_64
-          args: --release --out dist --find-interpreter --compression-method stored
-          sccache: 'true'
-          working-directory: anise-py
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-macos-13
-          path: anise-py/dist
-      
-      - name: pytest
-        shell: bash
-        env:
-          RUST_BACKTRACE: 1
-        run: |
-          set -e
-          pip install anise --find-links anise-py/dist --force-reinstall
-          pip install pytest numpy
-          pytest
-
-  macos-14: # last available x86_64 macos runner
+  macos:
     runs-on: macos-14
+    strategy:
+      matrix:
+        target: [x86_64, aarch64]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -185,12 +156,12 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
-          target: aarch64
+          target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter --compression-method stored
           sccache: 'true'
           working-directory: anise-py
@@ -198,7 +169,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-macos-14
+          name: wheels-macos-${{ matrix.target }}-${{ matrix.python-version }}
           path: anise-py/dist
       
       - name: pytest
@@ -211,40 +182,6 @@ jobs:
           pip install pytest numpy
           pytest
 
-  macos-15:
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          target: aarch64
-          args: --release --out dist --find-interpreter --compression-method stored
-          sccache: 'true'
-          working-directory: anise-py
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-macos-15
-          path: anise-py/dist
-
-      - name: pytest
-        shell: bash
-        env:
-          RUST_BACKTRACE: 1
-        run: |
-          set -e
-          pip install anise --find-links anise-py/dist --force-reinstall
-          pip install pytest numpy
-          pytest
 
   sdist:
     runs-on: ubuntu-latest
@@ -277,7 +214,7 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag'
-    needs: [linux, windows, macos-13, macos-14, macos-15, sdist]
+    needs: [linux, windows, macos, sdist]
     steps:
       - uses: actions/download-artifact@v4 # No `name` to download all artifacts.
         with:
