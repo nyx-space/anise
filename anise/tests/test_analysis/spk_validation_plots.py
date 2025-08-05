@@ -17,7 +17,7 @@ if __name__ == '__main__':
     plotted_anything = False
 
     for filename in glob(f"{target_folder}/spk-type*.parquet"):
-
+        print(f"reading {filename}")
         # Load the parquet file
         df = pd.read_parquet(filename)
 

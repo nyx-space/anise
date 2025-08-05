@@ -196,23 +196,34 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(C)]
 pub struct ModifiedDiffRecord<'a> {
-    pub tl: f64, // TODO: Rename this after tests
-    pub g: &'a [f64],
+    /// Reference epoch at the start of the record
+    pub ref_epoch: f64,
+    /// Vector of interpolation nodes
+    pub nodes: &'a [f64],
+    /// Reference position, in km
     pub ref_x_km: f64,
+    /// Reference position, in km
     pub ref_y_km: f64,
+    /// Reference position, in km
     pub ref_z_km: f64,
+    /// Reference velocity, in km/s
     pub ref_vx_km_s: f64,
+    /// Reference velocity, in km/s
     pub ref_vy_km_s: f64,
+    /// Reference velocity, in km/s
     pub ref_vz_km_s: f64,
+    /// Effectively a matrix (x, y, z) containing the core coefficients that define the trajectory's deviation from linear motion
     pub mod_diff_array: &'a [f64],
-    pub kqmax1: f64,   // Max integration order plus 1
-    pub kq: &'a [f64], // Integration order array for each component
+    // Max integration order plus 1
+    pub kqmax1: f64,
+    // Integration order array for each component
+    pub kq: &'a [f64],
 }
 
 impl<'a> ModifiedDiffRecord<'a> {
     pub fn to_pos_vel(&self, epoch: Epoch) -> (Vector3, Vector3) {
         //  Set up for the computation of the various differences.
-        let delta = epoch.to_et_seconds() - self.tl; // Time delta from reference epoch
+        let delta = epoch.to_et_seconds() - self.ref_epoch; // Time delta from reference epoch
         let mut tp = delta;
 
         // The maximum degree of the polynomials we might need to evaluate.
@@ -224,9 +235,9 @@ impl<'a> ModifiedDiffRecord<'a> {
         let mut wc = [0.0; 13];
 
         for j in 0..mq2 as usize {
-            fc[j] = tp / self.g[j];
-            wc[j] = delta / self.g[j];
-            tp = delta + self.g[j];
+            fc[j] = tp / self.nodes[j];
+            wc[j] = delta / self.nodes[j];
+            tp = delta + self.nodes[j];
         }
 
         // 3. Compute the W(k) terms for position interpolation.
@@ -316,8 +327,8 @@ impl<'a> fmt::Display for ModifiedDiffRecord<'a> {
 impl<'a> NAIFDataRecord<'a> for ModifiedDiffRecord<'a> {
     fn from_slice_f64(slice: &'a [f64]) -> Self {
         Self {
-            tl: slice[0],
-            g: &slice[1..16],
+            ref_epoch: slice[0],
+            nodes: &slice[1..16],
             ref_x_km: slice[16],
             ref_y_km: slice[18],
             ref_z_km: slice[20],
