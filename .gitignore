@@ -14,3 +14,4 @@ cspice.tar.Z
 anise-gui/dist/
 anise-py/notebooks/.ipynb_checkpoints/ANISE Tutorial for querying SPK files-checkpoint.ipynb
 data/lro.bsp
+data/mro.bsp

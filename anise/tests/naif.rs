@@ -42,7 +42,7 @@ fn test_binary_pck_load() {
             break;
         }
         let name = name_rcrd.nth_name(idx, summary_size);
-        println!("{} -> {:?}", name, summary);
+        println!("{name} -> {summary:?}");
     }
 }
 
@@ -100,7 +100,7 @@ fn test_spk_load_bytes() {
         let name = name_rcrd.nth_name(n, summary_size);
         let summary = &de421.data_summaries().unwrap()[n];
 
-        println!("{} -> {}", name, summary);
+        println!("{name} -> {summary}");
         // We know that the DE421 data is all in Type 2
         let data_set = de421.nth_data::<Type2ChebyshevSet>(n).unwrap();
         assert_eq!(data_set.num_records, *segment);

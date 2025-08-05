@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+mod type01_modified_diff;
 mod type02_chebyshev_jpl_de;
 mod type03_chebyshev_jpl_de;
 mod type09_lagrange;

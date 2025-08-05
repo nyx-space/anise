@@ -326,7 +326,7 @@ mod lut_ut {
         let mut repr = LookUpTable::<LUT_SIZE>::default();
 
         for i in 0..LUT_SIZE {
-            names.push(format!("Name{}", i));
+            names.push(format!("Name{i}"));
         }
 
         for (i, name) in names.iter().enumerate().take(LUT_SIZE) {

@@ -17,6 +17,7 @@ use crate::ephemerides::EphemInterpolationSnafu;
 use crate::hifitime::Epoch;
 use crate::math::cartesian::CartesianState;
 use crate::math::Vector3;
+use crate::naif::daf::datatypes::modified_diff::ModifiedDiffType1;
 use crate::naif::daf::datatypes::{
     HermiteSetType13, LagrangeSetType9, Type2ChebyshevSet, Type3ChebyshevSet,
 };
@@ -56,6 +57,16 @@ impl Almanac {
         // Now let's simply evaluate the data
 
         let (pos_km, vel_km_s) = match summary.data_type()? {
+            DafDataType::Type1ModifiedDifferenceArray => {
+                let data =
+                    spk_data
+                        .nth_data::<ModifiedDiffType1>(idx_in_spk)
+                        .context(SPKSnafu {
+                            action: "fetching data for interpolation",
+                        })?;
+                data.evaluate(epoch, summary)
+                    .context(EphemInterpolationSnafu)?
+            }
             DafDataType::Type2ChebyshevTriplet => {
                 let data =
                     spk_data

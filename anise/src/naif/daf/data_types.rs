@@ -179,7 +179,7 @@ mod ut_datatype {
         let invalid_values = [0, 4, 6, 7, 11, 16, 22, 23, 100, -1, -5];
         for &value in &invalid_values {
             match DataType::try_from(value) {
-                Ok(_) => panic!("Expected error for value {}", value),
+                Ok(_) => panic!("Expected error for value {value}"),
                 Err(e) => match e {
                     DAFError::Datatype { id, kind } => {
                         assert_eq!(id, value);

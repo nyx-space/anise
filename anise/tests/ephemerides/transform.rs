@@ -368,8 +368,7 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
                     let access_end = aer.epoch;
                     let access_duration = (access_end - access_start).round(Unit::Second * 1);
                     println!(
-                        "#{access_count}\t{access_start} - {access_end}\t{}",
-                        access_duration
+                        "#{access_count}\t{access_start} - {access_end}\t{access_duration}"
                     );
                     assert_eq!(access_times[access_count], access_duration);
                 }
@@ -464,8 +463,7 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
         let access_end = epoch + period;
         let access_duration = (access_end - access_start).round(Unit::Second * 1);
         println!(
-            "#{access_count}\t{access_start} - {access_end}\t{}",
-            access_duration
+            "#{access_count}\t{access_start} - {access_end}\t{access_duration}"
         );
         assert_eq!(access_times[access_count], access_duration);
     }
