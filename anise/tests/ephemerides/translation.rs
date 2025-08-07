@@ -383,7 +383,7 @@ fn hermite_query() {
 
     let traj = SPK::load("../data/gmat-hermite.bsp").unwrap();
     let summary = traj.data_summaries().unwrap()[0];
-    println!("{}", summary);
+    println!("{summary}");
 
     let mut ctx = Almanac::from_spk(traj).unwrap();
     // Also load the plantery data

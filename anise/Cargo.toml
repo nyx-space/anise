@@ -73,7 +73,7 @@ python = ["pyo3", "pyo3-log", "numpy", "ndarray", "rayon"]
 metaload = ["url", "ureq", "platform-dirs", "regex", "serde_dhall"]
 embed_ephem = ["rust-embed", "ureq"]
 # Enabling this flag significantly increases compilation times due to Arrow and Polars.
-spkezr_validation = []
+validation = []
 
 [[bench]]
 name = "iai_jpl_ephemeris"

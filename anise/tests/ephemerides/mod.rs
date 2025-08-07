@@ -12,5 +12,5 @@ mod parent_translation_verif;
 mod paths;
 mod transform;
 mod translation;
-#[cfg(feature = "spkezr_validation")]
+#[cfg(feature = "validation")]
 mod validation;

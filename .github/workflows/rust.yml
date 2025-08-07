@@ -136,15 +136,15 @@ jobs:
         run: cargo test validate_gh_283_multi_barycenter_and_los --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored
 
       - name: Rust-SPICE JPL DE validation
-        run: RUST_BACKTRACE=1 cargo test validate_jplde --features spkezr_validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
+        run: RUST_BACKTRACE=1 cargo test validate_jplde --features validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
 
       - name: Rust-SPICE hermite validation
-        run: RUST_BACKTRACE=1 cargo test validate_hermite_type13_ --features spkezr_validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
+        run: RUST_BACKTRACE=1 cargo test validate_hermite_type13_ --features validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
 
       - name: Rust-SPICE Lagrange validation
         env:
           LAGRANGE_BSP: gmat-lagrange.bsp
-        run: RUST_BACKTRACE=1 cargo test validate_lagrange_type9_with_varying_segment_sizes --features spkezr_validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
+        run: RUST_BACKTRACE=1 cargo test validate_lagrange_type9_with_varying_segment_sizes --features validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
 
       - name: Rust-SPICE PCK validation
         run: RUST_BACKTRACE=1 cargo test validate_iau_rotation_to_parent --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --ignored
@@ -219,11 +219,11 @@ jobs:
           cargo llvm-cov test --no-report validate_gh_283_multi_barycenter_and_los -- --nocapture --ignored
           cargo llvm-cov test --no-report validate_iau_rotation_to_parent -- --nocapture --ignored
           cargo llvm-cov test --no-report validate_bpc_to_iau_rotations -- --nocapture --ignored
-          cargo llvm-cov test --no-report validate_jplde_de440s_no_aberration --features spkezr_validation -- --nocapture --ignored
-          cargo llvm-cov test --no-report validate_jplde_de440s_aberration_lt --features spkezr_validation -- --nocapture --ignored
-          cargo llvm-cov test --no-report validate_jplde_de440_type3_no_aberration --features spkezr_validation -- --nocapture --ignored
-          cargo llvm-cov test --no-report validate_hermite_type13_from_gmat --features spkezr_validation -- --nocapture --ignored
-          cargo llvm-cov test --no-report validate_lagrange_type9_with_varying_segment_sizes --features spkezr_validation -- --nocapture --ignored
+          cargo llvm-cov test --no-report validate_jplde_de440s_no_aberration --features validation -- --nocapture --ignored
+          cargo llvm-cov test --no-report validate_jplde_de440s_aberration_lt --features validation -- --nocapture --ignored
+          cargo llvm-cov test --no-report validate_jplde_de440_type3_no_aberration --features validation -- --nocapture --ignored
+          cargo llvm-cov test --no-report validate_hermite_type13_from_gmat --features validation -- --nocapture --ignored
+          cargo llvm-cov test --no-report validate_lagrange_type9_with_varying_segment_sizes --features validation -- --nocapture --ignored
           cargo llvm-cov test --no-report ut_embed --features embed_ephem
           cargo llvm-cov report --lcov > ../lcov.txt
 

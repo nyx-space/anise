@@ -158,7 +158,7 @@ impl Almanac {
                                 println!("{e}");
                                 None
                             },
-                            |aer| Some(aer),
+                            Some,
                         )
                 })
                 .collect::<Vec<AzElRange>>();
@@ -301,7 +301,7 @@ impl Almanac {
                                 println!("{e}");
                                 None
                             },
-                            |aer| Some(aer),
+                            Some,
                         )
                 })
                 .collect::<Vec<Occultation>>();
@@ -381,7 +381,7 @@ impl Almanac {
         time_series,
         ab_corr=None,
     ))]
-    fn py_transform_many<'py>(
+    fn py_transform_many(
         &self,
         py: Python,
         target_frame: Frame,
@@ -399,7 +399,7 @@ impl Almanac {
                                 eprintln!("{e}");
                                 None
                             },
-                            |state| Some(state),
+                            Some,
                         )
                 })
                 .collect::<Vec<CartesianState>>();
@@ -460,7 +460,7 @@ impl Almanac {
                                 println!("{e}");
                                 None
                             },
-                            |state| Some(state),
+                            Some,
                         )
                 })
                 .collect::<Vec<CartesianState>>();
