@@ -18,9 +18,9 @@ use serde_dhall::StaticType;
 
 use crate::astro::PhysicsResult;
 use crate::constants::celestial_objects::{
-    celestial_name_from_id, id_to_celestial_name, SOLAR_SYSTEM_BARYCENTER,
+    celestial_name_from_id, id_from_celestial_name, SOLAR_SYSTEM_BARYCENTER,
 };
-use crate::constants::orientations::{id_to_orientation_name, orientation_name_from_id, J2000};
+use crate::constants::orientations::{id_from_orientation_name, orientation_name_from_id, J2000};
 use crate::errors::{AlmanacError, EphemerisSnafu, OrientationSnafu, PhysicsError};
 use crate::prelude::FrameUid;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
@@ -75,11 +75,11 @@ impl Frame {
     /// Attempts to create a new frame from its center and reference frame name.
     /// This function is compatible with the CCSDS OEM names.
     pub fn from_name(center: &str, ref_frame: &str) -> Result<Self, AlmanacError> {
-        let ephemeris_id = id_to_celestial_name(center).context(EphemerisSnafu {
+        let ephemeris_id = id_from_celestial_name(center).context(EphemerisSnafu {
             action: "converting center name to its ID",
         })?;
 
-        let orientation_id = id_to_orientation_name(ref_frame).context(OrientationSnafu {
+        let orientation_id = id_from_orientation_name(ref_frame).context(OrientationSnafu {
             action: "converting reference frame to its ID",
         })?;
 

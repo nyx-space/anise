@@ -34,7 +34,9 @@ pub(crate) fn exec_gui() -> Result<(), MetaAlmanacError> {
         // Now, execute this file.
         Command::new(gui.uri)
             .spawn()
-            .expect("could not execute ANISE GUI");
+            .expect("could not execute ANISE GUI")
+            .wait_with_output()
+            .expect("process could not be started");
         Ok(())
     } else {
         Err(MetaAlmanacError::FetchError {

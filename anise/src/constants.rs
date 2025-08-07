@@ -41,6 +41,7 @@ pub mod celestial_objects {
             VENUS => Some("Venus"),
             EARTH_MOON_BARYCENTER => Some("Earth-Moon Barycenter"),
             MARS_BARYCENTER => Some("Mars Barycenter"),
+            MARS => Some("Mars"),
             JUPITER_BARYCENTER => Some("Jupiter Barycenter"),
             SATURN_BARYCENTER => Some("Saturn Barycenter"),
             URANUS_BARYCENTER => Some("Uranus Barycenter"),
@@ -53,8 +54,13 @@ pub mod celestial_objects {
         }
     }
 
-    /// Converts the provided ID to its human name. Only works for the common celestial bodies. Should be compatible with CCSDS OEM names
+    #[deprecated(since = "0.6.7")]
     pub fn id_to_celestial_name(name: &str) -> Result<NaifId, EphemerisError> {
+        id_from_celestial_name(name)
+    }
+
+    /// Converts the provided ID to its human name. Only works for the common celestial bodies. Should be compatible with CCSDS OEM names
+    pub fn id_from_celestial_name(name: &str) -> Result<NaifId, EphemerisError> {
         match name {
             "Mercury" => Ok(MERCURY),
             "Venus" => Ok(VENUS),
@@ -270,8 +276,16 @@ pub mod orientations {
         }
     }
 
-    /// Converts the provided ID to its human name. Only works for the common celestial bodies. Should be compatible with CCSDS OEM names
+    #[deprecated(
+        since = "0.6.7",
+        note = "use id_from_orientation_name, the original function was incorrectly named"
+    )]
     pub fn id_to_orientation_name(name: &str) -> Result<NaifId, OrientationError> {
+        id_from_orientation_name(name)
+    }
+
+    /// Converts the provided ID to its human name. Only works for the common celestial bodies. Should be compatible with CCSDS OEM names
+    pub fn id_from_orientation_name(name: &str) -> Result<NaifId, OrientationError> {
         match name {
             "J2000" | "ICRF" => Ok(J2000),
             "B1950" => Ok(B1950),

@@ -205,6 +205,7 @@ impl AzElRange {
     /// Allows for pickling the object
     ///
     /// :rtype: typing.Tuple
+    #[allow(clippy::type_complexity)]
     fn __getnewargs__(&self) -> Result<(Epoch, f64, f64, f64, f64, Option<Frame>), PyErr> {
         Ok((
             self.epoch,
