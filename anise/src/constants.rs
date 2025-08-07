@@ -322,6 +322,8 @@ pub mod frames {
     pub const MERCURY_J2000: Frame = Frame::new(MERCURY, J2000);
     pub const VENUS_J2000: Frame = Frame::new(VENUS, J2000);
     pub const EARTH_MOON_BARYCENTER_J2000: Frame = Frame::new(EARTH_MOON_BARYCENTER, J2000);
+    /// The Mars frame is not available in the standard DE files, and requires a Mars specific BSP.
+    pub const MARS_J2000: Frame = Frame::new(MARS, J2000);
     pub const MARS_BARYCENTER_J2000: Frame = Frame::new(MARS_BARYCENTER, J2000);
     pub const JUPITER_BARYCENTER_J2000: Frame = Frame::new(JUPITER_BARYCENTER, J2000);
     pub const SATURN_BARYCENTER_J2000: Frame = Frame::new(SATURN_BARYCENTER, J2000);
