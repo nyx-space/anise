@@ -16,6 +16,7 @@ use std::env::consts::OS;
 use std::fs;
 use std::process::Command;
 
+#[allow(clippy::zombie_processes)]
 #[pyfunction]
 pub(crate) fn exec_gui() -> Result<(), MetaAlmanacError> {
     if ["windows", "linux"].contains(&OS) {
@@ -34,9 +35,7 @@ pub(crate) fn exec_gui() -> Result<(), MetaAlmanacError> {
         // Now, execute this file.
         Command::new(gui.uri)
             .spawn()
-            .expect("could not execute ANISE GUI")
-            .wait_with_output()
-            .expect("process could not be started");
+            .expect("could not execute ANISE GUI");
         Ok(())
     } else {
         Err(MetaAlmanacError::FetchError {
