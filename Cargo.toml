@@ -3,7 +3,7 @@ resolver = "2"
 members = ["anise", "anise-cli", "anise-gui", "anise-py", "anise/fuzz"]
 
 [workspace.package]
-version = "0.6.7"
+version = "0.6.8"
 edition = "2021"
 authors = ["Christopher Rabotin <christopher.rabotin@gmail.com>"]
 description = "ANISE provides a toolkit and files for Attitude, Navigation, Instrument, Spacecraft, and Ephemeris data. It's a modern replacement of NAIF SPICE file."
@@ -47,7 +47,7 @@ numpy = "0.25"
 ndarray = ">= 0.15, < 0.17"
 rayon = "1.10.0"
 
-anise = { version = "0.6.7", path = "anise", default-features = false }
+anise = { version = "0.6.8", path = "anise", default-features = false }
 
 [profile.bench]
 debug = true
