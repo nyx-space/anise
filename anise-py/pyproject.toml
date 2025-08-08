@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "anise"
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
