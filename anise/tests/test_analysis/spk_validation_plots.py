@@ -20,32 +20,33 @@ if __name__ == '__main__':
         print(f"reading {filename}")
         # Load the parquet file
         df = pd.read_parquet(filename)
+        df = df[df["source frame"]=="-74"].tail(10000)
 
         name = basename(filename)
 
-        # for kind, columns in [("Position", ["X", "Y", "Z"]),
-        #                       ("Velocity", ["VX", "VY", "VZ"])]:
+        for kind, columns in [("Position", ["X", "Y", "Z"]),
+                              ("Velocity", ["VX", "VY", "VZ"])]:
 
-        #     print(f"== {kind} {name} ==")
+            print(f"== {kind} {name} ==")
 
-        #     subset = df.loc[df.component.isin(columns)]
+            subset = df.loc[df.component.isin(columns)]
 
-        #     print(subset.describe())
+            print(subset.describe())
 
-        #     plt = px.scatter(subset,
-        #                      x='ET Epoch (s)',
-        #                      y='Absolute difference',
-        #                      color='source frame',
-        #                      title=f"Validation of {name} for {kind}")
+            plt = px.scatter(subset,
+                             x='ET Epoch (s)',
+                             y='Absolute difference',
+                             color='source frame',
+                             title=f"Validation of {name} for {kind}")
 
-        #     plt.write_html(
-        #         f"{target_folder}/validation-plot-{kind}-{name}.html")
-        #     if not is_on_github_actions():
-        #         plt.show()
-        #     plotted_anything = True
+            plt.write_html(
+                f"{target_folder}/validation-plot-{kind}-{name}.html")
+            if not is_on_github_actions():
+                plt.show()
+            plotted_anything = True
 
         # Plot all components together
-        plt = px.scatter(df[df["source frame"]=="-74"],
+        plt = px.scatter(df,
                          x='ET Epoch (s)',
                          y='Absolute difference',
                          color='component',

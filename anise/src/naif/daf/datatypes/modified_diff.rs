@@ -119,8 +119,8 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
             return Err(InterpolationError::MissingInterpolationData { epoch });
         }
         // Check that we even have interpolation data for that time
-        if epoch.to_et_seconds() < self.epoch_data[0] - 1e-7
-            || epoch.to_et_seconds() > *self.epoch_data.last().unwrap() + 1e-7
+        if epoch.to_et_seconds() < self.epoch_data[0] - 1e-2
+            || epoch.to_et_seconds() > *self.epoch_data.last().unwrap() + 1e-2
         {
             return Err(InterpolationError::NoInterpolationData {
                 req: epoch,
@@ -165,14 +165,15 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
             )
         };
 
-        let rcrd_idx = match search_data_slice.binary_search_by(|epoch_et| {
-            epoch_et
-                .partial_cmp(&epoch.to_et_seconds())
-                .expect("epochs in Modified Diff data is now NaN or infinite but was not before")
-        }) {
-            Ok(idx) => idx + slice_offset,
-            Err(idx) => idx.saturating_sub(1) + slice_offset,
-        };
+        // We want the index of the first element that is > epoch.
+        let local_idx =
+            search_data_slice.partition_point(|&epoch_et| epoch_et <= epoch.to_et_seconds());
+
+        // The record we need is the one right before this index.
+        // If local_idx is 0, it means the target epoch is before the first element in the slice;
+        // saturating_sub(1) correctly keeps the index at 0, and your slicing logic,
+        // which includes the last record of the previous directory, will handle this.
+        let rcrd_idx = local_idx.saturating_sub(1) + slice_offset;
 
         let record = self.nth_record(rcrd_idx).context(InterpDecodingSnafu)?;
 
@@ -271,7 +272,7 @@ impl<'a> ModifiedDiffRecord<'a> {
                 // The index is equivalent to dt[i, j] in a 3x15 reshaped array.
                 // The dt data block starts at record index 22.
                 let dt_idx = i * 15 + j;
-                poly_sum += self.mod_diff_array[dt_idx] * w[j + 1]
+                poly_sum += self.mod_diff_array[dt_idx] * w[j + ks]
             }
 
             let (refpos, refvel) = match i {
@@ -285,19 +286,22 @@ impl<'a> ModifiedDiffRecord<'a> {
         }
 
         // 5. Compute the W(k) terms for velocity interpolation.
-        for j in 0..mq2 as usize {
-            w[j + ks] = fc[j] * w[j] - wc[j] * w[j + 1];
+        if mq2 > 0.0 {
+            for j in 1..(mq2 + 1.0) as usize {
+                w[j] = fc[j - 1] * w[j - 1] - wc[j - 1] * w[j];
+            }
         }
+        ks -= 1;
 
         // 6. Perform velocity interpolation.
         for i in 0..3 {
             let component_order = self.kq[i] as usize;
             let mut poly_sum_vel = 0.0;
 
-            for (j, wj) in w.iter().enumerate().take(component_order) {
+            for j in 0..component_order {
                 // The index into the flat dt block is the same as for position.
                 let dt_idx = i * 15 + j;
-                poly_sum_vel += self.mod_diff_array[dt_idx] * wj;
+                poly_sum_vel += self.mod_diff_array[dt_idx] * w[j + ks];
             }
 
             let refvel = match i {
