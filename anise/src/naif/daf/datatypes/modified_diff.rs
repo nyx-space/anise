@@ -285,11 +285,8 @@ impl<'a> ModifiedDiffRecord<'a> {
         }
 
         // 5. Compute the W(k) terms for velocity interpolation.
-        let ks = 1;
-        for jx in 1..(mq2 + 1.0).max(0.0) as usize {
-            for j in 0..jx {
-                w[j + ks] = fc[j] * w[j + ks - 1] - wc[j] * w[j + ks];
-            }
+        for j in 0..mq2 as usize {
+            w[j + ks] = fc[j] * w[j] - wc[j] * w[j + 1];
         }
 
         // 6. Perform velocity interpolation.
