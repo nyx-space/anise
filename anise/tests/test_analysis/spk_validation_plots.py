@@ -20,7 +20,7 @@ if __name__ == '__main__':
         print(f"reading {filename}")
         # Load the parquet file
         df = pd.read_parquet(filename)
-        df = df[df["source frame"]=="-74"].tail(10000)
+        df = df[df["source frame"]=="-74"]
 
         name = basename(filename)
 

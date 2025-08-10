@@ -130,7 +130,7 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
         }
 
         // Search through a reduced data slice if available
-        let (search_data_slice, slice_offset) = if self.epoch_registry.is_empty() {
+        let (search_data_slice, slice_offset) = if self.epoch_registry.is_empty() || true {
             // No registry, search the entire epoch_data
             (self.epoch_data, 0)
         } else {
@@ -173,8 +173,9 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
         // If local_idx is 0, it means the target epoch is before the first element in the slice;
         // saturating_sub(1) correctly keeps the index at 0, and your slicing logic,
         // which includes the last record of the previous directory, will handle this.
-        let rcrd_idx = local_idx.saturating_sub(1) + slice_offset;
+        // let rcrd_idx = local_idx.saturating_sub(1) + slice_offset;
 
+        let rcrd_idx = local_idx + slice_offset;
         let record = self.nth_record(rcrd_idx).context(InterpDecodingSnafu)?;
 
         Ok(record.to_pos_vel(epoch))
