@@ -81,7 +81,7 @@ When a crash or bug is found, a minimized test case will be saved in the `artifa
    bench = false
    ```
 4. (Optional) If using a custom structure, update [`src/lib.rs`](src/lib.rs) to include arbitrary structure.
-5. (Optional) Add a seed corpus in the `corpus/` directory.
+5. (Optional) Add a seed corpus in the [`corpus/`](corpus/) directory.
 
 ---
 
