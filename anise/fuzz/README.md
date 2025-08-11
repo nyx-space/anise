@@ -1,158 +1,121 @@
-# Cargo Fuzz
+# Fuzz Testing for Anise
 
-cargo-fuzz is a development focused subcommand for fuzz testing with libFuzzer. For more details, refer to https://github.com/rust-fuzz/cargo-fuzz.
+This directory contains fuzz tests for the Anise project, using [`cargo-fuzz`](https://github.com/rust-fuzz/cargo-fuzz) and [`libFuzzer`](https://llvm.org/docs/LibFuzzer.html). Fuzzing helps uncover bugs and security issues by running randomized inputs through your code.
 
+---
+
+## Prerequisites
+
+- **Rust nightly toolchain** (required by `cargo-fuzz`)
+- **cargo-fuzz** (install with `cargo install cargo-fuzz`)
+- (Optional) **LLVM tools** for advanced debugging
+
+---
 
 ## Setup
 
-`cargo-fuzz` requires a nightly version of the Rust compiler, as it is dependent on `libfuzzer-sys`. Please consider how this can affect your system before continuing.
+1. **Install Rust Nightly:**
+   ```sh
+   rustup toolchain install nightly
+   rustup override set nightly
+   ```
 
-### Installation
+2. **Install cargo-fuzz:**
+   ```sh
+   cargo install cargo-fuzz
+   ```
 
-Start by installing by running `cargo install cargo-fuzz`.
+---
 
-### Setup Nightly Compiler
+## Building Fuzz Targets
 
-Install the nightly toolchain with `rustup toolchain install nightly`.
+Fuzz targets must be built from within the `anise/anise` folder consisting of the Rust code. To build all fuzz targets:
+```sh
+cargo fuzz build
+```
+Or build a specific target:
+```sh
+cargo fuzz build <target-name>
+```
 
-Set the nightly toolcahin as the default for _your current working directory_ with `rustup override set nightly`.
+---
 
+## Running Fuzz Tests
 
-## Running
+Fuzz targets must be run from within the `anise/anise` folder consisting of the Rust code. To run a fuzz target:
+```sh
+cargo fuzz run <target-name>
+```
+You can limit runtime (in seconds) with:
+```sh
+cargo fuzz run <target-name> -- -max_total_time=60
+```
 
-To run the fuzz tests, simply run `cargo fuzz run <fuzz-test-name>`.
+---
 
-If you want to limit the total runtime you can append a `-- -max_total_time=<seconds>` to the run command. You'll want to a `cargo fuzz build <fuzz-test-name>` first to avoid it impacting the max time.
+## Debugging Fuzz Failures
 
+When a crash or bug is found, a minimized test case will be saved in the `artifacts/` directory. To debug:
+1. Run the target with the crashing input:
+   ```sh
+   cargo fuzz run <target-name> artifacts/<target-name>/<crash-file>
+   ```
+2. Use `RUST_BACKTRACE=1` for stack traces:
+   ```sh
+   RUST_BACKTRACE=1 cargo fuzz run <target-name> artifacts/<target-name>/<crash-file>
+   ```
 
-# Legacy Info - To be Deleted (frames, math, and orientation)
-## anise/src/frames
-### frame.rs
-- `from_name(center: &str, ref_frame: &str) -> Result<Self, AlmanacError>`
-- `with_ellipsoid(mut self, shape: Ellipsoid) -> Self`
+---
 
-### frameuid.rs
-Anything testable appears to be low priority.
+## Adding New Fuzz Targets
 
-## anise/src/math
-### interpolation/chebyshev.rs
-- `pub fn chebyshev_eval(normalized_time: f64, spline_coeffs: &[f64], spline_radius_s: f64, eval_epoch: Epoch, degree: usize) -> Result<(f64, f64), InterpolationError>`
-- `pub fn chebyshev_eval_poly(normalized_time: f64, spline_coeffs: &[f64], eval_epoch: Epoch, degree: usize) -> Result<f64, InterpolationError>`
+1. Create a new file in [`fuzz_targets/`](fuzz_targets/) (e.g., `my_target.rs`).
+2. Implement a `fuzz_target!` macro as in other targets.
+3. Register the new target in [`Cargo.toml`](Cargo.toml) under `[[bin]]`:
+   ```toml
+   [[bin]]
+   name = "my_target"
+   path = "fuzz_targets/my_target.rs"
+   test = false
+   doc = false
+   bench = false
+   ```
+4. (Optional) If using a custom structure, update [`src/lib.rs`](src/lib.rs) to include arbitrary structure.
+5. (Optional) Add a seed corpus in the [`corpus/`](corpus/) directory.
 
-### interpolation/hermite.rs
-- `pub fn hermite_eval(xs: &[f64], ys: &[f64], ydots: &[f64], x_eval: f64) -> Result<(f64, f64), InterpolationError>`
+---
 
-### interpolation/lagrange.rs
-- `pub fn lagrange_eval(xs: &[f64], ys: &[f64], x_eval: f64) -> Result<(f64, f64), InterpolationError>`
+## OSS-Fuzz Integration
 
-### rotation/dcm_py.rs
-Anything testable appears to be low priority.
+This fuzz suite is integrated with [OSS-Fuzz](https://github.com/google/oss-fuzz) for continuous fuzzing on Google's infrastructure.
 
-### rotation/dcm.rs
-- `pub fn state_dcm(&self) -> Matrix6`
-- `pub(crate) fn mul_unchecked(&self, other: Self) -> Self`
-- `pub fn transpose(&self) -> Self`
-- `pub fn is_valid(&self, unit_tol: f64, det_tol: f64) -> bool`
-- `impl Mul<&CartesianState> for DCM`
-- `impl From<DCM> for Quaternion`
-- `impl From<Quaternion> for DCM`
+- **Build system:** OSS-Fuzz uses the same `cargo-fuzz` targets defined here.
+- **Adding/Removing Targets:** Update both this repo and the [OSS-Fuzz project YAML](https://github.com/google/oss-fuzz/tree/master/projects/anise) as needed.
+- **Corpus/Artifacts:** OSS-Fuzz manages its own corpus and crash artifacts, but you can sync with local corpora for better coverage.
+- **Updating Dependencies:** Keep dependencies in sync with upstream to avoid build failures in OSS-Fuzz.
+- **Contact:** If you update the fuzz targets or dependencies, notify the OSS-Fuzz maintainers via a pull request or issue.
 
-### rotation/quaternion.rs
-- `pub fn normalize(&self) -> Self`
-- `pub fn b_matrix(&self) -> Matrix4x3<f64>`
-- `pub fn derivative(&self, w: Vector3) -> Self`
-- `pub fn derivative(&self, w: Vector3) -> Self`
-- `pub fn uvec_angle(&self) -> (Vector3, f64)`
-- `pub fn prv(&self) -> Vector3`
+For more details, see the [OSS-Fuzz documentation](https://google.github.io/oss-fuzz/).
 
-### angles.rs
-Anything testable appears to be low priority.
+---
 
-### cartesian_py.rs
-Anything testable appears to be low priority.
+## Directory Structure
 
-### cartesian.rs
-- `pub fn new(x_km: f64, y_km: f64, z_km: f64, vx_km_s: f64, vy_km_s: f64, vz_km_s: f64, epoch: Epoch, frame: Frame) -> Self`
-- `pub fn distance_to_km(&self, other: &Self) -> PhysicsResult<f64>`
-- `pub fn eq_within(&self, other: &Self, radial_tol_km: f64, velocity_tol_km_s: f64) -> bool`
-- `pub fn abs_pos_diff_km(&self, other: &Self) -> PhysicsResult<f64>`
-- `pub fn abs_vel_diff_km_s(&self, other: &Self) -> PhysicsResult<f64>`
-- `pub fn rel_pos_diff(&self, other: &Self) -> PhysicsResult<f64>`
-- `pub fn rel_vel_diff(&self, other: &Self) -> PhysicsResult<f64>`
+- [`fuzz_targets/`](fuzz_targets/): Individual fuzz target entrypoints.
+- [`src/lib.rs`](src/lib.rs): Shared fuzzing utilities and types.
+- [`corpus/`](corpus/): Optional seed corpora for each target.
+- [`artifacts/`](artifacts/): Crash/minimized test cases.
+- [`Cargo.toml`](Cargo.toml): Fuzz target registration.
 
-### units.rs
-Anything testable appears to be low priority.
+---
 
-## anise/src/orientations
-### paths.rs
-- `pub fn try_find_orientation_root(&self) -> Result<NaifId, OrientationError>`
-- `pub fn orientation_path_to_root(&self, source: Frame, epoch: Epoch) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH]), OrientationError>`
-- `pub fn common_orientation_path`
+## References
 
-### rotate_to_parent.rs
-- `pub fn rotation_to_parent(&self, source: Frame, epoch: Epoch) -> Result<DCM, OrientationError>`
+- [cargo-fuzz documentation](https://rust-fuzz.github.io/book/cargo-fuzz.html)
+- [libFuzzer documentation](https://llvm.org/docs/LibFuzzer.html)
+- [Structure-Aware fuzzing documentation](https://rust-fuzz.github.io/book/cargo-fuzz/structure-aware-fuzzing.html)
+- [OSS-Fuzz documentation](https://google.github.io/oss-fuzz/)
 
-### rotation.rs
-- `rotate(&self, from_frame: Frame, to_frame: Frame, epoch: Epoch) -> Result<DCM, OrientationError>`
-- `pub fn rotate_state_to(&self, position: Vector3, velocity: Vector3, from_frame: Frame, to_frame: Frame, epoch: Epoch, distance_unit: LengthUnit, time_unit: TimeUnit) -> Result<CartesianState, OrientationError>`
+---
 
-
-## anise/src/ephemerides
-### translate_to_parent.rs
-- `pub fn translate_to_parent(&self, source: Frame, epoch: Epoch, ) -> Result<CartesianState, EphemerisError>`
-
-### translations.rs
-- `pub fn translate(&self,target_frame: Frame,mut observer_frame: Frame,epoch: Epoch,ab_corr: Option<Aberration>,) -> Result<CartesianState, EphemerisError>`
-- `pub fn translate_geometric(&self,target_frame: Frame,observer_frame: Frame,epoch: Epoch,) -> Result<CartesianState, EphemerisError>`
-- `pub fn translate_to(&self,state: CartesianState,mut observer_frame: Frame,ab_corr: Option<Aberration>,) -> Result<CartesianState, EphemerisError>`
-- `pub fn translate_state_to(&self,position: Vector3,velocity: Vector3,from_frame: Frame,observer_frame: Frame,epoch: Epoch,ab_corr: Option<Aberration>,distance_unit: LengthUnit,time_unit: TimeUnit,) -> Result<CartesianState, EphemerisError>`
-
-### paths.rs
-- `try_find_ephemeris_root(&self) -> Result<NaifId, EphemerisError>`
-- `pub fn ephemeris_path_to_root(&self,source: Frame,epoch: Epoch,) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH]), EphemerisError>`
-- `pub fn common_ephemeris_path(&self,from_frame: Frame,to_frame: Frame,epoch: Epoch,) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH], NaifId), EphemerisError>`
-
-### mod.rs
-Anything testable appears to be low priority.
-
-## anise/src/astro
-### aberration.rs
-- `pub fn new(flag: &str) -> PhysicsResult<Option<Self>>`
-- `stellar_aberration(target_pos_km: Vector3, obs_wrt_ssb_vel_km_s: Vector3, ab_corr: Aberration) -> PhysicsResult<Vector3>`
-
-### mod.rs
-- `pub fn is_valid(&self) -> bool`
-- `pub fn py_new(epoch: Epoch,azimuth_deg: f64,elevation_deg: f64,range_km: f64,range_rate_km_s: f64,obstructed_by: Option<Frame>,) -> Self`
-- `fn set_range_km(&mut self, range_km: f64) -> PyResult<()>`
-
-### occultation.rs
-- `pub fn factor(&self) -> f64`
-- `pub fn is_visible(&self) -> bool`
-- `pub fn is_obstructed(&self) -> bool`
-- `pub fn is_partial(&self) -> bool`
-
-### orbit.rs
-- `pub fn try_keplerian(sma_km: f64,ecc: f64,inc_deg: f64,raan_deg: f64,aop_deg: f64,ta_deg: f64,epoch: Epoch,frame: Frame,) -> PhysicsResult<Self>`
-- `pub fn try_keplerian_apsis_radii(r_a_km: f64,r_p_km: f64,inc_deg: f64,raan_deg: f64,aop_deg: f64,ta_deg: f64,epoch: Epoch,frame: Frame,) -> PhysicsResult<Self>`
-- `pub fn try_keplerian_mean_anomaly(sma_km: f64,ecc: f64,inc_deg: f64,raan_deg: f64,aop_deg: f64,ma_deg: f64,epoch: Epoch,frame: Frame,) -> - PhysicsResult<Self>`
-- `pub fn hvec(&self) -> PhysicsResult<Vector3>`
-- `pub fn evec(&self) -> Result<Vector3, PhysicsError>`
-- `pub fn ta_deg(&self) -> PhysicsResult<f64>`
-- `pub fn energy_km2_s2(&self) -> PhysicsResult<f64>`
-- `pub fn sma_km(&self) -> PhysicsResult<f64>`
-- `pub fn ecc(&self) -> PhysicsResult<f64>`
-- `pub fn period(&self) -> PhysicsResult<Duration>`
-- `pub fn set_sma_km(&mut self, new_sma_km: f64) -> PhysicsResult<()>`
-- `pub fn set_ecc(&mut self, new_ecc: f64) -> PhysicsResult<()>`
-- `pub fn set_inc_deg(&mut self, new_inc_deg: f64) -> PhysicsResult<()>`
-
-### orbit_geodedic.rs
-- `pub fn try_keplerian_altitude(sma_altitude_km: f64,ecc: f64,inc_deg: f64,raan_deg: f64,aop_deg: f64,ta_deg: f64,epoch: Epoch,frame: Frame,) -> PhysicsResult<Self>`
-- `pub fn try_keplerian_apsis_altitude(apo_alt_km: f64,peri_alt_km: f64,inc_deg: f64,raan_deg: f64,aop_deg: f64,ta_deg: f64,epoch: Epoch,frame: Frame,) -> PhysicsResult<Self>`
-- `pub fn try_latlongalt(latitude_deg: f64,longitude_deg: f64,height_km: f64,angular_velocity_deg_s: f64,epoch: Epoch,frame: Frame,) -> PhysicsResult<Self>`
-- `pub fn latlongalt(&self) -> PhysicsResult<(f64, f64, f64)>`
-
-### utils.rs
-- `pub fn compute_mean_to_true_anomaly_rad(ma_radians: f64, ecc: f64) -> PhysicsResult<f64>`
-
-## anise/src/almanac
+Feel free to open issues or pull requests to improve the fuzzing setup!
