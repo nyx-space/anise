@@ -47,7 +47,7 @@ jobs:
             # If we're running on rhel centos, install needed packages.
             if command -v yum &> /dev/null; then
                 echo "CENTOS"
-                yum update -y && yum install -y perl-core openssl openssl-devel pkgconfig libatomic lld-19
+                yum update -y && yum install -y perl-core openssl openssl-devel pkgconfig libatomic
 
                 # If we're running on i686 we need to symlink libatomic
                 # in order to build openssl with -latomic flag.
@@ -57,7 +57,7 @@ jobs:
             else
                 # If we're running on debian-based system.
                 echo "DEBIAN LIKE"
-                apt update -y && apt-get install -y libssl-dev openssl pkg-config lld-19
+                apt update -y && apt-get install -y libssl-dev openssl pkg-config
             fi
 
       - name: Upload wheels
