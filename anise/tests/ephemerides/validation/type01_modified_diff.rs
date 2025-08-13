@@ -23,10 +23,21 @@ fn validate_modified_diff_type01_mro() {
 
     let err_count = comparator.run();
 
-    //assert_eq!(err_count, 0, "None of the queries should fail!");
+    assert_eq!(err_count, 0, "None of the queries should fail!");
+
+    // IMPORTANT
+    // THE VALIDATION SHOWS ITS GREATEST ERROR at 810652114.2299933 ET.
+    // HOWEVER, THIS ERROR IS DUE TO AN ACCUMULATION OF MINISCULE ERRORS THE TRANSLATIONS IN
+    // MULTIPLE HOPS BETWEEN OBJECTS AS DEMONSTRATED IN THE TEST `spk1_highest_error` WHERE
+    // THE TRANSLATION TO THE PARENT FRAME IS STRICTLY ZERO TO MACHINE PRECISION.
+    // I'VE SPEND 10 DAYS DEBUGGING THIS UNTIL I ADDED DEBUG STATEMENTS IN CSPICE ITSELF
+    // ONLY TO NOTICE THAT MY IMPLEMENTATION WAS INDEED CORRECT.
 
     let validator = Validation {
         file_name,
+        max_q75_err: 3e-6,
+        max_q99_err: 29.0,
+        max_abs_err: 2.22e+3,
         ..Default::default()
     };
 

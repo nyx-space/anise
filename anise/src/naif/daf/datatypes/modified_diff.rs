@@ -305,3 +305,39 @@ impl<'a> NAIFDataRecord<'a> for ModifiedDiffRecord<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod ut_spk1 {
+    use crate::{math::Vector3, prelude::*};
+    use hifitime::Epoch;
+
+    /// Tests that the high error in the validation is not due to the implementation of the SPK Type 1 algorithm.
+    /// Specifically, I test the epoch where I've used CSPICE to transform to the parent. Then I check that ANISE
+    /// computes the same thing. It does.
+    #[test]
+    fn spk1_highest_error() {
+        let epoch = Epoch::from_et_seconds(810652114.2299933);
+
+        let almanac = Almanac::default().load("../data/mro.bsp").unwrap();
+
+        let state = almanac
+            .translate_to_parent(Frame::from_ephem_j2000(-74), epoch)
+            .unwrap();
+
+        let expct_radius_km = Vector3::new(
+            1.8440613199669174e+03,
+            -2.6192246733281941e+03,
+            1.8330171701204890e+03,
+        );
+
+        let expct_velocity_km_s = Vector3::new(
+            -2.6441587254484528e-01,
+            -2.0515226549157966e+00,
+            -2.6838235165681299e+00,
+        );
+
+        // Serves as validation that ANISE and SPICE match to machine precision.
+        assert_eq!(state.radius_km, expct_radius_km);
+        assert_eq!(state.velocity_km_s, expct_velocity_km_s);
+    }
+}

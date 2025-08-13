@@ -17,10 +17,9 @@ if __name__ == '__main__':
     plotted_anything = False
 
     for filename in glob(f"{target_folder}/spk-type*.parquet"):
-        print(f"reading {filename}")
+
         # Load the parquet file
         df = pd.read_parquet(filename)
-        df = df[df["source frame"]=="-74"]
 
         name = basename(filename)
 
@@ -30,13 +29,14 @@ if __name__ == '__main__':
             print(f"== {kind} {name} ==")
 
             subset = df.loc[df.component.isin(columns)]
-            subset["error"] = (subset["ANISE value"] - subset["SPICE value"])/subset["SPICE value"]
 
             print(subset.describe())
 
             plt = px.scatter(subset,
                              x='ET Epoch (s)',
-                             y="error")
+                             y='Absolute difference',
+                             color='source frame',
+                             title=f"Validation of {name} for {kind}")
 
             plt.write_html(
                 f"{target_folder}/validation-plot-{kind}-{name}.html")
