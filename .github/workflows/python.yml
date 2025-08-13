@@ -46,6 +46,7 @@ jobs:
             # Source: https://github.com/sfackler/rust-openssl/issues/2036#issuecomment-1724324145
             # If we're running on rhel centos, install needed packages.
             if command -v yum &> /dev/null; then
+                echo "CENTOS"
                 yum update -y && yum install -y perl-core openssl openssl-devel pkgconfig libatomic
 
                 # If we're running on i686 we need to symlink libatomic
@@ -55,6 +56,7 @@ jobs:
                 fi
             else
                 # If we're running on debian-based system.
+                echo "DEBIAN LIKE"
                 apt update -y && apt-get install -y libssl-dev openssl pkg-config
             fi
 

@@ -54,6 +54,7 @@ jobs:
           wget -O data/variable-seg-size-hermite.bsp http://public-data.nyxspace.com/anise/ci/variable-seg-size-hermite.bsp
           wget -O data/earth_latest_high_prec.bpc http://public-data.nyxspace.com/anise/ci/earth_latest_high_prec-2023-09-08.bpc
           wget -O data/lro.bsp http://public-data.nyxspace.com/nyx/examples/lrorg_2023349_2024075_v01_LE.bsp
+          wget -O data/mro.bsp https://naif.jpl.nasa.gov/pub/naif/MRO/kernels/spk/spk_psp_rec89118_89113_89888_p-v1.bsp
 
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -119,6 +120,7 @@ jobs:
           wget -O data/variable-seg-size-hermite.bsp http://public-data.nyxspace.com/anise/ci/variable-seg-size-hermite.bsp
           wget -O data/earth_latest_high_prec.bpc http://public-data.nyxspace.com/anise/ci/earth_latest_high_prec-2023-09-08.bpc
           wget -O data/lro.bsp http://public-data.nyxspace.com/nyx/examples/lrorg_2023349_2024075_v01_LE.bsp
+          wget -O data/mro.bsp https://naif.jpl.nasa.gov/pub/naif/MRO/kernels/spk/spk_psp_rec89118_89113_89888_p-v1.bsp
 
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -145,6 +147,9 @@ jobs:
         env:
           LAGRANGE_BSP: gmat-lagrange.bsp
         run: RUST_BACKTRACE=1 cargo test validate_lagrange_type9_with_varying_segment_sizes --features validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
+
+      - name: Rust-SPICE Modified Difference validation
+        run: RUST_BACKTRACE=1 cargo test validate_modified_diff_type01 --features validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
 
       - name: Rust-SPICE PCK validation
         run: RUST_BACKTRACE=1 cargo test validate_iau_rotation_to_parent --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --ignored
@@ -195,6 +200,7 @@ jobs:
           wget -O data/lro.bsp http://public-data.nyxspace.com/nyx/examples/lrorg_2023349_2024075_v01_LE.bsp
           wget -O data/moon_fk_de440.epa http://public-data.nyxspace.com/anise/v0.5/moon_fk_de440.epa
           wget -O data/moon_pa_de440_200625.bpc http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc
+          wget -O data/mro.bsp https://naif.jpl.nasa.gov/pub/naif/MRO/kernels/spk/spk_psp_rec89118_89113_89888_p-v1.bsp 
 
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -224,6 +230,7 @@ jobs:
           cargo llvm-cov test --no-report validate_jplde_de440_type3_no_aberration --features validation -- --nocapture --ignored
           cargo llvm-cov test --no-report validate_hermite_type13_from_gmat --features validation -- --nocapture --ignored
           cargo llvm-cov test --no-report validate_lagrange_type9_with_varying_segment_sizes --features validation -- --nocapture --ignored
+          cargo llvm-cov test --no-report validate_modified_diff_type01 --features validation -- --nocapture --ignored
           cargo llvm-cov test --no-report ut_embed --features embed_ephem
           cargo llvm-cov report --lcov > ../lcov.txt
 
