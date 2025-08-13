@@ -30,14 +30,13 @@ if __name__ == '__main__':
             print(f"== {kind} {name} ==")
 
             subset = df.loc[df.component.isin(columns)]
+            subset["error"] = (subset["ANISE value"] - subset["SPICE value"])/subset["SPICE value"]
 
             print(subset.describe())
 
             plt = px.scatter(subset,
                              x='ET Epoch (s)',
-                             y='Absolute difference',
-                             color='source frame',
-                             title=f"Validation of {name} for {kind}")
+                             y="error")
 
             plt.write_html(
                 f"{target_folder}/validation-plot-{kind}-{name}.html")
