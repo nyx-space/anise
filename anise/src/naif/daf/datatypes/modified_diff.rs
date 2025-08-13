@@ -153,6 +153,23 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
             }
         }
 
+        for val in self.epoch_data {
+            if !val.is_finite() {
+                return Err(IntegrityError::SubNormal {
+                    dataset: Self::DATASET_NAME,
+                    variable: "one of the epoch data",
+                });
+            }
+        }
+
+        for val in self.epoch_registry {
+            if !val.is_finite() {
+                return Err(IntegrityError::SubNormal {
+                    dataset: Self::DATASET_NAME,
+                    variable: "one of the epoch registry",
+                });
+            }
+        }
         Ok(())
     }
 }
@@ -198,7 +215,7 @@ impl<'a> ModifiedDiffRecord<'a> {
         let mut fc = [0.0; 14];
         let mut wc = [0.0; 13];
 
-        for j in 0..mq2 as usize {
+        for j in 0..mq2.max(0.0) as usize {
             fc[j] = tp / self.nodes[j];
             wc[j] = delta / self.nodes[j];
             tp = delta + self.nodes[j];
@@ -300,7 +317,7 @@ impl<'a> NAIFDataRecord<'a> for ModifiedDiffRecord<'a> {
             ref_vy_km_s: slice[19],
             ref_vz_km_s: slice[21],
             mod_diff_array: &slice[22..67],
-            kqmax1: slice[67], // TODO: Check this is an integer
+            kqmax1: slice[67],
             kq: &slice[68..71],
         }
     }
