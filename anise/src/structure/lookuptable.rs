@@ -205,7 +205,7 @@ impl<const ENTRIES: usize> LookUpTable<ENTRIES> {
     ) -> (
         SequenceOf<i32, ENTRIES>,
         SequenceOf<u32, ENTRIES>,
-        SequenceOf<OctetStringRef, ENTRIES>,
+        SequenceOf<OctetStringRef<'_>, ENTRIES>,
         SequenceOf<u32, ENTRIES>,
     ) {
         // Build the list of entries

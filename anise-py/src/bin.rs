@@ -16,6 +16,7 @@ use std::env::consts::OS;
 use std::fs;
 use std::process::Command;
 
+#[allow(clippy::zombie_processes)]
 #[pyfunction]
 pub(crate) fn exec_gui() -> Result<(), MetaAlmanacError> {
     if ["windows", "linux"].contains(&OS) {

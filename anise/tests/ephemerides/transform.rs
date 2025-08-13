@@ -462,9 +462,18 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
         // We've had a full access strand.
         let access_end = epoch + period;
         let access_duration = (access_end - access_start).round(Unit::Second * 1);
+<<<<<<< HEAD
         println!(
             "#{access_count}\t{access_start} - {access_end}\t{access_duration}"
         );
+||||||| 54e4399
+        println!(
+            "#{access_count}\t{access_start} - {access_end}\t{}",
+            access_duration
+        );
+=======
+        println!("#{access_count}\t{access_start} - {access_end}\t{access_duration}",);
+>>>>>>> master
         assert_eq!(access_times[access_count], access_duration);
     }
 
