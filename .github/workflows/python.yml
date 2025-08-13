@@ -46,7 +46,8 @@ jobs:
             # Source: https://github.com/sfackler/rust-openssl/issues/2036#issuecomment-1724324145
             # If we're running on rhel centos, install needed packages.
             if command -v yum &> /dev/null; then
-                yum update -y && yum install -y perl-core openssl openssl-devel pkgconfig libatomic clang lld
+                echo "CENTOS"
+                yum update -y && yum install -y perl-core openssl openssl-devel pkgconfig libatomic lld-19
 
                 # If we're running on i686 we need to symlink libatomic
                 # in order to build openssl with -latomic flag.
@@ -55,7 +56,8 @@ jobs:
                 fi
             else
                 # If we're running on debian-based system.
-                apt update -y && apt-get install -y libssl-dev openssl pkg-config clang lld
+                echo "DEBIAN LIKE"
+                apt update -y && apt-get install -y libssl-dev openssl pkg-config lld-19
             fi
 
       - name: Upload wheels
