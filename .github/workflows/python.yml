@@ -273,6 +273,10 @@ jobs:
           name: wheels-sdist
           path: anise-py/dist
 
+      - name: Install uv # Check that we can install uv in normal pipelines
+        run: | 
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+
   release:
     name: Release
     runs-on: ubuntu-latest
