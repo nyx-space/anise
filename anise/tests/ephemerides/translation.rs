@@ -13,11 +13,10 @@ use anise::file2heap;
 use anise::math::Vector3;
 use anise::prelude::*;
 
-// Corresponds to an error of 2e-5 meters, or 2e-2 millimeters, or 20 micrometers
+// We achieve machine-precision zero error with SPICE on all of these tests with geometric and light-time corrections.
+// Stellar aberration velocity errors remain present, refer to https://github.com/nyx-space/anise/issues/157.
 const POSITION_EPSILON_KM: f64 = 2e-16;
-// Corresponds to an error of 5e-6 meters per second, or 5.0 micrometers per second
 const VELOCITY_EPSILON_KM_S: f64 = 2e-16;
-// Light time with stellar aberration velocity error is too large! Cf. https://github.com/nyx-space/anise/issues/157
 const STELLAR_ABERRATION_VELOCITY_EPSILON_KM_S: f64 = 1e-4;
 
 #[test]
