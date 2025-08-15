@@ -14,11 +14,11 @@ use anise::math::Vector3;
 use anise::prelude::*;
 
 // Corresponds to an error of 2e-5 meters, or 2e-2 millimeters, or 20 micrometers
-const POSITION_EPSILON_KM: f64 = 2e-8;
+const POSITION_EPSILON_KM: f64 = 2e-16;
 // Corresponds to an error of 5e-6 meters per second, or 5.0 micrometers per second
-const VELOCITY_EPSILON_KM_S: f64 = 5e-9;
-// Light time velocity error is too large! Cf. https://github.com/nyx-space/anise/issues/157
-const ABERRATION_VELOCITY_EPSILON_KM_S: f64 = 1e-4;
+const VELOCITY_EPSILON_KM_S: f64 = 2e-16;
+// Light time with stellar aberration velocity error is too large! Cf. https://github.com/nyx-space/anise/issues/157
+const STELLAR_ABERRATION_VELOCITY_EPSILON_KM_S: f64 = 1e-4;
 
 #[test]
 fn de440s_translation_verif_venus2emb() {
@@ -296,7 +296,7 @@ fn de438s_translation_verif_emb2moon() {
 }
 
 #[test]
-fn spk_hermite_type13_verif() {
+fn type13_hermite_verif() {
     let _ = pretty_env_logger::try_init().is_err();
 
     let ctx = Almanac::default()
@@ -378,7 +378,7 @@ fn multithread_query() {
 }
 
 #[test]
-fn hermite_query() {
+fn type13_hermite_query() {
     use anise::naif::kpl::parser::convert_tpc;
 
     let traj = SPK::load("../data/gmat-hermite.bsp").unwrap();
@@ -598,12 +598,14 @@ fn de440s_translation_verif_aberrations() {
             (pos_km - case.pos_expct_km).norm()
         );
 
+        let epsilon = if case.correction.unwrap().stellar {
+            STELLAR_ABERRATION_VELOCITY_EPSILON_KM_S
+        } else {
+            VELOCITY_EPSILON_KM_S
+        };
+
         assert!(
-            relative_eq!(
-                vel_km_s,
-                case.vel_expct_km_s,
-                epsilon = ABERRATION_VELOCITY_EPSILON_KM_S
-            ),
+            relative_eq!(vel_km_s, case.vel_expct_km_s, epsilon = epsilon),
             "got {} but want {} with {} (#{cno}) => err = {:.3e} km/s",
             vel_km_s,
             case.vel_expct_km_s,
