@@ -147,7 +147,6 @@ impl Almanac {
                         })?;
                     let tgt_ssb_pos_km = tgt_ssb.radius_km;
                     let tgt_ssb_vel_km_s = tgt_ssb.velocity_km_s;
-                    
                     rel_pos_km = tgt_ssb_pos_km - obs_ssb_pos_km;
                     let r_norm = rel_pos_km.norm();
                     // From spkltc: get light-time corrected relative velocity.
