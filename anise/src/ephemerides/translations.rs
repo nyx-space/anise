@@ -112,63 +112,73 @@ impl Almanac {
                 // This is a rewrite of NAIF SPICE's `spkapo`
 
                 // Find the geometric position of the observer body with respect to the solar system barycenter.
-                let obs_ssb = self.translate(observer_frame, SSB_J2000, epoch, None)?;
-                let obs_ssb_pos_km = obs_ssb.radius_km;
+    let obs_ssb = self.translate(observer_frame, SSB_J2000, epoch, None)?;
+    let obs_ssb_pos_km = obs_ssb.radius_km;
                 let obs_ssb_vel_km_s = obs_ssb.velocity_km_s;
 
-                // Find the geometric position of the target body with respect to the solar system barycenter.
+    // Find the geometric position of the target body with respect to the solar system barycenter.
                 let tgt_ssb = self.translate(target_frame, SSB_J2000, epoch, None)?;
                 let tgt_ssb_pos_km = tgt_ssb.radius_km;
                 let tgt_ssb_vel_km_s = tgt_ssb.velocity_km_s;
 
-                // Subtract the position of the observer to get the relative position.
-                let mut rel_pos_km = tgt_ssb_pos_km - obs_ssb_pos_km;
-                // NOTE: We never correct the velocity, so the geometric velocity is what we're seeking.
+    // Subtract the position of the observer to get the relative position.
+    let mut rel_pos_km = tgt_ssb_pos_km - obs_ssb_pos_km;
+    // NOTE: We never correct the velocity, so the geometric velocity is what we're seeking.
                 let mut rel_vel_km_s = tgt_ssb_vel_km_s - obs_ssb_vel_km_s;
 
                 // Use this to compute the one-way light time in seconds.
-                let mut one_way_lt_s = rel_pos_km.norm() / SPEED_OF_LIGHT_KM_S;
+    let mut one_way_lt_s = rel_pos_km.norm() / SPEED_OF_LIGHT_KM_S;
 
                 // To correct for light time, find the position of the target body at the current epoch
                 // minus the one-way light time. Note that the observer remains where he is.
 
-                let num_it = if ab_corr.converged { 3 } else { 1 };
-                let lt_sign = if ab_corr.transmit_mode { 1.0 } else { -1.0 };
+    let num_it = if ab_corr.converged { 3 } else { 1 };
+    let lt_sign = if ab_corr.transmit_mode { 1.0 } else { -1.0 };
 
-                for _ in 0..num_it {
-                    let epoch_lt = epoch + lt_sign * one_way_lt_s * TimeUnit::Second;
-                    let tgt_ssb = self
-                        .translate(target_frame, SSB_J2000, epoch_lt, None)
-                        .map_err(|e| EphemerisError::LightTimeCorrection {
-                            epoch,
-                            epoch_lt,
-                            ab_corr,
-                            source: Box::new(e),
-                        })?;
+    for _ in 0..num_it {
+        let epoch_lt = epoch + lt_sign * one_way_lt_s * TimeUnit::Second;
+        let tgt_ssb = self
+            .translate(target_frame, SSB_J2000, epoch_lt, None)
+            .map_err(|e| EphemerisError::LightTimeCorrection {
+                epoch,
+                epoch_lt,
+                ab_corr,
+                source: Box::new(e),
+            })?;
                     let tgt_ssb_pos_km = tgt_ssb.radius_km;
                     let tgt_ssb_vel_km_s = tgt_ssb.velocity_km_s;
 
-                    rel_pos_km = tgt_ssb_pos_km - obs_ssb_pos_km;
-                    rel_vel_km_s = tgt_ssb_vel_km_s - obs_ssb_vel_km_s;
-                    one_way_lt_s = rel_pos_km.norm() / SPEED_OF_LIGHT_KM_S;
-                }
+        rel_pos_km = tgt_ssb_pos_km - obs_ssb_pos_km;
+        let r_norm = rel_pos_km.norm();
+        // From spkltc: get light-time corrected relative velocity.
+        if r_norm > 0.0 {
+            let a = 1.0 / (SPEED_OF_LIGHT_KM_S * r_norm);
+            let b = rel_pos_km.dot(&(tgt_ssb_vel_km_s - obs_ssb_vel_km_s));
+            let c = rel_pos_km.dot(&tgt_ssb_vel_km_s);
+            let dlt = (a * b) / (1.0 - lt_sign * c * a); // the rate of change of light time.
+            rel_vel_km_s = tgt_ssb_vel_km_s * (1.0 + lt_sign * dlt) - obs_ssb_vel_km_s;
+        } else {
+            rel_vel_km_s = tgt_ssb_vel_km_s - obs_ssb_vel_km_s;
+        }
+        one_way_lt_s = r_norm / SPEED_OF_LIGHT_KM_S;
+    }
 
                 // If stellar aberration correction is requested, perform it now.
-                if ab_corr.stellar {
+if ab_corr.stellar {
                     // Modifications based on transmission versus reception case is done in the function directly.
                     rel_pos_km = stellar_aberration(rel_pos_km, obs_ssb_vel_km_s, ab_corr)
                         .context(EphemerisPhysicsSnafu {
                             action: "computing stellar aberration",
-                        })?;
+})?;
                 }
 
-                Ok(CartesianState {
-                    radius_km: rel_pos_km,
-                    velocity_km_s: rel_vel_km_s,
-                    epoch,
-                    frame: observer_frame.with_orient(target_frame.orientation_id),
-                })
-            }
+    Ok(CartesianState {
+        radius_km: rel_pos_km,
+        velocity_km_s: rel_vel_km_s,
+        epoch,
+        frame: observer_frame.with_orient(target_frame.orientation_id),
+    })
+}
         }
     }
 
