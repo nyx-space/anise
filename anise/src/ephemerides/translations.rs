@@ -153,7 +153,7 @@ impl Almanac {
                     let geometric_rel_vel = tgt_ssb_vel_km_s - obs_ssb_vel_km_s;
                     if r_norm > 0.0 {
                         let inv_c_r = 1.0 / (SPEED_OF_LIGHT_KM_S * r_norm);
-                        let r_dot_v_rel = rel_pos_km.dot(&(geometric_rel_vel));
+                        let r_dot_v_rel = rel_pos_km.dot(&geometric_rel_vel);
                         let r_dot_v_tgt = rel_pos_km.dot(&tgt_ssb_vel_km_s);
                         // The rate of change of light time.
                         let dlt = (inv_c_r * r_dot_v_rel) / (1.0 - lt_sign * r_dot_v_tgt * inv_c_r); // the rate of change of light time.
