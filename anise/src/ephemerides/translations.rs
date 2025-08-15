@@ -150,14 +150,16 @@ impl Almanac {
                     rel_pos_km = tgt_ssb_pos_km - obs_ssb_pos_km;
                     let r_norm = rel_pos_km.norm();
                     // From spkltc: get light-time corrected relative velocity.
+                    let geometric_rel_vel = tgt_ssb_vel_km_s - obs_ssb_vel_km_s;
                     if r_norm > 0.0 {
-                        let a = 1.0 / (SPEED_OF_LIGHT_KM_S * r_norm);
-                        let b = rel_pos_km.dot(&(tgt_ssb_vel_km_s - obs_ssb_vel_km_s));
-                        let c = rel_pos_km.dot(&tgt_ssb_vel_km_s);
-                        let dlt = (a * b) / (1.0 - lt_sign * c * a); // the rate of change of light time.
+                        let inv_c_r = 1.0 / (SPEED_OF_LIGHT_KM_S * r_norm);
+                        let r_dot_v_rel = rel_pos_km.dot(&(geometric_rel_vel));
+                        let r_dot_v_tgt = rel_pos_km.dot(&tgt_ssb_vel_km_s);
+                        // The rate of change of light time.
+                        let dlt = (inv_c_r * r_dot_v_rel) / (1.0 - lt_sign * r_dot_v_tgt * inv_c_r); // the rate of change of light time.
                         rel_vel_km_s = tgt_ssb_vel_km_s * (1.0 + lt_sign * dlt) - obs_ssb_vel_km_s;
                     } else {
-                        rel_vel_km_s = tgt_ssb_vel_km_s - obs_ssb_vel_km_s;
+                        rel_vel_km_s = geometric_rel_vel;
                     }
                     one_way_lt_s = r_norm / SPEED_OF_LIGHT_KM_S;
                 }
