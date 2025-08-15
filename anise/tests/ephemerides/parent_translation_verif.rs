@@ -77,15 +77,11 @@ fn de440s_parent_translation_verif() {
     // We expect exactly the same output as SPICE to machine precision.
     assert!(
         (pos_km - pos_expct_km).norm() < f64::EPSILON,
-        "got {} but want {}",
-        pos_km,
-        pos_expct_km
+        "got {pos_km} but want {pos_expct_km}",
     );
 
     assert!(
         (vel_km_s - vel_expct_km_s).norm() < f64::EPSILON,
-        "got {} but want {}",
-        vel_km_s,
-        vel_expct_km_s
+        "got {vel_km_s} but want {vel_expct_km_s}",
     );
 }

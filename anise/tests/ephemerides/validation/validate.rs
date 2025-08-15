@@ -21,12 +21,9 @@ pub struct Validation {
 impl Validation {
     /// Computes the quantiles of the absolute errors in the Parquet file and asserts these are within the bounds of the validation.
     pub fn validate(&self) {
+        let path = format!("../target/{}.parquet", self.file_name);
         // Open the parquet file with all the data
-        let df = LazyFrame::scan_parquet(
-            format!("../target/{}.parquet", self.file_name),
-            Default::default(),
-        )
-        .unwrap();
+        let df = LazyFrame::scan_parquet(PlPath::new(&path), Default::default()).unwrap();
 
         let abs_errors = df
             .clone()
@@ -35,7 +32,7 @@ impl Validation {
                 min("Absolute difference").alias("min abs err"),
                 col("Absolute difference")
                     .quantile(
-                        Expr::Literal(polars::prelude::LiteralValue::Float64(0.25)),
+                        Expr::Literal(polars::prelude::LiteralValue::Scalar(0.25.into())),
                         QuantileMethod::Higher,
                     )
                     .alias("q25 abs err"),
@@ -43,13 +40,13 @@ impl Validation {
                 col("Absolute difference").median().alias("median abs err"),
                 col("Absolute difference")
                     .quantile(
-                        Expr::Literal(polars::prelude::LiteralValue::Float64(0.75)),
+                        Expr::Literal(polars::prelude::LiteralValue::Scalar(0.75.into())),
                         QuantileMethod::Higher,
                     )
                     .alias("q75 abs err"),
                 col("Absolute difference")
                     .quantile(
-                        Expr::Literal(polars::prelude::LiteralValue::Float64(0.99)),
+                        Expr::Literal(polars::prelude::LiteralValue::Scalar(0.99.into())),
                         QuantileMethod::Higher,
                     )
                     .alias("q99 abs err"),
@@ -57,7 +54,7 @@ impl Validation {
             ])
             .collect()
             .unwrap();
-        println!("{}", abs_errors);
+        println!("{abs_errors}");
 
         // Validate results
 

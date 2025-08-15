@@ -160,8 +160,8 @@ impl fmt::Display for HermiteSetType13<'_> {
         write!(
             f,
             "Hermite Type 13 from {:E} to {:E} with degree {} ({} items, {} epoch directories)",
-            Epoch::from_et_seconds(*self.epoch_data.first().unwrap()),
-            Epoch::from_et_seconds(*self.epoch_data.last().unwrap()),
+            Epoch::from_et_seconds(*self.epoch_data.first().unwrap_or(&0.0)),
+            Epoch::from_et_seconds(*self.epoch_data.last().unwrap_or(&0.0)),
             self.degree(),
             self.epoch_data.len(),
             self.epoch_registry.len()
@@ -268,11 +268,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
     ) -> Result<Self::StateKind, InterpolationError> {
         // Start by doing a binary search on the epoch registry to limit the search space in the total number of epochs.
         if self.epoch_data.is_empty() {
-            return Err(InterpolationError::NoInterpolationData {
-                req: epoch,
-                start: Epoch::from_et_seconds(self.epoch_data[0]),
-                end: Epoch::from_et_seconds(*self.epoch_data.last().unwrap()),
-            });
+            return Err(InterpolationError::MissingInterpolationData { epoch });
         }
         // Check that we even have interpolation data for that time
         if epoch.to_et_seconds() < self.epoch_data[0] - 1e-7

@@ -208,7 +208,7 @@ where
 
     info!("CRC32 checksum: 0x{:X}", fmt.crc32());
     if let Some(comments) = fmt.comments().context(CliDAFSnafu)? {
-        println!("== COMMENTS ==\n{}== END ==", comments);
+        println!("== COMMENTS ==\n{comments}== END ==");
     } else {
         println!("(File has no comments)");
     }
@@ -223,7 +223,7 @@ fn rm_daf_by_id<R>(
 where
     R: NAIFSummaryRecord,
 {
-    info!("Loading {:?} as DAF/PCK", input);
+    info!("Loading {input:?} as DAF/PCK");
     let fmt = DAF::<R>::parse(bytes).context(CliDAFSnafu)?;
 
     let mut ids = HashSet::new();

@@ -86,7 +86,7 @@ impl SPKSummaryRecord {
 
     /// Converts the provided ID to its human name.
     /// Only works for the common celestial bodies
-    #[cfg(feature = "spkezr_validation")]
+    #[cfg(feature = "validation")]
     pub fn id_to_spice_name(id: i32) -> Result<&'static str, EphemerisError> {
         if id % 100 == 99 {
             // This is the planet itself
@@ -127,7 +127,7 @@ impl SPKSummaryRecord {
 
     /// Converts the provided ID to its human name.
     /// Only works for the common celestial bodies
-    #[cfg(feature = "spkezr_validation")]
+    #[cfg(feature = "validation")]
     pub fn spice_name_to_id(name: &str) -> Result<i32, EphemerisError> {
         match name {
             "Mercury" => Ok(1),
