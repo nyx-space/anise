@@ -282,7 +282,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    if: github.ref_type == 'tag'
+    # if: github.ref_type == 'tag'
     needs: [linux, windows, macos-13, macos-14, macos-15, sdist]
     steps:
       - uses: actions/download-artifact@v4 # No `name` to download all artifacts.
@@ -296,4 +296,5 @@ jobs:
         run: |
           # Install uv
           curl -LsSf https://astral.sh/uv/install.sh | sh
-          uv publish
+          ls wheels*
+          uv publish wheels*
