@@ -11,57 +11,63 @@
 // FOCI: 1. Build the angle between two objects, defined in the loaded Almanac.
 //       2. Rebuild the angular momentum vector to demonstrate the cross product.
 
-use crate::{almanac::Almanac, prelude::FrameUid};
+use hifitime::{Epoch, TimeSeries};
+use std::collections::HashMap;
+
+use crate::{almanac::Almanac, errors::AlmanacError, prelude::Frame};
 // TODO: Once https://github.com/Nadrieril/dhall-rust/issues/242 is closed, enable Dhall serialization.
 // Will be implemented in https://github.com/nyx-space/anise/issues/466
 // use serde_derive::{Deserialize, Serialize};
 // use serde_dhall::StaticType;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum FrameDef {
-    Uid(FrameUid),
-    Manual(Box<ReferenceFrame>),
+pub enum FrameSpec {
+    Loaded(Frame),
+    Manual(Box<CustomFrameDef>),
 }
 
 /// StateDef allows defining a state from one frame (`from_frame`) to another (`to_frame`)
 #[derive(Clone, Debug, PartialEq)]
-pub struct StateDef {
-    from_frame: FrameDef,
-    to_frame: FrameDef,
+pub struct StateSpec {
+    from_frame: FrameSpec,
+    to_frame: FrameSpec,
 }
 
 /// VectorExpr defines a vector expression, which can either be computed from a state, or from a fixed definition.
 #[derive(Clone, Debug, PartialEq)]
 pub enum VectorExpr {
     Fixed { x: f64, y: f64, z: f64 }, // Unitless vector, for arbitrary computations
-    Position(StateDef),
-    Velocity(StateDef),
-    OrbitalMomentum(StateDef),
-    EccentricityVector(StateDef),
+    Position(StateSpec),
+    Velocity(StateSpec),
+    OrbitalMomentum(StateSpec),
+    EccentricityVector(StateSpec),
     CrossProduct { a: Box<Self>, b: Box<Self> },
 }
 
 /// VectorScalar defines a scalar computation from a (set of) vector expression(s).
 #[derive(Clone, Debug, PartialEq)]
-pub enum ScalarCalc {
+pub enum ScalarExpr {
     Norm(VectorExpr),
     NormSquared(VectorExpr),
     DotProduct { a: VectorExpr, b: VectorExpr },
     AngleBetween { a: VectorExpr, b: VectorExpr },
-    OrbitalElement(OrbitalElement),
+    VectorX(VectorExpr),
+    VectorY(VectorExpr),
+    VectorZ(VectorExpr),
+    Element(OrbitalElement),
 }
 
 /// Orbital element defines all of the supported orbital elements in ANISE, which are all built from a State.
 #[derive(Clone, Debug, PartialEq)]
 pub enum OrbitalElement {
-    SemiMajorAxis(StateDef),
-    RAAN(StateDef),
-    Eccentricity(StateDef),
+    SemiMajorAxis,
+    RAAN,
+    Eccentricity,
 }
 
 // Defines how to build an orthogonal frame from custom vector expressions
 #[derive(Clone, Debug, PartialEq)]
-pub enum OrthogonalFrame {
+pub enum OrthonormalFrame {
     CrossProductXY { x: VectorExpr, y: VectorExpr },
     CrossProductXZ { x: VectorExpr, z: VectorExpr },
     CrossProductYZ { y: VectorExpr, z: VectorExpr },
@@ -70,28 +76,34 @@ pub enum OrthogonalFrame {
 /// Defines a runtime reference frame from an orthogonal frame, allowing it to be normalized or some vectors negated.
 /// Note that if trying to negate a vector that isn't used in the definition of the orthogonal frame, an error will be raised.
 #[derive(Clone, Debug, PartialEq)]
-pub struct ReferenceFrame {
-    pub frame: OrthogonalFrame,
+pub struct CustomFrameDef {
+    pub frame: OrthonormalFrame,
     pub negate_x: bool,
     pub negate_y: bool,
     pub negate_z: bool,
 }
 
-impl Almanac {}
+impl Almanac {
+    pub fn generate_report(
+        &self,
+        scalars: &[ScalarExpr],
+        state_def: StateSpec,
+        timeseries: TimeSeries,
+    ) -> Result<HashMap<Epoch, HashMap<String, f64>>, AlmanacError> {
+        todo!()
+    }
+}
 
 #[cfg(test)]
 mod ut_analysis {
 
-    use crate::analysis::{FrameUid, OrbitalElement, ScalarCalc, StateDef, VectorExpr};
-    use crate::constants::celestial_objects::EARTH;
+    use crate::analysis::{Frame, OrbitalElement, ScalarExpr, StateSpec, VectorExpr};
     use crate::constants::frames::{EME2000, SUN_J2000};
-    use crate::constants::orientations::J2000;
     use crate::prelude::Almanac;
-    use arrow::array::Scalar;
+    use hifitime::{Epoch, TimeSeries, Unit};
     use rstest::*;
-    use serde_dhall::StaticType;
 
-    use super::FrameDef;
+    use super::FrameSpec;
 
     #[fixture]
     fn almanac() -> Almanac {
@@ -120,19 +132,29 @@ mod ut_analysis {
     fn test_analysis_orbital_element(almanac: Almanac) {
         // Try to compute the SMA of the Earth with respect to the Sun.
 
-        let from_frame = FrameDef::Uid(EME2000.into());
-        let to_frame = FrameDef::Uid(SUN_J2000.into());
+        let from_frame = FrameSpec::Loaded(EME2000);
+        let to_frame = FrameSpec::Loaded(SUN_J2000);
 
-        let state = StateDef {
+        let state = StateSpec {
             from_frame,
             to_frame,
         };
 
-        let calculations = vec![
-            ScalarCalc::OrbitalElement(OrbitalElement::SemiMajorAxis(state)),
-            ScalarCalc::OrbitalElement(OrbitalElement::Eccentricity(state)),
+        let scalars = [
+            ScalarExpr::Element(OrbitalElement::SemiMajorAxis),
+            ScalarExpr::Element(OrbitalElement::Eccentricity),
         ];
 
-        // almanac.calculate(calculations).unwrap();
+        almanac
+            .generate_report(
+                &scalars,
+                state,
+                TimeSeries::inclusive(
+                    Epoch::from_gregorian_tai_at_midnight(2025, 1, 1),
+                    Epoch::from_gregorian_tai_at_noon(2026, 1, 1),
+                    Unit::Minute * 1,
+                ),
+            )
+            .unwrap();
     }
 }
