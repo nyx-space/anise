@@ -12,7 +12,7 @@
 //       2. Rebuild the angular momentum vector to demonstrate the cross product.
 
 use hifitime::{Epoch, TimeSeries};
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 use crate::{almanac::Almanac, errors::AlmanacError, prelude::Frame};
 // TODO: Once https://github.com/Nadrieril/dhall-rust/issues/242 is closed, enable Dhall serialization.
@@ -23,7 +23,19 @@ use crate::{almanac::Almanac, errors::AlmanacError, prelude::Frame};
 #[derive(Clone, Debug, PartialEq)]
 pub enum FrameSpec {
     Loaded(Frame),
-    Manual(Box<CustomFrameDef>),
+    Manual {
+        name: String,
+        defn: Box<CustomFrameDef>,
+    },
+}
+
+impl fmt::Display for FrameSpec {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Loaded(frame) => write!(f, "{frame:x}"),
+            Self::Manual { name, defn: _ } => write!(f, "{name}"),
+        }
+    }
 }
 
 /// StateDef allows defining a state from one frame (`from_frame`) to another (`to_frame`)
@@ -33,15 +45,34 @@ pub struct StateSpec {
     to_frame: FrameSpec,
 }
 
+impl fmt::Display for StateSpec {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} -> {}", self.from_frame, self.to_frame)
+    }
+}
+
 /// VectorExpr defines a vector expression, which can either be computed from a state, or from a fixed definition.
 #[derive(Clone, Debug, PartialEq)]
 pub enum VectorExpr {
     Fixed { x: f64, y: f64, z: f64 }, // Unitless vector, for arbitrary computations
-    Position(StateSpec),
+    Radius(StateSpec),
     Velocity(StateSpec),
     OrbitalMomentum(StateSpec),
     EccentricityVector(StateSpec),
     CrossProduct { a: Box<Self>, b: Box<Self> },
+}
+
+impl fmt::Display for VectorExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Fixed { x, y, z } => write!(f, "[{x}, {y}, {z}]"),
+            Self::Radius(state) => write!(f, "Radius({state})"),
+            Self::Velocity(state) => write!(f, "Velocity({state})"),
+            Self::OrbitalMomentum(state) => write!(f, "OrbitalMomentum({state})"),
+            Self::EccentricityVector(state) => write!(f, "EccentricityVector({state})"),
+            Self::CrossProduct { a, b } => write!(f, "{a} x {b}"),
+        }
+    }
 }
 
 /// VectorScalar defines a scalar computation from a (set of) vector expression(s).
@@ -126,6 +157,27 @@ mod ut_analysis {
                 .to_string_lossy(),
         )
         .unwrap()
+    }
+
+    #[test]
+    fn test_displays() {
+        let from_frame = FrameSpec::Loaded(EME2000);
+        let to_frame = FrameSpec::Loaded(SUN_J2000);
+
+        let state = StateSpec {
+            from_frame,
+            to_frame,
+        };
+
+        assert_eq!(format!("{state}"), "Earth J2000 -> Sun J2000");
+
+        let r = VectorExpr::Radius(state.clone());
+        let v = VectorExpr::Velocity(state.clone());
+        let h = VectorExpr::CrossProduct {
+            a: Box::new(r.clone()),
+            b: Box::new(v.clone()),
+        };
+        println!("{r}\n{v}\n{h}");
     }
 
     #[rstest]
