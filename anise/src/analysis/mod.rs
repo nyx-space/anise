@@ -48,6 +48,7 @@ impl Almanac {
 }
 
 #[cfg(test)]
+#[cfg(not(feature = "python"))] // These tests use Clone
 mod ut_analysis {
 
     use crate::analysis::prelude::*;

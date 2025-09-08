@@ -17,9 +17,10 @@ use crate::{almanac::Almanac, astro::Aberration, errors::AlmanacError, prelude::
 // use serde_derive::{Deserialize, Serialize};
 // use serde_dhall::StaticType;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug)]
+#[cfg_attr(not(feature = "python"), Clone, PartialEq)]
 pub enum FrameSpec {
-    Loaded(Frame),
+    Loaded(Frame), // TODO: Add local frames: RIC, VNC, RCN
     Manual {
         name: String,
         defn: Box<CustomFrameDef>,
@@ -36,7 +37,8 @@ impl fmt::Display for FrameSpec {
 }
 
 /// StateDef allows defining a state from one frame (`from_frame`) to another (`to_frame`)
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug)]
+#[cfg_attr(not(feature = "python"), Clone, PartialEq)]
 pub struct StateSpec {
     pub from_frame: FrameSpec,
     pub to_frame: FrameSpec,
