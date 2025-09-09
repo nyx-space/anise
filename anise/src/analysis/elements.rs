@@ -8,10 +8,271 @@
  * Documentation: https://nyxspace.com/
  */
 
+use snafu::ResultExt;
+
+use super::{AnalysisError, PhysicsExprSnafu};
+use crate::prelude::Orbit;
+
 /// Orbital element defines all of the supported orbital elements in ANISE, which are all built from a State.
-#[derive(Clone, Debug, PartialEq)]
+#[allow(non_camel_case_types, clippy::upper_case_acronyms)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum OrbitalElement {
-    SemiMajorAxis,
-    RAAN,
+    /// Argument of Latitude (deg)
+    AoL,
+    /// Argument of Periapse (deg)
+    AoP,
+    /// Radius of apoapsis (km)
+    ApoapsisRadius,
+    /// Altitude of apoapsis (km)
+    ApoapsisAltitude,
+    /// C_3 in (km/s)^2
+    C3,
+    /// Declination (deg) (also called elevation if in a body fixed frame)
+    Declination,
+    /// Eccentric anomaly (deg)
+    EccentricAnomaly,
+    /// Eccentricity (no unit)
     Eccentricity,
+    /// Specific energy
+    Energy,
+    /// Flight path angle (deg)
+    FlightPathAngle,
+    /// Geodetic height (km)
+    Height,
+    /// Geodetic latitude (deg)
+    Latitude,
+    /// Geodetic longitude (deg)
+    Longitude,
+    /// Orbital momentum
+    Hmag,
+    /// X component of the orbital momentum vector
+    HX,
+    /// Y component of the orbital momentum vector
+    HY,
+    /// Z component of the orbital momentum vector
+    HZ,
+    /// Hyperbolic anomaly (deg), only valid for hyperbolic orbits
+    HyperbolicAnomaly,
+    /// Inclination (deg)
+    Inclination,
+    /// Mean anomaly (deg)
+    MeanAnomaly,
+    /// Radius of periapse (km)
+    PeriapsisRadius,
+    /// Altitude of periapse (km)
+    PeriapsisAltitude,
+    /// Orbital period (s)
+    Period,
+    /// Right ascension (deg)
+    RightAscension,
+    /// Right ascension of the ascending node (deg)
+    RAAN,
+    /// Norm of the radius vector
+    Rmag,
+    /// Semi parameter (km)
+    SemiParameter,
+    /// Semi major axis (km)
+    SemiMajorAxis,
+    /// Semi minor axis (km)
+    SemiMinorAxis,
+    /// True anomaly
+    TrueAnomaly,
+    /// True longitude
+    TrueLongitude,
+    /// Velocity declination (deg)
+    VelocityDeclination,
+    /// Norm of the velocity vector (km/s)
+    Vmag,
+    /// X component of the radius (km)
+    X,
+    /// Y component of the radius (km)
+    Y,
+    /// Z component of the radius (km)
+    Z,
+    /// X component of the velocity (km/s)
+    VX,
+    /// Y component of the velocity (km/s)
+    VY,
+    /// Z component of the velocity (km/s)
+    VZ,
+}
+
+impl OrbitalElement {
+    /// Computes this scalar expression for the provided orbit.
+    pub fn evaluate(self, orbit: Orbit) -> Result<f64, AnalysisError> {
+        match self {
+            Self::AoL => orbit
+                .aol_deg()
+                .context(PhysicsExprSnafu { el: self, orbit }),
+            Self::AoP => orbit
+                .aop_deg()
+                .context(PhysicsExprSnafu { el: self, orbit }),
+            Self::ApoapsisRadius => orbit
+                .apoapsis_km()
+                .context(PhysicsExprSnafu { el: self, orbit }),
+            Self::ApoapsisAltitude => orbit
+                .apoapsis_altitude_km()
+                .context(PhysicsExprSnafu { el: self, orbit }),
+            Self::C3 => orbit
+                .c3_km2_s2()
+                .context(PhysicsExprSnafu { el: self, orbit }),
+            Self::Declination => Ok(orbit.declination_deg()),
+            Self::EccentricAnomaly => orbit.ea_deg().context(PhysicsExprSnafu { el: self, orbit }),
+            Self::Eccentricity => orbit.ecc().context(PhysicsExprSnafu { el: self, orbit }),
+            Self::Energy => orbit
+                .energy_km2_s2()
+                .context(PhysicsExprSnafu { el: self, orbit }),
+            Self::FlightPathAngle => orbit
+                .fpa_deg()
+                .context(PhysicsExprSnafu { el: self, orbit }),
+            Self::Height => orbit
+                .height_km()
+                .context(PhysicsExprSnafu { el: self, orbit }),
+            Self::Latitude => orbit
+                .latitude_deg()
+                .context(PhysicsExprSnafu { el: self, orbit }),
+            Self::Longitude => Ok(orbit.longitude_deg()),
+            Self::Hmag => orbit.hmag().context(PhysicsExprSnafu { el: self, orbit }),
+            Self::HX => orbit.hx().context(PhysicsExprSnafu { el: self, orbit }),
+            Self::HY => orbit.hy().context(PhysicsExprSnafu { el: self, orbit }),
+            Self::HZ => orbit.hz().context(PhysicsExprSnafu { el: self, orbit }),
+            Self::HyperbolicAnomaly => orbit
+                .hyperbolic_anomaly_deg()
+                .context(PhysicsExprSnafu { el: self, orbit }),
+            Self::Inclination => orbit
+                .inc_deg()
+                .context(PhysicsExprSnafu { el: self, orbit }),
+            Self::MeanAnomaly => orbit.ma_deg().context(PhysicsExprSnafu { el: self, orbit }),
+            Self::PeriapsisRadius => orbit
+                .periapsis_km()
+                .context(PhysicsExprSnafu { el: self, orbit }),
+            Self::PeriapsisAltitude => orbit
+                .periapsis_altitude_km()
+                .context(PhysicsExprSnafu { el: self, orbit }),
+            Self::Period => Ok(orbit
+                .period()
+                .context(PhysicsExprSnafu { el: self, orbit })?
+                .to_seconds()),
+            Self::RightAscension => Ok(orbit.right_ascension_deg()),
+            Self::RAAN => orbit
+                .raan_deg()
+                .context(PhysicsExprSnafu { el: self, orbit }),
+            Self::Rmag => Ok(orbit.rmag_km()),
+            Self::SemiParameter => orbit
+                .semi_parameter_km()
+                .context(PhysicsExprSnafu { el: self, orbit }),
+            Self::SemiMajorAxis => orbit.sma_km().context(PhysicsExprSnafu { el: self, orbit }),
+            Self::SemiMinorAxis => orbit
+                .semi_minor_axis_km()
+                .context(PhysicsExprSnafu { el: self, orbit }),
+            Self::TrueAnomaly => orbit.ta_deg().context(PhysicsExprSnafu { el: self, orbit }),
+            Self::TrueLongitude => orbit
+                .tlong_deg()
+                .context(PhysicsExprSnafu { el: self, orbit }),
+            Self::VelocityDeclination => Ok(orbit.velocity_declination_deg()),
+            Self::Vmag => Ok(orbit.vmag_km_s()),
+            Self::VX => Ok(orbit.velocity_km_s.x),
+            Self::VY => Ok(orbit.velocity_km_s.y),
+            Self::VZ => Ok(orbit.velocity_km_s.z),
+            Self::X => Ok(orbit.radius_km.x),
+            Self::Y => Ok(orbit.radius_km.y),
+            Self::Z => Ok(orbit.radius_km.z),
+        }
+    }
+
+    /// Returns the default event finding precision in the unit of that parameter
+    pub fn default_event_precision(&self) -> f64 {
+        match self {
+            Self::Eccentricity => 1e-5,
+            // Non anomaly angles
+            Self::AoL
+            | Self::AoP
+            | Self::Declination
+            | Self::Latitude
+            | Self::Longitude
+            | Self::FlightPathAngle
+            | Self::Inclination
+            | Self::RightAscension
+            | Self::RAAN
+            | Self::TrueLongitude
+            | Self::VelocityDeclination => 1e-1,
+
+            // Anomaly angles
+            Self::MeanAnomaly
+            | Self::EccentricAnomaly
+            | Self::HyperbolicAnomaly
+            | Self::TrueAnomaly => 1e-3,
+
+            // Distances
+            Self::ApoapsisRadius
+            | Self::ApoapsisAltitude
+            | Self::Height
+            | Self::Hmag
+            | Self::HX
+            | Self::HY
+            | Self::HZ
+            | Self::PeriapsisRadius
+            | Self::PeriapsisAltitude
+            | Self::Rmag
+            | Self::SemiParameter
+            | Self::SemiMajorAxis
+            | Self::SemiMinorAxis
+            | Self::X
+            | Self::Y
+            | Self::Z => 1e-3,
+
+            // Velocities
+            Self::C3 | Self::VX | Self::VY | Self::VZ | Self::Vmag => 1e-3,
+
+            // Special
+            Self::Energy => 1e-3,
+            Self::Period => 1e-1,
+        }
+    }
+
+    pub const fn unit(&self) -> &'static str {
+        match self {
+            // Angles
+            Self::AoL
+            | Self::AoP
+            | Self::Declination
+            | Self::Latitude
+            | Self::Longitude
+            | Self::FlightPathAngle
+            | Self::Inclination
+            | Self::RightAscension
+            | Self::RAAN
+            | Self::TrueLongitude
+            | Self::VelocityDeclination
+            | Self::MeanAnomaly
+            | Self::EccentricAnomaly
+            | Self::HyperbolicAnomaly
+            | Self::TrueAnomaly => "deg",
+
+            // Distances
+            Self::ApoapsisRadius
+            | Self::ApoapsisAltitude
+            | Self::Height
+            | Self::Hmag
+            | Self::HX
+            | Self::HY
+            | Self::HZ
+            | Self::PeriapsisRadius
+            | Self::PeriapsisAltitude
+            | Self::Rmag
+            | Self::SemiParameter
+            | Self::SemiMajorAxis
+            | Self::SemiMinorAxis
+            | Self::X
+            | Self::Y
+            | Self::Z => "km",
+
+            // Velocities
+            Self::VX | Self::VY | Self::VZ | Self::Vmag => "km/s",
+
+            Self::C3 | Self::Energy => "km^2/s^2",
+            Self::Eccentricity => "",
+            Self::Period => "s",
+        }
+    }
 }

@@ -36,8 +36,8 @@ impl Default for UiApp {
 
 enum FileLoadResult {
     NoFileSelectedYet,
-    Ok((String, Almanac)),
-    Error(AlmanacError),
+    Ok((String, Box<Almanac>)),
+    Error(Box<AlmanacError>),
 }
 
 impl UiApp {
@@ -79,8 +79,8 @@ impl UiApp {
         if let Some(path_buf) = rfd::FileDialog::new().pick_file() {
             let path = path_buf.to_str().unwrap().to_string();
             match self.almanac.load(&path) {
-                Ok(almanac) => FileLoadResult::Ok((path, almanac)),
-                Err(e) => FileLoadResult::Error(e),
+                Ok(almanac) => FileLoadResult::Ok((path, Box::new(almanac))),
+                Err(e) => FileLoadResult::Error(Box::new(e)),
             }
         } else {
             FileLoadResult::NoFileSelectedYet
@@ -143,7 +143,7 @@ impl eframe::App for UiApp {
                                     match self.load_almanac() {
                                         FileLoadResult::NoFileSelectedYet => {}
                                         FileLoadResult::Ok((path, almanac)) => {
-                                            self.almanac = almanac;
+                                            self.almanac = *almanac;
                                             self.path = Some(path);
                                         }
                                         FileLoadResult::Error(e) => {

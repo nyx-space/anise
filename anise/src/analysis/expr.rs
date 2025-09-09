@@ -10,12 +10,11 @@
 
 use std::fmt;
 
-#[cfg(feature = "python")]
-use pyo3::prelude::*;
-
+use crate::prelude::Orbit;
 
 use super::elements::OrbitalElement;
 use super::specs::StateSpec;
+use super::AnalysisError;
 
 /// VectorExpr defines a vector expression, which can either be computed from a state, or from a fixed definition.
 ///
@@ -39,7 +38,7 @@ impl fmt::Display for VectorExpr {
             Self::Velocity(state) => write!(f, "Velocity({state})"),
             Self::OrbitalMomentum(state) => write!(f, "OrbitalMomentum({state})"),
             Self::EccentricityVector(state) => write!(f, "EccentricityVector({state})"),
-            Self::CrossProduct { a, b } => write!(f, "{a} x {b}"),
+            Self::CrossProduct { a, b } => write!(f, "{a} ⨯ {b}"),
         }
     }
 }
@@ -55,4 +54,26 @@ pub enum ScalarExpr {
     VectorY(VectorExpr),
     VectorZ(VectorExpr),
     Element(OrbitalElement),
+}
+
+impl ScalarExpr {
+    /// Computes this scalar expression for the provided orbit.
+    pub fn evaluate(&self, orbit: Orbit) -> Result<f64, AnalysisError> {
+        todo!()
+    }
+}
+
+impl fmt::Display for ScalarExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Norm(e) => write!(f, "|{e}|"),
+            Self::NormSquared(e) => write!(f, "|{e}|^2"),
+            Self::DotProduct { a, b } => write!(f, "{a} · {b}"),
+            Self::AngleBetween { a, b } => write!(f, "∠ {a}, {b}"),
+            Self::VectorX(e) => write!(f, "{e}_x"),
+            Self::VectorY(e) => write!(f, "{e}_y"),
+            Self::VectorZ(e) => write!(f, "{e}_z"),
+            Self::Element(e) => write!(f, "{e:?}"),
+        }
+    }
 }

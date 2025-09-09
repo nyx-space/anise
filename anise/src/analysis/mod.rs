@@ -8,6 +8,18 @@
  * Documentation: https://nyxspace.com/
  */
 
+use prelude::OrbitalElement;
+use snafu::prelude::*;
+
+use hifitime::{Epoch, TimeSeries};
+use std::collections::HashMap;
+
+use crate::{
+    almanac::Almanac,
+    errors::{AlmanacError, PhysicsError},
+    prelude::Orbit,
+};
+
 pub mod elements;
 pub mod expr;
 pub mod framedef;
@@ -26,10 +38,6 @@ pub mod prelude {
 // FOCI: 1. Build the angle between two objects, defined in the loaded Almanac.
 //       2. Rebuild the angular momentum vector to demonstrate the cross product.
 
-use hifitime::{Epoch, TimeSeries};
-use std::collections::HashMap;
-
-use crate::{almanac::Almanac, errors::AlmanacError};
 // TODO: Once https://github.com/Nadrieril/dhall-rust/issues/242 is closed, enable Dhall serialization.
 // Will be implemented in https://github.com/nyx-space/anise/issues/466
 // use serde_derive::{Deserialize, Serialize};
@@ -46,8 +54,26 @@ impl Almanac {
     }
 }
 
+#[derive(Debug, PartialEq, Snafu)]
+#[snafu(visibility(pub))]
+pub enum AnalysisError {
+    #[snafu(display("computing {expr:?} on {state} encountered an Almanac error {source}"))]
+    AlmanacExpr {
+        expr: Box<ScalarExpr>,
+        state: Box<Orbit>,
+        #[snafu(source(from(AlmanacError, Box::new)))]
+        source: Box<AlmanacError>,
+    },
+    #[snafu(display("computing {el:?} on {orbit} encountered a physics error {source}"))]
+    PhysicsExpr {
+        el: Box<OrbitalElement>,
+        orbit: Box<Orbit>,
+        #[snafu(source(from(PhysicsError, Box::new)))]
+        source: Box<PhysicsError>,
+    },
+}
+
 #[cfg(test)]
-#[cfg(not(feature = "python"))] // These tests use Clone
 mod ut_analysis {
 
     use crate::analysis::prelude::*;
