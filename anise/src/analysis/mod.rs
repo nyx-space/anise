@@ -13,7 +13,6 @@ pub mod expr;
 pub mod framedef;
 pub mod specs;
 
-use elements::OrbitalElement;
 use expr::ScalarExpr;
 use specs::StateSpec;
 
@@ -28,9 +27,9 @@ pub mod prelude {
 //       2. Rebuild the angular momentum vector to demonstrate the cross product.
 
 use hifitime::{Epoch, TimeSeries};
-use std::{collections::HashMap, fmt};
+use std::collections::HashMap;
 
-use crate::{almanac::Almanac, astro::Aberration, errors::AlmanacError, prelude::Frame};
+use crate::{almanac::Almanac, errors::AlmanacError};
 // TODO: Once https://github.com/Nadrieril/dhall-rust/issues/242 is closed, enable Dhall serialization.
 // Will be implemented in https://github.com/nyx-space/anise/issues/466
 // use serde_derive::{Deserialize, Serialize};

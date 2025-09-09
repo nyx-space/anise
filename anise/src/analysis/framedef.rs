@@ -10,8 +10,7 @@
 use super::expr::VectorExpr;
 
 // Defines how to build an orthogonal frame from custom vector expressions
-#[derive(Debug)]
-#[cfg_attr(not(feature = "python"), Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum OrthonormalFrame {
     CrossProductXY { x: VectorExpr, y: VectorExpr },
     CrossProductXZ { x: VectorExpr, z: VectorExpr },
@@ -20,8 +19,7 @@ pub enum OrthonormalFrame {
 
 /// Defines a runtime reference frame from an orthogonal frame, allowing it to be normalized or some vectors negated.
 /// Note that if trying to negate a vector that isn't used in the definition of the orthogonal frame, an error will be raised.
-#[derive(Debug)]
-#[cfg_attr(not(feature = "python"), Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CustomFrameDef {
     pub frame: OrthonormalFrame,
     pub negate_x: bool,

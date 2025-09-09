@@ -8,40 +8,27 @@
  * Documentation: https://nyxspace.com/
  */
 
-use hifitime::{Epoch, TimeSeries};
-use std::{collections::HashMap, fmt};
+use std::fmt;
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
-use crate::{almanac::Almanac, astro::Aberration, errors::AlmanacError, prelude::Frame};
 
 use super::elements::OrbitalElement;
 use super::specs::StateSpec;
 
 /// VectorExpr defines a vector expression, which can either be computed from a state, or from a fixed definition.
-#[derive(Debug)]
-#[cfg_attr(not(feature = "python"), Clone, PartialEq)]
+///
+/// # API note
+/// This VectorExpr is different from the Python class because of a limitation in the support for recursive types in PyO3.
+#[derive(Clone, Debug, PartialEq)]
 pub enum VectorExpr {
-    Fixed {
-        x: f64,
-        y: f64,
-        z: f64,
-    }, // Unitless vector, for arbitrary computations
+    Fixed { x: f64, y: f64, z: f64 }, // Unitless vector, for arbitrary computations
     Radius(StateSpec),
     Velocity(StateSpec),
     OrbitalMomentum(StateSpec),
     EccentricityVector(StateSpec),
-    #[cfg(not(feature = "python"))]
-    CrossProduct {
-        a: Box<Self>,
-        b: Box<Self>,
-    },
-    #[cfg(feature = "python")]
-    CrossProduct {
-        a: Py<VectorExpr>,
-        b: Py<VectorExpr>,
-    },
+    CrossProduct { a: Box<Self>, b: Box<Self> },
 }
 
 impl fmt::Display for VectorExpr {
@@ -52,17 +39,13 @@ impl fmt::Display for VectorExpr {
             Self::Velocity(state) => write!(f, "Velocity({state})"),
             Self::OrbitalMomentum(state) => write!(f, "OrbitalMomentum({state})"),
             Self::EccentricityVector(state) => write!(f, "EccentricityVector({state})"),
-            #[cfg(feature = "python")]
-            Self::CrossProduct { a, b } => write!(f, "CrossProductExpr"),
-            #[cfg(not(feature = "python"))]
             Self::CrossProduct { a, b } => write!(f, "{a} x {b}"),
         }
     }
 }
 
 /// VectorScalar defines a scalar computation from a (set of) vector expression(s).
-#[derive(Debug)]
-#[cfg_attr(not(feature = "python"), Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ScalarExpr {
     Norm(VectorExpr),
     NormSquared(VectorExpr),

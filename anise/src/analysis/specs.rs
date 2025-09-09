@@ -11,16 +11,15 @@
 use std::fmt;
 
 use super::framedef::CustomFrameDef;
-use crate::{almanac::Almanac, astro::Aberration, errors::AlmanacError, prelude::Frame};
+use crate::{astro::Aberration, prelude::Frame};
 // TODO: Once https://github.com/Nadrieril/dhall-rust/issues/242 is closed, enable Dhall serialization.
 // Will be implemented in https://github.com/nyx-space/anise/issues/466
 // use serde_derive::{Deserialize, Serialize};
 // use serde_dhall::StaticType;
 
-#[derive(Debug)]
-#[cfg_attr(not(feature = "python"), Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum FrameSpec {
-    Loaded(Frame), // TODO: Add local frames: RIC, VNC, RCN
+    Loaded(Frame),
     Manual {
         name: String,
         defn: Box<CustomFrameDef>,
@@ -37,8 +36,7 @@ impl fmt::Display for FrameSpec {
 }
 
 /// StateDef allows defining a state from one frame (`from_frame`) to another (`to_frame`)
-#[derive(Debug)]
-#[cfg_attr(not(feature = "python"), Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct StateSpec {
     pub from_frame: FrameSpec,
     pub to_frame: FrameSpec,
