@@ -10,7 +10,12 @@
 
 use std::fmt;
 
-use crate::prelude::Orbit;
+use snafu::ResultExt;
+
+use crate::almanac::Almanac;
+use crate::analysis::PhysicsVecExprSnafu;
+use crate::math::Vector3;
+use crate::prelude::{Epoch, Orbit};
 
 use super::elements::OrbitalElement;
 use super::specs::StateSpec;
@@ -22,12 +27,25 @@ use super::AnalysisError;
 /// This VectorExpr is different from the Python class because of a limitation in the support for recursive types in PyO3.
 #[derive(Clone, Debug, PartialEq)]
 pub enum VectorExpr {
-    Fixed { x: f64, y: f64, z: f64 }, // Unitless vector, for arbitrary computations
+    // Vector with unspecified units, for arbitrary computations
+    Fixed {
+        x: f64,
+        y: f64,
+        z: f64,
+    },
+    /// Radius/position vector of this state specification
     Radius(StateSpec),
+    /// Velocity vector of this state specification
     Velocity(StateSpec),
+    /// Orbital moment (H) vector of this state specification
     OrbitalMomentum(StateSpec),
+    /// Eccentricity vector of this state specification
     EccentricityVector(StateSpec),
-    CrossProduct { a: Box<Self>, b: Box<Self> },
+    /// Cross product between two vector expression
+    CrossProduct {
+        a: Box<Self>,
+        b: Box<Self>,
+    },
 }
 
 impl fmt::Display for VectorExpr {
@@ -39,6 +57,38 @@ impl fmt::Display for VectorExpr {
             Self::OrbitalMomentum(state) => write!(f, "OrbitalMomentum({state})"),
             Self::EccentricityVector(state) => write!(f, "EccentricityVector({state})"),
             Self::CrossProduct { a, b } => write!(f, "{a} ⨯ {b}"),
+        }
+    }
+}
+
+impl VectorExpr {
+    /// Evaluates this vector expression, returning a Vector
+    pub fn evaluate(&self, epoch: Epoch, almanac: &Almanac) -> Result<Vector3, AnalysisError> {
+        match self {
+            Self::Fixed { x, y, z } => Ok(Vector3::new(*x, *y, *z)),
+            Self::Radius(spec) => Ok(spec.evaluate(epoch, almanac)?.radius_km),
+            Self::Velocity(spec) => Ok(spec.evaluate(epoch, almanac)?.velocity_km_s),
+            Self::OrbitalMomentum(spec) => {
+                spec.evaluate(epoch, almanac)?
+                    .hvec()
+                    .context(PhysicsVecExprSnafu {
+                        expr: Box::new(self.clone()),
+                        epoch,
+                    })
+            }
+            Self::EccentricityVector(spec) => {
+                spec.evaluate(epoch, almanac)?
+                    .evec()
+                    .context(PhysicsVecExprSnafu {
+                        expr: Box::new(self.clone()),
+                        epoch,
+                    })
+            }
+            Self::CrossProduct { a, b } => {
+                let vec_a = a.evaluate(epoch, almanac)?;
+                let vec_b = b.evaluate(epoch, almanac)?;
+                Ok(vec_a.cross(&vec_b))
+            }
         }
     }
 }
@@ -58,8 +108,25 @@ pub enum ScalarExpr {
 
 impl ScalarExpr {
     /// Computes this scalar expression for the provided orbit.
-    pub fn evaluate(&self, orbit: Orbit) -> Result<f64, AnalysisError> {
-        todo!()
+    pub fn evaluate(&self, orbit: Orbit, almanac: &Almanac) -> Result<f64, AnalysisError> {
+        match self {
+            Self::Element(oe) => oe.evaluate(orbit),
+            Self::Norm(vexpr) => Ok(vexpr.evaluate(orbit.epoch, almanac)?.norm()),
+            Self::NormSquared(vexpr) => Ok(vexpr.evaluate(orbit.epoch, almanac)?.norm_squared()),
+            Self::VectorX(vexpr) => Ok(vexpr.evaluate(orbit.epoch, almanac)?.x),
+            Self::VectorY(vexpr) => Ok(vexpr.evaluate(orbit.epoch, almanac)?.y),
+            Self::VectorZ(vexpr) => Ok(vexpr.evaluate(orbit.epoch, almanac)?.z),
+            Self::DotProduct { a, b } => {
+                let vec_a = a.evaluate(orbit.epoch, almanac)?;
+                let vec_b = b.evaluate(orbit.epoch, almanac)?;
+                Ok(vec_a.dot(&vec_b))
+            }
+            Self::AngleBetween { a, b } => {
+                let vec_a = a.evaluate(orbit.epoch, almanac)?;
+                let vec_b = b.evaluate(orbit.epoch, almanac)?;
+                Ok(vec_a.angle(&vec_b))
+            }
+        }
     }
 }
 

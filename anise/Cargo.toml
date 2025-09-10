@@ -44,7 +44,7 @@ rust-embed = { version = "8.4.0", features = [
     "include-exclude",
 ], optional = true }
 regex = { version = "1.10.5", optional = true }
-rayon = { workspace = true, optional = true } # Only used when building with Python
+rayon = { workspace = true, optional = true } # Only used when building with Python or with Analysis
 serde-lexpr = "0.1.3"
 
 [dev-dependencies]
@@ -72,7 +72,7 @@ default = ["metaload", "analysis"]
 python = ["pyo3", "pyo3-log", "numpy", "ndarray", "rayon"]
 metaload = ["url", "ureq", "platform-dirs", "regex", "serde_dhall"]
 embed_ephem = ["rust-embed", "ureq"]
-analysis = ["serde_dhall"]
+analysis = ["rayon"]
 # Enabling this flag significantly increases compilation times due to Arrow and Polars.
 validation = []
 

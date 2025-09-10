@@ -8,17 +8,17 @@
  * Documentation: https://nyxspace.com/
  */
 
-use prelude::OrbitalElement;
-use snafu::prelude::*;
-
-use hifitime::{Epoch, TimeSeries};
-use std::collections::HashMap;
-
 use crate::{
     almanac::Almanac,
+    analysis::expr::VectorExpr,
     errors::{AlmanacError, PhysicsError},
     prelude::Orbit,
 };
+use hifitime::{Epoch, TimeSeries};
+use prelude::OrbitalElement;
+use rayon::prelude::*;
+use snafu::prelude::*;
+use std::collections::HashMap;
 
 pub mod elements;
 pub mod expr;
@@ -47,10 +47,48 @@ impl Almanac {
     pub fn generate_report(
         &self,
         scalars: &[ScalarExpr],
-        state_def: StateSpec,
-        timeseries: TimeSeries,
-    ) -> Result<HashMap<Epoch, HashMap<String, f64>>, AlmanacError> {
-        todo!()
+        state_spec: StateSpec,
+        time_series: TimeSeries,
+    ) -> HashMap<Epoch, Result<HashMap<String, AnalysisResult<f64>>, AnalysisError>> {
+        time_series
+            .par_bridge()
+            .map_with(
+                (&self, state_spec.clone(), scalars),
+                |(almanac, spec, scalars), epoch| match spec.evaluate(epoch, almanac) {
+                    Ok(orbit) => {
+                        let mut data = HashMap::new();
+
+                        for expr in scalars.iter() {
+                            data.insert(expr.to_string(), expr.evaluate(orbit, almanac));
+                        }
+                        (epoch, Ok(data))
+                    }
+                    Err(e) => (epoch, Err(e)),
+                },
+            )
+            .collect()
+        //     .filter_map(|epoch| {
+
+        //         match state_spec.evaluate(epoch, &self) {
+        //             Ok(state) => {
+
+        //             },
+        //             Err(e) => e
+        //         }
+
+        //         self.transform(target_frame, observer_frame, epoch, ab_corr)
+        //             .map_or_else(
+        //                 |e| {
+        //                     eprintln!("{e}");
+        //                     None
+        //                 },
+        //                 Some,
+        //             )
+        //     })
+        //     .collect::<Vec<CartesianState>>();
+        // states.sort_by(|state_a, state_b| state_a.epoch.cmp(&state_b.epoch));
+        // states;
+        // todo!()
     }
 }
 
@@ -64,14 +102,30 @@ pub enum AnalysisError {
         #[snafu(source(from(AlmanacError, Box::new)))]
         source: Box<AlmanacError>,
     },
+    #[snafu(display("computing state {spec:?} at {epoch} encountered an Almanac error {source}"))]
+    AlmanacStateSpec {
+        spec: Box<StateSpec>,
+        epoch: Epoch,
+        #[snafu(source(from(AlmanacError, Box::new)))]
+        source: Box<AlmanacError>,
+    },
     #[snafu(display("computing {el:?} on {orbit} encountered a physics error {source}"))]
-    PhysicsExpr {
+    PhysicsOrbitEl {
         el: Box<OrbitalElement>,
         orbit: Box<Orbit>,
         #[snafu(source(from(PhysicsError, Box::new)))]
         source: Box<PhysicsError>,
     },
+    #[snafu(display("computing {expr:?} at {epoch} encountered a physics error {source}"))]
+    PhysicsVecExpr {
+        expr: Box<VectorExpr>,
+        epoch: Epoch,
+        #[snafu(source(from(PhysicsError, Box::new)))]
+        source: Box<PhysicsError>,
+    },
 }
+
+pub type AnalysisResult<T> = Result<T, AnalysisError>;
 
 #[cfg(test)]
 mod ut_analysis {
@@ -112,8 +166,8 @@ mod ut_analysis {
         let to_frame = FrameSpec::Loaded(SUN_J2000);
 
         let state = StateSpec {
-            from_frame,
-            to_frame,
+            target_frame: from_frame,
+            observer_frame: to_frame,
             ab_corr: Aberration::NONE,
         };
 
@@ -132,12 +186,12 @@ mod ut_analysis {
     fn test_analysis_orbital_element(almanac: Almanac) {
         // Try to compute the SMA of the Earth with respect to the Sun.
 
-        let from_frame = FrameSpec::Loaded(EME2000);
-        let to_frame = FrameSpec::Loaded(SUN_J2000);
+        let target_frame = FrameSpec::Loaded(EME2000);
+        let observer_frame = FrameSpec::Loaded(SUN_J2000);
 
         let state = StateSpec {
-            from_frame,
-            to_frame,
+            target_frame,
+            observer_frame,
             ab_corr: Aberration::NONE,
         };
 
@@ -146,16 +200,18 @@ mod ut_analysis {
             ScalarExpr::Element(OrbitalElement::Eccentricity),
         ];
 
-        almanac
-            .generate_report(
-                &scalars,
-                state,
-                TimeSeries::inclusive(
-                    Epoch::from_gregorian_tai_at_midnight(2025, 1, 1),
-                    Epoch::from_gregorian_tai_at_noon(2026, 1, 1),
-                    Unit::Minute * 1,
-                ),
-            )
-            .unwrap();
+        let data = almanac.generate_report(
+            &scalars,
+            state,
+            TimeSeries::inclusive(
+                Epoch::from_gregorian_utc_at_midnight(2025, 1, 1),
+                Epoch::from_gregorian_utc_at_noon(2025, 1, 2),
+                Unit::Day * 0.5,
+            ),
+        );
+
+        assert_eq!(data.len(), 4);
+
+        println!("{data:?}");
     }
 }

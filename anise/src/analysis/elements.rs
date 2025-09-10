@@ -10,7 +10,7 @@
 
 use snafu::ResultExt;
 
-use super::{AnalysisError, PhysicsExprSnafu};
+use super::{AnalysisError, PhysicsOrbitElSnafu};
 use crate::prelude::Orbit;
 
 /// Orbital element defines all of the supported orbital elements in ANISE, which are all built from a State.
@@ -103,72 +103,82 @@ impl OrbitalElement {
         match self {
             Self::AoL => orbit
                 .aol_deg()
-                .context(PhysicsExprSnafu { el: self, orbit }),
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::AoP => orbit
                 .aop_deg()
-                .context(PhysicsExprSnafu { el: self, orbit }),
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::ApoapsisRadius => orbit
                 .apoapsis_km()
-                .context(PhysicsExprSnafu { el: self, orbit }),
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::ApoapsisAltitude => orbit
                 .apoapsis_altitude_km()
-                .context(PhysicsExprSnafu { el: self, orbit }),
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::C3 => orbit
                 .c3_km2_s2()
-                .context(PhysicsExprSnafu { el: self, orbit }),
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::Declination => Ok(orbit.declination_deg()),
-            Self::EccentricAnomaly => orbit.ea_deg().context(PhysicsExprSnafu { el: self, orbit }),
-            Self::Eccentricity => orbit.ecc().context(PhysicsExprSnafu { el: self, orbit }),
+            Self::EccentricAnomaly => orbit
+                .ea_deg()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::Eccentricity => orbit.ecc().context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::Energy => orbit
                 .energy_km2_s2()
-                .context(PhysicsExprSnafu { el: self, orbit }),
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::FlightPathAngle => orbit
                 .fpa_deg()
-                .context(PhysicsExprSnafu { el: self, orbit }),
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::Height => orbit
                 .height_km()
-                .context(PhysicsExprSnafu { el: self, orbit }),
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::Latitude => orbit
                 .latitude_deg()
-                .context(PhysicsExprSnafu { el: self, orbit }),
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::Longitude => Ok(orbit.longitude_deg()),
-            Self::Hmag => orbit.hmag().context(PhysicsExprSnafu { el: self, orbit }),
-            Self::HX => orbit.hx().context(PhysicsExprSnafu { el: self, orbit }),
-            Self::HY => orbit.hy().context(PhysicsExprSnafu { el: self, orbit }),
-            Self::HZ => orbit.hz().context(PhysicsExprSnafu { el: self, orbit }),
+            Self::Hmag => orbit
+                .hmag()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::HX => orbit.hx().context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::HY => orbit.hy().context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::HZ => orbit.hz().context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::HyperbolicAnomaly => orbit
                 .hyperbolic_anomaly_deg()
-                .context(PhysicsExprSnafu { el: self, orbit }),
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::Inclination => orbit
                 .inc_deg()
-                .context(PhysicsExprSnafu { el: self, orbit }),
-            Self::MeanAnomaly => orbit.ma_deg().context(PhysicsExprSnafu { el: self, orbit }),
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::MeanAnomaly => orbit
+                .ma_deg()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::PeriapsisRadius => orbit
                 .periapsis_km()
-                .context(PhysicsExprSnafu { el: self, orbit }),
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::PeriapsisAltitude => orbit
                 .periapsis_altitude_km()
-                .context(PhysicsExprSnafu { el: self, orbit }),
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::Period => Ok(orbit
                 .period()
-                .context(PhysicsExprSnafu { el: self, orbit })?
+                .context(PhysicsOrbitElSnafu { el: self, orbit })?
                 .to_seconds()),
             Self::RightAscension => Ok(orbit.right_ascension_deg()),
             Self::RAAN => orbit
                 .raan_deg()
-                .context(PhysicsExprSnafu { el: self, orbit }),
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::Rmag => Ok(orbit.rmag_km()),
             Self::SemiParameter => orbit
                 .semi_parameter_km()
-                .context(PhysicsExprSnafu { el: self, orbit }),
-            Self::SemiMajorAxis => orbit.sma_km().context(PhysicsExprSnafu { el: self, orbit }),
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::SemiMajorAxis => orbit
+                .sma_km()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::SemiMinorAxis => orbit
                 .semi_minor_axis_km()
-                .context(PhysicsExprSnafu { el: self, orbit }),
-            Self::TrueAnomaly => orbit.ta_deg().context(PhysicsExprSnafu { el: self, orbit }),
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::TrueAnomaly => orbit
+                .ta_deg()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::TrueLongitude => orbit
                 .tlong_deg()
-                .context(PhysicsExprSnafu { el: self, orbit }),
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::VelocityDeclination => Ok(orbit.velocity_declination_deg()),
             Self::Vmag => Ok(orbit.vmag_km_s()),
             Self::VX => Ok(orbit.velocity_km_s.x),

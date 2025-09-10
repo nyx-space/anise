@@ -10,8 +10,17 @@
 
 use std::fmt;
 
+use hifitime::Epoch;
+use snafu::ResultExt;
+
 use super::framedef::CustomFrameDef;
-use crate::{astro::Aberration, prelude::Frame};
+use crate::{
+    almanac::Almanac,
+    analysis::{AlmanacStateSpecSnafu, AnalysisError},
+    astro::Aberration,
+    math::cartesian::CartesianState,
+    prelude::Frame,
+};
 // TODO: Once https://github.com/Nadrieril/dhall-rust/issues/242 is closed, enable Dhall serialization.
 // Will be implemented in https://github.com/nyx-space/anise/issues/466
 // use serde_derive::{Deserialize, Serialize};
@@ -38,13 +47,37 @@ impl fmt::Display for FrameSpec {
 /// StateDef allows defining a state from one frame (`from_frame`) to another (`to_frame`)
 #[derive(Clone, Debug, PartialEq)]
 pub struct StateSpec {
-    pub from_frame: FrameSpec,
-    pub to_frame: FrameSpec,
+    pub target_frame: FrameSpec,
+    pub observer_frame: FrameSpec,
     pub ab_corr: Option<Aberration>,
 }
 
 impl fmt::Display for StateSpec {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} -> {}", self.from_frame, self.to_frame)
+        write!(f, "{} -> {}", self.target_frame, self.observer_frame)
+    }
+}
+
+impl StateSpec {
+    /// Evaluates this state specification at the provided epoch.
+    pub fn evaluate(
+        &self,
+        epoch: Epoch,
+        almanac: &Almanac,
+    ) -> Result<CartesianState, AnalysisError> {
+        if let FrameSpec::Loaded(target_frame) = self.target_frame {
+            if let FrameSpec::Loaded(observer_frame) = self.observer_frame {
+                almanac
+                    .transform(target_frame, observer_frame, epoch, self.ab_corr)
+                    .context(AlmanacStateSpecSnafu {
+                        spec: Box::new(self.clone()),
+                        epoch,
+                    })
+            } else {
+                unimplemented!("custom frames in not yet supported")
+            }
+        } else {
+            unimplemented!("custom frames in not yet supported")
+        }
     }
 }
