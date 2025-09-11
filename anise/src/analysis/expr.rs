@@ -48,6 +48,14 @@ pub enum VectorExpr {
         a: Box<Self>,
         b: Box<Self>,
     },
+    /// Unit vector of this vector expression, returns zero vector if norm less than 1e-12
+    Unit(Box<Self>),
+    /// Vector projection of a onto b
+    VecProjection {
+        a: Box<Self>,
+        b: Box<Self>,
+    },
+    // PlaneProjection {}
 }
 
 impl fmt::Display for VectorExpr {
@@ -59,6 +67,8 @@ impl fmt::Display for VectorExpr {
             Self::OrbitalMomentum(state) => write!(f, "OrbitalMomentum({state})"),
             Self::EccentricityVector(state) => write!(f, "EccentricityVector({state})"),
             Self::CrossProduct { a, b } => write!(f, "{a} ⨯ {b}"),
+            Self::Unit(v) => write!(f, "unit({v})"),
+            Self::VecProjection { a, b } => write!(f, "proj {a} onto {b}"),
         }
     }
 }
@@ -90,6 +100,17 @@ impl VectorExpr {
                 let vec_a = a.evaluate(epoch, almanac)?;
                 let vec_b = b.evaluate(epoch, almanac)?;
                 Ok(vec_a.cross(&vec_b))
+            }
+            Self::Unit(v) => Ok(v
+                .evaluate(epoch, almanac)?
+                .try_normalize(1e-12)
+                .or(Some(Vector3::zeros()))
+                .unwrap()),
+            Self::VecProjection { a, b } => {
+                let vec_a = a.evaluate(epoch, almanac)?;
+                let vec_b = b.evaluate(epoch, almanac)?;
+
+                Ok(vec_a.dot(&vec_b) * vec_b)
             }
         }
     }

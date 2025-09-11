@@ -21,11 +21,8 @@ use crate::{
     math::cartesian::CartesianState,
     prelude::Frame,
 };
-// TODO: Once https://github.com/Nadrieril/dhall-rust/issues/242 is closed, enable Dhall serialization.
-// Will be implemented in https://github.com/nyx-space/anise/issues/466
-// use serde_derive::{Deserialize, Serialize};
-// use serde_dhall::StaticType;
 
+// TODO: Support local frames (VNC, etc.)
 #[derive(Clone, Debug, PartialEq)]
 pub enum FrameSpec {
     Loaded(Frame),
