@@ -281,7 +281,7 @@ impl OrbitalElement {
             Self::VX | Self::VY | Self::VZ | Self::Vmag => "km/s",
 
             Self::C3 | Self::Energy => "km^2/s^2",
-            Self::Eccentricity => "",
+            Self::Eccentricity => "unitless",
             Self::Period => "s",
         }
     }

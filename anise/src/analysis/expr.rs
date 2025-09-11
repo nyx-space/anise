@@ -13,7 +13,9 @@ use std::fmt;
 use snafu::ResultExt;
 
 use crate::almanac::Almanac;
-use crate::analysis::PhysicsVecExprSnafu;
+use crate::analysis::{AlmanacExprSnafu, PhysicsVecExprSnafu};
+use crate::astro::Aberration;
+use crate::frames::Frame;
 use crate::math::Vector3;
 use crate::prelude::{Epoch, Orbit};
 
@@ -98,12 +100,30 @@ impl VectorExpr {
 pub enum ScalarExpr {
     Norm(VectorExpr),
     NormSquared(VectorExpr),
-    DotProduct { a: VectorExpr, b: VectorExpr },
-    AngleBetween { a: VectorExpr, b: VectorExpr },
+    DotProduct {
+        a: VectorExpr,
+        b: VectorExpr,
+    },
+    AngleBetween {
+        a: VectorExpr,
+        b: VectorExpr,
+    },
     VectorX(VectorExpr),
     VectorY(VectorExpr),
     VectorZ(VectorExpr),
     Element(OrbitalElement),
+    SolarEclipsePercentage {
+        eclipsing_frame: Frame,
+        ab_corr: Option<Aberration>,
+    },
+    OccultationPercentage {
+        back_frame: Frame,
+        front_frame: Frame,
+        ab_corr: Option<Aberration>,
+    },
+    BetaAngle {
+        ab_corr: Option<Aberration>,
+    },
 }
 
 impl ScalarExpr {
@@ -124,8 +144,37 @@ impl ScalarExpr {
             Self::AngleBetween { a, b } => {
                 let vec_a = a.evaluate(orbit.epoch, almanac)?;
                 let vec_b = b.evaluate(orbit.epoch, almanac)?;
-                Ok(vec_a.angle(&vec_b))
+                Ok(vec_a.angle(&vec_b).to_degrees())
             }
+            Self::BetaAngle { ab_corr } => {
+                almanac
+                    .beta_angle_deg(orbit, *ab_corr)
+                    .context(AlmanacExprSnafu {
+                        expr: Box::new(self.clone()),
+                        state: orbit,
+                    })
+            }
+            Self::SolarEclipsePercentage {
+                eclipsing_frame,
+                ab_corr,
+            } => Ok(almanac
+                .solar_eclipsing(*eclipsing_frame, orbit, *ab_corr)
+                .context(AlmanacExprSnafu {
+                    expr: Box::new(self.clone()),
+                    state: orbit,
+                })?
+                .percentage),
+            Self::OccultationPercentage {
+                back_frame,
+                front_frame,
+                ab_corr,
+            } => Ok(almanac
+                .occultation(*back_frame, *front_frame, orbit, *ab_corr)
+                .context(AlmanacExprSnafu {
+                    expr: Box::new(self.clone()),
+                    state: orbit,
+                })?
+                .percentage),
         }
     }
 }
@@ -136,11 +185,24 @@ impl fmt::Display for ScalarExpr {
             Self::Norm(e) => write!(f, "|{e}|"),
             Self::NormSquared(e) => write!(f, "|{e}|^2"),
             Self::DotProduct { a, b } => write!(f, "{a} · {b}"),
-            Self::AngleBetween { a, b } => write!(f, "∠ {a}, {b}"),
+            Self::AngleBetween { a, b } => write!(f, "∠ {a}, {b} (deg)"),
             Self::VectorX(e) => write!(f, "{e}_x"),
             Self::VectorY(e) => write!(f, "{e}_y"),
             Self::VectorZ(e) => write!(f, "{e}_z"),
-            Self::Element(e) => write!(f, "{e:?}"),
+            Self::Element(e) => write!(f, "{e:?} ({})", e.unit()),
+            Self::SolarEclipsePercentage {
+                eclipsing_frame,
+                ab_corr: _,
+            } => write!(f, "solar eclipse due to {eclipsing_frame:x} (%)"),
+            Self::OccultationPercentage {
+                front_frame,
+                back_frame,
+                ab_corr: _,
+            } => write!(
+                f,
+                "occultation of {back_frame:x} due to {front_frame:x} (%)"
+            ),
+            Self::BetaAngle { ab_corr: _ } => write!(f, "beta angle (deg)"),
         }
     }
 }

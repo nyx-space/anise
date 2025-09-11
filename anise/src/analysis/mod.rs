@@ -67,28 +67,6 @@ impl Almanac {
                 },
             )
             .collect()
-        //     .filter_map(|epoch| {
-
-        //         match state_spec.evaluate(epoch, &self) {
-        //             Ok(state) => {
-
-        //             },
-        //             Err(e) => e
-        //         }
-
-        //         self.transform(target_frame, observer_frame, epoch, ab_corr)
-        //             .map_or_else(
-        //                 |e| {
-        //                     eprintln!("{e}");
-        //                     None
-        //                 },
-        //                 Some,
-        //             )
-        //     })
-        //     .collect::<Vec<CartesianState>>();
-        // states.sort_by(|state_a, state_b| state_a.epoch.cmp(&state_b.epoch));
-        // states;
-        // todo!()
     }
 }
 
@@ -132,7 +110,7 @@ mod ut_analysis {
 
     use crate::analysis::prelude::*;
     use crate::astro::Aberration;
-    use crate::constants::frames::{EME2000, SUN_J2000};
+    use crate::constants::frames::{EME2000, MOON_J2000, SUN_J2000, VENUS_J2000};
     use crate::prelude::Almanac;
     use hifitime::{Epoch, TimeSeries, Unit};
     use rstest::*;
@@ -187,7 +165,7 @@ mod ut_analysis {
         // Try to compute the SMA of the Earth with respect to the Sun.
 
         let target_frame = FrameSpec::Loaded(EME2000);
-        let observer_frame = FrameSpec::Loaded(SUN_J2000);
+        let observer_frame = FrameSpec::Loaded(MOON_J2000);
 
         let state = StateSpec {
             target_frame,
@@ -198,6 +176,36 @@ mod ut_analysis {
         let scalars = [
             ScalarExpr::Element(OrbitalElement::SemiMajorAxis),
             ScalarExpr::Element(OrbitalElement::Eccentricity),
+            ScalarExpr::Element(OrbitalElement::Rmag),
+            ScalarExpr::BetaAngle {
+                ab_corr: Aberration::LT,
+            },
+            ScalarExpr::SolarEclipsePercentage {
+                eclipsing_frame: VENUS_J2000,
+                ab_corr: Aberration::NONE,
+            },
+            ScalarExpr::Norm(VectorExpr::Radius(state.clone())),
+            ScalarExpr::DotProduct {
+                a: VectorExpr::EccentricityVector(state.clone()),
+                b: VectorExpr::Fixed {
+                    x: 1.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+            },
+            ScalarExpr::VectorX(VectorExpr::EccentricityVector(state.clone())),
+            ScalarExpr::VectorY(VectorExpr::EccentricityVector(state.clone())),
+            ScalarExpr::VectorZ(VectorExpr::EccentricityVector(state.clone())),
+            // Test orbital momentum magnitude
+            ScalarExpr::Norm(VectorExpr::CrossProduct {
+                a: Box::new(VectorExpr::Radius(state.clone())),
+                b: Box::new(VectorExpr::Velocity(state.clone())),
+            }),
+            ScalarExpr::Element(OrbitalElement::Hmag),
+            ScalarExpr::AngleBetween {
+                a: VectorExpr::Radius(state.clone()),
+                b: VectorExpr::Velocity(state.clone()),
+            },
         ];
 
         let data = almanac.generate_report(
@@ -212,6 +220,15 @@ mod ut_analysis {
 
         assert_eq!(data.len(), 4);
 
-        println!("{data:?}");
+        let last_row = data.values().last().unwrap().as_ref().unwrap();
+
+        println!("{last_row:?}");
+        assert_eq!(last_row.len(), scalars.len());
+
+        // Test that we correctly computed the norm of the cross product
+        assert_eq!(
+            last_row["Hmag (km)"],
+            last_row["|Radius(Earth J2000 -> Moon J2000) ⨯ Velocity(Earth J2000 -> Moon J2000)|"]
+        )
     }
 }
