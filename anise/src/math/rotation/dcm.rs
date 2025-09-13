@@ -128,6 +128,39 @@ impl DCM {
         }
     }
 
+    /// Returns the skew symmetric matrix if this DCM defines a rotation rate.
+    pub fn skew_symmetric(&self) -> Option<Matrix3> {
+        if let Some(c_dot) = self.rot_mat_dt {
+            Some(c_dot * self.rot_mat.transpose())
+        } else {
+            None
+        }
+    }
+
+    /// Returns the angular velocity vector in deg/s of this DCM is it has a defined rotation rate.
+    pub fn angular_velocity_rad_s(&self) -> Option<Vector3> {
+        if let Some(omega_skew_symmetric) = self.skew_symmetric() {
+            // Extract the angular velocity vector components from the skew-symmetric matrix.
+            // omega_x = (m32 - m23) / 2
+            // omega_y = (m13 - m31) / 2
+            // omega_z = (m21 - m12) / 2
+            // This averaging of opposite elements is more robust to floating-point errors.
+            Some(Vector3::new(
+                (omega_skew_symmetric.m32 - omega_skew_symmetric.m23) / 2.0,
+                (omega_skew_symmetric.m13 - omega_skew_symmetric.m31) / 2.0,
+                (omega_skew_symmetric.m21 - omega_skew_symmetric.m12) / 2.0,
+            ))
+        } else {
+            None
+        }
+    }
+
+    /// Returns the angular velocity vector in deg/s if a rotation rate is defined.
+    pub fn angular_velocity_deg_s(&self) -> Option<Vector3> {
+        self.angular_velocity_rad_s()
+            .map(|rad_vec| rad_vec.map(|component| component.to_degrees()))
+    }
+
     /// Multiplies this DCM with another one WITHOUT checking if the frames match.
     pub(crate) fn mul_unchecked(&self, other: Self) -> Self {
         let mut rslt = *self;

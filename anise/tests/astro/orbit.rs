@@ -647,7 +647,7 @@ fn verif_geodetic_vallado(almanac: Almanac) {
         0.1,
         long,
         height_val,
-        MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
+        MEAN_EARTH_ANGULAR_VELOCITY_DEG_S.to_radians(),
         epoch,
         eme2k,
     )

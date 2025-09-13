@@ -124,6 +124,68 @@ impl Almanac {
 
         (dcm * state).context(OrientationPhysicsSnafu {})
     }
+
+    /// Returns the angular velocity vector in rad/s of the from_frame wtr to the to_frame.
+    ///
+    /// This can be used to compute the angular velocity of the Earth ITRF93 frame with respect to the J2000 frame for example.
+    pub fn angular_velocity_rad_s(
+        &self,
+        from_frame: Frame,
+        to_frame: Frame,
+        epoch: Epoch,
+    ) -> Result<Vector3, OrientationError> {
+        let dcm = self.rotate(from_frame, to_frame, epoch)?;
+
+        if let Some(omega_rad_s) = dcm.angular_velocity_rad_s() {
+            Ok(omega_rad_s)
+        } else {
+            Err(OrientationError::OrientationPhysics {
+                source: crate::errors::PhysicsError::DCMMissingDerivative {
+                    action: "computing the angular velocity",
+                },
+            })
+        }
+    }
+
+    /// Returns the angular velocity vector in rad/s of the from_frame wtr to the J2000 frame.
+    pub fn angular_velocity_wtr_j2000_rad_s(
+        &self,
+        from_frame: Frame,
+        epoch: Epoch,
+    ) -> Result<Vector3, OrientationError> {
+        self.angular_velocity_rad_s(from_frame, from_frame.with_orient(J2000), epoch)
+    }
+
+    /// Returns the angular velocity vector in deg/s of the from_frame wtr to the to_frame.
+    ///
+    /// This can be used to compute the angular velocity of the Earth ITRF93 frame with respect to the J2000 frame for example.
+    pub fn angular_velocity_deg_s(
+        &self,
+        from_frame: Frame,
+        to_frame: Frame,
+        epoch: Epoch,
+    ) -> Result<Vector3, OrientationError> {
+        let dcm = self.rotate(from_frame, to_frame, epoch)?;
+
+        if let Some(omega_deg_s) = dcm.angular_velocity_deg_s() {
+            Ok(omega_deg_s)
+        } else {
+            Err(OrientationError::OrientationPhysics {
+                source: crate::errors::PhysicsError::DCMMissingDerivative {
+                    action: "computing the angular velocity",
+                },
+            })
+        }
+    }
+
+    /// Returns the angular velocity vector in deg/s of the from_frame wtr to the J2000 frame.
+    pub fn angular_velocity_wtr_j2000_deg_s(
+        &self,
+        from_frame: Frame,
+        epoch: Epoch,
+    ) -> Result<Vector3, OrientationError> {
+        self.angular_velocity_deg_s(from_frame, from_frame.with_orient(J2000), epoch)
+    }
 }
 
 impl Almanac {

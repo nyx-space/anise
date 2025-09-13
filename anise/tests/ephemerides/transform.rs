@@ -342,7 +342,7 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
             latitude_deg,
             longitude_deg,
             height_km,
-            MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
+            MEAN_EARTH_ANGULAR_VELOCITY_DEG_S.to_radians(),
             epoch,
             iau_earth,
         )

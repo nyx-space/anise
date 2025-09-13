@@ -18,7 +18,7 @@ mod mrp;
 mod quaternion;
 pub use dcm::DCM;
 pub use mrp::MRP;
-pub use quaternion::Quaternion;
+pub use quaternion::{EulerParameter, Quaternion};
 
 #[cfg(feature = "python")]
 mod dcm_py;
