@@ -8,7 +8,10 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::{constants::frames::SUN_J2000, ephemerides::EphemerisError, prelude::Frame, NaifId};
+use crate::{
+    astro::Aberration, constants::frames::SUN_J2000, ephemerides::EphemerisError, prelude::Frame,
+    NaifId,
+};
 
 use super::Almanac;
 
@@ -65,13 +68,19 @@ impl Almanac {
         target_id: NaifId,
         observer_id: NaifId,
         epoch: Epoch,
+        ab_corr: Option<Aberration>,
     ) -> Result<f64, EphemerisError> {
-        let obs_to_sun =
-            self.translate_geometric(SUN_J2000, Frame::from_ephem_j2000(observer_id), epoch)?;
-        let obs_to_target = self.translate_geometric(
+        let obs_to_sun = self.translate(
+            SUN_J2000,
+            Frame::from_ephem_j2000(observer_id),
+            epoch,
+            ab_corr,
+        )?;
+        let obs_to_target = self.translate(
             Frame::from_ephem_j2000(target_id),
             Frame::from_ephem_j2000(observer_id),
             epoch,
+            ab_corr,
         )?;
 
         Ok(obs_to_sun
@@ -92,8 +101,9 @@ impl Almanac {
         target: Frame,
         observer: Frame,
         epoch: Epoch,
+        ab_corr: Option<Aberration>,
     ) -> Result<f64, EphemerisError> {
-        self.sun_angle_deg(target.ephemeris_id, observer.ephemeris_id, epoch)
+        self.sun_angle_deg(target.ephemeris_id, observer.ephemeris_id, epoch, ab_corr)
     }
 }
 
@@ -133,10 +143,12 @@ mod ut_solar {
             epoch + state.period().unwrap(),
             0.05 * state.period().unwrap(),
         ) {
-            let spe_deg = ctx.sun_angle_deg(EARTH, sc_id, epoch).unwrap();
+            let spe_deg = ctx
+                .sun_angle_deg(EARTH, sc_id, epoch, Aberration::NONE)
+                .unwrap();
             assert_eq!(
                 spe_deg,
-                ctx.sun_angle_deg_from_frame(EARTH_J2000, my_sc_j2k, epoch)
+                ctx.sun_angle_deg_from_frame(EARTH_J2000, my_sc_j2k, epoch, Aberration::NONE)
                     .unwrap()
             );
 

@@ -15,9 +15,11 @@ use snafu::ResultExt;
 use crate::almanac::Almanac;
 use crate::analysis::{AlmanacExprSnafu, PhysicsVecExprSnafu};
 use crate::astro::Aberration;
+use crate::errors::EphemerisSnafu;
 use crate::frames::Frame;
 use crate::math::Vector3;
 use crate::prelude::{Epoch, Orbit};
+use crate::NaifId;
 
 use super::elements::OrbitalElement;
 use super::specs::StateSpec;
@@ -116,7 +118,7 @@ impl VectorExpr {
     }
 }
 
-/// VectorScalar defines a scalar computation from a (set of) vector expression(s).
+/// ScalarExpr defines a scalar computation from a (set of) vector expression(s).
 #[derive(Clone, Debug, PartialEq)]
 pub enum ScalarExpr {
     Norm(VectorExpr),
@@ -133,14 +135,23 @@ pub enum ScalarExpr {
     VectorY(VectorExpr),
     VectorZ(VectorExpr),
     Element(OrbitalElement),
+    /// Computes the eclipsing percentage due to the eclipsing frame. Aberration correction is that of the state spec.
     SolarEclipsePercentage {
         eclipsing_frame: Frame,
     },
+    /// Computes the occultation percentage of the back_frame due to the front_frame. Aberration correction is that of the state spec.
     OccultationPercentage {
         back_frame: Frame,
         front_frame: Frame,
     },
+    /// Computes the beta angle. Aberration correction is that of the state spec.
     BetaAngle,
+    /// Computes the Sun angle where observer_id is the ID of the spacecraft for example.
+    /// If the frame of the state spec is in an Earth frame, then this computes the Sun Probe Earth angle.
+    /// Refer to the sun_angle_deg function for detailed documentation.
+    SunAngle {
+        observer_id: NaifId,
+    },
 }
 
 impl ScalarExpr {
@@ -191,6 +202,15 @@ impl ScalarExpr {
                     state: orbit,
                 })?
                 .percentage),
+            Self::SunAngle { observer_id } => almanac
+                .sun_angle_deg(orbit.frame.ephemeris_id, *observer_id, orbit.epoch, ab_corr)
+                .context(EphemerisSnafu {
+                    action: "computing sun angle in expression",
+                })
+                .context(AlmanacExprSnafu {
+                    expr: Box::new(self.clone()),
+                    state: orbit,
+                }),
         }
     }
 }
@@ -217,6 +237,7 @@ impl fmt::Display for ScalarExpr {
                 "occultation of {back_frame:x} due to {front_frame:x} (%)"
             ),
             Self::BetaAngle => write!(f, "beta angle (deg)"),
+            Self::SunAngle { observer_id } => write!(f, "sun angle for obs={observer_id}"),
         }
     }
 }
