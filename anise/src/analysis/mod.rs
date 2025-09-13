@@ -58,8 +58,10 @@ impl Almanac {
                     Ok(orbit) => {
                         let mut data = HashMap::new();
 
+                        let ab_corr = spec.ab_corr;
+
                         for expr in scalars.iter() {
-                            data.insert(expr.to_string(), expr.evaluate(orbit, almanac));
+                            data.insert(expr.to_string(), expr.evaluate(orbit, ab_corr, almanac));
                         }
                         (epoch, Ok(data))
                     }
@@ -177,12 +179,9 @@ mod ut_analysis {
             ScalarExpr::Element(OrbitalElement::SemiMajorAxis),
             ScalarExpr::Element(OrbitalElement::Eccentricity),
             ScalarExpr::Element(OrbitalElement::Rmag),
-            ScalarExpr::BetaAngle {
-                ab_corr: Aberration::LT,
-            },
+            ScalarExpr::BetaAngle,
             ScalarExpr::SolarEclipsePercentage {
                 eclipsing_frame: VENUS_J2000,
-                ab_corr: Aberration::NONE,
             },
             ScalarExpr::Norm(VectorExpr::Radius(state.clone())),
             ScalarExpr::DotProduct {

@@ -135,21 +135,22 @@ pub enum ScalarExpr {
     Element(OrbitalElement),
     SolarEclipsePercentage {
         eclipsing_frame: Frame,
-        ab_corr: Option<Aberration>,
     },
     OccultationPercentage {
         back_frame: Frame,
         front_frame: Frame,
-        ab_corr: Option<Aberration>,
     },
-    BetaAngle {
-        ab_corr: Option<Aberration>,
-    },
+    BetaAngle,
 }
 
 impl ScalarExpr {
     /// Computes this scalar expression for the provided orbit.
-    pub fn evaluate(&self, orbit: Orbit, almanac: &Almanac) -> Result<f64, AnalysisError> {
+    pub fn evaluate(
+        &self,
+        orbit: Orbit,
+        ab_corr: Option<Aberration>,
+        almanac: &Almanac,
+    ) -> Result<f64, AnalysisError> {
         match self {
             Self::Element(oe) => oe.evaluate(orbit),
             Self::Norm(vexpr) => Ok(vexpr.evaluate(orbit.epoch, almanac)?.norm()),
@@ -167,19 +168,14 @@ impl ScalarExpr {
                 let vec_b = b.evaluate(orbit.epoch, almanac)?;
                 Ok(vec_a.angle(&vec_b).to_degrees())
             }
-            Self::BetaAngle { ab_corr } => {
-                almanac
-                    .beta_angle_deg(orbit, *ab_corr)
-                    .context(AlmanacExprSnafu {
-                        expr: Box::new(self.clone()),
-                        state: orbit,
-                    })
-            }
-            Self::SolarEclipsePercentage {
-                eclipsing_frame,
-                ab_corr,
-            } => Ok(almanac
-                .solar_eclipsing(*eclipsing_frame, orbit, *ab_corr)
+            Self::BetaAngle => almanac
+                .beta_angle_deg(orbit, ab_corr)
+                .context(AlmanacExprSnafu {
+                    expr: Box::new(self.clone()),
+                    state: orbit,
+                }),
+            Self::SolarEclipsePercentage { eclipsing_frame } => Ok(almanac
+                .solar_eclipsing(*eclipsing_frame, orbit, ab_corr)
                 .context(AlmanacExprSnafu {
                     expr: Box::new(self.clone()),
                     state: orbit,
@@ -188,9 +184,8 @@ impl ScalarExpr {
             Self::OccultationPercentage {
                 back_frame,
                 front_frame,
-                ab_corr,
             } => Ok(almanac
-                .occultation(*back_frame, *front_frame, orbit, *ab_corr)
+                .occultation(*back_frame, *front_frame, orbit, ab_corr)
                 .context(AlmanacExprSnafu {
                     expr: Box::new(self.clone()),
                     state: orbit,
@@ -211,19 +206,17 @@ impl fmt::Display for ScalarExpr {
             Self::VectorY(e) => write!(f, "{e}_y"),
             Self::VectorZ(e) => write!(f, "{e}_z"),
             Self::Element(e) => write!(f, "{e:?} ({})", e.unit()),
-            Self::SolarEclipsePercentage {
-                eclipsing_frame,
-                ab_corr: _,
-            } => write!(f, "solar eclipse due to {eclipsing_frame:x} (%)"),
+            Self::SolarEclipsePercentage { eclipsing_frame } => {
+                write!(f, "solar eclipse due to {eclipsing_frame:x} (%)")
+            }
             Self::OccultationPercentage {
                 front_frame,
                 back_frame,
-                ab_corr: _,
             } => write!(
                 f,
                 "occultation of {back_frame:x} due to {front_frame:x} (%)"
             ),
-            Self::BetaAngle { ab_corr: _ } => write!(f, "beta angle (deg)"),
+            Self::BetaAngle => write!(f, "beta angle (deg)"),
         }
     }
 }
