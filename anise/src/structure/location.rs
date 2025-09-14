@@ -24,8 +24,6 @@ pub struct Location {
     pub latitude_deg: f64,
     pub longitude_deg: f64,
     pub height_km: f64,
-    /// Mean angular rotation rate of the celestial object where this location lives.
-    pub mean_angular_velocity_deg_s: f64,
     pub frame: FrameUid,
     pub mask: Vec<TerrainMask>,
 }

@@ -9,7 +9,7 @@ use anise::constants::orientations::{
     ECLIPJ2000, IAU_JUPITER, IAU_MOON, ITRF93, J2000, MOON_PA_DE440,
 };
 use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
-use anise::math::rotation::{Quaternion, DCM};
+use anise::math::rotation::DCM;
 use anise::math::{Matrix3, Vector3};
 use anise::naif::kpl::parser::convert_tpc;
 

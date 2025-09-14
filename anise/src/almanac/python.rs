@@ -12,6 +12,7 @@ use super::{
     planetary::{PlanetaryDataError, PlanetaryDataSetSnafu},
     Almanac,
 };
+use crate::constants::orientations::J2000;
 use crate::{
     astro::{Aberration, AzElRange, Occultation},
     ephemerides::EphemerisError,
@@ -22,6 +23,8 @@ use crate::{
     NaifId,
 };
 use hifitime::{Epoch, TimeScale, TimeSeries};
+use ndarray::Array1;
+use numpy::PyArray1;
 use pyo3::prelude::*;
 use rayon::prelude::*;
 use snafu::prelude::*;
@@ -637,12 +640,94 @@ impl Almanac {
         state,
         observer_frame,
     ))]
-    #[allow(clippy::too_many_arguments)]
     pub fn py_rotate_to(
         &self,
         state: CartesianState,
         observer_frame: Frame,
     ) -> Result<CartesianState, OrientationError> {
         self.rotate_to(state, observer_frame)
+    }
+
+    /// Returns the angular velocity vector in rad/s of the from_frame wtr to the to_frame.
+    ///
+    /// This can be used to compute the angular velocity of the Earth ITRF93 frame with respect to the J2000 frame for example.
+    ///
+    /// :type from_frame: Frame
+    /// :type to_frame: Frame
+    /// :type epoch: Epoch
+    /// :rtype: numpy.array
+    #[pyo3(name="angular_velocity_rad_s", signature=(from_frame, to_frame, epoch))]
+    pub fn py_angular_velocity_rad_s<'py>(
+        &self,
+        py: Python<'py>,
+        from_frame: Frame,
+        to_frame: Frame,
+        epoch: Epoch,
+    ) -> Result<Bound<'py, PyArray1<f64>>, OrientationError> {
+        let data: Vec<f64> = self
+            .angular_velocity_rad_s(from_frame, to_frame, epoch)?
+            .iter()
+            .copied()
+            .collect();
+
+        let omega = Array1::from_shape_vec((3,), data).unwrap();
+
+        Ok(PyArray1::<f64>::from_owned_array(py, omega))
+    }
+
+    /// Returns the angular velocity vector in rad/s of the from_frame wtr to the J2000 frame.
+    ///
+    /// :type from_frame: Frame
+    /// :type epoch: Epoch
+    /// :rtype: numpy.array
+    #[pyo3(name="angular_velocity_wtr_j2000_rad_s", signature=(from_frame, epoch))]
+    pub fn py_angular_velocity_wtr_j2000_rad_s<'py>(
+        &self,
+        py: Python<'py>,
+        from_frame: Frame,
+        epoch: Epoch,
+    ) -> Result<Bound<'py, PyArray1<f64>>, OrientationError> {
+        self.py_angular_velocity_rad_s(py, from_frame, from_frame.with_orient(J2000), epoch)
+    }
+
+    /// Returns the angular velocity vector in deg/s of the from_frame wtr to the to_frame.
+    ///
+    /// This can be used to compute the angular velocity of the Earth ITRF93 frame with respect to the J2000 frame for example.
+    ///
+    /// :type from_frame: Frame
+    /// :type to_frame: Frame
+    /// :type epoch: Epoch
+    /// :rtype: numpy.array    #[pyo3(name="angular_velocity_deg_s", signature=(from_frame, to_frame, epoch))]
+    pub fn py_angular_velocity_deg_s<'py>(
+        &self,
+        py: Python<'py>,
+        from_frame: Frame,
+        to_frame: Frame,
+        epoch: Epoch,
+    ) -> Result<Bound<'py, PyArray1<f64>>, OrientationError> {
+        let data: Vec<f64> = self
+            .angular_velocity_deg_s(from_frame, to_frame, epoch)?
+            .iter()
+            .copied()
+            .collect();
+
+        let omega = Array1::from_shape_vec((3,), data).unwrap();
+
+        Ok(PyArray1::<f64>::from_owned_array(py, omega))
+    }
+
+    /// Returns the angular velocity vector in deg/s of the from_frame wtr to the J2000 frame.
+    ///
+    /// :type from_frame: Frame
+    /// :type epoch: Epoch
+    /// :rtype: numpy.array
+    #[pyo3(name="angular_velocity_wtr_j2000_deg_s", signature=(from_frame, epoch))]
+    pub fn py_angular_velocity_wtr_j2000_deg_s<'py>(
+        &self,
+        py: Python<'py>,
+        from_frame: Frame,
+        epoch: Epoch,
+    ) -> Result<Bound<'py, PyArray1<f64>>, OrientationError> {
+        self.py_angular_velocity_deg_s(py, from_frame, from_frame.with_orient(J2000), epoch)
     }
 }

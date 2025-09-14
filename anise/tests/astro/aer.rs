@@ -121,7 +121,7 @@ fn validate_aer_vs_gmat_cislunar2() {
         .unwrap()
         .load("../data/pck11.pca")
         .unwrap()
-        .load("../data/de430.bsp")
+        .load("../data/de440s.bsp")
         .unwrap();
 
     let eme2k = almanac.frame_from_uid(EME2000).unwrap();
@@ -190,12 +190,15 @@ fn validate_aer_vs_gmat_cislunar2() {
     for (rx, (range_km, range_rate_km_s)) in
         states.iter().copied().zip(observations.iter().copied())
     {
+        let omega = almanac
+            .angular_velocity_wtr_j2000_rad_s(IAU_EARTH_FRAME, rx.epoch)
+            .unwrap();
         // Rebuild the ground stations
-        let tx = Orbit::try_latlongalt(
+        let tx = Orbit::try_latlongalt_omega(
             DSS65_LATITUDE_DEG,
             DSS65_LONGITUDE_DEG,
             DSS65_HEIGHT_KM,
-            MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
+            omega,
             rx.epoch,
             almanac.frame_from_uid(IAU_EARTH_FRAME).unwrap(),
         )
@@ -207,7 +210,7 @@ fn validate_aer_vs_gmat_cislunar2() {
 
         dbg!(aer.range_km - range_km);
         assert!(
-            (aer.range_rate_km_s - range_rate_km_s).abs() < 1e-3,
+            dbg!(aer.range_rate_km_s - range_rate_km_s).abs() < 1e-3,
             "more than 1 m/s error!"
         );
     }
