@@ -19,10 +19,12 @@ use serde_dhall::StaticType;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
+use super::dataset::DataSetT;
+
 /// Location is defined by its latitude, longitude, height above the geoid, mean angular rotation of the geoid, and a frame UID.
 /// If the location includes a terrain mask, it will be used for obstruction checks when computing azimuth and elevation.
 /// **Note:** The mean Earth angular velocity is `0.004178079012116429` deg/s.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "analysis", derive(StaticType))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
@@ -47,6 +49,10 @@ impl Location {
             .get(idx)
             .map_or(0.0, |mask| mask.elevation_mask_deg)
     }
+}
+
+impl DataSetT for Location {
+    const NAME: &'static str = "location data";
 }
 
 /// TerrainMask is used to compute obstructions during AER calculations.

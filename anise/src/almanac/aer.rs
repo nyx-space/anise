@@ -12,10 +12,11 @@ use crate::{
     astro::{Aberration, AzElRange},
     constants::SPEED_OF_LIGHT_KM_S,
     ephemerides::{EphemerisError, EphemerisPhysicsSnafu},
-    errors::{AlmanacError, EphemerisSnafu, PhysicsError},
+    errors::{AlmanacError, EphemerisSnafu, OrientationSnafu, PhysicsError},
     frames::Frame,
     math::angles::{between_0_360, between_pm_180},
     prelude::Orbit,
+    structure::location::Location,
 };
 
 use super::Almanac;
@@ -125,6 +126,87 @@ impl Almanac {
             obstructed_by,
             light_time: (rho_sez.norm() / SPEED_OF_LIGHT_KM_S).seconds(),
         })
+    }
+
+    /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
+    /// receiver state (`rx`) seen from the location ID (as transmitter state, once converted into the SEZ frame of the transmitter.
+    /// Refer to [azimuth_elevation_range_sez] for algorithm details.
+    pub fn azimuth_elevation_range_sez_from_location_id(
+        &self,
+        rx: Orbit,
+        location_id: i32,
+        obstructing_body: Option<Frame>,
+        ab_corr: Option<Aberration>,
+    ) -> AlmanacResult<AzElRange> {
+        match self.location_data.get_by_id(location_id) {
+            Ok(location) => self.azimuth_elevation_range_sez_from_location(
+                rx,
+                location,
+                obstructing_body,
+                ab_corr,
+            ),
+
+            Err(source) => Err(AlmanacError::TLDataSet {
+                action: "AER for location",
+                source,
+            }),
+        }
+    }
+
+    /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
+    /// receiver state (`rx`) seen from the location ID (as transmitter state, once converted into the SEZ frame of the transmitter.
+    /// Refer to [azimuth_elevation_range_sez] for algorithm details.
+    pub fn azimuth_elevation_range_sez_from_location_name(
+        &self,
+        rx: Orbit,
+        location_name: &str,
+        obstructing_body: Option<Frame>,
+        ab_corr: Option<Aberration>,
+    ) -> AlmanacResult<AzElRange> {
+        match self.location_data.get_by_name(location_name) {
+            Ok(location) => self.azimuth_elevation_range_sez_from_location(
+                rx,
+                location,
+                obstructing_body,
+                ab_corr,
+            ),
+
+            Err(source) => Err(AlmanacError::TLDataSet {
+                action: "AER for location",
+                source,
+            }),
+        }
+    }
+
+    /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
+    /// receiver state (`rx`) seen from the provided location (as transmitter state, once converted into the SEZ frame of the transmitter.
+    /// Refer to [azimuth_elevation_range_sez] for algorithm details.
+    pub fn azimuth_elevation_range_sez_from_location(
+        &self,
+        rx: Orbit,
+        location: Location,
+        obstructing_body: Option<Frame>,
+        ab_corr: Option<Aberration>,
+    ) -> AlmanacResult<AzElRange> {
+        let epoch = rx.epoch;
+        let from_frame = Frame::new(location.frame_ephemeris_id, location.frame_orientation_id);
+        let omega = self
+            .angular_velocity_wtr_j2000_rad_s(from_frame, epoch)
+            .context(OrientationSnafu {
+                action: "AER computation from location ID",
+            })?;
+        // Build the state of this orbit
+        match Orbit::try_latlongalt_omega(
+            location.loc_latitude_deg,
+            location.loc_longitude_deg,
+            location.loc_height_km,
+            omega,
+            epoch,
+            from_frame,
+        ) {
+            Ok(tx) => self.azimuth_elevation_range_sez(rx, tx, obstructing_body, ab_corr),
+            Err(e) => Err(AlmanacError::GenericError { err: e.to_string() }),
+        }
     }
 }
 

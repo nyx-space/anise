@@ -25,7 +25,9 @@ use crate::naif::{BPC, SPK};
 use crate::orientations::BPCSnafu;
 use crate::structure::dataset::DataSetType;
 use crate::structure::metadata::Metadata;
-use crate::structure::{EulerParameterDataSet, PlanetaryDataSet, SpacecraftDataSet};
+use crate::structure::{
+    EulerParameterDataSet, LocationDataSet, PlanetaryDataSet, SpacecraftDataSet,
+};
 use core::fmt;
 
 // TODO: Switch these to build constants so that it's configurable when building the library.
@@ -73,6 +75,8 @@ pub struct Almanac {
     pub spacecraft_data: SpacecraftDataSet,
     /// Dataset of euler parameters
     pub euler_param_data: EulerParameterDataSet,
+    /// Dataset of locations
+    pub location_data: LocationDataSet,
 }
 
 impl fmt::Display for Almanac {
