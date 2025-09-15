@@ -106,8 +106,7 @@ impl VectorExpr {
             Self::Unit(v) => Ok(v
                 .evaluate(epoch, almanac)?
                 .try_normalize(1e-12)
-                .or(Some(Vector3::zeros()))
-                .unwrap()),
+                .unwrap_or(Vector3::zeros())),
             Self::VecProjection { a, b } => {
                 let vec_a = a.evaluate(epoch, almanac)?;
                 let vec_b = b.evaluate(epoch, almanac)?;
@@ -151,6 +150,18 @@ pub enum ScalarExpr {
     /// Refer to the sun_angle_deg function for detailed documentation.
     SunAngle {
         observer_id: NaifId,
+    },
+    AzimuthFromLocation {
+        location_id: i32,
+    },
+    ElevationFromLocation {
+        location_id: i32,
+    },
+    RangeFromLocation {
+        location_id: i32,
+    },
+    RangeRateFromLocation {
+        location_id: i32,
     },
 }
 
@@ -211,6 +222,7 @@ impl ScalarExpr {
                     expr: Box::new(self.clone()),
                     state: orbit,
                 }),
+            _ => unimplemented!(),
         }
     }
 }
@@ -238,6 +250,18 @@ impl fmt::Display for ScalarExpr {
             ),
             Self::BetaAngle => write!(f, "beta angle (deg)"),
             Self::SunAngle { observer_id } => write!(f, "sun angle for obs={observer_id}"),
+            Self::AzimuthFromLocation { location_id } => {
+                write!(f, "azimuth from location #{location_id}")
+            }
+            Self::ElevationFromLocation { location_id } => {
+                write!(f, "elevation from location #{location_id}")
+            }
+            Self::RangeFromLocation { location_id } => {
+                write!(f, "range from location #{location_id}")
+            }
+            Self::RangeRateFromLocation { location_id } => {
+                write!(f, "range-rate from location #{location_id}")
+            }
         }
     }
 }
