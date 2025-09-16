@@ -163,7 +163,7 @@ mod ut_analysis {
     }
 
     #[rstest]
-    fn test_analysis_orbital_element(almanac: Almanac) {
+    fn test_analysis_gen_report_cov_test(almanac: Almanac) {
         // Try to compute the SMA of the Earth with respect to the Sun.
 
         let target_frame = FrameSpec::Loaded(EME2000);

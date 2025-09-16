@@ -42,6 +42,9 @@ pub struct Location {
 
 impl Location {
     pub fn elevation_mask_from_azimuth_deg(&self, azimuth_deg: f64) -> f64 {
+        if self.terrain_mask.is_empty() {
+            return 0.0;
+        }
         let idx = self
             .terrain_mask
             .partition_point(|mask| mask.azimuth_deg <= azimuth_deg.rem_euclid(360.0));

@@ -210,7 +210,18 @@ impl Almanac {
             epoch,
             from_frame,
         ) {
-            Ok(tx) => self.azimuth_elevation_range_sez(rx, tx, obstructing_body, ab_corr),
+            Ok(tx) => self
+                .azimuth_elevation_range_sez(rx, tx, obstructing_body, ab_corr)
+                .map(|mut aer| {
+                    // Apply elevation mask
+                    if location.elevation_mask_from_azimuth_deg(aer.azimuth_deg)
+                        >= aer.elevation_deg
+                    {
+                        aer.obstructed_by = Some(from_frame);
+                    }
+                    // Return the mutated aer
+                    aer
+                }),
             Err(e) => Err(AlmanacError::GenericError { err: e.to_string() }),
         }
     }
@@ -231,7 +242,7 @@ mod ut_aer {
     use crate::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
     use crate::math::cartesian::CartesianState;
     use crate::prelude::{Almanac, Epoch, MetaAlmanac};
-    use crate::structure::location::Location;
+    use crate::structure::location::{Location, TerrainMask};
     use crate::structure::LocationDataSet;
 
     #[test]
@@ -501,7 +512,21 @@ mod ut_aer {
             loc_height_km: 0.834_939,
             frame_ephemeris_id: EARTH,
             frame_orientation_id: ITRF93,
-            terrain_mask: vec![],
+            // Create a fake elevation mask to check that functionality
+            terrain_mask: vec![
+                TerrainMask {
+                    azimuth_deg: 0.0,
+                    elevation_mask_deg: 0.0,
+                },
+                TerrainMask {
+                    azimuth_deg: 130.0,
+                    elevation_mask_deg: 8.0,
+                },
+                TerrainMask {
+                    azimuth_deg: 140.0,
+                    elevation_mask_deg: 0.0,
+                },
+            ],
         };
 
         // Build a dataset with this single location
@@ -603,6 +628,10 @@ mod ut_aer {
                 .unwrap();
 
             assert_eq!(aer_from_id, aer_from_name);
+
+            if sno == 0 {
+                assert!(aer_from_id.is_obstructed(), "terrain should be in the way");
+            }
         }
     }
 }
