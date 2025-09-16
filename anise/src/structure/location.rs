@@ -9,7 +9,7 @@
  */
 use der::{Decode, Encode, Reader, Writer};
 
-use crate::NaifId;
+use crate::frames::FrameUid;
 
 use serde_derive::{Deserialize, Serialize};
 
@@ -32,10 +32,8 @@ pub struct Location {
     pub loc_latitude_deg: f64,
     pub loc_longitude_deg: f64,
     pub loc_height_km: f64,
-    /// ephemeris ID of the celestial object on which this location tests
-    pub frame_ephemeris_id: NaifId,
-    /// orientation ID of the body-fixed frame on which this location rests
-    pub frame_orientation_id: NaifId,
+    /// Frame on which this location rests
+    pub frame: FrameUid,
     /// Mask due to the terrain; vector is assumed to be pre-sorted by azimuth (or the mask will not work correctly)
     pub terrain_mask: Vec<TerrainMask>,
 }
@@ -102,8 +100,7 @@ impl Encode for Location {
         self.loc_latitude_deg.encoded_len()?
             + self.loc_longitude_deg.encoded_len()?
             + self.loc_height_km.encoded_len()?
-            + self.frame_ephemeris_id.encoded_len()?
-            + self.frame_orientation_id.encoded_len()?
+            + self.frame.encoded_len()?
             + self.terrain_mask.encoded_len()?
     }
 
@@ -111,8 +108,7 @@ impl Encode for Location {
         self.loc_latitude_deg.encode(encoder)?;
         self.loc_longitude_deg.encode(encoder)?;
         self.loc_height_km.encode(encoder)?;
-        self.frame_ephemeris_id.encode(encoder)?;
-        self.frame_orientation_id.encode(encoder)?;
+        self.frame.encode(encoder)?;
         self.terrain_mask.encode(encoder)
     }
 }
@@ -123,8 +119,7 @@ impl<'a> Decode<'a> for Location {
             loc_latitude_deg: decoder.decode()?,
             loc_longitude_deg: decoder.decode()?,
             loc_height_km: decoder.decode()?,
-            frame_ephemeris_id: decoder.decode()?,
-            frame_orientation_id: decoder.decode()?,
+            frame: decoder.decode()?,
             terrain_mask: decoder.decode()?,
         })
     }
@@ -134,22 +129,19 @@ impl<'a> Decode<'a> for Location {
 mod ut_loc {
     use super::Location;
     use super::{Decode, Encode};
-    use crate::constants::celestial_objects::EARTH;
-    use crate::constants::orientations::ITRF93;
 
     #[cfg(feature = "analysis")]
     #[test]
     fn test_location() {
         use serde_dhall::{from_str, serialize};
 
-        use crate::structure::location::TerrainMask;
+        use crate::{constants::frames::EARTH_ITRF93, structure::location::TerrainMask};
 
         let dss65 = Location {
             loc_latitude_deg: 40.427_222,
             loc_longitude_deg: 4.250_556,
             loc_height_km: 0.834_939,
-            frame_ephemeris_id: EARTH,
-            frame_orientation_id: ITRF93,
+            frame: EARTH_ITRF93.into(),
             terrain_mask: vec![
                 TerrainMask {
                     azimuth_deg: 0.0,

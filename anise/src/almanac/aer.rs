@@ -190,12 +190,11 @@ impl Almanac {
     ) -> AlmanacResult<AzElRange> {
         let epoch = rx.epoch;
         // If loading the frame data fails, stop here because the flatenning ratio must be defined.
-        let mut from_frame = Frame::new(location.frame_ephemeris_id, location.frame_orientation_id);
-        from_frame = self
-            .frame_from_uid(from_frame)
-            .map_err(|e| AlmanacError::GenericError {
-                err: format!("{e} when fetching {from_frame:e} frame data"),
-            })?;
+        let from_frame =
+            self.frame_from_uid(location.frame)
+                .map_err(|e| AlmanacError::GenericError {
+                    err: format!("{e} when fetching {} frame data", location.frame),
+                })?;
         let omega = self
             .angular_velocity_wtr_j2000_rad_s(from_frame, epoch)
             .context(OrientationSnafu {
@@ -236,9 +235,7 @@ mod ut_aer {
 
     use crate::astro::orbit::Orbit;
     use crate::astro::AzElRange;
-    use crate::constants::celestial_objects::EARTH;
     use crate::constants::frames::{EARTH_ITRF93, EARTH_J2000, IAU_EARTH_FRAME};
-    use crate::constants::orientations::ITRF93;
     use crate::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
     use crate::math::cartesian::CartesianState;
     use crate::prelude::{Almanac, Epoch, MetaAlmanac};
@@ -510,8 +507,7 @@ mod ut_aer {
             loc_latitude_deg: 40.427_222,
             loc_longitude_deg: 4.250_556,
             loc_height_km: 0.834_939,
-            frame_ephemeris_id: EARTH,
-            frame_orientation_id: ITRF93,
+            frame: EARTH_ITRF93.into(),
             // Create a fake elevation mask to check that functionality
             terrain_mask: vec![
                 TerrainMask {

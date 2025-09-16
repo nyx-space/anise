@@ -8,8 +8,6 @@
  * Documentation: https://nyxspace.com/
  */
 
-use serde::{Deserialize, Serialize};
-
 use crate::{
     constants::{
         celestial_objects::celestial_name_from_id, orientations::orientation_name_from_id,
@@ -17,6 +15,8 @@ use crate::{
     NaifId,
 };
 use core::fmt;
+use der::{Decode, Encode, Reader, Writer};
+use serde::{Deserialize, Serialize};
 
 pub use super::Frame;
 
@@ -26,7 +26,7 @@ use serde_dhall::StaticType;
 /// A unique frame reference that only contains enough information to build the actual Frame object.
 /// It cannot be used for any computations, is it be used in any structure apart from error structures.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "analysis", derive(StaticType))]
+#[cfg_attr(feature = "analysis", derive(Default, StaticType))]
 pub struct FrameUid {
     pub ephemeris_id: NaifId,
     pub orientation_id: NaifId,
@@ -75,5 +75,25 @@ impl fmt::Display for FrameUid {
         };
 
         write!(f, "{body_name} {orientation_name}")
+    }
+}
+
+impl Encode for FrameUid {
+    fn encoded_len(&self) -> der::Result<der::Length> {
+        self.ephemeris_id.encoded_len()? + self.orientation_id.encoded_len()?
+    }
+
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
+        self.ephemeris_id.encode(encoder)?;
+        self.orientation_id.encode(encoder)
+    }
+}
+
+impl<'a> Decode<'a> for FrameUid {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
+        Ok(Self {
+            ephemeris_id: decoder.decode()?,
+            orientation_id: decoder.decode()?,
+        })
     }
 }
