@@ -44,9 +44,9 @@ impl Location {
     pub fn elevation_mask_from_azimuth_deg(&self, azimuth_deg: f64) -> f64 {
         let idx = self
             .terrain_mask
-            .partition_point(|mask| mask.azimuth_deg < azimuth_deg.rem_euclid(360.0));
+            .partition_point(|mask| mask.azimuth_deg <= azimuth_deg.rem_euclid(360.0));
         self.terrain_mask
-            .get(idx)
+            .get(idx - 1)
             .map_or(0.0, |mask| mask.elevation_mask_deg)
     }
 }
@@ -186,14 +186,14 @@ mod ut_loc {
 
         assert_eq!(dss65, dss65_dec);
 
-        println!("{}", dss65.elevation_mask_from_azimuth_deg(0.1));
-        dbg!(34.0_f64.rem_euclid(360.0));
-
         assert!((dss65.elevation_mask_from_azimuth_deg(0.0) - 5.0).abs() < f64::EPSILON);
         assert!((dss65.elevation_mask_from_azimuth_deg(34.0) - 5.0).abs() < f64::EPSILON);
-        assert!((dss65.elevation_mask_from_azimuth_deg(35.0) - 15.0).abs() < f64::EPSILON);
+        assert!((dss65.elevation_mask_from_azimuth_deg(35.0) - 10.0).abs() < f64::EPSILON);
         assert!((dss65.elevation_mask_from_azimuth_deg(270.0) - 3.0).abs() < f64::EPSILON);
         assert!((dss65.elevation_mask_from_azimuth_deg(359.0) - 3.0).abs() < f64::EPSILON);
+        // Check azimuth over 360 wraps around
         assert!((dss65.elevation_mask_from_azimuth_deg(361.0) - 5.0).abs() < f64::EPSILON);
+        // Check azimuth below 0 wraps around
+        assert!((dss65.elevation_mask_from_azimuth_deg(-1.0) - 3.0).abs() < f64::EPSILON);
     }
 }

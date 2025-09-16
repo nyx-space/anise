@@ -53,6 +53,7 @@ pub struct AzElRange {
     pub elevation_deg: f64,
     pub range_km: f64,
     pub range_rate_km_s: f64,
+    /// Set to the frame of the location if a terrain mask hides the object.
     pub obstructed_by: Option<Frame>,
     pub light_time: Duration,
 }
