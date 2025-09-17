@@ -34,7 +34,7 @@ der = { version = "0.7.8", features = ["derive", "alloc", "real"] }
 log = "0.4"
 pretty_env_logger = "0.5"
 tabled = "=0.20"
-nalgebra = { version = "0.33", default-features = true, features = [
+nalgebra = { version = "0.34", default-features = true, features = [
     "serde-serialize",
 ] }
 zerocopy = { version = "0.8.0", features = ["derive"] }
