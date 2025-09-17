@@ -181,6 +181,7 @@ impl Almanac {
     /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
     /// receiver state (`rx`) seen from the provided location (as transmitter state, once converted into the SEZ frame of the transmitter.
     /// Refer to [azimuth_elevation_range_sez] for algorithm details.
+    /// Location terrain masks are always applied, i.e. if the terrain masks the object, all data is set to f64::NAN, unless specified otherwise in the Location.
     pub fn azimuth_elevation_range_sez_from_location(
         &self,
         rx: Orbit,
@@ -202,9 +203,9 @@ impl Almanac {
             })?;
         // Build the state of this orbit
         match Orbit::try_latlongalt_omega(
-            location.loc_latitude_deg,
-            location.loc_longitude_deg,
-            location.loc_height_km,
+            location.latitude_deg,
+            location.longitude_deg,
+            location.height_km,
             omega,
             epoch,
             from_frame,
@@ -216,7 +217,14 @@ impl Almanac {
                     if location.elevation_mask_from_azimuth_deg(aer.azimuth_deg)
                         >= aer.elevation_deg
                     {
+                        // Specify that it's obstructed, and set all values to NaN.
                         aer.obstructed_by = Some(from_frame);
+                        if !location.terrain_mask_ignored {
+                            aer.range_km = f64::NAN;
+                            aer.range_rate_km_s = f64::NAN;
+                            aer.azimuth_deg = f64::NAN;
+                            aer.elevation_deg = f64::NAN;
+                        }
                     }
                     // Return the mutated aer
                     aer
@@ -501,12 +509,12 @@ mod ut_aer {
     /// [anise/src/almanac/aer.rs:583:21] aer.range_km - expect = -3.600219391970313
     /// [anise/src/almanac/aer.rs:583:21] aer.range_km - expect = -4.453339810104808
     #[test]
-    fn gmat_verif_location_cov_test() {
+    fn gmat_verif_location() {
         // Build the new location
         let dsn_madrid = Location {
-            loc_latitude_deg: 40.427_222,
-            loc_longitude_deg: 4.250_556,
-            loc_height_km: 0.834_939,
+            latitude_deg: 40.427_222,
+            longitude_deg: 4.250_556,
+            height_km: 0.834_939,
             frame: EARTH_ITRF93.into(),
             // Create a fake elevation mask to check that functionality
             terrain_mask: vec![
@@ -523,6 +531,8 @@ mod ut_aer {
                     elevation_mask_deg: 0.0,
                 },
             ],
+            // Ignore terrain mask for the test
+            terrain_mask_ignored: true,
         };
 
         // Build a dataset with this single location

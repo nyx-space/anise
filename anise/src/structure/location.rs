@@ -29,13 +29,15 @@ use super::dataset::DataSetT;
 #[cfg_attr(feature = "analysis", derive(StaticType))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Location {
-    pub loc_latitude_deg: f64,
-    pub loc_longitude_deg: f64,
-    pub loc_height_km: f64,
+    pub latitude_deg: f64,
+    pub longitude_deg: f64,
+    pub height_km: f64,
     /// Frame on which this location rests
     pub frame: FrameUid,
     /// Mask due to the terrain; vector is assumed to be pre-sorted by azimuth (or the mask will not work correctly)
     pub terrain_mask: Vec<TerrainMask>,
+    /// If set to True and the terrain mask hides the object, then the AER computation will still return the AER data instead of NaNs.
+    pub terrain_mask_ignored: bool,
 }
 
 impl Location {
@@ -97,17 +99,17 @@ impl<'a> Decode<'a> for TerrainMask {
 
 impl Encode for Location {
     fn encoded_len(&self) -> der::Result<der::Length> {
-        self.loc_latitude_deg.encoded_len()?
-            + self.loc_longitude_deg.encoded_len()?
-            + self.loc_height_km.encoded_len()?
+        self.latitude_deg.encoded_len()?
+            + self.longitude_deg.encoded_len()?
+            + self.height_km.encoded_len()?
             + self.frame.encoded_len()?
             + self.terrain_mask.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
-        self.loc_latitude_deg.encode(encoder)?;
-        self.loc_longitude_deg.encode(encoder)?;
-        self.loc_height_km.encode(encoder)?;
+        self.latitude_deg.encode(encoder)?;
+        self.longitude_deg.encode(encoder)?;
+        self.height_km.encode(encoder)?;
         self.frame.encode(encoder)?;
         self.terrain_mask.encode(encoder)
     }
@@ -116,9 +118,9 @@ impl Encode for Location {
 impl<'a> Decode<'a> for Location {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         Ok(Self {
-            loc_latitude_deg: decoder.decode()?,
-            loc_longitude_deg: decoder.decode()?,
-            loc_height_km: decoder.decode()?,
+            latitude_deg: decoder.decode()?,
+            longitude_deg: decoder.decode()?,
+            height_km: decoder.decode()?,
             frame: decoder.decode()?,
             terrain_mask: decoder.decode()?,
         })
@@ -138,9 +140,9 @@ mod ut_loc {
         use crate::{constants::frames::EARTH_ITRF93, structure::location::TerrainMask};
 
         let dss65 = Location {
-            loc_latitude_deg: 40.427_222,
-            loc_longitude_deg: 4.250_556,
-            loc_height_km: 0.834_939,
+            latitude_deg: 40.427_222,
+            longitude_deg: 4.250_556,
+            height_km: 0.834_939,
             frame: EARTH_ITRF93.into(),
             terrain_mask: vec![
                 TerrainMask {

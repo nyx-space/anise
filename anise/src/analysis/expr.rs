@@ -153,15 +153,19 @@ pub enum ScalarExpr {
     },
     AzimuthFromLocation {
         location_id: i32,
+        obstructing_body: Option<Frame>,
     },
     ElevationFromLocation {
         location_id: i32,
+        obstructing_body: Option<Frame>,
     },
     RangeFromLocation {
         location_id: i32,
+        obstructing_body: Option<Frame>,
     },
     RangeRateFromLocation {
         location_id: i32,
+        obstructing_body: Option<Frame>,
     },
 }
 
@@ -222,7 +226,66 @@ impl ScalarExpr {
                     expr: Box::new(self.clone()),
                     state: orbit,
                 }),
-            _ => unimplemented!(),
+            Self::AzimuthFromLocation {
+                location_id,
+                obstructing_body,
+            } => Ok(almanac
+                .azimuth_elevation_range_sez_from_location_id(
+                    orbit,
+                    *location_id,
+                    *obstructing_body,
+                    ab_corr,
+                )
+                .context(AlmanacExprSnafu {
+                    expr: Box::new(self.clone()),
+                    state: orbit,
+                })?
+                .azimuth_deg),
+            Self::ElevationFromLocation {
+                location_id,
+                obstructing_body,
+            } => Ok(almanac
+                .azimuth_elevation_range_sez_from_location_id(
+                    orbit,
+                    *location_id,
+                    *obstructing_body,
+                    ab_corr,
+                )
+                .context(AlmanacExprSnafu {
+                    expr: Box::new(self.clone()),
+                    state: orbit,
+                })?
+                .elevation_deg),
+            Self::RangeFromLocation {
+                location_id,
+                obstructing_body,
+            } => Ok(almanac
+                .azimuth_elevation_range_sez_from_location_id(
+                    orbit,
+                    *location_id,
+                    *obstructing_body,
+                    ab_corr,
+                )
+                .context(AlmanacExprSnafu {
+                    expr: Box::new(self.clone()),
+                    state: orbit,
+                })?
+                .range_km),
+            Self::RangeRateFromLocation {
+                location_id,
+                obstructing_body,
+            } => Ok(almanac
+                .azimuth_elevation_range_sez_from_location_id(
+                    orbit,
+                    *location_id,
+                    *obstructing_body,
+                    ab_corr,
+                )
+                .context(AlmanacExprSnafu {
+                    expr: Box::new(self.clone()),
+                    state: orbit,
+                })?
+                .range_rate_km_s),
         }
     }
 }
@@ -250,17 +313,29 @@ impl fmt::Display for ScalarExpr {
             ),
             Self::BetaAngle => write!(f, "beta angle (deg)"),
             Self::SunAngle { observer_id } => write!(f, "sun angle for obs={observer_id}"),
-            Self::AzimuthFromLocation { location_id } => {
-                write!(f, "azimuth from location #{location_id}")
+            Self::AzimuthFromLocation {
+                location_id,
+                obstructing_body: _,
+            } => {
+                write!(f, "azimuth (deg) from location #{location_id}")
             }
-            Self::ElevationFromLocation { location_id } => {
-                write!(f, "elevation from location #{location_id}")
+            Self::ElevationFromLocation {
+                location_id,
+                obstructing_body: _,
+            } => {
+                write!(f, "elevation (deg) from location #{location_id}")
             }
-            Self::RangeFromLocation { location_id } => {
-                write!(f, "range from location #{location_id}")
+            Self::RangeFromLocation {
+                location_id,
+                obstructing_body: _,
+            } => {
+                write!(f, "range (deg) from location #{location_id}")
             }
-            Self::RangeRateFromLocation { location_id } => {
-                write!(f, "range-rate from location #{location_id}")
+            Self::RangeRateFromLocation {
+                location_id,
+                obstructing_body: _,
+            } => {
+                write!(f, "range-rate (deg) from location #{location_id}")
             }
         }
     }

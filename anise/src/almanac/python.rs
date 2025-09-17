@@ -697,7 +697,8 @@ impl Almanac {
     /// :type from_frame: Frame
     /// :type to_frame: Frame
     /// :type epoch: Epoch
-    /// :rtype: numpy.array    #[pyo3(name="angular_velocity_deg_s", signature=(from_frame, to_frame, epoch))]
+    /// :rtype: numpy.array
+    #[pyo3(name="angular_velocity_deg_s", signature=(from_frame, to_frame, epoch))]
     pub fn py_angular_velocity_deg_s<'py>(
         &self,
         py: Python<'py>,
