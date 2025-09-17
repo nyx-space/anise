@@ -111,9 +111,10 @@ pub type AnalysisResult<T> = Result<T, AnalysisError>;
 mod ut_analysis {
 
     use crate::analysis::prelude::*;
-    use crate::astro::Aberration;
-    use crate::constants::frames::{EME2000, MOON_J2000, SUN_J2000, VENUS_J2000};
+    use crate::astro::{Aberration, Location, TerrainMask};
+    use crate::constants::frames::{EME2000, IAU_EARTH_FRAME, MOON_J2000, SUN_J2000, VENUS_J2000};
     use crate::prelude::Almanac;
+    use crate::structure::LocationDataSet;
     use hifitime::{Epoch, TimeSeries, Unit};
     use rstest::*;
 
@@ -121,10 +122,41 @@ mod ut_analysis {
     fn almanac() -> Almanac {
         use std::path::PathBuf;
 
+        // Build the new location
+        let dsn_madrid = Location {
+            latitude_deg: 40.427_222,
+            longitude_deg: 4.250_556,
+            height_km: 0.834_939,
+            frame: IAU_EARTH_FRAME.into(),
+            // Create a fake elevation mask to check that functionality
+            terrain_mask: vec![
+                TerrainMask {
+                    azimuth_deg: 0.0,
+                    elevation_mask_deg: 0.0,
+                },
+                TerrainMask {
+                    azimuth_deg: 130.0,
+                    elevation_mask_deg: 8.0,
+                },
+                TerrainMask {
+                    azimuth_deg: 140.0,
+                    elevation_mask_deg: 0.0,
+                },
+            ],
+            // Ignore terrain mask for the test
+            terrain_mask_ignored: true,
+        };
+
+        // Build a dataset with this single location
+        let mut loc_data = LocationDataSet::default();
+        loc_data
+            .push(dsn_madrid, Some(123), Some("DSN Madrid"))
+            .unwrap();
+
         let manifest_dir =
             PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or(".".to_string()));
 
-        Almanac::new(
+        let mut almanac = Almanac::new(
             &manifest_dir
                 .clone()
                 .join("../data/de440s.bsp")
@@ -137,7 +169,11 @@ mod ut_analysis {
                 .join("../data/pck08.pca")
                 .to_string_lossy(),
         )
-        .unwrap()
+        .unwrap();
+
+        almanac.location_data = loc_data;
+
+        almanac
     }
 
     #[test]
@@ -204,6 +240,22 @@ mod ut_analysis {
             ScalarExpr::AngleBetween {
                 a: VectorExpr::Radius(state.clone()),
                 b: VectorExpr::Velocity(state.clone()),
+            },
+            ScalarExpr::AzimuthFromLocation {
+                location_id: 123,
+                obstructing_body: None,
+            },
+            ScalarExpr::ElevationFromLocation {
+                location_id: 123,
+                obstructing_body: None,
+            },
+            ScalarExpr::RangeFromLocation {
+                location_id: 123,
+                obstructing_body: None,
+            },
+            ScalarExpr::RangeRateFromLocation {
+                location_id: 123,
+                obstructing_body: None,
             },
         ];
 

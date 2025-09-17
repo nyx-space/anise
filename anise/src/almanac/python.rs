@@ -14,7 +14,7 @@ use super::{
 };
 use crate::constants::orientations::J2000;
 use crate::{
-    astro::{Aberration, AzElRange, Occultation},
+    astro::{Aberration, AzElRange, Location, Occultation},
     ephemerides::EphemerisError,
     errors::AlmanacResult,
     math::{cartesian::CartesianState, rotation::DCM},
@@ -730,5 +730,76 @@ impl Almanac {
         epoch: Epoch,
     ) -> Result<Bound<'py, PyArray1<f64>>, OrientationError> {
         self.py_angular_velocity_deg_s(py, from_frame, from_frame.with_orient(J2000), epoch)
+    }
+
+    /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
+    /// receiver state (`rx`) seen from the location ID (as transmitter state, once converted into the SEZ frame of the transmitter.
+    /// Refer to [azimuth_elevation_range_sez] for algorithm details.
+    ///
+    /// :type rx: Orbit
+    /// :type location_id: int
+    /// :type obstructing_body: Frame, optional
+    /// :type ab_corr: Aberration, optional
+    /// :rtype: AzElRange
+    #[pyo3(name="azimuth_elevation_range_sez_from_location_id", signature=(rx, location_id, obstructing_body=None, ab_corr=None))]
+    pub fn py_azimuth_elevation_range_sez_from_location_id(
+        &self,
+        rx: Orbit,
+        location_id: i32,
+        obstructing_body: Option<Frame>,
+        ab_corr: Option<Aberration>,
+    ) -> AlmanacResult<AzElRange> {
+        self.azimuth_elevation_range_sez_from_location_id(
+            rx,
+            location_id,
+            obstructing_body,
+            ab_corr,
+        )
+    }
+
+    /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
+    /// receiver state (`rx`) seen from the location ID (as transmitter state, once converted into the SEZ frame of the transmitter.
+    /// Refer to [azimuth_elevation_range_sez] for algorithm details.
+    ///
+    /// :type rx: Orbit
+    /// :type location_name: String
+    /// :type obstructing_body: Frame, optional
+    /// :type ab_corr: Aberration, optional
+    /// :rtype: AzElRange
+    #[pyo3(name="azimuth_elevation_range_sez_from_location_name", signature=(rx, location_name, obstructing_body=None, ab_corr=None))]
+    pub fn py_azimuth_elevation_range_sez_from_location_name(
+        &self,
+        rx: Orbit,
+        location_name: &str,
+        obstructing_body: Option<Frame>,
+        ab_corr: Option<Aberration>,
+    ) -> AlmanacResult<AzElRange> {
+        self.azimuth_elevation_range_sez_from_location_name(
+            rx,
+            location_name,
+            obstructing_body,
+            ab_corr,
+        )
+    }
+
+    /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
+    /// receiver state (`rx`) seen from the provided location (as transmitter state, once converted into the SEZ frame of the transmitter.
+    /// Refer to [azimuth_elevation_range_sez] for algorithm details.
+    /// Location terrain masks are always applied, i.e. if the terrain masks the object, all data is set to f64::NAN, unless specified otherwise in the Location.
+    ///
+    /// :type rx: Orbit
+    /// :type location_name: String
+    /// :type obstructing_body: Frame, optional
+    /// :type ab_corr: Aberration, optional
+    /// :rtype: AzElRange
+    #[pyo3(name="azimuth_elevation_range_sez_from_location", signature=(rx, location, obstructing_body=None, ab_corr=None))]
+    pub fn py_azimuth_elevation_range_sez_from_location(
+        &self,
+        rx: Orbit,
+        location: Location,
+        obstructing_body: Option<Frame>,
+        ab_corr: Option<Aberration>,
+    ) -> AlmanacResult<AzElRange> {
+        self.azimuth_elevation_range_sez_from_location(rx, location, obstructing_body, ab_corr)
     }
 }

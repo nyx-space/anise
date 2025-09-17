@@ -14,7 +14,7 @@ name = "anise"
 crate-type = ["cdylib"]
 
 [dependencies]
-anise = { workspace = true, features = ["python", "metaload"] }
+anise = { workspace = true, features = ["python", "metaload", "analysis"] }
 hifitime = { workspace = true, features = ["python"] }
 pyo3 = { workspace = true, features = ["extension-module"] }
 pyo3-log = { workspace = true }

@@ -33,6 +33,8 @@ pub use occultation::Occultation;
 pub mod orbit;
 pub mod orbit_geodetic;
 
+pub use crate::structure::location::{Location, TerrainMask};
+
 pub type PhysicsResult<T> = Result<T, PhysicsError>;
 
 /// A structure that stores the result of Azimuth, Elevation, Range, Range rate calculation.

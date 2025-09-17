@@ -25,8 +25,8 @@ use super::dataset::DataSetT;
 /// If the location includes a terrain mask, it will be used for obstruction checks when computing azimuth and elevation.
 /// **Note:** The mean Earth angular velocity is `0.004178079012116429` deg/s.
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "analysis", derive(StaticType))]
+#[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Location {
     pub latitude_deg: f64,
@@ -61,6 +61,8 @@ impl DataSetT for Location {
 /// TerrainMask is used to compute obstructions during AER calculations.
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "analysis", derive(StaticType))]
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct TerrainMask {
     /// Azimuth where this elevation mask starts.
     pub azimuth_deg: f64,
@@ -161,6 +163,7 @@ mod ut_loc {
                     elevation_mask_deg: 3.0,
                 },
             ],
+            terrain_mask_ignored: false,
         };
 
         // Test Dhall serde

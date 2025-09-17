@@ -317,25 +317,25 @@ impl fmt::Display for ScalarExpr {
                 location_id,
                 obstructing_body: _,
             } => {
-                write!(f, "azimuth (deg) from location #{location_id}")
+                write!(f, "azimuth from location #{location_id} (deg)")
             }
             Self::ElevationFromLocation {
                 location_id,
                 obstructing_body: _,
             } => {
-                write!(f, "elevation (deg) from location #{location_id}")
+                write!(f, "elevation from location #{location_id} (deg)")
             }
             Self::RangeFromLocation {
                 location_id,
                 obstructing_body: _,
             } => {
-                write!(f, "range (deg) from location #{location_id}")
+                write!(f, "range from location #{location_id} (km)")
             }
             Self::RangeRateFromLocation {
                 location_id,
                 obstructing_body: _,
             } => {
-                write!(f, "range-rate (deg) from location #{location_id}")
+                write!(f, "range-rate from location #{location_id} (km/s)")
             }
         }
     }
