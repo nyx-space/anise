@@ -104,6 +104,7 @@ impl Encode for Location {
             + self.height_km.encoded_len()?
             + self.frame.encoded_len()?
             + self.terrain_mask.encoded_len()?
+            + self.terrain_mask_ignored.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
@@ -111,7 +112,8 @@ impl Encode for Location {
         self.longitude_deg.encode(encoder)?;
         self.height_km.encode(encoder)?;
         self.frame.encode(encoder)?;
-        self.terrain_mask.encode(encoder)
+        self.terrain_mask.encode(encoder)?;
+        self.terrain_mask_ignored.encode(encoder)
     }
 }
 
@@ -123,6 +125,7 @@ impl<'a> Decode<'a> for Location {
             height_km: decoder.decode()?,
             frame: decoder.decode()?,
             terrain_mask: decoder.decode()?,
+            terrain_mask_ignored: decoder.decode()?,
         })
     }
 }
