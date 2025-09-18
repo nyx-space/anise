@@ -289,7 +289,7 @@ mod ut_aer {
         let height_km = 0.834_939;
 
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../data/aer_regression.dhall");
-        let almanac = MetaAlmanac::new(path.to_str().unwrap().to_string())
+        let almanac = MetaAlmanac::new(path.to_str().unwrap())
             .unwrap()
             .process(false)
             .unwrap();
@@ -541,15 +541,20 @@ mod ut_aer {
             .push(dsn_madrid, Some(123), Some("DSN Madrid"))
             .unwrap();
 
-        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../data/aer_regression.dhall");
-        let mut almanac = MetaAlmanac::new(path.to_str().unwrap().to_string())
-            .unwrap()
-            .process(false)
-            .unwrap()
-            .load("../data/earth_longterm_000101_251211_250915.bpc")
-            .unwrap()
-            .load("../data/pck08.pca")
-            .unwrap();
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mut almanac =
+            MetaAlmanac::new(path.join("../data/aer_regression.dhall").to_str().unwrap())
+                .unwrap()
+                .process(false)
+                .unwrap()
+                .load(
+                    path.join("../data/earth_longterm_000101_251211_250915.bpc")
+                        .to_str()
+                        .unwrap(),
+                )
+                .unwrap()
+                .load("../data/pck08.pca")
+                .unwrap();
         almanac.location_data = loc_data;
 
         let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();

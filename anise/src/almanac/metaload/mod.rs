@@ -132,7 +132,7 @@ mod meta_test {
         println!("{}", default.dumps().unwrap());
 
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../data/latest.dhall");
-        let dhall = MetaAlmanac::new(path.to_str().unwrap().to_string()).unwrap();
+        let dhall = MetaAlmanac::new(path.to_str().unwrap()).unwrap();
 
         assert_eq!(dhall, default);
 

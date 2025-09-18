@@ -18,7 +18,7 @@ impl MetaAlmanac {
     #[pyo3(signature=(maybe_path=None))]
     pub fn py_new(maybe_path: Option<String>) -> Result<Self, MetaAlmanacError> {
         match maybe_path {
-            Some(path) => Self::new(path),
+            Some(path) => Self::new(&path),
             None => Ok(Self { files: Vec::new() }),
         }
     }
