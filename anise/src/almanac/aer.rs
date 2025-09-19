@@ -547,12 +547,6 @@ mod ut_aer {
                 .unwrap()
                 .process(false)
                 .unwrap()
-                .load(
-                    path.join("../data/earth_longterm_000101_251211_250915.bpc")
-                        .to_str()
-                        .unwrap(),
-                )
-                .unwrap()
                 .load("../data/pck08.pca")
                 .unwrap();
         almanac.location_data = loc_data;

@@ -22,7 +22,9 @@ use anise::naif::kpl::parser::{convert_fk, convert_tpc};
 use anise::prelude::*;
 use anise::structure::dataset::{DataSetError, DataSetType};
 use anise::structure::metadata::Metadata;
-use anise::structure::{EulerParameterDataSet, PlanetaryDataSet, SpacecraftDataSet};
+use anise::structure::{
+    EulerParameterDataSet, LocationDataSet, PlanetaryDataSet, SpacecraftDataSet,
+};
 
 mod args;
 use args::{Actions, CliArgs};
@@ -106,6 +108,12 @@ fn main() -> Result<(), CliErrors> {
                         // Decode as euler parameter data
                         let dataset = EulerParameterDataSet::try_from_bytes(bytes)
                             .context(CliDataSetSnafu)?;
+                        println!("{dataset}");
+                        Ok(())
+                    }
+                    DataSetType::LocationData => {
+                        let dataset =
+                            LocationDataSet::try_from_bytes(bytes).context(CliDataSetSnafu)?;
                         println!("{dataset}");
                         Ok(())
                     }

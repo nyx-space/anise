@@ -9,5 +9,8 @@
     , uri =
         "http://public-data.nyxspace.com/anise/ci/earth_latest_high_prec-2025-05-24.bpc"
     }
+  , { crc32 = Some 0x9145a9b3    , uri =
+        "http://public-data.nyxspace.com/anise/ci/earth_longterm_000101_251211_250915.bpc"
+    }
   ]
 }

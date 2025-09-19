@@ -28,8 +28,8 @@ use pyo3::prelude::*;
 
 /// A unique frame reference that only contains enough information to build the actual Frame object.
 /// It cannot be used for any computations, is it be used in any structure apart from error structures.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "analysis", derive(Default, StaticType))]
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "analysis", derive(StaticType))]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct FrameUid {

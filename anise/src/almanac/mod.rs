@@ -120,13 +120,27 @@ impl Almanac {
         me
     }
 
+    /// Loads the provided location data into a clone of this original Almanac.
+    pub fn with_location_data(&self, loc_dataset: LocationDataSet) -> Self {
+        let mut me = self.clone();
+        me.location_data = loc_dataset;
+        me
+    }
+
     /// Loads the provides bytes as one of the data types supported in ANISE.
     pub fn load_from_bytes(&self, bytes: Bytes) -> AlmanacResult<Self> {
         self._load_from_bytes(bytes, None)
     }
 
     fn _load_from_bytes(&self, bytes: Bytes, path: Option<&str>) -> AlmanacResult<Self> {
-        // Try to load as a SPICE DAF first (likely the most typical use case)
+        // Check if they forgot to run git lfs
+        if let Some(lfs_header) = bytes.get(..8) {
+            if lfs_header == "version".as_bytes() {
+                return Err(AlmanacError::GenericError {
+                    err: "file is a git lfs pointer, run `git lfs pull`".to_string(),
+                });
+            }
+        }
 
         // Load the header only
         if let Some(file_record_bytes) = bytes.get(..FileRecord::SIZE) {
@@ -217,10 +231,19 @@ impl Almanac {
                     info!("Loading {} as ANISE/EPA", path.unwrap_or("bytes"));
                     Ok(self.with_euler_parameters(dataset))
                 }
+                DataSetType::LocationData => {
+                    let dataset = LocationDataSet::try_from_bytes(bytes).context({
+                        TLDataSetSnafu {
+                            action: "loading location data",
+                        }
+                    })?;
+                    info!("Loading {} as ANISE/LDA", path.unwrap_or("bytes"));
+                    Ok(self.with_location_data(dataset))
+                }
             }
         } else {
             Err(AlmanacError::GenericError {
-                err: "Provided file cannot be inspected loaded directly in ANISE and may need a conversion first".to_string(),
+                err: "file cannot be inspected or loaded directly in ANISE".to_string(),
             })
         }
     }

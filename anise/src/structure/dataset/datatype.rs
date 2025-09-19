@@ -18,6 +18,7 @@ pub enum DataSetType {
     SpacecraftData,
     PlanetaryData,
     EulerParameterData,
+    LocationData,
 }
 
 impl TryFrom<u8> for DataSetType {
@@ -29,6 +30,7 @@ impl TryFrom<u8> for DataSetType {
             1 => Ok(DataSetType::SpacecraftData),
             2 => Ok(DataSetType::PlanetaryData),
             3 => Ok(DataSetType::EulerParameterData),
+            4 => Ok(DataSetType::LocationData),
             _ => Err("Invalid value for DataSetType"),
         }
     }
