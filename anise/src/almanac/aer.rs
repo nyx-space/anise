@@ -229,7 +229,13 @@ impl Almanac {
                     // Return the mutated aer
                     aer
                 }),
-            Err(e) => Err(AlmanacError::GenericError { err: e.to_string() }),
+            Err(source) => Err(AlmanacError::Ephemeris {
+                action: "AER from location: could not build transmitter state",
+                source: Box::new(EphemerisError::EphemerisPhysics {
+                    action: "try_latlongalt_omega",
+                    source,
+                }),
+            }),
         }
     }
 }
