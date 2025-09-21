@@ -22,7 +22,7 @@ use crate::prelude::{Epoch, Orbit};
 use crate::NaifId;
 
 use super::elements::OrbitalElement;
-use super::specs::StateSpec;
+use super::specs::{OrthogonalFrame, Plane, StateSpec};
 use super::AnalysisError;
 
 /// VectorExpr defines a vector expression, which can either be computed from a state, or from a fixed definition.
@@ -52,12 +52,25 @@ pub enum VectorExpr {
     },
     /// Unit vector of this vector expression, returns zero vector if norm less than 1e-12
     Unit(Box<Self>),
+    /// Negate a vector
+    /// /// Negate a vector.
+    Negate(Box<Self>),
     /// Vector projection of a onto b
     VecProjection {
         a: Box<Self>,
         b: Box<Self>,
     },
-    // PlaneProjection {}
+    // This should be as simple as multiplying the input VectorExpr by the DCM.
+    // I think it makes sense to have trivial rotations like VNC, RIC, RCN available in the frame spec.
+    // The test should consist in checking that we can rebuild the VNC frame and project the Sun Earth vector onto
+    // the VNC frame of that same Sun Earth orbit, returning the X, Y, or Z component.
+    // Projection should allow XY, XZ, YZ which determines the components to account for.
+    /// Multiplies the DCM of thr frame with this vector, thereby rotating it into the provided orthogonal frame, optionally projecting onto the plan, optionally projecting onto the plane
+    Project {
+        v: Box<Self>,
+        frame: Box<OrthogonalFrame>,
+        plane: Option<Plane>,
+    },
 }
 
 impl fmt::Display for VectorExpr {
@@ -70,7 +83,15 @@ impl fmt::Display for VectorExpr {
             Self::EccentricityVector(state) => write!(f, "EccentricityVector({state})"),
             Self::CrossProduct { a, b } => write!(f, "{a} ⨯ {b}"),
             Self::Unit(v) => write!(f, "unit({v})"),
+            Self::Negate(v) => write!(f, "-{v}"),
             Self::VecProjection { a, b } => write!(f, "proj {a} onto {b}"),
+            Self::Project { v, frame, plane } => {
+                if let Some(plane) = plane {
+                    write!(f, "proj {v} onto {plane:?} of {frame}")
+                } else {
+                    write!(f, "{v} dot {frame}")
+                }
+            }
         }
     }
 }
@@ -107,11 +128,23 @@ impl VectorExpr {
                 .evaluate(epoch, almanac)?
                 .try_normalize(1e-12)
                 .unwrap_or(Vector3::zeros())),
+            Self::Negate(v) => Ok(-v.evaluate(epoch, almanac)?),
             Self::VecProjection { a, b } => {
                 let vec_a = a.evaluate(epoch, almanac)?;
                 let vec_b = b.evaluate(epoch, almanac)?;
 
                 Ok(vec_a.dot(&vec_b) * vec_b)
+            }
+            Self::Project { v, frame, plane } => {
+                let dcm = frame.evaluate(epoch, almanac)?;
+
+                let vector = v.evaluate(epoch, almanac)?;
+
+                if let Some(plane) = plane {
+                    Ok(dcm * plane.mask() * vector)
+                } else {
+                    Ok(dcm * vector)
+                }
             }
         }
     }

@@ -22,7 +22,6 @@ use std::collections::HashMap;
 
 pub mod elements;
 pub mod expr;
-pub mod framedef;
 pub mod specs;
 
 use expr::ScalarExpr;
@@ -111,6 +110,7 @@ pub type AnalysisResult<T> = Result<T, AnalysisError>;
 mod ut_analysis {
 
     use crate::analysis::prelude::*;
+    use crate::analysis::specs::{OrthogonalFrame, Plane};
     use crate::astro::{Aberration, Location, TerrainMask};
     use crate::constants::frames::{EME2000, IAU_EARTH_FRAME, MOON_J2000, SUN_J2000, VENUS_J2000};
     use crate::prelude::Almanac;
@@ -201,15 +201,38 @@ mod ut_analysis {
     #[rstest]
     fn test_analysis_gen_report(almanac: Almanac) {
         // Try to compute the SMA of the Earth with respect to the Sun.
-
         let target_frame = FrameSpec::Loaded(EME2000);
         let observer_frame = FrameSpec::Loaded(MOON_J2000);
 
         let state = StateSpec {
-            target_frame,
+            target_frame: target_frame.clone(),
             observer_frame,
             ab_corr: Aberration::NONE,
         };
+
+        // Build the orthogonal VNC frame of the Earth ... isn't useful per-se
+        // just a proof of concept, ensuring we normalize these vectors.
+        let vnc = OrthogonalFrame::XY {
+            x: VectorExpr::Unit(Box::new(VectorExpr::Velocity(state.clone()))),
+            y: VectorExpr::Unit(Box::new(VectorExpr::OrbitalMomentum(state.clone()))),
+        };
+
+        let sun_state = StateSpec {
+            target_frame,
+            observer_frame: FrameSpec::Loaded(SUN_J2000),
+            ab_corr: Aberration::LT,
+        };
+
+        // Project the Earth->Sun vector onto the VNC frame
+        let proj = VectorExpr::Project {
+            v: Box::new(VectorExpr::Negate(Box::new(VectorExpr::Unit(Box::new(
+                VectorExpr::Radius(sun_state),
+            ))))),
+            frame: Box::new(vnc),
+            plane: Some(Plane::XY),
+        };
+
+        println!("{proj}");
 
         let scalars = [
             ScalarExpr::Element(OrbitalElement::SemiMajorAxis),
@@ -257,6 +280,9 @@ mod ut_analysis {
                 location_id: 123,
                 obstructing_body: None,
             },
+            ScalarExpr::VectorX(proj.clone()),
+            ScalarExpr::VectorY(proj.clone()),
+            ScalarExpr::VectorZ(proj.clone()),
         ];
 
         let data = almanac.generate_report(
@@ -280,6 +306,13 @@ mod ut_analysis {
         assert_eq!(
             last_row["Hmag (km)"],
             last_row["|Radius(Earth J2000 -> Moon J2000) ⨯ Velocity(Earth J2000 -> Moon J2000)|"]
-        )
+        );
+
+        for (k, v) in last_row.iter() {
+            if k.contains("proj") {
+                // Check that we have correctly defined the projections onto an othogonal frame
+                assert!(v.as_ref().unwrap().abs() <= 1.0);
+            }
+        }
     }
 }

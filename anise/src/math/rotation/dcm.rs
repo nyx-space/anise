@@ -322,6 +322,17 @@ impl Mul<&CartesianState> for DCM {
     }
 }
 
+impl Mul<Matrix3> for DCM {
+    type Output = Self;
+
+    /// Multiplying a DCM with a Matrix3 will apply that matrix to BOTH the DCM and its time derivative.
+    fn mul(mut self, rhs: Matrix3) -> Self::Output {
+        self.rot_mat *= rhs;
+        self.rot_mat_dt = self.rot_mat_dt.map(|rot_mat_dt| rot_mat_dt * rhs);
+
+        self
+    }
+}
 impl From<DCM> for Quaternion {
     /// Convert from a DCM into its quaternion representation
     ///

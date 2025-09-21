@@ -32,11 +32,9 @@ impl Almanac {
     pub fn rotate(
         &self,
         from_frame: Frame,
-        to_frame: Frame,
+        mut to_frame: Frame,
         epoch: Epoch,
     ) -> Result<DCM, OrientationError> {
-        let mut to_frame: Frame = to_frame;
-
         // If there is no frame info, the user hasn't loaded this frame, but might still want to compute a translation.
         if let Ok(to_frame_info) = self.frame_from_uid(to_frame) {
             // User has loaded the planetary data for this frame, so let's use that as the to_frame.
