@@ -48,6 +48,12 @@ impl Location {
         let idx = self
             .terrain_mask
             .partition_point(|mask| mask.azimuth_deg <= azimuth_deg.rem_euclid(360.0));
+        if idx == 0 {
+            return self
+                .terrain_mask
+                .last()
+                .map_or(0.0, |mask| mask.elevation_mask_deg);
+        }
         self.terrain_mask
             .get(idx - 1)
             .map_or(0.0, |mask| mask.elevation_mask_deg)

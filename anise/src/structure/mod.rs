@@ -43,5 +43,5 @@ pub type SpacecraftDataSet = DataSet<SpacecraftData, MAX_SPACECRAFT_DATA>;
 pub type PlanetaryDataSet = DataSet<PlanetaryData, MAX_PLANETARY_DATA>;
 /// Euler Parameter Data Set allow mapping an ID and/or name to a time invariant Quaternion
 pub type EulerParameterDataSet = DataSet<Quaternion, MAX_PLANETARY_DATA>;
-/// Euler Parameter Data Set allow mapping an ID and/or name to a time invariant Quaternion
+/// Location Data Set allow mapping an ID and/or name to a Location.
 pub type LocationDataSet = DataSet<Location, MAX_PLANETARY_DATA>;
