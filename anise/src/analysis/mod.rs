@@ -45,7 +45,7 @@ pub mod prelude {
 impl Almanac {
     pub fn generate_report(
         &self,
-        scalars: &[ScalarExpr],
+        scalars: &[(ScalarExpr, Option<&str>)],
         state_spec: StateSpec,
         time_series: TimeSeries,
     ) -> HashMap<Epoch, Result<HashMap<String, AnalysisResult<f64>>, AnalysisError>> {
@@ -59,8 +59,11 @@ impl Almanac {
 
                         let ab_corr = spec.ab_corr;
 
-                        for expr in scalars.iter() {
-                            data.insert(expr.to_string(), expr.evaluate(orbit, ab_corr, almanac));
+                        for (expr, alias) in scalars.iter() {
+                            data.insert(
+                                alias.or(Some(&expr.to_string())).unwrap().to_string(),
+                                expr.evaluate(orbit, ab_corr, almanac),
+                            );
                         }
                         (epoch, Ok(data))
                     }
@@ -285,8 +288,16 @@ mod ut_analysis {
             ScalarExpr::VectorZ(proj.clone()),
         ];
 
+        let cnt = scalars.len();
+
+        let mut scalars_with_aliases = scalars.map(|s| (s, None));
+        // Set an alias for the last three.
+        scalars_with_aliases[cnt - 3].1 = Some("proj VNC X");
+        scalars_with_aliases[cnt - 2].1 = Some("proj VNC Y");
+        scalars_with_aliases[cnt - 1].1 = Some("proj VNC Z");
+
         let data = almanac.generate_report(
-            &scalars,
+            &scalars_with_aliases,
             state,
             TimeSeries::inclusive(
                 Epoch::from_gregorian_utc_at_midnight(2025, 1, 1),
@@ -300,7 +311,7 @@ mod ut_analysis {
         let last_row = data.values().last().unwrap().as_ref().unwrap();
 
         println!("{last_row:?}");
-        assert_eq!(last_row.len(), scalars.len());
+        assert_eq!(last_row.len(), scalars_with_aliases.len());
 
         // Test that we correctly computed the norm of the cross product
         assert_eq!(
