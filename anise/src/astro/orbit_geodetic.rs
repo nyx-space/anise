@@ -24,6 +24,11 @@ use pyo3::prelude::*;
 #[cfg(feature = "python")]
 use pyo3::types::PyType;
 
+#[cfg(feature = "python")]
+use numpy::{PyReadonlyArray1, PyUntypedArrayMethods};
+#[cfg(feature = "python")]
+use pyo3::exceptions::PyTypeError;
+
 impl CartesianState {
     /// Creates a new Orbit from the provided semi-major axis altitude in kilometers
     #[allow(clippy::too_many_arguments)]
@@ -73,9 +78,11 @@ impl CartesianState {
         )
     }
 
-    /// Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid given the angular velocity.
+    /// (Low fidelity) Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid given the angular velocity in rad/s applied entirely on the +Z axis.
     ///
-    /// **Note:** The mean Earth angular velocity is `0.004178079012116429` deg/s.
+    /// **WARNING**: This function assumes that all the angular velocity is applied on the +Z axis. For the high fidelity equivalent, use [try_latlongalt_omega].
+    ///
+    /// **Note:** The mean Earth angular velocity is `0.004178079012116429` deg/s, or 7.292123516990373e-05 rad/s.
     ///
     /// NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
     /// Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016
@@ -83,7 +90,31 @@ impl CartesianState {
         latitude_deg: f64,
         longitude_deg: f64,
         height_km: f64,
-        angular_velocity_deg_s: f64,
+        angular_velocity_rad_s: f64,
+        epoch: Epoch,
+        frame: Frame,
+    ) -> PhysicsResult<Self> {
+        Self::try_latlongalt_omega(
+            latitude_deg,
+            longitude_deg,
+            height_km,
+            Vector3::new(0.0, 0.0, angular_velocity_rad_s),
+            epoch,
+            frame,
+        )
+    }
+
+    /// Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid given the angular velocity vector.
+    ///
+    /// Consider using the [Almanac]'s [angular_velocity_wrt_j2000_rad_s] function or [angular_velocity_rad_s] to retrieve the exact angular velocity vector between two orientations.
+    ///
+    /// NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
+    /// Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016
+    pub fn try_latlongalt_omega(
+        latitude_deg: f64,
+        longitude_deg: f64,
+        height_km: f64,
+        angular_velocity_rad_s: Vector3,
         epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
@@ -98,7 +129,8 @@ impl CartesianState {
         let rj = (c_body + height_km) * cos_lat * sin_long;
         let rk = (s_body + height_km) * sin_lat;
         let radius = Vector3::new(ri, rj, rk);
-        let velocity = Vector3::new(0.0, 0.0, angular_velocity_deg_s).cross(&radius);
+        let velocity = angular_velocity_rad_s.cross(&radius);
+
         Ok(Self::new(
             radius[0],
             radius[1],
@@ -188,12 +220,14 @@ impl CartesianState {
         )
     }
 
-    /// Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid given the angular velocity.
+    /// (Low fidelity) Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid given the angular velocity in rad/s applied entirely on the +Z axis.
     ///
-    /// **Units:** degrees, degrees, km, rad/s
+    /// **WARNING**: This function assumes that all the angular velocity is applied on the +Z axis..
+    ///
+    /// **Note:** The mean Earth angular velocity is `0.004178079012116429` deg/s, or 7.292123516990373e-05 rad/s.
+    ///
     /// NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
     /// Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016
-    ///
     ///
     /// :type latitude_deg: float
     /// :type longitude_deg: float
@@ -209,7 +243,7 @@ impl CartesianState {
         latitude_deg: f64,
         longitude_deg: f64,
         height_km: f64,
-        angular_velocity: f64,
+        angular_velocity_rad_s: f64,
         epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
@@ -217,10 +251,39 @@ impl CartesianState {
             latitude_deg,
             longitude_deg,
             height_km,
-            angular_velocity,
+            angular_velocity_rad_s,
             epoch,
             frame,
         )
+    }
+
+    /// Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid given the angular velocity vector (omega).
+    ///
+    /// Consider using the [Almanac]'s [angular_velocity_wrt_j2000_rad_s] function or [angular_velocity_rad_s] to retrieve the exact angular velocity vector between two orientations.
+    ///
+    /// NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
+    /// Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016
+    #[cfg(feature = "python")]
+    #[classmethod]
+    pub fn from_latlongalt_omega<'py>(
+        _cls: &Bound<'_, PyType>,
+        latitude_deg: f64,
+        longitude_deg: f64,
+        height_km: f64,
+        angular_velocity_rad_s: PyReadonlyArray1<'py, f64>,
+        epoch: Epoch,
+        frame: Frame,
+    ) -> PyResult<Self> {
+        if angular_velocity_rad_s.shape() != [3] {
+            return Err(PyErr::new::<PyTypeError, _>(
+                "angular velocity vector omega must be 1x3",
+            ));
+        }
+
+        let omega = Vector3::from_row_iterator(angular_velocity_rad_s.as_array().iter().copied());
+
+        Self::try_latlongalt_omega(latitude_deg, longitude_deg, height_km, omega, epoch, frame)
+            .map_err(|e| PyErr::new::<PyTypeError, _>(format!("{e}")))
     }
 
     /// Returns the altitude in km

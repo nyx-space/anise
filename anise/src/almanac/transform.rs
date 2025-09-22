@@ -26,7 +26,7 @@ use crate::{
 use super::Almanac;
 
 impl Almanac {
-    /// Returns the Cartesian state needed to transform the `from_frame` to the `to_frame`.
+    /// Returns the Cartesian state needed to transform the `target_frame` to the `observer_frame`.
     ///
     /// # SPICE Compatibility
     /// This function is the SPICE equivalent of spkezr: `spkezr(TARGET_ID, EPOCH_TDB_S, ORIENTATION_ID, ABERRATION, OBSERVER_ID)`

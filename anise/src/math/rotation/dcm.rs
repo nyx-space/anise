@@ -128,6 +128,34 @@ impl DCM {
         }
     }
 
+    /// Returns the skew symmetric matrix if this DCM defines a rotation rate.
+    pub fn skew_symmetric(&self) -> Option<Matrix3> {
+        self.rot_mat_dt
+            .map(|c_dot| c_dot * self.rot_mat.transpose())
+    }
+
+    /// Returns the angular velocity vector in deg/s of this DCM is it has a defined rotation rate.
+    pub fn angular_velocity_rad_s(&self) -> Option<Vector3> {
+        self.skew_symmetric().map(|omega_skew_symmetric| {
+            // Extract the angular velocity vector components from the skew-symmetric matrix.
+            // omega_x = (m32 - m23) / 2
+            // omega_y = (m13 - m31) / 2
+            // omega_z = (m21 - m12) / 2
+            // This averaging of opposite elements is more robust to floating-point errors.
+            Vector3::new(
+                (omega_skew_symmetric.m32 - omega_skew_symmetric.m23) / 2.0,
+                (omega_skew_symmetric.m13 - omega_skew_symmetric.m31) / 2.0,
+                (omega_skew_symmetric.m21 - omega_skew_symmetric.m12) / 2.0,
+            )
+        })
+    }
+
+    /// Returns the angular velocity vector in deg/s if a rotation rate is defined.
+    pub fn angular_velocity_deg_s(&self) -> Option<Vector3> {
+        self.angular_velocity_rad_s()
+            .map(|rad_vec| rad_vec.map(|component| component.to_degrees()))
+    }
+
     /// Multiplies this DCM with another one WITHOUT checking if the frames match.
     pub(crate) fn mul_unchecked(&self, other: Self) -> Self {
         let mut rslt = *self;
@@ -294,6 +322,17 @@ impl Mul<&CartesianState> for DCM {
     }
 }
 
+impl Mul<Matrix3> for DCM {
+    type Output = Self;
+
+    /// Multiplying a DCM with a Matrix3 will apply that matrix to BOTH the DCM and its time derivative.
+    fn mul(mut self, rhs: Matrix3) -> Self::Output {
+        self.rot_mat *= rhs;
+        self.rot_mat_dt = self.rot_mat_dt.map(|rot_mat_dt| rot_mat_dt * rhs);
+
+        self
+    }
+}
 impl From<DCM> for Quaternion {
     /// Convert from a DCM into its quaternion representation
     ///

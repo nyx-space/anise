@@ -8,8 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 
-use anise::astro::AzElRange;
-use anise::astro::Occultation;
+use anise::astro::{AzElRange, Location, Occultation, TerrainMask};
+use anise::frames::FrameUid;
 use anise::structure::planetocentric::ellipsoid::Ellipsoid;
 use pyo3::prelude::*;
 
@@ -21,9 +21,12 @@ use pyo3::wrap_pymodule;
 pub(crate) fn astro(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
     sm.add_class::<Ellipsoid>()?;
     sm.add_class::<Frame>()?;
+    sm.add_class::<FrameUid>()?;
     sm.add_class::<Orbit>()?;
     sm.add_class::<AzElRange>()?;
     sm.add_class::<Occultation>()?;
+    sm.add_class::<Location>()?;
+    sm.add_class::<TerrainMask>()?;
 
     // Also add the constants as a submodule to astro for backward compatibility
     sm.add_wrapped(wrap_pymodule!(crate::constants::constants))?;

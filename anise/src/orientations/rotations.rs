@@ -32,11 +32,9 @@ impl Almanac {
     pub fn rotate(
         &self,
         from_frame: Frame,
-        to_frame: Frame,
+        mut to_frame: Frame,
         epoch: Epoch,
     ) -> Result<DCM, OrientationError> {
-        let mut to_frame: Frame = to_frame;
-
         // If there is no frame info, the user hasn't loaded this frame, but might still want to compute a translation.
         if let Ok(to_frame_info) = self.frame_from_uid(to_frame) {
             // User has loaded the planetary data for this frame, so let's use that as the to_frame.
@@ -124,9 +122,69 @@ impl Almanac {
 
         (dcm * state).context(OrientationPhysicsSnafu {})
     }
-}
 
-impl Almanac {
+    /// Returns the angular velocity vector in rad/s of the from_frame wtr to the to_frame.
+    ///
+    /// This can be used to compute the angular velocity of the Earth ITRF93 frame with respect to the J2000 frame for example.
+    pub fn angular_velocity_rad_s(
+        &self,
+        from_frame: Frame,
+        to_frame: Frame,
+        epoch: Epoch,
+    ) -> Result<Vector3, OrientationError> {
+        let dcm = self.rotate(from_frame, to_frame, epoch)?;
+
+        if let Some(omega_rad_s) = dcm.angular_velocity_rad_s() {
+            Ok(omega_rad_s)
+        } else {
+            Err(OrientationError::OrientationPhysics {
+                source: crate::errors::PhysicsError::DCMMissingDerivative {
+                    action: "computing the angular velocity",
+                },
+            })
+        }
+    }
+
+    /// Returns the angular velocity vector in rad/s of the from_frame wtr to the J2000 frame.
+    pub fn angular_velocity_wtr_j2000_rad_s(
+        &self,
+        from_frame: Frame,
+        epoch: Epoch,
+    ) -> Result<Vector3, OrientationError> {
+        self.angular_velocity_rad_s(from_frame, from_frame.with_orient(J2000), epoch)
+    }
+
+    /// Returns the angular velocity vector in deg/s of the from_frame wtr to the to_frame.
+    ///
+    /// This can be used to compute the angular velocity of the Earth ITRF93 frame with respect to the J2000 frame for example.
+    pub fn angular_velocity_deg_s(
+        &self,
+        from_frame: Frame,
+        to_frame: Frame,
+        epoch: Epoch,
+    ) -> Result<Vector3, OrientationError> {
+        let dcm = self.rotate(from_frame, to_frame, epoch)?;
+
+        if let Some(omega_deg_s) = dcm.angular_velocity_deg_s() {
+            Ok(omega_deg_s)
+        } else {
+            Err(OrientationError::OrientationPhysics {
+                source: crate::errors::PhysicsError::DCMMissingDerivative {
+                    action: "computing the angular velocity",
+                },
+            })
+        }
+    }
+
+    /// Returns the angular velocity vector in deg/s of the from_frame wtr to the J2000 frame.
+    pub fn angular_velocity_wtr_j2000_deg_s(
+        &self,
+        from_frame: Frame,
+        epoch: Epoch,
+    ) -> Result<Vector3, OrientationError> {
+        self.angular_velocity_deg_s(from_frame, from_frame.with_orient(J2000), epoch)
+    }
+
     /// Rotates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame
     ///
     /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_state_to` function instead to include rotations.

@@ -8,6 +8,7 @@ use anise::constants::frames::{
 use anise::constants::orientations::{
     ECLIPJ2000, IAU_JUPITER, IAU_MOON, ITRF93, J2000, MOON_PA_DE440,
 };
+use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
 use anise::math::rotation::DCM;
 use anise::math::{Matrix3, Vector3};
 use anise::naif::kpl::parser::convert_tpc;
@@ -167,6 +168,16 @@ fn test_itrf93_to_j2k() {
         spice_dcm.rot_mat_dt.unwrap(),
         (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm(),
         dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()
+    );
+
+    // Check that the angular rate of the ITRF93 frame wrt to the J2000 frame is very close to the mean value.
+    let omega_deg_s = almanac
+        .angular_velocity_wtr_j2000_deg_s(EARTH_ITRF93, epoch)
+        .unwrap();
+
+    assert!(
+        dbg!(omega_deg_s.norm()) - dbg!(MEAN_EARTH_ANGULAR_VELOCITY_DEG_S).abs() < 1e-8,
+        "incorrect mean Earth angular velocity"
     );
 }
 

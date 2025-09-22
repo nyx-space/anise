@@ -33,6 +33,8 @@ pub use occultation::Occultation;
 pub mod orbit;
 pub mod orbit_geodetic;
 
+pub use crate::structure::location::{Location, TerrainMask};
+
 pub type PhysicsResult<T> = Result<T, PhysicsError>;
 
 /// A structure that stores the result of Azimuth, Elevation, Range, Range rate calculation.
@@ -53,6 +55,7 @@ pub struct AzElRange {
     pub elevation_deg: f64,
     pub range_km: f64,
     pub range_rate_km_s: f64,
+    /// Set to the frame of the location if a terrain mask hides the object.
     pub obstructed_by: Option<Frame>,
     pub light_time: Duration,
 }

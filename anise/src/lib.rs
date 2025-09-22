@@ -15,6 +15,8 @@ extern crate hifitime;
 extern crate log;
 
 pub mod almanac;
+#[cfg(feature = "analysis")]
+pub mod analysis;
 pub mod astro;
 pub mod constants;
 pub mod ephemerides;

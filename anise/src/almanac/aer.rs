@@ -12,10 +12,11 @@ use crate::{
     astro::{Aberration, AzElRange},
     constants::SPEED_OF_LIGHT_KM_S,
     ephemerides::{EphemerisError, EphemerisPhysicsSnafu},
-    errors::{AlmanacError, EphemerisSnafu, PhysicsError},
+    errors::{AlmanacError, EphemerisSnafu, OrientationSnafu, PhysicsError},
     frames::Frame,
     math::angles::{between_0_360, between_pm_180},
     prelude::Orbit,
+    structure::location::Location,
 };
 
 use super::Almanac;
@@ -126,10 +127,122 @@ impl Almanac {
             light_time: (rho_sez.norm() / SPEED_OF_LIGHT_KM_S).seconds(),
         })
     }
+
+    /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
+    /// receiver state (`rx`) seen from the location ID (as transmitter state, once converted into the SEZ frame of the transmitter.
+    /// Refer to [azimuth_elevation_range_sez] for algorithm details.
+    pub fn azimuth_elevation_range_sez_from_location_id(
+        &self,
+        rx: Orbit,
+        location_id: i32,
+        obstructing_body: Option<Frame>,
+        ab_corr: Option<Aberration>,
+    ) -> AlmanacResult<AzElRange> {
+        match self.location_data.get_by_id(location_id) {
+            Ok(location) => self.azimuth_elevation_range_sez_from_location(
+                rx,
+                location,
+                obstructing_body,
+                ab_corr,
+            ),
+
+            Err(source) => Err(AlmanacError::TLDataSet {
+                action: "AER for location",
+                source,
+            }),
+        }
+    }
+
+    /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
+    /// receiver state (`rx`) seen from the location ID (as transmitter state, once converted into the SEZ frame of the transmitter.
+    /// Refer to [azimuth_elevation_range_sez] for algorithm details.
+    pub fn azimuth_elevation_range_sez_from_location_name(
+        &self,
+        rx: Orbit,
+        location_name: &str,
+        obstructing_body: Option<Frame>,
+        ab_corr: Option<Aberration>,
+    ) -> AlmanacResult<AzElRange> {
+        match self.location_data.get_by_name(location_name) {
+            Ok(location) => self.azimuth_elevation_range_sez_from_location(
+                rx,
+                location,
+                obstructing_body,
+                ab_corr,
+            ),
+
+            Err(source) => Err(AlmanacError::TLDataSet {
+                action: "AER for location",
+                source,
+            }),
+        }
+    }
+
+    /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
+    /// receiver state (`rx`) seen from the provided location (as transmitter state, once converted into the SEZ frame of the transmitter.
+    /// Refer to [azimuth_elevation_range_sez] for algorithm details.
+    /// Location terrain masks are always applied, i.e. if the terrain masks the object, all data is set to f64::NAN, unless specified otherwise in the Location.
+    pub fn azimuth_elevation_range_sez_from_location(
+        &self,
+        rx: Orbit,
+        location: Location,
+        obstructing_body: Option<Frame>,
+        ab_corr: Option<Aberration>,
+    ) -> AlmanacResult<AzElRange> {
+        let epoch = rx.epoch;
+        // If loading the frame data fails, stop here because the flatenning ratio must be defined.
+        let from_frame =
+            self.frame_from_uid(location.frame)
+                .map_err(|e| AlmanacError::GenericError {
+                    err: format!("{e} when fetching {} frame data", location.frame),
+                })?;
+        let omega = self
+            .angular_velocity_wtr_j2000_rad_s(from_frame, epoch)
+            .context(OrientationSnafu {
+                action: "AER computation from location ID",
+            })?;
+        // Build the state of this orbit
+        match Orbit::try_latlongalt_omega(
+            location.latitude_deg,
+            location.longitude_deg,
+            location.height_km,
+            omega,
+            epoch,
+            from_frame,
+        ) {
+            Ok(tx) => self
+                .azimuth_elevation_range_sez(rx, tx, obstructing_body, ab_corr)
+                .map(|mut aer| {
+                    // Apply elevation mask
+                    if location.elevation_mask_from_azimuth_deg(aer.azimuth_deg)
+                        >= aer.elevation_deg
+                    {
+                        // Specify that it's obstructed, and set all values to NaN.
+                        aer.obstructed_by = Some(from_frame);
+                        if !location.terrain_mask_ignored {
+                            aer.range_km = f64::NAN;
+                            aer.range_rate_km_s = f64::NAN;
+                            aer.azimuth_deg = f64::NAN;
+                            aer.elevation_deg = f64::NAN;
+                        }
+                    }
+                    // Return the mutated aer
+                    aer
+                }),
+            Err(source) => Err(AlmanacError::Ephemeris {
+                action: "AER from location: could not build transmitter state",
+                source: Box::new(EphemerisError::EphemerisPhysics {
+                    action: "try_latlongalt_omega",
+                    source,
+                }),
+            }),
+        }
+    }
 }
 
 #[cfg(test)]
 mod ut_aer {
+    use core::str::FromStr;
     use std::path::Path;
 
     use hifitime::Unit;
@@ -140,6 +253,8 @@ mod ut_aer {
     use crate::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
     use crate::math::cartesian::CartesianState;
     use crate::prelude::{Almanac, Epoch, MetaAlmanac};
+    use crate::structure::location::{Location, TerrainMask};
+    use crate::structure::LocationDataSet;
 
     #[test]
     fn verif_edge_case() {
@@ -174,15 +289,13 @@ mod ut_aer {
     /// At the moment, the test checks that the range values are _similar_ to those generated by Nyx _before_ it was updated to use ANISE.
     #[test]
     fn gmat_verif() {
-        use core::str::FromStr;
-
         // Build the Madrid DSN gound station
         let latitude_deg = 40.427_222;
         let longitude_deg = 4.250_556;
         let height_km = 0.834_939;
 
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../data/aer_regression.dhall");
-        let almanac = MetaAlmanac::new(path.to_str().unwrap().to_string())
+        let almanac = MetaAlmanac::new(path.to_str().unwrap())
             .unwrap()
             .process(false)
             .unwrap();
@@ -389,6 +502,147 @@ mod ut_aer {
                 (aer.azimuth_deg - regression_data[sno].azimuth_deg).abs() < 1e-10,
                 "{sno}"
             );
+        }
+    }
+
+    /// Rebuild the GMAT Verif test using a location data type directly.
+    ///
+    /// For reference, the `gmat_verif` test below returns these values
+    ///
+    /// [anise/src/almanac/aer.rs:583:21] aer.range_km - expect = -0.28985930999624543
+    /// [anise/src/almanac/aer.rs:583:21] aer.range_km - expect = -1.528660147159826
+    /// [anise/src/almanac/aer.rs:583:21] aer.range_km - expect = -2.6448764982487774
+    /// [anise/src/almanac/aer.rs:583:21] aer.range_km - expect = -3.600219391970313
+    /// [anise/src/almanac/aer.rs:583:21] aer.range_km - expect = -4.453339810104808
+    #[test]
+    fn gmat_verif_location() {
+        // Build the new location
+        let dsn_madrid = Location {
+            latitude_deg: 40.427_222,
+            longitude_deg: 4.250_556,
+            height_km: 0.834_939,
+            frame: EARTH_ITRF93.into(),
+            // Create a fake elevation mask to check that functionality
+            terrain_mask: vec![
+                TerrainMask {
+                    azimuth_deg: 0.0,
+                    elevation_mask_deg: 0.0,
+                },
+                TerrainMask {
+                    azimuth_deg: 130.0,
+                    elevation_mask_deg: 8.0,
+                },
+                TerrainMask {
+                    azimuth_deg: 140.0,
+                    elevation_mask_deg: 0.0,
+                },
+            ],
+            // Ignore terrain mask for the test
+            terrain_mask_ignored: true,
+        };
+
+        // Build a dataset with this single location
+        let mut loc_data = LocationDataSet::default();
+        loc_data
+            .push(dsn_madrid, Some(123), Some("DSN Madrid"))
+            .unwrap();
+
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mut almanac =
+            MetaAlmanac::new(path.join("../data/aer_regression.dhall").to_str().unwrap())
+                .unwrap()
+                .process(false)
+                .unwrap()
+                .load("../data/pck08.pca")
+                .unwrap();
+        almanac.location_data = loc_data;
+
+        let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
+        // Data from another test case
+        // Now iterate the trajectory to generate the measurements.
+        let gmat_ranges_km = [
+            9.145_755_787_575_61e4,
+            9.996_505_560_799_869e4,
+            1.073_229_118_411_670_2e5,
+            1.145_516_751_191_464_7e5,
+            1.265_739_190_638_930_7e5,
+        ];
+
+        let states = [
+            CartesianState::new(
+                58643.769881020,
+                -61696.430010747,
+                -36178.742480219,
+                2.148654262,
+                -1.202488371,
+                -0.714016096,
+                Epoch::from_str("2023-11-16T13:35:30.231999909 UTC").unwrap(),
+                eme2k,
+            ),
+            CartesianState::new(
+                66932.786922851,
+                -66232.181345574,
+                -38873.607459037,
+                2.040554622,
+                -1.092315772,
+                -0.649375769,
+                Epoch::from_str("2023-11-16T14:41:30.231999930 UTC").unwrap(),
+                eme2k,
+            ),
+            CartesianState::new(
+                74004.678508956,
+                -69951.392953800,
+                -41085.743778595,
+                1.956605843,
+                -1.011238479,
+                -0.601766262,
+                Epoch::from_str("2023-11-16T15:40:30.231999839 UTC").unwrap(),
+                eme2k,
+            ),
+            CartesianState::new(
+                80796.571971532,
+                -73405.942333285,
+                -43142.412981359,
+                1.882014733,
+                -0.942231959,
+                -0.561216138,
+                Epoch::from_str("2023-11-16T16:39:30.232000062 UTC").unwrap(),
+                eme2k,
+            ),
+            CartesianState::new(
+                91643.443331668,
+                -78707.208988294,
+                -46302.221669744,
+                1.773134524,
+                -0.846263432,
+                -0.504774983,
+                Epoch::from_str("2023-11-16T18:18:30.231999937 UTC").unwrap(),
+                eme2k,
+            ),
+        ];
+
+        for (sno, state) in states.iter().copied().enumerate() {
+            let aer_from_name = almanac
+                .azimuth_elevation_range_sez_from_location_name(state, "DSN Madrid", None, None)
+                .unwrap();
+
+            // IMPORTANT: We're getting much larger errors here but much less deviation than in the `gmat_verif` case.
+            // Here, the first four errors are -5 km +/- 0.7 (and the last case is -2.6 km). In the other test, we vary
+            // from 0.3 km to 5 km.
+            // This indicates that the higher precision rotation is better, but that the data source used in that test is different.
+            let expect = gmat_ranges_km[sno];
+            assert!(dbg!(aer_from_name.range_km - expect).abs() < 5.1);
+
+            // Check that we can fetch with the ID as well.
+            let aer_from_id = almanac
+                .azimuth_elevation_range_sez_from_location_id(state, 123, None, None)
+                .unwrap();
+
+            assert_eq!(aer_from_id, aer_from_name);
+
+            if sno == 0 {
+                assert!(aer_from_id.is_obstructed(), "terrain should be in the way");
+            }
         }
     }
 }

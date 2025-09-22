@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import pickle
+from math import radians
 
 from anise import Almanac, MetaAlmanac, MetaFile
 from anise.astro import *
@@ -121,7 +122,7 @@ def test_state_transformation():
         48.8566,
         2.3522,
         0.4,
-        mean_earth_angular_velocity_deg_s,
+        radians(mean_earth_angular_velocity_deg_s),
         epoch,
         itrf93,
     )
@@ -129,6 +130,31 @@ def test_state_transformation():
     assert abs(paris.latitude_deg() - 48.8566) < 1e-3
     assert abs(paris.longitude_deg() - 2.3522) < 1e-3
     assert abs(paris.height_km() - 0.4) < 1e-3
+
+    # Lat/long/alt high fidelity
+    omega_itrf93 = almanac.angular_velocity_wtr_j2000_rad_s(Frames.EARTH_ITRF93, epoch)
+    paris_prec = Orbit.from_latlongalt_omega(
+        48.8566,
+        2.3522,
+        0.4,
+        omega_itrf93,
+        epoch,
+        itrf93,
+    )
+
+    assert abs(paris_prec.latitude_deg() - 48.8566) < 1e-3
+    assert abs(paris_prec.longitude_deg() - 2.3522) < 1e-3
+    assert abs(paris_prec.height_km() - 0.4) < 1e-3
+    # Test that the velocity for the high precision is correct.
+    # Assume that the ITRF Z is the main axis of rotation, so there should not be much velocity there
+    assert paris_prec.vz_km_s < 1e-3
+    # Compute the perpendicular distance of the object
+    r_perp_km = (paris_prec.x_km**2 + paris_prec.y_km**2)**0.5
+    # Speed of that point based on its distance from the center of Earth
+    speed_km_s = r_perp_km * radians(mean_earth_angular_velocity_deg_s)
+
+    # Check the approximation of the mean angular velocity is correct.
+    assert abs(speed_km_s - paris_prec.vmag_km_s()) < 1e-3
 
     # Pickling test
     pickle.loads(pickle.dumps(eme2k)) == eme2k

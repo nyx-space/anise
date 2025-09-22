@@ -40,10 +40,10 @@ pub struct MetaAlmanac {
 
 impl MetaAlmanac {
     /// Loads the provided path as a Dhall configuration file and processes each file.
-    pub fn new(path: String) -> Result<Self, MetaAlmanacError> {
-        match serde_dhall::from_file(&path).parse::<Self>() {
+    pub fn new(path: &str) -> Result<Self, MetaAlmanacError> {
+        match serde_dhall::from_file(path).parse::<Self>() {
             Err(e) => Err(MetaAlmanacError::ParseDhall {
-                path,
+                path: path.to_string(),
                 err: format!("{e}"),
             }),
             Ok(me) => Ok(me),
