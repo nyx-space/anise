@@ -75,6 +75,8 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
         }
     }
 
+    /// Reads and parses the file record from the DAF bytes.
+    /// The file record is always the first 1024 bytes of the file.
     pub fn file_record(&self) -> Result<FileRecord, DAFError> {
         let file_record = FileRecord::read_from_bytes(
             self.bytes
@@ -97,6 +99,8 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
         Ok(file_record)
     }
 
+    /// Reads and parses the name record from the DAF bytes.
+    /// The file record contains a pointer to the start of the name record.
     pub fn name_record(&self) -> Result<NameRecord, DAFError> {
         let rcrd_idx = self.file_record()?.fwrd_idx() * RCRD_LEN;
         let rcrd_bytes = self
@@ -111,6 +115,7 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
         Ok(NameRecord::read_from_bytes(rcrd_bytes).unwrap())
     }
 
+    /// Reads and parses the DAF summary record.
     pub fn daf_summary(&self) -> Result<SummaryRecord, DAFError> {
         let rcrd_idx = (self.file_record()?.fwrd_idx() - 1) * RCRD_LEN;
         let rcrd_bytes = self
@@ -128,7 +133,8 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
             .context(DecodingSummarySnafu { kind: R::NAME })
     }
 
-    /// Parses the data summaries on the fly.
+    /// Parses and returns a slice of the data summaries.
+    /// The summaries are located in the same record as the DAF summary.
     pub fn data_summaries(&self) -> Result<&[R], DAFError> {
         if self.file_record()?.is_empty() {
             return Err(DAFError::FileRecord {
@@ -137,7 +143,7 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
             });
         }
 
-        // Move onto the next record, DAF indexes start at 1 ... =(
+        // The file record's forward pointer points to the first summary record.
         let rcrd_idx = (self.file_record()?.fwrd_idx() - 1) * RCRD_LEN;
         let rcrd_bytes = match self
             .bytes
@@ -156,7 +162,7 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
             }
         };
 
-        // The summaries are defined in the same record as the DAF summary
+        // The summaries are located after the main DAF summary record within the same record.
         Ok(
             match Ref::<_, [R]>::from_bytes(&rcrd_bytes[SummaryRecord::SIZE..]) {
                 Ok(r) => Ref::into_ref(r),
@@ -258,6 +264,7 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
     }
 
     /// Provided a name that is in the summary, return its full data, if name is available.
+    /// This function retrieves the data associated with the nth summary record.
     pub fn nth_data<'a, S: NAIFDataSet<'a>>(&'a self, idx: usize) -> Result<S, DAFError> {
         let this_summary = self
             .data_summaries()?
@@ -384,7 +391,18 @@ impl<R: NAIFSummaryRecord, W: MutKind> Hash for GenericDAF<R, W> {
 }
 
 impl<R: NAIFSummaryRecord> DAF<R> {
-    /// Parse the provided bytes as a SPICE Double Array File
+    /// Parse the provided bytes as a SPICE Double Array File.
+    ///
+    /// # DAF File Structure
+    /// A DAF is composed of three main parts:
+    /// 1.  **File Record:** The first record (1024 bytes) of the file. It contains metadata about the file, such as the endianness, the number of records, and pointers to the other sections.
+    /// 2.  **Comment Area:** An optional area for storing comments.
+    /// 3.  **Summary/Name Records and Data:** The remaining records contain the summary records, name records, and the actual data arrays. The file record contains pointers to the start of these sections.
+    ///
+    /// # Parsing Process
+    /// 1.  The entire file is read into a `Bytes` object.
+    /// 2.  The CRC32 checksum of the bytes is computed.
+    /// 3.  The `file_record` and `name_record` are parsed to ensure the file is a valid DAF.
     pub fn parse<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DAFError> {
         let crc32_checksum = crc32fast::hash(&bytes);
         let me = Self {
@@ -392,7 +410,8 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             crc32_checksum,
             _daf_type: PhantomData,
         };
-        // Check that these calls will succeed.
+        // Check that the file record and name record can be parsed successfully.
+        // This validates that the file is a DAF and that the endianness is correct.
         me.file_record()?;
         me.name_record()?;
         Ok(me)
