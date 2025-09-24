@@ -29,6 +29,11 @@ impl EulerParameter {
     }
 
     /// Creates an Euler Parameter representing the short way rotation about the X (R1) axis
+    ///
+    /// :type angle_rad: float
+    /// :type from_id: int
+    /// :type to_id: int
+    /// :rtype: Quaternion
     #[classmethod]
     #[pyo3(name="about_x", signature=(angle_rad, from_id, to_id))]
     fn py_about_x(
@@ -39,7 +44,13 @@ impl EulerParameter {
     ) -> Self {
         Self::about_x(angle_rad, from_id, to_id)
     }
-    /// Creates an Euler Parameter representing the short way rotation about the X (R1) axis
+
+    /// Creates an Euler Parameter representing the short way rotation about the Y (R2) axis
+    ///
+    /// :type angle_rad: float
+    /// :type from_id: int
+    /// :type to_id: int
+    /// :rtype: Quaternion
     #[classmethod]
     #[pyo3(name="about_y", signature=(angle_rad, from_id, to_id))]
     fn py_about_y(
@@ -50,7 +61,13 @@ impl EulerParameter {
     ) -> Self {
         Self::about_y(angle_rad, from_id, to_id)
     }
-    /// Creates an Euler Parameter representing the short way rotation about the X (R1) axis
+
+    /// Creates an Euler Parameter representing the short way rotation about the Z (R3) axis
+    ///
+    /// :type angle_rad: float
+    /// :type from_id: int
+    /// :type to_id: int
+    /// :rtype: Quaternion
     #[classmethod]
     #[pyo3(name="about_z", signature=(angle_rad, from_id, to_id))]
     fn py_about_z(
@@ -64,6 +81,9 @@ impl EulerParameter {
 
     /// Returns the euler parameter derivative for this EP and the body angular velocity vector w
     /// dQ/dt = 1/2 [B(Q)] omega_rad_s
+    ///
+    /// :type omega_rad_s: np.array
+    /// :rtype: Quaternion
     #[pyo3(name="derivative", signature=(omega_rad_s))]
     fn py_derivative<'py>(&self, omega_rad_s: PyReadonlyArray1<'py, f64>) -> PyResult<Self> {
         if omega_rad_s.shape() != [3] {
@@ -76,6 +96,10 @@ impl EulerParameter {
         Ok(self.derivative(omega))
     }
 
+    /// Returns the 4x3 matrix which relates the body angular velocity vector w to the derivative of this Euler Parameter.
+    /// dQ/dt = 1/2 [B(Q)] w
+    ///
+    /// :rtype: np.array
     #[pyo3(name = "b_matrix")]
     fn py_b_matrix<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         // Extract data from SMatrix (column-major order, hence the transpose)
@@ -87,6 +111,8 @@ impl EulerParameter {
     }
 
     /// Returns the principal line of rotation (a unit vector) and the angle of rotation in radians
+    ///
+    /// :rtype: tuple
     #[pyo3(name = "uvec_angle")]
     fn py_uvec_angle<'py>(&self, py: Python<'py>) -> (Bound<'py, PyArray1<f64>>, f64) {
         let (uvec, angle) = self.uvec_angle();
@@ -118,7 +144,7 @@ impl EulerParameter {
     }
 
     /// Convert this quaterion to a DCM
-    /// rtype: DCM
+    /// :rtype: DCM
     fn to_dcm(&self) -> DCM {
         DCM::from(*self)
     }
@@ -170,7 +196,7 @@ impl EulerParameter {
     }
     /// :type to_id: int
     #[setter]
-    fn set_to(&mut self, to_id: NaifId) {
+    fn set_to_id(&mut self, to_id: NaifId) {
         self.to = to_id;
     }
     /// :rtype: int

@@ -1,9 +1,6 @@
+import np
 import numpy
 import typing
-
-from anise.astro import AzElRange, Frame, Orbit
-from anise.time import Duration, Epoch
-from anise.rotation import DCM
 
 @typing.final
 class AzElRange:
@@ -201,6 +198,24 @@ Use this to prevent astrodynamical computations."""
 
     def __str__(self) -> str:
         """Return str(self)."""
+
+@typing.final
+class FrameUid:
+    """A unique frame reference that only contains enough information to build the actual Frame object.
+It cannot be used for any computations, is it be used in any structure apart from error structures."""
+
+@typing.final
+class Location:
+    """Location is defined by its latitude, longitude, height above the geoid, mean angular rotation of the geoid, and a frame UID.
+If the location includes a terrain mask, it will be used for obstruction checks when computing azimuth and elevation.
+**Note:** The mean Earth angular velocity is `0.004178079012116429` deg/s."""
+    height_km: float
+    latitude_deg: float
+    longitude_deg: float
+    terrain_mask_ignored: bool
+
+    def elevation_mask_at_azimuth_deg(self, azimuth_deg: float) -> float:
+        """Returns the elevation mask at the provided azimuth."""
 
 @typing.final
 class Occultation:
@@ -403,7 +418,7 @@ If the state is NOT in an inertial frame, then this computation is INVALID.
 If the pre or post states cannot be computed, then the time derivative of the DCM will _not_ be set.
 Further note that most astrodynamics tools do *not* account for the time derivative in the RIC frame."""
 
-    def dcm_from_topocentric_to_body_fixed(self, _from: float) -> DCM:
+    def dcm_from_topocentric_to_body_fixed(self, _from: int) -> DCM:
         """Builds the rotation matrix that rotates from the topocentric frame (SEZ) into the body fixed frame of this state.
 
 # Frame warnings
@@ -517,10 +532,22 @@ using the keplerian(..) method.
 The conversion is from GMAT's MeanToTrueAnomaly function, transliterated originally by Claude and GPT4 with human adjustments."""
 
     @staticmethod
-    def from_latlongalt(latitude_deg: float, longitude_deg: float, height_km: float, angular_velocity: float, epoch: Epoch, frame: Frame) -> Orbit:
-        """Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid given the angular velocity.
+    def from_latlongalt(latitude_deg: float, longitude_deg: float, height_km: float, angular_velocity_rad_s: float, epoch: Epoch, frame: Frame) -> Orbit:
+        """(Low fidelity) Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid given the angular velocity in rad/s applied entirely on the +Z axis.
 
-**Units:** degrees, degrees, km, rad/s
+**WARNING**: This function assumes that all the angular velocity is applied on the +Z axis..
+
+**Note:** The mean Earth angular velocity is `0.004178079012116429` deg/s, or 7.292123516990373e-05 rad/s.
+
+NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
+Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016"""
+
+    @staticmethod
+    def from_latlongalt_omega(latitude_deg: float, longitude_deg: float, height_km: float, angular_velocity_rad_s: np.array, epoch: Epoch, frame: Frame) -> Orbit:
+        """Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid given the angular velocity vector (omega).
+
+Consider using the [Almanac]'s [angular_velocity_wrt_j2000_rad_s] function or [angular_velocity_rad_s] to retrieve the exact angular velocity vector between two orientations.
+
 NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
 Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016"""
 
@@ -768,3 +795,7 @@ Refer to dcm_from_vnc_to_inertial for details on the VNC frame.
 
     def __str__(self) -> str:
         """Return str(self)."""
+
+@typing.final
+class TerrainMask:
+    """TerrainMask is used to compute obstructions during AER calculations."""

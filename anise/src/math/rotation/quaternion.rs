@@ -58,6 +58,13 @@ pub type Quaternion = EulerParameter;
 ///
 /// # Usage
 /// Importantly, ANISE prevents the composition of two Euler Parameters if the frames do not match.
+///
+/// :type w: float
+/// :type x: float
+/// :type y: float
+/// :type z: float
+/// :type from_id: int
+/// :type to_id: int
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(
@@ -199,6 +206,8 @@ impl EulerParameter {
     ///
     /// # Note
     /// Because Euler Parameters are unit quaternions, the inverse and the conjugate are identical.
+    ///
+    /// :rtype: Quaternion
     pub fn conjugate(&self) -> Self {
         Self {
             w: self.w,
@@ -211,16 +220,22 @@ impl EulerParameter {
     }
 
     /// Returns true if the quaternion represents a rotation of zero radians
+    ///
+    /// :rtype: bool
     pub fn is_zero(&self) -> bool {
         self.w.abs() < EPSILON || (1.0 - self.w.abs()) < EPSILON
     }
 
     /// Returns the norm of this Euler Parameter as a scalar.
+    ///
+    /// :rtype: float
     pub fn scalar_norm(&self) -> f64 {
         (self.w * self.w + self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
     }
 
     /// Normalize the quaternion.
+    ///
+    /// :rtype: Quaternion
     pub fn normalize(&self) -> Self {
         let norm = self.scalar_norm();
         let mut me = *self;
@@ -232,6 +247,8 @@ impl EulerParameter {
     }
 
     /// Returns the short way rotation of this quaternion
+    ///
+    /// :rtype: Quaternion
     pub fn short(&self) -> Self {
         if self.w < 0.0 {
             // TODO: Check that this is correct.
