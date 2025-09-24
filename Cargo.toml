@@ -41,7 +41,7 @@ zerocopy = { version = "0.8.0", features = ["derive"] }
 bytes = "1.6.0"
 snafu = { version = "0.8.0", features = ["backtrace"] }
 rstest = "0.26.1"
-pyo3 = { version = "0.25", features = ["multiple-pymethods"] }
+pyo3 = { version = "0.26", features = ["multiple-pymethods"] }
 pyo3-log = "0.12"
 numpy = "0.25"
 ndarray = ">= 0.15, < 0.17"
