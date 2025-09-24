@@ -460,6 +460,13 @@ impl<T: DataSetT, const ENTRIES: usize> Encode for DataSet<T, ENTRIES> {
     }
 
     fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
+        // The DataSet is encoded as a sequence of fields:
+        // 1.  metadata: The metadata of the dataset.
+        // 2.  lut: The lookup table for the dataset.
+        // 3.  data_checksum: The CRC32 checksum of the data.
+        // 4.  bytes_meta: A sequence of u32 integers. The first integer is the number of data items.
+        //     The subsequent integers are the encoded lengths of each data item.
+        // 5.  bytes: The concatenated DER-encoded data items.
         let (bytes_meta, bytes) = self.build_data_seq();
         self.metadata.encode(encoder)?;
         self.lut.encode(encoder)?;
@@ -471,21 +478,23 @@ impl<T: DataSetT, const ENTRIES: usize> Encode for DataSet<T, ENTRIES> {
 
 impl<'a, T: DataSetT, const ENTRIES: usize> Decode<'a> for DataSet<T, ENTRIES> {
     fn decode<D: Reader<'a>>(decoder: &mut D) -> der::Result<Self> {
+        // The fields are decoded in the same order they were encoded.
         let metadata = decoder.decode()?;
         let lut: LookUpTable<ENTRIES> = decoder.decode()?;
         let crc32_checksum = decoder.decode()?;
-        // Metadata of the bytes to decode.
-        // The first integer contains the number of usable items in the data.
-        // The other integers are the encoded lengths of each of the data.
+        // Decode the metadata of the data items.
         let bytes_meta: SequenceOf<u32, ENTRIES> = decoder.decode()?;
+        // Decode the concatenated data items.
         let der_octets: OctetString = decoder.decode()?;
         let bytes = der_octets.as_bytes();
 
         let mut data = vec![];
-
         let mut idx = 0;
+        // The first element of bytes_meta is the number of data items.
         for meta_idx in 0..*bytes_meta.get(0).unwrap() as usize {
+            // The subsequent elements are the lengths of each data item.
             let next_len = *bytes_meta.get(meta_idx + 1).unwrap() as usize;
+            // Decode each data item from its slice of the bytes.
             let this_data = T::from_der(&bytes[idx..idx + next_len]).unwrap();
             data.push(this_data);
             idx += next_len;
