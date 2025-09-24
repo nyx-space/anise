@@ -214,8 +214,7 @@ impl Almanac {
                 .azimuth_elevation_range_sez(rx, tx, obstructing_body, ab_corr)
                 .map(|mut aer| {
                     // Apply elevation mask
-                    if location.elevation_mask_from_azimuth_deg(aer.azimuth_deg)
-                        >= aer.elevation_deg
+                    if location.elevation_mask_at_azimuth_deg(aer.azimuth_deg) >= aer.elevation_deg
                     {
                         // Specify that it's obstructed, and set all values to NaN.
                         aer.obstructed_by = Some(from_frame);

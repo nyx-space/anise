@@ -6,7 +6,7 @@ from math import radians
 from anise import Almanac, MetaAlmanac, MetaFile
 from anise.astro import *
 from anise.constants import Frames
-from anise.rotation import DCM
+from anise.rotation import DCM, Quaternion
 from anise.time import Duration, Epoch, TimeSeries, Unit
 from anise.utils import convert_tpc
 
@@ -88,6 +88,17 @@ def test_state_transformation():
         dcm_rebuilt = DCM(dcm.rot_mat, dcm.from_id, dcm.to_id, dcm.rot_mat_dt)
         assert dcm_rebuilt == dcm
 
+    # Check that we can convert a DCM to a quaternion and back
+    q = dcm.to_quaternion()
+    q_rebuilt = Quaternion(q.w, q.x, q.y, q.z, q.from_id, q.to_id)
+
+    uvec, angle = q.uvec_angle()
+    prv = q.prv()
+    err = angle * uvec - prv
+    assert sum([e**2 for e in err]) < 2e-16
+    dcm_from_q = q.to_dcm()
+    assert q.b_matrix().shape == (4, 3)
+
     topo_dcm = orig_state.dcm_from_topocentric_to_body_fixed(123)
     assert topo_dcm.get_state_dcm().shape == (6, 6)
     assert topo_dcm.rot_mat.shape == (3, 3)
@@ -149,7 +160,7 @@ def test_state_transformation():
     # Assume that the ITRF Z is the main axis of rotation, so there should not be much velocity there
     assert paris_prec.vz_km_s < 1e-3
     # Compute the perpendicular distance of the object
-    r_perp_km = (paris_prec.x_km**2 + paris_prec.y_km**2)**0.5
+    r_perp_km = (paris_prec.x_km**2 + paris_prec.y_km**2) ** 0.5
     # Speed of that point based on its distance from the center of Earth
     speed_km_s = r_perp_km * radians(mean_earth_angular_velocity_deg_s)
 
