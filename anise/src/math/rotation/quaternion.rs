@@ -153,7 +153,7 @@ impl EulerParameter {
     /// Returns the euler parameter derivative for this Euler parameter and body angular velocity vector omega (in rad/s).
     /// dQ/dt = 1/2 [B(Q)] omega_rad_s
     pub fn derivative(&self, omega_rad_s: Vector3) -> Self {
-        let q = 0.25 * self.b_matrix() * omega_rad_s;
+        let q = 0.5 * self.b_matrix() * omega_rad_s;
 
         Self {
             w: q[0],
