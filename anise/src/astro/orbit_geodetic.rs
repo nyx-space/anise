@@ -232,7 +232,7 @@ impl CartesianState {
     /// :type latitude_deg: float
     /// :type longitude_deg: float
     /// :type height_km: float
-    /// :type angular_velocity: float
+    /// :type angular_velocity_rad_s: float
     /// :type epoch: Epoch
     /// :type frame: Frame
     /// :rtype: Orbit
@@ -263,6 +263,14 @@ impl CartesianState {
     ///
     /// NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
     /// Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016
+    ///
+    /// :type latitude_deg: float
+    /// :type longitude_deg: float
+    /// :type height_km: float
+    /// :type angular_velocity_rad_s: np.array
+    /// :type epoch: Epoch
+    /// :type frame: Frame
+    /// :rtype: Orbit
     #[cfg(feature = "python")]
     #[classmethod]
     pub fn from_latlongalt_omega<'py>(

@@ -143,8 +143,8 @@ fn validate_iau_rotation_to_parent() {
             let q_anise = Quaternion::from(dcm);
             let q_spice = Quaternion::from(spice_dcm);
 
-            let (anise_uvec, anise_angle) = q_anise.uvec_angle();
-            let (spice_uvec, spice_angle) = q_spice.uvec_angle();
+            let (anise_uvec, anise_angle) = q_anise.uvec_angle_rad();
+            let (spice_uvec, spice_angle) = q_spice.uvec_angle_rad();
 
             let uvec_angle_deg_err = anise_uvec.dot(&spice_uvec).acos().to_degrees();
             let deg_err = (anise_angle - spice_angle).to_degrees();
@@ -281,8 +281,8 @@ fn validate_bpc_rotation_to_parent() {
         let q_anise = Quaternion::from(dcm);
         let q_spice = Quaternion::from(spice_dcm);
 
-        let (anise_uvec, anise_angle) = q_anise.uvec_angle();
-        let (spice_uvec, spice_angle) = q_spice.uvec_angle();
+        let (anise_uvec, anise_angle) = q_anise.uvec_angle_rad();
+        let (spice_uvec, spice_angle) = q_spice.uvec_angle_rad();
 
         let uvec_angle_deg_err = anise_uvec.dot(&spice_uvec).acos().to_degrees();
         let deg_err = (anise_angle - spice_angle).to_degrees();
@@ -484,8 +484,8 @@ fn validate_bpc_rotations() {
         let q_anise = Quaternion::from(dcm);
         let q_spice = Quaternion::from(spice_dcm);
 
-        let (anise_uvec, anise_angle) = q_anise.uvec_angle();
-        let (spice_uvec, spice_angle) = q_spice.uvec_angle();
+        let (anise_uvec, anise_angle) = q_anise.uvec_angle_rad();
+        let (spice_uvec, spice_angle) = q_spice.uvec_angle_rad();
 
         let uvec_angle_deg_err = anise_uvec.dot(&spice_uvec).acos().to_degrees();
         let deg_err = (anise_angle - spice_angle).to_degrees();
@@ -631,8 +631,8 @@ fn validate_bpc_to_iau_rotations() {
             let q_anise = Quaternion::from(dcm);
             let q_spice = Quaternion::from(spice_dcm);
 
-            let (anise_uvec, anise_angle) = q_anise.uvec_angle();
-            let (spice_uvec, spice_angle) = q_spice.uvec_angle();
+            let (anise_uvec, anise_angle) = q_anise.uvec_angle_rad();
+            let (spice_uvec, spice_angle) = q_spice.uvec_angle_rad();
 
             let uvec_angle_deg_err = anise_uvec.dot(&spice_uvec).acos().to_degrees();
             let deg_err = (anise_angle - spice_angle).to_degrees();

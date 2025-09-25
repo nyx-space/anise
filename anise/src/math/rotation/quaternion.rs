@@ -19,6 +19,9 @@ use nalgebra::Matrix4x3;
 use serde::{Deserialize, Serialize};
 use snafu::ensure;
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 use super::EPSILON_RAD;
 
 /// Quaternion will always be a unit quaternion in ANISE, cf. EulerParameter.
@@ -55,7 +58,19 @@ pub type Quaternion = EulerParameter;
 ///
 /// # Usage
 /// Importantly, ANISE prevents the composition of two Euler Parameters if the frames do not match.
+///
+/// :type w: float
+/// :type x: float
+/// :type y: float
+/// :type z: float
+/// :type from_id: int
+/// :type to_id: int
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(
+    feature = "python",
+    pyo3(name = "Quaternion", module = "anise.rotation")
+)]
 pub struct EulerParameter {
     pub w: f64,
     pub x: f64,
@@ -88,11 +103,6 @@ impl EulerParameter {
             to,
         }
         .normalize()
-    }
-
-    /// Returns true if the quaternion represents a rotation of zero radians
-    pub fn is_zero(&self) -> bool {
-        self.w.abs() < EPSILON || (1.0 - self.w.abs()) < EPSILON
     }
 
     /// Creates an Euler Parameter representing the short way rotation around the X (R1) axis.
@@ -140,46 +150,18 @@ impl EulerParameter {
         .normalize()
     }
 
-    /// Returns the norm of this Euler Parameter as a scalar.
-    pub(crate) fn scalar_norm(&self) -> f64 {
-        (self.w * self.w + self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
-    }
+    /// Returns the euler parameter derivative for this Euler parameter and body angular velocity vector omega (in rad/s).
+    /// dQ/dt = 1/2 [B(Q)] omega_rad_s
+    pub fn derivative(&self, omega_rad_s: Vector3) -> Self {
+        let q = 0.5 * self.b_matrix() * omega_rad_s;
 
-    /// Normalize the quaternion.
-    pub fn normalize(&self) -> Self {
-        let norm = self.scalar_norm();
-        let mut me = *self;
-        me.w /= norm;
-        me.x /= norm;
-        me.y /= norm;
-        me.z /= norm;
-        me
-    }
-
-    /// Returns the short way rotation of this quaternion
-    pub fn short(&self) -> Self {
-        if self.w < 0.0 {
-            // TODO: Check that this is correct.
-            let mut me = *self;
-            me.w *= -1.0;
-            me
-        } else {
-            *self
-        }
-    }
-
-    /// Compute the conjugate of the quaternion.
-    ///
-    /// # Note
-    /// Because Euler Parameters are unit quaternions, the inverse and the conjugate are identical.
-    pub fn conjugate(&self) -> Self {
         Self {
-            w: self.w,
-            x: -self.x,
-            y: -self.y,
-            z: -self.z,
-            from: self.to,
-            to: self.from,
+            w: q[0],
+            x: q[1],
+            y: q[2],
+            z: q[3],
+            from: self.from,
+            to: self.to,
         }
     }
 
@@ -192,23 +174,13 @@ impl EulerParameter {
         )
     }
 
-    /// Returns the euler parameter derivative for this Euler parameter and body angular velocity vector w.
-    /// dQ/dt = 1/2 [B(Q)] w
-    pub fn derivative(&self, w: Vector3) -> Self {
-        let q = 0.25 * self.b_matrix() * w;
-
-        Self {
-            w: q[0],
-            x: q[1],
-            y: q[2],
-            z: q[3],
-            from: self.from,
-            to: self.to,
-        }
+    #[deprecated(since = "0.7.0", note = "use uvec_angle_rad")]
+    pub fn uvec_angle(&self) -> (Vector3, f64) {
+        self.uvec_angle_rad()
     }
 
     /// Returns the principal line of rotation (a unit vector) and the angle of rotation in radians
-    pub fn uvec_angle(&self) -> (Vector3, f64) {
+    pub fn uvec_angle_rad(&self) -> (Vector3, f64) {
         let half_angle_rad = self.w.acos();
         if half_angle_rad.abs() < EPSILON {
             // Prevent divisions by (near) zero
@@ -222,7 +194,7 @@ impl EulerParameter {
 
     /// Returns the principal rotation vector representation of this Euler Parameter
     pub fn prv(&self) -> Vector3 {
-        let (uvec, angle) = self.uvec_angle();
+        let (uvec, angle) = self.uvec_angle_rad();
         angle * uvec
     }
 
@@ -230,6 +202,71 @@ impl EulerParameter {
     /// but at the cost of losing frame information.
     pub(crate) fn as_vector(&self) -> Vector4 {
         Vector4::new(self.w, self.x, self.y, self.z)
+    }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl EulerParameter {
+    /// Compute the conjugate of the quaternion.
+    ///
+    /// # Note
+    /// Because Euler Parameters are unit quaternions, the inverse and the conjugate are identical.
+    ///
+    /// :rtype: Quaternion
+    pub fn conjugate(&self) -> Self {
+        Self {
+            w: self.w,
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+            from: self.to,
+            to: self.from,
+        }
+    }
+
+    /// Returns true if the quaternion represents a rotation of zero radians
+    ///
+    /// :rtype: bool
+    pub fn is_zero(&self) -> bool {
+        self.w.abs() < EPSILON || (1.0 - self.w.abs()) < EPSILON
+    }
+
+    /// Returns the norm of this Euler Parameter as a scalar.
+    ///
+    /// :rtype: float
+    pub fn scalar_norm(&self) -> f64 {
+        (self.w * self.w + self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
+    }
+
+    /// Normalize the quaternion.
+    ///
+    /// :rtype: Quaternion
+    pub fn normalize(&self) -> Self {
+        let norm = self.scalar_norm();
+        let mut me = *self;
+        me.w /= norm;
+        me.x /= norm;
+        me.y /= norm;
+        me.z /= norm;
+        me
+    }
+
+    /// Returns the short way rotation of this quaternion
+    ///
+    /// :rtype: Quaternion
+    pub fn short(&self) -> Self {
+        if self.w < 0.0 {
+            Self {
+                w: -self.w,
+                x: -self.x,
+                y: -self.y,
+                z: -self.z,
+                from: self.from,
+                to: self.to,
+            }
+        } else {
+            *self
+        }
     }
 }
 
@@ -299,8 +336,8 @@ impl PartialEq for Quaternion {
             if (self.w - other.w).abs() < 1e-12 && (self.w - 1.0).abs() < 1e-12 {
                 true
             } else {
-                let (self_uvec, self_angle) = self.uvec_angle();
-                let (other_uvec, other_angle) = other.uvec_angle();
+                let (self_uvec, self_angle) = self.uvec_angle_rad();
+                let (other_uvec, other_angle) = other.uvec_angle_rad();
 
                 (self_angle - other_angle).abs() < EPSILON_RAD
                     && (self_uvec - other_uvec).norm() <= 1e-12
@@ -420,14 +457,14 @@ mod ut_quaternion {
     fn test_quat_start_end_frames() {
         for angle in generate_angles() {
             let q1 = Quaternion::about_x(angle, 0, 1);
-            let (uvec_q1, _angle_rad) = q1.uvec_angle();
+            let (uvec_q1, _angle_rad) = q1.uvec_angle_rad();
             let q2 = Quaternion::about_x(angle, 1, 2);
 
             let q1_to_q2 = (q1 * q2).unwrap();
             assert_eq!(q1_to_q2.from, 0, "{angle}");
             assert_eq!(q1_to_q2.to, 2, "{angle}");
 
-            let (uvec, angle_rad) = q1_to_q2.uvec_angle();
+            let (uvec, angle_rad) = q1_to_q2.uvec_angle_rad();
 
             if uvec.norm() > EPSILON {
                 if !(-PI..=PI).contains(&angle) {
@@ -448,7 +485,7 @@ mod ut_quaternion {
             assert_eq!(q2_to_q1.from, 2, "{angle}");
             assert_eq!(q2_to_q1.to, 0, "{angle}");
 
-            let (uvec, _angle_rad) = q2_to_q1.uvec_angle();
+            let (uvec, _angle_rad) = q2_to_q1.uvec_angle_rad();
             if uvec.norm() > EPSILON {
                 if (-PI..=PI).contains(&angle) {
                     assert_eq!(uvec, -uvec_q1, "{angle}");

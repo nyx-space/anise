@@ -40,8 +40,13 @@ pub struct Location {
     pub terrain_mask_ignored: bool,
 }
 
+#[cfg_attr(feature = "python", pymethods)]
 impl Location {
-    pub fn elevation_mask_from_azimuth_deg(&self, azimuth_deg: f64) -> f64 {
+    /// Returns the elevation mask at the provided azimuth.
+    ///
+    /// :type azimuth_deg: float
+    /// :rtype: float
+    pub fn elevation_mask_at_azimuth_deg(&self, azimuth_deg: f64) -> f64 {
         if self.terrain_mask.is_empty() {
             return 0.0;
         }
@@ -57,6 +62,51 @@ impl Location {
         self.terrain_mask
             .get(idx - 1)
             .map_or(0.0, |mask| mask.elevation_mask_deg)
+    }
+}
+
+#[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pymethods)]
+impl Location {
+    /// :rtype: float
+    #[getter]
+    fn get_latitude_deg(&self) -> f64 {
+        self.latitude_deg
+    }
+    /// :type latitude_deg: float
+    #[setter]
+    fn set_latitude_deg(&mut self, latitude_deg: f64) {
+        self.latitude_deg = latitude_deg;
+    }
+    /// :rtype: float
+    #[getter]
+    fn get_longitude_deg(&self) -> f64 {
+        self.longitude_deg
+    }
+    /// :type longitude_deg: float
+    #[setter]
+    fn set_longitude_deg(&mut self, longitude_deg: f64) {
+        self.longitude_deg = longitude_deg
+    }
+    /// :rtype: float
+    #[getter]
+    fn get_height_km(&self) -> f64 {
+        self.height_km
+    }
+    /// :type altitude_km: float
+    #[setter]
+    fn set_height_km(&mut self, height_km: f64) {
+        self.height_km = height_km;
+    }
+    /// :rtype: bool
+    #[getter]
+    fn get_terrain_mask_ignored(&self) -> bool {
+        self.terrain_mask_ignored
+    }
+    /// :type terrain_mask_ignored: bool
+    #[setter]
+    fn set_terrain_mask_ignored(&mut self, terrain_mask_ignored: bool) {
+        self.terrain_mask_ignored = terrain_mask_ignored;
     }
 }
 
@@ -195,14 +245,14 @@ mod ut_loc {
 
         assert_eq!(dss65, dss65_dec);
 
-        assert!((dss65.elevation_mask_from_azimuth_deg(0.0) - 5.0).abs() < f64::EPSILON);
-        assert!((dss65.elevation_mask_from_azimuth_deg(34.0) - 5.0).abs() < f64::EPSILON);
-        assert!((dss65.elevation_mask_from_azimuth_deg(35.0) - 10.0).abs() < f64::EPSILON);
-        assert!((dss65.elevation_mask_from_azimuth_deg(270.0) - 3.0).abs() < f64::EPSILON);
-        assert!((dss65.elevation_mask_from_azimuth_deg(359.0) - 3.0).abs() < f64::EPSILON);
+        assert!((dss65.elevation_mask_at_azimuth_deg(0.0) - 5.0).abs() < f64::EPSILON);
+        assert!((dss65.elevation_mask_at_azimuth_deg(34.0) - 5.0).abs() < f64::EPSILON);
+        assert!((dss65.elevation_mask_at_azimuth_deg(35.0) - 10.0).abs() < f64::EPSILON);
+        assert!((dss65.elevation_mask_at_azimuth_deg(270.0) - 3.0).abs() < f64::EPSILON);
+        assert!((dss65.elevation_mask_at_azimuth_deg(359.0) - 3.0).abs() < f64::EPSILON);
         // Check azimuth over 360 wraps around
-        assert!((dss65.elevation_mask_from_azimuth_deg(361.0) - 5.0).abs() < f64::EPSILON);
+        assert!((dss65.elevation_mask_at_azimuth_deg(361.0) - 5.0).abs() < f64::EPSILON);
         // Check azimuth below 0 wraps around
-        assert!((dss65.elevation_mask_from_azimuth_deg(-1.0) - 3.0).abs() < f64::EPSILON);
+        assert!((dss65.elevation_mask_at_azimuth_deg(-1.0) - 3.0).abs() < f64::EPSILON);
     }
 }

@@ -762,7 +762,7 @@ impl Almanac {
     /// Refer to [azimuth_elevation_range_sez] for algorithm details.
     ///
     /// :type rx: Orbit
-    /// :type location_name: String
+    /// :type location_name: str
     /// :type obstructing_body: Frame, optional
     /// :type ab_corr: Aberration, optional
     /// :rtype: AzElRange
@@ -788,7 +788,7 @@ impl Almanac {
     /// Location terrain masks are always applied, i.e. if the terrain masks the object, all data is set to f64::NAN, unless specified otherwise in the Location.
     ///
     /// :type rx: Orbit
-    /// :type location_name: Location
+    /// :type location: Location
     /// :type obstructing_body: Frame, optional
     /// :type ab_corr: Aberration, optional
     /// :rtype: AzElRange

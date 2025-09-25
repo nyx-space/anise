@@ -62,6 +62,7 @@ impl Almanac {
     /// :type target_id: int
     /// :type observer_id: int
     /// :type epoch: Epoch
+    /// :type ab_corr: Aberration
     /// :rtype: float
     pub fn sun_angle_deg(
         &self,
@@ -95,6 +96,7 @@ impl Almanac {
     /// :type target: Frame
     /// :type observer: Frame
     /// :type epoch: Epoch
+    /// :type ab_corr: Aberration
     /// :rtype: float
     pub fn sun_angle_deg_from_frame(
         &self,

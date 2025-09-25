@@ -8,13 +8,14 @@
  * Documentation: https://nyxspace.com/
  */
 
+use crate::math::rotation::Quaternion;
 use crate::NaifId;
 
 use super::DCM;
 
 use nalgebra::Matrix3;
-use ndarray::Array2;
-use numpy::{PyArray2, PyReadonlyArray2, PyUntypedArrayMethods};
+use ndarray::{Array1, Array2};
+use numpy::{PyArray1, PyArray2, PyReadonlyArray2, PyUntypedArrayMethods};
 use pyo3::basic::CompareOp;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
@@ -121,6 +122,7 @@ impl DCM {
         Self::identity(from_id, to_id)
     }
 
+    /// Return the position DCM (3x3 matrix)
     /// :rtype: numpy.array
     #[getter]
     fn get_rot_mat<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray2<f64>>> {
@@ -135,6 +137,7 @@ impl DCM {
         Ok(py_rot_mat)
     }
 
+    /// Return the time derivative of this DMC, if set.
     /// :rtype: numpy.array
     #[getter]
     fn get_rot_mat_dt<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray2<f64>>>> {
@@ -183,6 +186,50 @@ impl DCM {
         let pt_state_dcm = PyArray2::<f64>::from_owned_array(py, state_dcm);
 
         Ok(pt_state_dcm)
+    }
+
+    /// Returns the skew symmetric matrix if this DCM defines a rotation rate.
+    /// :rtype: np.array
+    #[pyo3(name = "skew_symmetric")]
+    fn py_skew_symmetric<'py>(&self, py: Python<'py>) -> Option<Bound<'py, PyArray2<f64>>> {
+        self.skew_symmetric().map(|tilde| {
+            let data: Vec<f64> = tilde.transpose().iter().copied().collect();
+
+            let arr = Array2::from_shape_vec((3, 3), data).unwrap();
+
+            PyArray2::<f64>::from_owned_array(py, arr)
+        })
+    }
+
+    /// Returns the angular velocity vector in rad/s of this DCM is it has a defined rotation rate.
+    /// :rtype: np.array
+    #[pyo3(name = "angular_velocity_rad_s")]
+    fn py_angular_velocity_rad_s<'py>(&self, py: Python<'py>) -> Option<Bound<'py, PyArray1<f64>>> {
+        self.angular_velocity_rad_s().map(|w| {
+            let data: Vec<f64> = w.transpose().iter().copied().collect();
+
+            let arr = Array1::from_shape_vec((3,), data).unwrap();
+
+            PyArray1::<f64>::from_owned_array(py, arr)
+        })
+    }
+
+    /// Returns the angular velocity vector in deg/s if a rotation rate is defined.
+    /// :rtype: np.array
+    #[pyo3(name = "angular_velocity_deg_s")]
+    fn py_angular_velocity_deg_s<'py>(&self, py: Python<'py>) -> Option<Bound<'py, PyArray1<f64>>> {
+        self.angular_velocity_deg_s().map(|w| {
+            let data: Vec<f64> = w.transpose().iter().copied().collect();
+
+            let arr = Array1::from_shape_vec((3,), data).unwrap();
+
+            PyArray1::<f64>::from_owned_array(py, arr)
+        })
+    }
+
+    /// :rtype: Quaternion
+    fn to_quaternion(&self) -> Quaternion {
+        Quaternion::from(*self)
     }
 
     fn __str__(&self) -> String {

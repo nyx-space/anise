@@ -8,12 +8,13 @@
  * Documentation: https://nyxspace.com/
  */
 
-use anise::math::rotation::DCM;
+use anise::math::rotation::{Quaternion, DCM};
 use pyo3::prelude::*;
 
 #[pymodule]
 pub(crate) fn rotation(_py: Python, sm: &Bound<PyModule>) -> PyResult<()> {
     sm.add_class::<DCM>()?;
+    sm.add_class::<Quaternion>()?;
 
     Ok(())
 }
