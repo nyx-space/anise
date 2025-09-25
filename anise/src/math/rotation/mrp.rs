@@ -117,7 +117,7 @@ impl MRP {
     /// # Note
     /// If the MRP is singular, this returns an angle of zero and a vector of zero.
     pub fn uvec_angle(&self) -> (Vector3, f64) {
-        Quaternion::from(*self).uvec_angle()
+        Quaternion::from(*self).uvec_angle_rad()
     }
 
     /// Returns the data of this MRP as a vector, simplifies lots of computations

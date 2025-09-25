@@ -1,7 +1,7 @@
-import numpy
 import typing
+import numpy
 
-_all__: list = ["time", "astro", "utils", "Aberration", "Almanac", "MetaAlmanac", "MetaFile"]
+_all__: list = ["time", "astro", "constants", "rotation", "utils", "Aberration", "Almanac", "MetaAlmanac", "MetaFile"]
 
 @typing.final
 class Aberration:
@@ -119,7 +119,7 @@ Location terrain masks are always applied, i.e. if the terrain masks the object,
 receiver state (`rx`) seen from the location ID (as transmitter state, once converted into the SEZ frame of the transmitter.
 Refer to [azimuth_elevation_range_sez] for algorithm details."""
 
-    def azimuth_elevation_range_sez_from_location_name(self, rx: Orbit, location_name: String, obstructing_body: Frame=None, ab_corr: Aberration=None) -> AzElRange:
+    def azimuth_elevation_range_sez_from_location_name(self, rx: Orbit, location_name: str, obstructing_body: Frame=None, ab_corr: Aberration=None) -> AzElRange:
         """Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
 receiver state (`rx`) seen from the location ID (as transmitter state, once converted into the SEZ frame of the transmitter.
 Refer to [azimuth_elevation_range_sez] for algorithm details."""
@@ -2998,7 +2998,7 @@ KPL/TPC files must be converted into "PCA" (Planetary Constant ANISE) files befo
 @typing.final
 class rotation:
     
-    import np
+    import numpy as np
     import numpy
     import typing
 
@@ -3205,7 +3205,7 @@ class rotation:
         def to_dcm(self) -> DCM:
             """Convert this quaterion to a DCM"""
 
-        def uvec_angle(self) -> tuple:
+        def uvec_angle_rad(self) -> tuple:
             """Returns the principal line of rotation (a unit vector) and the angle of rotation in radians"""
 
         def __eq__(self, value: typing.Any) -> bool:

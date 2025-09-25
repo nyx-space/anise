@@ -92,17 +92,18 @@ def test_state_transformation():
     q = dcm.to_quaternion()
     q_rebuilt = Quaternion(q.w, q.x, q.y, q.z, q.from_id, q.to_id)
 
-    uvec, angle = q.uvec_angle()
+    uvec, angle = q.uvec_angle_rad()
     prv = q.prv()
     err = angle * uvec - prv
     assert sum([e**2 for e in err]) < 2e-16
     dcm_from_q = q.to_dcm()
     assert q.b_matrix().shape == (4, 3)
 
-    orig_uvec, orig_angle_rad = q.uvec_angle()
-    rtn_uvec, rtn_angle_rad = dcm_from_q.to_quaternion().uvec_angle()
+    orig_uvec, orig_angle_rad = q.uvec_angle_rad()
+    rtn_uvec, rtn_angle_rad = dcm_from_q.to_quaternion().uvec_angle_rad()
 
-    breakpoint()
+    assert all(rtn_uvec == orig_uvec)
+    assert rtn_angle_rad == orig_angle_rad
 
     topo_dcm = orig_state.dcm_from_topocentric_to_body_fixed(123)
     assert topo_dcm.get_state_dcm().shape == (6, 6)

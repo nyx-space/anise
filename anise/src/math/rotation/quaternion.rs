@@ -174,8 +174,13 @@ impl EulerParameter {
         )
     }
 
-    /// Returns the principal line of rotation (a unit vector) and the angle of rotation in radians
+    #[deprecated(since = "0.7.0", note = "use uvec_angle_rad")]
     pub fn uvec_angle(&self) -> (Vector3, f64) {
+        self.uvec_angle_rad()
+    }
+
+    /// Returns the principal line of rotation (a unit vector) and the angle of rotation in radians
+    pub fn uvec_angle_rad(&self) -> (Vector3, f64) {
         let half_angle_rad = self.w.acos();
         if half_angle_rad.abs() < EPSILON {
             // Prevent divisions by (near) zero
@@ -189,7 +194,7 @@ impl EulerParameter {
 
     /// Returns the principal rotation vector representation of this Euler Parameter
     pub fn prv(&self) -> Vector3 {
-        let (uvec, angle) = self.uvec_angle();
+        let (uvec, angle) = self.uvec_angle_rad();
         angle * uvec
     }
 
@@ -331,8 +336,8 @@ impl PartialEq for Quaternion {
             if (self.w - other.w).abs() < 1e-12 && (self.w - 1.0).abs() < 1e-12 {
                 true
             } else {
-                let (self_uvec, self_angle) = self.uvec_angle();
-                let (other_uvec, other_angle) = other.uvec_angle();
+                let (self_uvec, self_angle) = self.uvec_angle_rad();
+                let (other_uvec, other_angle) = other.uvec_angle_rad();
 
                 (self_angle - other_angle).abs() < EPSILON_RAD
                     && (self_uvec - other_uvec).norm() <= 1e-12
@@ -452,14 +457,14 @@ mod ut_quaternion {
     fn test_quat_start_end_frames() {
         for angle in generate_angles() {
             let q1 = Quaternion::about_x(angle, 0, 1);
-            let (uvec_q1, _angle_rad) = q1.uvec_angle();
+            let (uvec_q1, _angle_rad) = q1.uvec_angle_rad();
             let q2 = Quaternion::about_x(angle, 1, 2);
 
             let q1_to_q2 = (q1 * q2).unwrap();
             assert_eq!(q1_to_q2.from, 0, "{angle}");
             assert_eq!(q1_to_q2.to, 2, "{angle}");
 
-            let (uvec, angle_rad) = q1_to_q2.uvec_angle();
+            let (uvec, angle_rad) = q1_to_q2.uvec_angle_rad();
 
             if uvec.norm() > EPSILON {
                 if !(-PI..=PI).contains(&angle) {
@@ -480,7 +485,7 @@ mod ut_quaternion {
             assert_eq!(q2_to_q1.from, 2, "{angle}");
             assert_eq!(q2_to_q1.to, 0, "{angle}");
 
-            let (uvec, _angle_rad) = q2_to_q1.uvec_angle();
+            let (uvec, _angle_rad) = q2_to_q1.uvec_angle_rad();
             if uvec.norm() > EPSILON {
                 if (-PI..=PI).contains(&angle) {
                     assert_eq!(uvec, -uvec_q1, "{angle}");

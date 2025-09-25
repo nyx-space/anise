@@ -113,9 +113,9 @@ impl EulerParameter {
     /// Returns the principal line of rotation (a unit vector) and the angle of rotation in radians
     ///
     /// :rtype: tuple
-    #[pyo3(name = "uvec_angle")]
-    fn py_uvec_angle<'py>(&self, py: Python<'py>) -> (Bound<'py, PyArray1<f64>>, f64) {
-        let (uvec, angle) = self.uvec_angle();
+    #[pyo3(name = "uvec_angle_rad")]
+    fn py_uvec_angle_rad<'py>(&self, py: Python<'py>) -> (Bound<'py, PyArray1<f64>>, f64) {
+        let (uvec, angle) = self.uvec_angle_rad();
 
         let data: Vec<f64> = uvec.iter().copied().collect();
 

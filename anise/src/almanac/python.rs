@@ -762,7 +762,7 @@ impl Almanac {
     /// Refer to [azimuth_elevation_range_sez] for algorithm details.
     ///
     /// :type rx: Orbit
-    /// :type location_name: String
+    /// :type location_name: str
     /// :type obstructing_body: Frame, optional
     /// :type ab_corr: Aberration, optional
     /// :rtype: AzElRange

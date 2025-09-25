@@ -112,11 +112,11 @@ fn test_single_bpc_dcm() {
 
     // Check the DCM to EP reciprocity
     let orig_q: EulerParameter = dcm.into();
-    let (orig_uvec, orig_angle_rad) = orig_q.uvec_angle();
+    let (orig_uvec, orig_angle_rad) = orig_q.uvec_angle_rad();
     let rtn_dcm: DCM = orig_q.into();
     assert!((rtn_dcm.rot_mat - dcm.rot_mat).norm() < 2e-16);
     let rtn_q: EulerParameter = rtn_dcm.into();
-    let (rtn_uvec, rtn_angle_rad) = rtn_q.uvec_angle();
+    let (rtn_uvec, rtn_angle_rad) = rtn_q.uvec_angle_rad();
 
     assert!((rtn_uvec - orig_uvec).norm() < f64::EPSILON);
     assert!((rtn_angle_rad - orig_angle_rad).abs() < f64::EPSILON);

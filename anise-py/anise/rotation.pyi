@@ -1,6 +1,8 @@
-import np
-import numpy
 import typing
+
+import numpy as np
+import numpy
+
 
 @typing.final
 class DCM:
@@ -205,7 +207,7 @@ dQ/dt = 1/2 [B(Q)] omega_rad_s"""
     def to_dcm(self) -> DCM:
         """Convert this quaterion to a DCM"""
 
-    def uvec_angle(self) -> tuple:
+    def uvec_angle_rad(self) -> tuple:
         """Returns the principal line of rotation (a unit vector) and the angle of rotation in radians"""
 
     def __eq__(self, value: typing.Any) -> bool:
