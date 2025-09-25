@@ -201,7 +201,7 @@ impl DCM {
         })
     }
 
-    /// Returns the angular velocity vector in deg/s of this DCM is it has a defined rotation rate.
+    /// Returns the angular velocity vector in rad/s of this DCM is it has a defined rotation rate.
     /// :rtype: np.array
     #[pyo3(name = "angular_velocity_rad_s")]
     fn py_angular_velocity_rad_s<'py>(&self, py: Python<'py>) -> Option<Bound<'py, PyArray1<f64>>> {

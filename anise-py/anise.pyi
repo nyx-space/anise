@@ -3019,7 +3019,7 @@ class rotation:
             """Returns the angular velocity vector in deg/s if a rotation rate is defined."""
 
         def angular_velocity_rad_s(self) -> np.array:
-            """Returns the angular velocity vector in deg/s of this DCM is it has a defined rotation rate."""
+            """Returns the angular velocity vector in rad/s of this DCM is it has a defined rotation rate."""
 
         @staticmethod
         def from_identity(from_id: int, to_id: int) -> DCM:
