@@ -99,6 +99,11 @@ def test_state_transformation():
     dcm_from_q = q.to_dcm()
     assert q.b_matrix().shape == (4, 3)
 
+    orig_uvec, orig_angle_rad = q.uvec_angle()
+    rtn_uvec, rtn_angle_rad = dcm_from_q.to_quaternion().uvec_angle()
+
+    breakpoint()
+
     topo_dcm = orig_state.dcm_from_topocentric_to_body_fixed(123)
     assert topo_dcm.get_state_dcm().shape == (6, 6)
     assert topo_dcm.rot_mat.shape == (3, 3)

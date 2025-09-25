@@ -9,7 +9,7 @@ use anise::constants::orientations::{
     ECLIPJ2000, IAU_JUPITER, IAU_MOON, ITRF93, J2000, MOON_PA_DE440,
 };
 use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
-use anise::math::rotation::DCM;
+use anise::math::rotation::{EulerParameter, DCM};
 use anise::math::{Matrix3, Vector3};
 use anise::naif::kpl::parser::convert_tpc;
 
@@ -41,7 +41,7 @@ fn test_find_root_from_pca() {
 }
 
 #[test]
-fn test_single_bpc() {
+fn test_single_bpc_dcm() {
     use core::str::FromStr;
     let bpc = BPC::load("../data/earth_latest_high_prec.bpc").unwrap();
     let almanac = Almanac::from_bpc(bpc).unwrap();
@@ -109,6 +109,17 @@ fn test_single_bpc() {
         (dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()).norm(),
         dcm.rot_mat_dt.unwrap() - spice_dcm.rot_mat_dt.unwrap()
     );
+
+    // Check the DCM to EP reciprocity
+    let orig_q: EulerParameter = dcm.into();
+    let (orig_uvec, orig_angle_rad) = orig_q.uvec_angle();
+    let rtn_dcm: DCM = orig_q.into();
+    assert!((rtn_dcm.rot_mat - dcm.rot_mat).norm() < 2e-16);
+    let rtn_q: EulerParameter = rtn_dcm.into();
+    let (rtn_uvec, rtn_angle_rad) = rtn_q.uvec_angle();
+
+    assert!((rtn_uvec - orig_uvec).norm() < f64::EPSILON);
+    assert!((rtn_angle_rad - orig_angle_rad).abs() < f64::EPSILON);
 }
 
 #[test]

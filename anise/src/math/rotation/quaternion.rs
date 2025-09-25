@@ -251,10 +251,14 @@ impl EulerParameter {
     /// :rtype: Quaternion
     pub fn short(&self) -> Self {
         if self.w < 0.0 {
-            // TODO: Check that this is correct.
-            let mut me = *self;
-            me.w *= -1.0;
-            me
+            Self {
+                w: -self.w,
+                x: -self.x,
+                y: -self.y,
+                z: -self.z,
+                from: self.from,
+                to: self.to,
+            }
         } else {
             *self
         }
