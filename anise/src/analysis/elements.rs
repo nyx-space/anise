@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
 
 use super::{AnalysisError, PhysicsOrbitElSnafu};
@@ -15,7 +16,7 @@ use crate::prelude::Orbit;
 
 /// Orbital element defines all of the supported orbital elements in ANISE, which are all built from a State.
 #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum OrbitalElement {
     /// Argument of Latitude (deg)
     AoL,

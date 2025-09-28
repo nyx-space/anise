@@ -8,9 +8,9 @@
  * Documentation: https://nyxspace.com/
  */
 
-use std::fmt;
-
+use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
+use std::fmt;
 
 use crate::almanac::Almanac;
 use crate::analysis::{AlmanacExprSnafu, PhysicsVecExprSnafu};
@@ -29,7 +29,7 @@ use super::AnalysisError;
 ///
 /// # API note
 /// This VectorExpr is different from the Python class because of a limitation in the support for recursive types in PyO3.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum VectorExpr {
     // Vector with unspecified units, for arbitrary computations
     Fixed {
@@ -151,7 +151,7 @@ impl VectorExpr {
 }
 
 /// ScalarExpr defines a scalar computation from a (set of) vector expression(s).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum ScalarExpr {
     Norm(VectorExpr),
     NormSquared(VectorExpr),
@@ -320,6 +320,16 @@ impl ScalarExpr {
                 })?
                 .range_rate_km_s),
         }
+    }
+
+    /// Export this Scalar Expression to S-Expression / LISP syntax
+    pub fn to_lexpr(&self) -> String {
+        serde_lexpr::to_value(&self).unwrap().to_string()
+    }
+
+    /// Load this Scalar Expression from an S-Expression / LISP syntax
+    pub fn from_lexpr(expr: &str) -> Result<Self, serde_lexpr::Error> {
+        serde_lexpr::from_str(expr)
     }
 }
 

@@ -21,6 +21,7 @@ use snafu::prelude::*;
 use std::collections::HashMap;
 
 pub mod elements;
+pub mod event;
 pub mod expr;
 pub mod specs;
 
@@ -287,6 +288,14 @@ mod ut_analysis {
             ScalarExpr::VectorY(proj.clone()),
             ScalarExpr::VectorZ(proj.clone()),
         ];
+
+        // Demo of an S-Expression export
+        let sexpr_str = serde_lexpr::to_value(&scalars).unwrap();
+        let proj = scalars.last().unwrap();
+        let proj_s = proj.to_lexpr();
+        let proj_reload = ScalarExpr::from_lexpr(&proj_s).unwrap();
+        assert_eq!(&proj_reload, proj);
+        println!("{sexpr_str}\n\nPROJ ONLY\n{proj_s}\n");
 
         let cnt = scalars.len();
 
