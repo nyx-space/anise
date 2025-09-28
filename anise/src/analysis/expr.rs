@@ -13,146 +13,58 @@ use snafu::ResultExt;
 use std::fmt;
 
 use crate::almanac::Almanac;
-use crate::analysis::{AlmanacExprSnafu, PhysicsVecExprSnafu};
+use crate::analysis::AlmanacExprSnafu;
 use crate::astro::Aberration;
 use crate::errors::EphemerisSnafu;
 use crate::frames::Frame;
-use crate::math::Vector3;
-use crate::prelude::{Epoch, Orbit};
+use crate::prelude::Orbit;
 use crate::NaifId;
 
 use super::elements::OrbitalElement;
-use super::specs::{OrthogonalFrame, Plane, StateSpec};
-use super::AnalysisError;
-
-/// VectorExpr defines a vector expression, which can either be computed from a state, or from a fixed definition.
-///
-/// # API note
-/// This VectorExpr is different from the Python class because of a limitation in the support for recursive types in PyO3.
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
-pub enum VectorExpr {
-    // Vector with unspecified units, for arbitrary computations
-    Fixed {
-        x: f64,
-        y: f64,
-        z: f64,
-    },
-    /// Radius/position vector of this state specification
-    Radius(StateSpec),
-    /// Velocity vector of this state specification
-    Velocity(StateSpec),
-    /// Orbital moment (H) vector of this state specification
-    OrbitalMomentum(StateSpec),
-    /// Eccentricity vector of this state specification
-    EccentricityVector(StateSpec),
-    /// Cross product between two vector expression
-    CrossProduct {
-        a: Box<Self>,
-        b: Box<Self>,
-    },
-    /// Unit vector of this vector expression, returns zero vector if norm less than 1e-12
-    Unit(Box<Self>),
-    /// Negate a vector
-    /// /// Negate a vector.
-    Negate(Box<Self>),
-    /// Vector projection of a onto b
-    VecProjection {
-        a: Box<Self>,
-        b: Box<Self>,
-    },
-    // This should be as simple as multiplying the input VectorExpr by the DCM.
-    // I think it makes sense to have trivial rotations like VNC, RIC, RCN available in the frame spec.
-    // The test should consist in checking that we can rebuild the VNC frame and project the Sun Earth vector onto
-    // the VNC frame of that same Sun Earth orbit, returning the X, Y, or Z component.
-    // Projection should allow XY, XZ, YZ which determines the components to account for.
-    /// Multiplies the DCM of thr frame with this vector, thereby rotating it into the provided orthogonal frame, optionally projecting onto the plan, optionally projecting onto the plane
-    Project {
-        v: Box<Self>,
-        frame: Box<OrthogonalFrame>,
-        plane: Option<Plane>,
-    },
-}
-
-impl fmt::Display for VectorExpr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Fixed { x, y, z } => write!(f, "[{x}, {y}, {z}]"),
-            Self::Radius(state) => write!(f, "Radius({state})"),
-            Self::Velocity(state) => write!(f, "Velocity({state})"),
-            Self::OrbitalMomentum(state) => write!(f, "OrbitalMomentum({state})"),
-            Self::EccentricityVector(state) => write!(f, "EccentricityVector({state})"),
-            Self::CrossProduct { a, b } => write!(f, "{a} ⨯ {b}"),
-            Self::Unit(v) => write!(f, "unit({v})"),
-            Self::Negate(v) => write!(f, "-{v}"),
-            Self::VecProjection { a, b } => write!(f, "proj {a} onto {b}"),
-            Self::Project { v, frame, plane } => {
-                if let Some(plane) = plane {
-                    write!(f, "proj {v} onto {plane:?} of {frame}")
-                } else {
-                    write!(f, "{v} dot {frame}")
-                }
-            }
-        }
-    }
-}
-
-impl VectorExpr {
-    /// Evaluates this vector expression, returning a Vector
-    pub fn evaluate(&self, epoch: Epoch, almanac: &Almanac) -> Result<Vector3, AnalysisError> {
-        match self {
-            Self::Fixed { x, y, z } => Ok(Vector3::new(*x, *y, *z)),
-            Self::Radius(spec) => Ok(spec.evaluate(epoch, almanac)?.radius_km),
-            Self::Velocity(spec) => Ok(spec.evaluate(epoch, almanac)?.velocity_km_s),
-            Self::OrbitalMomentum(spec) => {
-                spec.evaluate(epoch, almanac)?
-                    .hvec()
-                    .context(PhysicsVecExprSnafu {
-                        expr: Box::new(self.clone()),
-                        epoch,
-                    })
-            }
-            Self::EccentricityVector(spec) => {
-                spec.evaluate(epoch, almanac)?
-                    .evec()
-                    .context(PhysicsVecExprSnafu {
-                        expr: Box::new(self.clone()),
-                        epoch,
-                    })
-            }
-            Self::CrossProduct { a, b } => {
-                let vec_a = a.evaluate(epoch, almanac)?;
-                let vec_b = b.evaluate(epoch, almanac)?;
-                Ok(vec_a.cross(&vec_b))
-            }
-            Self::Unit(v) => Ok(v
-                .evaluate(epoch, almanac)?
-                .try_normalize(1e-12)
-                .unwrap_or(Vector3::zeros())),
-            Self::Negate(v) => Ok(-v.evaluate(epoch, almanac)?),
-            Self::VecProjection { a, b } => {
-                let vec_a = a.evaluate(epoch, almanac)?;
-                let vec_b = b.evaluate(epoch, almanac)?;
-
-                Ok(vec_a.dot(&vec_b) * vec_b)
-            }
-            Self::Project { v, frame, plane } => {
-                let dcm = frame.evaluate(epoch, almanac)?;
-
-                let vector = v.evaluate(epoch, almanac)?;
-
-                if let Some(plane) = plane {
-                    Ok(dcm * plane.mask() * vector)
-                } else {
-                    Ok(dcm * vector)
-                }
-            }
-        }
-    }
-}
+use super::{AnalysisError, VectorExpr};
 
 /// ScalarExpr defines a scalar computation from a (set of) vector expression(s).
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum ScalarExpr {
+    Constant(f64),
+    /// Mean radius of the provided body, must be loaded in the almanac
+    MeanEquatorialRadius {
+        celestial_object: i32,
+    },
+    SemiMajorEquatorialRadius {
+        celestial_object: i32,
+    },
+    SemiMinorEquatorialRadius {
+        celestial_object: i32,
+    },
+    PolarRadius {
+        celestial_object: i32,
+    },
+    Flattening {
+        celestial_object: i32,
+    },
+    GravParam {
+        celestial_object: i32,
+    },
+    Add {
+        a: Box<Self>,
+        b: Box<Self>,
+    },
+    Mul {
+        a: Box<Self>,
+        b: Box<Self>,
+    },
+    Negate(Box<Self>),
+    Invert(Box<Self>),
+    Sqrt(Box<Self>),
+    Powi {
+        scalar: Box<Self>,
+        n: i32,
+    },
+    Powf {
+        scalar: Box<Self>,
+        n: f64,
+    },
     Norm(VectorExpr),
     NormSquared(VectorExpr),
     DotProduct {
@@ -211,6 +123,110 @@ impl ScalarExpr {
         almanac: &Almanac,
     ) -> Result<f64, AnalysisError> {
         match self {
+            Self::Constant(v) => Ok(*v),
+            Self::MeanEquatorialRadius { celestial_object } => almanac
+                .planetary_data
+                .get_by_id(*celestial_object)
+                .or(Err(AnalysisError::AlmanacMissingDataExpr {
+                    expr: Box::new(self.clone()),
+                }))?
+                .shape
+                .map_or(
+                    Err(AnalysisError::AlmanacMissingDataExpr {
+                        expr: Box::new(self.clone()),
+                    }),
+                    |shape| Ok(shape.mean_equatorial_radius_km()),
+                ),
+            Self::SemiMajorEquatorialRadius { celestial_object } => almanac
+                .planetary_data
+                .get_by_id(*celestial_object)
+                .or(Err(AnalysisError::AlmanacMissingDataExpr {
+                    expr: Box::new(self.clone()),
+                }))?
+                .shape
+                .map_or(
+                    Err(AnalysisError::AlmanacMissingDataExpr {
+                        expr: Box::new(self.clone()),
+                    }),
+                    |shape| Ok(shape.semi_major_equatorial_radius_km),
+                ),
+            Self::SemiMinorEquatorialRadius { celestial_object } => almanac
+                .planetary_data
+                .get_by_id(*celestial_object)
+                .or(Err(AnalysisError::AlmanacMissingDataExpr {
+                    expr: Box::new(self.clone()),
+                }))?
+                .shape
+                .map_or(
+                    Err(AnalysisError::AlmanacMissingDataExpr {
+                        expr: Box::new(self.clone()),
+                    }),
+                    |shape| Ok(shape.semi_minor_equatorial_radius_km),
+                ),
+            Self::PolarRadius { celestial_object } => almanac
+                .planetary_data
+                .get_by_id(*celestial_object)
+                .or(Err(AnalysisError::AlmanacMissingDataExpr {
+                    expr: Box::new(self.clone()),
+                }))?
+                .shape
+                .map_or(
+                    Err(AnalysisError::AlmanacMissingDataExpr {
+                        expr: Box::new(self.clone()),
+                    }),
+                    |shape| Ok(shape.polar_radius_km),
+                ),
+            Self::Flattening { celestial_object } => almanac
+                .planetary_data
+                .get_by_id(*celestial_object)
+                .or(Err(AnalysisError::AlmanacMissingDataExpr {
+                    expr: Box::new(self.clone()),
+                }))?
+                .shape
+                .map_or(
+                    Err(AnalysisError::AlmanacMissingDataExpr {
+                        expr: Box::new(self.clone()),
+                    }),
+                    |shape| Ok(shape.flattening()),
+                ),
+
+            Self::GravParam { celestial_object } => Ok(almanac
+                .planetary_data
+                .get_by_id(*celestial_object)
+                .or(Err(AnalysisError::AlmanacMissingDataExpr {
+                    expr: Box::new(self.clone()),
+                }))?
+                .mu_km3_s2),
+
+            Self::Add { a, b } => {
+                Ok(a.evaluate(orbit, ab_corr, almanac)? + b.evaluate(orbit, ab_corr, almanac)?)
+            }
+
+            Self::Mul { a, b } => {
+                Ok(a.evaluate(orbit, ab_corr, almanac)? * b.evaluate(orbit, ab_corr, almanac)?)
+            }
+
+            Self::Negate(v) => Ok(-v.evaluate(orbit, ab_corr, almanac)?),
+
+            Self::Invert(v) => {
+                let v = v.evaluate(orbit, ab_corr, almanac)?;
+
+                if v.abs() > f64::MIN {
+                    Ok(1.0 / v)
+                } else {
+                    Err(AnalysisError::MathExpr {
+                        expr: Box::new(self.clone()),
+                        source: Box::new(crate::errors::MathError::DivisionByZero {
+                            action: "computing expression",
+                        }),
+                    })
+                }
+            }
+
+            Self::Sqrt(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.sqrt()),
+            Self::Powi { scalar, n } => Ok(scalar.evaluate(orbit, ab_corr, almanac)?.powi(*n)),
+            Self::Powf { scalar, n } => Ok(scalar.evaluate(orbit, ab_corr, almanac)?.powf(*n)),
+
             Self::Element(oe) => oe.evaluate(orbit),
             Self::Norm(vexpr) => Ok(vexpr.evaluate(orbit.epoch, almanac)?.norm()),
             Self::NormSquared(vexpr) => Ok(vexpr.evaluate(orbit.epoch, almanac)?.norm_squared()),
@@ -322,6 +338,66 @@ impl ScalarExpr {
         }
     }
 
+    pub fn default_event_precision(&self) -> f64 {
+        match self {
+            Self::Norm(_) | Self::NormSquared(_) | Self::DotProduct { a: _, b: _ } => 0.1,
+            Self::AngleBetween { a: _, b: _ }
+            | Self::BetaAngle
+            | Self::SunAngle { observer_id: _ }
+            | Self::AzimuthFromLocation {
+                location_id: _,
+                obstructing_body: _,
+            }
+            | Self::ElevationFromLocation {
+                location_id: _,
+                obstructing_body: _,
+            } => 1e-2,
+            Self::VectorX(_)
+            | Self::VectorY(_)
+            | Self::VectorZ(_)
+            | Self::RangeFromLocation {
+                location_id: _,
+                obstructing_body: _,
+            }
+            | Self::RangeRateFromLocation {
+                location_id: _,
+                obstructing_body: _,
+            }
+            | Self::MeanEquatorialRadius {
+                celestial_object: _,
+            }
+            | Self::SemiMajorEquatorialRadius {
+                celestial_object: _,
+            }
+            | Self::SemiMinorEquatorialRadius {
+                celestial_object: _,
+            }
+            | Self::PolarRadius {
+                celestial_object: _,
+            } => 1e-2,
+            Self::Element(e) => e.default_event_precision(),
+            Self::SolarEclipsePercentage { eclipsing_frame: _ }
+            | Self::OccultationPercentage {
+                front_frame: _,
+                back_frame: _,
+            } => 1e-3,
+            Self::Constant(_)
+            | Self::Add { a: _, b: _ }
+            | Self::Mul { a: _, b: _ }
+            | Self::Invert(_)
+            | Self::Negate(_)
+            | Self::Powi { scalar: _, n: _ }
+            | Self::Powf { scalar: _, n: _ }
+            | Self::GravParam {
+                celestial_object: _,
+            }
+            | Self::Flattening {
+                celestial_object: _,
+            }
+            | Self::Sqrt(_) => f64::EPSILON,
+        }
+    }
+
     /// Export this Scalar Expression to S-Expression / LISP syntax
     pub fn to_lexpr(&self) -> String {
         serde_lexpr::to_value(&self).unwrap().to_string()
@@ -336,6 +412,28 @@ impl ScalarExpr {
 impl fmt::Display for ScalarExpr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Constant(v) => write!(f, "{v}"),
+            Self::Add { a, b } => write!(f, "{a} + {b}"),
+            Self::Mul { a, b } => write!(f, "{a} * {b}"),
+            Self::Invert(v) => write!(f, "1.0/{v}"),
+            Self::Powi { scalar, n } => write!(f, "{scalar}^{n}"),
+            Self::Powf { scalar, n } => write!(f, "{scalar}^{n}"),
+            Self::Negate(v) => write!(f, "-{v}"),
+            Self::Sqrt(v) => write!(f, "sqrt({v})"),
+            Self::MeanEquatorialRadius { celestial_object } => {
+                write!(f, "mean eq. radius of {celestial_object}")
+            }
+            Self::SemiMajorEquatorialRadius { celestial_object } => {
+                write!(f, "semi-major eq. radius of {celestial_object}")
+            }
+            Self::SemiMinorEquatorialRadius { celestial_object } => {
+                write!(f, "semi-minor eq. radius of {celestial_object}")
+            }
+            Self::PolarRadius { celestial_object } => {
+                write!(f, "polar radius of {celestial_object}")
+            }
+            Self::Flattening { celestial_object } => write!(f, "flattening of {celestial_object}"),
+            Self::GravParam { celestial_object } => write!(f, "grav. param of {celestial_object}"),
             Self::Norm(e) => write!(f, "|{e}|"),
             Self::NormSquared(e) => write!(f, "|{e}|^2"),
             Self::DotProduct { a, b } => write!(f, "{a} · {b}"),

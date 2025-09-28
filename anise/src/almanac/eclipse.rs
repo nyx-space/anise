@@ -66,7 +66,7 @@ impl Almanac {
 
         if obstructing_body.mean_equatorial_radius_km().is_err() {
             obstructing_body =
-                self.frame_from_uid(obstructing_body)
+                self.frame_info(obstructing_body)
                     .map_err(|e| AlmanacError::GenericError {
                         err: format!("{e} when fetching frame data for {obstructing_body}"),
                     })?;
@@ -117,19 +117,19 @@ impl Almanac {
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<Occultation> {
         if back_frame.mean_equatorial_radius_km().is_err() {
-            back_frame =
-                self.frame_from_uid(back_frame)
-                    .map_err(|e| AlmanacError::GenericError {
-                        err: format!("{e} when fetching {back_frame:e} frame data"),
-                    })?;
+            back_frame = self
+                .frame_info(back_frame)
+                .map_err(|e| AlmanacError::GenericError {
+                    err: format!("{e} when fetching {back_frame:e} frame data"),
+                })?;
         }
 
         if front_frame.mean_equatorial_radius_km().is_err() {
-            front_frame =
-                self.frame_from_uid(front_frame)
-                    .map_err(|e| AlmanacError::GenericError {
-                        err: format!("{e} when fetching {front_frame:e} frame data"),
-                    })?;
+            front_frame = self
+                .frame_info(front_frame)
+                .map_err(|e| AlmanacError::GenericError {
+                    err: format!("{e} when fetching {front_frame:e} frame data"),
+                })?;
         }
 
         let bobj_mean_eq_radius_km = back_frame
@@ -349,8 +349,8 @@ mod ut_los {
 
     #[rstest]
     fn los_edge_case(almanac: Almanac) {
-        let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
-        let luna = almanac.frame_from_uid(MOON_J2000).unwrap();
+        let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+        let luna = almanac.frame_info(MOON_J2000).unwrap();
 
         let dt1 = Epoch::from_gregorian_tai_hms(2020, 1, 1, 6, 7, 40);
         let dt2 = Epoch::from_gregorian_tai_hms(2020, 1, 1, 6, 7, 50);
@@ -447,7 +447,7 @@ mod ut_los {
 
     #[rstest]
     fn los_earth_eclipse(almanac: Almanac) {
-        let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
+        let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
 
         let dt = Epoch::from_gregorian_tai_at_midnight(2020, 1, 1);
 

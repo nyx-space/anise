@@ -10,8 +10,7 @@
 
 use crate::{
     almanac::Almanac,
-    analysis::expr::VectorExpr,
-    errors::{AlmanacError, PhysicsError},
+    errors::{AlmanacError, MathError, PhysicsError},
     prelude::Orbit,
 };
 use hifitime::{Epoch, TimeSeries};
@@ -24,14 +23,17 @@ pub mod elements;
 pub mod event;
 pub mod expr;
 pub mod specs;
+pub mod vector_expr;
 
 use expr::ScalarExpr;
 use specs::StateSpec;
+use vector_expr::VectorExpr;
 
 pub mod prelude {
     pub use super::elements::OrbitalElement;
-    pub use super::expr::{ScalarExpr, VectorExpr};
+    pub use super::expr::ScalarExpr;
     pub use super::specs::{FrameSpec, StateSpec};
+    pub use super::vector_expr::VectorExpr;
     pub use crate::prelude::Frame;
 }
 
@@ -85,6 +87,8 @@ pub enum AnalysisError {
         #[snafu(source(from(AlmanacError, Box::new)))]
         source: Box<AlmanacError>,
     },
+    #[snafu(display("mission data in Almanac to compute {expr:?}"))]
+    AlmanacMissingDataExpr { expr: Box<ScalarExpr> },
     #[snafu(display("computing state {spec:?} at {epoch} encountered an Almanac error {source}"))]
     AlmanacStateSpec {
         spec: Box<StateSpec>,
@@ -105,6 +109,12 @@ pub enum AnalysisError {
         epoch: Epoch,
         #[snafu(source(from(PhysicsError, Box::new)))]
         source: Box<PhysicsError>,
+    },
+    #[snafu(display("computing {expr:?} encountered a math error {source}"))]
+    MathExpr {
+        expr: Box<ScalarExpr>,
+        #[snafu(source(from(MathError, Box::new)))]
+        source: Box<MathError>,
     },
 }
 

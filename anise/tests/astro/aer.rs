@@ -25,7 +25,7 @@ fn validate_aer_vs_gmat_cislunar1() {
         .load("../data/de430.bsp")
         .unwrap();
 
-    let eme2k = almanac.frame_from_uid(EME2000).unwrap();
+    let eme2k = almanac.frame_info(EME2000).unwrap();
 
     let states = &[
         Orbit::new(
@@ -98,7 +98,7 @@ fn validate_aer_vs_gmat_cislunar1() {
             DSS65_HEIGHT_KM,
             MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
             rx.epoch,
-            almanac.frame_from_uid(IAU_EARTH_FRAME).unwrap(),
+            almanac.frame_info(IAU_EARTH_FRAME).unwrap(),
         )
         .unwrap();
 
@@ -124,7 +124,7 @@ fn validate_aer_vs_gmat_cislunar2() {
         .load("../data/de440s.bsp")
         .unwrap();
 
-    let eme2k = almanac.frame_from_uid(EME2000).unwrap();
+    let eme2k = almanac.frame_info(EME2000).unwrap();
 
     let states = &[
         Orbit::new(
@@ -200,7 +200,7 @@ fn validate_aer_vs_gmat_cislunar2() {
             DSS65_HEIGHT_KM,
             omega,
             rx.epoch,
-            almanac.frame_from_uid(IAU_EARTH_FRAME).unwrap(),
+            almanac.frame_info(IAU_EARTH_FRAME).unwrap(),
         )
         .unwrap();
 
