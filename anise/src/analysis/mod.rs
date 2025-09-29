@@ -10,6 +10,7 @@
 
 use crate::{
     almanac::Almanac,
+    analysis::report::ReportScalars,
     errors::{AlmanacError, MathError, PhysicsError},
     prelude::Orbit,
 };
@@ -22,6 +23,7 @@ use std::collections::HashMap;
 pub mod elements;
 pub mod event;
 pub mod expr;
+pub mod report;
 pub mod specs;
 pub mod vector_expr;
 
@@ -40,39 +42,36 @@ pub mod prelude {
 // FOCI: 1. Build the angle between two objects, defined in the loaded Almanac.
 //       2. Rebuild the angular momentum vector to demonstrate the cross product.
 
-// TODO: Once https://github.com/Nadrieril/dhall-rust/issues/242 is closed, enable Dhall serialization.
-// Will be implemented in https://github.com/nyx-space/anise/issues/466
-// use serde_derive::{Deserialize, Serialize};
-// use serde_dhall::StaticType;
-
 impl Almanac {
     pub fn generate_report(
         &self,
-        scalars: &[(ScalarExpr, Option<&str>)],
-        state_spec: StateSpec,
+        report: ReportScalars,
         time_series: TimeSeries,
     ) -> HashMap<Epoch, Result<HashMap<String, AnalysisResult<f64>>, AnalysisError>> {
         time_series
             .par_bridge()
-            .map_with(
-                (&self, state_spec.clone(), scalars),
-                |(almanac, spec, scalars), epoch| match spec.evaluate(epoch, almanac) {
+            .map_with((&self, report), |(almanac, report), epoch| {
+                match report.state_spec.evaluate(epoch, almanac) {
                     Ok(orbit) => {
                         let mut data = HashMap::new();
 
-                        let ab_corr = spec.ab_corr;
+                        let ab_corr = report.state_spec.ab_corr;
 
-                        for (expr, alias) in scalars.iter() {
+                        for (expr, alias) in report.scalars.iter() {
                             data.insert(
-                                alias.or(Some(&expr.to_string())).unwrap().to_string(),
+                                alias
+                                    .clone()
+                                    .or(Some(expr.to_string()))
+                                    .unwrap()
+                                    .to_string(),
                                 expr.evaluate(orbit, ab_corr, almanac),
                             );
                         }
                         (epoch, Ok(data))
                     }
                     Err(e) => (epoch, Err(e)),
-                },
-            )
+                }
+            })
             .collect()
     }
 }
@@ -124,6 +123,7 @@ pub type AnalysisResult<T> = Result<T, AnalysisError>;
 mod ut_analysis {
 
     use crate::analysis::prelude::*;
+    use crate::analysis::report::ReportScalars;
     use crate::analysis::specs::{OrthogonalFrame, Plane};
     use crate::astro::{Aberration, Location, TerrainMask};
     use crate::constants::frames::{EME2000, IAU_EARTH_FRAME, MOON_J2000, SUN_J2000, VENUS_J2000};
@@ -302,8 +302,8 @@ mod ut_analysis {
         // Demo of an S-Expression export
         let sexpr_str = serde_lexpr::to_value(&scalars).unwrap();
         let proj = scalars.last().unwrap();
-        let proj_s = proj.to_lexpr();
-        let proj_reload = ScalarExpr::from_lexpr(&proj_s).unwrap();
+        let proj_s = proj.to_s_expr();
+        let proj_reload = ScalarExpr::from_s_expr(&proj_s).unwrap();
         assert_eq!(&proj_reload, proj);
         println!("{sexpr_str}\n\nPROJ ONLY\n{proj_s}\n");
 
@@ -311,13 +311,26 @@ mod ut_analysis {
 
         let mut scalars_with_aliases = scalars.map(|s| (s, None));
         // Set an alias for the last three.
-        scalars_with_aliases[cnt - 3].1 = Some("proj VNC X");
-        scalars_with_aliases[cnt - 2].1 = Some("proj VNC Y");
-        scalars_with_aliases[cnt - 1].1 = Some("proj VNC Z");
+        scalars_with_aliases[cnt - 3].1 = Some("proj VNC X".to_string());
+        scalars_with_aliases[cnt - 2].1 = Some("proj VNC Y".to_string());
+        scalars_with_aliases[cnt - 1].1 = Some("proj VNC Z".to_string());
+
+        // Build the report, ensure we can serialize it and deserialize it.
+        let report = ReportScalars {
+            scalars: scalars_with_aliases.to_vec(),
+            state_spec: state,
+        };
+
+        let report_s_expr = report.to_s_expr();
+
+        println!("REPORT S-EXPR\n{report_s_expr}\n");
+
+        let report_reloaded = ReportScalars::from_s_expr(&report_s_expr).unwrap();
+
+        assert_eq!(report_reloaded, report);
 
         let data = almanac.generate_report(
-            &scalars_with_aliases,
-            state,
+            report,
             TimeSeries::inclusive(
                 Epoch::from_gregorian_utc_at_midnight(2025, 1, 1),
                 Epoch::from_gregorian_utc_at_noon(2025, 1, 2),

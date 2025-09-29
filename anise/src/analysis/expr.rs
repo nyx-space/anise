@@ -399,12 +399,12 @@ impl ScalarExpr {
     }
 
     /// Export this Scalar Expression to S-Expression / LISP syntax
-    pub fn to_lexpr(&self) -> String {
+    pub fn to_s_expr(&self) -> String {
         serde_lexpr::to_value(&self).unwrap().to_string()
     }
 
     /// Load this Scalar Expression from an S-Expression / LISP syntax
-    pub fn from_lexpr(expr: &str) -> Result<Self, serde_lexpr::Error> {
+    pub fn from_s_expr(expr: &str) -> Result<Self, serde_lexpr::Error> {
         serde_lexpr::from_str(expr)
     }
 }
