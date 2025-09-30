@@ -83,8 +83,8 @@ impl Almanac {
         &self,
         state_spec: &StateSpec,
         event: &Event,
-        start: Epoch,
-        end: Epoch,
+        start_epoch: Epoch,
+        end_epoch: Epoch,
     ) -> Result<EventDetails, AnalysisError> {
         let max_iter = 50;
 
@@ -99,8 +99,8 @@ impl Almanac {
             }
         };
 
-        let xa_e = start;
-        let xb_e = end;
+        let xa_e = start_epoch;
+        let xb_e = end_epoch;
 
         // Search in seconds (convert to epoch just in time)
         let mut xa = 0.0;
@@ -195,8 +195,8 @@ impl Almanac {
             if has_converged(xa, xb) {
                 // The event isn't in the bracket
                 return Err(AnalysisError::EventNotFound {
-                    start,
-                    end,
+                    start: start_epoch,
+                    end: end_epoch,
                     event: event.clone(),
                 });
             }
@@ -257,8 +257,8 @@ impl Almanac {
         }
         error!("Brent solver failed after {max_iter} iterations");
         Err(AnalysisError::EventNotFound {
-            start,
-            end,
+            start: start_epoch,
+            end: end_epoch,
             event: event.clone(),
         })
     }
@@ -398,18 +398,18 @@ impl Almanac {
         state_spec: &StateSpec,
         event: &Event,
         precision: Unit,
-        start: Epoch,
-        end: Epoch,
+        start_epoch: Epoch,
+        end_epoch: Epoch,
     ) -> Result<(Orbit, Orbit), AnalysisError> {
         let step: Duration = 1 * precision;
         let mut min_val = f64::INFINITY;
         let mut max_val = f64::NEG_INFINITY;
-        let mut min_state = state_spec.evaluate(start, self)?;
-        let mut max_state = state_spec.evaluate(end, self)?;
+        let mut min_state = state_spec.evaluate(start_epoch, self)?;
+        let mut max_state = state_spec.evaluate(end_epoch, self)?;
 
         let (sender, receiver) = channel();
 
-        let epochs: Vec<Epoch> = TimeSeries::inclusive(start, end, step).collect();
+        let epochs: Vec<Epoch> = TimeSeries::inclusive(start_epoch, end_epoch, step).collect();
 
         epochs.into_par_iter().for_each_with(sender, |s, epoch| {
             // The `at` call will work because we only query within the start and end times of the trajectory
@@ -456,54 +456,55 @@ impl Almanac {
         &self,
         state_spec: &StateSpec,
         event: &Event,
-        start: Epoch,
-        end: Epoch,
+        start_epoch: Epoch,
+        end_epoch: Epoch,
         heuristic: Option<Duration>,
     ) -> Result<Vec<EventArc>, AnalysisError> {
-        let mut events = match self.report_events(state_spec, event, start, end, heuristic) {
-            Ok(events) => events,
-            Err(_) => {
-                // We haven't found the start or end of an arc, i.e. no zero crossing on the event.
-                // However, if the trajectory start and end are above the event value, then we found an arc.
-                let start_orbit = state_spec.evaluate(start, self)?;
-                let end_orbit = state_spec.evaluate(end, self)?;
-                let first_eval = event.eval(start_orbit, self)?;
-                let last_eval = event.eval(end_orbit, self)?;
-                if first_eval > 0.0 && last_eval > 0.0 {
-                    // No event crossing found, but from the start until the end of the trajectory, we're in the same arc
-                    // because the evaluation of the event is above the zero crossing.
-                    // Hence, there's a single arc, and it's from start until the end of the trajectory.
-                    vec![
-                        EventDetails::new(
-                            start_orbit,
-                            first_eval,
-                            event,
-                            None,
-                            state_spec
-                                .evaluate(start + event.epoch_precision, self)
-                                .map(|s| Some(s))?,
-                            self,
-                        )?,
-                        EventDetails::new(
-                            end_orbit,
-                            last_eval,
-                            event,
-                            state_spec
-                                .evaluate(start + event.epoch_precision, self)
-                                .map(|s| Some(s))?,
-                            None,
-                            self,
-                        )?,
-                    ]
-                } else {
-                    return Err(AnalysisError::EventNotFound {
-                        start,
-                        end,
-                        event: event.clone(),
-                    });
+        let mut events =
+            match self.report_events(state_spec, event, start_epoch, end_epoch, heuristic) {
+                Ok(events) => events,
+                Err(_) => {
+                    // We haven't found the start or end of an arc, i.e. no zero crossing on the event.
+                    // However, if the trajectory start and end are above the event value, then we found an arc.
+                    let start_orbit = state_spec.evaluate(start_epoch, self)?;
+                    let end_orbit = state_spec.evaluate(end_epoch, self)?;
+                    let first_eval = event.eval(start_orbit, self)?;
+                    let last_eval = event.eval(end_orbit, self)?;
+                    if first_eval > 0.0 && last_eval > 0.0 {
+                        // No event crossing found, but from the start until the end of the trajectory, we're in the same arc
+                        // because the evaluation of the event is above the zero crossing.
+                        // Hence, there's a single arc, and it's from start until the end of the trajectory.
+                        vec![
+                            EventDetails::new(
+                                start_orbit,
+                                first_eval,
+                                event,
+                                None,
+                                state_spec
+                                    .evaluate(start_epoch + event.epoch_precision, self)
+                                    .map(|s| Some(s))?,
+                                self,
+                            )?,
+                            EventDetails::new(
+                                end_orbit,
+                                last_eval,
+                                event,
+                                state_spec
+                                    .evaluate(start_epoch + event.epoch_precision, self)
+                                    .map(|s| Some(s))?,
+                                None,
+                                self,
+                            )?,
+                        ]
+                    } else {
+                        return Err(AnalysisError::EventNotFound {
+                            start: start_epoch,
+                            end: end_epoch,
+                            event: event.clone(),
+                        });
+                    }
                 }
-            }
-        };
+            };
         events.sort_by_key(|event| event.state.epoch);
 
         // Now, let's pair the events.
@@ -515,8 +516,8 @@ impl Almanac {
 
         // If the first event isn't a rising edge, then we mark the start of the trajectory as a rising edge
         let mut prev_rise = if events[0].edge != EventEdge::Rising {
-            let first_orbit = state_spec.evaluate(start, self)?;
-            let next_orbit = state_spec.evaluate(start + event.epoch_precision, self)?;
+            let first_orbit = state_spec.evaluate(start_epoch, self)?;
+            let next_orbit = state_spec.evaluate(start_epoch + event.epoch_precision, self)?;
             let value = event.eval(first_orbit, self)?;
             Some(EventDetails::new(
                 first_orbit,
@@ -575,8 +576,8 @@ impl Almanac {
                 arcs.push(arc);
             } else {
                 // Use the last trajectory as the end of the arc
-                let penult_orbit = state_spec.evaluate(end - event.epoch_precision, self)?;
-                let last_orbit = state_spec.evaluate(end, self)?;
+                let penult_orbit = state_spec.evaluate(end_epoch - event.epoch_precision, self)?;
+                let last_orbit = state_spec.evaluate(end_epoch, self)?;
                 let value = event.eval(last_orbit, self)?;
                 let fall =
                     EventDetails::new(last_orbit, value, event, Some(penult_orbit), None, self)?;
