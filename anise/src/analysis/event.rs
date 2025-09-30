@@ -9,12 +9,18 @@
  */
 
 use super::ScalarExpr;
+use crate::{
+    analysis::AnalysisError,
+    astro::Aberration,
+    prelude::{Almanac, Orbit},
+};
 use hifitime::Duration;
+use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// Defines a state parameter event finder
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Event {
     /// The state parameter
     pub scalar: ScalarExpr,
@@ -24,6 +30,36 @@ pub struct Event {
     pub epoch_precision: Duration,
     /// The precision on the desired value
     pub value_precision: f64,
+    pub ab_corr: Option<Aberration>,
+}
+
+impl Event {
+    pub fn eval(&self, orbit: Orbit, almanac: &Almanac) -> Result<f64, AnalysisError> {
+        self.scalar.evaluate(orbit, self.ab_corr, almanac)
+    }
+
+    // Evaluation of event crossing, must return whether the condition happened between between both states.
+    pub fn eval_crossing(
+        &self,
+        prev_state: Orbit,
+        next_state: Orbit,
+        almanac: &Almanac,
+    ) -> Result<bool, AnalysisError> {
+        let prev = self.eval(prev_state, almanac)?;
+        let next = self.eval(next_state, almanac)?;
+
+        Ok(prev * next < 0.0)
+    }
+
+    pub fn eval_string(&self, orbit: Orbit, almanac: &Almanac) -> Result<String, AnalysisError> {
+        let val = self.eval(orbit, almanac)?;
+
+        if self.desired_value.abs() > 1e3 {
+            Ok(format!("{} = {val:e}", self.scalar))
+        } else {
+            Ok(format!("{} = {val}", self.scalar))
+        }
+    }
 }
 
 impl fmt::Display for Event {
@@ -36,7 +72,154 @@ impl fmt::Display for Event {
                 self.desired_value, self.value_precision,
             )
         } else {
-            write!(f, " = {} (± {})", self.desired_value, self.value_precision,)
+            write!(f, " = {} (± {})", self.desired_value, self.value_precision)
         }
+    }
+}
+/// Enumerates the possible edges of an event in a trajectory.
+///
+/// `EventEdge` is used to describe the nature of a trajectory event, particularly in terms of its temporal dynamics relative to a specified condition or threshold. This enum helps in distinguishing whether the event is occurring at a rising edge, a falling edge, or if the edge is unclear due to insufficient data or ambiguous conditions.
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum EventEdge {
+    /// Represents a rising edge of the event. This indicates that the event is transitioning from a lower to a higher evaluation of the event. For example, in the context of elevation, a rising edge would indicate an increase in elevation from a lower angle.
+    Rising,
+    /// Represents a falling edge of the event. This is the opposite of the rising edge, indicating a transition from a higher to a lower value of the event evaluator. For example, if tracking the elevation of an object, a falling edge would signify a
+    Falling,
+    /// If the edge cannot be clearly defined, it will be marked as unclear. This happens if the event is at a saddle point and the epoch precision is too large to find the exact slope.
+    Unclear,
+}
+
+/// Represents the details of an event occurring along a trajectory.
+///
+/// `EventDetails` encapsulates the state at which a particular event occurs in a trajectory, along with additional information about the nature of the event. This struct is particularly useful for understanding the dynamics of the event, such as whether it represents a rising or falling edge, or if the edge is unclear.
+///
+/// # Generics
+/// S: Interpolatable - A type that represents the state of the trajectory. This type must implement the `Interpolatable` trait, ensuring that it can be interpolated and manipulated according to the trajectory's requirements.
+#[derive(Clone, Debug, PartialEq)]
+pub struct EventDetails {
+    /// The state of the trajectory at the found event.
+    pub state: Orbit,
+    /// Indicates whether the event is a rising edge, falling edge, or unclear. This helps in understanding the direction of change at the event point.
+    pub edge: EventEdge,
+    /// Numerical evaluation of the event condition, e.g. if seeking the apoapsis, this returns the near zero
+    pub value: f64,
+    /// Numertical evaluation of the event condition one epoch step before the found event (used to compute the rising/falling edge).
+    pub prev_value: Option<f64>,
+    /// Numertical evaluation of the event condition one epoch step after the found event (used to compute the rising/falling edge).
+    pub next_value: Option<f64>,
+    /// Precision of the epoch for this value
+    pub pm_duration: Duration,
+    // Store the representation of this event as a string because we can't move or clone the event reference
+    pub repr: String,
+}
+
+impl EventDetails {
+    /// Generates detailed information about an event at a specific epoch in a trajectory.
+    ///
+    /// This takes an `Epoch` as an input and returns a `Result<Self, EventError>`.
+    /// It is designed to determine the state of a trajectory at a given epoch, evaluate the specific event at that state, and ascertain the nature of the event (rising, falling, or unclear).
+    /// The initialization intelligently determines the edge type of the event by comparing the event's value at the current, previous, and next epochs.
+    /// It ensures robust event characterization in trajectories.
+    ///
+    /// # Returns
+    /// - `Ok(EventDetails<S>)` if the state at the given epoch can be determined and the event details are successfully evaluated.
+    /// - `Err(EventError)` if there is an error in retrieving the state at the specified epoch.
+    ///
+    pub fn new(
+        state: Orbit,
+        value: f64,
+        event: &Event,
+        prev_state: Option<Orbit>,
+        next_state: Option<Orbit>,
+        almanac: &Almanac,
+    ) -> Result<Self, AnalysisError> {
+        let prev_value = if let Some(state) = prev_state {
+            Some(event.eval(state, almanac)?)
+        } else {
+            None
+        };
+
+        let next_value = if let Some(state) = next_state {
+            Some(event.eval(state, almanac)?)
+        } else {
+            None
+        };
+
+        let edge = if let Some(prev_value) = prev_value {
+            if let Some(next_value) = next_value {
+                if prev_value > value && value > next_value {
+                    EventEdge::Falling
+                } else if prev_value < value && value < next_value {
+                    EventEdge::Rising
+                } else {
+                    debug!("could not determine edge of {} at {}", event, state.epoch);
+                    EventEdge::Unclear
+                }
+            } else if prev_value > value {
+                EventEdge::Falling
+            } else {
+                EventEdge::Rising
+            }
+        } else if let Some(next_value) = next_value {
+            if next_value > value {
+                EventEdge::Rising
+            } else {
+                EventEdge::Falling
+            }
+        } else {
+            warn!(
+                "could not determine edge of {} because trajectory could be queried around {}",
+                event, state.epoch
+            );
+            EventEdge::Unclear
+        };
+
+        Ok(EventDetails {
+            edge,
+            state,
+            value,
+            prev_value,
+            next_value,
+            pm_duration: event.epoch_precision,
+            repr: event.eval_string(state, almanac)?,
+        })
+    }
+}
+
+impl fmt::Display for EventDetails {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let prev_fmt = match self.prev_value {
+            Some(value) => format!("{value:.6}"),
+            None => "".to_string(),
+        };
+
+        let next_fmt = match self.next_value {
+            Some(value) => format!("{value:.6}"),
+            None => "".to_string(),
+        };
+
+        write!(
+            f,
+            "{} and is {:?} (roots with {} intervals: {}, {:.6}, {})",
+            self.repr, self.edge, self.pm_duration, prev_fmt, self.value, next_fmt
+        )
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct EventArc {
+    pub rise: EventDetails,
+    pub fall: EventDetails,
+}
+
+impl fmt::Display for EventArc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} until {} (lasts {})",
+            self.rise,
+            self.fall.state.epoch,
+            self.fall.state.epoch - self.rise.state.epoch
+        )
     }
 }
