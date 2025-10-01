@@ -645,6 +645,7 @@ pub type AnalysisResult<T> = Result<T, AnalysisError>;
 #[cfg(test)]
 mod ut_analysis {
 
+    use crate::analysis::event::Event;
     use crate::analysis::prelude::*;
     use crate::analysis::report::ReportScalars;
     use crate::analysis::specs::{OrthogonalFrame, Plane};
@@ -704,6 +705,13 @@ mod ut_analysis {
             &manifest_dir
                 .clone()
                 .join("../data/pck08.pca")
+                .to_string_lossy(),
+        )
+        .unwrap()
+        .load(
+            &manifest_dir
+                .clone()
+                .join("../data/lro.bsp")
                 .to_string_lossy(),
         )
         .unwrap();
@@ -879,6 +887,53 @@ mod ut_analysis {
                 // Check that we have correctly defined the projections onto an othogonal frame
                 assert!(v.as_ref().unwrap().abs() <= 1.0);
             }
+        }
+    }
+
+    #[rstest]
+    fn test_analysis_event(almanac: Almanac) {
+        let lro_frame = Frame::from_ephem_j2000(-85);
+
+        let lro_state_spec = StateSpec {
+            target_frame: FrameSpec::Loaded(lro_frame),
+            observer_frame: FrameSpec::Loaded(MOON_J2000),
+            ab_corr: None,
+        };
+
+        let sunset_nadir = Event {
+            scalar: ScalarExpr::SunAngle { observer_id: -85 },
+            desired_value: 23.2,
+            epoch_precision: Unit::Second * 0.1,
+            value_precision: 1.0,
+            ab_corr: None,
+        };
+
+        let (start_epoch, end_epoch) = almanac.spk_domain(-85).unwrap();
+
+        // End setup
+
+        /* let (min_orbit, max_orbit) = almanac
+            .report_event_minmax(
+                &lro_state_spec,
+                &sunset_nadir,
+                Unit::Second,
+                start_epoch,
+                end_epoch,
+            )
+            .unwrap();
+
+        let min_event_val = sunset_nadir.eval(min_orbit, &almanac).unwrap();
+        let max_event_val = sunset_nadir.eval(max_orbit, &almanac).unwrap(); */
+
+        /* println!("MIN:\n{min_orbit} => {min_event_val}");
+        println!("MAX:\n{max_orbit} => {max_event_val}"); */
+
+        let events = almanac
+            .report_events(&lro_state_spec, &sunset_nadir, start_epoch, end_epoch, None)
+            .unwrap();
+
+        for event in events {
+            println!("{event}");
         }
     }
 }
