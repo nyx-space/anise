@@ -8,14 +8,14 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::ScalarExpr;
+use super::{OrbitalElement, ScalarExpr};
 use crate::{
     analysis::AnalysisError,
     astro::Aberration,
     prelude::{Almanac, Orbit},
 };
-use hifitime::Duration;
-use log::{debug, warn};
+use hifitime::{Duration, Epoch, Unit};
+use log::warn;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -28,14 +28,76 @@ pub struct Event {
     pub desired_value: f64,
     /// The duration precision after which the solver will report that it cannot find any more precise
     pub epoch_precision: Duration,
-    /// The precision on the desired value
+    /// The precision on the desired value. Avoid setting it too low (e.g. 1e-3 degrees) because it may
+    /// cause events to be skipped if the value is not found within the epoch precision.
     pub value_precision: f64,
     pub ab_corr: Option<Aberration>,
 }
 
 impl Event {
+    /// Apoapsis event finder
+    pub fn apoapsis() -> Self {
+        Event {
+            scalar: ScalarExpr::Element(OrbitalElement::TrueAnomaly),
+            desired_value: 180.0,
+            epoch_precision: Unit::Second * 0.1,
+            value_precision: 1e-2,
+            ab_corr: None,
+        }
+    }
+
+    /// Periapsis event finder
+    pub fn periapsis() -> Self {
+        Event {
+            scalar: ScalarExpr::Element(OrbitalElement::TrueAnomaly),
+            desired_value: 0.0,
+            epoch_precision: Unit::Second * 0.1,
+            value_precision: 1e-2,
+            ab_corr: None,
+        }
+    }
+
     pub fn eval(&self, orbit: Orbit, almanac: &Almanac) -> Result<f64, AnalysisError> {
-        self.scalar.evaluate(orbit, self.ab_corr, almanac)
+        let current_val = self.scalar.evaluate(orbit, self.ab_corr, almanac)?;
+
+        // Check if the scalar is an angle that needs special handling
+        let is_angle = match self.scalar {
+            ScalarExpr::Element(oe) => oe.is_angle(),
+            ScalarExpr::AngleBetween { a: _, b: _ }
+            | ScalarExpr::BetaAngle
+            | ScalarExpr::SunAngle { observer_id: _ }
+            | ScalarExpr::AzimuthFromLocation {
+                location_id: _,
+                obstructing_body: _,
+            }
+            | ScalarExpr::ElevationFromLocation {
+                location_id: _,
+                obstructing_body: _,
+            } => true,
+            _ => false,
+        };
+
+        if is_angle {
+            // Use the arctan function because it's smooth around zero, but convert back to degrees
+            // for the comparison.
+
+            let current_rad = current_val.to_radians();
+            let desired_rad = self.desired_value.to_radians();
+
+            // Convert the angles to points on a unit circle
+            let (cur_sin, cur_cos) = current_rad.sin_cos();
+            let (des_sin, des_cos) = desired_rad.sin_cos();
+
+            // Calculate the difference vector and find its angle with atan2.
+            // This will be zero only when the angles are identical.
+            let y = cur_sin * des_cos - cur_cos * des_sin; // sin(current - desired)
+            let x = cur_cos * des_cos + cur_sin * des_sin; // cos(current - desired)
+
+            Ok(y.atan2(x).to_degrees())
+        } else {
+            // For all non-angular scalars, use the original logic
+            Ok(current_val - self.desired_value)
+        }
     }
 
     // Evaluation of event crossing, must return whether the condition happened between between both states.
@@ -55,9 +117,17 @@ impl Event {
         let val = self.eval(orbit, almanac)?;
 
         if self.desired_value.abs() > 1e3 {
-            Ok(format!("{} = {val:e}", self.scalar))
+            Ok(format!(
+                "|{} - {:e}| = {val:e} on {}",
+                self.scalar, self.desired_value, orbit.epoch
+            ))
+        } else if self.desired_value > self.value_precision {
+            Ok(format!(
+                "|{} - {:.3}| = {val:.3} on {}",
+                self.scalar, self.desired_value, orbit.epoch
+            ))
         } else {
-            Ok(format!("{} = {val}", self.scalar))
+            Ok(format!("|{}| = {val:.3} on {}", self.scalar, orbit.epoch))
         }
     }
 }
@@ -85,6 +155,10 @@ pub enum EventEdge {
     Rising,
     /// Represents a falling edge of the event. This is the opposite of the rising edge, indicating a transition from a higher to a lower value of the event evaluator. For example, if tracking the elevation of an object, a falling edge would signify a
     Falling,
+    /// Represents a local minimum of the event. This indicates that the previous and next values are both greater than the current value.
+    LocalMin,
+    /// Represents a local maximum of the event. This indicates that the previous and next values are both lower than the current value.
+    LocalMax,
     /// If the edge cannot be clearly defined, it will be marked as unclear. This happens if the event is at a saddle point and the epoch precision is too large to find the exact slope.
     Unclear,
 }
@@ -95,10 +169,10 @@ pub enum EventEdge {
 ///
 /// # Generics
 /// S: Interpolatable - A type that represents the state of the trajectory. This type must implement the `Interpolatable` trait, ensuring that it can be interpolated and manipulated according to the trajectory's requirements.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct EventDetails {
     /// The state of the trajectory at the found event.
-    pub state: Orbit,
+    pub orbit: Orbit,
     /// Indicates whether the event is a rising edge, falling edge, or unclear. This helps in understanding the direction of change at the event point.
     pub edge: EventEdge,
     /// Numerical evaluation of the event condition, e.g. if seeking the apoapsis, this returns the near zero
@@ -147,12 +221,19 @@ impl EventDetails {
 
         let edge = if let Some(prev_value) = prev_value {
             if let Some(next_value) = next_value {
-                if prev_value > value && value > next_value {
-                    EventEdge::Falling
-                } else if prev_value < value && value < next_value {
-                    EventEdge::Rising
+                if prev_value > value {
+                    if value > next_value {
+                        EventEdge::Falling
+                    } else {
+                        EventEdge::LocalMin
+                    }
+                } else if prev_value < value {
+                    if value < next_value {
+                        EventEdge::Rising
+                    } else {
+                        EventEdge::LocalMax
+                    }
                 } else {
-                    debug!("could not determine edge of {} at {}", event, state.epoch);
                     EventEdge::Unclear
                 }
             } else if prev_value > value {
@@ -168,15 +249,15 @@ impl EventDetails {
             }
         } else {
             warn!(
-                "could not determine edge of {} because trajectory could be queried around {}",
-                event, state.epoch
+                "could not determine edge of {event} because state could be queried around {}",
+                state.epoch
             );
             EventEdge::Unclear
         };
 
         Ok(EventDetails {
             edge,
-            state,
+            orbit: state,
             value,
             prev_value,
             next_value,
@@ -187,6 +268,12 @@ impl EventDetails {
 }
 
 impl fmt::Display for EventDetails {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} ({:?})", self.repr, self.edge)
+    }
+}
+
+impl fmt::Debug for EventDetails {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let prev_fmt = match self.prev_value {
             Some(value) => format!("{value:.6}"),
@@ -206,10 +293,24 @@ impl fmt::Display for EventDetails {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct EventArc {
     pub rise: EventDetails,
     pub fall: EventDetails,
+}
+
+impl EventArc {
+    pub fn duration(&self) -> Duration {
+        self.end_epoch() - self.start_epoch()
+    }
+
+    pub fn start_epoch(&self) -> Epoch {
+        self.rise.orbit.epoch
+    }
+
+    pub fn end_epoch(&self) -> Epoch {
+        self.fall.orbit.epoch
+    }
 }
 
 impl fmt::Display for EventArc {
@@ -217,9 +318,14 @@ impl fmt::Display for EventArc {
         write!(
             f,
             "{} until {} (lasts {})",
-            self.rise,
-            self.fall.state.epoch,
-            self.fall.state.epoch - self.rise.state.epoch
+            self.rise.orbit.epoch,
+            self.fall.orbit.epoch,
+            self.fall.orbit.epoch - self.rise.orbit.epoch
         )
+    }
+}
+impl fmt::Debug for EventArc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} until {}", self.rise, self.fall)
     }
 }

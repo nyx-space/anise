@@ -71,6 +71,7 @@ pub enum ScalarExpr {
         a: VectorExpr,
         b: VectorExpr,
     },
+    /// Angle between two vectors, in degrees
     AngleBetween {
         a: VectorExpr,
         b: VectorExpr,
@@ -88,7 +89,7 @@ pub enum ScalarExpr {
         back_frame: Frame,
         front_frame: Frame,
     },
-    /// Computes the beta angle. Aberration correction is that of the state spec.
+    /// Computes the beta angle, in degrees. Aberration correction is that of the state spec.
     BetaAngle,
     /// Computes the Sun angle where observer_id is the ID of the spacecraft for example.
     /// If the frame of the state spec is in an Earth frame, then this computes the Sun Probe Earth angle.
@@ -380,7 +381,7 @@ impl ScalarExpr {
             | Self::OccultationPercentage {
                 front_frame: _,
                 back_frame: _,
-            } => 1e-3,
+            } => 1e-1,
             Self::Constant(_)
             | Self::Add { a: _, b: _ }
             | Self::Mul { a: _, b: _ }

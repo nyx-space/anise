@@ -191,6 +191,27 @@ impl OrbitalElement {
         }
     }
 
+    pub const fn is_angle(&self) -> bool {
+        matches!(
+            self,
+            Self::AoL
+                | Self::AoP
+                | Self::Declination
+                | Self::EccentricAnomaly
+                | Self::FlightPathAngle
+                | Self::Latitude
+                | Self::Longitude
+                | Self::HyperbolicAnomaly
+                | Self::Inclination
+                | Self::MeanAnomaly
+                | Self::RightAscension
+                | Self::RAAN
+                | Self::TrueAnomaly
+                | Self::TrueLongitude
+                | Self::VelocityDeclination
+        )
+    }
+
     /// Returns the default event finding precision in the unit of that parameter
     pub fn default_event_precision(&self) -> f64 {
         match self {
