@@ -154,7 +154,7 @@ mod ut_solar {
                     .unwrap()
             );
 
-            let iau_earth = ctx.frame_from_uid(IAU_EARTH_FRAME).unwrap();
+            let iau_earth = ctx.frame_info(IAU_EARTH_FRAME).unwrap();
 
             // Compute this state in the body fixed frame.
             let state_bf = ctx

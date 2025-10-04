@@ -34,7 +34,8 @@ impl Almanac {
     /// Returns the frame information (gravitational param, shape) as defined in this Almanac from an empty frame
     /// :type uid: Frame
     /// :rtype: Frame
-    fn frame_info(&self, uid: Frame) -> Result<Frame, PlanetaryDataError> {
+    #[pyo3(name = "frame_info", signature=(uid))]
+    fn py_frame_info(&self, uid: Frame) -> Result<Frame, PlanetaryDataError> {
         Ok(self
             .planetary_data
             .get_by_id(uid.ephemeris_id)

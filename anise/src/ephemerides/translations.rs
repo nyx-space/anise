@@ -62,7 +62,7 @@ impl Almanac {
         }
 
         // If there is no frame info, the user hasn't loaded this frame, but might still want to compute a translation.
-        if let Ok(obs_frame_info) = self.frame_from_uid(observer_frame) {
+        if let Ok(obs_frame_info) = self.frame_info(observer_frame) {
             // User has loaded the planetary data for this frame, so let's use that as the to_frame.
             observer_frame = obs_frame_info;
         }
@@ -221,7 +221,7 @@ impl Almanac {
         let mut new_state = state.add_unchecked(&frame_state);
 
         // If there is no frame info, the user hasn't loaded this frame, but might still want to compute a translation.
-        if let Ok(obs_frame_info) = self.frame_from_uid(observer_frame) {
+        if let Ok(obs_frame_info) = self.frame_info(observer_frame) {
             // User has loaded the planetary data for this frame, so let's use that as the to_frame.
             observer_frame = obs_frame_info;
         }

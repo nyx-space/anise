@@ -16,6 +16,9 @@ use crate::{
 
 use core::fmt;
 
+#[cfg(feature = "analysis")]
+use serde::{Deserialize, Serialize};
+
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 use snafu::ensure;
@@ -44,6 +47,7 @@ use crate::errors::PhysicsError;
 /// :type name: str
 /// :rtype: Aberration
 #[derive(Copy, Clone, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "analysis", derive(Deserialize, Serialize))]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct Aberration {

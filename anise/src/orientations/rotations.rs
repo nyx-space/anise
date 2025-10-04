@@ -42,7 +42,7 @@ impl Almanac {
         epoch: Epoch,
     ) -> Result<DCM, OrientationError> {
         // If there is no frame info, the user hasn't loaded this frame, but might still want to compute a translation.
-        if let Ok(to_frame_info) = self.frame_from_uid(to_frame) {
+        if let Ok(to_frame_info) = self.frame_info(to_frame) {
             // User has loaded the planetary data for this frame, so let's use that as the to_frame.
             to_frame = to_frame_info;
         }

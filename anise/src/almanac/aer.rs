@@ -192,7 +192,7 @@ impl Almanac {
         let epoch = rx.epoch;
         // If loading the frame data fails, stop here because the flatenning ratio must be defined.
         let from_frame =
-            self.frame_from_uid(location.frame)
+            self.frame_info(location.frame)
                 .map_err(|e| AlmanacError::GenericError {
                     err: format!("{e} when fetching {} frame data", location.frame),
                 })?;
@@ -258,7 +258,7 @@ mod ut_aer {
     #[test]
     fn verif_edge_case() {
         let almanac = Almanac::new("../data/pck08.pca").unwrap();
-        let itrf93 = almanac.frame_from_uid(EARTH_ITRF93).unwrap();
+        let itrf93 = almanac.frame_info(EARTH_ITRF93).unwrap();
 
         // Data from another test case
         let latitude_deg = -7.906_635_7;
@@ -299,8 +299,8 @@ mod ut_aer {
             .process(false)
             .unwrap();
 
-        let iau_earth = almanac.frame_from_uid(IAU_EARTH_FRAME).unwrap();
-        let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
+        let iau_earth = almanac.frame_info(IAU_EARTH_FRAME).unwrap();
+        let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
 
         // Now iterate the trajectory to generate the measurements.
         let gmat_ranges_km = [
@@ -556,7 +556,7 @@ mod ut_aer {
                 .unwrap();
         almanac.location_data = loc_data;
 
-        let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
+        let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
         // Data from another test case
         // Now iterate the trajectory to generate the measurements.
         let gmat_ranges_km = [
