@@ -52,12 +52,8 @@ impl Almanac {
                 "{event} -- found with |{ya}| < {} @ {xa_e}",
                 event.value_precision.abs()
             );
-            let prev_state = state_spec
-                .evaluate(xa_e - event.epoch_precision, self)
-                .map_or(None, |s| Some(s));
-            let next_state = state_spec
-                .evaluate(xa_e + event.epoch_precision, self)
-                .map_or(None, |s| Some(s));
+            let prev_state = state_spec.evaluate(xa_e - event.epoch_precision, self).ok();
+            let next_state = state_spec.evaluate(xa_e + event.epoch_precision, self).ok();
 
             return EventDetails::new(ya_state, ya, event, prev_state, next_state, self);
         } else if yb.abs() <= event.value_precision.abs() {
@@ -65,12 +61,8 @@ impl Almanac {
                 "{event} -- found with |{yb}| < {} @ {xb_e}",
                 event.value_precision.abs()
             );
-            let prev_state = state_spec
-                .evaluate(xb_e - event.epoch_precision, self)
-                .map_or(None, |s| Some(s));
-            let next_state = state_spec
-                .evaluate(xb_e + event.epoch_precision, self)
-                .map_or(None, |s| Some(s));
+            let prev_state = state_spec.evaluate(xb_e - event.epoch_precision, self).ok();
+            let next_state = state_spec.evaluate(xb_e + event.epoch_precision, self).ok();
 
             return EventDetails::new(ya_state, ya, event, prev_state, next_state, self);
         }
@@ -93,10 +85,10 @@ impl Almanac {
                 );
                 let prev_state = state_spec
                     .evaluate(epoch - event.epoch_precision, self)
-                    .map_or(None, |s| Some(s));
+                    .ok();
                 let next_state = state_spec
                     .evaluate(epoch + event.epoch_precision, self)
-                    .map_or(None, |s| Some(s));
+                    .ok();
 
                 return EventDetails::new(state, ya, event, prev_state, next_state, self);
             }
@@ -111,10 +103,10 @@ impl Almanac {
                 );
                 let prev_state = state_spec
                     .evaluate(epoch - event.epoch_precision, self)
-                    .map_or(None, |s| Some(s));
+                    .ok();
                 let next_state = state_spec
                     .evaluate(epoch + event.epoch_precision, self)
-                    .map_or(None, |s| Some(s));
+                    .ok();
 
                 return EventDetails::new(state, ya, event, prev_state, next_state, self);
             }
@@ -123,7 +115,7 @@ impl Almanac {
                 return Err(AnalysisError::EventNotFound {
                     start: start_epoch,
                     end: end_epoch,
-                    event: event.clone(),
+                    event: Box::new(event.clone()),
                 });
             }
             let mut s = if (ya - yc).abs() > f64::EPSILON && (yb - yc).abs() > f64::EPSILON {
@@ -175,7 +167,7 @@ impl Almanac {
         Err(AnalysisError::EventNotFound {
             start: start_epoch,
             end: end_epoch,
-            event: event.clone(),
+            event: Box::new(event.clone()),
         })
     }
 
@@ -208,7 +200,7 @@ impl Almanac {
             return Err(AnalysisError::EventNotFound {
                 start: start_epoch,
                 end: end_epoch,
-                event: event.clone(),
+                event: Box::new(event.clone()),
             });
         }
         let heuristic = heuristic.unwrap_or((end_epoch - start_epoch) / 100);
@@ -230,7 +222,7 @@ impl Almanac {
             warn!("Heuristic failed to find any {event} event, using slower approach");
             // Crap, we didn't find the event.
             // Let's find the min and max of this event throughout the trajectory, and search around there.
-            return self.report_event_slow(state_spec, event, start_epoch, end_epoch);
+            return self.report_events_slow(state_spec, event, start_epoch, end_epoch);
         }
 
         // Remove duplicates and reorder
@@ -270,7 +262,7 @@ impl Almanac {
         let prev_len = events.len();
         // Search specifically these gaps.
         for (gap_start, gap_end, _) in possible_gap_times {
-            if let Ok(mut gapped_events) = self.report_event_slow(
+            if let Ok(mut gapped_events) = self.report_events_slow(
                 state_spec,
                 event,
                 gap_start + event.epoch_precision,
@@ -310,7 +302,7 @@ impl Almanac {
     /// Slow approach to finding all of the events between two epochs. This will evaluate ALL epochs in between the two bounds.
     /// This approach is more robust, but more computationally demanding since it's O(N).
     #[allow(clippy::identity_op)]
-    pub fn report_event_slow(
+    pub fn report_events_slow(
         &self,
         state_spec: &StateSpec,
         event: &Event,
@@ -330,10 +322,10 @@ impl Almanac {
                     // This is an event!
                     let prev_state = state_spec
                         .evaluate(epoch - event.epoch_precision, self)
-                        .map_or(None, |s| Some(s));
+                        .ok();
                     let next_state = state_spec
                         .evaluate(epoch + event.epoch_precision, self)
-                        .map_or(None, |s| Some(s));
+                        .ok();
 
                     s.send(
                         EventDetails::new(state, this_eval, event, prev_state, next_state, self)
@@ -351,7 +343,7 @@ impl Almanac {
             return Err(AnalysisError::EventNotFound {
                 start: start_epoch,
                 end: end_epoch,
-                event: event.clone(),
+                event: Box::new(event.clone()),
             });
         }
         Ok(events)
@@ -405,7 +397,7 @@ impl Almanac {
                                 None,
                                 state_spec
                                     .evaluate(start_epoch + event.epoch_precision, self)
-                                    .map(|s| Some(s))?,
+                                    .map(Some)?,
                                 self,
                             )?,
                             EventDetails::new(
@@ -414,7 +406,7 @@ impl Almanac {
                                 event,
                                 state_spec
                                     .evaluate(start_epoch + event.epoch_precision, self)
-                                    .map(|s| Some(s))?,
+                                    .map(Some)?,
                                 None,
                                 self,
                             )?,
@@ -423,7 +415,7 @@ impl Almanac {
                         return Err(AnalysisError::EventNotFound {
                             start: start_epoch,
                             end: end_epoch,
-                            event: event.clone(),
+                            event: Box::new(event.clone()),
                         });
                     }
                 }
@@ -515,7 +507,7 @@ impl Almanac {
         Ok(arcs)
     }
 
-    pub fn report_event_arcs2(
+    /* pub fn report_event_arcs2(
         &self,
         state_spec: &StateSpec,
         event: &Event,
@@ -523,42 +515,46 @@ impl Almanac {
         end_epoch: Epoch,
         heuristic: Option<Duration>,
     ) -> Result<Vec<EventArc>, AnalysisError> {
-        // Step 1: Get all zero-crossings. We will completely ignore their reported 'edge' status.
-        let mut crossings =
-            match self.report_events(state_spec, event, start_epoch, end_epoch, heuristic) {
-                Ok(events) => events,
-                Err(_) => {
-                    // No crossings were found. The only possibility for an arc is if the entire
-                    // trajectory is within the event.
-                    let start_orbit = state_spec.evaluate(start_epoch, self)?;
-                    if event.eval(start_orbit, self)? > 0.0 {
-                        let end_orbit = state_spec.evaluate(end_epoch, self)?;
-                        let rise = EventDetails::new(
-                            start_orbit,
-                            0.0,
-                            event,
-                            None,
-                            Some(end_orbit),
-                            self,
-                        )?;
-                        let fall = EventDetails::new(
-                            end_orbit,
-                            0.0,
-                            event,
-                            Some(start_orbit),
-                            None,
-                            self,
-                        )?;
-                        return Ok(vec![EventArc { rise, fall }]);
-                    }
-                    return Ok(Vec::new()); // The event never happens.
+        // Step 1: Get all zero-crossings. We will completely ignore their reported 'edge' status, already sorted by time.
+        let crossings = match self.report_events_slow(state_spec, event, start_epoch, end_epoch) {
+            Ok(events) => events,
+            Err(_) => {
+                // No crossings were found. The only possibility for an arc is if the entire
+                // trajectory is within the event.
+                let start_orbit = state_spec.evaluate(start_epoch, self)?;
+                let start_eval = event.eval(start_orbit, self)?;
+                if start_eval > 0.0 {
+                    let end_orbit = state_spec.evaluate(end_epoch, self)?;
+                    let end_eval = event.eval(end_orbit, self)?;
+                    let rise = EventDetails::new(
+                        start_orbit,
+                        start_eval,
+                        event,
+                        None,
+                        Some(end_orbit),
+                        self,
+                    )?;
+                    let fall = EventDetails::new(
+                        end_orbit,
+                        end_eval,
+                        event,
+                        Some(start_orbit),
+                        None,
+                        self,
+                    )?;
+                    return Ok(vec![EventArc { rise, fall }]);
                 }
-            };
-        crossings.sort_by_key(|c| c.orbit.epoch);
+                return Ok(Vec::new()); // The event never happens.
+            }
+        };
+
+        // TODO: Use the crossing as a starting point but backward search to find the exact crossing
+        // with the report_events_slow.
 
         // Step 2: Determine the initial state at the start of the trajectory.
         let start_orbit = state_spec.evaluate(start_epoch, self)?;
-        let mut is_inside_arc = event.eval(start_orbit, self)? > 0.0;
+        let mut prev_value = event.eval(start_orbit, self)?;
+        let mut is_inside_arc = prev_value > 0.0;
 
         let mut arcs = Vec::new();
         let mut current_rise: Option<EventDetails> = None;
@@ -567,17 +563,39 @@ impl Almanac {
             // If we start inside an arc, create a synthetic rise at the beginning.
             let synth_rise = EventDetails::new(
                 start_orbit,
-                0.0,
+                prev_value,
                 event,
                 None,
-                Some(crossings[0].orbit.clone()),
+                Some(crossings[0].orbit),
                 self,
             )?;
             current_rise = Some(synth_rise);
+            prev_edge = synth_rise.edge;
         }
 
         // Step 3: Process all crossings as simple state transitions.
-        for crossing in crossings {
+        for crossing in crossings.iter().skip(1) {
+            let value = crossing.value;
+            if value >= 0.0 {
+                // We're in an arc.
+                let edge = if (prev_value - value).abs() > event.value_precision {
+                    // But we're on the downward slope
+                    EventEdge::Falling
+                } else if (prev_value - value).abs() < event.value_precision {
+                    EventEdge::Rising
+                } else {
+                    // e.g. in an umbra
+                    EventEdge::Unclear
+                };
+            } else {
+                // We aren't in an arc.
+            }
+            let edge = if prev_value > value {
+                EventEdge::Falling
+            } else {
+                EventEdge::Rising
+            };
+            let is_inside_arc;
             if is_inside_arc {
                 // We were inside an arc, so this crossing must be a fall.
                 if let Some(rise) = current_rise.take() {
@@ -599,7 +617,7 @@ impl Almanac {
             if let Some(rise) = current_rise {
                 let end_orbit = state_spec.evaluate(end_epoch, self)?;
                 let synth_fall =
-                    EventDetails::new(end_orbit, 0.0, event, Some(rise.orbit.clone()), None, self)?;
+                    EventDetails::new(end_orbit, 0.0, event, Some(rise.orbit), None, self)?;
                 arcs.push(EventArc {
                     rise,
                     fall: synth_fall,
@@ -608,7 +626,7 @@ impl Almanac {
         }
 
         Ok(arcs)
-    }
+    } */
     /* pub fn report_event_arcs2(
         &self,
         state_spec: &StateSpec,

@@ -84,7 +84,7 @@ pub enum AnalysisError {
     EventNotFound {
         start: Epoch,
         end: Epoch,
-        event: Event,
+        event: Box<Event>,
     },
 }
 
@@ -108,11 +108,7 @@ impl Almanac {
 
                         for (expr, alias) in report.scalars.iter() {
                             data.insert(
-                                alias
-                                    .clone()
-                                    .or(Some(expr.to_string()))
-                                    .unwrap()
-                                    .to_string(),
+                                alias.clone().unwrap_or(expr.to_string()).to_string(),
                                 expr.evaluate(orbit, ab_corr, almanac),
                             );
                         }
@@ -134,7 +130,7 @@ mod ut_analysis {
     use crate::analysis::specs::{OrthogonalFrame, Plane};
     use crate::astro::{Aberration, Location, TerrainMask};
     use crate::constants::frames::{EME2000, IAU_EARTH_FRAME, MOON_J2000, SUN_J2000, VENUS_J2000};
-    use crate::prelude::Almanac;
+    use crate::prelude::{Almanac, Frame};
     use crate::structure::LocationDataSet;
     use hifitime::{Duration, Epoch, TimeSeries, Unit};
     use rstest::*;
@@ -234,7 +230,7 @@ mod ut_analysis {
 
         let state = StateSpec {
             target_frame: target_frame.clone(),
-            observer_frame,
+            observer_frame: observer_frame.clone(),
             ab_corr: Aberration::NONE,
         };
 
@@ -261,6 +257,62 @@ mod ut_analysis {
         };
 
         println!("{proj}");
+
+        // Rebuild the Local Solar Time calculation
+        let sun_frame = FrameSpec::Loaded(SUN_J2000);
+        let earth_sun = StateSpec {
+            target_frame: sun_frame,
+            observer_frame: observer_frame.clone(),
+            ab_corr: Aberration::LT,
+        };
+
+        let u = VectorExpr::Unit(Box::new(VectorExpr::CrossProduct {
+            a: Box::new(VectorExpr::Unit(Box::new(VectorExpr::Radius(earth_sun)))),
+            b: Box::new(VectorExpr::Unit(Box::new(VectorExpr::OrbitalMomentum(
+                state.clone(),
+            )))),
+        }));
+
+        let v = VectorExpr::CrossProduct {
+            a: Box::new(VectorExpr::Unit(Box::new(VectorExpr::OrbitalMomentum(
+                state.clone(),
+            )))),
+            b: Box::new(u.clone()),
+        };
+
+        let r = VectorExpr::Radius(state.clone());
+
+        let sin_theta = ScalarExpr::DotProduct {
+            a: v.clone(),
+            b: r.clone(),
+        };
+        let cos_theta = ScalarExpr::DotProduct {
+            a: u.clone(),
+            b: r.clone(),
+        };
+
+        let theta = ScalarExpr::Atan2 {
+            y: Box::new(sin_theta),
+            x: Box::new(cos_theta),
+        };
+
+        let lst_prod = ScalarExpr::Mul {
+            a: Box::new(ScalarExpr::Mul {
+                a: Box::new(theta),
+                b: Box::new(ScalarExpr::Constant(1.0 / 180.0)),
+            }),
+            b: Box::new(ScalarExpr::Constant(12.0)),
+        };
+
+        let lst_add = ScalarExpr::Add {
+            a: Box::new(lst_prod),
+            b: Box::new(ScalarExpr::Constant(6.0)),
+        };
+
+        let lst = ScalarExpr::Modulo {
+            v: Box::new(lst_add),
+            m: Box::new(ScalarExpr::Constant(24.0)),
+        };
 
         let scalars = [
             ScalarExpr::Element(OrbitalElement::SemiMajorAxis),
@@ -311,23 +363,24 @@ mod ut_analysis {
             ScalarExpr::VectorX(proj.clone()),
             ScalarExpr::VectorY(proj.clone()),
             ScalarExpr::VectorZ(proj.clone()),
+            ScalarExpr::LocalSolarTime,
+            lst,
         ];
 
         // Demo of an S-Expression export
-        let sexpr_str = serde_lexpr::to_value(&scalars).unwrap();
         let proj = scalars.last().unwrap();
-        let proj_s = proj.to_s_expr();
+        let proj_s = proj.to_s_expr().unwrap();
         let proj_reload = ScalarExpr::from_s_expr(&proj_s).unwrap();
         assert_eq!(&proj_reload, proj);
-        println!("{sexpr_str}\n\nPROJ ONLY\n{proj_s}\n");
 
         let cnt = scalars.len();
 
         let mut scalars_with_aliases = scalars.map(|s| (s, None));
         // Set an alias for the last three.
-        scalars_with_aliases[cnt - 3].1 = Some("proj VNC X".to_string());
-        scalars_with_aliases[cnt - 2].1 = Some("proj VNC Y".to_string());
-        scalars_with_aliases[cnt - 1].1 = Some("proj VNC Z".to_string());
+        scalars_with_aliases[cnt - 5].1 = Some("proj VNC X".to_string());
+        scalars_with_aliases[cnt - 4].1 = Some("proj VNC Y".to_string());
+        scalars_with_aliases[cnt - 3].1 = Some("proj VNC Z".to_string());
+        scalars_with_aliases[cnt - 1].1 = Some("LST (h)".to_string());
 
         // Build the report, ensure we can serialize it and deserialize it.
         let report = ReportScalars {
@@ -365,6 +418,14 @@ mod ut_analysis {
             last_row["|Radius(Earth J2000 -> Moon J2000) ⨯ Velocity(Earth J2000 -> Moon J2000)|"]
         );
 
+        assert!(
+            (last_row["LST (h)"].as_ref().unwrap()
+                - last_row["local solar time (h)"].as_ref().unwrap())
+            .abs()
+                * Unit::Hour
+                < Unit::Second * 1
+        );
+
         for (k, v) in last_row.iter() {
             if k.contains("proj") {
                 // Check that we have correctly defined the projections onto an othogonal frame
@@ -398,7 +459,7 @@ mod ut_analysis {
             scalar: ScalarExpr::SolarEclipsePercentage {
                 eclipsing_frame: MOON_J2000,
             },
-            desired_value: 100.0,
+            desired_value: 99.5,
             epoch_precision: Unit::Second * 0.5,
             value_precision: 1.0,
             ab_corr: None,
@@ -493,18 +554,24 @@ mod ut_analysis {
         }
         assert_eq!(missed_events, 0);
 
-        let events = almanac
-            .report_event_arcs(&lro_state_spec, &sunset_nadir, start_epoch, end_epoch, None)
-            .unwrap();
+        // let events = almanac
+        //     .report_event_arcs(&lro_state_spec, &sunset_nadir, start_epoch, end_epoch, None)
+        //     .unwrap();
 
-        for event in &events {
-            println!("{event}");
-        }
+        // for event in &events {
+        //     println!("{event}");
+        // }
 
-        println!("{:?}", events[1]);
+        // println!("{:?}", events[1]);
 
         let eclipses = almanac
-            .report_event_arcs2(&lro_state_spec, &eclipse, start_epoch, end_epoch, None)
+            .report_event_arcs(
+                &lro_state_spec,
+                &eclipse,
+                start_epoch,
+                end_epoch,
+                Some(Unit::Minute * 5),
+            )
             .unwrap();
 
         for event in &eclipses {

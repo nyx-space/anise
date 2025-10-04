@@ -22,7 +22,7 @@ pub struct ReportScalars {
 impl ReportScalars {
     /// Export this Scalar Expression to S-Expression / LISP syntax
     pub fn to_s_expr(&self) -> String {
-        serde_lexpr::to_value(&self).unwrap().to_string()
+        serde_lexpr::to_value(self).unwrap().to_string()
     }
 
     /// Load this Scalar Expression from an S-Expression / LISP syntax
@@ -40,7 +40,7 @@ pub struct ReportEvents {
 impl ReportEvents {
     /// Export this Scalar Expression to S-Expression / LISP syntax
     pub fn to_s_expr(&self) -> String {
-        serde_lexpr::to_value(&self).unwrap().to_string()
+        serde_lexpr::to_value(self).unwrap().to_string()
     }
 
     /// Load this Scalar Expression from an S-Expression / LISP syntax

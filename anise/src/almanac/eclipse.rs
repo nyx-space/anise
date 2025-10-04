@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+use hifitime::{Duration, Unit};
 use log::error;
 
 use crate::{
@@ -22,6 +23,7 @@ use crate::{
 use super::Almanac;
 use crate::errors::AlmanacResult;
 
+use core::f64::consts::PI;
 use snafu::ResultExt;
 
 impl Almanac {
@@ -301,13 +303,38 @@ impl Almanac {
     /// Original code from GMAT, <https://github.com/ChristopherRabotin/GMAT/blob/GMAT-R2022a/src/gmatutil/util/CalculationUtilities.cpp#L209-L219>
     pub fn beta_angle_deg(&self, state: Orbit, ab_corr: Option<Aberration>) -> AlmanacResult<f64> {
         let u_sun = self.sun_unit_vector(state.epoch, state.frame, ab_corr)?;
-        let orbit_mom = state.hvec().map_err(|e| AlmanacError::GenericError {
+        let u_hvec = state.hvec().map_err(|e| AlmanacError::GenericError {
             err: format!("{e}"),
         })? / state.hmag().map_err(|e| AlmanacError::GenericError {
             err: format!("{e}"),
         })?;
 
-        Ok(orbit_mom.dot(&u_sun).asin().to_degrees())
+        Ok(u_hvec.dot(&u_sun).asin().to_degrees())
+    }
+
+    /// Compute the local solar time, returned as a Duration between 0 and 24 hours.
+    pub fn local_solar_time(
+        &self,
+        state: Orbit,
+        ab_corr: Option<Aberration>,
+    ) -> AlmanacResult<Duration> {
+        let u_sun = self.sun_unit_vector(state.epoch, state.frame, ab_corr)?;
+        let u_hvec = state.hvec().map_err(|e| AlmanacError::GenericError {
+            err: format!("{e}"),
+        })? / state.hmag().map_err(|e| AlmanacError::GenericError {
+            err: format!("{e}"),
+        })?;
+
+        let u = u_sun.cross(&u_hvec);
+        let v = u_hvec.cross(&u);
+
+        let sin_theta = v.dot(&state.r_hat());
+        let cos_theta = u.dot(&state.r_hat());
+
+        let theta_rad = sin_theta.atan2(cos_theta);
+        let lst_h = (theta_rad / PI * 12.0 + 6.0) % 24.0;
+
+        Ok(Unit::Hour * lst_h)
     }
 }
 

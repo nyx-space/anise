@@ -65,6 +65,23 @@ pub enum ScalarExpr {
         scalar: Box<Self>,
         n: f64,
     },
+    Cos(Box<Self>),
+    Sin(Box<Self>),
+    Tan(Box<Self>),
+    /// Compute the arccos, returned in degrees
+    Acos(Box<Self>),
+    /// Compute the arcsin, returned in degrees
+    Asin(Box<Self>),
+    /// Compute the arctan2 (i.e. arctan with quadrant check), returned in degrees
+    Atan2 {
+        y: Box<Self>,
+        x: Box<Self>,
+    },
+    /// Computes v % m
+    Modulo {
+        v: Box<Self>,
+        m: Box<Self>,
+    },
     Norm(VectorExpr),
     NormSquared(VectorExpr),
     DotProduct {
@@ -91,6 +108,8 @@ pub enum ScalarExpr {
     },
     /// Computes the beta angle, in degrees. Aberration correction is that of the state spec.
     BetaAngle,
+    /// Compute the local solar time, in hours
+    LocalSolarTime,
     /// Computes the Sun angle where observer_id is the ID of the spacecraft for example.
     /// If the frame of the state spec is in an Earth frame, then this computes the Sun Probe Earth angle.
     /// Refer to the sun_angle_deg function for detailed documentation.
@@ -227,7 +246,19 @@ impl ScalarExpr {
             Self::Sqrt(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.sqrt()),
             Self::Powi { scalar, n } => Ok(scalar.evaluate(orbit, ab_corr, almanac)?.powi(*n)),
             Self::Powf { scalar, n } => Ok(scalar.evaluate(orbit, ab_corr, almanac)?.powf(*n)),
-
+            Self::Cos(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.cos()),
+            Self::Acos(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.to_radians().acos()),
+            Self::Sin(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.sin()),
+            Self::Asin(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.to_radians().asin()),
+            Self::Tan(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.tan()),
+            Self::Atan2 { y, x } => Ok((y
+                .evaluate(orbit, ab_corr, almanac)?
+                .to_radians()
+                .atan2(x.evaluate(orbit, ab_corr, almanac)?.to_radians()))
+            .to_degrees()),
+            Self::Modulo { v, m } => {
+                Ok(v.evaluate(orbit, ab_corr, almanac)? % m.evaluate(orbit, ab_corr, almanac)?)
+            }
             Self::Element(oe) => oe.evaluate(orbit),
             Self::Norm(vexpr) => Ok(vexpr.evaluate(orbit.epoch, almanac)?.norm()),
             Self::NormSquared(vexpr) => Ok(vexpr.evaluate(orbit.epoch, almanac)?.norm_squared()),
@@ -250,6 +281,13 @@ impl ScalarExpr {
                     expr: Box::new(self.clone()),
                     state: orbit,
                 }),
+            Self::LocalSolarTime => Ok(almanac
+                .local_solar_time(orbit, ab_corr)
+                .context(AlmanacExprSnafu {
+                    expr: Box::new(self.clone()),
+                    state: orbit,
+                })?
+                .to_unit(hifitime::Unit::Hour)),
             Self::SolarEclipsePercentage { eclipsing_frame } => Ok(almanac
                 .solar_eclipsing(*eclipsing_frame, orbit, ab_corr)
                 .context(AlmanacExprSnafu {
@@ -339,69 +377,9 @@ impl ScalarExpr {
         }
     }
 
-    pub fn default_event_precision(&self) -> f64 {
-        match self {
-            Self::Norm(_) | Self::NormSquared(_) | Self::DotProduct { a: _, b: _ } => 0.1,
-            Self::AngleBetween { a: _, b: _ }
-            | Self::BetaAngle
-            | Self::SunAngle { observer_id: _ }
-            | Self::AzimuthFromLocation {
-                location_id: _,
-                obstructing_body: _,
-            }
-            | Self::ElevationFromLocation {
-                location_id: _,
-                obstructing_body: _,
-            } => 1e-2,
-            Self::VectorX(_)
-            | Self::VectorY(_)
-            | Self::VectorZ(_)
-            | Self::RangeFromLocation {
-                location_id: _,
-                obstructing_body: _,
-            }
-            | Self::RangeRateFromLocation {
-                location_id: _,
-                obstructing_body: _,
-            }
-            | Self::MeanEquatorialRadius {
-                celestial_object: _,
-            }
-            | Self::SemiMajorEquatorialRadius {
-                celestial_object: _,
-            }
-            | Self::SemiMinorEquatorialRadius {
-                celestial_object: _,
-            }
-            | Self::PolarRadius {
-                celestial_object: _,
-            } => 1e-2,
-            Self::Element(e) => e.default_event_precision(),
-            Self::SolarEclipsePercentage { eclipsing_frame: _ }
-            | Self::OccultationPercentage {
-                front_frame: _,
-                back_frame: _,
-            } => 1e-1,
-            Self::Constant(_)
-            | Self::Add { a: _, b: _ }
-            | Self::Mul { a: _, b: _ }
-            | Self::Invert(_)
-            | Self::Negate(_)
-            | Self::Powi { scalar: _, n: _ }
-            | Self::Powf { scalar: _, n: _ }
-            | Self::GravParam {
-                celestial_object: _,
-            }
-            | Self::Flattening {
-                celestial_object: _,
-            }
-            | Self::Sqrt(_) => f64::EPSILON,
-        }
-    }
-
     /// Export this Scalar Expression to S-Expression / LISP syntax
-    pub fn to_s_expr(&self) -> String {
-        serde_lexpr::to_value(&self).unwrap().to_string()
+    pub fn to_s_expr(&self) -> Result<String, serde_lexpr::Error> {
+        Ok(serde_lexpr::to_value(self)?.to_string())
     }
 
     /// Load this Scalar Expression from an S-Expression / LISP syntax
@@ -454,7 +432,8 @@ impl fmt::Display for ScalarExpr {
                 "occultation of {back_frame:x} due to {front_frame:x} (%)"
             ),
             Self::BetaAngle => write!(f, "beta angle (deg)"),
-            Self::SunAngle { observer_id } => write!(f, "sun angle for obs={observer_id}"),
+            Self::LocalSolarTime => write!(f, "local solar time (h)"),
+            Self::SunAngle { observer_id } => write!(f, "sun angle for obs={observer_id} (deg)"),
             Self::AzimuthFromLocation {
                 location_id,
                 obstructing_body: _,
@@ -479,6 +458,14 @@ impl fmt::Display for ScalarExpr {
             } => {
                 write!(f, "range-rate from location #{location_id} (km/s)")
             }
+            Self::Acos(v) => write!(f, "acos({v})"),
+            Self::Asin(v) => write!(f, "acos({v})"),
+            Self::Atan2 { y, x } => write!(f, "atan2({y}, {x})"),
+
+            Self::Cos(v) => write!(f, "cos({v})"),
+            Self::Sin(v) => write!(f, "sin({v})"),
+            Self::Tan(v) => write!(f, "tan({v})"),
+            Self::Modulo { v, m } => write!(f, "{v} % {m}"),
         }
     }
 }
