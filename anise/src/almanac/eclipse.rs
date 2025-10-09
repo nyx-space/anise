@@ -332,7 +332,7 @@ impl Almanac {
         let cos_theta = u.dot(&state.r_hat());
 
         let theta_rad = sin_theta.atan2(cos_theta);
-        let lst_h = (theta_rad / PI * 12.0 + 6.0) % 24.0;
+        let lst_h = (theta_rad / PI * 12.0 + 6.0).rem_euclid(24.0);
 
         Ok(Unit::Hour * lst_h)
     }

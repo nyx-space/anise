@@ -246,15 +246,23 @@ impl ScalarExpr {
             Self::Sqrt(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.sqrt()),
             Self::Powi { scalar, n } => Ok(scalar.evaluate(orbit, ab_corr, almanac)?.powi(*n)),
             Self::Powf { scalar, n } => Ok(scalar.evaluate(orbit, ab_corr, almanac)?.powf(*n)),
-            Self::Cos(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.cos()),
-            Self::Acos(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.to_radians().acos()),
-            Self::Sin(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.sin()),
-            Self::Asin(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.to_radians().asin()),
-            Self::Tan(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.tan()),
+            Self::Cos(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.to_radians().cos()),
+            Self::Acos(v) => Ok(v
+                .evaluate(orbit, ab_corr, almanac)?
+                .clamp(-1.0, 1.0)
+                .acos()
+                .to_degrees()),
+            Self::Sin(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.to_radians().sin()),
+            Self::Asin(v) => Ok(v
+                .evaluate(orbit, ab_corr, almanac)?
+                .clamp(-1.0, 1.0)
+                .asin()
+                .to_degrees()),
+            Self::Tan(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.to_radians().tan()),
             Self::Atan2 { y, x } => Ok((y
                 .evaluate(orbit, ab_corr, almanac)?
-                .to_radians()
-                .atan2(x.evaluate(orbit, ab_corr, almanac)?.to_radians()))
+                .atan2(x.evaluate(orbit, ab_corr, almanac)?.to_radians())
+                .to_degrees())
             .to_degrees()),
             Self::Modulo { v, m } => {
                 Ok(v.evaluate(orbit, ab_corr, almanac)? % m.evaluate(orbit, ab_corr, almanac)?)
@@ -459,9 +467,8 @@ impl fmt::Display for ScalarExpr {
                 write!(f, "range-rate from location #{location_id} (km/s)")
             }
             Self::Acos(v) => write!(f, "acos({v})"),
-            Self::Asin(v) => write!(f, "acos({v})"),
+            Self::Asin(v) => write!(f, "asin({v})"),
             Self::Atan2 { y, x } => write!(f, "atan2({y}, {x})"),
-
             Self::Cos(v) => write!(f, "cos({v})"),
             Self::Sin(v) => write!(f, "sin({v})"),
             Self::Tan(v) => write!(f, "tan({v})"),

@@ -77,7 +77,7 @@ impl Almanac {
             if ya.abs() <= event.value_precision.abs() {
                 // Can't fail, we got it earlier
                 let epoch = xa_e + xa * Unit::Second;
-                let state = state_spec.evaluate(epoch, self).unwrap();
+                let state = state_spec.evaluate(epoch, self)?;
                 debug!(
                     "{event} -- found with |{ya}| < {} @ {}",
                     event.value_precision.abs(),
@@ -316,22 +316,25 @@ impl Almanac {
         let epochs: Vec<Epoch> = TimeSeries::inclusive(start_epoch, end_epoch, step).collect();
 
         epochs.into_par_iter().for_each_with(sender, |s, epoch| {
-            let state = state_spec.evaluate(epoch, self).unwrap();
-            if let Ok(this_eval) = event.eval(state, self) {
-                if this_eval.abs() < event.value_precision.abs() {
-                    // This is an event!
-                    let prev_state = state_spec
-                        .evaluate(epoch - event.epoch_precision, self)
-                        .ok();
-                    let next_state = state_spec
-                        .evaluate(epoch + event.epoch_precision, self)
-                        .ok();
+            if let Ok(state) = state_spec.evaluate(epoch, self) {
+                if let Ok(this_eval) = event.eval(state, self) {
+                    if this_eval.abs() < event.value_precision.abs() {
+                        // This is an event!
+                        let prev_state = state_spec
+                            .evaluate(epoch - event.epoch_precision, self)
+                            .ok();
+                        let next_state = state_spec
+                            .evaluate(epoch + event.epoch_precision, self)
+                            .ok();
 
-                    s.send(
-                        EventDetails::new(state, this_eval, event, prev_state, next_state, self)
-                            .unwrap(),
-                    )
-                    .unwrap();
+                        if let Ok(details) =
+                            EventDetails::new(state, this_eval, event, prev_state, next_state, self)
+                        {
+                            if s.send(details).is_err() {
+                                eprintln!("receiver for event search dropped");
+                            }
+                        }
+                    }
                 }
             }
         });

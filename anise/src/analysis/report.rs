@@ -39,8 +39,8 @@ pub struct ReportEvents {
 
 impl ReportEvents {
     /// Export this Scalar Expression to S-Expression / LISP syntax
-    pub fn to_s_expr(&self) -> String {
-        serde_lexpr::to_value(self).unwrap().to_string()
+    pub fn to_s_expr(&self) -> Result<String, serde_lexpr::Error> {
+        Ok(serde_lexpr::to_value(self)?.to_string())
     }
 
     /// Load this Scalar Expression from an S-Expression / LISP syntax
