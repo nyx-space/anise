@@ -388,7 +388,7 @@ mod ut_analysis {
             state_spec: state,
         };
 
-        let report_s_expr = report.to_s_expr();
+        let report_s_expr = report.to_s_expr().unwrap();
 
         println!("REPORT S-EXPR\n{report_s_expr}\n");
 
