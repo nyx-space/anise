@@ -124,7 +124,7 @@ impl Almanac {
 #[cfg(test)]
 mod ut_analysis {
 
-    use crate::analysis::event::Event;
+    use crate::analysis::event::{Event, EventEdge};
     use crate::analysis::prelude::*;
     use crate::analysis::report::ReportScalars;
     use crate::analysis::specs::{OrthogonalFrame, Plane};
@@ -455,15 +455,7 @@ mod ut_analysis {
         let apolune = Event::apoapsis();
         let perilune = Event::periapsis();
 
-        let eclipse = Event {
-            scalar: ScalarExpr::SolarEclipsePercentage {
-                eclipsing_frame: MOON_J2000,
-            },
-            desired_value: 99.5,
-            epoch_precision: Unit::Second * 0.5,
-            value_precision: 1.0,
-            ab_corr: None,
-        };
+        let eclipse = Event::eclipse(MOON_J2000);
 
         let (start_epoch, end_epoch) = almanac.spk_domain(-85).unwrap();
 
@@ -554,37 +546,45 @@ mod ut_analysis {
         }
         assert_eq!(missed_events, 0);
 
-        // let events = almanac
-        //     .report_event_arcs(&lro_state_spec, &sunset_nadir, start_epoch, end_epoch, None)
-        //     .unwrap();
+        let events = almanac
+            .report_event_arcs(&lro_state_spec, &sunset_nadir, start_epoch, end_epoch)
+            .unwrap();
 
-        // for event in &events {
-        //     println!("{event}");
-        // }
-
-        // println!("{:?}", events[1]);
+        println!("First sunset of {}: {}", events.len(), events[1]);
+        assert_eq!(events[1].rise.edge, EventEdge::Rising);
+        assert_eq!(events[1].fall.edge, EventEdge::Falling);
+        assert_eq!(events.len(), 309);
 
         let eclipses = almanac
             .report_event_arcs(
                 &lro_state_spec,
                 &eclipse,
                 start_epoch,
-                end_epoch,
-                Some(Unit::Minute * 5),
+                start_epoch + Unit::Hour * 3,
             )
             .unwrap();
 
+        assert_eq!(eclipses.len(), 2, "wrong number of eclipse periods found");
+
         for event in &eclipses {
-            println!("{event:?}");
+            println!("{event}\n{event:?}");
+            assert!(event.duration() > Unit::Minute * 24 && event.duration() < Unit::Minute * 40);
             // Check that this is valid
             for epoch in TimeSeries::inclusive(
-                event.start_epoch() - Unit::Minute * 1,
-                event.end_epoch() + Unit::Minute * 1,
+                event.start_epoch() - eclipse.epoch_precision,
+                event.end_epoch() + eclipse.epoch_precision,
                 Unit::Minute * 0.5,
             ) {
                 if let Ok(orbit) = lro_state_spec.evaluate(epoch, &almanac) {
                     let this_eclipse = eclipse.eval(orbit, &almanac).unwrap();
-                    print!("{this_eclipse}\t");
+                    let in_eclipse = this_eclipse.abs() <= eclipse.value_precision.abs();
+
+                    if (event.start_epoch()..event.end_epoch()).contains(&epoch) {
+                        // We're in the event, check that it is evaluated to be in the event.
+                        assert!(in_eclipse);
+                    } else {
+                        assert!(!in_eclipse || this_eclipse < 0.0);
+                    }
                 }
             }
             println!("\n");

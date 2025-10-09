@@ -15,7 +15,7 @@ use rayon::prelude::*;
 use std::sync::mpsc::channel;
 
 use super::{AnalysisError, Event, StateSpec};
-use crate::analysis::event::{EventArc, EventDetails, EventEdge};
+use crate::analysis::event::{EventArc, EventDetails};
 
 impl Almanac {
     /// Find the exact state where the request event happens. The event function is expected to be monotone in the provided interval because we find the event using a Brent solver.
@@ -74,7 +74,7 @@ impl Almanac {
         let mut flag = true;
 
         for _ in 0..max_iter {
-            if ya.abs() < event.value_precision.abs() {
+            if ya.abs() <= event.value_precision.abs() {
                 // Can't fail, we got it earlier
                 let epoch = xa_e + xa * Unit::Second;
                 let state = state_spec.evaluate(epoch, self).unwrap();
@@ -92,7 +92,7 @@ impl Almanac {
 
                 return EventDetails::new(state, ya, event, prev_state, next_state, self);
             }
-            if yb.abs() < event.value_precision.abs() {
+            if yb.abs() <= event.value_precision.abs() {
                 // Can't fail, we got it earlier
                 let epoch = xa_e + xb * Unit::Second;
                 let state = state_spec.evaluate(epoch, self).unwrap();
@@ -299,7 +299,7 @@ impl Almanac {
         Ok(events)
     }
 
-    /// Slow approach to finding all of the events between two epochs. This will evaluate ALL epochs in between the two bounds.
+    /// Slow approach to finding **all** of the events between two epochs. This will evaluate ALL epochs in between the two bounds.
     /// This approach is more robust, but more computationally demanding since it's O(N).
     #[allow(clippy::identity_op)]
     pub fn report_events_slow(
@@ -336,7 +336,7 @@ impl Almanac {
             }
         });
 
-        let events: Vec<_> = receiver.iter().collect();
+        let mut events: Vec<_> = receiver.iter().collect();
 
         // If there still isn't any match, report that the event was not found
         if events.is_empty() {
@@ -346,174 +346,18 @@ impl Almanac {
                 event: Box::new(event.clone()),
             });
         }
+
+        // Remove duplicates and reorder once more
+        events.sort_by(|s1, s2| s1.orbit.epoch.partial_cmp(&s2.orbit.epoch).unwrap());
         Ok(events)
     }
 
-    /// Identifies and pairs rising and falling edge events.
-    ///
-    /// This function processes a sequence of events in a trajectory and pairs each rising edge event with its subsequent falling edge event to form arcs.
-    /// Each arc represents a complete cycle of an event rising above and then falling below a specified threshold.
-    /// Use this to analyze a trajectory's behavior when understanding the complete cycle of an event (from rising to falling) is essential, e.g. ground station passes.
-    ///
-    /// # Logic
-    /// - Sorts the events by their epoch to ensure chronological processing.
-    /// - Iterates through the sorted events, identifying transitions from falling to rising edges and vice versa.
-    /// - Pairs a rising edge with the subsequent falling edge to form an arc.
-    /// - Handles edge cases where the trajectory starts or ends with a rising or falling edge.
-    /// - Prints debug information for each event and arc.
-    ///
-    /// ## Note
-    /// If no zero crossing happens in the trajectory, i.e. there are no "event is true" _and_ "event is false",
-    /// then this function checks whether the event is true at the start and end of the trajectory. If so, it means
-    /// that there is a single arc that spans the whole trajectory.
-    ///
     pub fn report_event_arcs(
         &self,
         state_spec: &StateSpec,
         event: &Event,
         start_epoch: Epoch,
         end_epoch: Epoch,
-        heuristic: Option<Duration>,
-    ) -> Result<Vec<EventArc>, AnalysisError> {
-        let mut events =
-            match self.report_events(state_spec, event, start_epoch, end_epoch, heuristic) {
-                Ok(events) => events,
-                Err(_) => {
-                    // We haven't found the start or end of an arc, i.e. no zero crossing on the event.
-                    // However, if the trajectory start and end are above the event value, then we found an arc.
-                    let start_orbit = state_spec.evaluate(start_epoch, self)?;
-                    let end_orbit = state_spec.evaluate(end_epoch, self)?;
-                    let first_eval = event.eval(start_orbit, self)?;
-                    let last_eval = event.eval(end_orbit, self)?;
-                    if first_eval > 0.0 && last_eval > 0.0 {
-                        // No event crossing found, but from the start until the end of the trajectory, we're in the same arc
-                        // because the evaluation of the event is above the zero crossing.
-                        // Hence, there's a single arc, and it's from start until the end of the trajectory.
-                        vec![
-                            EventDetails::new(
-                                start_orbit,
-                                first_eval,
-                                event,
-                                None,
-                                state_spec
-                                    .evaluate(start_epoch + event.epoch_precision, self)
-                                    .map(Some)?,
-                                self,
-                            )?,
-                            EventDetails::new(
-                                end_orbit,
-                                last_eval,
-                                event,
-                                state_spec
-                                    .evaluate(start_epoch + event.epoch_precision, self)
-                                    .map(Some)?,
-                                None,
-                                self,
-                            )?,
-                        ]
-                    } else {
-                        return Err(AnalysisError::EventNotFound {
-                            start: start_epoch,
-                            end: end_epoch,
-                            event: Box::new(event.clone()),
-                        });
-                    }
-                }
-            };
-        events.sort_by_key(|event| event.orbit.epoch);
-
-        // Now, let's pair the events.
-        let mut arcs = Vec::new();
-
-        if events.is_empty() {
-            return Ok(arcs);
-        }
-
-        // If the first event isn't a rising edge, then we mark the start of the trajectory as a rising edge
-        let mut prev_rise = if events[0].edge != EventEdge::Rising {
-            let first_orbit = state_spec.evaluate(start_epoch, self)?;
-            let next_orbit = state_spec.evaluate(start_epoch + event.epoch_precision, self)?;
-            let value = event.eval(first_orbit, self)?;
-            Some(EventDetails::new(
-                first_orbit,
-                value,
-                event,
-                None,
-                Some(next_orbit),
-                self,
-            )?)
-        } else {
-            Some(events[0].clone())
-        };
-
-        let mut prev_fall = if events[0].edge == EventEdge::Falling {
-            Some(events[0].clone())
-        } else {
-            None
-        };
-
-        for event in events {
-            if event.edge == EventEdge::Rising {
-                if prev_rise.is_none() && prev_fall.is_none() {
-                    // This is a new rising edge
-                    prev_rise = Some(event.clone());
-                } else if prev_fall.is_some() {
-                    // We've found a transition from a fall to a rise, so we can close this arc out.
-                    if prev_rise.is_some() {
-                        let arc = EventArc {
-                            rise: prev_rise.clone().unwrap(),
-                            fall: prev_fall.clone().unwrap(),
-                        };
-                        arcs.push(arc);
-                    } else {
-                        let arc = EventArc {
-                            rise: event.clone(),
-                            fall: prev_fall.clone().unwrap(),
-                        };
-                        arcs.push(arc);
-                    }
-                    prev_fall = None;
-                    // We have a new rising edge since this is how we ended up here.
-                    prev_rise = Some(event.clone());
-                }
-            } else if event.edge == EventEdge::Falling {
-                prev_fall = Some(event.clone());
-            }
-        }
-
-        // Add the final pass
-        if prev_rise.is_some() {
-            if prev_fall.is_some() {
-                let arc = EventArc {
-                    rise: prev_rise.clone().unwrap(),
-                    fall: prev_fall.clone().unwrap(),
-                };
-                arcs.push(arc);
-            } else {
-                // Use the last trajectory as the end of the arc
-                let penult_orbit = state_spec.evaluate(end_epoch - event.epoch_precision, self)?;
-                let last_orbit = state_spec.evaluate(end_epoch, self)?;
-                let value = event.eval(last_orbit, self)?;
-                let fall =
-                    EventDetails::new(last_orbit, value, event, Some(penult_orbit), None, self)?;
-                let arc = EventArc {
-                    rise: prev_rise.clone().unwrap(),
-                    fall,
-                };
-                arcs.push(arc);
-            }
-        }
-
-        Ok(arcs)
-    }
-
-    /* pub fn report_event_arcs2(
-        &self,
-        state_spec: &StateSpec,
-        event: &Event,
-        start_epoch: Epoch,
-        end_epoch: Epoch,
-        heuristic: Option<Duration>,
     ) -> Result<Vec<EventArc>, AnalysisError> {
         // Step 1: Get all zero-crossings. We will completely ignore their reported 'edge' status, already sorted by time.
         let crossings = match self.report_events_slow(state_spec, event, start_epoch, end_epoch) {
@@ -548,191 +392,74 @@ impl Almanac {
             }
         };
 
-        // TODO: Use the crossing as a starting point but backward search to find the exact crossing
-        // with the report_events_slow.
-
-        // Step 2: Determine the initial state at the start of the trajectory.
-        let start_orbit = state_spec.evaluate(start_epoch, self)?;
-        let mut prev_value = event.eval(start_orbit, self)?;
-        let mut is_inside_arc = prev_value > 0.0;
+        // We have at least one crossing at this point.
+        let init_crossing = crossings.first().unwrap();
+        let mut is_inside_arc = init_crossing.value >= 0.0;
 
         let mut arcs = Vec::new();
-        let mut current_rise: Option<EventDetails> = None;
+        let mut rise: Option<EventDetails> = None;
 
         if is_inside_arc {
-            // If we start inside an arc, create a synthetic rise at the beginning.
-            let synth_rise = EventDetails::new(
-                start_orbit,
-                prev_value,
-                event,
-                None,
-                Some(crossings[0].orbit),
-                self,
-            )?;
-            current_rise = Some(synth_rise);
-            prev_edge = synth_rise.edge;
-        }
-
-        // Step 3: Process all crossings as simple state transitions.
-        for crossing in crossings.iter().skip(1) {
-            let value = crossing.value;
-            if value >= 0.0 {
-                // We're in an arc.
-                let edge = if (prev_value - value).abs() > event.value_precision {
-                    // But we're on the downward slope
-                    EventEdge::Falling
-                } else if (prev_value - value).abs() < event.value_precision {
-                    EventEdge::Rising
-                } else {
-                    // e.g. in an umbra
-                    EventEdge::Unclear
-                };
-            } else {
-                // We aren't in an arc.
-            }
-            let edge = if prev_value > value {
-                EventEdge::Falling
-            } else {
-                EventEdge::Rising
-            };
-            let is_inside_arc;
-            if is_inside_arc {
-                // We were inside an arc, so this crossing must be a fall.
-                if let Some(rise) = current_rise.take() {
+            if let Some(next_value) = init_crossing.next_value {
+                if next_value < 0.0 {
+                    // We start at the _end_ of this event.
+                    // Compute the event details for this next epoch.
+                    let fall = self.report_event_once(
+                        state_spec,
+                        event,
+                        init_crossing.orbit.epoch + event.epoch_precision,
+                        init_crossing.orbit.epoch + event.epoch_precision * 2,
+                    )?;
                     arcs.push(EventArc {
-                        rise,
-                        fall: crossing,
+                        rise: init_crossing.clone(),
+                        fall,
                     });
                 }
-                is_inside_arc = false; // We are now outside an arc.
-            } else {
-                // We were outside an arc, so this crossing must be a rise.
-                current_rise = Some(crossing);
-                is_inside_arc = true; // We are now inside an arc.
             }
+            rise = Some(init_crossing.clone());
         }
 
-        // Step 4: Handle the final state. If we end inside an arc, create a synthetic fall.
-        if is_inside_arc {
-            if let Some(rise) = current_rise {
-                let end_orbit = state_spec.evaluate(end_epoch, self)?;
-                let synth_fall =
-                    EventDetails::new(end_orbit, 0.0, event, Some(rise.orbit), None, self)?;
+        for crossing in crossings.iter().skip(1) {
+            let event_value = crossing.value;
+            if event_value >= 0.0 {
+                // We're in an arc.
+                if let Some(next_value) = crossing.next_value {
+                    if next_value < 0.0 {
+                        // At the next immediate step, the event ends, so this marks the end of the arc.
+                        arcs.push(EventArc {
+                            rise: rise.clone().unwrap(),
+                            fall: crossing.clone(),
+                        });
+                        is_inside_arc = false;
+                        continue; // Move onto the next crossing.
+                    }
+                    // else we're still in the arc on the next step.
+                }
+                // If we weren't in an arc, store this as the new rise.
+                if !is_inside_arc {
+                    rise = Some(crossing.clone());
+                    is_inside_arc = true;
+                }
+            } else if is_inside_arc {
+                // We aren't in an arc but we were until this event crossing.
+                // Close out this arc.
                 arcs.push(EventArc {
-                    rise,
-                    fall: synth_fall,
+                    rise: rise.clone().unwrap(),
+                    fall: crossing.clone(),
                 });
+                rise = None;
+                is_inside_arc = false;
+            }
+        }
+
+        if is_inside_arc {
+            if let Some(rise) = rise {
+                if let Some(fall) = crossings.last().cloned() {
+                    arcs.push(EventArc { rise, fall });
+                }
             }
         }
 
         Ok(arcs)
-    } */
-    /* pub fn report_event_arcs2(
-        &self,
-        state_spec: &StateSpec,
-        event: &Event,
-        start_epoch: Epoch,
-        end_epoch: Epoch,
-        heuristic: Option<Duration>,
-    ) -> Result<Vec<EventArc>, AnalysisError> {
-        // Step 1: Get all the edge crossings from the robust report_events function.
-        let mut events =
-            match self.report_events(state_spec, event, start_epoch, end_epoch, heuristic) {
-                Ok(ev) if !ev.is_empty() => ev,
-                _ => {
-                    // No crossings were found. This could mean the event never happens, OR
-                    // the entire trajectory is within the event. We check for the latter.
-                    let start_orbit = state_spec.evaluate(start_epoch, self)?;
-                    if event.eval(start_orbit, self)? > 0.0 {
-                        // The whole duration is one big arc.
-                        let end_orbit = state_spec.evaluate(end_epoch, self)?;
-                        let rise = EventDetails::new(
-                            start_orbit,
-                            0.0,
-                            event,
-                            None,
-                            Some(end_orbit),
-                            self,
-                        )?;
-                        let fall = EventDetails::new(
-                            end_orbit,
-                            0.0,
-                            event,
-                            Some(start_orbit),
-                            None,
-                            self,
-                        )?;
-                        return Ok(vec![EventArc { rise, fall }]);
-                    } else {
-                        // The event truly never occurs.
-                        return Ok(Vec::new());
-                    }
-                }
-            };
-
-        events.sort_by_key(|e| e.orbit.epoch);
-
-        let mut arcs = Vec::new();
-        let mut current_rise: Option<EventDetails> = None;
-
-        // Step 2: Handle the edge case where the trajectory *starts* inside an event.
-        // If the first event is a fall, the rise must have happened before our start time.
-        if events[0].edge == EventEdge::Falling {
-            // Create a synthetic "rise" event at the very start of the trajectory.
-            let start_orbit = state_spec.evaluate(start_epoch, self)?;
-            let value = event.eval(start_orbit, self)?;
-            let synth_rise = EventDetails::new(
-                start_orbit,
-                value,
-                event,
-                None,
-                Some(events[0].orbit.clone()),
-                self,
-            )?;
-            current_rise = Some(synth_rise);
-        }
-
-        // Step 3: Process all events with a clean and simple state machine.
-        for event in events {
-            match event.edge {
-                EventEdge::Rising => {
-                    // We've found the start of a new arc. Store it and wait for the fall.
-                    // This correctly handles consecutive rises by simply taking the latest one.
-                    current_rise = Some(event);
-                }
-                EventEdge::Falling => {
-                    // We've found the end of an arc.
-                    if let Some(rise) = current_rise.take() {
-                        // .take() gets the rise and leaves the state empty,
-                        // neatly resetting us to "look for the next rise".
-                        arcs.push(EventArc { rise, fall: event });
-                    }
-                    // If current_rise was already empty, we ignore this fall, as its rise was before our window.
-                }
-                _ => { /* Ignore LocalMin, LocalMax, and Unclear edges */ }
-            }
-        }
-
-        // Step 4: Handle the edge case where the trajectory *ends* inside an event.
-        // If we have a lingering rise, it means the fall happens after our end time.
-        if let Some(rise) = current_rise {
-            // Create a synthetic "fall" event at the very end of the trajectory.
-            let end_orbit = state_spec.evaluate(end_epoch, self)?;
-            let value = event.eval(end_orbit, self)?;
-            let synth_fall = EventDetails::new(
-                end_orbit,
-                value,
-                event,
-                Some(rise.orbit.clone()),
-                None,
-                self,
-            )?;
-            arcs.push(EventArc {
-                rise,
-                fall: synth_fall,
-            });
-        }
-
-        Ok(arcs)
-    } */
+    }
 }

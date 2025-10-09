@@ -12,7 +12,7 @@ use super::{OrbitalElement, ScalarExpr};
 use crate::{
     analysis::AnalysisError,
     astro::Aberration,
-    prelude::{Almanac, Orbit},
+    prelude::{Almanac, Frame, Orbit},
 };
 use hifitime::{Duration, Epoch, Unit};
 use log::warn;
@@ -53,6 +53,17 @@ impl Event {
             desired_value: 0.0,
             epoch_precision: Unit::Second * 0.1,
             value_precision: 1e-2,
+            ab_corr: None,
+        }
+    }
+
+    /// Total eclipse event finder: returns events where the eclipsing percentage is greater than 98.9%.
+    pub fn eclipse(eclipsing_frame: Frame) -> Self {
+        Event {
+            scalar: ScalarExpr::SolarEclipsePercentage { eclipsing_frame },
+            desired_value: 99.9,
+            epoch_precision: Unit::Second * 0.1,
+            value_precision: 1.0,
             ab_corr: None,
         }
     }
