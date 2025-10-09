@@ -95,7 +95,7 @@ impl Almanac {
             if yb.abs() <= event.value_precision.abs() {
                 // Can't fail, we got it earlier
                 let epoch = xa_e + xb * Unit::Second;
-                let state = state_spec.evaluate(epoch, self).unwrap();
+                let state = state_spec.evaluate(epoch, self)?;
                 debug!(
                     "{event} -- found with |{yb}| < {} @ {}",
                     event.value_precision.abs(),
@@ -446,11 +446,12 @@ impl Almanac {
             } else if is_inside_arc {
                 // We aren't in an arc but we were until this event crossing.
                 // Close out this arc.
-                arcs.push(EventArc {
-                    rise: rise.clone().unwrap(),
-                    fall: crossing.clone(),
-                });
-                rise = None;
+                if let Some(rise) = rise.take() {
+                    arcs.push(EventArc {
+                        rise,
+                        fall: crossing.clone(),
+                    });
+                }
                 is_inside_arc = false;
             }
         }

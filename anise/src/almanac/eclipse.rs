@@ -303,9 +303,7 @@ impl Almanac {
     /// Original code from GMAT, <https://github.com/ChristopherRabotin/GMAT/blob/GMAT-R2022a/src/gmatutil/util/CalculationUtilities.cpp#L209-L219>
     pub fn beta_angle_deg(&self, state: Orbit, ab_corr: Option<Aberration>) -> AlmanacResult<f64> {
         let u_sun = self.sun_unit_vector(state.epoch, state.frame, ab_corr)?;
-        let u_hvec = state.hvec().map_err(|e| AlmanacError::GenericError {
-            err: format!("{e}"),
-        })? / state.hmag().map_err(|e| AlmanacError::GenericError {
+        let u_hvec = state.h_hat().map_err(|e| AlmanacError::GenericError {
             err: format!("{e}"),
         })?;
 
@@ -319,9 +317,7 @@ impl Almanac {
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<Duration> {
         let u_sun = self.sun_unit_vector(state.epoch, state.frame, ab_corr)?;
-        let u_hvec = state.hvec().map_err(|e| AlmanacError::GenericError {
-            err: format!("{e}"),
-        })? / state.hmag().map_err(|e| AlmanacError::GenericError {
+        let u_hvec = state.h_hat().map_err(|e| AlmanacError::GenericError {
             err: format!("{e}"),
         })?;
 

@@ -302,6 +302,12 @@ impl Orbit {
         Ok(self.radius_km.cross(&self.velocity_km_s))
     }
 
+    /// Returns the orbital momentum unit vector
+    pub fn h_hat(&self) -> PhysicsResult<Vector3> {
+        let hvec = self.hvec()?;
+        Ok(hvec / hvec.norm())
+    }
+
     /// Returns the eccentricity vector (no unit)
     pub fn evec(&self) -> Result<Vector3, PhysicsError> {
         let r = self.radius_km;

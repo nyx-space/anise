@@ -261,12 +261,12 @@ impl ScalarExpr {
             Self::Tan(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.to_radians().tan()),
             Self::Atan2 { y, x } => Ok((y
                 .evaluate(orbit, ab_corr, almanac)?
-                .atan2(x.evaluate(orbit, ab_corr, almanac)?.to_radians())
+                .atan2(x.evaluate(orbit, ab_corr, almanac)?)
                 .to_degrees())
             .to_degrees()),
-            Self::Modulo { v, m } => {
-                Ok(v.evaluate(orbit, ab_corr, almanac)? % m.evaluate(orbit, ab_corr, almanac)?)
-            }
+            Self::Modulo { v, m } => Ok(v
+                .evaluate(orbit, ab_corr, almanac)?
+                .rem_euclid(m.evaluate(orbit, ab_corr, almanac)?)),
             Self::Element(oe) => oe.evaluate(orbit),
             Self::Norm(vexpr) => Ok(vexpr.evaluate(orbit.epoch, almanac)?.norm()),
             Self::NormSquared(vexpr) => Ok(vexpr.evaluate(orbit.epoch, almanac)?.norm_squared()),

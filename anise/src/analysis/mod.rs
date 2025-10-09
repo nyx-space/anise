@@ -108,7 +108,7 @@ impl Almanac {
 
                         for (expr, alias) in report.scalars.iter() {
                             data.insert(
-                                alias.clone().unwrap_or(expr.to_string()).to_string(),
+                                alias.clone().unwrap_or_else(|| expr.to_string()),
                                 expr.evaluate(orbit, ab_corr, almanac),
                             );
                         }
