@@ -5,7 +5,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use std::hint::black_box;
 
 fn benchmark_fetch(almanac: &Almanac, frame: Frame) {
-    black_box(almanac.frame_from_uid(frame).unwrap());
+    black_box(almanac.frame_info(frame).unwrap());
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {

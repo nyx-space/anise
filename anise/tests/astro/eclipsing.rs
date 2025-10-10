@@ -44,7 +44,7 @@ pub fn almanac() -> Almanac {
 #[rstest]
 fn verif_beta_angle_eclipse_time(almanac: Almanac) {
     let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 1, 1);
-    let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
+    let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
     let raan_deg = 72.0;
     let aop_deg = 45.0;
     let ta_deg = 270.0;

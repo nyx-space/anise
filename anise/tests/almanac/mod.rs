@@ -43,7 +43,7 @@ fn test_state_transformation() {
 
     // Let's build an orbit
     // Start by grabbing a copy of the frame.
-    let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
+    let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
     // Define an epoch
     let epoch = Epoch::from_str("2021-10-29 12:34:56 TDB").unwrap();
 

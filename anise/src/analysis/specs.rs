@@ -8,10 +8,10 @@
  * Documentation: https://nyxspace.com/
  */
 
-use std::fmt;
-
 use hifitime::Epoch;
+use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
+use std::fmt;
 
 use crate::{
     almanac::Almanac,
@@ -24,7 +24,7 @@ use crate::{
 use super::VectorExpr;
 
 /// FrameSpec allows defining a frame that can be computed from another set of loaded frames, which include a center.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum FrameSpec {
     Loaded(Frame),
     Manual {
@@ -46,7 +46,7 @@ impl fmt::Display for FrameSpec {
 //
 // WARNING: Building such a frame does NOT normalize the vectors, you must use the Unit vector expression
 // to build an orthonormal frame.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum OrthogonalFrame {
     XY { x: VectorExpr, y: VectorExpr },
     XZ { x: VectorExpr, z: VectorExpr },
@@ -106,7 +106,7 @@ impl OrthogonalFrame {
 
 /// Plane selector, sets the missing component to zero.
 /// For example, Plane::YZ will multiply the DCM by [[1, 0. 0], [0, 1, 0], [0, 0, 0]]
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum Plane {
     XY,
     XZ,
@@ -124,7 +124,7 @@ impl Plane {
 }
 
 /// StateDef allows defining a state from one frame (`from_frame`) to another (`to_frame`)
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct StateSpec {
     pub target_frame: FrameSpec,
     pub observer_frame: FrameSpec,
@@ -138,6 +138,16 @@ impl fmt::Display for StateSpec {
 }
 
 impl StateSpec {
+    /// Export this State Specification to S-Expression / LISP syntax
+    pub fn to_s_expr(&self) -> Result<String, serde_lexpr::Error> {
+        Ok(serde_lexpr::to_value(self)?.to_string())
+    }
+
+    /// Load this State Specification from an S-Expression / LISP syntax
+    pub fn from_s_expr(expr: &str) -> Result<Self, serde_lexpr::Error> {
+        serde_lexpr::from_str(expr)
+    }
+
     /// Evaluates this state specification at the provided epoch.
     pub fn evaluate(
         &self,
