@@ -477,6 +477,11 @@ mod ut_analysis {
             .unwrap();
 
         println!("Searching for {apolune}");
+        println!("\nAPO S-EXPR: {}", apolune.to_s_expr().unwrap());
+        let eclipse_s_expr = eclipse.to_s_expr().unwrap();
+        let deserd = Event::from_s_expr(&eclipse_s_expr).unwrap();
+        assert_eq!(deserd, eclipse);
+        println!("\nEclipse S-EXPR: {eclipse_s_expr}");
 
         for event in &apo_events {
             let ta_deg = event.orbit.ta_deg().unwrap();

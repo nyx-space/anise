@@ -141,6 +141,16 @@ impl Event {
             Ok(format!("|{}| = {val:.3} on {}", self.scalar, orbit.epoch))
         }
     }
+
+    /// Export this Event to S-Expression / LISP syntax
+    pub fn to_s_expr(&self) -> Result<String, serde_lexpr::Error> {
+        Ok(serde_lexpr::to_value(self)?.to_string())
+    }
+
+    /// Load this Event from an S-Expression / LISP syntax
+    pub fn from_s_expr(expr: &str) -> Result<Self, serde_lexpr::Error> {
+        serde_lexpr::from_str(expr)
+    }
 }
 
 impl fmt::Display for Event {

@@ -231,7 +231,7 @@ impl ScalarExpr {
             Self::Invert(v) => {
                 let v = v.evaluate(orbit, ab_corr, almanac)?;
 
-                if v.abs() > f64::MIN {
+                if v.is_normal() {
                     Ok(1.0 / v)
                 } else {
                     Err(AnalysisError::MathExpr {
@@ -259,11 +259,10 @@ impl ScalarExpr {
                 .asin()
                 .to_degrees()),
             Self::Tan(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.to_radians().tan()),
-            Self::Atan2 { y, x } => Ok((y
+            Self::Atan2 { y, x } => Ok(y
                 .evaluate(orbit, ab_corr, almanac)?
                 .atan2(x.evaluate(orbit, ab_corr, almanac)?)
-                .to_degrees())
-            .to_degrees()),
+                .to_degrees()),
             Self::Modulo { v, m } => Ok(v
                 .evaluate(orbit, ab_corr, almanac)?
                 .rem_euclid(m.evaluate(orbit, ab_corr, almanac)?)),

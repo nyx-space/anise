@@ -138,6 +138,16 @@ impl fmt::Display for StateSpec {
 }
 
 impl StateSpec {
+    /// Export this State Specification to S-Expression / LISP syntax
+    pub fn to_s_expr(&self) -> Result<String, serde_lexpr::Error> {
+        Ok(serde_lexpr::to_value(self)?.to_string())
+    }
+
+    /// Load this State Specification from an S-Expression / LISP syntax
+    pub fn from_s_expr(expr: &str) -> Result<Self, serde_lexpr::Error> {
+        serde_lexpr::from_str(expr)
+    }
+
     /// Evaluates this state specification at the provided epoch.
     pub fn evaluate(
         &self,

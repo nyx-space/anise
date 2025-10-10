@@ -19,11 +19,7 @@
 /// * `angle` - An angle in degrees.
 ///
 pub fn between_0_360(angle: f64) -> f64 {
-    let mut bounded = angle % 360.0;
-    if bounded < 0.0 {
-        bounded += 360.0;
-    }
-    bounded
+    angle.rem_euclid(360.0)
 }
 
 /// Returns the provided angle bounded between -180.0 and +180.0
@@ -42,12 +38,9 @@ pub fn between_pm_180(angle: f64) -> f64 {
 /// * `angle` - An angle in degrees.
 /// * `x` - The boundary for the angle normalization.
 pub fn between_pm_x(angle: f64, x: f64) -> f64 {
-    let mut bounded = angle % (2.0 * x);
-    if bounded > x {
+    let mut bounded = angle.rem_euclid(2.0 * x);
+    if bounded >= x {
         bounded -= 2.0 * x;
-    }
-    if bounded < -x {
-        bounded += 2.0 * x;
     }
     bounded
 }
