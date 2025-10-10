@@ -16,7 +16,7 @@ log = { workspace = true }
 bytes = { workspace = true }
 pretty_env_logger = { workspace = true }
 eframe = { version = "0.32" }
-egui = { version = "0.32" }
+egui = { version = "0.33" }
 egui_extras = { version = "0.32", features = ["datepicker", "http", "image"] }
 rfd = { version = "0.15.0" }
 egui_logger = "0.8.0"
