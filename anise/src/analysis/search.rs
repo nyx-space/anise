@@ -355,6 +355,9 @@ impl Almanac {
         Ok(events)
     }
 
+    /// Find all event arcs, i.e. the start and stop time of when a given event occurs.
+    ///
+    /// **Performance:** for robustness, this function calls the memory and computationally intensive [report_events_slow] function.
     pub fn report_event_arcs(
         &self,
         state_spec: &StateSpec,

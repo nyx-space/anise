@@ -45,7 +45,7 @@ impl EulerParameterDataSet {
 
             let row = EulerParamRow {
                 name: match opt_name {
-                    Some(name) => format!("{name}"),
+                    Some(name) => name.clone(),
                     None => "Unset".to_string(),
                 },
                 id: match opt_id {

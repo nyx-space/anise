@@ -7,11 +7,8 @@
  *
  * Documentation: https://nyxspace.com/
  */
-use der::{
-    asn1::{OctetStringRef, SequenceOf},
-    Decode, Encode, Reader, Writer,
-};
-use heapless::{FnvIndexMap, String};
+use der::{asn1::OctetStringRef, Decode, Encode, Reader, Writer};
+use indexmap::IndexMap;
 use log::warn;
 use snafu::prelude::*;
 
@@ -24,20 +21,12 @@ pub const KEY_NAME_LEN: usize = 32;
 #[snafu(visibility(pub(crate)))]
 #[non_exhaustive]
 pub enum LutError {
-    #[snafu(display(
-        "ID LUT is full with all {max_slots} taken (increase ENTRIES at build time)"
-    ))]
-    IdLutFull { max_slots: usize },
-    #[snafu(display(
-        "Names LUT is full with all {max_slots} taken (increase ENTRIES at build time)"
-    ))]
-    NameLutFull { max_slots: usize },
     #[snafu(display("must provide either an ID or a name for a loop up, but provided neither"))]
     NoKeyProvided,
     #[snafu(display("ID {id} not in look up table"))]
     UnknownId { id: NaifId },
     #[snafu(display("name {name} not in look up table"))]
-    UnknownName { name: String<KEY_NAME_LEN> },
+    UnknownName { name: String },
     #[snafu(display("Look up table index is not in dataset"))]
     InvalidIndex { index: u32 },
 }
@@ -47,62 +36,45 @@ pub enum LutError {
 /// # Note
 /// _Both_ the IDs and the name MUST be unique in the look up table.
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
-pub struct LookUpTable<const ENTRIES: usize> {
+pub struct LookUpTable {
     /// Unique IDs of each item in the LUT
-    pub by_id: FnvIndexMap<NaifId, u32, ENTRIES>,
+    pub by_id: IndexMap<NaifId, u32>,
     /// Corresponding index for each hash
-    pub by_name: FnvIndexMap<String<32>, u32, ENTRIES>,
+    pub by_name: IndexMap<String, u32>,
 }
 
-impl<const ENTRIES: usize> LookUpTable<ENTRIES> {
+impl LookUpTable {
     pub fn append(&mut self, id: i32, name: &str, index: u32) -> Result<(), LutError> {
-        self.by_id
-            .insert(id, index)
-            .map_err(|_| LutError::IdLutFull { max_slots: ENTRIES })?;
-
-        let name_key: String<KEY_NAME_LEN> =
-            name.try_into().map_err(|_| LutError::UnknownName {
-                name: name.try_into().unwrap_or_else(|_| {
-                    let mut fallback = String::<KEY_NAME_LEN>::new();
-                    fallback.push_str("InvalidName").ok();
-                    fallback
-                }),
-            })?;
-
-        self.by_name
-            .insert(name_key, index)
-            .map_err(|_| LutError::NameLutFull { max_slots: ENTRIES })?;
-
+        self.by_id.insert(id, index);
+        self.by_name.insert(name.to_string(), index);
         Ok(())
     }
 
     pub fn append_id(&mut self, id: i32, index: u32) -> Result<(), LutError> {
-        self.by_id
-            .insert(id, index)
-            .map_err(|_| LutError::IdLutFull { max_slots: ENTRIES })?;
+        self.by_id.insert(id, index);
         Ok(())
     }
 
     pub fn append_name(&mut self, name: &str, index: u32) -> Result<(), LutError> {
-        self.by_name
-            .insert(name.try_into().unwrap(), index)
-            .map_err(|_| LutError::NameLutFull { max_slots: ENTRIES })?;
+        self.by_name.insert(name.to_string(), index);
         Ok(())
     }
 
-    /// Returns the list of entries of this LUT
-    pub fn entries(&self) -> FnvIndexMap<u32, (Option<NaifId>, Option<String<32>>), ENTRIES> {
-        let mut rtn = FnvIndexMap::default();
+    /// Returns the list of entries of this LUT.
+    ///
+    /// Performance: O(n+m) where n is the number of IDs and m number of names.
+    pub fn entries(&self) -> IndexMap<u32, (Option<NaifId>, Option<String>)> {
+        let mut rtn = IndexMap::with_capacity(self.by_id.len() + self.by_name.len());
 
         for (id, entry) in &self.by_id {
             // IDs are unique, and this is the first iteration, so we can't be overwriting anything
-            rtn.insert(*entry, (Some(*id), None)).unwrap();
+            rtn.insert(*entry, (Some(*id), None));
         }
 
         // Now map to the names
         for (name, entry) in &self.by_name {
             if !rtn.contains_key(entry) {
-                rtn.insert(*entry, (None, Some(name.clone()))).unwrap();
+                rtn.insert(*entry, (None, Some(name.clone())));
             } else {
                 let val = rtn.get_mut(entry).unwrap();
                 val.1 = Some(name.clone());
@@ -118,7 +90,7 @@ impl<const ENTRIES: usize> LookUpTable<ENTRIES> {
     pub fn reid(&mut self, current_id: i32, new_id: i32) -> Result<(), LutError> {
         if let Some(entry) = self.by_id.swap_remove(&current_id) {
             // We can unwrap the insertion because we just removed something.
-            self.by_id.insert(new_id, entry).unwrap();
+            self.by_id.insert(new_id, entry);
             Ok(())
         } else {
             Err(LutError::UnknownId { id: current_id })
@@ -129,7 +101,7 @@ impl<const ENTRIES: usize> LookUpTable<ENTRIES> {
     ///
     /// If this item was inserted with a name, it will rename accessible by the name.
     pub fn rmid(&mut self, id: i32) -> Result<(), LutError> {
-        if self.by_id.remove(&id).is_none() {
+        if self.by_id.swap_remove(&id).is_none() {
             Err(LutError::UnknownId { id })
         } else {
             Ok(())
@@ -140,15 +112,13 @@ impl<const ENTRIES: usize> LookUpTable<ENTRIES> {
     ///
     /// This will return an error if the current ID is not in the LUT, or if the new ID is already in the LUT.
     pub fn rename(&mut self, current_name: &str, new_name: &str) -> Result<(), LutError> {
-        if let Some(entry) = self.by_name.swap_remove(&current_name.try_into().unwrap()) {
+        if let Some(entry) = self.by_name.swap_remove(current_name) {
             // We can unwrap the insertion because we just removed something.
-            self.by_name
-                .insert(new_name.try_into().unwrap(), entry)
-                .unwrap();
+            self.by_name.insert(new_name.to_string(), entry);
             Ok(())
         } else {
             Err(LutError::UnknownName {
-                name: current_name.try_into().unwrap(),
+                name: current_name.to_string(),
             })
         }
     }
@@ -157,9 +127,9 @@ impl<const ENTRIES: usize> LookUpTable<ENTRIES> {
     ///
     /// If this item was inserted with a name, it will rename accessible by the name.
     pub fn rmname(&mut self, name: &str) -> Result<(), LutError> {
-        if self.by_name.remove(&name.try_into().unwrap()).is_none() {
+        if self.by_name.swap_remove(name).is_none() {
             Err(LutError::UnknownName {
-                name: name.try_into().unwrap(),
+                name: name.to_string(),
             })
         } else {
             Ok(())
@@ -197,42 +167,30 @@ impl<const ENTRIES: usize> LookUpTable<ENTRIES> {
     }
 
     /// Builds the DER encoding of this look up table.
-    ///
-    /// # Note
-    /// The list of entries might be duplicated if all items have both a name and an ID.
-    fn der_encoding(
-        &self,
-    ) -> (
-        SequenceOf<i32, ENTRIES>,
-        SequenceOf<u32, ENTRIES>,
-        SequenceOf<OctetStringRef<'_>, ENTRIES>,
-        SequenceOf<u32, ENTRIES>,
-    ) {
+    fn der_encoding(&self) -> (Vec<i32>, Vec<u32>, Vec<OctetStringRef<'_>>, Vec<u32>) {
         // Build the list of entries
-        let mut id_entries = SequenceOf::<u32, ENTRIES>::new();
-        let mut name_entries = SequenceOf::<u32, ENTRIES>::new();
+        let mut id_entries = Vec::<u32>::with_capacity(self.by_id.len());
+        let mut name_entries = Vec::<u32>::with_capacity(self.by_name.len());
 
         // Build the list of keys
-        let mut ids = SequenceOf::<i32, ENTRIES>::new();
+        let mut ids = Vec::<i32>::with_capacity(self.by_id.len());
         for (id, index) in &self.by_id {
-            ids.add(*id).unwrap();
-            id_entries.add(*index).unwrap();
+            ids.push(*id);
+            id_entries.push(*index);
         }
         // Build the list of names
-        let mut names = SequenceOf::<OctetStringRef, ENTRIES>::new();
+        let mut names = Vec::<OctetStringRef>::with_capacity(self.by_name.len());
         for (name, index) in &self.by_name {
-            names
-                .add(OctetStringRef::new(name.as_bytes()).unwrap())
-                .unwrap();
+            names.push(OctetStringRef::new(name.as_bytes()).unwrap());
 
-            name_entries.add(*index).unwrap();
+            name_entries.push(*index);
         }
 
         (ids, id_entries, names, name_entries)
     }
 }
 
-impl<const ENTRIES: usize> Encode for LookUpTable<ENTRIES> {
+impl Encode for LookUpTable {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let (ids, names, id_entries, name_entries) = self.der_encoding();
         ids.encoded_len()?
@@ -250,27 +208,23 @@ impl<const ENTRIES: usize> Encode for LookUpTable<ENTRIES> {
     }
 }
 
-impl<'a, const ENTRIES: usize> Decode<'a> for LookUpTable<ENTRIES> {
+impl<'a> Decode<'a> for LookUpTable {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         // Decode as sequences and use that to build the look up table.
         let mut lut = Self::default();
-        let ids: SequenceOf<i32, ENTRIES> = decoder.decode()?;
-        let id_entries: SequenceOf<u32, ENTRIES> = decoder.decode()?;
-        let names: SequenceOf<OctetStringRef, ENTRIES> = decoder.decode()?;
-        let name_entries: SequenceOf<u32, ENTRIES> = decoder.decode()?;
+        let ids: Vec<i32> = decoder.decode()?;
+        let id_entries: Vec<u32> = decoder.decode()?;
+        let names: Vec<OctetStringRef> = decoder.decode()?;
+        let name_entries: Vec<u32> = decoder.decode()?;
 
         for (id, index) in ids.iter().zip(id_entries.iter()) {
-            lut.by_id.insert(*id, *index).unwrap();
+            lut.by_id.insert(*id, *index);
         }
 
         for (name, entry) in names.iter().zip(name_entries.iter()) {
             let key = core::str::from_utf8(name.as_bytes())?;
             lut.by_name
-                .insert(
-                    key[..KEY_NAME_LEN.min(key.len())].try_into().unwrap(),
-                    *entry,
-                )
-                .unwrap();
+                .insert(key[..KEY_NAME_LEN.min(key.len())].to_string(), *entry);
         }
 
         if !lut.check_integrity() {
@@ -289,7 +243,7 @@ mod lut_ut {
     use super::{Decode, Encode, LookUpTable};
     #[test]
     fn zero_repr() {
-        let repr = LookUpTable::<2>::default();
+        let repr = LookUpTable::default();
 
         let mut buf = vec![];
         repr.encode_to_vec(&mut buf).unwrap();
@@ -299,12 +253,12 @@ mod lut_ut {
         assert_eq!(repr, repr_dec);
 
         dbg!(repr);
-        assert_eq!(core::mem::size_of::<LookUpTable<64>>(), 4368);
+        assert_eq!(core::mem::size_of::<LookUpTable>(), 144);
     }
 
     #[test]
     fn repr_ids_only() {
-        let mut repr = LookUpTable::<32>::default();
+        let mut repr = LookUpTable::default();
         for i in 0..32 {
             let id = -20 - i;
             repr.append_id(id, 0).unwrap();
@@ -320,10 +274,10 @@ mod lut_ut {
 
     #[test]
     fn repr_names_only() {
-        const LUT_SIZE: usize = 32;
         // Create a vector to store the strings and declare it before repr for borrow checker
+        const LUT_SIZE: usize = 32;
         let mut names = Vec::new();
-        let mut repr = LookUpTable::<LUT_SIZE>::default();
+        let mut repr = LookUpTable::default();
 
         for i in 0..LUT_SIZE {
             names.push(format!("Name{i}"));
@@ -343,7 +297,7 @@ mod lut_ut {
 
     #[test]
     fn test_integrity_checker() {
-        let mut lut = LookUpTable::<8>::default();
+        let mut lut = LookUpTable::default();
         assert!(lut.check_integrity()); // Empty, passes
 
         lut.append(1, "a", 0).unwrap();

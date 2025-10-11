@@ -97,7 +97,7 @@ impl PlanetaryDataSet {
 
             let mut row = PlanetaryRow {
                 name: match opt_name {
-                    Some(name) => format!("{name}"),
+                    Some(name) => name.clone(),
                     None => "Unset".to_string(),
                 },
                 id: match opt_id {
