@@ -230,7 +230,7 @@ impl<T: DataSetT> DataSet<T> {
             self.data
                 .get(*index as usize)
                 .cloned()
-                .ok_or_else(|| LutError::InvalidIndex { index: *index })
+                .ok_or(LutError::InvalidIndex { index: *index })
                 .context(DataSetLutSnafu {
                     action: "fetching by ID",
                 })
@@ -250,7 +250,7 @@ impl<T: DataSetT> DataSet<T> {
             *self
                 .data
                 .get_mut(*index as usize)
-                .ok_or_else(|| LutError::InvalidIndex { index: *index })
+                .ok_or(LutError::InvalidIndex { index: *index })
                 .context(DataSetLutSnafu {
                     action: "fetching by ID",
                 })? = new_value;
@@ -272,7 +272,7 @@ impl<T: DataSetT> DataSet<T> {
             *self
                 .data
                 .get_mut(index as usize)
-                .ok_or_else(|| LutError::InvalidIndex { index })
+                .ok_or(LutError::InvalidIndex { index })
                 .context(DataSetLutSnafu {
                     action: "fetching by ID",
                 })? = T::default();
@@ -302,7 +302,7 @@ impl<T: DataSetT> DataSet<T> {
             self.data
                 .get(*index as usize)
                 .cloned()
-                .ok_or_else(|| LutError::InvalidIndex { index: *index })
+                .ok_or(LutError::InvalidIndex { index: *index })
                 .context(DataSetLutSnafu {
                     action: "fetching by name",
                 })
@@ -324,7 +324,7 @@ impl<T: DataSetT> DataSet<T> {
             *self
                 .data
                 .get_mut(*index as usize)
-                .ok_or_else(|| LutError::InvalidIndex { index: *index })
+                .ok_or(LutError::InvalidIndex { index: *index })
                 .context(DataSetLutSnafu {
                     action: "fetching by ID",
                 })? = new_value;
@@ -348,7 +348,7 @@ impl<T: DataSetT> DataSet<T> {
             *self
                 .data
                 .get_mut(index as usize)
-                .ok_or_else(|| LutError::InvalidIndex { index })
+                .ok_or(LutError::InvalidIndex { index })
                 .context(DataSetLutSnafu {
                     action: "fetching by ID",
                 })? = T::default();
@@ -368,7 +368,7 @@ impl<T: DataSetT> DataSet<T> {
             Err(DataSetError::DataSetLut {
                 action: "removing by ID",
                 source: LutError::UnknownName {
-                    name: name.try_into().unwrap(),
+                    name: name.into(),
                 },
             })
         }
