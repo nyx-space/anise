@@ -1,7 +1,7 @@
 import typing
 import numpy
 
-_all__: list = ["time", "astro", "utils", "Aberration", "Almanac", "MetaAlmanac", "MetaFile"]
+__all__: list = ["time", "astro", "constants", "rotation", "utils", "Aberration", "Almanac", "MetaAlmanac", "MetaFile"]
 
 @typing.final
 class Aberration:
