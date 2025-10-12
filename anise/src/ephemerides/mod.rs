@@ -26,10 +26,8 @@ pub mod translations;
 pub enum EphemerisError {
     /// Somehow you've entered code that should not be reachable, please file a bug.
     Unreachable,
-    #[snafu(display(
-        "could not load SPK because all {max_slots} are used (modify `MAX_LOADED_SPKS` at build time)"
-    ))]
-    StructureIsFull { max_slots: usize },
+    #[snafu(display("could not {action} because {alias} is not loaded"))]
+    AliasNotFound { alias: String, action: &'static str },
     #[snafu(display(
         "Could not translate from {from} to {to}: no common origin found at epoch {epoch}"
     ))]

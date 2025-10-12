@@ -28,10 +28,8 @@ pub enum OrientationError {
         "somehow you've entered code that should not be reachable, please file a bug."
     ))]
     Unreachable,
-    #[snafu(display(
-         "could not load BPC because all {max_slots} are used (modify `MAX_LOADED_BPCS` at build time)"
-     ))]
-    StructureIsFull { max_slots: usize },
+    #[snafu(display("could not {action} because {alias} is not loaded"))]
+    AliasNotFound { alias: String, action: &'static str },
     #[snafu(display(
         "Could not rotate from {from} to {to}: no common origin found at epoch {epoch}"
     ))]

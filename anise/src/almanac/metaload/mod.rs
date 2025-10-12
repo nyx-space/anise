@@ -60,7 +60,7 @@ impl Almanac {
     /// Load from the provided MetaFile, downloading it if necessary.
     /// Set autodelete to true to automatically delete lock files. Lock files are important in multi-threaded loads.
     pub fn load_from_metafile(
-        &self,
+        self,
         mut metafile: MetaFile,
         autodelete: bool,
     ) -> AlmanacResult<Self> {
@@ -89,7 +89,7 @@ impl Almanac {
         metafile: MetaFile,
         autodelete: bool,
     ) -> AlmanacResult<Self> {
-        py.allow_threads(|| self.load_from_metafile(metafile, autodelete))
+        py.allow_threads(|| self.clone().load_from_metafile(metafile, autodelete))
     }
 }
 

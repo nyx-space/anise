@@ -57,7 +57,11 @@ impl UiApp {
             if let Some(result) = promise.ready() {
                 let (file_name, data) = result.as_ref().map(|x| x.clone()).unwrap();
                 self.promise = None;
-                match self.almanac.load_from_bytes(bytes::Bytes::from(data)) {
+                match self
+                    .almanac
+                    .clone()
+                    .load_from_bytes(bytes::Bytes::from(data))
+                {
                     Ok(almanac) => FileLoadResult::Ok((file_name, almanac)),
                     Err(e) => FileLoadResult::Error(e),
                 }
@@ -78,7 +82,7 @@ impl UiApp {
     fn load_almanac(&mut self) -> FileLoadResult {
         if let Some(path_buf) = rfd::FileDialog::new().pick_file() {
             let path = path_buf.to_str().unwrap().to_string();
-            match self.almanac.load(&path) {
+            match self.almanac.clone().load(&path) {
                 Ok(almanac) => FileLoadResult::Ok((path, Box::new(almanac))),
                 Err(e) => FileLoadResult::Error(Box::new(e)),
             }
@@ -95,7 +99,7 @@ impl eframe::App for UiApp {
         egui::TopBottomPanel::top("header").show(ctx, |ui| {
             ui.horizontal_centered(|ui| {
                 ui.vertical_centered(|ui| {
-                    ui.heading("ANISE v0.6");
+                    ui.heading("ANISE v0.7");
                     ui.label("A modern rewrite of NASA's SPICE toolkit");
                     ui.hyperlink_to(
                         "https://www.nyxspace.com",

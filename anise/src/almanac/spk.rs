@@ -34,7 +34,7 @@ impl Almanac {
 
     /// Loads a new SPK file into a new context, using the system time as the alias. If the time is not availble, then 0 TAI is used.
     /// This new context is needed to satisfy the unloading of files. In fact, to unload a file, simply let the newly loaded context drop out of scope and Rust will clean it up.
-    pub fn with_spk(&self, spk: SPK) -> Self {
+    pub fn with_spk(self, spk: SPK) -> Self {
         // No alias is provided, let's use the loading time as the alias.
         let alias = Epoch::now().unwrap_or_default().to_string();
         self.with_spk_as(spk, alias)
@@ -42,28 +42,28 @@ impl Almanac {
 
     /// Loads a new SPK file into a new context, naming it with the provided alias.
     /// This new context is needed to satisfy the unloading of files. In fact, to unload a file, simply let the newly loaded context drop out of scope and Rust will clean it up.
-    pub fn with_spk_as(&self, spk: SPK, alias: String) -> Self {
-        // This is just a bunch of pointers so it doesn't use much memory.
-        let mut me = self.clone();
+    pub fn with_spk_as(mut self, spk: SPK, alias: String) -> Self {
         // For lifetime reasons, we format the message using a ref first
         let msg = format!(
             "unloading SPK `{alias}``, consider using spk_swap to reduce memory fragmentation"
         );
-        if me.spk_data.insert(alias, spk).is_some() {
+        if self.spk_data.insert(alias, spk).is_some() {
             warn!("{msg}");
         }
-        me
+        self
     }
 
-    /// Swaps the SPK loaded as `alias` with the new SPK, optionally renaming its alias.
-    /// This approach reuses the allocated memory, reducing the risk of memory fragmentation for long-running application.
-    pub fn spk_swap(
-        mut self,
-        alias: String,
-        spk: SPK,
-        new_alias: Option<String>,
-    ) -> Result<String, EphemerisError> {
-        todo!("spk_swap");
+    /// Unloads the SPK with the provided alias.
+    /// **WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded.
+    pub fn spk_unload(&mut self, alias: &str) -> Result<(), EphemerisError> {
+        if self.spk_data.swap_remove(alias).is_none() {
+            Err(EphemerisError::AliasNotFound {
+                alias: alias.to_string(),
+                action: "unload ephemeris",
+            })
+        } else {
+            Ok(())
+        }
     }
 }
 

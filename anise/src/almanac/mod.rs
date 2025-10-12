@@ -106,32 +106,29 @@ impl Almanac {
     }
 
     /// Loads the provided spacecraft data into a clone of this original Almanac.
-    pub fn with_spacecraft_data(&self, spacecraft_data: SpacecraftDataSet) -> Self {
-        let mut me = self.clone();
-        me.spacecraft_data = spacecraft_data;
-        me
+    pub fn with_spacecraft_data(mut self, spacecraft_data: SpacecraftDataSet) -> Self {
+        self.spacecraft_data = spacecraft_data;
+        self
     }
 
     /// Loads the provided Euler parameter data into a clone of this original Almanac.
-    pub fn with_euler_parameters(&self, ep_dataset: EulerParameterDataSet) -> Self {
-        let mut me = self.clone();
-        me.euler_param_data = ep_dataset;
-        me
+    pub fn with_euler_parameters(mut self, ep_dataset: EulerParameterDataSet) -> Self {
+        self.euler_param_data = ep_dataset;
+        self
     }
 
     /// Loads the provided location data into a clone of this original Almanac.
-    pub fn with_location_data(&self, loc_dataset: LocationDataSet) -> Self {
-        let mut me = self.clone();
-        me.location_data = loc_dataset;
-        me
+    pub fn with_location_data(mut self, loc_dataset: LocationDataSet) -> Self {
+        self.location_data = loc_dataset;
+        self
     }
 
     /// Loads the provides bytes as one of the data types supported in ANISE.
-    pub fn load_from_bytes(&self, bytes: Bytes) -> AlmanacResult<Self> {
+    pub fn load_from_bytes(self, bytes: Bytes) -> AlmanacResult<Self> {
         self._load_from_bytes(bytes, None)
     }
 
-    fn _load_from_bytes(&self, bytes: Bytes, path: Option<&str>) -> AlmanacResult<Self> {
+    fn _load_from_bytes(self, bytes: Bytes, path: Option<&str>) -> AlmanacResult<Self> {
         // Check if they forgot to run git lfs
         if let Some(lfs_header) = bytes.get(..8) {
             if lfs_header == "version".as_bytes() {
@@ -244,7 +241,7 @@ impl Almanac {
     }
 
     /// Generic function that tries to load the provided path guessing to the file type.
-    pub fn load(&self, path: &str) -> AlmanacResult<Self> {
+    pub fn load(self, path: &str) -> AlmanacResult<Self> {
         // Load the data onto the heap
         let bytes = file2heap!(path).context(LoadingSnafu {
             path: path.to_string(),

@@ -95,9 +95,28 @@ impl Almanac {
     /// :rtype: Almanac
     #[pyo3(name = "load")]
     fn py_load(&self, path: &str) -> AlmanacResult<Self> {
-        self.load(path)
+        self.clone().load(path)
     }
 
+    /// Unloads (in-place) the SPK with the provided alias.
+    /// **WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded.
+    ///
+    /// :type path: str
+    /// :rtype: None
+    #[pyo3(name = "spk_unload")]
+    fn py_spk_unload(&mut self, alias: &str) -> Result<(), EphemerisError> {
+        self.spk_unload(alias)
+    }
+
+    /// Unloads (in-place) the BPC with the provided alias.
+    /// **WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded.
+    ///
+    /// :type path: str
+    /// :rtype: None
+    #[pyo3(name = "bpc_unload")]
+    fn py_bpc_unload(&mut self, alias: &str) -> Result<(), OrientationError> {
+        self.bpc_unload(alias)
+    }
     /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
     /// receiver state (`rx`) seen from the transmitter state (`tx`), once converted into the SEZ frame of the transmitter.
     ///

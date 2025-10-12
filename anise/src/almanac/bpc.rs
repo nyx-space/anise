@@ -33,7 +33,7 @@ impl Almanac {
 
     /// Loads a new Binary Planetary Constants (BPC) kernel into a new context, using the system time as the alias. If the time is not availble, then 0 TAI is used.
     /// This new context is needed to satisfy the unloading of files. In fact, to unload a file, simply let the newly loaded context drop out of scope and Rust will clean it up.
-    pub fn with_bpc(&self, bpc: BPC) -> Self {
+    pub fn with_bpc(self, bpc: BPC) -> Self {
         // No alias is provided, let's use the loading time as the alias.
         let alias = Epoch::now().unwrap_or_default().to_string();
         self.with_bpc_as(bpc, alias)
@@ -41,19 +41,29 @@ impl Almanac {
 
     /// Loads a new Binary Planetary Constant (BPC) file into a new context, naming it with the provided alias.
     /// This new context is needed to satisfy the unloading of files. In fact, to unload a file, simply let the newly loaded context drop out of scope and Rust will clean it up.
-    pub fn with_bpc_as(&self, bpc: BPC, alias: String) -> Self {
-        // This is just a bunch of pointers so it doesn't use much memory.
-        let mut me = self.clone();
+    pub fn with_bpc_as(mut self, bpc: BPC, alias: String) -> Self {
         // For lifetime reasons, we format the message using a ref first
         let msg = format!(
             "unloading BPC `{alias}``, consider using bpc_swap to reduce memory fragmentation"
         );
-        if me.bpc_data.insert(alias, bpc).is_some() {
+        if self.bpc_data.insert(alias, bpc).is_some() {
             warn!("{msg}");
         }
-        me
+        self
     }
 
+    /// Unloads the BPC with the provided alias.
+    /// **WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded.
+    pub fn bpc_unload(&mut self, alias: &str) -> Result<(), OrientationError> {
+        if self.bpc_data.swap_remove(alias).is_none() {
+            Err(OrientationError::AliasNotFound {
+                alias: alias.to_string(),
+                action: "unload BPC",
+            })
+        } else {
+            Ok(())
+        }
+    }
     pub fn num_loaded_bpc(&self) -> usize {
         self.bpc_data.len()
     }
