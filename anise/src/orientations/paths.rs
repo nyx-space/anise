@@ -37,9 +37,7 @@ impl Almanac {
         // The common center is the absolute minimum of all centers due to the NAIF numbering.
         let mut common_center = i32::MAX;
 
-        for maybe_bpc in self.bpc_data.iter().take(self.num_loaded_bpc()).rev() {
-            let bpc = maybe_bpc.as_ref().unwrap();
-
+        for bpc in self.bpc_data.values().rev() {
             for summary in bpc.data_summaries().context(BPCSnafu {
                 action: "finding orientation root",
             })? {

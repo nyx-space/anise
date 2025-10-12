@@ -157,12 +157,12 @@ impl eframe::App for UiApp {
                                 let (label, crc) = if self.almanac.num_loaded_spk() == 1 {
                                     (
                                         "DAF/SPK",
-                                        self.almanac.spk_data[0].as_ref().unwrap().crc32(),
+                                        self.almanac.spk_data.get_index(0).unwrap().1.crc32(),
                                     )
                                 } else if self.almanac.num_loaded_bpc() == 1 {
                                     (
                                         "DAF/PCK",
-                                        self.almanac.bpc_data[0].as_ref().unwrap().crc32(),
+                                        self.almanac.bpc_data.get_index(0).unwrap().1.crc32(),
                                     )
                                 } else if !self.almanac.planetary_data.is_empty() {
                                     ("ANISE/PCA", self.almanac.planetary_data.crc32())
@@ -190,18 +190,24 @@ impl eframe::App for UiApp {
                                         ui.text_edit_singleline(&mut format!("{crc}"));
 
                                         if label.ends_with("SPK") {
-                                            let num_summaries = self.almanac.spk_data[0]
-                                                .as_ref()
+                                            let num_summaries = self
+                                                .almanac
+                                                .spk_data
+                                                .get_index(0)
                                                 .unwrap()
+                                                .1
                                                 .daf_summary()
                                                 .unwrap()
                                                 .num_summaries();
                                             ui.label("Number of summaries");
                                             ui.label(format!("{num_summaries}"));
                                         } else if label.ends_with("PCK") {
-                                            let num_summaries = self.almanac.bpc_data[0]
-                                                .as_ref()
+                                            let num_summaries = self
+                                                .almanac
+                                                .bpc_data
+                                                .get_index(0)
                                                 .unwrap()
+                                                .1
                                                 .daf_summary()
                                                 .unwrap()
                                                 .num_summaries();

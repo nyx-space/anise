@@ -32,7 +32,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let pck = "../data/earth_latest_high_prec.bpc";
     spice::furnsh(pck);
     let bpc = BPC::load(pck).unwrap();
-    let almanac = Almanac::from_bpc(bpc).unwrap();
+    let almanac = Almanac::from_bpc(bpc);
 
     c.bench_function("ANISE DAF/BPC single hop to parent", |b| {
         b.iter(|| benchmark_anise_single_hop_type2_cheby(&almanac, time_it.clone()))

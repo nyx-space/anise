@@ -40,7 +40,7 @@ pub fn spk_ui(
             });
         })
         .body(|mut body| {
-            let spk = almanac.spk_data[0].as_ref().unwrap();
+            let spk = almanac.spk_data.get_index(0).unwrap().1;
 
             for (sno, summary) in spk.data_summaries().unwrap().iter().enumerate() {
                 let name_rcrd = spk.name_record().unwrap();

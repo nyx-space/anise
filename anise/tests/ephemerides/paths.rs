@@ -32,7 +32,7 @@ fn common_root_verif() {
     ] {
         let buf = file2heap!(path).unwrap();
         let spk = SPK::parse(buf).unwrap();
-        let ctx = Almanac::from_spk(spk).unwrap();
+        let ctx = Almanac::from_spk(spk);
 
         // The root of all these files should be the SSB
         assert_eq!(

@@ -44,7 +44,7 @@ fn test_find_root_from_pca() {
 fn test_single_bpc_dcm() {
     use core::str::FromStr;
     let bpc = BPC::load("../data/earth_latest_high_prec.bpc").unwrap();
-    let almanac = Almanac::from_bpc(bpc).unwrap();
+    let almanac = Almanac::from_bpc(bpc);
 
     // Test the BPC domain since a BPC is loaded here.
     let (start, end) = almanac.bpc_domain(3000).unwrap();
@@ -126,7 +126,7 @@ fn test_single_bpc_dcm() {
 fn test_itrf93_to_j2k() {
     use core::str::FromStr;
     let bpc = BPC::load("../data/earth_latest_high_prec.bpc").unwrap();
-    let almanac = Almanac::from_bpc(bpc).unwrap();
+    let almanac = Almanac::from_bpc(bpc);
 
     let epoch = Epoch::from_str("2019-03-01T04:02:51.0 ET").unwrap();
 
@@ -196,7 +196,7 @@ fn test_itrf93_to_j2k() {
 fn test_j2k_to_itrf93() {
     use core::str::FromStr;
     let bpc = BPC::load("../data/earth_latest_high_prec.bpc").unwrap();
-    let almanac = Almanac::from_bpc(bpc).unwrap();
+    let almanac = Almanac::from_bpc(bpc);
 
     let epoch = Epoch::from_str("2019-03-01T04:02:51.0 ET").unwrap();
 

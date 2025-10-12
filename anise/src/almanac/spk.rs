@@ -22,51 +22,54 @@ use crate::naif::daf::NAIFSummaryRecord;
 use crate::naif::spk::summary::SPKSummaryRecord;
 use crate::naif::SPK;
 use crate::{ephemerides::EphemerisError, NaifId};
-use log::error;
+use log::{error, warn};
 
-use super::{Almanac, MAX_LOADED_SPKS};
+use super::Almanac;
 
 impl Almanac {
-    pub fn from_spk(spk: SPK) -> Result<Almanac, EphemerisError> {
+    pub fn from_spk(spk: SPK) -> Self {
         let me = Self::default();
         me.with_spk(spk)
     }
 
-    /// Loads a new SPK file into a new context.
+    /// Loads a new SPK file into a new context, using the system time as the alias. If the time is not availble, then 0 TAI is used.
     /// This new context is needed to satisfy the unloading of files. In fact, to unload a file, simply let the newly loaded context drop out of scope and Rust will clean it up.
-    pub fn with_spk(&self, spk: SPK) -> Result<Self, EphemerisError> {
+    pub fn with_spk(&self, spk: SPK) -> Self {
+        // No alias is provided, let's use the loading time as the alias.
+        let alias = Epoch::now().unwrap_or_default().to_string();
+        self.with_spk_as(spk, alias)
+    }
+
+    /// Loads a new SPK file into a new context, naming it with the provided alias.
+    /// This new context is needed to satisfy the unloading of files. In fact, to unload a file, simply let the newly loaded context drop out of scope and Rust will clean it up.
+    pub fn with_spk_as(&self, spk: SPK, alias: String) -> Self {
         // This is just a bunch of pointers so it doesn't use much memory.
         let mut me = self.clone();
-        // Parse as SPK and place into the SPK list if there is room
-        let mut data_idx = MAX_LOADED_SPKS;
-        for (idx, item) in self.spk_data.iter().enumerate() {
-            if item.is_none() {
-                data_idx = idx;
-                break;
-            }
+        // For lifetime reasons, we format the message using a ref first
+        let msg = format!(
+            "unloading SPK `{alias}``, consider using spk_swap to reduce memory fragmentation"
+        );
+        if me.spk_data.insert(alias, spk).is_some() {
+            warn!("{msg}");
         }
-        if data_idx == MAX_LOADED_SPKS {
-            return Err(EphemerisError::StructureIsFull {
-                max_slots: MAX_LOADED_SPKS,
-            });
-        }
-        me.spk_data[data_idx] = Some(spk);
-        Ok(me)
+        me
+    }
+
+    /// Swaps the SPK loaded as `alias` with the new SPK, optionally renaming its alias.
+    /// This approach reuses the allocated memory, reducing the risk of memory fragmentation for long-running application.
+    pub fn spk_swap(
+        mut self,
+        alias: String,
+        spk: SPK,
+        new_alias: Option<String>,
+    ) -> Result<String, EphemerisError> {
+        todo!("spk_swap");
     }
 }
 
 impl Almanac {
     pub fn num_loaded_spk(&self) -> usize {
-        let mut count = 0;
-        for maybe in &self.spk_data {
-            if maybe.is_none() {
-                break;
-            } else {
-                count += 1;
-            }
-        }
-
-        count
+        self.spk_data.len()
     }
 
     /// Returns the summary given the name of the summary record if that summary has data defined at the requested epoch and the SPK where this name was found to be valid at that epoch.
@@ -75,14 +78,7 @@ impl Almanac {
         name: &str,
         epoch: Epoch,
     ) -> Result<(&SPKSummaryRecord, usize, usize), EphemerisError> {
-        for (spk_no, maybe_spk) in self
-            .spk_data
-            .iter()
-            .take(self.num_loaded_spk())
-            .rev()
-            .enumerate()
-        {
-            let spk = maybe_spk.as_ref().unwrap();
+        for (spk_no, spk) in self.spk_data.values().rev().enumerate() {
             if let Ok((summary, idx_in_spk)) = spk.summary_from_name_at_epoch(name, epoch) {
                 return Ok((summary, spk_no, idx_in_spk));
             }
@@ -106,14 +102,7 @@ impl Almanac {
         id: i32,
         epoch: Epoch,
     ) -> Result<(&SPKSummaryRecord, usize, usize), EphemerisError> {
-        for (spk_no, maybe_spk) in self
-            .spk_data
-            .iter()
-            .take(self.num_loaded_spk())
-            .rev()
-            .enumerate()
-        {
-            let spk = maybe_spk.as_ref().unwrap();
+        for (spk_no, spk) in self.spk_data.values().rev().enumerate() {
             if let Ok((summary, idx_in_spk)) = spk.summary_from_id_at_epoch(id, epoch) {
                 // NOTE: We're iterating backward, so the correct SPK number is "total loaded" minus "current iteration".
                 return Ok((summary, self.num_loaded_spk() - spk_no - 1, idx_in_spk));
@@ -141,14 +130,7 @@ impl Almanac {
         &self,
         name: &str,
     ) -> Result<(&SPKSummaryRecord, usize, usize), EphemerisError> {
-        for (spk_no, maybe_spk) in self
-            .spk_data
-            .iter()
-            .take(self.num_loaded_spk())
-            .rev()
-            .enumerate()
-        {
-            let spk = maybe_spk.as_ref().unwrap();
+        for (spk_no, spk) in self.spk_data.values().rev().enumerate() {
             if let Ok((summary, idx_in_spk)) = spk.summary_from_name(name) {
                 return Ok((summary, spk_no, idx_in_spk));
             }
@@ -171,14 +153,7 @@ impl Almanac {
         &self,
         id: i32,
     ) -> Result<(&SPKSummaryRecord, usize, usize), EphemerisError> {
-        for (spk_no, maybe_spk) in self
-            .spk_data
-            .iter()
-            .take(self.num_loaded_spk())
-            .rev()
-            .enumerate()
-        {
-            let spk = maybe_spk.as_ref().unwrap();
+        for (spk_no, spk) in self.spk_data.values().rev().enumerate() {
             if let Ok((summary, idx_in_spk)) = spk.summary_from_id(id) {
                 // NOTE: We're iterating backward, so the correct SPK number is "total loaded" minus "current iteration".
                 return Ok((summary, self.num_loaded_spk() - spk_no - 1, idx_in_spk));
@@ -205,8 +180,7 @@ impl Almanac {
     /// :rtype: typing.List
     pub fn spk_summaries(&self, id: NaifId) -> Result<Vec<SPKSummaryRecord>, EphemerisError> {
         let mut summaries = vec![];
-        for maybe_spk in self.spk_data.iter().take(self.num_loaded_spk()).rev() {
-            let spk = maybe_spk.as_ref().unwrap();
+        for spk in self.spk_data.values().rev() {
             if let Ok(these_summaries) = spk.data_summaries() {
                 for summary in these_summaries {
                     if summary.id() == id {
@@ -261,8 +235,7 @@ impl Almanac {
         ensure!(self.num_loaded_spk() > 0, NoEphemerisLoadedSnafu);
 
         let mut domains = HashMap::new();
-        for maybe_spk in self.spk_data.iter().take(self.num_loaded_spk()).rev() {
-            let spk = maybe_spk.as_ref().unwrap();
+        for spk in self.spk_data.values().rev() {
             if let Ok(these_summaries) = spk.data_summaries() {
                 for summary in these_summaries {
                     let this_id = summary.id();

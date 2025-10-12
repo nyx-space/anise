@@ -33,9 +33,7 @@ impl Almanac {
         // The common center is the absolute minimum of all centers due to the NAIF numbering.
         let mut common_center = i32::MAX;
 
-        for maybe_spk in self.spk_data.iter().take(self.num_loaded_spk()).rev() {
-            let spk = maybe_spk.as_ref().unwrap();
-
+        for spk in self.spk_data.values().rev() {
             for summary in spk.data_summaries().context(SPKSnafu {
                 action: "finding ephemeris root",
             })? {

@@ -26,7 +26,7 @@ fn de440s_translation_verif_venus2emb() {
     // "Load" the file via a memory map (avoids allocations)
     let path = "../data/de440s.bsp";
     let spk = SPK::load(path).unwrap();
-    let ctx = Almanac::from_spk(spk).unwrap();
+    let ctx = Almanac::from_spk(spk);
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
@@ -110,7 +110,7 @@ fn de438s_translation_verif_venus2moon() {
     let path = "../data/de440s.bsp";
     let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Almanac::from_spk(spk).unwrap();
+    let ctx = Almanac::from_spk(spk);
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
@@ -200,7 +200,7 @@ fn de438s_translation_verif_emb2moon() {
     let path = "../data/de440s.bsp";
     let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Almanac::from_spk(spk).unwrap();
+    let ctx = Almanac::from_spk(spk);
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
 
@@ -354,7 +354,7 @@ fn multithread_query() {
     let path = "../data/de440s.bsp";
     let buf = file2heap!(path).unwrap();
     let spk = SPK::parse(buf).unwrap();
-    let ctx = Almanac::from_spk(spk).unwrap();
+    let ctx = Almanac::from_spk(spk);
 
     let start_epoch = Epoch::from_str("2000-01-01T00:00:00 ET").unwrap();
 
@@ -384,7 +384,7 @@ fn type13_hermite_query() {
     let summary = traj.data_summaries().unwrap()[0];
     println!("{summary}");
 
-    let mut ctx = Almanac::from_spk(traj).unwrap();
+    let mut ctx = Almanac::from_spk(traj);
     // Also load the plantery data
     ctx.planetary_data = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
 

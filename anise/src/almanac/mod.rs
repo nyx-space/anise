@@ -10,6 +10,7 @@
 
 use bytes::Bytes;
 use hifitime::TimeScale;
+use indexmap::IndexMap;
 use log::info;
 use snafu::ResultExt;
 use zerocopy::FromBytes;
@@ -64,9 +65,9 @@ use pyo3::prelude::*;
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct Almanac {
     /// NAIF SPK is kept unchanged
-    pub spk_data: [Option<SPK>; MAX_LOADED_SPKS],
+    pub spk_data: IndexMap<String, SPK>,
     /// NAIF BPC is kept unchanged
-    pub bpc_data: [Option<BPC>; MAX_LOADED_BPCS],
+    pub bpc_data: IndexMap<String, BPC>,
     /// Dataset of planetary data
     pub planetary_data: PlanetaryDataSet,
     /// Dataset of spacecraft data
@@ -154,9 +155,7 @@ impl Almanac {
                             .context(OrientationSnafu {
                                 action: "from generic loading",
                             })?;
-                        self.with_bpc(bpc).context(OrientationSnafu {
-                            action: "adding BPC file to context",
-                        })
+                        Ok(self.with_bpc(bpc))
                     }
                     "SPK" => {
                         info!("Loading {} as DAF/SPK", path.unwrap_or("bytes"));
@@ -167,9 +166,7 @@ impl Almanac {
                             .context(EphemerisSnafu {
                                 action: "from generic loading",
                             })?;
-                        self.with_spk(spk).context(EphemerisSnafu {
-                            action: "adding SPK file to context",
-                        })
+                        Ok(self.with_spk(spk))
                     }
                     fileid => Err(AlmanacError::GenericError {
                         err: format!("DAF/{fileid} is not yet supported"),
@@ -279,32 +276,18 @@ impl Almanac {
         let print_any = spk.unwrap_or(false) || bpc.unwrap_or(false) || planetary.unwrap_or(false);
 
         if spk.unwrap_or(!print_any) {
-            for (spk_no, maybe_spk) in self
-                .spk_data
-                .iter()
-                .take(self.num_loaded_spk())
-                .rev()
-                .enumerate()
-            {
-                let spk = maybe_spk.as_ref().unwrap();
+            for (spk_no, (alias, spk)) in self.spk_data.iter().rev().enumerate() {
                 println!(
-                    "=== SPK #{spk_no} ===\n{}",
+                    "=== SPK #{spk_no}: `{alias}` ===\n{}",
                     spk.describe_in(time_scale.unwrap_or(TimeScale::TDB), round_time)
                 );
             }
         }
 
         if bpc.unwrap_or(!print_any) {
-            for (bpc_no, maybe_bpc) in self
-                .bpc_data
-                .iter()
-                .take(self.num_loaded_bpc())
-                .rev()
-                .enumerate()
-            {
-                let bpc = maybe_bpc.as_ref().unwrap();
+            for (bpc_no, (alias, bpc)) in self.bpc_data.iter().rev().enumerate() {
                 println!(
-                    "=== BPC #{bpc_no} ===\n{}",
+                    "=== BPC #{bpc_no}: `{alias}` ===\n{}",
                     bpc.describe_in(time_scale.unwrap_or(TimeScale::TDB), round_time)
                 );
             }

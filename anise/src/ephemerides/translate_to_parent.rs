@@ -50,8 +50,9 @@ impl Almanac {
         trace!("translate {source} wrt to {new_frame} @ {epoch:E}");
 
         // This should not fail because we've fetched the spk_no from above with the spk_summary_at_epoch call.
-        let spk_data = self.spk_data[spk_no]
-            .as_ref()
+        let (_, spk_data) = self
+            .spk_data
+            .get_index(spk_no)
             .ok_or(EphemerisError::Unreachable)?;
 
         // Now let's simply evaluate the data
