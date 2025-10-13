@@ -152,7 +152,8 @@ impl Almanac {
                             .context(OrientationSnafu {
                                 action: "from generic loading",
                             })?;
-                        Ok(self.with_bpc(bpc))
+                        Ok(self
+                            .with_bpc_as(bpc, path.map_or_else(|| None, |p| Some(p.to_string()))))
                     }
                     "SPK" => {
                         info!("Loading {} as DAF/SPK", path.unwrap_or("bytes"));
@@ -163,7 +164,8 @@ impl Almanac {
                             .context(EphemerisSnafu {
                                 action: "from generic loading",
                             })?;
-                        Ok(self.with_spk(spk))
+                        Ok(self
+                            .with_spk_as(spk, path.map_or_else(|| None, |p| Some(p.to_string()))))
                     }
                     fileid => Err(AlmanacError::GenericError {
                         err: format!("DAF/{fileid} is not yet supported"),

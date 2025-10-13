@@ -216,7 +216,7 @@ impl CompareEphem {
         }
 
         for spk in spks {
-            ctx = ctx.with_spk(spk).unwrap();
+            ctx = ctx.with_spk(spk);
         }
 
         info!("Pairs in comparator (count: {}): {:?}", pairs.len(), &pairs);

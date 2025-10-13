@@ -57,9 +57,7 @@ let pck = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
 // And add all of these to the Almanac context
 let almanac = ctx
     .with_spk(spk)
-    .unwrap()
     .with_bpc(bpc)
-    .unwrap()
     .with_planetary_data(pck);
 
 // Let's build an orbit

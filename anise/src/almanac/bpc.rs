@@ -34,18 +34,15 @@ impl Almanac {
     /// Loads a new Binary Planetary Constants (BPC) kernel into a new context, using the system time as the alias. If the time is not availble, then 0 TAI is used.
     /// This new context is needed to satisfy the unloading of files. In fact, to unload a file, simply let the newly loaded context drop out of scope and Rust will clean it up.
     pub fn with_bpc(self, bpc: BPC) -> Self {
-        // No alias is provided, let's use the loading time as the alias.
-        let alias = Epoch::now().unwrap_or_default().to_string();
-        self.with_bpc_as(bpc, alias)
+        self.with_bpc_as(bpc, None)
     }
 
-    /// Loads a new Binary Planetary Constant (BPC) file into a new context, naming it with the provided alias.
-    /// This new context is needed to satisfy the unloading of files. In fact, to unload a file, simply let the newly loaded context drop out of scope and Rust will clean it up.
-    pub fn with_bpc_as(mut self, bpc: BPC, alias: String) -> Self {
+    /// Loads a new Binary Planetary Constant (BPC) file into a new context, naming it with the provided alias or the current system time.
+    /// To unload a file, call bpc_unload.
+    pub fn with_bpc_as(mut self, bpc: BPC, alias: Option<String>) -> Self {
         // For lifetime reasons, we format the message using a ref first
-        let msg = format!(
-            "unloading BPC `{alias}``, consider using bpc_swap to reduce memory fragmentation"
-        );
+        let alias = alias.unwrap_or(Epoch::now().unwrap_or_default().to_string());
+        let msg = format!("unloading BPC `{alias}`");
         if self.bpc_data.insert(alias, bpc).is_some() {
             warn!("{msg}");
         }

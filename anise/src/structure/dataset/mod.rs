@@ -264,10 +264,17 @@ impl<T: DataSetT> DataSet<T> {
         }
     }
 
-    /// Mutates this dataset to remove the provided ID from the LUT and the dataset, removing also the lookup from its name if set.
-    /// This will return an error if the ID is not in the lookup table.
-    /// Note that this function requires a new heap allocation to change the underlying dataset
+    #[deprecated(since = "0.7.0", note = "use clear_by_id instead")]
     pub fn rm_by_id(&mut self, id: NaifId) -> Result<(), DataSetError> {
+        self.clear_by_id(id)
+    }
+
+    /// Mutates this dataset to clear an entry by its ID.
+    ///
+    /// This clears the entry in the data vector by replacing it with its default value, and removes the ID from the look-up table.
+    /// The corresponding name, if any, is also removed from the look-up table.
+    /// This will return an error if the ID is not in the lookup table.
+    pub fn clear_by_id(&mut self, id: NaifId) -> Result<(), DataSetError> {
         if let Some(index) = self.lut.by_id.swap_remove(&id) {
             *self
                 .data
@@ -340,10 +347,17 @@ impl<T: DataSetT> DataSet<T> {
         }
     }
 
-    /// Mutates this dataset to remove the provided name from the LUT and the dataset, removing also the lookup from its ID if set.
-    /// This will return an error if the name is not in the lookup table.
-    /// Note that this function requires a new heap allocation to change the underlying dataset
+    #[deprecated(since = "0.7.0", note = "use clear_by_name instead")]
     pub fn rm_by_name(&mut self, name: &str) -> Result<(), DataSetError> {
+        self.clear_by_name(name)
+    }
+
+    /// Mutates this dataset to clear an entry by its name.
+    ///
+    /// This clears the entry in the data vector by replacing it with its default value, and removes the name from the look-up table.
+    /// The corresponding ID, if any, is also removed from the look-up table.
+    /// This will return an error if the name is not in the lookup table
+    pub fn clear_by_name(&mut self, name: &str) -> Result<(), DataSetError> {
         if let Some(index) = self.lut.by_name.swap_remove(name) {
             *self
                 .data
@@ -367,9 +381,7 @@ impl<T: DataSetT> DataSet<T> {
         } else {
             Err(DataSetError::DataSetLut {
                 action: "removing by ID",
-                source: LutError::UnknownName {
-                    name: name.into(),
-                },
+                source: LutError::UnknownName { name: name.into() },
             })
         }
     }
@@ -433,7 +445,7 @@ impl<T: DataSetT> DataSet<T> {
     /// Returns this data as a data sequence, cloning all of the entries into this sequence.
     fn build_data_seq(&self) -> (Vec<u32>, OctetString) {
         let mut buf = Vec::new();
-        let mut meta = Vec::new();
+        let mut meta = Vec::with_capacity(self.data.len() + 1);
         meta.push(self.data.len() as u32);
         for data in &self.data {
             let mut this_buf = vec![];
@@ -789,7 +801,7 @@ mod dataset_ut {
         assert!(dataset.get_by_id(-52).is_err());
 
         // Remove by ID
-        assert!(dataset.rm_by_id(-20).is_ok(), "could not remove by id");
+        assert!(dataset.clear_by_id(-20).is_ok(), "could not remove by id");
         // Check that the associated name is no reachable
         assert!(
             dataset.get_by_name("SRP spacecraft").is_err(),
@@ -798,7 +810,7 @@ mod dataset_ut {
 
         // Remove by name
         assert!(
-            dataset.rm_by_name("Full spacecraft").is_ok(),
+            dataset.clear_by_name("Full spacecraft").is_ok(),
             "could not remove by name"
         );
         // Check that the associated name is no reachable

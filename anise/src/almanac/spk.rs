@@ -35,18 +35,16 @@ impl Almanac {
     /// Loads a new SPK file into a new context, using the system time as the alias. If the time is not availble, then 0 TAI is used.
     /// This new context is needed to satisfy the unloading of files. In fact, to unload a file, simply let the newly loaded context drop out of scope and Rust will clean it up.
     pub fn with_spk(self, spk: SPK) -> Self {
-        // No alias is provided, let's use the loading time as the alias.
-        let alias = Epoch::now().unwrap_or_default().to_string();
-        self.with_spk_as(spk, alias)
+        self.with_spk_as(spk, None)
     }
 
-    /// Loads a new SPK file into a new context, naming it with the provided alias.
-    /// This new context is needed to satisfy the unloading of files. In fact, to unload a file, simply let the newly loaded context drop out of scope and Rust will clean it up.
-    pub fn with_spk_as(mut self, spk: SPK, alias: String) -> Self {
-        // For lifetime reasons, we format the message using a ref first
-        let msg = format!(
-            "unloading SPK `{alias}``, consider using spk_swap to reduce memory fragmentation"
-        );
+    /// Loads a new SPK file into a new context, naming it with the provided alias, or the current system time if no alias is provided.
+    /// To unload a file, call spk_unload.
+    pub fn with_spk_as(mut self, spk: SPK, alias: Option<String>) -> Self {
+        // For lifetime reasons, we format the message using a ref first.
+        // This message is only displayed if there was something with that name before.
+        let alias = alias.unwrap_or(Epoch::now().unwrap_or_default().to_string());
+        let msg = format!("unloading SPK `{alias}`");
         if self.spk_data.insert(alias, spk).is_some() {
             warn!("{msg}");
         }
