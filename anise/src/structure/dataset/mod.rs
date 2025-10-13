@@ -38,6 +38,8 @@ io_imports!();
 
 mod datatype;
 mod error;
+#[cfg(feature = "analysis")]
+pub mod location_dhall;
 mod pretty_print;
 
 pub use datatype::DataSetType;
@@ -555,7 +557,7 @@ mod dataset_ut {
         assert_eq!(repr, repr_dec);
 
         dbg!(repr);
-        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData>>(), 248);
+        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData>>(), 232);
     }
 
     #[test]

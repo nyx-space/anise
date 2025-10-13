@@ -17,13 +17,26 @@ use serde_derive::{Deserialize, Serialize};
 use serde_dhall::StaticType;
 
 #[cfg(feature = "python")]
+use pyo3::exceptions::PyException;
+#[cfg(feature = "python")]
 use pyo3::prelude::*;
+#[cfg(feature = "python")]
+use pyo3::types::PyType;
 
 use super::dataset::DataSetT;
 
 /// Location is defined by its latitude, longitude, height above the geoid, mean angular rotation of the geoid, and a frame UID.
 /// If the location includes a terrain mask, it will be used for obstruction checks when computing azimuth and elevation.
 /// **Note:** The mean Earth angular velocity is `0.004178079012116429` deg/s.
+///
+///
+/// :type latitude_deg: float
+/// :type longitude_deg: float
+/// :type height_km: float
+/// :type frame: FrameUid
+/// :type terrain_mask: list
+/// :type terrain_mask_ignored: bool
+///
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "analysis", derive(StaticType))]
 #[cfg_attr(feature = "python", pyclass)]
@@ -40,9 +53,28 @@ pub struct Location {
     pub terrain_mask_ignored: bool,
 }
 
+#[cfg(feature = "analysis")]
+impl Location {
+    /// Rebuild a Location from its Dhall representation
+    pub fn from_dhall(repr: &str) -> Result<Self, String> {
+        serde_dhall::from_str(repr)
+            .static_type_annotation()
+            .parse::<Self>()
+            .map_err(|e| e.to_string())
+    }
+
+    /// Returns the Dhall representation of this Location
+    pub fn to_dhall(&self) -> Result<String, String> {
+        serde_dhall::serialize(&self)
+            .static_type_annotation()
+            .to_string()
+            .map_err(|e| e.to_string())
+    }
+}
+
 #[cfg_attr(feature = "python", pymethods)]
 impl Location {
-    /// Returns the elevation mask at the provided azimuth.
+    /// Returns the elevation mask at the provided azimuth, does NOT account for whether the mask is ignored or not.
     ///
     /// :type azimuth_deg: float
     /// :rtype: float
@@ -63,11 +95,44 @@ impl Location {
             .get(idx - 1)
             .map_or(0.0, |mask| mask.elevation_mask_deg)
     }
+
+    /// Returns the Dhall representation of this Location
+    #[cfg(feature = "python")]
+    #[pyo3(name = "to_dhall")]
+    pub fn py_to_dhall(&self) -> Result<String, PyErr> {
+        self.to_dhall().map_err(PyException::new_err)
+    }
+
+    #[cfg(feature = "python")]
+    #[classmethod]
+    #[pyo3(name = "from_dhall")]
+    fn py_from_dhall(_cls: Bound<'_, PyType>, repr: &str) -> Result<Self, PyErr> {
+        Self::from_dhall(repr).map_err(PyException::new_err)
+    }
 }
 
 #[cfg(feature = "python")]
 #[cfg_attr(feature = "python", pymethods)]
 impl Location {
+    #[new]
+    fn py_new(
+        latitude_deg: f64,
+        longitude_deg: f64,
+        height_km: f64,
+        frame: FrameUid,
+        terrain_mask: Vec<TerrainMask>,
+        terrain_mask_ignored: bool,
+    ) -> Self {
+        Self {
+            latitude_deg,
+            longitude_deg,
+            height_km,
+            frame,
+            terrain_mask,
+            terrain_mask_ignored,
+        }
+    }
+
     /// :rtype: float
     #[getter]
     fn get_latitude_deg(&self) -> f64 {
@@ -108,6 +173,10 @@ impl Location {
     fn set_terrain_mask_ignored(&mut self, terrain_mask_ignored: bool) {
         self.terrain_mask_ignored = terrain_mask_ignored;
     }
+
+    fn __str__(&self) -> String {
+        format!("{self:?}")
+    }
 }
 
 impl DataSetT for Location {
@@ -115,6 +184,9 @@ impl DataSetT for Location {
 }
 
 /// TerrainMask is used to compute obstructions during AER calculations.
+///
+/// :type azimuth_deg: float
+/// :type elevation_mask_deg: float
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "analysis", derive(StaticType))]
 #[cfg_attr(feature = "python", pyclass)]
@@ -130,6 +202,38 @@ impl TerrainMask {
     pub fn from_flat_terrain(elevation_mask_deg: f64) -> Self {
         Self {
             azimuth_deg: 0.0,
+            elevation_mask_deg,
+        }
+    }
+}
+
+#[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pymethods)]
+impl TerrainMask {
+    #[getter]
+    fn get_azimuth_deg(&self) -> f64 {
+        self.azimuth_deg
+    }
+
+    #[setter]
+    fn set_azimuth_deg(&mut self, azimuth_deg: f64) {
+        self.azimuth_deg = azimuth_deg;
+    }
+
+    #[getter]
+    fn get_elevation_mask_deg(&self) -> f64 {
+        self.elevation_mask_deg
+    }
+
+    #[setter]
+    fn set_elevation_mask_deg(&mut self, elevation_mask_deg: f64) {
+        self.elevation_mask_deg = elevation_mask_deg;
+    }
+
+    #[new]
+    fn py_new(azimuth_deg: f64, elevation_mask_deg: f64) -> Self {
+        Self {
+            azimuth_deg,
             elevation_mask_deg,
         }
     }
@@ -196,8 +300,6 @@ mod ut_loc {
     #[cfg(feature = "analysis")]
     #[test]
     fn test_location() {
-        use serde_dhall::{from_str, serialize};
-
         use crate::{constants::frames::EARTH_ITRF93, structure::location::TerrainMask};
 
         let dss65 = Location {
@@ -223,16 +325,9 @@ mod ut_loc {
         };
 
         // Test Dhall serde
-        let as_dhall = serialize(&dss65)
-            .static_type_annotation()
-            .to_string()
-            .unwrap();
+        let as_dhall = dss65.to_dhall().unwrap();
 
-        let from_dhall: Location = from_str(&as_dhall)
-            .static_type_annotation()
-            .parse()
-            .unwrap();
-
+        let from_dhall = Location::from_dhall(&as_dhall).unwrap();
         assert_eq!(from_dhall, dss65);
 
         println!("{as_dhall}");

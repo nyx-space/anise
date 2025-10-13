@@ -282,10 +282,31 @@ def test_frame_defs():
     assert Frames.EME2000 == Frames.EARTH_J2000
     assert Frames.EME2000 != Frames.SSB_J2000
 
+def test_location():
+    mask = [
+        TerrainMask(0.0, 5.0),
+        TerrainMask(35.0, 10.0),
+        TerrainMask(270.0, 3.0)
+    ]
+    dss65 = Location(
+        40.427_222,
+        4.250_556,
+        0.834_939,
+        FrameUid(399, 399),
+        mask,
+        terrain_mask_ignored=False,
+    )
+
+    as_dhall = dss65.to_dhall()
+
+    from_dhall = Location.from_dhall(as_dhall)
+
+    print(from_dhall)
 
 if __name__ == "__main__":
     # test_meta_load()
     # test_exports()
     # test_frame_defs()
     # test_convert_tpc()
-    test_state_transformation()
+    # test_state_transformation()
+    test_location()
