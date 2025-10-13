@@ -103,7 +103,7 @@ use anise::constants::frames::{EARTH_ITRF93, EME2000};
 let pck = "../data/earth_latest_high_prec.bpc";
 
 let bpc = BPC::load(pck).unwrap();
-let almanac = Almanac::from_bpc(bpc).unwrap();
+let almanac = Almanac::from_bpc(bpc);
 
 // Load the useful frame constants
 use anise::constants::frames::*;
@@ -151,7 +151,7 @@ use anise::prelude::*;
 use anise::constants::frames::*;
 
 let spk = SPK::load("../data/de440s.bsp").unwrap();
-let ctx = Almanac::from_spk(spk).unwrap();
+let ctx = Almanac::from_spk(spk);
 
 // Define an Epoch in the dynamical barycentric time scale
 let epoch = Epoch::from_str("2020-11-15 12:34:56.789 TDB").unwrap();
@@ -304,7 +304,7 @@ use anise::constants::frames::{EARTH_ITRF93, EME2000};
 use hifitime::Epoch;
 use core::str::FromStr;
 
-let almanac = Almanac::from_bpc(BPC::load("../data/earth_latest_high_prec.bpc").unwrap()).unwrap();
+let almanac = Almanac::from_bpc(BPC::load("../data/earth_latest_high_prec.bpc").unwrap());
 let epoch = Epoch::from_str("2019-03-01T04:02:51.0 ET").unwrap();
 let dcm = almanac.rotate(EARTH_ITRF93, EME2000, epoch).unwrap();
 
