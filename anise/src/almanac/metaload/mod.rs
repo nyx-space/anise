@@ -144,10 +144,10 @@ mod meta_test {
   [ { crc32 = Some 0x7286750a
     , uri = "http://public-data.nyxspace.com/anise/de440s.bsp"
     }
-  , { crc32 = Some 0xecf6942
+  , { crc32 = Some 0x3503391
     , uri = "http://public-data.nyxspace.com/anise/v0.7/pck11.pca"
     }
-  , { crc32 = Some 0x540e40d
+  , { crc32 = Some 0xabd5ff11
     , uri = "http://public-data.nyxspace.com/anise/v0.7/moon_fk_de440.epa"
     }
   , { crc32 = Some 0xcde5ca7d
