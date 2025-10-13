@@ -3,13 +3,9 @@ let MetaFile
     : Type
     = { uri : Text, crc32 : Optional Natural }
 
-let Meta
-    : Type
-    = { files : List MetaFile }
-
 let NyxAsset
     : Text -> Text
-    = \(file : Text) -> "http://public-data.nyxspace.com/anise/v0.5/${file}"
+    = \(file : Text) -> "http://public-data.nyxspace.com/anise/v0.7/${file}"
 
 let JplAsset
     : Text -> Text
