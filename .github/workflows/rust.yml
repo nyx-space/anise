@@ -80,6 +80,9 @@ jobs:
           cargo build --features embed_ephem --release
           cargo doc --features embed_ephem
 
+      - name: Build no default features
+        run: cargo test --no-run --no-default-features
+
   lints:
     name: Lints
     runs-on: ubuntu-latest

@@ -8,19 +8,22 @@
  * Documentation: https://nyxspace.com/
  */
 
+use crate::NaifId;
 use crate::{astro::Location, structure::LocationDataSet};
-use crate::{file2heap, NaifId};
 use serde::{Deserialize, Serialize};
 use serde_dhall::StaticType;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 
+#[cfg(feature = "python")]
+use crate::file2heap;
 #[cfg(feature = "python")]
 use pyo3::exceptions::PyException;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 #[cfg(feature = "python")]
 use pyo3::types::PyType;
+#[cfg(feature = "python")]
+use std::path::PathBuf;
 
 use super::{DataSet, DataSetType};
 

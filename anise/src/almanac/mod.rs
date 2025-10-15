@@ -274,7 +274,11 @@ impl Almanac {
         time_scale: Option<TimeScale>,
         round_time: Option<bool>,
     ) {
-        let print_any = spk.unwrap_or(false) || bpc.unwrap_or(false) || planetary.unwrap_or(false);
+        let print_any = spk.unwrap_or(false)
+            || bpc.unwrap_or(false)
+            || planetary.unwrap_or(false)
+            || eulerparams.unwrap_or(false)
+            || locations.unwrap_or(false);
 
         if spk.unwrap_or(!print_any) {
             for (spk_no, (alias, spk)) in self.spk_data.iter().rev().enumerate() {
