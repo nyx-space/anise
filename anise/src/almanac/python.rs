@@ -66,6 +66,7 @@ impl Almanac {
     /// :type bpc: bool, optional
     /// :type planetary: bool, optional
     /// :type eulerparams: bool, optional
+    /// :type locations: bool, optional
     /// :type time_scale: TimeScale, optional
     /// :type round_time: bool, optional
     /// :rtype: None
@@ -74,19 +75,30 @@ impl Almanac {
         bpc=None,
         planetary=None,
         eulerparams=None,
+        locations=None,
         time_scale=None,
         round_time=None,
     ))]
+    #[allow(clippy::too_many_arguments)]
     fn py_describe(
         &self,
         spk: Option<bool>,
         bpc: Option<bool>,
         planetary: Option<bool>,
         eulerparams: Option<bool>,
+        locations: Option<bool>,
         time_scale: Option<TimeScale>,
         round_time: Option<bool>,
     ) {
-        self.describe(spk, bpc, planetary, eulerparams, time_scale, round_time)
+        self.describe(
+            spk,
+            bpc,
+            planetary,
+            eulerparams,
+            locations,
+            time_scale,
+            round_time,
+        )
     }
 
     /// Generic function that tries to load the provided path guessing to the file type.

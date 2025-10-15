@@ -3,7 +3,7 @@ from pathlib import Path
 import pickle
 from math import radians
 
-from anise import Almanac, MetaAlmanac, MetaFile
+from anise import Almanac, MetaAlmanac, MetaFile, LocationDataSet, LocationDhallSet, LocationDhallSetEntry
 from anise.astro import *
 from anise.constants import Frames
 from anise.rotation import DCM, Quaternion
@@ -302,6 +302,24 @@ def test_location():
     from_dhall = Location.from_dhall(as_dhall)
 
     print(from_dhall)
+
+    # To build a location data set kernel, we must first build a location dhall set entry
+    entry = LocationDhallSetEntry(id=1, alias="My Alias", value=dss65)
+    # Then we append it to a LocationDhallSet
+    dhallset = LocationDhallSet([entry])
+    assert "data" in dir(dhallset), "missing getting on dhall set"
+    # Now, we can build the kernel
+    dataset = dhallset.to_dataset()
+    # Save it as a Location Kernel ANISE (LKA) file, overwritting it if it exists
+    dataset.save_as("pytest_loc_kernel.lka", True)
+    # Reload it
+    reloaded = LocationDataSet.load("pytest_loc_kernel.lka")
+    # We can also convert it its Dhall representation
+    dhallset = reloaded.to_dhallset()
+    print(dhallset.to_dhall())
+    # Confirm that we can load it in the almanac.
+    almanac = Almanac("pytest_loc_kernel.lka")
+    print(almanac.describe())
 
 if __name__ == "__main__":
     # test_meta_load()

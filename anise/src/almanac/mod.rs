@@ -263,12 +263,14 @@ impl Almanac {
 
     /// Pretty prints the description of this Almanac, showing everything by default. Default time scale is TDB.
     /// If any parameter is set to true, then nothing other than that will be printed.
+    #[allow(clippy::too_many_arguments)]
     pub fn describe(
         &self,
         spk: Option<bool>,
         bpc: Option<bool>,
         planetary: Option<bool>,
         eulerparams: Option<bool>,
+        locations: Option<bool>,
         time_scale: Option<TimeScale>,
         round_time: Option<bool>,
     ) {
@@ -301,6 +303,10 @@ impl Almanac {
                 "=== EULER PARAMETER DATA ==\n{}",
                 self.euler_param_data.describe()
             );
+        }
+
+        if locations.unwrap_or(!print_any) {
+            println!("=== LOCATIONS DATA ==\n{}", self.location_data.describe());
         }
     }
 }

@@ -8,23 +8,81 @@
  * Documentation: https://nyxspace.com/
  */
 
-use std::collections::BTreeMap;
-
-use crate::NaifId;
 use crate::{astro::Location, structure::LocationDataSet};
+use crate::{file2heap, NaifId};
 use serde::{Deserialize, Serialize};
 use serde_dhall::StaticType;
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+
+#[cfg(feature = "python")]
+use pyo3::exceptions::PyException;
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+#[cfg(feature = "python")]
+use pyo3::types::PyType;
 
 use super::{DataSet, DataSetType};
 
+/// Entry of a Location Dhall set
+///
+/// :type id: int, optional
+/// :type alias: string, optional
+/// :type value: Location
 #[derive(Clone, Debug, StaticType, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct LocationDhallSetEntry {
     pub id: Option<NaifId>,
     pub alias: Option<String>,
     pub value: Location,
 }
 
+#[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pymethods)]
+impl LocationDhallSetEntry {
+    #[new]
+    fn py_new(id: Option<NaifId>, alias: Option<String>, value: Location) -> Self {
+        Self { id, alias, value }
+    }
+
+    /// :rtype: int
+    #[getter]
+    fn get_id(&self) -> Option<NaifId> {
+        self.id
+    }
+    /// :type id: int
+    #[setter]
+    fn set_id(&mut self, id: Option<NaifId>) {
+        self.id = id;
+    }
+    /// :rtype: str
+    #[getter]
+    fn get_alias(&self) -> Option<String> {
+        self.alias.clone()
+    }
+    /// :type alias: str
+    #[setter]
+    fn set_alias(&mut self, alias: Option<String>) {
+        self.alias = alias;
+    }
+    /// :rtype: Location
+    #[getter]
+    fn get_value(&self) -> Location {
+        self.value.clone()
+    }
+    /// :type value: Location
+    #[setter]
+    fn set_value(&mut self, value: Location) {
+        self.value = value;
+    }
+}
+/// A Dhall-serializable Location DataSet that serves as an optional intermediate to the LocationDataSet kernels.
+///
+/// :type data: list
 #[derive(Clone, Debug, StaticType, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct LocationDhallSet {
     data: Vec<LocationDhallSetEntry>,
 }
@@ -73,6 +131,55 @@ impl LocationDhallSet {
     }
 }
 
+#[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pymethods)]
+impl LocationDhallSet {
+    #[new]
+    fn py_new(data: Vec<LocationDhallSetEntry>) -> Self {
+        Self { data }
+    }
+
+    /// :rtype: list
+    #[getter]
+    fn get_data(&self) -> Vec<LocationDhallSetEntry> {
+        self.data.clone()
+    }
+    /// :type data: list
+    #[setter]
+    fn set_data(&mut self, data: Vec<LocationDhallSetEntry>) {
+        self.data = data;
+    }
+    /// Returns the Dhall representation of this Location
+    ///
+    /// :rtype: str
+    #[pyo3(name = "to_dhall")]
+    fn py_to_dhall(&self) -> Result<String, PyErr> {
+        self.to_dhall().map_err(PyException::new_err)
+    }
+
+    /// Loads thie Location dataset from its Dhall representation as a string
+    ///
+    /// :type repr: str
+    /// :rtype: LocationDhallSet
+    #[classmethod]
+    #[pyo3(name = "from_dhall")]
+    fn py_from_dhall(_cls: Bound<'_, PyType>, repr: &str) -> Result<Self, PyErr> {
+        Self::from_dhall(repr).map_err(PyException::new_err)
+    }
+
+    /// Converts this location Dhall set into a Python-compatible Location DataSet.
+    ///
+    /// :rtype: LocationDataSet
+    #[pyo3(name = "to_dataset")]
+    fn py_to_dataset(&mut self) -> Result<PyLocationDataSet, PyErr> {
+        Ok(PyLocationDataSet {
+            inner: self
+                .to_dataset()
+                .map_err(|e| PyException::new_err(e.to_string()))?,
+        })
+    }
+}
+
 impl LocationDataSet {
     /// Converts a location dataset kernel into its Dhall representation struct
     pub fn to_dhallset(&self) -> Result<LocationDhallSet, String> {
@@ -111,6 +218,54 @@ impl LocationDataSet {
             .collect::<Vec<LocationDhallSetEntry>>();
 
         Ok(LocationDhallSet { data })
+    }
+}
+
+/// A wrapper around a location dataset kernel (PyO3 does not handle type aliases).
+/// Use this class to load and unload kernels. Manipulate using its LocationDhallSet representation.
+#[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise"))]
+#[pyo3(name = "LocationDataSet")]
+pub struct PyLocationDataSet {
+    inner: LocationDataSet,
+}
+
+#[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pymethods)]
+impl PyLocationDataSet {
+    /// Loads a Location Dataset kernel from the provided path
+    ///
+    /// :type path: string
+    #[classmethod]
+    fn load(_cls: Bound<'_, PyType>, path: &str) -> Result<Self, PyErr> {
+        let dataset = LocationDataSet::try_from_bytes(
+            file2heap!(path).map_err(|e| PyException::new_err(e.to_string()))?,
+        )
+        .map_err(|e| PyException::new_err(e.to_string()))?;
+
+        Ok(Self { inner: dataset })
+    }
+
+    /// Save this dataset as a kernel, optionally specifying whether to overwrite the existing file.
+    ///
+    /// :type path: string
+    /// :type overwrite: bool, optional
+    /// :rtype: None
+    fn save_as(&mut self, path: &str, overwrite: Option<bool>) -> Result<(), PyErr> {
+        self.inner.set_crc32();
+        self.inner
+            .save_as(&PathBuf::from(path), overwrite.unwrap_or_default())
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+
+    /// Converts this location dataset into a manipulable location Dhall set.
+    ///
+    /// :rtype: LocationDhallSet
+    fn to_dhallset(&self) -> Result<LocationDhallSet, PyErr> {
+        self.inner
+            .to_dhallset()
+            .map_err(|e| PyException::new_err(e.to_string()))
     }
 }
 

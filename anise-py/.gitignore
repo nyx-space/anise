@@ -72,4 +72,4 @@ docs/_build/
 # Pyenv
 .python-version
 
-.ipynb_checkpoints
+.ipynb_checkpoints.lka
