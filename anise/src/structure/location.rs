@@ -1,5 +1,3 @@
-use std::cmp::Ordering;
-
 /*
  * ANISE Toolkit
  * Copyright (C) 2021-onward Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
@@ -75,6 +73,7 @@ impl Location {
 
     /// Ensures that the terrain mask is ordered by azimuth, and remove duplicate azimuths
     pub fn sanitize_mask(&mut self) {
+        use std::cmp::Ordering;
         self.terrain_mask.sort_by(|mask1, mask2| {
             mask1
                 .azimuth_deg
@@ -91,6 +90,7 @@ impl Location {
     ///
     /// :type azimuth_deg: float
     /// :rtype: float
+    #[pyo3(signature=(azimuth_deg))]
     pub fn elevation_mask_at_azimuth_deg(&self, azimuth_deg: f64) -> f64 {
         if self.terrain_mask.is_empty() {
             return 0.0;
@@ -118,7 +118,7 @@ impl Location {
 
     #[cfg(feature = "python")]
     #[classmethod]
-    #[pyo3(name = "from_dhall")]
+    #[pyo3(name = "from_dhall", signature=(repr))]
     fn py_from_dhall(_cls: Bound<'_, PyType>, repr: &str) -> Result<Self, PyErr> {
         Self::from_dhall(repr).map_err(PyException::new_err)
     }
@@ -323,12 +323,12 @@ impl<'a> Decode<'a> for Location {
     }
 }
 
+#[cfg(feature = "analysis")]
 #[cfg(test)]
 mod ut_loc {
     use super::Location;
     use super::{Decode, Encode};
 
-    #[cfg(feature = "analysis")]
     #[test]
     fn test_location() {
         use crate::{constants::frames::EARTH_ITRF93, structure::location::TerrainMask};
