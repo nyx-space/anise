@@ -81,7 +81,7 @@ jobs:
           cargo doc --features embed_ephem
 
       - name: Build no default features
-        run: cargo test --no-run --no-default-features
+        run: cd anise && cargo test --no-run --no-default-features
 
   lints:
     name: Lints
