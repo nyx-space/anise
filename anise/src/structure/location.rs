@@ -176,6 +176,16 @@ impl Location {
     fn set_height_km(&mut self, height_km: f64) {
         self.height_km = height_km;
     }
+    /// :rtype: list
+    #[getter]
+    fn get_terrain_mask(&self) -> Vec<TerrainMask> {
+        self.terrain_mask.clone()
+    }
+    /// :type terrain_mask: list
+    #[setter]
+    fn set_terrain_mask(&mut self, terrain_mask: Vec<TerrainMask>) {
+        self.terrain_mask = terrain_mask;
+    }
     /// :rtype: bool
     #[getter]
     fn get_terrain_mask_ignored(&self) -> bool {
@@ -249,6 +259,14 @@ impl TerrainMask {
             azimuth_deg,
             elevation_mask_deg,
         }
+    }
+
+    fn __str__(&self) -> String {
+        format!("{self:?}")
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{self:?} @ {self:p}")
     }
 }
 

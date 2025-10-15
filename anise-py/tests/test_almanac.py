@@ -319,7 +319,14 @@ def test_location():
     print(dhallset.to_dhall())
     # Confirm that we can load it in the almanac.
     almanac = Almanac("pytest_loc_kernel.lka")
-    print(almanac.describe())
+    # Recall: the describe has its own print!
+    almanac.describe()
+    # And we can grab the location data itself
+    my_loc = dhallset.data[0]
+    print(my_loc.alias)
+    print(my_loc.value) # This is the location info
+    terrain_mask = my_loc.value.terrain_mask
+    print(terrain_mask)
 
 if __name__ == "__main__":
     # test_meta_load()
