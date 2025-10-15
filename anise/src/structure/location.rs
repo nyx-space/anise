@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 /*
  * ANISE Toolkit
  * Copyright (C) 2021-onward Christopher Rabotin <christopher.rabotin@gmail.com> et al. (cf. AUTHORS.md)
@@ -69,6 +71,17 @@ impl Location {
             .static_type_annotation()
             .to_string()
             .map_err(|e| e.to_string())
+    }
+
+    /// Ensures that the terrain mask is ordered by azimuth, and remove duplicate azimuths
+    pub fn sanitize_mask(&mut self) {
+        self.terrain_mask.sort_by(|mask1, mask2| {
+            mask1
+                .azimuth_deg
+                .partial_cmp(&mask2.azimuth_deg)
+                .unwrap_or(Ordering::Less)
+        });
+        self.terrain_mask.dedup_by_key(|mask| mask.azimuth_deg);
     }
 }
 
