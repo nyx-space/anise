@@ -10,6 +10,7 @@
 
 use bytes::Bytes;
 use hifitime::TimeScale;
+use indexmap::IndexMap;
 use log::info;
 use snafu::ResultExt;
 use zerocopy::FromBytes;
@@ -33,8 +34,6 @@ use core::fmt;
 // TODO: Switch these to build constants so that it's configurable when building the library.
 pub const MAX_LOADED_SPKS: usize = 32;
 pub const MAX_LOADED_BPCS: usize = 8;
-pub const MAX_SPACECRAFT_DATA: usize = 16;
-pub const MAX_PLANETARY_DATA: usize = 128;
 
 pub mod aer;
 pub mod bpc;
@@ -66,9 +65,9 @@ use pyo3::prelude::*;
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct Almanac {
     /// NAIF SPK is kept unchanged
-    pub spk_data: [Option<SPK>; MAX_LOADED_SPKS],
+    pub spk_data: IndexMap<String, SPK>,
     /// NAIF BPC is kept unchanged
-    pub bpc_data: [Option<BPC>; MAX_LOADED_BPCS],
+    pub bpc_data: IndexMap<String, BPC>,
     /// Dataset of planetary data
     pub planetary_data: PlanetaryDataSet,
     /// Dataset of spacecraft data
@@ -107,32 +106,29 @@ impl Almanac {
     }
 
     /// Loads the provided spacecraft data into a clone of this original Almanac.
-    pub fn with_spacecraft_data(&self, spacecraft_data: SpacecraftDataSet) -> Self {
-        let mut me = self.clone();
-        me.spacecraft_data = spacecraft_data;
-        me
+    pub fn with_spacecraft_data(mut self, spacecraft_data: SpacecraftDataSet) -> Self {
+        self.spacecraft_data = spacecraft_data;
+        self
     }
 
     /// Loads the provided Euler parameter data into a clone of this original Almanac.
-    pub fn with_euler_parameters(&self, ep_dataset: EulerParameterDataSet) -> Self {
-        let mut me = self.clone();
-        me.euler_param_data = ep_dataset;
-        me
+    pub fn with_euler_parameters(mut self, ep_dataset: EulerParameterDataSet) -> Self {
+        self.euler_param_data = ep_dataset;
+        self
     }
 
     /// Loads the provided location data into a clone of this original Almanac.
-    pub fn with_location_data(&self, loc_dataset: LocationDataSet) -> Self {
-        let mut me = self.clone();
-        me.location_data = loc_dataset;
-        me
+    pub fn with_location_data(mut self, loc_dataset: LocationDataSet) -> Self {
+        self.location_data = loc_dataset;
+        self
     }
 
     /// Loads the provides bytes as one of the data types supported in ANISE.
-    pub fn load_from_bytes(&self, bytes: Bytes) -> AlmanacResult<Self> {
+    pub fn load_from_bytes(self, bytes: Bytes) -> AlmanacResult<Self> {
         self._load_from_bytes(bytes, None)
     }
 
-    fn _load_from_bytes(&self, bytes: Bytes, path: Option<&str>) -> AlmanacResult<Self> {
+    fn _load_from_bytes(self, bytes: Bytes, path: Option<&str>) -> AlmanacResult<Self> {
         // Check if they forgot to run git lfs
         if let Some(lfs_header) = bytes.get(..8) {
             if lfs_header == "version".as_bytes() {
@@ -156,9 +152,8 @@ impl Almanac {
                             .context(OrientationSnafu {
                                 action: "from generic loading",
                             })?;
-                        self.with_bpc(bpc).context(OrientationSnafu {
-                            action: "adding BPC file to context",
-                        })
+                        Ok(self
+                            .with_bpc_as(bpc, path.map_or_else(|| None, |p| Some(p.to_string()))))
                     }
                     "SPK" => {
                         info!("Loading {} as DAF/SPK", path.unwrap_or("bytes"));
@@ -169,9 +164,8 @@ impl Almanac {
                             .context(EphemerisSnafu {
                                 action: "from generic loading",
                             })?;
-                        self.with_spk(spk).context(EphemerisSnafu {
-                            action: "adding SPK file to context",
-                        })
+                        Ok(self
+                            .with_spk_as(spk, path.map_or_else(|| None, |p| Some(p.to_string()))))
                     }
                     fileid => Err(AlmanacError::GenericError {
                         err: format!("DAF/{fileid} is not yet supported"),
@@ -249,7 +243,7 @@ impl Almanac {
     }
 
     /// Generic function that tries to load the provided path guessing to the file type.
-    pub fn load(&self, path: &str) -> AlmanacResult<Self> {
+    pub fn load(self, path: &str) -> AlmanacResult<Self> {
         // Load the data onto the heap
         let bytes = file2heap!(path).context(LoadingSnafu {
             path: path.to_string(),
@@ -269,44 +263,36 @@ impl Almanac {
 
     /// Pretty prints the description of this Almanac, showing everything by default. Default time scale is TDB.
     /// If any parameter is set to true, then nothing other than that will be printed.
+    #[allow(clippy::too_many_arguments)]
     pub fn describe(
         &self,
         spk: Option<bool>,
         bpc: Option<bool>,
         planetary: Option<bool>,
         eulerparams: Option<bool>,
+        locations: Option<bool>,
         time_scale: Option<TimeScale>,
         round_time: Option<bool>,
     ) {
-        let print_any = spk.unwrap_or(false) || bpc.unwrap_or(false) || planetary.unwrap_or(false);
+        let print_any = spk.unwrap_or(false)
+            || bpc.unwrap_or(false)
+            || planetary.unwrap_or(false)
+            || eulerparams.unwrap_or(false)
+            || locations.unwrap_or(false);
 
         if spk.unwrap_or(!print_any) {
-            for (spk_no, maybe_spk) in self
-                .spk_data
-                .iter()
-                .take(self.num_loaded_spk())
-                .rev()
-                .enumerate()
-            {
-                let spk = maybe_spk.as_ref().unwrap();
+            for (spk_no, (alias, spk)) in self.spk_data.iter().rev().enumerate() {
                 println!(
-                    "=== SPK #{spk_no} ===\n{}",
+                    "=== SPK #{spk_no}: `{alias}` ===\n{}",
                     spk.describe_in(time_scale.unwrap_or(TimeScale::TDB), round_time)
                 );
             }
         }
 
         if bpc.unwrap_or(!print_any) {
-            for (bpc_no, maybe_bpc) in self
-                .bpc_data
-                .iter()
-                .take(self.num_loaded_bpc())
-                .rev()
-                .enumerate()
-            {
-                let bpc = maybe_bpc.as_ref().unwrap();
+            for (bpc_no, (alias, bpc)) in self.bpc_data.iter().rev().enumerate() {
                 println!(
-                    "=== BPC #{bpc_no} ===\n{}",
+                    "=== BPC #{bpc_no}: `{alias}` ===\n{}",
                     bpc.describe_in(time_scale.unwrap_or(TimeScale::TDB), round_time)
                 );
             }
@@ -321,6 +307,10 @@ impl Almanac {
                 "=== EULER PARAMETER DATA ==\n{}",
                 self.euler_param_data.describe()
             );
+        }
+
+        if locations.unwrap_or(!print_any) {
+            println!("=== LOCATIONS DATA ==\n{}", self.location_data.describe());
         }
     }
 }

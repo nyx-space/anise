@@ -57,7 +57,11 @@ impl UiApp {
             if let Some(result) = promise.ready() {
                 let (file_name, data) = result.as_ref().map(|x| x.clone()).unwrap();
                 self.promise = None;
-                match self.almanac.load_from_bytes(bytes::Bytes::from(data)) {
+                match self
+                    .almanac
+                    .clone()
+                    .load_from_bytes(bytes::Bytes::from(data))
+                {
                     Ok(almanac) => FileLoadResult::Ok((file_name, almanac)),
                     Err(e) => FileLoadResult::Error(e),
                 }
@@ -78,7 +82,7 @@ impl UiApp {
     fn load_almanac(&mut self) -> FileLoadResult {
         if let Some(path_buf) = rfd::FileDialog::new().pick_file() {
             let path = path_buf.to_str().unwrap().to_string();
-            match self.almanac.load(&path) {
+            match self.almanac.clone().load(&path) {
                 Ok(almanac) => FileLoadResult::Ok((path, Box::new(almanac))),
                 Err(e) => FileLoadResult::Error(Box::new(e)),
             }
@@ -95,7 +99,7 @@ impl eframe::App for UiApp {
         egui::TopBottomPanel::top("header").show(ctx, |ui| {
             ui.horizontal_centered(|ui| {
                 ui.vertical_centered(|ui| {
-                    ui.heading("ANISE v0.6");
+                    ui.heading("ANISE v0.7");
                     ui.label("A modern rewrite of NASA's SPICE toolkit");
                     ui.hyperlink_to(
                         "https://www.nyxspace.com",
@@ -157,12 +161,12 @@ impl eframe::App for UiApp {
                                 let (label, crc) = if self.almanac.num_loaded_spk() == 1 {
                                     (
                                         "DAF/SPK",
-                                        self.almanac.spk_data[0].as_ref().unwrap().crc32(),
+                                        self.almanac.spk_data.get_index(0).unwrap().1.crc32(),
                                     )
                                 } else if self.almanac.num_loaded_bpc() == 1 {
                                     (
                                         "DAF/PCK",
-                                        self.almanac.bpc_data[0].as_ref().unwrap().crc32(),
+                                        self.almanac.bpc_data.get_index(0).unwrap().1.crc32(),
                                     )
                                 } else if !self.almanac.planetary_data.is_empty() {
                                     ("ANISE/PCA", self.almanac.planetary_data.crc32())
@@ -190,18 +194,24 @@ impl eframe::App for UiApp {
                                         ui.text_edit_singleline(&mut format!("{crc}"));
 
                                         if label.ends_with("SPK") {
-                                            let num_summaries = self.almanac.spk_data[0]
-                                                .as_ref()
+                                            let num_summaries = self
+                                                .almanac
+                                                .spk_data
+                                                .get_index(0)
                                                 .unwrap()
+                                                .1
                                                 .daf_summary()
                                                 .unwrap()
                                                 .num_summaries();
                                             ui.label("Number of summaries");
                                             ui.label(format!("{num_summaries}"));
                                         } else if label.ends_with("PCK") {
-                                            let num_summaries = self.almanac.bpc_data[0]
-                                                .as_ref()
+                                            let num_summaries = self
+                                                .almanac
+                                                .bpc_data
+                                                .get_index(0)
                                                 .unwrap()
+                                                .1
                                                 .daf_summary()
                                                 .unwrap()
                                                 .num_summaries();

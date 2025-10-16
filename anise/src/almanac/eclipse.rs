@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+use hifitime::{Duration, Unit};
 use log::error;
 
 use crate::{
@@ -22,6 +23,7 @@ use crate::{
 use super::Almanac;
 use crate::errors::AlmanacResult;
 
+use core::f64::consts::PI;
 use snafu::ResultExt;
 
 impl Almanac {
@@ -66,7 +68,7 @@ impl Almanac {
 
         if obstructing_body.mean_equatorial_radius_km().is_err() {
             obstructing_body =
-                self.frame_from_uid(obstructing_body)
+                self.frame_info(obstructing_body)
                     .map_err(|e| AlmanacError::GenericError {
                         err: format!("{e} when fetching frame data for {obstructing_body}"),
                     })?;
@@ -117,19 +119,19 @@ impl Almanac {
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<Occultation> {
         if back_frame.mean_equatorial_radius_km().is_err() {
-            back_frame =
-                self.frame_from_uid(back_frame)
-                    .map_err(|e| AlmanacError::GenericError {
-                        err: format!("{e} when fetching {back_frame:e} frame data"),
-                    })?;
+            back_frame = self
+                .frame_info(back_frame)
+                .map_err(|e| AlmanacError::GenericError {
+                    err: format!("{e} when fetching {back_frame:e} frame data"),
+                })?;
         }
 
         if front_frame.mean_equatorial_radius_km().is_err() {
-            front_frame =
-                self.frame_from_uid(front_frame)
-                    .map_err(|e| AlmanacError::GenericError {
-                        err: format!("{e} when fetching {front_frame:e} frame data"),
-                    })?;
+            front_frame = self
+                .frame_info(front_frame)
+                .map_err(|e| AlmanacError::GenericError {
+                    err: format!("{e} when fetching {front_frame:e} frame data"),
+                })?;
         }
 
         let bobj_mean_eq_radius_km = back_frame
@@ -301,13 +303,34 @@ impl Almanac {
     /// Original code from GMAT, <https://github.com/ChristopherRabotin/GMAT/blob/GMAT-R2022a/src/gmatutil/util/CalculationUtilities.cpp#L209-L219>
     pub fn beta_angle_deg(&self, state: Orbit, ab_corr: Option<Aberration>) -> AlmanacResult<f64> {
         let u_sun = self.sun_unit_vector(state.epoch, state.frame, ab_corr)?;
-        let orbit_mom = state.hvec().map_err(|e| AlmanacError::GenericError {
-            err: format!("{e}"),
-        })? / state.hmag().map_err(|e| AlmanacError::GenericError {
+        let u_hvec = state.h_hat().map_err(|e| AlmanacError::GenericError {
             err: format!("{e}"),
         })?;
 
-        Ok(orbit_mom.dot(&u_sun).asin().to_degrees())
+        Ok(u_hvec.dot(&u_sun).asin().to_degrees())
+    }
+
+    /// Compute the local solar time, returned as a Duration between 0 and 24 hours.
+    pub fn local_solar_time(
+        &self,
+        state: Orbit,
+        ab_corr: Option<Aberration>,
+    ) -> AlmanacResult<Duration> {
+        let u_sun = self.sun_unit_vector(state.epoch, state.frame, ab_corr)?;
+        let u_hvec = state.h_hat().map_err(|e| AlmanacError::GenericError {
+            err: format!("{e}"),
+        })?;
+
+        let u = u_sun.cross(&u_hvec);
+        let v = u_hvec.cross(&u);
+
+        let sin_theta = v.dot(&state.r_hat());
+        let cos_theta = u.dot(&state.r_hat());
+
+        let theta_rad = sin_theta.atan2(cos_theta);
+        let lst_h = (theta_rad / PI * 12.0 + 6.0).rem_euclid(24.0);
+
+        Ok(Unit::Hour * lst_h)
     }
 
     /// Returns the Local Time of the Ascending Node (LTAN) in hours.
@@ -393,8 +416,8 @@ mod ut_los {
 
     #[rstest]
     fn los_edge_case(almanac: Almanac) {
-        let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
-        let luna = almanac.frame_from_uid(MOON_J2000).unwrap();
+        let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+        let luna = almanac.frame_info(MOON_J2000).unwrap();
 
         let dt1 = Epoch::from_gregorian_tai_hms(2020, 1, 1, 6, 7, 40);
         let dt2 = Epoch::from_gregorian_tai_hms(2020, 1, 1, 6, 7, 50);
@@ -491,7 +514,7 @@ mod ut_los {
 
     #[rstest]
     fn los_earth_eclipse(almanac: Almanac) {
-        let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
+        let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
 
         let dt = Epoch::from_gregorian_tai_at_midnight(2020, 1, 1);
 

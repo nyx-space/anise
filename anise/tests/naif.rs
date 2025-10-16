@@ -133,29 +133,27 @@ fn test_spk_load_bytes() {
 
     // Put this in a context
     let default_almanac = Almanac::default();
-    let spice = default_almanac.with_spk(de421).unwrap();
-    assert_eq!(spice.num_loaded_spk(), 1);
     assert_eq!(default_almanac.num_loaded_spk(), 0);
+    let spice = default_almanac.with_spk(de421);
+    assert_eq!(spice.num_loaded_spk(), 1);
 
     // Now load another DE file
     // NOTE: Rust has strict lifetime requirements, and the Spice Context is set up such that loading another dataset will return a new context with that data set loaded in it.
     {
         let bytes = file2heap!("../data/de440.bsp").unwrap();
         let de440 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
-        let spice = spice.with_spk(de440).unwrap();
+        let spice = spice.clone().with_spk(de440);
 
         // And another
         let bytes = file2heap!("../data/de440s.bsp").unwrap();
         let de440 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
-        let spice = spice.with_spk(de440).unwrap();
+        let spice = spice.with_spk(de440);
 
-        // NOTE: Because everything is a pointer, the size on the stack remains constant at 521 bytes.
         println!("{}", size_of_val(&spice));
         assert_eq!(spice.num_loaded_spk(), 3);
-        assert_eq!(default_almanac.num_loaded_spk(), 0);
+        // assert_eq!(default_almanac.num_loaded_spk(), 0);
     }
 
-    // NOTE: Because everything is a pointer, the size on the stack remains constant at 521 bytes.
     println!("{}", size_of_val(&spice));
 }
 

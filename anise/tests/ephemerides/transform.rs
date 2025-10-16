@@ -64,12 +64,7 @@ fn de440s_transform_verif_venus2emb() {
     spice::furnsh(spk_path);
     spice::furnsh(bpc_path);
 
-    let almanac = Almanac::default()
-        .with_spk(spk)
-        .unwrap()
-        .with_bpc(bpc)
-        .unwrap();
-
+    let almanac = Almanac::default().with_spk(spk).with_bpc(bpc);
     let epoch = Epoch::from_gregorian_utc_at_midnight(2020, 2, 7);
 
     let state = almanac
@@ -306,7 +301,7 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
     let latitude_deg = 40.427_222;
     let longitude_deg = 4.250_556;
     let height_km = 0.834_939;
-    let iau_earth = almanac.frame_from_uid(IAU_EARTH_FRAME).unwrap();
+    let iau_earth = almanac.frame_info(IAU_EARTH_FRAME).unwrap();
 
     let mut obstructions = 0;
     let mut no_obstructions = 0;

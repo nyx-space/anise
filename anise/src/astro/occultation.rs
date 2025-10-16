@@ -24,6 +24,7 @@ use pyo3::prelude::*;
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Occultation {
     pub epoch: Epoch,
+    /// Percetnage is 100 for an umbra, 0 for full visibility, and in between for penumbra
     pub percentage: f64,
     pub back_frame: Frame,
     pub front_frame: Frame,

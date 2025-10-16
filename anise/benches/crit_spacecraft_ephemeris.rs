@@ -54,10 +54,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let buf = file2heap!("../data/lro.bsp").unwrap();
     let spacecraft = SPK::parse(buf).unwrap();
 
-    let ctx = Almanac::from_spk(spk)
-        .unwrap()
-        .with_spk(spacecraft)
-        .unwrap();
+    let ctx = Almanac::from_spk(spk).with_spk(spacecraft);
 
     c.bench_function("ANISE hermite", |b| {
         b.iter(|| benchmark_anise_single_hop_type13_hermite(&ctx, &time_vec))

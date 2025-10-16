@@ -44,7 +44,7 @@ pub fn bpc_ui(
             });
         })
         .body(|mut body| {
-            let pck = almanac.bpc_data[0].as_ref().unwrap();
+            let pck = almanac.bpc_data.get_index(0).unwrap().1;
 
             for (sno, summary) in pck.data_summaries().unwrap().iter().enumerate() {
                 let name_rcrd = pck.name_record().unwrap();

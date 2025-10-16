@@ -207,7 +207,7 @@ fn validate_bpc_rotation_to_parent() {
     spice::furnsh(pck);
 
     let bpc = BPC::load(pck).unwrap();
-    let almanac = Almanac::from_bpc(bpc).unwrap();
+    let almanac = Almanac::from_bpc(bpc);
 
     // This BPC file start in 2011 and ends in 2022.
     for (num, epoch) in TimeSeries::inclusive(
@@ -412,7 +412,7 @@ fn validate_bpc_rotations() {
     spice::furnsh(pck);
 
     let bpc = BPC::load(pck).unwrap();
-    let almanac = Almanac::from_bpc(bpc).unwrap();
+    let almanac = Almanac::from_bpc(bpc);
 
     let frame = Frame::new(EARTH, ITRF93);
 
@@ -546,7 +546,7 @@ fn validate_bpc_to_iau_rotations() {
         planetary_data,
         ..Default::default()
     };
-    let almanac = almanac.with_bpc(BPC::load(bpc).unwrap()).unwrap();
+    let almanac = almanac.with_bpc(BPC::load(bpc).unwrap());
 
     println!("{almanac}");
 

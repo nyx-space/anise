@@ -28,6 +28,9 @@ use pyo3::prelude::*;
 
 /// A unique frame reference that only contains enough information to build the actual Frame object.
 /// It cannot be used for any computations, is it be used in any structure apart from error structures.
+///
+/// :type ephemeris_id: int
+/// :type orientation_id: int
 #[derive(Copy, Clone, Default, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "analysis", derive(StaticType))]
 #[cfg_attr(feature = "python", pyclass)]
@@ -100,5 +103,17 @@ impl<'a> Decode<'a> for FrameUid {
             ephemeris_id: decoder.decode()?,
             orientation_id: decoder.decode()?,
         })
+    }
+}
+
+#[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pymethods)]
+impl FrameUid {
+    #[new]
+    fn py_new(ephemeris_id: NaifId, orientation_id: NaifId) -> Self {
+        Self {
+            ephemeris_id,
+            orientation_id,
+        }
     }
 }

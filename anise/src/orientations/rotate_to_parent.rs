@@ -53,8 +53,9 @@ impl Almanac {
                 trace!("rotate {source} wrt to {new_frame} @ {epoch:E}");
 
                 // This should not fail because we've fetched the bpc_no from above with the bpc_summary_at_epoch call.
-                let bpc_data = self.bpc_data[bpc_no]
-                    .as_ref()
+                let (_, bpc_data) = self
+                    .bpc_data
+                    .get_index(bpc_no)
                     .ok_or(OrientationError::Unreachable)?;
 
                 // Compute the angles and their rates

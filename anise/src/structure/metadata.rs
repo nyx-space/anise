@@ -12,11 +12,7 @@ use bytes::Bytes;
 use core::fmt;
 use core::str::FromStr;
 use der::{asn1::Utf8StringRef, Decode, Encode, Reader, Writer};
-use heapless::String;
 use hifitime::Epoch;
-
-/// Default maximum length of the Metadata originator length string
-pub const MAX_ORIGINATOR_LEN: usize = 32;
 
 use super::{dataset::DataSetType, semver::Semver, ANISE_VERSION};
 
@@ -29,7 +25,7 @@ pub struct Metadata {
     /// Date time of the creation of this file.
     pub creation_date: Epoch,
     /// Originator of the file, either an organization, a person, a tool, or a combination thereof
-    pub originator: String<MAX_ORIGINATOR_LEN>,
+    pub originator: String,
 }
 
 impl Metadata {
@@ -103,10 +99,7 @@ impl<'a> Decode<'a> for Metadata {
                     der::Length::ONE,
                 )
             })?;
-        let orig_str = decoder.decode::<Utf8StringRef<'a>>()?.as_str();
-        let originator = orig_str[..MAX_ORIGINATOR_LEN.min(orig_str.len())]
-            .try_into()
-            .unwrap();
+        let originator = decoder.decode::<Utf8StringRef<'a>>()?.to_string();
         Ok(Self {
             anise_version,
             dataset_type,
@@ -153,7 +146,7 @@ mod metadata_ut {
         assert_eq!(
             format!("{repr}"),
             format!(
-                r#"ANISE version ANISE version 0.4.0
+                r#"ANISE version ANISE version 0.7.0
 Originator: (not set)
 Creation date: {}
 "#,
@@ -185,7 +178,7 @@ Creation date: {}
     #[test]
     fn meta_with_orig() {
         let repr = Metadata {
-            originator: "Nyx Space Origin".try_into().unwrap(),
+            originator: "Nyx Space Origin".to_string(),
             ..Default::default()
         };
 

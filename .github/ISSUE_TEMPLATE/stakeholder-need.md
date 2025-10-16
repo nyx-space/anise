@@ -7,12 +7,6 @@ assignees: ''
 
 ---
 
-<!--
-
-Need a hand writing this? Use this GPT: https://chat.openai.com/g/g-ByMjS6jYe-nyx-software-ai-engineer .
-
--->
-
 # High level description
 
 Describe the need you have either with use cases or examples.

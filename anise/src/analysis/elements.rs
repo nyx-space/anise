@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
 
 use super::{AnalysisError, PhysicsOrbitElSnafu};
@@ -15,7 +16,7 @@ use crate::prelude::Orbit;
 
 /// Orbital element defines all of the supported orbital elements in ANISE, which are all built from a State.
 #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum OrbitalElement {
     /// Argument of Latitude (deg)
     AoL,
@@ -188,6 +189,27 @@ impl OrbitalElement {
             Self::Y => Ok(orbit.radius_km.y),
             Self::Z => Ok(orbit.radius_km.z),
         }
+    }
+
+    pub const fn is_angle(&self) -> bool {
+        matches!(
+            self,
+            Self::AoL
+                | Self::AoP
+                | Self::Declination
+                | Self::EccentricAnomaly
+                | Self::FlightPathAngle
+                | Self::Latitude
+                | Self::Longitude
+                | Self::HyperbolicAnomaly
+                | Self::Inclination
+                | Self::MeanAnomaly
+                | Self::RightAscension
+                | Self::RAAN
+                | Self::TrueAnomaly
+                | Self::TrueLongitude
+                | Self::VelocityDeclination
+        )
     }
 
     /// Returns the default event finding precision in the unit of that parameter

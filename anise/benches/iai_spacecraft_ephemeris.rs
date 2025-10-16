@@ -33,10 +33,7 @@ fn benchmark_anise_single_hop_type13_hermite() {
     let buf = file2heap!("../data/lro.bsp").unwrap();
     let spacecraft = SPK::parse(buf).unwrap();
 
-    let ctx = Almanac::from_spk(spk)
-        .unwrap()
-        .with_spk(spacecraft)
-        .unwrap();
+    let ctx = Almanac::from_spk(spk).with_spk(spacecraft);
 
     let my_sc_j2k = Frame::from_ephem_j2000(-85);
 

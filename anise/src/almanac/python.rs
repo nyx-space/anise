@@ -34,7 +34,8 @@ impl Almanac {
     /// Returns the frame information (gravitational param, shape) as defined in this Almanac from an empty frame
     /// :type uid: Frame
     /// :rtype: Frame
-    fn frame_info(&self, uid: Frame) -> Result<Frame, PlanetaryDataError> {
+    #[pyo3(name = "frame_info", signature=(uid))]
+    fn py_frame_info(&self, uid: Frame) -> Result<Frame, PlanetaryDataError> {
         Ok(self
             .planetary_data
             .get_by_id(uid.ephemeris_id)
@@ -65,6 +66,7 @@ impl Almanac {
     /// :type bpc: bool, optional
     /// :type planetary: bool, optional
     /// :type eulerparams: bool, optional
+    /// :type locations: bool, optional
     /// :type time_scale: TimeScale, optional
     /// :type round_time: bool, optional
     /// :rtype: None
@@ -73,19 +75,30 @@ impl Almanac {
         bpc=None,
         planetary=None,
         eulerparams=None,
+        locations=None,
         time_scale=None,
         round_time=None,
     ))]
+    #[allow(clippy::too_many_arguments)]
     fn py_describe(
         &self,
         spk: Option<bool>,
         bpc: Option<bool>,
         planetary: Option<bool>,
         eulerparams: Option<bool>,
+        locations: Option<bool>,
         time_scale: Option<TimeScale>,
         round_time: Option<bool>,
     ) {
-        self.describe(spk, bpc, planetary, eulerparams, time_scale, round_time)
+        self.describe(
+            spk,
+            bpc,
+            planetary,
+            eulerparams,
+            locations,
+            time_scale,
+            round_time,
+        )
     }
 
     /// Generic function that tries to load the provided path guessing to the file type.
@@ -94,9 +107,28 @@ impl Almanac {
     /// :rtype: Almanac
     #[pyo3(name = "load")]
     fn py_load(&self, path: &str) -> AlmanacResult<Self> {
-        self.load(path)
+        self.clone().load(path)
     }
 
+    /// Unloads (in-place) the SPK with the provided alias.
+    /// **WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded.
+    ///
+    /// :type path: str
+    /// :rtype: None
+    #[pyo3(name = "spk_unload")]
+    fn py_spk_unload(&mut self, alias: &str) -> Result<(), EphemerisError> {
+        self.spk_unload(alias)
+    }
+
+    /// Unloads (in-place) the BPC with the provided alias.
+    /// **WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded.
+    ///
+    /// :type path: str
+    /// :rtype: None
+    #[pyo3(name = "bpc_unload")]
+    fn py_bpc_unload(&mut self, alias: &str) -> Result<(), OrientationError> {
+        self.bpc_unload(alias)
+    }
     /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
     /// receiver state (`rx`) seen from the transmitter state (`tx`), once converted into the SEZ frame of the transmitter.
     ///

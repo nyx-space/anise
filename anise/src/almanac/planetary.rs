@@ -29,7 +29,13 @@ pub enum PlanetaryDataError {
 
 impl Almanac {
     /// Given the frame UID (or something that can be transformed into it), attempt to retrieve the full frame information, if that frame is loaded
+    #[deprecated(since = "0.7.0", note = "use frame_info instead")]
     pub fn frame_from_uid<U: Into<FrameUid>>(&self, uid: U) -> Result<Frame, PlanetaryDataError> {
+        self.frame_info(uid)
+    }
+
+    /// Given the frame UID (or something that can be transformed into it), attempt to retrieve the full frame information, if that frame is loaded
+    pub fn frame_info<U: Into<FrameUid>>(&self, uid: U) -> Result<Frame, PlanetaryDataError> {
         let uid = uid.into();
         Ok(self
             .planetary_data
@@ -91,7 +97,7 @@ impl PlanetaryDataSet {
 
             let mut row = PlanetaryRow {
                 name: match opt_name {
-                    Some(name) => format!("{name}"),
+                    Some(name) => name.clone(),
                     None => "Unset".to_string(),
                 },
                 id: match opt_id {
