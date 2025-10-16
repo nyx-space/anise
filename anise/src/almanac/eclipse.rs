@@ -332,6 +332,39 @@ impl Almanac {
 
         Ok(Unit::Hour * lst_h)
     }
+
+    /// Returns the Local Time of the Ascending Node (LTAN).
+    /// This is the local time on the celestial body at which the spacecraft crosses the equator from south to north.
+    ///
+    /// The formula is from Wertz, "Spacecraft Attitude Determination and Control", page 79, equation (4-8).
+    /// LTAN (hours) = 12.0 + (RAAN_orbit - RA_sun) / 15.0
+    ///
+    /// :type orbit: Orbit
+    /// :type ab_corr: Aberration, optional
+    /// :rtype: Duration
+    pub fn ltan(&self, orbit: Orbit, ab_corr: Option<Aberration>) -> AlmanacResult<Duration> {
+        let sun_state = self.transform(SUN_J2000, orbit.frame, orbit.epoch, ab_corr)?;
+        let ra_sun_deg = sun_state.right_ascension_deg();
+        let raan_orbit_deg = orbit.raan_deg().map_err(|e| AlmanacError::GenericError {
+            err: format!("{e}"),
+        })?;
+        let ltan = (12.0 + (raan_orbit_deg - ra_sun_deg) / 15.0).rem_euclid(24.0);
+        Ok(Unit::Hour * ltan)
+    }
+
+    /// Returns the Local Time of the Descending Node (LTDN) in hours.
+    /// This is the local time on the celestial body at which the spacecraft crosses the equator from north to south.
+    ///
+    /// LTDN is 12 hours after LTAN.
+    ///
+    /// :type orbit: Orbit
+    /// :type ab_corr: Aberration, optional
+    /// :rtype: Duration
+    pub fn ltdn(&self, orbit: Orbit, ab_corr: Option<Aberration>) -> AlmanacResult<Duration> {
+        let ltan_h = self.ltan(orbit, ab_corr)?.to_unit(Unit::Hour);
+        let ltdn_h = (ltan_h + 12.0).rem_euclid(24.0);
+        Ok(Unit::Hour * ltdn_h)
+    }
 }
 
 /// Compute the area of the circular segment of radius r and chord length d

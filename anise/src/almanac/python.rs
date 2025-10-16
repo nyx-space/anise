@@ -183,7 +183,7 @@ impl Almanac {
         obstructing_body: Option<Frame>,
         ab_corr: Option<Aberration>,
     ) -> Vec<AzElRange> {
-        py.allow_threads(|| {
+        py.detach(|| {
             let mut rslt = rx_tx_states
                 .par_iter()
                 .filter_map(|(rx, tx)| {
@@ -326,7 +326,7 @@ impl Almanac {
         observers: Vec<Orbit>,
         ab_corr: Option<Aberration>,
     ) -> Vec<Occultation> {
-        py.allow_threads(|| {
+        py.detach(|| {
             let mut rslt = observers
                 .par_iter()
                 .filter_map(|observer| {
@@ -424,7 +424,7 @@ impl Almanac {
         time_series: TimeSeries,
         ab_corr: Option<Aberration>,
     ) -> Vec<CartesianState> {
-        py.allow_threads(|| {
+        py.detach(|| {
             let mut states = time_series
                 .par_bridge()
                 .filter_map(|epoch| {
@@ -485,7 +485,7 @@ impl Almanac {
         observer_frame: Frame,
         ab_corr: Option<Aberration>,
     ) -> Vec<CartesianState> {
-        py.allow_threads(|| {
+        py.detach(|| {
             let mut rslt = states
                 .par_iter()
                 .filter_map(|state| {

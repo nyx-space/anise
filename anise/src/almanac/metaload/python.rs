@@ -59,7 +59,7 @@ impl MetaAlmanac {
         autodelete: Option<bool>,
     ) -> AlmanacResult<Almanac> {
         let mut meta = Self::default();
-        py.allow_threads(|| match meta.process(autodelete.unwrap_or(false)) {
+        py.detach(|| match meta.process(autodelete.unwrap_or(false)) {
             Ok(almanac) => Ok(almanac),
             Err(e) => Err(e),
         })
@@ -76,7 +76,7 @@ impl MetaAlmanac {
     #[pyo3(name = "process")]
     #[pyo3(signature=(autodelete=None))]
     pub fn py_process(&mut self, py: Python, autodelete: Option<bool>) -> AlmanacResult<Almanac> {
-        py.allow_threads(|| self.process(autodelete.unwrap_or(true)))
+        py.detach(|| self.process(autodelete.unwrap_or(true)))
     }
 
     fn __str__(&self) -> String {

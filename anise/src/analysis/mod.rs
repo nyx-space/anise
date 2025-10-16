@@ -360,6 +360,8 @@ mod ut_analysis {
                 location_id: 123,
                 obstructing_body: None,
             },
+            ScalarExpr::LocalTimeAscNode,
+            ScalarExpr::LocalTimeDescNode,
             ScalarExpr::VectorX(proj.clone()),
             ScalarExpr::VectorY(proj.clone()),
             ScalarExpr::VectorZ(proj.clone()),
