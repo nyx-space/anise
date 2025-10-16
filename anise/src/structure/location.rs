@@ -90,7 +90,6 @@ impl Location {
     ///
     /// :type azimuth_deg: float
     /// :rtype: float
-    #[pyo3(signature=(azimuth_deg))]
     pub fn elevation_mask_at_azimuth_deg(&self, azimuth_deg: f64) -> f64 {
         if self.terrain_mask.is_empty() {
             return 0.0;
