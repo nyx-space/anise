@@ -361,11 +361,9 @@ impl Almanac {
     /// :type ab_corr: Aberration, optional
     /// :rtype: Duration
     pub fn ltdn(&self, orbit: Orbit, ab_corr: Option<Aberration>) -> AlmanacResult<Duration> {
-        let mut ltdn = self.ltan(orbit, ab_corr)? + Unit::Hour * 12.0;
-        if ltdn >= Unit::Hour * 24.0 {
-            ltdn -= Unit::Hour * 24.0;
-        }
-        Ok(ltdn)
+        let ltan_h = self.ltan(orbit, ab_corr)?.to_unit(Unit::Hour);
+        let ltdn_h = (ltan_h + 12.0).rem_euclid(24.0);
+        Ok(Unit::Hour * ltdn_h)
     }
 }
 
