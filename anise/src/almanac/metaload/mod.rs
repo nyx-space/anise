@@ -60,7 +60,7 @@ impl Almanac {
     /// Load from the provided MetaFile, downloading it if necessary.
     /// Set autodelete to true to automatically delete lock files. Lock files are important in multi-threaded loads.
     pub fn load_from_metafile(
-        &self,
+        self,
         mut metafile: MetaFile,
         autodelete: bool,
     ) -> AlmanacResult<Self> {
@@ -89,7 +89,7 @@ impl Almanac {
         metafile: MetaFile,
         autodelete: bool,
     ) -> AlmanacResult<Self> {
-        py.allow_threads(|| self.load_from_metafile(metafile, autodelete))
+        py.allow_threads(|| self.clone().load_from_metafile(metafile, autodelete))
     }
 }
 
@@ -109,7 +109,7 @@ mod meta_test {
 
         let almanac = meta.process(true).unwrap();
         // Shows everything in this Almanac
-        almanac.describe(None, None, None, None, None, None);
+        almanac.describe(None, None, None, None, None, None, None);
 
         // Process again to confirm that the CRC check works
         assert!(meta.process(true).is_ok());
@@ -144,11 +144,11 @@ mod meta_test {
   [ { crc32 = Some 0x7286750a
     , uri = "http://public-data.nyxspace.com/anise/de440s.bsp"
     }
-  , { crc32 = Some 0x8213b6e9
-    , uri = "http://public-data.nyxspace.com/anise/v0.5/pck11.pca"
+  , { crc32 = Some 0x3503391
+    , uri = "http://public-data.nyxspace.com/anise/v0.7/pck11.pca"
     }
-  , { crc32 = Some 0x21633903
-    , uri = "http://public-data.nyxspace.com/anise/v0.5/moon_fk_de440.epa"
+  , { crc32 = Some 0xabd5ff11
+    , uri = "http://public-data.nyxspace.com/anise/v0.7/moon_fk_de440.epa"
     }
   , { crc32 = Some 0xcde5ca7d
     , uri = "http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc"

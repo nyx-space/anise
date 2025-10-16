@@ -11,6 +11,8 @@
 use ::anise::almanac::metaload::{MetaAlmanac, MetaFile};
 use ::anise::almanac::Almanac;
 use ::anise::astro::Aberration;
+use ::anise::structure::dataset::location_dhall::PyLocationDataSet;
+use ::anise::structure::dataset::location_dhall::{LocationDhallSet, LocationDhallSetEntry};
 use hifitime::leap_seconds::{LatestLeapSeconds, LeapSecondsFile};
 use hifitime::python::{PyDurationError, PyHifitimeError, PyParsingError};
 use hifitime::ut1::Ut1Provider;
@@ -40,6 +42,9 @@ fn anise(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Aberration>()?;
     m.add_class::<MetaAlmanac>()?;
     m.add_class::<MetaFile>()?;
+    m.add_class::<LocationDhallSet>()?;
+    m.add_class::<LocationDhallSetEntry>()?;
+    m.add_class::<PyLocationDataSet>()?;
     Ok(())
 }
 

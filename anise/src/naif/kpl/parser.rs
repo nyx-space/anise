@@ -592,7 +592,7 @@ pub fn convert_fk_items(
         let parent_idx = dataset
             .lut
             .by_name
-            .get(&(relative_to.as_str().try_into().unwrap()))
+            .get(&relative_to)
             .ok_or(DataSetError::Conversion {
                 action: format!(
                     "frame {id} is class 4 relative to `{relative_to}`, but that frame is not found"

@@ -3,11 +3,11 @@
   [ { crc32 = Some 0x7286750a
     , uri = "http://public-data.nyxspace.com/anise/de440s.bsp"
     }
-  , { crc32 = Some 0x8213b6e9
-    , uri = "http://public-data.nyxspace.com/anise/v0.5/pck11.pca"
+  , { crc32 = Some 0x3503391
+    , uri = "http://public-data.nyxspace.com/anise/v0.7/pck11.pca"
     }
-  , { crc32 = Some 0x21633903
-    , uri = "http://public-data.nyxspace.com/anise/v0.5/moon_fk_de440.epa"
+  , { crc32 = Some 0xabd5ff11
+    , uri = "http://public-data.nyxspace.com/anise/v0.7/moon_fk_de440.epa"
     }
   , { crc32 = Some 0xcde5ca7d
     , uri = "http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc"

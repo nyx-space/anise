@@ -3,7 +3,7 @@ from pathlib import Path
 import pickle
 from math import radians
 
-from anise import Almanac, MetaAlmanac, MetaFile
+from anise import Almanac, MetaAlmanac, MetaFile, LocationDataSet, LocationDhallSet, LocationDhallSetEntry
 from anise.astro import *
 from anise.constants import Frames
 from anise.rotation import DCM, Quaternion
@@ -282,10 +282,56 @@ def test_frame_defs():
     assert Frames.EME2000 == Frames.EARTH_J2000
     assert Frames.EME2000 != Frames.SSB_J2000
 
+def test_location():
+    mask = [
+        TerrainMask(0.0, 5.0),
+        TerrainMask(35.0, 10.0),
+        TerrainMask(270.0, 3.0)
+    ]
+    dss65 = Location(
+        40.427_222,
+        4.250_556,
+        0.834_939,
+        FrameUid(399, 399),
+        mask,
+        terrain_mask_ignored=False,
+    )
+
+    as_dhall = dss65.to_dhall()
+
+    from_dhall = Location.from_dhall(as_dhall)
+
+    print(from_dhall)
+
+    # To build a location data set kernel, we must first build a location dhall set entry
+    entry = LocationDhallSetEntry(id=1, alias="My Alias", value=dss65)
+    # Then we append it to a LocationDhallSet
+    dhallset = LocationDhallSet([entry])
+    assert "data" in dir(dhallset), "missing getting on dhall set"
+    # Now, we can build the kernel
+    dataset = dhallset.to_dataset()
+    # Save it as a Location Kernel ANISE (LKA) file, overwritting it if it exists
+    dataset.save_as("pytest_loc_kernel.lka", True)
+    # Reload it
+    reloaded = LocationDataSet.load("pytest_loc_kernel.lka")
+    # We can also convert it its Dhall representation
+    dhallset = reloaded.to_dhallset()
+    print(dhallset.to_dhall())
+    # Confirm that we can load it in the almanac.
+    almanac = Almanac("pytest_loc_kernel.lka")
+    # Recall: the describe has its own print!
+    almanac.describe()
+    # And we can grab the location data itself
+    my_loc = dhallset.data[0]
+    print(my_loc.alias)
+    print(my_loc.value) # This is the location info
+    terrain_mask = my_loc.value.terrain_mask
+    print(terrain_mask)
 
 if __name__ == "__main__":
     # test_meta_load()
     # test_exports()
     # test_frame_defs()
     # test_convert_tpc()
-    test_state_transformation()
+    # test_state_transformation()
+    test_location()

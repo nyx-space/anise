@@ -63,7 +63,7 @@ pub fn pca_ui(ui: &mut egui::Ui, almanac: &Almanac) {
                 body.row(30.0, |mut row| {
                     row.col(|ui| {
                         ui.label(match opt_name {
-                            Some(name) => format!("{name}"),
+                            Some(name) => name.to_string(),
                             None => "Unset".to_string(),
                         });
                     });

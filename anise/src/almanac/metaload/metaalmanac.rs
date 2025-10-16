@@ -152,15 +152,15 @@ impl Default for MetaAlmanac {
                     crc32: Some(0x7286750a),
                 },
                 MetaFile {
-                    uri: nyx_cloud_stor.join("v0.5/pck11.pca").unwrap().to_string(),
-                    crc32: Some(0x8213b6e9),
+                    uri: nyx_cloud_stor.join("v0.7/pck11.pca").unwrap().to_string(),
+                    crc32: Some(0x3503391),
                 },
                 MetaFile {
                     uri: nyx_cloud_stor
-                        .join("v0.5/moon_fk_de440.epa")
+                        .join("v0.7/moon_fk_de440.epa")
                         .unwrap()
                         .to_string(),
-                    crc32: Some(0x21633903),
+                    crc32: Some(0xabd5ff11),
                 },
                 MetaFile {
                     uri: nyx_cloud_stor

@@ -21,10 +21,7 @@ use crate::{
 };
 use core::fmt;
 use core::ops::Deref;
-use der::{
-    asn1::{OctetString, SequenceOf},
-    Decode, Encode, Reader, Writer,
-};
+use der::{asn1::OctetString, Decode, Encode, Reader, Writer};
 use log::{error, trace};
 use snafu::prelude::*;
 
@@ -41,6 +38,8 @@ io_imports!();
 
 mod datatype;
 mod error;
+#[cfg(feature = "analysis")]
+pub mod location_dhall;
 mod pretty_print;
 
 pub use datatype::DataSetType;
@@ -53,16 +52,16 @@ pub trait DataSetT: Clone + Default + Encode + for<'a> Decode<'a> {
 
 /// A DataSet is the core structure shared by all ANISE binary data.
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
-pub struct DataSet<T: DataSetT, const ENTRIES: usize> {
+pub struct DataSet<T: DataSetT> {
     pub metadata: Metadata,
     /// All datasets have LookUpTable (LUT) that stores the mapping between a key and its index in the ephemeris list.
-    pub lut: LookUpTable<ENTRIES>,
+    pub lut: LookUpTable,
     pub data_checksum: u32,
     /// The actual data from the dataset
     pub data: Vec<T>,
 }
 
-impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
+impl<T: DataSetT> DataSet<T> {
     /// Try to load an Anise file from a pointer of bytes
     pub fn try_from_bytes<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DataSetError> {
         match Self::from_der(&bytes) {
@@ -233,7 +232,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
             self.data
                 .get(*index as usize)
                 .cloned()
-                .ok_or_else(|| LutError::InvalidIndex { index: *index })
+                .ok_or(LutError::InvalidIndex { index: *index })
                 .context(DataSetLutSnafu {
                     action: "fetching by ID",
                 })
@@ -253,7 +252,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
             *self
                 .data
                 .get_mut(*index as usize)
-                .ok_or_else(|| LutError::InvalidIndex { index: *index })
+                .ok_or(LutError::InvalidIndex { index: *index })
                 .context(DataSetLutSnafu {
                     action: "fetching by ID",
                 })? = new_value;
@@ -267,15 +266,22 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
         }
     }
 
-    /// Mutates this dataset to remove the provided ID from the LUT and the dataset, removing also the lookup from its name if set.
-    /// This will return an error if the ID is not in the lookup table.
-    /// Note that this function requires a new heap allocation to change the underlying dataset
+    #[deprecated(since = "0.7.0", note = "use clear_by_id instead")]
     pub fn rm_by_id(&mut self, id: NaifId) -> Result<(), DataSetError> {
-        if let Some(index) = self.lut.by_id.remove(&id) {
+        self.clear_by_id(id)
+    }
+
+    /// Mutates this dataset to clear an entry by its ID.
+    ///
+    /// This clears the entry in the data vector by replacing it with its default value, and removes the ID from the look-up table.
+    /// The corresponding name, if any, is also removed from the look-up table.
+    /// This will return an error if the ID is not in the lookup table.
+    pub fn clear_by_id(&mut self, id: NaifId) -> Result<(), DataSetError> {
+        if let Some(index) = self.lut.by_id.swap_remove(&id) {
             *self
                 .data
                 .get_mut(index as usize)
-                .ok_or_else(|| LutError::InvalidIndex { index })
+                .ok_or(LutError::InvalidIndex { index })
                 .context(DataSetLutSnafu {
                     action: "fetching by ID",
                 })? = T::default();
@@ -301,11 +307,11 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
 
     /// Get a copy of the data with that name, if that name is in the lookup table
     pub fn get_by_name(&self, name: &str) -> Result<T, DataSetError> {
-        if let Some(index) = self.lut.by_name.get(&name.try_into().unwrap()) {
+        if let Some(index) = self.lut.by_name.get(name) {
             self.data
                 .get(*index as usize)
                 .cloned()
-                .ok_or_else(|| LutError::InvalidIndex { index: *index })
+                .ok_or(LutError::InvalidIndex { index: *index })
                 .context(DataSetLutSnafu {
                     action: "fetching by name",
                 })
@@ -313,7 +319,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
             Err(DataSetError::DataSetLut {
                 action: "fetching by name",
                 source: LutError::UnknownName {
-                    name: name.try_into().unwrap(),
+                    name: name.to_string(),
                 },
             })
         }
@@ -323,11 +329,11 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
     /// This will return an error if the name is not in the lookup table.
     /// Note that this function requires a new heap allocation to change the underlying dataset
     pub fn set_by_name(&mut self, name: &str, new_value: T) -> Result<(), DataSetError> {
-        if let Some(index) = self.lut.by_name.get(&name.try_into().unwrap()) {
+        if let Some(index) = self.lut.by_name.get(name) {
             *self
                 .data
                 .get_mut(*index as usize)
-                .ok_or_else(|| LutError::InvalidIndex { index: *index })
+                .ok_or(LutError::InvalidIndex { index: *index })
                 .context(DataSetLutSnafu {
                     action: "fetching by ID",
                 })? = new_value;
@@ -337,21 +343,28 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
             Err(DataSetError::DataSetLut {
                 action: "setting by name",
                 source: LutError::UnknownName {
-                    name: name.try_into().unwrap(),
+                    name: name.to_string(),
                 },
             })
         }
     }
 
-    /// Mutates this dataset to remove the provided name from the LUT and the dataset, removing also the lookup from its ID if set.
-    /// This will return an error if the name is not in the lookup table.
-    /// Note that this function requires a new heap allocation to change the underlying dataset
+    #[deprecated(since = "0.7.0", note = "use clear_by_name instead")]
     pub fn rm_by_name(&mut self, name: &str) -> Result<(), DataSetError> {
-        if let Some(index) = self.lut.by_name.remove(&name.try_into().unwrap()) {
+        self.clear_by_name(name)
+    }
+
+    /// Mutates this dataset to clear an entry by its name.
+    ///
+    /// This clears the entry in the data vector by replacing it with its default value, and removes the name from the look-up table.
+    /// The corresponding ID, if any, is also removed from the look-up table.
+    /// This will return an error if the name is not in the lookup table
+    pub fn clear_by_name(&mut self, name: &str) -> Result<(), DataSetError> {
+        if let Some(index) = self.lut.by_name.swap_remove(name) {
             *self
                 .data
                 .get_mut(index as usize)
-                .ok_or_else(|| LutError::InvalidIndex { index })
+                .ok_or(LutError::InvalidIndex { index })
                 .context(DataSetLutSnafu {
                     action: "fetching by ID",
                 })? = T::default();
@@ -370,9 +383,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
         } else {
             Err(DataSetError::DataSetLut {
                 action: "removing by ID",
-                source: LutError::UnknownName {
-                    name: name.try_into().unwrap(),
-                },
+                source: LutError::UnknownName { name: name.into() },
             })
         }
     }
@@ -435,8 +446,8 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
 
     /// Returns this data as a data sequence, cloning all of the entries into this sequence.
     fn build_data_seq(&self) -> (Vec<u32>, OctetString) {
-        let mut buf = Vec::with_capacity(ENTRIES * 2);
-        let mut meta = Vec::with_capacity(ENTRIES * 2);
+        let mut buf = Vec::new();
+        let mut meta = Vec::with_capacity(self.data.len() + 1);
         meta.push(self.data.len() as u32);
         for data in &self.data {
             let mut this_buf = vec![];
@@ -449,7 +460,7 @@ impl<T: DataSetT, const ENTRIES: usize> DataSet<T, ENTRIES> {
     }
 }
 
-impl<T: DataSetT, const ENTRIES: usize> Encode for DataSet<T, ENTRIES> {
+impl<T: DataSetT> Encode for DataSet<T> {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let (bytes_meta, bytes) = self.build_data_seq();
         self.metadata.encoded_len()?
@@ -476,14 +487,14 @@ impl<T: DataSetT, const ENTRIES: usize> Encode for DataSet<T, ENTRIES> {
     }
 }
 
-impl<'a, T: DataSetT, const ENTRIES: usize> Decode<'a> for DataSet<T, ENTRIES> {
+impl<'a, T: DataSetT> Decode<'a> for DataSet<T> {
     fn decode<D: Reader<'a>>(decoder: &mut D) -> der::Result<Self> {
         // The fields are decoded in the same order they were encoded.
         let metadata = decoder.decode()?;
-        let lut: LookUpTable<ENTRIES> = decoder.decode()?;
+        let lut: LookUpTable = decoder.decode()?;
         let crc32_checksum = decoder.decode()?;
         // Decode the metadata of the data items.
-        let bytes_meta: SequenceOf<u32, ENTRIES> = decoder.decode()?;
+        let bytes_meta: Vec<u32> = decoder.decode()?;
         // Decode the concatenated data items.
         let der_octets: OctetString = decoder.decode()?;
         let bytes = der_octets.as_bytes();
@@ -491,7 +502,7 @@ impl<'a, T: DataSetT, const ENTRIES: usize> Decode<'a> for DataSet<T, ENTRIES> {
         let mut data = vec![];
         let mut idx = 0;
         // The first element of bytes_meta is the number of data items.
-        for meta_idx in 0..*bytes_meta.get(0).unwrap() as usize {
+        for meta_idx in 0..*bytes_meta.first().unwrap() as usize {
             // The subsequent elements are the lengths of each data item.
             let next_len = *bytes_meta.get(meta_idx + 1).unwrap() as usize;
             // Decode each data item from its slice of the bytes.
@@ -509,7 +520,7 @@ impl<'a, T: DataSetT, const ENTRIES: usize> Decode<'a> for DataSet<T, ENTRIES> {
     }
 }
 
-impl<T: DataSetT, const ENTRIES: usize> fmt::Display for DataSet<T, ENTRIES> {
+impl<T: DataSetT> fmt::Display for DataSet<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -535,7 +546,7 @@ mod dataset_ut {
     #[test]
     fn zero_repr() {
         // For this test, we want a data set with zero entries allowed in the LUT.
-        let repr = DataSet::<SpacecraftData, 2>::default();
+        let repr = DataSet::<SpacecraftData>::default();
 
         let mut buf = vec![];
         repr.encode_to_vec(&mut buf).unwrap();
@@ -546,8 +557,7 @@ mod dataset_ut {
         assert_eq!(repr, repr_dec);
 
         dbg!(repr);
-        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData, 2>>(), 256);
-        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData, 128>>(), 8824);
+        assert_eq!(core::mem::size_of::<DataSet<SpacecraftData>>(), 232);
     }
 
     #[test]
@@ -619,7 +629,7 @@ mod dataset_ut {
         let mut buf = vec![];
         dataset.encode_to_vec(&mut buf).unwrap();
 
-        let repr_dec = DataSet::<SpacecraftData, 4>::from_der(&buf).unwrap();
+        let repr_dec = DataSet::<SpacecraftData>::from_der(&buf).unwrap();
 
         assert_eq!(dataset, repr_dec);
 
@@ -720,7 +730,7 @@ mod dataset_ut {
 
         dbg!(size_of::<SpacecraftDataSet>());
 
-        let mut dataset = DataSet::<SpacecraftData, 16>::default();
+        let mut dataset = DataSet::<SpacecraftData>::default();
         dataset
             .push(srp_sc, Some(-20), Some("SRP spacecraft"))
             .unwrap();
@@ -793,7 +803,7 @@ mod dataset_ut {
         assert!(dataset.get_by_id(-52).is_err());
 
         // Remove by ID
-        assert!(dataset.rm_by_id(-20).is_ok(), "could not remove by id");
+        assert!(dataset.clear_by_id(-20).is_ok(), "could not remove by id");
         // Check that the associated name is no reachable
         assert!(
             dataset.get_by_name("SRP spacecraft").is_err(),
@@ -802,7 +812,7 @@ mod dataset_ut {
 
         // Remove by name
         assert!(
-            dataset.rm_by_name("Full spacecraft").is_ok(),
+            dataset.clear_by_name("Full spacecraft").is_ok(),
             "could not remove by name"
         );
         // Check that the associated name is no reachable

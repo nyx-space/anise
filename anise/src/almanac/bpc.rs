@@ -21,47 +21,48 @@ use crate::naif::pck::BPCSummaryRecord;
 use crate::naif::BPC;
 use crate::orientations::{NoOrientationsLoadedSnafu, OrientationError};
 use crate::{naif::daf::DAFError, NaifId};
-use log::error;
+use log::{error, warn};
 
-use super::{Almanac, MAX_LOADED_BPCS};
+use super::Almanac;
 
 impl Almanac {
-    pub fn from_bpc(bpc: BPC) -> Result<Almanac, OrientationError> {
+    pub fn from_bpc(bpc: BPC) -> Self {
         let me = Self::default();
         me.with_bpc(bpc)
     }
 
-    /// Loads a Binary Planetary Constants kernel.
-    pub fn with_bpc(&self, bpc: BPC) -> Result<Self, OrientationError> {
-        // This is just a bunch of pointers so it doesn't use much memory.
-        let mut me = self.clone();
-        let mut data_idx = MAX_LOADED_BPCS;
-        for (idx, item) in self.bpc_data.iter().enumerate() {
-            if item.is_none() {
-                data_idx = idx;
-                break;
-            }
-        }
-        if data_idx == MAX_LOADED_BPCS {
-            return Err(OrientationError::StructureIsFull {
-                max_slots: MAX_LOADED_BPCS,
-            });
-        }
-        me.bpc_data[data_idx] = Some(bpc);
-        Ok(me)
+    /// Loads a new Binary Planetary Constants (BPC) kernel into a new context, using the system time as the alias. If the time is not availble, then 0 TAI is used.
+    /// This new context is needed to satisfy the unloading of files. In fact, to unload a file, simply let the newly loaded context drop out of scope and Rust will clean it up.
+    pub fn with_bpc(self, bpc: BPC) -> Self {
+        self.with_bpc_as(bpc, None)
     }
 
-    pub fn num_loaded_bpc(&self) -> usize {
-        let mut count = 0;
-        for maybe in &self.bpc_data {
-            if maybe.is_none() {
-                break;
-            } else {
-                count += 1;
-            }
+    /// Loads a new Binary Planetary Constant (BPC) file into a new context, naming it with the provided alias or the current system time.
+    /// To unload a file, call bpc_unload.
+    pub fn with_bpc_as(mut self, bpc: BPC, alias: Option<String>) -> Self {
+        // For lifetime reasons, we format the message using a ref first
+        let alias = alias.unwrap_or(Epoch::now().unwrap_or_default().to_string());
+        let msg = format!("unloading BPC `{alias}`");
+        if self.bpc_data.insert(alias, bpc).is_some() {
+            warn!("{msg}");
         }
+        self
+    }
 
-        count
+    /// Unloads the BPC with the provided alias.
+    /// **WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded.
+    pub fn bpc_unload(&mut self, alias: &str) -> Result<(), OrientationError> {
+        if self.bpc_data.swap_remove(alias).is_none() {
+            Err(OrientationError::AliasNotFound {
+                alias: alias.to_string(),
+                action: "unload BPC",
+            })
+        } else {
+            Ok(())
+        }
+    }
+    pub fn num_loaded_bpc(&self) -> usize {
+        self.bpc_data.len()
     }
 
     /// Returns the summary given the name of the summary record if that summary has data defined at the requested epoch and the BPC where this name was found to be valid at that epoch.
@@ -70,14 +71,7 @@ impl Almanac {
         name: &str,
         epoch: Epoch,
     ) -> Result<(&BPCSummaryRecord, usize, usize), OrientationError> {
-        for (no, maybe_bpc) in self
-            .bpc_data
-            .iter()
-            .take(self.num_loaded_bpc())
-            .rev()
-            .enumerate()
-        {
-            let bpc = maybe_bpc.as_ref().unwrap();
+        for (no, bpc) in self.bpc_data.values().rev().enumerate() {
             if let Ok((summary, idx_in_bpc)) = bpc.summary_from_name_at_epoch(name, epoch) {
                 return Ok((summary, no, idx_in_bpc));
             }
@@ -100,14 +94,7 @@ impl Almanac {
         id: i32,
         epoch: Epoch,
     ) -> Result<(&BPCSummaryRecord, usize, usize), OrientationError> {
-        for (no, maybe_bpc) in self
-            .bpc_data
-            .iter()
-            .take(self.num_loaded_bpc())
-            .rev()
-            .enumerate()
-        {
-            let bpc = maybe_bpc.as_ref().unwrap();
+        for (no, bpc) in self.bpc_data.values().rev().enumerate() {
             if let Ok((summary, idx_in_bpc)) = bpc.summary_from_id_at_epoch(id, epoch) {
                 // NOTE: We're iterating backward, so the correct BPC number is "total loaded" minus "current iteration".
                 return Ok((summary, self.num_loaded_bpc() - no - 1, idx_in_bpc));
@@ -135,14 +122,7 @@ impl Almanac {
         &self,
         name: &str,
     ) -> Result<(&BPCSummaryRecord, usize, usize), OrientationError> {
-        for (bpc_no, maybe_bpc) in self
-            .bpc_data
-            .iter()
-            .take(self.num_loaded_bpc())
-            .rev()
-            .enumerate()
-        {
-            let bpc = maybe_bpc.as_ref().unwrap();
+        for (bpc_no, bpc) in self.bpc_data.values().rev().enumerate() {
             if let Ok((summary, idx_in_bpc)) = bpc.summary_from_name(name) {
                 return Ok((summary, bpc_no, idx_in_bpc));
             }
@@ -163,14 +143,7 @@ impl Almanac {
         &self,
         id: i32,
     ) -> Result<(&BPCSummaryRecord, usize, usize), OrientationError> {
-        for (no, maybe_bpc) in self
-            .bpc_data
-            .iter()
-            .take(self.num_loaded_bpc())
-            .rev()
-            .enumerate()
-        {
-            let bpc = maybe_bpc.as_ref().unwrap();
+        for (no, bpc) in self.bpc_data.values().rev().enumerate() {
             if let Ok((summary, idx_in_bpc)) = bpc.summary_from_id(id) {
                 // NOTE: We're iterating backward, so the correct BPC number is "total loaded" minus "current iteration".
                 return Ok((summary, self.num_loaded_bpc() - no - 1, idx_in_bpc));
@@ -197,8 +170,7 @@ impl Almanac {
     pub fn bpc_summaries(&self, id: NaifId) -> Result<Vec<BPCSummaryRecord>, OrientationError> {
         let mut summaries = vec![];
 
-        for maybe_bpc in self.bpc_data.iter().take(self.num_loaded_bpc()).rev() {
-            let bpc = maybe_bpc.as_ref().unwrap();
+        for bpc in self.bpc_data.values().rev() {
             if let Ok(these_summaries) = bpc.data_summaries() {
                 for summary in these_summaries {
                     if summary.id() == id {
@@ -252,8 +224,7 @@ impl Almanac {
         ensure!(self.num_loaded_bpc() > 0, NoOrientationsLoadedSnafu);
 
         let mut domains = HashMap::new();
-        for maybe_bpc in self.bpc_data.iter().take(self.num_loaded_bpc()).rev() {
-            let bpc = maybe_bpc.as_ref().unwrap();
+        for bpc in self.bpc_data.values().rev() {
             if let Ok(these_summaries) = bpc.data_summaries() {
                 for summary in these_summaries {
                     let this_id = summary.id();

@@ -35,12 +35,9 @@ fn test_state_transformation() {
 
     let almanac = ctx
         .with_spk(spk)
-        .unwrap()
         .with_bpc(bpc)
-        .unwrap()
         .load("../data/pck08.pca")
         .unwrap();
-
     // Let's build an orbit
     // Start by grabbing a copy of the frame.
     let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
@@ -85,11 +82,7 @@ fn test_type3_state_transformation() {
 
     let spk = SPK::load("../data/de440_type3.bsp").unwrap();
 
-    let almanac = ctx
-        .with_spk(spk)
-        .unwrap()
-        .load("../data/pck08.pca")
-        .unwrap();
+    let almanac = ctx.with_spk(spk).load("../data/pck08.pca").unwrap();
 
     let epoch = Epoch::from_str("2021-10-29 12:34:56 TDB").unwrap();
 

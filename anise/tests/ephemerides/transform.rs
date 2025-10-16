@@ -64,12 +64,7 @@ fn de440s_transform_verif_venus2emb() {
     spice::furnsh(spk_path);
     spice::furnsh(bpc_path);
 
-    let almanac = Almanac::default()
-        .with_spk(spk)
-        .unwrap()
-        .with_bpc(bpc)
-        .unwrap();
-
+    let almanac = Almanac::default().with_spk(spk).with_bpc(bpc);
     let epoch = Epoch::from_gregorian_utc_at_midnight(2020, 2, 7);
 
     let state = almanac
