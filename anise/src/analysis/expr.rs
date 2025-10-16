@@ -110,6 +110,10 @@ pub enum ScalarExpr {
     BetaAngle,
     /// Compute the local solar time, in hours
     LocalSolarTime,
+    /// Computes the local time of the ascending node, in hours
+    LocalTimeAscNode,
+    /// Computes the local time of the descending node, in hours
+    LocalTimeDescNode,
     /// Computes the Sun angle where observer_id is the ID of the spacecraft for example.
     /// If the frame of the state spec is in an Earth frame, then this computes the Sun Probe Earth angle.
     /// Refer to the sun_angle_deg function for detailed documentation.
@@ -295,6 +299,20 @@ impl ScalarExpr {
                     state: orbit,
                 })?
                 .to_unit(hifitime::Unit::Hour)),
+            Self::LocalTimeAscNode => Ok(almanac
+                .ltan(orbit, ab_corr)
+                .context(AlmanacExprSnafu {
+                    expr: Box::new(self.clone()),
+                    state: orbit,
+                })?
+                .to_unit(hifitime::Unit::Hour)),
+            Self::LocalTimeDescNode => Ok(almanac
+                .ltdn(orbit, ab_corr)
+                .context(AlmanacExprSnafu {
+                    expr: Box::new(self.clone()),
+                    state: orbit,
+                })?
+                .to_unit(hifitime::Unit::Hour)),
             Self::SolarEclipsePercentage { eclipsing_frame } => Ok(almanac
                 .solar_eclipsing(*eclipsing_frame, orbit, ab_corr)
                 .context(AlmanacExprSnafu {
@@ -440,6 +458,8 @@ impl fmt::Display for ScalarExpr {
             ),
             Self::BetaAngle => write!(f, "beta angle (deg)"),
             Self::LocalSolarTime => write!(f, "local solar time (h)"),
+            Self::LocalTimeAscNode => write!(f, "local time asc. node (h)"),
+            Self::LocalTimeDescNode => write!(f, "local time desc. node (h)"),
             Self::SunAngle { observer_id } => write!(f, "sun angle for obs={observer_id} (deg)"),
             Self::AzimuthFromLocation {
                 location_id,

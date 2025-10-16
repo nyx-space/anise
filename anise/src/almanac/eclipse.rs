@@ -333,19 +333,17 @@ impl Almanac {
         Ok(Unit::Hour * lst_h)
     }
 
-    /// Returns the Local Time of the Ascending Node (LTAN) in hours.
+    /// Returns the Local Time of the Ascending Node (LTAN).
     /// This is the local time on the celestial body at which the spacecraft crosses the equator from south to north.
     ///
     /// The formula is from Wertz, "Spacecraft Attitude Determination and Control", page 79, equation (4-8).
     /// LTAN (hours) = 12.0 + (RAAN_orbit - RA_sun) / 15.0
     ///
-    /// :param orbit: The orbit for which to compute the LTAN.
     /// :type orbit: Orbit
-    /// :param ab_corr: The aberration correction to use.
     /// :type ab_corr: Aberration, optional
-    /// :rtype: float
-    pub fn ltan_h(&self, orbit: &Orbit, ab_corr: Option<Aberration>) -> AlmanacResult<f64> {
-        let sun_state = self.state_of(SUN_J2000.ephemeris_id, orbit.frame, orbit.epoch, ab_corr)?;
+    /// :rtype: Duration
+    pub fn ltan(&self, orbit: Orbit, ab_corr: Option<Aberration>) -> AlmanacResult<Duration> {
+        let sun_state = self.transform(SUN_J2000, orbit.frame, orbit.epoch, ab_corr)?;
         let ra_sun_deg = sun_state.right_ascension_deg();
         let raan_orbit_deg = orbit.raan_deg().map_err(|e| AlmanacError::GenericError {
             err: format!("{e}"),
@@ -356,7 +354,7 @@ impl Almanac {
         } else if ltan >= 24.0 {
             ltan -= 24.0;
         }
-        Ok(ltan)
+        Ok(Unit::Hour * ltan)
     }
 
     /// Returns the Local Time of the Descending Node (LTDN) in hours.
@@ -364,15 +362,13 @@ impl Almanac {
     ///
     /// LTDN is 12 hours after LTAN.
     ///
-    /// :param orbit: The orbit for which to compute the LTDN.
     /// :type orbit: Orbit
-    /// :param ab_corr: The aberration correction to use.
     /// :type ab_corr: Aberration, optional
-    /// :rtype: float
-    pub fn ltdn_h(&self, orbit: &Orbit, ab_corr: Option<Aberration>) -> AlmanacResult<f64> {
-        let mut ltdn = self.ltan_h(orbit, ab_corr)? + 12.0;
-        if ltdn >= 24.0 {
-            ltdn -= 24.0;
+    /// :rtype: Duration
+    pub fn ltdn(&self, orbit: Orbit, ab_corr: Option<Aberration>) -> AlmanacResult<Duration> {
+        let mut ltdn = self.ltan(orbit, ab_corr)? + Unit::Hour * 12.0;
+        if ltdn >= Unit::Hour * 24.0 {
+            ltdn -= Unit::Hour * 24.0;
         }
         Ok(ltdn)
     }

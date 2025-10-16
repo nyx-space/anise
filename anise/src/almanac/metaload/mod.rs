@@ -89,7 +89,7 @@ impl Almanac {
         metafile: MetaFile,
         autodelete: bool,
     ) -> AlmanacResult<Self> {
-        py.allow_threads(|| self.clone().load_from_metafile(metafile, autodelete))
+        py.detach(|| self.clone().load_from_metafile(metafile, autodelete))
     }
 }
 

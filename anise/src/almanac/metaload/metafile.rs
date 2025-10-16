@@ -312,7 +312,7 @@ impl MetaFile {
         py: Python,
         autodelete: Option<bool>,
     ) -> Result<(), MetaAlmanacError> {
-        py.allow_threads(|| self.process(autodelete.unwrap_or(false)))
+        py.detach(|| self.process(autodelete.unwrap_or(false)))
     }
 
     /// :rtype: str
