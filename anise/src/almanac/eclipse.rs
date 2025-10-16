@@ -348,12 +348,7 @@ impl Almanac {
         let raan_orbit_deg = orbit.raan_deg().map_err(|e| AlmanacError::GenericError {
             err: format!("{e}"),
         })?;
-        let mut ltan = 12.0 + (raan_orbit_deg - ra_sun_deg) / 15.0;
-        if ltan < 0.0 {
-            ltan += 24.0;
-        } else if ltan >= 24.0 {
-            ltan -= 24.0;
-        }
+        let ltan = (12.0 + (raan_orbit_deg - ra_sun_deg) / 15.0).rem_euclid(24.0);
         Ok(Unit::Hour * ltan)
     }
 
