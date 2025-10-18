@@ -136,21 +136,142 @@ pub enum PyScalarExpr {
     },
 }
 
-/* #[pymethods]
-impl PyScalarExpr {
-    fn evaluate(
-        &self,
-        orbit: Orbit,
-        ab_corr: Option<Aberration>,
-        almanac: &Almanac,
-    ) -> Result<f64, PyErr> {
-        let scalar: ScalarExpr = self.try_into()?;
-
-        scalar
-            .evaluate(orbit, ab_corr, almanac)
-            .map_err(|e| PyException::new_err(e.to_string()))
+impl Clone for PyScalarExpr {
+    fn clone(&self) -> Self {
+        Python::attach(|py| -> PyScalarExpr {
+            match self {
+                Self::Constant(c) => Self::Constant(*c),
+                Self::MeanEquatorialRadius { celestial_object } => Self::MeanEquatorialRadius {
+                    celestial_object: *celestial_object,
+                },
+                Self::SemiMajorEquatorialRadius { celestial_object } => {
+                    Self::SemiMajorEquatorialRadius {
+                        celestial_object: *celestial_object,
+                    }
+                }
+                Self::SemiMinorEquatorialRadius { celestial_object } => {
+                    Self::SemiMinorEquatorialRadius {
+                        celestial_object: *celestial_object,
+                    }
+                }
+                Self::PolarRadius { celestial_object } => Self::PolarRadius {
+                    celestial_object: *celestial_object,
+                },
+                Self::Flattening { celestial_object } => Self::Flattening {
+                    celestial_object: *celestial_object,
+                },
+                Self::GravParam { celestial_object } => Self::GravParam {
+                    celestial_object: *celestial_object,
+                },
+                Self::Add { a, b } => Self::Add {
+                    a: a.clone_ref(py),
+                    b: b.clone_ref(py),
+                },
+                Self::Mul { a, b } => Self::Mul {
+                    a: a.clone_ref(py),
+                    b: b.clone_ref(py),
+                },
+                Self::Negate(s) => Self::Negate(s.clone_ref(py)),
+                Self::Invert(s) => Self::Invert(s.clone_ref(py)),
+                Self::Sqrt(s) => Self::Sqrt(s.clone_ref(py)),
+                Self::Powi { scalar, n } => Self::Powi {
+                    scalar: scalar.clone_ref(py),
+                    n: *n,
+                },
+                Self::Powf { scalar, n } => Self::Powf {
+                    scalar: scalar.clone_ref(py),
+                    n: *n,
+                },
+                Self::Cos(s) => Self::Cos(s.clone_ref(py)),
+                Self::Sin(s) => Self::Sin(s.clone_ref(py)),
+                Self::Tan(s) => Self::Tan(s.clone_ref(py)),
+                Self::Acos(s) => Self::Acos(s.clone_ref(py)),
+                Self::Asin(s) => Self::Asin(s.clone_ref(py)),
+                Self::Atan2 { y, x } => Self::Atan2 {
+                    y: y.clone_ref(py),
+                    x: x.clone_ref(py),
+                },
+                Self::Modulo { v, m } => Self::Modulo {
+                    v: v.clone_ref(py),
+                    m: m.clone_ref(py),
+                },
+                Self::Norm(v) => Self::Norm(v.clone_ref(py)),
+                Self::NormSquared(v) => Self::NormSquared(v.clone_ref(py)),
+                Self::DotProduct { a, b } => Self::DotProduct {
+                    a: a.clone_ref(py),
+                    b: b.clone_ref(py),
+                },
+                Self::AngleBetween { a, b } => Self::AngleBetween {
+                    a: a.clone_ref(py),
+                    b: b.clone_ref(py),
+                },
+                Self::VectorX(v) => Self::VectorX(v.clone_ref(py)),
+                Self::VectorY(v) => Self::VectorY(v.clone_ref(py)),
+                Self::VectorZ(v) => Self::VectorZ(v.clone_ref(py)),
+                Self::Element(e) => Self::Element(*e),
+                Self::SolarEclipsePercentage { eclipsing_frame } => Self::SolarEclipsePercentage {
+                    eclipsing_frame: *eclipsing_frame,
+                },
+                Self::OccultationPercentage {
+                    back_frame,
+                    front_frame,
+                } => Self::OccultationPercentage {
+                    back_frame: *back_frame,
+                    front_frame: *front_frame,
+                },
+                Self::BetaAngle() => Self::BetaAngle(),
+                Self::LocalSolarTime() => Self::LocalSolarTime(),
+                Self::LocalTimeAscNode() => Self::LocalTimeAscNode(),
+                Self::LocalTimeDescNode() => Self::LocalTimeDescNode(),
+                Self::SunAngle { observer_id } => Self::SunAngle {
+                    observer_id: *observer_id,
+                },
+                Self::AzimuthFromLocation {
+                    location_id,
+                    obstructing_body,
+                } => Self::AzimuthFromLocation {
+                    location_id: *location_id,
+                    obstructing_body: obstructing_body.clone(),
+                },
+                Self::ElevationFromLocation {
+                    location_id,
+                    obstructing_body,
+                } => Self::ElevationFromLocation {
+                    location_id: *location_id,
+                    obstructing_body: obstructing_body.clone(),
+                },
+                Self::RangeFromLocation {
+                    location_id,
+                    obstructing_body,
+                } => Self::RangeFromLocation {
+                    location_id: *location_id,
+                    obstructing_body: obstructing_body.clone(),
+                },
+                Self::RangeRateFromLocation {
+                    location_id,
+                    obstructing_body,
+                } => Self::RangeRateFromLocation {
+                    location_id: *location_id,
+                    obstructing_body: obstructing_body.clone(),
+                },
+            }
+        })
     }
-} */
+} /* #[pymethods]
+  impl PyScalarExpr {
+      fn evaluate(
+          &self,
+          orbit: Orbit,
+          ab_corr: Option<Aberration>,
+          almanac: &Almanac,
+      ) -> Result<f64, PyErr> {
+          let scalar: ScalarExpr = self.try_into()?;
+
+          scalar
+              .evaluate(orbit, ab_corr, almanac)
+              .map_err(|e| PyException::new_err(e.to_string()))
+      }
+  } */
 
 #[pyclass]
 #[pyo3(module = "anise.analysis", name = "VectorExpr", get_all, set_all)]
@@ -197,6 +318,39 @@ pub enum PyVectorExpr {
     },
 }
 
+impl Clone for PyVectorExpr {
+    fn clone(&self) -> Self {
+        // We must acquire the GIL to safely clone the Py<T> references.
+        Python::attach(|py| -> PyVectorExpr {
+            match self {
+                Self::Fixed { x, y, z } => Self::Fixed {
+                    x: *x,
+                    y: *y,
+                    z: *z,
+                },
+                Self::Radius(s) => Self::Radius(s.clone_ref(py)),
+                Self::Velocity(s) => Self::Velocity(s.clone_ref(py)),
+                Self::OrbitalMomentum(s) => Self::OrbitalMomentum(s.clone_ref(py)),
+                Self::EccentricityVector(s) => Self::EccentricityVector(s.clone_ref(py)),
+                Self::CrossProduct { a, b } => Self::CrossProduct {
+                    a: a.clone_ref(py),
+                    b: b.clone_ref(py),
+                },
+                Self::Unit(v) => Self::Unit(v.clone_ref(py)),
+                Self::Negate(v) => Self::Negate(v.clone_ref(py)),
+                Self::VecProjection { a, b } => Self::VecProjection {
+                    a: a.clone_ref(py),
+                    b: b.clone_ref(py),
+                },
+                Self::Project { v, frame, plane } => Self::Project {
+                    v: v.clone_ref(py),
+                    frame: frame.clone_ref(py),
+                    plane: *plane,
+                },
+            }
+        })
+    }
+}
 /// StateSpec allows defining a state from the target to the observer
 #[pyclass]
 #[pyo3(module = "anise.analysis", name = "StateSpec", get_all, set_all)]
@@ -233,13 +387,10 @@ pub enum PyFrameSpec {
     },
 }
 
-// Manual implementation of Clone to handle the Py<T> field correctly.
 impl Clone for PyFrameSpec {
     fn clone(&self) -> Self {
-        // To clone a Python object reference (Py<T>), we must acquire the GIL.
         Python::attach(|py| -> PyFrameSpec {
             match self {
-                // The Loaded variant is simple, as Frame is already Clone.
                 PyFrameSpec::Loaded(frame) => PyFrameSpec::Loaded(*frame),
 
                 // For the Manual variant, we clone each field individually.
@@ -277,7 +428,17 @@ pub enum PyOrthogonalFrame {
     },
 }
 
-// *** Implement the From<RustType> for PythonType to convert the LISP representation ***//
+// TODO: Implement clones manually for eveyrthing
+impl Clone for PyOrthogonalFrame {
+    fn clone(&self) -> Self {
+        Python::attach(|py| -> PyOrthogonalFrame {
+            // match self {
+            todo!()
+            // }
+        })
+    }
+}
+// *** Implement the From<RustType> for PythonType to convert the LISP representation *** //
 
 impl TryFrom<ScalarExpr> for PyScalarExpr {
     type Error = PyErr;
@@ -578,5 +739,53 @@ impl TryFrom<FrameSpec> for PyFrameSpec {
                 },
             })
         })
+    }
+}
+
+// *** Converse *** //
+
+impl From<PyOrthogonalFrame> for OrthogonalFrame {
+    fn from(value: PyOrthogonalFrame) -> Self {
+        // match value {
+        //     PyOrthogonalFrame::XY { x, y } => OrthogonalFrame::XY {
+        //         x: x.into(),
+        //         y: y.into(),
+        //     },
+        //     PyOrthogonalFrame::XZ { x, z } => OrthogonalFrame::XZ {
+        //         x: x.into(),
+        //         z: z.into(),
+        //     },
+        //     PyOrthogonalFrame::YZ { y, z } => OrthogonalFrame::YZ {
+        //         y: y.into(),
+        //         z: z.into(),
+        //     },
+        // }
+        todo!()
+    }
+}
+
+impl From<PyStateSpec> for StateSpec {
+    fn from(value: PyStateSpec) -> Self {
+        StateSpec {
+            target_frame: value.target_frame.into(),
+            observer_frame: value.observer_frame.into(),
+            ab_corr: value.ab_corr,
+        }
+    }
+}
+
+impl From<PyFrameSpec> for FrameSpec {
+    fn from(value: PyFrameSpec) -> Self {
+        match value {
+            PyFrameSpec::Loaded(frame) => Self::Loaded(frame),
+            PyFrameSpec::Manual { name, defn } => Python::attach(|py| {
+                let py_ortho: PyOrthogonalFrame = defn.borrow(py).clone();
+
+                Self::Manual {
+                    name,
+                    defn: Box::new(py_ortho.into()),
+                }
+            }),
+        }
     }
 }
