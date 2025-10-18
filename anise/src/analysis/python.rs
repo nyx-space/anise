@@ -8,20 +8,21 @@
  * Documentation: https://nyxspace.com/
  */
 
+use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 
 use crate::prelude::{Aberration, Frame};
 use crate::NaifId;
 
+pub use crate::analysis::elements::OrbitalElement;
 use crate::analysis::specs::{OrthogonalFrame, Plane};
-use crate::analysis::OrbitalElement;
 
 use super::prelude::{ScalarExpr, VectorExpr};
 use super::specs::{FrameSpec, StateSpec};
 
 /// ScalarExpr defines a scalar computation from a (set of) vector expression(s).
 #[pyclass]
-#[pyo3(module = "anise.analysis", name = "ScalarExpr")]
+#[pyo3(module = "anise.analysis", name = "ScalarExpr", get_all, set_all)]
 pub enum PyScalarExpr {
     Constant(f64),
     /// Mean radius of the provided body, must be loaded in the almanac
@@ -135,8 +136,24 @@ pub enum PyScalarExpr {
     },
 }
 
+/* #[pymethods]
+impl PyScalarExpr {
+    fn evaluate(
+        &self,
+        orbit: Orbit,
+        ab_corr: Option<Aberration>,
+        almanac: &Almanac,
+    ) -> Result<f64, PyErr> {
+        let scalar: ScalarExpr = self.try_into()?;
+
+        scalar
+            .evaluate(orbit, ab_corr, almanac)
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+} */
+
 #[pyclass]
-#[pyo3(module = "anise.analysis", name = "VectorExpr")]
+#[pyo3(module = "anise.analysis", name = "VectorExpr", get_all, set_all)]
 pub enum PyVectorExpr {
     // Vector with unspecified units, for arbitrary computations
     Fixed {
@@ -180,17 +197,34 @@ pub enum PyVectorExpr {
     },
 }
 
+/// StateSpec allows defining a state from the target to the observer
 #[pyclass]
-#[pyo3(module = "anise.analysis", name = "StateSpec")]
+#[pyo3(module = "anise.analysis", name = "StateSpec", get_all, set_all)]
 pub struct PyStateSpec {
     pub target_frame: PyFrameSpec,
     pub observer_frame: PyFrameSpec,
     pub ab_corr: Option<Aberration>,
 }
 
+#[pymethods]
+impl PyStateSpec {
+    #[new]
+    fn new(
+        target_frame: PyFrameSpec,
+        observer_frame: PyFrameSpec,
+        ab_corr: Option<Aberration>,
+    ) -> Self {
+        Self {
+            target_frame,
+            observer_frame,
+            ab_corr,
+        }
+    }
+}
+
 /// FrameSpec allows defining a frame that can be computed from another set of loaded frames, which include a center.
 #[pyclass]
-#[pyo3(module = "anise.analysis", name = "FrameSpec")]
+#[pyo3(module = "anise.analysis", name = "FrameSpec", get_all, set_all)]
 pub enum PyFrameSpec {
     Loaded(Frame),
     Manual {
@@ -199,11 +233,35 @@ pub enum PyFrameSpec {
     },
 }
 
+// Manual implementation of Clone to handle the Py<T> field correctly.
+impl Clone for PyFrameSpec {
+    fn clone(&self) -> Self {
+        // To clone a Python object reference (Py<T>), we must acquire the GIL.
+        Python::attach(|py| -> PyFrameSpec {
+            match self {
+                // The Loaded variant is simple, as Frame is already Clone.
+                PyFrameSpec::Loaded(frame) => PyFrameSpec::Loaded(*frame),
+
+                // For the Manual variant, we clone each field individually.
+                PyFrameSpec::Manual { name, defn } => {
+                    PyFrameSpec::Manual {
+                        name: name.clone(),
+                        // The clone_ref() method on Py<T> requires the GIL token (`py`),
+                        // which we have here. This is the correct way to clone a Py<T>.
+                        defn: defn.clone_ref(py),
+                    }
+                }
+            }
+        })
+    }
+}
+
 // Defines how to build an orthogonal frame from custom vector expressions
 //
 // WARNING: Building such a frame does NOT normalize the vectors, you must use the Unit vector expression
 // to build an orthonormal frame.
 #[pyclass]
+#[pyo3(module = "anise.analysis", name = "OrthogonalFrame", get_all, set_all)]
 pub enum PyOrthogonalFrame {
     XY {
         x: Py<PyVectorExpr>,

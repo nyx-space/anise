@@ -34,7 +34,7 @@ use specs::StateSpec;
 use vector_expr::VectorExpr;
 
 #[cfg(feature = "python")]
-mod python;
+pub mod python;
 
 pub mod prelude {
     pub use super::elements::OrbitalElement;

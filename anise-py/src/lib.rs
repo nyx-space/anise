@@ -10,6 +10,10 @@
 
 use ::anise::almanac::metaload::{MetaAlmanac, MetaFile};
 use ::anise::almanac::Almanac;
+use ::anise::analysis::prelude::OrbitalElement;
+use ::anise::analysis::python::{
+    PyFrameSpec, PyOrthogonalFrame, PyScalarExpr, PyStateSpec, PyVectorExpr,
+};
 use ::anise::astro::Aberration;
 use ::anise::structure::dataset::location_dhall::PyLocationDataSet;
 use ::anise::structure::dataset::location_dhall::{LocationDhallSet, LocationDhallSetEntry};
@@ -32,6 +36,7 @@ mod utils;
 fn anise(m: &Bound<'_, PyModule>) -> PyResult<()> {
     pyo3_log::init();
     m.add_wrapped(wrap_pymodule!(time))?;
+    m.add_wrapped(wrap_pymodule!(analysis))?;
     m.add_wrapped(wrap_pymodule!(astro::astro))?;
     m.add_wrapped(wrap_pymodule!(constants::constants))?;
     m.add_wrapped(wrap_pymodule!(utils::utils))?;
@@ -45,6 +50,17 @@ fn anise(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<LocationDhallSet>()?;
     m.add_class::<LocationDhallSetEntry>()?;
     m.add_class::<PyLocationDataSet>()?;
+    Ok(())
+}
+
+#[pymodule]
+fn analysis(_py: Python, sm: &Bound<PyModule>) -> PyResult<()> {
+    sm.add_class::<PyStateSpec>()?;
+    sm.add_class::<PyOrthogonalFrame>()?;
+    sm.add_class::<PyVectorExpr>()?;
+    sm.add_class::<PyScalarExpr>()?;
+    sm.add_class::<PyFrameSpec>()?;
+    sm.add_class::<OrbitalElement>()?;
     Ok(())
 }
 
