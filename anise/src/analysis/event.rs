@@ -19,7 +19,24 @@ use log::warn;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-/// Defines a state parameter event finder
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
+#[cfg(feature = "python")]
+use super::python::PyScalarExpr;
+#[cfg(feature = "python")]
+use pyo3::exceptions::PyException;
+#[cfg(feature = "python")]
+use pyo3::types::PyType;
+
+/// Defines a state parameter event finder from the desired value of the scalar expression to compute, precision on timing and value, and the aberration.
+///
+/// :type scalar: ScalarExpr
+/// :type desired_value: float
+/// :type epoch_precision: Duration
+/// :type value_precision: float
+/// :type ab_corr: Aberration, optional
+#[cfg_attr(feature = "python", pyclass)]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Event {
     /// The state parameter
@@ -68,6 +85,24 @@ impl Event {
         }
     }
 
+    /// Export this Event to S-Expression / LISP syntax
+    pub fn to_s_expr(&self) -> Result<String, serde_lexpr::Error> {
+        Ok(serde_lexpr::to_value(self)?.to_string())
+    }
+
+    /// Load this Event from an S-Expression / LISP syntax
+    pub fn from_s_expr(expr: &str) -> Result<Self, serde_lexpr::Error> {
+        serde_lexpr::from_str(expr)
+    }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl Event {
+    /// Compute the event finding function of this event provided an Orbit and Almanac.
+    ///
+    /// :type orbit: Orbit
+    /// :type almanac: Almanac
+    /// :rtype: float
     pub fn eval(&self, orbit: Orbit, almanac: &Almanac) -> Result<f64, AnalysisError> {
         let current_val = self.scalar.evaluate(orbit, self.ab_corr, almanac)?;
 
@@ -111,19 +146,11 @@ impl Event {
         }
     }
 
-    // Evaluation of event crossing, must return whether the condition happened between between both states.
-    pub fn eval_crossing(
-        &self,
-        prev_state: Orbit,
-        next_state: Orbit,
-        almanac: &Almanac,
-    ) -> Result<bool, AnalysisError> {
-        let prev = self.eval(prev_state, almanac)?;
-        let next = self.eval(next_state, almanac)?;
-
-        Ok(prev * next < 0.0)
-    }
-
+    /// Pretty print the evaluation of this event for the provided Orbit and Almanac
+    ///
+    /// :type orbit: Orbit
+    /// :type almanac: Almanac
+    /// :rtype: str
     pub fn eval_string(&self, orbit: Orbit, almanac: &Almanac) -> Result<String, AnalysisError> {
         let val = self.eval(orbit, almanac)?;
 
@@ -141,15 +168,98 @@ impl Event {
             Ok(format!("|{}| = {val:.3} on {}", self.scalar, orbit.epoch))
         }
     }
+}
 
-    /// Export this Event to S-Expression / LISP syntax
-    pub fn to_s_expr(&self) -> Result<String, serde_lexpr::Error> {
-        Ok(serde_lexpr::to_value(self)?.to_string())
+#[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pymethods)]
+impl Event {
+    /// Convert the S-Expression to a Event
+    /// :type expr: str
+    /// :rtype: Event
+    #[classmethod]
+    #[pyo3(name = "from_s_expr")]
+    fn py_from_s_expr(_cls: Bound<'_, PyType>, expr: &str) -> Result<Self, PyErr> {
+        Self::from_s_expr(expr).map_err(|e| PyException::new_err(e.to_string()))
     }
 
-    /// Load this Event from an S-Expression / LISP syntax
-    pub fn from_s_expr(expr: &str) -> Result<Self, serde_lexpr::Error> {
-        serde_lexpr::from_str(expr)
+    /// Converts this Event to its S-Expression
+    /// :rtype: str
+    #[pyo3(name = "to_s_expr")]
+    fn py_to_s_expr(&self) -> Result<String, PyErr> {
+        self.to_s_expr()
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+
+    #[classmethod]
+    #[pyo3(name = "apoapsis")]
+    /// Apoapsis event finder, with an epoch precision of 0.1 seconds
+    /// :rtype: Event
+    fn py_apoapsis(_cls: Bound<'_, PyType>) -> Self {
+        Event {
+            scalar: ScalarExpr::Element(OrbitalElement::TrueAnomaly),
+            desired_value: 180.0,
+            epoch_precision: Unit::Second * 0.1,
+            value_precision: 1e-2,
+            ab_corr: None,
+        }
+    }
+
+    /// Periapsis event finder, with an epoch precision of 0.1 seconds
+    /// :rtype: Event
+    #[classmethod]
+    #[pyo3(name = "periapsis")]
+    fn py_periapsis(_cls: Bound<'_, PyType>) -> Self {
+        Event {
+            scalar: ScalarExpr::Element(OrbitalElement::TrueAnomaly),
+            desired_value: 0.0,
+            epoch_precision: Unit::Second * 0.1,
+            value_precision: 1e-2,
+            ab_corr: None,
+        }
+    }
+
+    /// Total eclipse event finder: returns events where the eclipsing percentage is greater than 98.9%.
+    ///
+    /// :type eclipsing_frame: Frame
+    /// :rtype: Event
+    #[classmethod]
+    #[pyo3(name = "eclipse")]
+    fn py_eclipse(_cls: Bound<'_, PyType>, eclipsing_frame: Frame) -> Self {
+        Event {
+            scalar: ScalarExpr::SolarEclipsePercentage { eclipsing_frame },
+            desired_value: 99.9,
+            epoch_precision: Unit::Second * 0.1,
+            value_precision: 1.0,
+            ab_corr: None,
+        }
+    }
+
+    #[new]
+    #[pyo3(signature=(scalar, desired_value, epoch_precision, value_precision, ab_corr=None))]
+    fn py_new(
+        scalar: PyScalarExpr,
+        desired_value: f64,
+        epoch_precision: Duration,
+        value_precision: f64,
+        ab_corr: Option<Aberration>,
+    ) -> Self {
+        let scalar = ScalarExpr::from(scalar);
+
+        Self {
+            scalar,
+            desired_value,
+            epoch_precision,
+            value_precision,
+            ab_corr,
+        }
+    }
+
+    fn __str__(&self) -> String {
+        format!("{self}")
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{self}@{self:p}")
     }
 }
 
@@ -171,6 +281,7 @@ impl fmt::Display for Event {
 ///
 /// `EventEdge` is used to describe the nature of a trajectory event, particularly in terms of its temporal dynamics relative to a specified condition or threshold. This enum helps in distinguishing whether the event is occurring at a rising edge, a falling edge, or if the edge is unclear due to insufficient data or ambiguous conditions.
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "python", pyclass)]
 pub enum EventEdge {
     /// Represents a rising edge of the event. This indicates that the event is transitioning from a lower to a higher evaluation of the event. For example, in the context of elevation, a rising edge would indicate an increase in elevation from a lower angle.
     Rising,
@@ -191,20 +302,29 @@ pub enum EventEdge {
 /// # Generics
 /// S: Interpolatable - A type that represents the state of the trajectory. This type must implement the `Interpolatable` trait, ensuring that it can be interpolated and manipulated according to the trajectory's requirements.
 #[derive(Clone, PartialEq)]
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(get_all))]
 pub struct EventDetails {
     /// The state of the trajectory at the found event.
+    /// :rtype: Orbit
     pub orbit: Orbit,
     /// Indicates whether the event is a rising edge, falling edge, or unclear. This helps in understanding the direction of change at the event point.
+    /// :rtype: EventEdge
     pub edge: EventEdge,
     /// Numerical evaluation of the event condition, e.g. if seeking the apoapsis, this returns the near zero
+    /// :rtype: float
     pub value: f64,
     /// Numertical evaluation of the event condition one epoch step before the found event (used to compute the rising/falling edge).
+    /// :rtype: float
     pub prev_value: Option<f64>,
     /// Numertical evaluation of the event condition one epoch step after the found event (used to compute the rising/falling edge).
+    /// :rtype: float
     pub next_value: Option<f64>,
     /// Precision of the epoch for this value
+    /// :rtype: Duration
     pub pm_duration: Duration,
-    // Store the representation of this event as a string because we can't move or clone the event reference
+    /// Store the representation of this event as a string because we can't move or clone the event reference
+    /// :rtype: str
     pub repr: String,
 }
 
@@ -288,6 +408,21 @@ impl EventDetails {
     }
 }
 
+#[cfg(feature = "python")]
+impl EventDetails {
+    /// :rtype: str
+    fn describe(&self) -> String {
+        format!("{self:?}")
+    }
+    fn __str__(&self) -> String {
+        format!("{self}")
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{self}@{self:p}")
+    }
+}
+
 impl fmt::Display for EventDetails {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} ({:?})", self.repr, self.edge)
@@ -314,12 +449,19 @@ impl fmt::Debug for EventDetails {
     }
 }
 
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(get_all))]
 #[derive(Clone, PartialEq)]
 pub struct EventArc {
+    /// rise event of this arc
+    /// :rtype: EventDetails
     pub rise: EventDetails,
+    /// fall event of this arc
+    /// :rtype: EventDetails
     pub fall: EventDetails,
 }
 
+#[cfg_attr(feature = "python", pymethods)]
 impl EventArc {
     pub fn duration(&self) -> Duration {
         self.end_epoch() - self.start_epoch()
@@ -331,6 +473,15 @@ impl EventArc {
 
     pub fn end_epoch(&self) -> Epoch {
         self.fall.orbit.epoch
+    }
+
+    #[cfg(feature = "python")]
+    fn __str__(&self) -> String {
+        format!("{self}")
+    }
+    #[cfg(feature = "python")]
+    fn __repr__(&self) -> String {
+        format!("{self}@{self:p}")
     }
 }
 

@@ -7,8 +7,11 @@
  *
  * Documentation: https://nyxspace.com/
  */
+use hifitime::{Duration, Epoch, TimeSeries};
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
+use pyo3::types::PyType;
+use std::collections::HashMap;
 
 use crate::prelude::{Aberration, Almanac, Frame, Orbit};
 use crate::NaifId;
@@ -16,8 +19,105 @@ use crate::NaifId;
 pub use crate::analysis::elements::OrbitalElement;
 use crate::analysis::specs::{OrthogonalFrame, Plane};
 
+use super::event::{Event, EventArc, EventDetails};
 use super::prelude::{ScalarExpr, VectorExpr};
 use super::specs::{FrameSpec, StateSpec};
+use super::{AnalysisError, ReportScalars};
+
+#[pymethods]
+impl Almanac {
+    /// Report a set of scalar expressions, optionally with aliases, at a fixed time step defined in the TimeSeries.
+    ///
+    /// :type report: ReportScalars
+    /// :type time_series: TimeSeries
+    /// :rtype: dict
+    #[pyo3(name = "report_scalars")]
+    pub fn py_report_scalars(
+        &self,
+        report: &ReportScalars,
+        time_series: TimeSeries,
+    ) -> Result<HashMap<Epoch, HashMap<String, f64>>, AnalysisError> {
+        let data = self.report_scalars(report, time_series);
+        // Modify the values to set errors to NaN
+        let mut rslt = HashMap::new();
+        for (k, v) in data {
+            let mut data_epoch_ok = HashMap::new();
+            for (col, value) in v? {
+                data_epoch_ok.insert(col, value.unwrap_or(f64::NAN));
+            }
+            rslt.insert(k, data_epoch_ok);
+        }
+
+        Ok(rslt)
+    }
+    /// Report all of the states and event details where the provided event occurs.
+    ///
+    /// # Limitations
+    /// This method uses a Brent solver, provides a superlinearity convergence (Golden ratio rate).
+    /// If the function that defines the event is not unimodal, the event finder may not converge correctly.
+    /// After the Brent solver is used, this function will check the median gap between events. Assuming most events are periodic,
+    /// any gap whose median repetition is greater than 125% will be slow searches. This _typically_ finds all of the events ... but it
+    /// may also add duplicates! To prevent reporting duplicate events, the found events are deduplicated if the same event is found
+    /// within 3 times the epoch precision. For example, if the epoch precision is 100 ms, if three events are "found" within 300 ms of each other
+    /// then only one of these three is preserved.
+    ///
+    /// # Heuristic detail
+    /// The initial search step is 1% of the duration requested, if the heuristic is set to None.
+    /// For example, if the trajectory is 100 days long, then we split the trajectory into 100 chunks of 1 day and see whether
+    /// the event is in there. If the event happens twice or more times within 1% of the trajectory duration, only the _one_ of
+    /// such events will be found.
+    ///
+    /// :type state_spec: StateSpec
+    /// :type event: Event
+    /// :type start_epoch: Epoch
+    /// :type end_epoch: Epoch
+    /// :type heuristic: Duration, optional
+    #[pyo3(name = "report_events", signature=(state_spec, event, start_epoch, end_epoch, heuristic=None))]
+    #[allow(clippy::identity_op)]
+    fn py_report_events(
+        &self,
+        state_spec: PyStateSpec,
+        event: &Event,
+        start_epoch: Epoch,
+        end_epoch: Epoch,
+        heuristic: Option<Duration>,
+    ) -> Result<Vec<EventDetails>, AnalysisError> {
+        self.report_events(
+            &StateSpec::from(state_spec),
+            event,
+            start_epoch,
+            end_epoch,
+            heuristic,
+        )
+    }
+    /// Slow approach to finding **all** of the events between two epochs. This will evaluate ALL epochs in between the two bounds.
+    /// This approach is more robust, but more computationally demanding since it's O(N).
+    #[pyo3(name = "report_events_slow")]
+    #[allow(clippy::identity_op)]
+    fn py_report_events_slow(
+        &self,
+        state_spec: PyStateSpec,
+        event: &Event,
+        start_epoch: Epoch,
+        end_epoch: Epoch,
+    ) -> Result<Vec<EventDetails>, AnalysisError> {
+        self.report_events_slow(&StateSpec::from(state_spec), event, start_epoch, end_epoch)
+    }
+
+    /// Find all event arcs, i.e. the start and stop time of when a given event occurs.
+    ///
+    /// **Performance:** for robustness, this function calls the memory and computationally intensive [report_events_slow] function.
+    #[pyo3(name = "report_event_arcs")]
+    fn py_report_event_arcs(
+        &self,
+        state_spec: PyStateSpec,
+        event: &Event,
+        start_epoch: Epoch,
+        end_epoch: Epoch,
+    ) -> Result<Vec<EventArc>, AnalysisError> {
+        self.report_event_arcs(&StateSpec::from(state_spec), event, start_epoch, end_epoch)
+    }
+}
 
 /// ScalarExpr defines a scalar computation from a (set of) vector expression(s).
 #[pyclass]
@@ -260,6 +360,12 @@ impl Clone for PyScalarExpr {
 
 #[pymethods]
 impl PyScalarExpr {
+    /// Compute this ScalarExpr for the provided Orbit
+    ///
+    /// :type orbit: Orbit
+    /// :type almanac: Almanac
+    /// :type ab_corr: Aberration, optional
+    /// :rtype:float
     #[pyo3(signature=(orbit, almanac, ab_corr=None))]
     fn evaluate(
         &self,
@@ -272,6 +378,27 @@ impl PyScalarExpr {
 
         scalar
             .evaluate(orbit, ab_corr, almanac)
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+
+    /// Convert the S-Expression to a ScalarExpr
+    /// :type expr: str
+    /// :rtype: ScalarExpr
+    #[classmethod]
+    fn from_s_expr(_cls: Bound<'_, PyType>, expr: &str) -> Result<Self, PyErr> {
+        let scalar =
+            ScalarExpr::from_s_expr(expr).map_err(|e| PyException::new_err(e.to_string()))?;
+
+        scalar.try_into()
+    }
+
+    /// Converts this ScalarExpr to its S-Expression
+    /// :rtype: str
+    fn to_s_expr(&self) -> Result<String, PyErr> {
+        let scalar = ScalarExpr::from(self.clone());
+
+        scalar
+            .to_s_expr()
             .map_err(|e| PyException::new_err(e.to_string()))
     }
 }
@@ -377,6 +504,25 @@ impl PyStateSpec {
             observer_frame,
             ab_corr,
         }
+    }
+
+    /// Convert the S-Expression to a StateSpec
+    /// :type expr: str
+    /// :rtype: StateSpec
+    #[classmethod]
+    fn from_s_expr(_cls: Bound<'_, PyType>, expr: &str) -> Result<Self, PyErr> {
+        let spec = StateSpec::from_s_expr(expr).map_err(|e| PyException::new_err(e.to_string()))?;
+
+        spec.try_into()
+    }
+
+    /// Converts this StateSpec to its S-Expression
+    /// :rtype: str
+    fn to_s_expr(&self) -> Result<String, PyErr> {
+        let spec = StateSpec::from(self.clone());
+
+        spec.to_s_expr()
+            .map_err(|e| PyException::new_err(e.to_string()))
     }
 }
 
