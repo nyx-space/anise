@@ -7,10 +7,10 @@
  *
  * Documentation: https://nyxspace.com/
  */
-
+use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 
-use crate::prelude::{Aberration, Frame};
+use crate::prelude::{Aberration, Almanac, Frame, Orbit};
 use crate::NaifId;
 
 pub use crate::analysis::elements::OrbitalElement;
@@ -256,21 +256,25 @@ impl Clone for PyScalarExpr {
             }
         })
     }
-} /* #[pymethods]
-  impl PyScalarExpr {
-      fn evaluate(
-          &self,
-          orbit: Orbit,
-          ab_corr: Option<Aberration>,
-          almanac: &Almanac,
-      ) -> Result<f64, PyErr> {
-          let scalar: ScalarExpr = self.try_into()?;
+}
 
-          scalar
-              .evaluate(orbit, ab_corr, almanac)
-              .map_err(|e| PyException::new_err(e.to_string()))
-      }
-  } */
+#[pymethods]
+impl PyScalarExpr {
+    #[pyo3(signature=(orbit, almanac, ab_corr=None))]
+    fn evaluate(
+        &self,
+        orbit: Orbit,
+        almanac: &Almanac,
+        ab_corr: Option<Aberration>,
+    ) -> Result<f64, PyErr> {
+        let py_scalar = self.clone();
+        let scalar = ScalarExpr::from(py_scalar);
+
+        scalar
+            .evaluate(orbit, ab_corr, almanac)
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+}
 
 #[pyclass]
 #[pyo3(module = "anise.analysis", name = "VectorExpr", get_all, set_all)]
@@ -455,201 +459,163 @@ impl TryFrom<ScalarExpr> for PyScalarExpr {
     type Error = PyErr;
 
     fn try_from(value: ScalarExpr) -> Result<Self, Self::Error> {
-        match value {
-            ScalarExpr::BetaAngle => Ok(Self::BetaAngle()),
-            ScalarExpr::LocalSolarTime => Ok(Self::LocalSolarTime()),
-            ScalarExpr::LocalTimeAscNode => Ok(Self::LocalTimeAscNode()),
-            ScalarExpr::LocalTimeDescNode => Ok(Self::LocalTimeDescNode()),
-            ScalarExpr::Constant(v) => Ok(Self::Constant(v)),
-            ScalarExpr::SunAngle { observer_id } => Ok(Self::SunAngle { observer_id }),
-            ScalarExpr::AzimuthFromLocation {
-                location_id,
-                obstructing_body,
-            } => Ok(Self::AzimuthFromLocation {
-                location_id,
-                obstructing_body,
-            }),
-            ScalarExpr::ElevationFromLocation {
-                location_id,
-                obstructing_body,
-            } => Ok(Self::ElevationFromLocation {
-                location_id,
-                obstructing_body,
-            }),
-            ScalarExpr::RangeFromLocation {
-                location_id,
-                obstructing_body,
-            } => Ok(Self::RangeFromLocation {
-                location_id,
-                obstructing_body,
-            }),
-            ScalarExpr::RangeRateFromLocation {
-                location_id,
-                obstructing_body,
-            } => Ok(Self::RangeRateFromLocation {
-                location_id,
-                obstructing_body,
-            }),
-            ScalarExpr::SolarEclipsePercentage { eclipsing_frame } => {
-                Ok(Self::SolarEclipsePercentage { eclipsing_frame })
-            }
-            ScalarExpr::OccultationPercentage {
-                back_frame,
-                front_frame,
-            } => Ok(Self::OccultationPercentage {
-                back_frame,
-                front_frame,
-            }),
-            ScalarExpr::Element(e) => Ok(Self::Element(e)),
-            ScalarExpr::MeanEquatorialRadius { celestial_object } => {
-                Ok(Self::MeanEquatorialRadius { celestial_object })
-            }
-            ScalarExpr::SemiMajorEquatorialRadius { celestial_object } => {
-                Ok(Self::SemiMajorEquatorialRadius { celestial_object })
-            }
-            ScalarExpr::SemiMinorEquatorialRadius { celestial_object } => {
-                Ok(Self::SemiMinorEquatorialRadius { celestial_object })
-            }
-            ScalarExpr::PolarRadius { celestial_object } => {
-                Ok(Self::PolarRadius { celestial_object })
-            }
-            ScalarExpr::Flattening { celestial_object } => {
-                Ok(Self::Flattening { celestial_object })
-            }
-            ScalarExpr::GravParam { celestial_object } => Ok(Self::GravParam { celestial_object }),
-            ScalarExpr::Norm(v) => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::Norm(Py::new(
+        Python::attach(|py| -> Result<Self, PyErr> {
+            match value {
+                ScalarExpr::BetaAngle => Ok(Self::BetaAngle()),
+                ScalarExpr::LocalSolarTime => Ok(Self::LocalSolarTime()),
+                ScalarExpr::LocalTimeAscNode => Ok(Self::LocalTimeAscNode()),
+                ScalarExpr::LocalTimeDescNode => Ok(Self::LocalTimeDescNode()),
+                ScalarExpr::Constant(v) => Ok(Self::Constant(v)),
+                ScalarExpr::SunAngle { observer_id } => Ok(Self::SunAngle { observer_id }),
+                ScalarExpr::AzimuthFromLocation {
+                    location_id,
+                    obstructing_body,
+                } => Ok(Self::AzimuthFromLocation {
+                    location_id,
+                    obstructing_body,
+                }),
+                ScalarExpr::ElevationFromLocation {
+                    location_id,
+                    obstructing_body,
+                } => Ok(Self::ElevationFromLocation {
+                    location_id,
+                    obstructing_body,
+                }),
+                ScalarExpr::RangeFromLocation {
+                    location_id,
+                    obstructing_body,
+                } => Ok(Self::RangeFromLocation {
+                    location_id,
+                    obstructing_body,
+                }),
+                ScalarExpr::RangeRateFromLocation {
+                    location_id,
+                    obstructing_body,
+                } => Ok(Self::RangeRateFromLocation {
+                    location_id,
+                    obstructing_body,
+                }),
+                ScalarExpr::SolarEclipsePercentage { eclipsing_frame } => {
+                    Ok(Self::SolarEclipsePercentage { eclipsing_frame })
+                }
+                ScalarExpr::OccultationPercentage {
+                    back_frame,
+                    front_frame,
+                } => Ok(Self::OccultationPercentage {
+                    back_frame,
+                    front_frame,
+                }),
+                ScalarExpr::Element(e) => Ok(Self::Element(e)),
+                ScalarExpr::MeanEquatorialRadius { celestial_object } => {
+                    Ok(Self::MeanEquatorialRadius { celestial_object })
+                }
+                ScalarExpr::SemiMajorEquatorialRadius { celestial_object } => {
+                    Ok(Self::SemiMajorEquatorialRadius { celestial_object })
+                }
+                ScalarExpr::SemiMinorEquatorialRadius { celestial_object } => {
+                    Ok(Self::SemiMinorEquatorialRadius { celestial_object })
+                }
+                ScalarExpr::PolarRadius { celestial_object } => {
+                    Ok(Self::PolarRadius { celestial_object })
+                }
+                ScalarExpr::Flattening { celestial_object } => {
+                    Ok(Self::Flattening { celestial_object })
+                }
+                ScalarExpr::GravParam { celestial_object } => {
+                    Ok(Self::GravParam { celestial_object })
+                }
+                ScalarExpr::Norm(v) => Ok(Self::Norm(Py::new(
                     py,
                     <VectorExpr as TryInto<PyVectorExpr>>::try_into(v)?,
-                )?))
-            }),
-            ScalarExpr::NormSquared(v) => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::NormSquared(Py::new(
+                )?)),
+                ScalarExpr::NormSquared(v) => Ok(Self::NormSquared(Py::new(
                     py,
                     <VectorExpr as TryInto<PyVectorExpr>>::try_into(v)?,
-                )?))
-            }),
-            ScalarExpr::VectorX(v) => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::VectorX(Py::new(
+                )?)),
+                ScalarExpr::VectorX(v) => Ok(Self::VectorX(Py::new(
                     py,
                     <VectorExpr as TryInto<PyVectorExpr>>::try_into(v)?,
-                )?))
-            }),
-            ScalarExpr::VectorY(v) => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::VectorY(Py::new(
+                )?)),
+                ScalarExpr::VectorY(v) => Ok(Self::VectorY(Py::new(
                     py,
                     <VectorExpr as TryInto<PyVectorExpr>>::try_into(v)?,
-                )?))
-            }),
-            ScalarExpr::VectorZ(v) => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::VectorZ(Py::new(
+                )?)),
+                ScalarExpr::VectorZ(v) => Ok(Self::VectorZ(Py::new(
                     py,
                     <VectorExpr as TryInto<PyVectorExpr>>::try_into(v)?,
-                )?))
-            }),
-            ScalarExpr::DotProduct { a, b } => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::DotProduct {
+                )?)),
+                ScalarExpr::DotProduct { a, b } => Ok(Self::DotProduct {
                     a: Py::new(py, <VectorExpr as TryInto<PyVectorExpr>>::try_into(a)?)?,
                     b: Py::new(py, <VectorExpr as TryInto<PyVectorExpr>>::try_into(b)?)?,
-                })
-            }),
-            ScalarExpr::AngleBetween { a, b } => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::AngleBetween {
+                }),
+                ScalarExpr::AngleBetween { a, b } => Ok(Self::AngleBetween {
                     a: Py::new(py, <VectorExpr as TryInto<PyVectorExpr>>::try_into(a)?)?,
                     b: Py::new(py, <VectorExpr as TryInto<PyVectorExpr>>::try_into(b)?)?,
-                })
-            }),
-            ScalarExpr::Negate(v) => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::Negate(Py::new(
+                }),
+                ScalarExpr::Negate(v) => Ok(Self::Negate(Py::new(
                     py,
                     <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*v)?,
-                )?))
-            }),
-            ScalarExpr::Invert(v) => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::Invert(Py::new(
+                )?)),
+                ScalarExpr::Invert(v) => Ok(Self::Invert(Py::new(
                     py,
                     <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*v)?,
-                )?))
-            }),
-            ScalarExpr::Cos(v) => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::Cos(Py::new(
+                )?)),
+                ScalarExpr::Cos(v) => Ok(Self::Cos(Py::new(
                     py,
                     <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*v)?,
-                )?))
-            }),
-            ScalarExpr::Sin(v) => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::Sin(Py::new(
+                )?)),
+                ScalarExpr::Sin(v) => Ok(Self::Sin(Py::new(
                     py,
                     <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*v)?,
-                )?))
-            }),
-            ScalarExpr::Tan(v) => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::Tan(Py::new(
+                )?)),
+                ScalarExpr::Tan(v) => Ok(Self::Tan(Py::new(
                     py,
                     <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*v)?,
-                )?))
-            }),
-            ScalarExpr::Acos(v) => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::Acos(Py::new(
+                )?)),
+                ScalarExpr::Acos(v) => Ok(Self::Acos(Py::new(
                     py,
                     <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*v)?,
-                )?))
-            }),
-            ScalarExpr::Asin(v) => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::Asin(Py::new(
+                )?)),
+                ScalarExpr::Asin(v) => Ok(Self::Asin(Py::new(
                     py,
                     <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*v)?,
-                )?))
-            }),
-            ScalarExpr::Sqrt(v) => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::Sqrt(Py::new(
+                )?)),
+                ScalarExpr::Sqrt(v) => Ok(Self::Sqrt(Py::new(
                     py,
                     <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*v)?,
-                )?))
-            }),
-            ScalarExpr::Powi { scalar, n } => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::Powi {
+                )?)),
+                ScalarExpr::Powi { scalar, n } => Ok(Self::Powi {
                     scalar: Py::new(
                         py,
                         <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*scalar)?,
                     )?,
                     n,
-                })
-            }),
-            ScalarExpr::Powf { scalar, n } => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::Powf {
+                }),
+                ScalarExpr::Powf { scalar, n } => Ok(Self::Powf {
                     scalar: Py::new(
                         py,
                         <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*scalar)?,
                     )?,
                     n,
-                })
-            }),
-            ScalarExpr::Add { a, b } => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::Add {
+                }),
+                ScalarExpr::Add { a, b } => Ok(Self::Add {
                     a: Py::new(py, <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*a)?)?,
                     b: Py::new(py, <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*b)?)?,
-                })
-            }),
-            ScalarExpr::Mul { a, b } => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::Mul {
+                }),
+                ScalarExpr::Mul { a, b } => Ok(Self::Mul {
                     a: Py::new(py, <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*a)?)?,
                     b: Py::new(py, <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*b)?)?,
-                })
-            }),
-            ScalarExpr::Atan2 { y, x } => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::Atan2 {
+                }),
+                ScalarExpr::Atan2 { y, x } => Ok(Self::Atan2 {
                     y: Py::new(py, <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*y)?)?,
                     x: Py::new(py, <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*x)?)?,
-                })
-            }),
-            ScalarExpr::Modulo { v, m } => Python::attach(|py| -> Result<Self, PyErr> {
-                Ok(Self::Modulo {
+                }),
+                ScalarExpr::Modulo { v, m } => Ok(Self::Modulo {
                     v: Py::new(py, <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*v)?)?,
                     m: Py::new(py, <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*m)?)?,
-                })
-            }),
-        }
+                }),
+            }
+        })
     }
 }
 
