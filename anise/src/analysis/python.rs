@@ -8,7 +8,6 @@
  * Documentation: https://nyxspace.com/
  */
 
-use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 
 use crate::prelude::{Aberration, Frame};
@@ -231,28 +230,28 @@ impl Clone for PyScalarExpr {
                     obstructing_body,
                 } => Self::AzimuthFromLocation {
                     location_id: *location_id,
-                    obstructing_body: obstructing_body.clone(),
+                    obstructing_body: *obstructing_body,
                 },
                 Self::ElevationFromLocation {
                     location_id,
                     obstructing_body,
                 } => Self::ElevationFromLocation {
                     location_id: *location_id,
-                    obstructing_body: obstructing_body.clone(),
+                    obstructing_body: *obstructing_body,
                 },
                 Self::RangeFromLocation {
                     location_id,
                     obstructing_body,
                 } => Self::RangeFromLocation {
                     location_id: *location_id,
-                    obstructing_body: obstructing_body.clone(),
+                    obstructing_body: *obstructing_body,
                 },
                 Self::RangeRateFromLocation {
                     location_id,
                     obstructing_body,
                 } => Self::RangeRateFromLocation {
                     location_id: *location_id,
-                    obstructing_body: obstructing_body.clone(),
+                    obstructing_body: *obstructing_body,
                 },
             }
         })
@@ -352,6 +351,7 @@ impl Clone for PyVectorExpr {
     }
 }
 /// StateSpec allows defining a state from the target to the observer
+#[derive(Clone)]
 #[pyclass]
 #[pyo3(module = "anise.analysis", name = "StateSpec", get_all, set_all)]
 pub struct PyStateSpec {
@@ -432,9 +432,20 @@ pub enum PyOrthogonalFrame {
 impl Clone for PyOrthogonalFrame {
     fn clone(&self) -> Self {
         Python::attach(|py| -> PyOrthogonalFrame {
-            // match self {
-            todo!()
-            // }
+            match self {
+                Self::XY { x, y } => Self::XY {
+                    x: x.clone_ref(py),
+                    y: y.clone_ref(py),
+                },
+                Self::XZ { x, z } => Self::XZ {
+                    x: x.clone_ref(py),
+                    z: z.clone_ref(py),
+                },
+                Self::YZ { y, z } => Self::YZ {
+                    z: z.clone_ref(py),
+                    y: y.clone_ref(py),
+                },
+            }
         })
     }
 }
@@ -744,23 +755,170 @@ impl TryFrom<FrameSpec> for PyFrameSpec {
 
 // *** Converse *** //
 
+impl From<PyScalarExpr> for ScalarExpr {
+    fn from(value: PyScalarExpr) -> Self {
+        Python::attach(|py| match value {
+            // --- Direct Conversions (unaffected by the change but now run inside the GIL) ---
+            PyScalarExpr::Constant(c) => ScalarExpr::Constant(c),
+            PyScalarExpr::MeanEquatorialRadius { celestial_object } => {
+                ScalarExpr::MeanEquatorialRadius { celestial_object }
+            }
+            PyScalarExpr::SemiMajorEquatorialRadius { celestial_object } => {
+                ScalarExpr::SemiMajorEquatorialRadius { celestial_object }
+            }
+            PyScalarExpr::SemiMinorEquatorialRadius { celestial_object } => {
+                ScalarExpr::SemiMinorEquatorialRadius { celestial_object }
+            }
+            PyScalarExpr::PolarRadius { celestial_object } => {
+                ScalarExpr::PolarRadius { celestial_object }
+            }
+            PyScalarExpr::Flattening { celestial_object } => {
+                ScalarExpr::Flattening { celestial_object }
+            }
+            PyScalarExpr::GravParam { celestial_object } => {
+                ScalarExpr::GravParam { celestial_object }
+            }
+            PyScalarExpr::Element(e) => ScalarExpr::Element(e),
+            PyScalarExpr::SolarEclipsePercentage { eclipsing_frame } => {
+                ScalarExpr::SolarEclipsePercentage { eclipsing_frame }
+            }
+            PyScalarExpr::OccultationPercentage {
+                back_frame,
+                front_frame,
+            } => ScalarExpr::OccultationPercentage {
+                back_frame,
+                front_frame,
+            },
+            PyScalarExpr::BetaAngle() => ScalarExpr::BetaAngle,
+            PyScalarExpr::LocalSolarTime() => ScalarExpr::LocalSolarTime,
+            PyScalarExpr::LocalTimeAscNode() => ScalarExpr::LocalTimeAscNode,
+            PyScalarExpr::LocalTimeDescNode() => ScalarExpr::LocalTimeDescNode,
+            PyScalarExpr::SunAngle { observer_id } => ScalarExpr::SunAngle { observer_id },
+            PyScalarExpr::AzimuthFromLocation {
+                location_id,
+                obstructing_body,
+            } => ScalarExpr::AzimuthFromLocation {
+                location_id,
+                obstructing_body,
+            },
+            PyScalarExpr::ElevationFromLocation {
+                location_id,
+                obstructing_body,
+            } => ScalarExpr::ElevationFromLocation {
+                location_id,
+                obstructing_body,
+            },
+            PyScalarExpr::RangeFromLocation {
+                location_id,
+                obstructing_body,
+            } => ScalarExpr::RangeFromLocation {
+                location_id,
+                obstructing_body,
+            },
+            PyScalarExpr::RangeRateFromLocation {
+                location_id,
+                obstructing_body,
+            } => ScalarExpr::RangeRateFromLocation {
+                location_id,
+                obstructing_body,
+            },
+
+            // --- Recursive Conversions (now using the acquired `py` token) ---
+            PyScalarExpr::Add { a, b } => ScalarExpr::Add {
+                a: Box::new(a.borrow(py).clone().into()),
+                b: Box::new(b.borrow(py).clone().into()),
+            },
+            PyScalarExpr::Mul { a, b } => ScalarExpr::Mul {
+                a: Box::new(a.borrow(py).clone().into()),
+                b: Box::new(b.borrow(py).clone().into()),
+            },
+            PyScalarExpr::Negate(s) => ScalarExpr::Negate(Box::new(s.borrow(py).clone().into())),
+            PyScalarExpr::Invert(s) => ScalarExpr::Invert(Box::new(s.borrow(py).clone().into())),
+            PyScalarExpr::Sqrt(s) => ScalarExpr::Sqrt(Box::new(s.borrow(py).clone().into())),
+            PyScalarExpr::Powi { scalar, n } => ScalarExpr::Powi {
+                scalar: Box::new(scalar.borrow(py).clone().into()),
+                n,
+            },
+            PyScalarExpr::Powf { scalar, n } => ScalarExpr::Powf {
+                scalar: Box::new(scalar.borrow(py).clone().into()),
+                n,
+            },
+            PyScalarExpr::Cos(s) => ScalarExpr::Cos(Box::new(s.borrow(py).clone().into())),
+            PyScalarExpr::Sin(s) => ScalarExpr::Sin(Box::new(s.borrow(py).clone().into())),
+            PyScalarExpr::Tan(s) => ScalarExpr::Tan(Box::new(s.borrow(py).clone().into())),
+            PyScalarExpr::Acos(s) => ScalarExpr::Acos(Box::new(s.borrow(py).clone().into())),
+            PyScalarExpr::Asin(s) => ScalarExpr::Asin(Box::new(s.borrow(py).clone().into())),
+            PyScalarExpr::Atan2 { y, x } => ScalarExpr::Atan2 {
+                y: Box::new(y.borrow(py).clone().into()),
+                x: Box::new(x.borrow(py).clone().into()),
+            },
+            PyScalarExpr::Modulo { v, m } => ScalarExpr::Modulo {
+                v: Box::new(v.borrow(py).clone().into()),
+                m: Box::new(m.borrow(py).clone().into()),
+            },
+            PyScalarExpr::Norm(v) => ScalarExpr::Norm(v.borrow(py).clone().into()),
+            PyScalarExpr::NormSquared(v) => ScalarExpr::NormSquared(v.borrow(py).clone().into()),
+            PyScalarExpr::DotProduct { a, b } => ScalarExpr::DotProduct {
+                a: a.borrow(py).clone().into(),
+                b: b.borrow(py).clone().into(),
+            },
+            PyScalarExpr::AngleBetween { a, b } => ScalarExpr::AngleBetween {
+                a: a.borrow(py).clone().into(),
+                b: b.borrow(py).clone().into(),
+            },
+            PyScalarExpr::VectorX(v) => ScalarExpr::VectorX(v.borrow(py).clone().into()),
+            PyScalarExpr::VectorY(v) => ScalarExpr::VectorY(v.borrow(py).clone().into()),
+            PyScalarExpr::VectorZ(v) => ScalarExpr::VectorZ(v.borrow(py).clone().into()),
+        })
+    }
+}
+impl From<PyVectorExpr> for VectorExpr {
+    fn from(value: PyVectorExpr) -> Self {
+        Python::attach(|py| match value {
+            PyVectorExpr::Fixed { x, y, z } => VectorExpr::Fixed { x, y, z },
+            PyVectorExpr::Radius(spec) => VectorExpr::Radius(spec.borrow(py).clone().into()),
+            PyVectorExpr::Velocity(spec) => VectorExpr::Velocity(spec.borrow(py).clone().into()),
+            PyVectorExpr::OrbitalMomentum(spec) => {
+                VectorExpr::OrbitalMomentum(spec.borrow(py).clone().into())
+            }
+            PyVectorExpr::EccentricityVector(spec) => {
+                VectorExpr::EccentricityVector(spec.borrow(py).clone().into())
+            }
+            PyVectorExpr::CrossProduct { a, b } => VectorExpr::CrossProduct {
+                a: Box::new(a.borrow(py).clone().into()),
+                b: Box::new(b.borrow(py).clone().into()),
+            },
+            PyVectorExpr::VecProjection { a, b } => VectorExpr::VecProjection {
+                a: Box::new(a.borrow(py).clone().into()),
+                b: Box::new(b.borrow(py).clone().into()),
+            },
+            PyVectorExpr::Unit(v) => VectorExpr::Unit(Box::new(v.borrow(py).clone().into())),
+            PyVectorExpr::Negate(v) => VectorExpr::Negate(Box::new(v.borrow(py).clone().into())),
+            PyVectorExpr::Project { v, frame, plane } => VectorExpr::Project {
+                v: Box::new(v.borrow(py).clone().into()),
+                frame: Box::new(frame.borrow(py).clone().into()),
+                plane,
+            },
+        })
+    }
+}
+
 impl From<PyOrthogonalFrame> for OrthogonalFrame {
     fn from(value: PyOrthogonalFrame) -> Self {
-        // match value {
-        //     PyOrthogonalFrame::XY { x, y } => OrthogonalFrame::XY {
-        //         x: x.into(),
-        //         y: y.into(),
-        //     },
-        //     PyOrthogonalFrame::XZ { x, z } => OrthogonalFrame::XZ {
-        //         x: x.into(),
-        //         z: z.into(),
-        //     },
-        //     PyOrthogonalFrame::YZ { y, z } => OrthogonalFrame::YZ {
-        //         y: y.into(),
-        //         z: z.into(),
-        //     },
-        // }
-        todo!()
+        Python::attach(|py| match value {
+            PyOrthogonalFrame::XY { x, y } => OrthogonalFrame::XY {
+                x: x.borrow(py).clone().into(),
+                y: y.borrow(py).clone().into(),
+            },
+            PyOrthogonalFrame::XZ { x, z } => OrthogonalFrame::XZ {
+                x: x.borrow(py).clone().into(),
+                z: z.borrow(py).clone().into(),
+            },
+            PyOrthogonalFrame::YZ { y, z } => OrthogonalFrame::YZ {
+                y: y.borrow(py).clone().into(),
+                z: z.borrow(py).clone().into(),
+            },
+        })
     }
 }
 
