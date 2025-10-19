@@ -1,18 +1,23 @@
-
 from anise import Almanac, Aberration
 import anise.analysis as analysis
 from anise.time import Epoch, TimeSeries, Unit
 from anise.constants import Frames
 from anise.astro import Frame
 
+
 def test_analysis_gen_report():
     """
     Tests the generation of a scalar report with complex, nested expressions.
     """
 
-    almanac = Almanac("../data/de440s.bsp").load("../data/pck08.pca").load("../data/lro.bsp")
+    data_path = Path(__file__).parent.joinpath("..", "..", "data")
+    almanac = (
+        Almanac(str(data_path.joinpath("de440s.bsp")))
+        .load(str(data_path.joinpath("pck08.pca")))
+        .load(str(data_path.joinpath("lro.bsp")))
+    )
     almanac.describe(spk=True)
-    
+
     target_frame = analysis.FrameSpec.Loaded(Frames.EME2000)
     observer_frame = analysis.FrameSpec.Loaded(Frames.MOON_J2000)
 
@@ -63,17 +68,11 @@ def test_analysis_gen_report():
     cos_theta = analysis.ScalarExpr.DotProduct(a=u, b=r)
     theta = analysis.ScalarExpr.Atan2(y=sin_theta, x=cos_theta)
     lst_prod = analysis.ScalarExpr.Mul(
-        a=analysis.ScalarExpr.Mul(
-            a=theta, b=analysis.ScalarExpr.Constant(1.0 / 180.0)
-        ),
+        a=analysis.ScalarExpr.Mul(a=theta, b=analysis.ScalarExpr.Constant(1.0 / 180.0)),
         b=analysis.ScalarExpr.Constant(12.0),
     )
-    lst_add = analysis.ScalarExpr.Add(
-        a=lst_prod, b=analysis.ScalarExpr.Constant(6.0)
-    )
-    lst = analysis.ScalarExpr.Modulo(
-        v=lst_add, m=analysis.ScalarExpr.Constant(24.0)
-    )
+    lst_add = analysis.ScalarExpr.Add(a=lst_prod, b=analysis.ScalarExpr.Constant(6.0))
+    lst = analysis.ScalarExpr.Modulo(v=lst_add, m=analysis.ScalarExpr.Constant(24.0))
 
     # Define all scalars to be calculated
     scalars = [
@@ -104,16 +103,20 @@ def test_analysis_gen_report():
             a=analysis.VectorExpr.Radius(state), b=analysis.VectorExpr.Velocity(state)
         ),
         analysis.ScalarExpr.AzimuthFromLocation(location_id=123, obstructing_body=None),
-        analysis.ScalarExpr.ElevationFromLocation(location_id=123, obstructing_body=None),
+        analysis.ScalarExpr.ElevationFromLocation(
+            location_id=123, obstructing_body=None
+        ),
         analysis.ScalarExpr.RangeFromLocation(location_id=123, obstructing_body=None),
-        analysis.ScalarExpr.RangeRateFromLocation(location_id=123, obstructing_body=None),
+        analysis.ScalarExpr.RangeRateFromLocation(
+            location_id=123, obstructing_body=None
+        ),
         analysis.ScalarExpr.LocalTimeAscNode(),
         analysis.ScalarExpr.LocalTimeDescNode(),
         analysis.ScalarExpr.VectorX(proj),
         analysis.ScalarExpr.VectorY(proj),
         analysis.ScalarExpr.VectorZ(proj),
         analysis.ScalarExpr.LocalSolarTime(),
-        lst, # Our custom LST calculation
+        lst,  # Our custom LST calculation
     ]
 
     # Test S-Expression serialization/deserialization
@@ -129,12 +132,12 @@ def test_analysis_gen_report():
 
     # Build the final report object
     report = analysis.ReportScalars(scalars_with_aliases, state)
-    
+
     # Test report serialization
     report_s_expr = report.to_s_expr()
     report_reloaded = analysis.ReportScalars.from_s_expr(report_s_expr)
     assert report_reloaded.to_s_expr() == report_s_expr
-    
+
     # Generate the report data
     series = TimeSeries(
         Epoch("2025-01-01 00:00:00 UTC"),
@@ -149,7 +152,12 @@ def test_analysis_gen_report():
     assert len(last_row) == len(scalars_with_aliases)
 
     # Validate some computed values
-    assert last_row["Hmag (km)"] == last_row["|Radius(Earth J2000 -> Moon J2000) ⨯ Velocity(Earth J2000 -> Moon J2000)|"]
+    assert (
+        last_row["Hmag (km)"]
+        == last_row[
+            "|Radius(Earth J2000 -> Moon J2000) ⨯ Velocity(Earth J2000 -> Moon J2000)|"
+        ]
+    )
 
     # Check that our manual LST is close to the built-in one
     time_diff = abs(last_row["LST (h)"] - last_row["local solar time (h)"])
@@ -160,13 +168,18 @@ def test_analysis_gen_report():
         if "proj" in col_name:
             assert abs(value) <= 1.0
 
+
 def test_analysis_event():
     """
     Tests event finding for apoapsis, periapsis, eclipses, and other criteria.
     """
-    almanac = Almanac("../data/de440s.bsp").load("../data/pck08.pca").load("../data/lro.bsp")
+    almanac = (
+        Almanac(str(data_path.joinpath("de440s.bsp")))
+        .load(str(data_path.joinpath("pck08.pca")))
+        .load(str(data_path.joinpath("lro.bsp")))
+    )
 
-    lro_frame = Frame(-85, 1) # LRO NAIF ID
+    lro_frame = Frame(-85, 1)  # LRO NAIF ID
 
     lro_state_spec = analysis.StateSpec(
         target_frame=analysis.FrameSpec.Loaded(lro_frame),
@@ -210,16 +223,21 @@ def test_analysis_event():
     )
     for event in peri_events:
         ta_deg = event.orbit.ta_deg()
-        assert ta_deg < perilune.value_precision or abs(ta_deg - 360.0) < perilune.value_precision
+        assert (
+            ta_deg < perilune.value_precision
+            or abs(ta_deg - 360.0) < perilune.value_precision
+        )
 
     # Check that we found one apoapsis/periapsis per orbit
     dts_apo = [
-        s.orbit.epoch.timedelta(f.orbit.epoch) for f, s in zip(apo_events[:-1], apo_events[1:])
+        s.orbit.epoch.timedelta(f.orbit.epoch)
+        for f, s in zip(apo_events[:-1], apo_events[1:])
     ]
     assert all((dt - period).abs() < Unit.Minute * 5 for dt in dts_apo)
-    
+
     dts_peri = [
-        s.orbit.epoch.timedelta(f.orbit.epoch) for f, s in zip(peri_events[:-1], peri_events[1:])
+        s.orbit.epoch.timedelta(f.orbit.epoch)
+        for f, s in zip(peri_events[:-1], peri_events[1:])
     ]
     assert all((dt - period).abs() < Unit.Minute * 5 for dt in dts_peri)
 
@@ -240,7 +258,7 @@ def test_analysis_event():
     # Validate the eclipse periods
     for arc in eclipse_arcs:
         assert Unit.Minute * 24 < arc.duration() < Unit.Minute * 40
-        
+
         # Check points in and around the arc to confirm the event state
         series = TimeSeries(
             arc.start_epoch() - eclipse.epoch_precision,
@@ -252,10 +270,9 @@ def test_analysis_event():
             orbit = lro_state_spec.evaluate(epoch, almanac)
             eclipse_val = eclipse.eval(orbit, almanac)
             is_in_eclipse = abs(eclipse_val) <= eclipse.value_precision
-            
+
             if arc.start_epoch() <= epoch < arc.end_epoch():
                 assert is_in_eclipse, f"Epoch {epoch} should be in eclipse"
             else:
                 # Outside the arc, it should not be in eclipse, or it's a falling value
                 assert not is_in_eclipse or eclipse_val < 0.0
-

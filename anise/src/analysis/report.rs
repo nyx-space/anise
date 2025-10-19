@@ -19,6 +19,7 @@ use pyo3::exceptions::PyException;
 #[cfg(feature = "python")]
 use pyo3::types::PyType;
 
+#[cfg(feature = "python")]
 use super::python::{PyScalarExpr, PyStateSpec};
 
 /// A basic report builder that can be serialized seperately from the execution.

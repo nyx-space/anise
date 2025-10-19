@@ -3,7 +3,14 @@ from pathlib import Path
 import pickle
 from math import radians
 
-from anise import Almanac, MetaAlmanac, MetaFile, LocationDataSet, LocationDhallSet, LocationDhallSetEntry
+from anise import (
+    Almanac,
+    MetaAlmanac,
+    MetaFile,
+    LocationDataSet,
+    LocationDhallSet,
+    LocationDhallSetEntry,
+)
 from anise.astro import *
 from anise.constants import Frames
 from anise.rotation import DCM, Quaternion
@@ -282,12 +289,9 @@ def test_frame_defs():
     assert Frames.EME2000 == Frames.EARTH_J2000
     assert Frames.EME2000 != Frames.SSB_J2000
 
+
 def test_location():
-    mask = [
-        TerrainMask(0.0, 5.0),
-        TerrainMask(35.0, 10.0),
-        TerrainMask(270.0, 3.0)
-    ]
+    mask = [TerrainMask(0.0, 5.0), TerrainMask(35.0, 10.0), TerrainMask(270.0, 3.0)]
     dss65 = Location(
         40.427_222,
         4.250_556,
@@ -324,9 +328,10 @@ def test_location():
     # And we can grab the location data itself
     my_loc = dhallset.data[0]
     print(my_loc.alias)
-    print(my_loc.value) # This is the location info
+    print(my_loc.value)  # This is the location info
     terrain_mask = my_loc.value.terrain_mask
     print(terrain_mask)
+
 
 if __name__ == "__main__":
     # test_meta_load()
