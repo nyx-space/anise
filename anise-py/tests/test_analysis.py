@@ -242,7 +242,7 @@ def test_analysis_event():
         assert Unit.Minute * 24 < arc.duration() < Unit.Minute * 40
         
         # Check points in and around the arc to confirm the event state
-        series = hifitime.TimeSeries(
+        series = TimeSeries(
             arc.start_epoch() - eclipse.epoch_precision,
             arc.end_epoch() + eclipse.epoch_precision,
             Unit.Minute * 0.5,
