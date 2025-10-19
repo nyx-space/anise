@@ -71,8 +71,7 @@ impl ReportScalars {
         let state_spec = StateSpec::from(state_spec);
 
         let scalars = scalars
-            .iter()
-            .cloned()
+            .into_iter()
             .map(|(scalar, opt_alias)| (ScalarExpr::from(scalar), opt_alias))
             .collect();
 
