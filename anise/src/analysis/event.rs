@@ -86,6 +86,26 @@ impl Event {
         }
     }
 
+    /// Report events where the object is above the horizon when seen from the provided location ID.
+    ///
+    /// :type eclipsing_frame: Frame
+    /// :rtype: Event
+    pub fn above_horizon_from_location_id(
+        location_id: i32,
+        obstructing_body: Option<Frame>,
+    ) -> Self {
+        Event {
+            scalar: ScalarExpr::ElevationFromLocation {
+                location_id,
+                obstructing_body,
+            },
+            desired_value: 0.9,
+            epoch_precision: Unit::Second * 0.1,
+            value_precision: 1.0,
+            ab_corr: None,
+        }
+    }
+
     /// Export this Event to S-Expression / LISP syntax
     pub fn to_s_expr(&self) -> Result<String, serde_lexpr::Error> {
         Ok(serde_lexpr::to_value(self)?.to_string())
@@ -231,6 +251,29 @@ impl Event {
             desired_value: 99.9,
             epoch_precision: Unit::Second * 0.1,
             value_precision: 1.0,
+            ab_corr: None,
+        }
+    }
+
+    /// Report events where the object is above the horizon when seen from the provided location ID.
+    ///
+    /// :type eclipsing_frame: Frame
+    /// :rtype: Event
+    #[classmethod]
+    #[pyo3(name = "above_horizon_from_location_id", signature=(location_id, obstructing_body=None))]
+    fn py_above_horizon_from_location_id(
+        _cls: Bound<'_, PyType>,
+        location_id: i32,
+        obstructing_body: Option<Frame>,
+    ) -> Self {
+        Event {
+            scalar: ScalarExpr::ElevationFromLocation {
+                location_id,
+                obstructing_body,
+            },
+            desired_value: 0.1,
+            epoch_precision: Unit::Second * 0.1,
+            value_precision: 0.1,
             ab_corr: None,
         }
     }

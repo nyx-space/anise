@@ -1,4 +1,12 @@
-from anise import Almanac, Aberration
+from anise import (
+    Almanac,
+    Aberration,
+    LocationDhallSet,
+    LocationDhallSetEntry,
+    LocationDataSet,
+)
+from anise.astro import Location, TerrainMask, FrameUid
+from anise.analysis import Event
 import anise.analysis as analysis
 from anise.time import Epoch, TimeSeries, Unit
 from anise.constants import Frames
@@ -248,7 +256,9 @@ def test_analysis_event():
     sunset_arcs = almanac.report_event_arcs(
         lro_state_spec, sunset_nadir, start_epoch, end_epoch
     )
-    print(f"{len(sunset_arcs)} sunset arcs found in {Epoch.system_now().timedelta(tick)}")
+    print(
+        f"{len(sunset_arcs)} sunset arcs found in {Epoch.system_now().timedelta(tick)}"
+    )
     assert sunset_arcs[1].rise.edge == analysis.EventEdge.Rising
     assert sunset_arcs[1].fall.edge == analysis.EventEdge.Falling
     assert len(sunset_arcs) == 309
@@ -282,3 +292,91 @@ def test_analysis_event():
             else:
                 # Outside the arc, it should not be in eclipse, or it's a falling value
                 assert not is_in_eclipse or eclipse_val < 0.0
+
+
+def test_location_accesses():
+    """
+    Demonstrate building a Location Dhall file, loading it into the Almanac, reporting the access times.
+    """
+    mask = [TerrainMask(0.0, 5.0), TerrainMask(35.0, 10.0), TerrainMask(270.0, 3.0)]
+    dss65 = Location(
+        40.427_222,
+        4.250_556,
+        0.834_939,
+        FrameUid(399, 399),
+        mask,
+        terrain_mask_ignored=False,
+    )
+
+    # To build a location data set kernel, we must first build a location dhall set entry
+    entry = LocationDhallSetEntry(id=1, alias="My Alias", value=dss65)
+    # Then we append it to a LocationDhallSet
+    dhallset = LocationDhallSet([entry])
+    assert "data" in dir(dhallset), "missing getting on dhall set"
+    # Now, we can build the kernel
+    dataset = dhallset.to_dataset()
+    # Save it as a Location Kernel ANISE (LKA) file, overwritting it if it exists
+    dataset.save_as("pytest_loc_kernel_report.lka", True)
+    data_path = Path(__file__).parent.joinpath("..", "..", "data")
+    almanac = (
+        Almanac(str(data_path.joinpath("de440s.bsp")))
+        .load(str(data_path.joinpath("pck08.pca")))
+        .load(str(data_path.joinpath("lro.bsp")))
+        .load("pytest_loc_kernel_report.lka")
+    )
+    # Only print the loaded location info
+    almanac.describe(locations=True)
+
+    # Build the horizon event
+    horizon = Event.above_horizon_from_location_id(1)
+
+    lro_frame = Frame(-85, 1)  # LRO NAIF ID
+    start_epoch, _end_epoch = almanac.spk_domain(-85)
+
+    lro_state_spec = analysis.StateSpec(
+        target_frame=analysis.FrameSpec.Loaded(lro_frame),
+        observer_frame=analysis.FrameSpec.Loaded(Frames.MOON_J2000),
+        ab_corr=None,
+    )
+
+    tick = Epoch.system_now()
+    comm_arcs = almanac.report_event_arcs(
+        lro_state_spec, horizon, start_epoch, start_epoch + Unit.Day * 3
+    )
+    print(f"{len(comm_arcs)} Comm arcs found in ", Epoch.system_now().timedelta(tick))
+
+    report = analysis.ReportScalars(
+        [(analysis.ScalarExpr.ElevationFromLocation(1, None), "Elevation")],
+        lro_state_spec,
+    )
+    series = TimeSeries(
+        start_epoch,
+        start_epoch + Unit.Day * 3,
+        Unit.Minute * 0.5,
+        inclusive=True,
+    )
+    data = almanac.report_scalars(report, series)
+
+    # Broken: https://github.com/nyx-space/anise/issues/537
+    for arc in comm_arcs:
+        # Check points in and around the arc to confirm the event state
+        series = TimeSeries(
+            arc.start_epoch() - horizon.epoch_precision,
+            arc.end_epoch() + horizon.epoch_precision,
+            Unit.Minute * 0.5,
+            inclusive=True,
+        )
+        for epoch in series:
+            orbit = lro_state_spec.evaluate(epoch, almanac)
+            elevation_val = horizon.eval(orbit, almanac)
+            is_visible = abs(elevation_val) <= horizon.value_precision
+
+            if arc.start_epoch() <= epoch < arc.end_epoch():
+                assert is_visible, f"Epoch {epoch} should be visible"
+            else:
+                assert not is_in_visible or elevation_val < 0.0
+
+            # We can also call the AER function directly for this location
+            breakponit()
+            aer = almanac.azimuth
+            print("")
