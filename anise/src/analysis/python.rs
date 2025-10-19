@@ -439,7 +439,7 @@ pub enum PyVectorExpr {
     /// Unit vector of this vector expression, returns zero vector if norm less than 1e-12
     Unit(Py<PyVectorExpr>),
     /// Negate a vector
-    /// /// Negate a vector.
+    /// Negate a vector.
     Negate(Py<PyVectorExpr>),
     /// Vector projection of a onto b
     VecProjection {
