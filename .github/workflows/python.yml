@@ -325,7 +325,7 @@ jobs:
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: 'wheels-*/*'
+          subject-path: 'wheels-*'
       - name: Publish to PyPI # Run the previous steps allthe time, but only publish on tag
         if: github.ref_type == 'tag'
         uses: PyO3/maturin-action@v1
