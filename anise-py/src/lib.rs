@@ -10,7 +10,7 @@
 
 use ::anise::almanac::metaload::{MetaAlmanac, MetaFile};
 use ::anise::almanac::Almanac;
-use ::anise::analysis::event::{Event, EventArc, EventDetails};
+use ::anise::analysis::event::{Event, EventArc, EventDetails, EventEdge};
 use ::anise::analysis::prelude::OrbitalElement;
 use ::anise::analysis::python::{
     PyFrameSpec, PyOrthogonalFrame, PyScalarExpr, PyStateSpec, PyVectorExpr,
@@ -67,6 +67,7 @@ fn analysis(_py: Python, sm: &Bound<PyModule>) -> PyResult<()> {
     sm.add_class::<Plane>()?;
     sm.add_class::<Event>()?;
     sm.add_class::<EventDetails>()?;
+    sm.add_class::<EventEdge>()?;
     sm.add_class::<EventArc>()?;
     sm.add_class::<ReportScalars>()?;
     Ok(())

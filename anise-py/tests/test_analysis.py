@@ -3,6 +3,7 @@ import anise.analysis as analysis
 from anise.time import Epoch, TimeSeries, Unit
 from anise.constants import Frames
 from anise.astro import Frame
+from pathlib import Path
 
 
 def test_analysis_gen_report():
@@ -173,6 +174,7 @@ def test_analysis_event():
     """
     Tests event finding for apoapsis, periapsis, eclipses, and other criteria.
     """
+    data_path = Path(__file__).parent.joinpath("..", "..", "data")
     almanac = (
         Almanac(str(data_path.joinpath("de440s.bsp")))
         .load(str(data_path.joinpath("pck08.pca")))
@@ -241,19 +243,23 @@ def test_analysis_event():
     ]
     assert all((dt - period).abs() < Unit.Minute * 5 for dt in dts_peri)
 
+    tick = Epoch.system_now()
     # Find sunset/sunrise arcs
     sunset_arcs = almanac.report_event_arcs(
         lro_state_spec, sunset_nadir, start_epoch, end_epoch
     )
-    assert sunset_arcs[1].rise.edge == analysis.EventEdge.Rising()
-    assert sunset_arcs[1].fall.edge == analysis.EventEdge.Falling()
+    print(f"{len(sunset_arcs)} sunset arcs found in {Epoch.system_now().timedelta(tick)}")
+    assert sunset_arcs[1].rise.edge == analysis.EventEdge.Rising
+    assert sunset_arcs[1].fall.edge == analysis.EventEdge.Falling
     assert len(sunset_arcs) == 309
 
     # Find eclipse arcs in a short time span
+    tick = Epoch.system_now()
     eclipse_arcs = almanac.report_event_arcs(
         lro_state_spec, eclipse, start_epoch, start_epoch + Unit.Hour * 3
     )
     assert len(eclipse_arcs) == 2
+    print("Eclipse arcs found in ", Epoch.system_now().timedelta(tick))
 
     # Validate the eclipse periods
     for arc in eclipse_arcs:

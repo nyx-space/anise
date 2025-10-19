@@ -112,9 +112,8 @@ impl Almanac {
         })
     }
 
-    /// Find all event arcs, i.e. the start and stop time of when a given event occurs.
-    ///
-    /// **Performance:** for robustness, this function calls the memory and computationally intensive [report_events_slow] function.
+    /// Find all event arcs, i.e. the start and stop time of when a given event occurs. This function
+    /// calls the memory and computationally intensive [report_events_slow] function.
     #[pyo3(name = "report_event_arcs")]
     fn py_report_event_arcs(
         &self,
@@ -534,6 +533,23 @@ impl PyStateSpec {
 
         spec.to_s_expr()
             .map_err(|e| PyException::new_err(e.to_string()))
+    }
+    /// Evaluate the orbital element enum variant for the provided orbit
+    #[pyo3(name = "evaluate", signature=(epoch, almanac))]
+    fn py_evaluate(&self, epoch: Epoch, almanac: &Almanac) -> Result<Orbit, PyErr> {
+        let spec = StateSpec::from(self.clone());
+        spec.evaluate(epoch, almanac)
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+    fn __eq__(&self, other: &Self) -> bool {
+        let me = StateSpec::from(self.clone());
+        let other = StateSpec::from(other.clone());
+        me == other
+    }
+    fn __ne__(&self, other: &Self) -> bool {
+        let me = StateSpec::from(self.clone());
+        let other = StateSpec::from(other.clone());
+        me != other
     }
 }
 

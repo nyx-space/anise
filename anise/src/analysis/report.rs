@@ -30,6 +30,7 @@ use super::python::{PyScalarExpr, PyStateSpec};
 // :type state_spec: StateSpec
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise.analysis"))]
 pub struct ReportScalars {
     pub scalars: Vec<(ScalarExpr, Option<String>)>,
     pub state_spec: StateSpec,

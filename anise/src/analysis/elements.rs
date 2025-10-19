@@ -22,6 +22,7 @@ use crate::prelude::Orbit;
 /// Orbital element defines all of the supported orbital elements in ANISE, which are all built from a State.
 #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
 #[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise.analysis"))]
 #[derive(Copy, Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum OrbitalElement {
     /// Argument of Latitude (deg)
@@ -273,5 +274,11 @@ impl OrbitalElement {
     pub fn py_evaluate(&self, orbit: Orbit) -> Result<f64, PyErr> {
         self.evaluate(orbit)
             .map_err(|e| PyException::new_err(e.to_string()))
+    }
+    fn __eq__(&self, other: &Self) -> bool {
+        self == other
+    }
+    fn __ne__(&self, other: &Self) -> bool {
+        self != other
     }
 }

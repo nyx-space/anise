@@ -37,6 +37,7 @@ use pyo3::types::PyType;
 /// :type value_precision: float
 /// :type ab_corr: Aberration, optional
 #[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise.analysis"))]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Event {
     /// The state parameter
@@ -283,6 +284,13 @@ impl Event {
     fn __repr__(&self) -> String {
         format!("{self}@{self:p}")
     }
+
+    fn __eq__(&self, other: &Self) -> bool {
+        self == other
+    }
+    fn __ne__(&self, other: &Self) -> bool {
+        self != other
+    }
 }
 
 impl fmt::Display for Event {
@@ -304,6 +312,7 @@ impl fmt::Display for Event {
 /// `EventEdge` is used to describe the nature of a trajectory event, particularly in terms of its temporal dynamics relative to a specified condition or threshold. This enum helps in distinguishing whether the event is occurring at a rising edge, a falling edge, or if the edge is unclear due to insufficient data or ambiguous conditions.
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise.analysis"))]
 pub enum EventEdge {
     /// Represents a rising edge of the event. This indicates that the event is transitioning from a lower to a higher evaluation of the event. For example, in the context of elevation, a rising edge would indicate an increase in elevation from a lower angle.
     Rising,
@@ -317,6 +326,17 @@ pub enum EventEdge {
     Unclear,
 }
 
+#[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pymethods)]
+impl EventEdge {
+    fn __eq__(&self, other: &Self) -> bool {
+        self == other
+    }
+    fn __ne__(&self, other: &Self) -> bool {
+        self != other
+    }
+}
+
 /// Represents the details of an event occurring along a trajectory.
 ///
 /// `EventDetails` encapsulates the state at which a particular event occurs in a trajectory, along with additional information about the nature of the event. This struct is particularly useful for understanding the dynamics of the event, such as whether it represents a rising or falling edge, or if the edge is unclear.
@@ -325,7 +345,7 @@ pub enum EventEdge {
 /// S: Interpolatable - A type that represents the state of the trajectory. This type must implement the `Interpolatable` trait, ensuring that it can be interpolated and manipulated according to the trajectory's requirements.
 #[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
-#[cfg_attr(feature = "python", pyo3(get_all))]
+#[cfg_attr(feature = "python", pyo3(module = "anise.analysis", get_all))]
 pub struct EventDetails {
     /// The state of the trajectory at the found event.
     /// :rtype: Orbit
@@ -444,6 +464,12 @@ impl EventDetails {
     fn __repr__(&self) -> String {
         format!("{self}@{self:p}")
     }
+    fn __eq__(&self, other: &Self) -> bool {
+        self == other
+    }
+    fn __ne__(&self, other: &Self) -> bool {
+        self != other
+    }
 }
 
 impl fmt::Display for EventDetails {
@@ -473,7 +499,7 @@ impl fmt::Debug for EventDetails {
 }
 
 #[cfg_attr(feature = "python", pyclass)]
-#[cfg_attr(feature = "python", pyo3(get_all))]
+#[cfg_attr(feature = "python", pyo3(module = "anise.analysis", get_all))]
 #[derive(Clone, PartialEq)]
 pub struct EventArc {
     /// rise event of this arc

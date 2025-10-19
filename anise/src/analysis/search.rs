@@ -355,9 +355,8 @@ impl Almanac {
         Ok(events)
     }
 
-    /// Find all event arcs, i.e. the start and stop time of when a given event occurs.
-    ///
-    /// **Performance:** for robustness, this function calls the memory and computationally intensive [report_events_slow] function.
+    /// Find all event arcs, i.e. the start and stop time of when a given event occurs. This function
+    /// calls the memory and computationally intensive [report_events_slow] function.
     pub fn report_event_arcs(
         &self,
         state_spec: &StateSpec,
@@ -430,7 +429,7 @@ impl Almanac {
             if event_value >= 0.0 {
                 // We're in an arc.
                 if let Some(next_value) = crossing.next_value {
-                    if next_value < 0.0 {
+                    if next_value < 0.0 && rise.is_some() {
                         // At the next immediate step, the event ends, so this marks the end of the arc.
                         arcs.push(EventArc {
                             rise: rise.clone().unwrap(),
