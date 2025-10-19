@@ -12,6 +12,7 @@ from anise.time import Epoch, TimeSeries, Unit
 from anise.constants import Frames
 from anise.astro import Frame
 from pathlib import Path
+from sys import platform
 
 
 def test_analysis_gen_report():
