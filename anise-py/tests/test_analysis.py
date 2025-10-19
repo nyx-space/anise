@@ -133,6 +133,7 @@ def test_analysis_gen_report():
     # Test report serialization
     report_s_expr = report.to_s_expr()
     report_reloaded = analysis.ReportScalars.from_s_expr(report_s_expr)
+    assert report_reloaded.to_s_expr() == report_s_expr
     
     # Generate the report data
     series = TimeSeries(
