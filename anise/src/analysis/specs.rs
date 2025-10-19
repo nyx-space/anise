@@ -21,6 +21,9 @@ use crate::{
     prelude::Frame,
 };
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 use super::VectorExpr;
 
 /// FrameSpec allows defining a frame that can be computed from another set of loaded frames, which include a center.
@@ -106,6 +109,8 @@ impl OrthogonalFrame {
 
 /// Plane selector, sets the missing component to zero.
 /// For example, Plane::YZ will multiply the DCM by [[1, 0. 0], [0, 1, 0], [0, 0, 0]]
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise.analysis"))]
 #[derive(Copy, Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum Plane {
     XY,
@@ -123,7 +128,7 @@ impl Plane {
     }
 }
 
-/// StateDef allows defining a state from one frame (`from_frame`) to another (`to_frame`)
+/// StateSpec allows defining a state from the target to the observer
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct StateSpec {
     pub target_frame: FrameSpec,

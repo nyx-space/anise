@@ -73,3 +73,5 @@ docs/_build/
 .python-version
 
 .ipynb_checkpoints.lka
+demo.py
+*.lka

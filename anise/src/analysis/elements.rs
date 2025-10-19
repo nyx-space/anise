@@ -11,11 +11,18 @@
 use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
 
+#[cfg(feature = "python")]
+use pyo3::exceptions::PyException;
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 use super::{AnalysisError, PhysicsOrbitElSnafu};
 use crate::prelude::Orbit;
 
 /// Orbital element defines all of the supported orbital elements in ANISE, which are all built from a State.
 #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise.analysis"))]
 #[derive(Copy, Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum OrbitalElement {
     /// Argument of Latitude (deg)
@@ -212,56 +219,6 @@ impl OrbitalElement {
         )
     }
 
-    /// Returns the default event finding precision in the unit of that parameter
-    pub fn default_event_precision(&self) -> f64 {
-        match self {
-            Self::Eccentricity => 1e-5,
-            // Non anomaly angles
-            Self::AoL
-            | Self::AoP
-            | Self::Declination
-            | Self::Latitude
-            | Self::Longitude
-            | Self::FlightPathAngle
-            | Self::Inclination
-            | Self::RightAscension
-            | Self::RAAN
-            | Self::TrueLongitude
-            | Self::VelocityDeclination => 1e-1,
-
-            // Anomaly angles
-            Self::MeanAnomaly
-            | Self::EccentricAnomaly
-            | Self::HyperbolicAnomaly
-            | Self::TrueAnomaly => 1e-3,
-
-            // Distances
-            Self::ApoapsisRadius
-            | Self::ApoapsisAltitude
-            | Self::Height
-            | Self::Hmag
-            | Self::HX
-            | Self::HY
-            | Self::HZ
-            | Self::PeriapsisRadius
-            | Self::PeriapsisAltitude
-            | Self::Rmag
-            | Self::SemiParameter
-            | Self::SemiMajorAxis
-            | Self::SemiMinorAxis
-            | Self::X
-            | Self::Y
-            | Self::Z => 1e-3,
-
-            // Velocities
-            Self::C3 | Self::VX | Self::VY | Self::VZ | Self::Vmag => 1e-3,
-
-            // Special
-            Self::Energy => 1e-3,
-            Self::Period => 1e-1,
-        }
-    }
-
     pub const fn unit(&self) -> &'static str {
         match self {
             // Angles
@@ -306,5 +263,22 @@ impl OrbitalElement {
             Self::Eccentricity => "unitless",
             Self::Period => "s",
         }
+    }
+}
+
+#[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pymethods)]
+impl OrbitalElement {
+    /// Evaluate the orbital element enum variant for the provided orbit
+    #[pyo3(name = "evaluate", signature=(orbit))]
+    pub fn py_evaluate(&self, orbit: Orbit) -> Result<f64, PyErr> {
+        self.evaluate(orbit)
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+    fn __eq__(&self, other: &Self) -> bool {
+        self == other
+    }
+    fn __ne__(&self, other: &Self) -> bool {
+        self != other
     }
 }

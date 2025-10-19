@@ -1,3 +1,4 @@
+import numpy
 import typing
 
 @typing.final
@@ -73,6 +74,22 @@ class Almanac:
     def __init__(self, path: str) -> Almanac:
         """An Almanac contains all of the loaded SPICE and ANISE data. It is the context for all computations."""
 
+    def angular_velocity_deg_s(self, from_frame: Frame, to_frame: Frame, epoch: Epoch) -> numpy.array:
+        """Returns the angular velocity vector in deg/s of the from_frame wtr to the to_frame.
+
+This can be used to compute the angular velocity of the Earth ITRF93 frame with respect to the J2000 frame for example."""
+
+    def angular_velocity_rad_s(self, from_frame: Frame, to_frame: Frame, epoch: Epoch) -> numpy.array:
+        """Returns the angular velocity vector in rad/s of the from_frame wtr to the to_frame.
+
+This can be used to compute the angular velocity of the Earth ITRF93 frame with respect to the J2000 frame for example."""
+
+    def angular_velocity_wtr_j2000_deg_s(self, from_frame: Frame, epoch: Epoch) -> numpy.array:
+        """Returns the angular velocity vector in deg/s of the from_frame wtr to the J2000 frame."""
+
+    def angular_velocity_wtr_j2000_rad_s(self, from_frame: Frame, epoch: Epoch) -> numpy.array:
+        """Returns the angular velocity vector in rad/s of the from_frame wtr to the J2000 frame."""
+
     def azimuth_elevation_range_sez(self, rx: Orbit, tx: Orbit, obstructing_body: Frame=None, ab_corr: Aberration=None) -> AzElRange:
         """Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
 receiver state (`rx`) seen from the transmitter state (`tx`), once converted into the SEZ frame of the transmitter.
@@ -88,6 +105,22 @@ The obstructing body _should_ be a tri-axial ellipsoid body, e.g. IAU_MOON_FRAME
 5. Compute the range as the norm of the difference between these two position vectors.
 6. Compute the elevation, and ensure it is between +/- 180 degrees.
 7. Compute the azimuth with a quadrant check, and ensure it is between 0 and 360 degrees."""
+
+    def azimuth_elevation_range_sez_from_location(self, rx: Orbit, location: Location, obstructing_body: Frame=None, ab_corr: Aberration=None) -> AzElRange:
+        """Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
+receiver state (`rx`) seen from the provided location (as transmitter state, once converted into the SEZ frame of the transmitter.
+Refer to [azimuth_elevation_range_sez] for algorithm details.
+Location terrain masks are always applied, i.e. if the terrain masks the object, all data is set to f64::NAN, unless specified otherwise in the Location."""
+
+    def azimuth_elevation_range_sez_from_location_id(self, rx: Orbit, location_id: int, obstructing_body: Frame=None, ab_corr: Aberration=None) -> AzElRange:
+        """Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
+receiver state (`rx`) seen from the location ID (as transmitter state, once converted into the SEZ frame of the transmitter.
+Refer to [azimuth_elevation_range_sez] for algorithm details."""
+
+    def azimuth_elevation_range_sez_from_location_name(self, rx: Orbit, location_name: str, obstructing_body: Frame=None, ab_corr: Aberration=None) -> AzElRange:
+        """Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
+receiver state (`rx`) seen from the location ID (as transmitter state, once converted into the SEZ frame of the transmitter.
+Refer to [azimuth_elevation_range_sez] for algorithm details."""
 
     def azimuth_elevation_range_sez_many(self, rx_tx_states: typing.List[Orbit], obstructing_body: Frame=None, ab_corr: Aberration=None) -> typing.List[AzElRange]:
         """Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
@@ -124,7 +157,11 @@ This function performs a memory allocation."""
 # Warning
 This function performs a memory allocation."""
 
-    def describe(self, spk: bool=None, bpc: bool=None, planetary: bool=None, eulerparams: bool=None, time_scale: TimeScale=None, round_time: bool=None) -> None:
+    def bpc_unload(self, alias: str) -> None:
+        """Unloads (in-place) the BPC with the provided alias.
+**WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded."""
+
+    def describe(self, spk: bool=None, bpc: bool=None, planetary: bool=None, eulerparams: bool=None, locations: bool=None, time_scale: TimeScale=None, round_time: bool=None) -> None:
         """Pretty prints the description of this Almanac, showing everything by default. Default time scale is TDB.
 If any parameter is set to true, then nothing other than that will be printed."""
 
@@ -176,6 +213,35 @@ A 100%  percent occultation means that the back object is fully hidden from the 
 A value in between means that the back object is partially hidden from the observser (i.e. _penumbra_ if the back object is the Sun).
 Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse/) for modeling details."""
 
+    def report_event_arcs(self, state_spec: StateSpec, event: Event, start_epoch: Epoch, end_epoch: Epoch) -> list:
+        """Find all event arcs, i.e. the start and stop time of when a given event occurs. This function
+calls the memory and computationally intensive [report_events_slow] function."""
+
+    def report_events(self, state_spec: StateSpec, event: Event, start_epoch: Epoch, end_epoch: Epoch, heuristic: Duration=None) -> list:
+        """Report all of the states and event details where the provided event occurs.
+
+# Limitations
+This method uses a Brent solver, provides a superlinearity convergence (Golden ratio rate).
+If the function that defines the event is not unimodal, the event finder may not converge correctly.
+After the Brent solver is used, this function will check the median gap between events. Assuming most events are periodic,
+any gap whose median repetition is greater than 125% will be slow searches. This _typically_ finds all of the events ... but it
+may also add duplicates! To prevent reporting duplicate events, the found events are deduplicated if the same event is found
+within 3 times the epoch precision. For example, if the epoch precision is 100 ms, if three events are "found" within 300 ms of each other
+then only one of these three is preserved.
+
+# Heuristic detail
+The initial search step is 1% of the duration requested, if the heuristic is set to None.
+For example, if the trajectory is 100 days long, then we split the trajectory into 100 chunks of 1 day and see whether
+the event is in there. If the event happens twice or more times within 1% of the trajectory duration, only the _one_ of
+such events will be found."""
+
+    def report_events_slow(self, state_spec: StateSpec, event: Event, start_epoch: Epoch, end_epoch: Epoch) -> list:
+        """Slow approach to finding **all** of the events between two epochs. This will evaluate ALL epochs in between the two bounds.
+This approach is more robust, but more computationally demanding since it's O(N)."""
+
+    def report_scalars(self, report: ReportScalars, time_series: TimeSeries) -> dict:
+        """Report a set of scalar expressions, optionally with aliases, at a fixed time step defined in the TimeSeries."""
+
     def rotate(self, from_frame: Frame, to_frame: Frame, epoch: Epoch) -> DCM:
         """Returns the 6x6 DCM needed to rotation the `from_frame` to the `to_frame`.
 
@@ -222,13 +288,17 @@ This function performs a memory allocation."""
 # Warning
 This function performs a memory allocation."""
 
+    def spk_unload(self, alias: str) -> None:
+        """Unloads (in-place) the SPK with the provided alias.
+**WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded."""
+
     def state_of(self, object_id: int, observer: Frame, epoch: Epoch, ab_corr: Aberration=None) -> Orbit:
         """Returns the Cartesian state of the object as seen from the provided observer frame (essentially `spkezr`).
 
 # Note
 The units will be those of the underlying ephemeris data (typically km and km/s)"""
 
-    def sun_angle_deg(self, target_id: int, observer_id: int, epoch: Epoch) -> float:
+    def sun_angle_deg(self, target_id: int, observer_id: int, epoch: Epoch, ab_corr: Aberration) -> float:
         """Returns the angle (between 0 and 180 degrees) between the observer and the Sun, and the observer and the target body ID.
 This computes the Sun Probe Earth angle (SPE) if the probe is in a loaded SPK, its ID is the "observer_id", and the target is set to its central body.
 
@@ -266,7 +336,7 @@ Obs. -- Target
 2. Compute the position of the target as seen from the observer
 3. Return the arccosine of the dot product of the norms of these vectors."""
 
-    def sun_angle_deg_from_frame(self, target: Frame, observer: Frame, epoch: Epoch) -> float:
+    def sun_angle_deg_from_frame(self, target: Frame, observer: Frame, epoch: Epoch, ab_corr: Aberration) -> float:
         """Convenience function that calls `sun_angle_deg` with the provided frames instead of the ephemeris ID."""
 
     def transform(self, target_frame: Frame, observer_frame: Frame, epoch: Epoch, ab_corr: Aberration=None) -> Orbit:
@@ -332,6 +402,53 @@ This function performs a recursion of no more than twice the [MAX_TREE_DEPTH].""
 
     def __str__(self) -> str:
         """Return str(self)."""
+
+@typing.final
+class LocationDataSet:
+    """A wrapper around a location dataset kernel (PyO3 does not handle type aliases).
+Use this class to load and unload kernels. Manipulate using its LocationDhallSet representation."""
+
+    def __init__(self) -> None:
+        """A wrapper around a location dataset kernel (PyO3 does not handle type aliases).
+Use this class to load and unload kernels. Manipulate using its LocationDhallSet representation."""
+
+    @staticmethod
+    def load(path: string) -> LocationDataSet:
+        """Loads a Location Dataset kernel from the provided path"""
+
+    def save_as(self, path: string, overwrite: bool=False) -> None:
+        """Save this dataset as a kernel, optionally specifying whether to overwrite the existing file."""
+
+    def to_dhallset(self) -> LocationDhallSet:
+        """Converts this location dataset into a manipulable location Dhall set."""
+
+@typing.final
+class LocationDhallSet:
+    """A Dhall-serializable Location DataSet that serves as an optional intermediate to the LocationDataSet kernels."""
+    data: list
+
+    def __init__(self, data: list) -> None:
+        """A Dhall-serializable Location DataSet that serves as an optional intermediate to the LocationDataSet kernels."""
+
+    @staticmethod
+    def from_dhall(repr: str) -> LocationDhallSet:
+        """Loads thie Location dataset from its Dhall representation as a string"""
+
+    def to_dataset(self) -> LocationDataSet:
+        """Converts this location Dhall set into a Python-compatible Location DataSet."""
+
+    def to_dhall(self) -> str:
+        """Returns the Dhall representation of this Location"""
+
+@typing.final
+class LocationDhallSetEntry:
+    """Entry of a Location Dhall set"""
+    alias: str
+    id: int
+    value: Location
+
+    def __init__(self, value: Location, id: int=None, alias: string=None) -> None:
+        """Entry of a Location Dhall set"""
 
 @typing.final
 class MetaAlmanac:

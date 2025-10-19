@@ -33,6 +33,9 @@ use expr::ScalarExpr;
 use specs::StateSpec;
 use vector_expr::VectorExpr;
 
+#[cfg(feature = "python")]
+pub mod python;
+
 pub mod prelude {
     pub use super::elements::OrbitalElement;
     pub use super::expr::ScalarExpr;
@@ -437,7 +440,7 @@ mod ut_analysis {
     }
 
     #[rstest]
-    fn test_analysis_event(almanac: Almanac) {
+    fn test_analysis_event(mut almanac: Almanac) {
         let lro_frame = Frame::from_ephem_j2000(-85);
 
         let lro_state_spec = StateSpec {
@@ -596,5 +599,65 @@ mod ut_analysis {
             }
             println!("\n");
         }
+
+        // https://github.com/nyx-space/anise/issues/537
+        /* // Test access times
+        let loc = Location {
+            latitude_deg: 40.427_222,
+            longitude_deg: 4.250_556,
+            height_km: 0.834_939,
+            frame: IAU_EARTH_FRAME.into(),
+            terrain_mask: vec![
+                TerrainMask {
+                    azimuth_deg: 0.0,
+                    elevation_mask_deg: 5.0,
+                },
+                TerrainMask {
+                    azimuth_deg: 35.0,
+                    elevation_mask_deg: 10.0,
+                },
+                TerrainMask {
+                    azimuth_deg: 270.0,
+                    elevation_mask_deg: 3.0,
+                },
+            ],
+            terrain_mask_ignored: false,
+        };
+
+        almanac.location_data.push(loc, Some(1), None).unwrap();
+
+        let comm = Event::above_horizon_from_location_id(1, None);
+
+        let comm_arcs = almanac
+            .report_event_arcs(
+                &lro_state_spec,
+                &comm,
+                start_epoch,
+                start_epoch + Unit::Day * 3,
+            )
+            .unwrap();
+        assert!(comm_arcs.len() > 1);
+        for event in &comm_arcs {
+            println!("{event}\n{event:?}");
+            // Check that this is valid
+            for epoch in TimeSeries::inclusive(
+                event.start_epoch() - Unit::Minute * 1,
+                event.end_epoch() + Unit::Minute * 1,
+                Unit::Minute * 0.5,
+            ) {
+                if let Ok(orbit) = lro_state_spec.evaluate(epoch, &almanac) {
+                    let this_eval = comm.eval(orbit, &almanac).unwrap();
+                    let is_accessible = this_eval.abs() <= comm.value_precision.abs();
+
+                    if (event.start_epoch()..event.end_epoch()).contains(&epoch) {
+                        // We're in the event, check that it is evaluated to be in the event.
+                        assert!(is_accessible);
+                    } else {
+                        assert!(!is_accessible || this_eval < 0.0);
+                    }
+                }
+            }
+            println!("\n");
+        } */
     }
 }

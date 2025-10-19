@@ -10,6 +10,7 @@
 
 use crate::almanac::metaload::MetaAlmanacError;
 use crate::almanac::planetary::PlanetaryDataError;
+use crate::analysis::AnalysisError;
 use crate::ephemerides::EphemerisError;
 use crate::errors::{AlmanacError, DecodingError, InputOutputError, IntegrityError, PhysicsError};
 use crate::orientations::OrientationError;
@@ -41,6 +42,11 @@ impl From<InputOutputError> for PyErr {
 }
 impl From<AlmanacError> for PyErr {
     fn from(err: AlmanacError) -> PyErr {
+        PyException::new_err(err.to_string())
+    }
+}
+impl From<AnalysisError> for PyErr {
+    fn from(err: AnalysisError) -> PyErr {
         PyException::new_err(err.to_string())
     }
 }

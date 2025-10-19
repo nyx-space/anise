@@ -8,6 +8,7 @@ from anise._anise import (
     LocationDataSet,
     exec_gui,
     time,
+    analysis,
     astro,
     constants,
     rotation,
@@ -17,6 +18,7 @@ from anise._anise import (
 __all__ = [
     # modules
     "astro",
+    "analysis",
     "constants",
     "time",
     "rotation",
