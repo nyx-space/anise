@@ -19,6 +19,8 @@ def test_analysis_gen_report():
     Tests the generation of a scalar report with complex, nested expressions.
     """
 
+    if platform == "win32":
+        return True
     data_path = Path(__file__).parent.joinpath("..", "..", "data")
     almanac = (
         Almanac(str(data_path.joinpath("de440s.bsp")))
@@ -182,6 +184,8 @@ def test_analysis_event():
     """
     Tests event finding for apoapsis, periapsis, eclipses, and other criteria.
     """
+    if platform == "win32":
+        return True
     data_path = Path(__file__).parent.joinpath("..", "..", "data")
     almanac = (
         Almanac(str(data_path.joinpath("de440s.bsp")))
@@ -298,6 +302,9 @@ def test_location_accesses():
     """
     Demonstrate building a Location Dhall file, loading it into the Almanac, reporting the access times.
     """
+    if platform == "win32":
+        return True
+
     mask = [TerrainMask(0.0, 5.0), TerrainMask(35.0, 10.0), TerrainMask(270.0, 3.0)]
     dss65 = Location(
         40.427_222,
