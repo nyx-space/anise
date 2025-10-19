@@ -36,7 +36,7 @@ impl Almanac {
         &self,
         report: &ReportScalars,
         time_series: TimeSeries,
-    ) -> Result<HashMap<Epoch, HashMap<String, f64>>, AnalysisError> {
+    ) -> Result<HashMap<String, HashMap<String, f64>>, AnalysisError> {
         let data = self.report_scalars(report, time_series);
         // Modify the values to set errors to NaN
         let mut rslt = HashMap::new();
@@ -45,11 +45,12 @@ impl Almanac {
             for (col, value) in v? {
                 data_epoch_ok.insert(col, value.unwrap_or(f64::NAN));
             }
-            rslt.insert(k, data_epoch_ok);
+            rslt.insert(k.to_isoformat(), data_epoch_ok);
         }
 
         Ok(rslt)
     }
+
     /// Report all of the states and event details where the provided event occurs.
     ///
     /// # Limitations

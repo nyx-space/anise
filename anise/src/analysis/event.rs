@@ -411,7 +411,7 @@ impl EventDetails {
 #[cfg(feature = "python")]
 impl EventDetails {
     /// :rtype: str
-    fn describe(&self) -> String {
+    pub fn describe(&self) -> String {
         format!("{self:?}")
     }
     fn __str__(&self) -> String {
