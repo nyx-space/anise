@@ -318,14 +318,10 @@ jobs:
       # Used to generate artifact attestation
       attestations: write
     steps:
-      - uses: actions/download-artifact@v4 # No `name` to download all artifacts.
+      - uses: actions/download-artifact@v4
         with:
             pattern: wheels-*
             merge-multiple: true
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: 'wheels-*'
       - name: Publish to PyPI # Run the previous steps allthe time, but only publish on tag
         if: github.ref_type == 'tag'
         uses: PyO3/maturin-action@v1
@@ -333,5 +329,5 @@ jobs:
           MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         with:
           command: upload
-          args: --non-interactive --skip-existing wheels-*/*
+          args: --non-interactive --skip-existing *
 
