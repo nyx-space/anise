@@ -188,6 +188,7 @@ def test_analysis_event():
     # Test event serialization
     eclipse_s_expr = eclipse.to_s_expr()
     deserialized_eclipse = analysis.Event.from_s_expr(eclipse_s_expr)
+    assert deserialized_eclipse.to_s_expr() == eclipse_s_expr
 
     # Get the time domain for LRO from the loaded ephemeris
     start_epoch, end_epoch = almanac.spk_domain(-85)
