@@ -45,7 +45,8 @@ pub struct LocationDhallSetEntry {
 #[cfg_attr(feature = "python", pymethods)]
 impl LocationDhallSetEntry {
     #[new]
-    fn py_new(id: Option<NaifId>, alias: Option<String>, value: Location) -> Self {
+    #[pyo3(signature=(value, id=None, alias=None))]
+    fn py_new(value: Location, id: Option<NaifId>, alias: Option<String>) -> Self {
         Self { id, alias, value }
     }
 
@@ -240,6 +241,7 @@ impl PyLocationDataSet {
     /// Loads a Location Dataset kernel from the provided path
     ///
     /// :type path: string
+    /// :rtype: LocationDataSet
     #[classmethod]
     fn load(_cls: Bound<'_, PyType>, path: &str) -> Result<Self, PyErr> {
         let dataset = LocationDataSet::try_from_bytes(
@@ -255,6 +257,7 @@ impl PyLocationDataSet {
     /// :type path: string
     /// :type overwrite: bool, optional
     /// :rtype: None
+    #[pyo3(signature=(path, overwrite=false))]
     fn save_as(&mut self, path: &str, overwrite: Option<bool>) -> Result<(), PyErr> {
         self.inner.set_crc32();
         self.inner

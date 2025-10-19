@@ -113,7 +113,7 @@ impl Almanac {
     /// Unloads (in-place) the SPK with the provided alias.
     /// **WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded.
     ///
-    /// :type path: str
+    /// :type alias: str
     /// :rtype: None
     #[pyo3(name = "spk_unload")]
     fn py_spk_unload(&mut self, alias: &str) -> Result<(), EphemerisError> {
@@ -123,7 +123,7 @@ impl Almanac {
     /// Unloads (in-place) the BPC with the provided alias.
     /// **WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded.
     ///
-    /// :type path: str
+    /// :type alias: str
     /// :rtype: None
     #[pyo3(name = "bpc_unload")]
     fn py_bpc_unload(&mut self, alias: &str) -> Result<(), OrientationError> {

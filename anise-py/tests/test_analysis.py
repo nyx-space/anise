@@ -309,7 +309,7 @@ def test_location_accesses():
     )
 
     # To build a location data set kernel, we must first build a location dhall set entry
-    entry = LocationDhallSetEntry(id=1, alias="My Alias", value=dss65)
+    entry = LocationDhallSetEntry(dss65, id=1, alias="My Alias")
     # Then we append it to a LocationDhallSet
     dhallset = LocationDhallSet([entry])
     assert "data" in dir(dhallset), "missing getting on dhall set"

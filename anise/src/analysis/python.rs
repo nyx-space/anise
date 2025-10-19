@@ -74,6 +74,7 @@ impl Almanac {
     /// :type start_epoch: Epoch
     /// :type end_epoch: Epoch
     /// :type heuristic: Duration, optional
+    /// :rtype: list
     #[pyo3(name = "report_events", signature=(state_spec, event, start_epoch, end_epoch, heuristic=None))]
     #[allow(clippy::identity_op)]
     fn py_report_events(
@@ -97,6 +98,12 @@ impl Almanac {
     }
     /// Slow approach to finding **all** of the events between two epochs. This will evaluate ALL epochs in between the two bounds.
     /// This approach is more robust, but more computationally demanding since it's O(N).
+    ///
+    /// :type state_spec: StateSpec
+    /// :type event: Event
+    /// :type start_epoch: Epoch
+    /// :type end_epoch: Epoch
+    /// :rtype: list
     #[pyo3(name = "report_events_slow")]
     #[allow(clippy::identity_op)]
     fn py_report_events_slow(
@@ -114,6 +121,12 @@ impl Almanac {
 
     /// Find all event arcs, i.e. the start and stop time of when a given event occurs. This function
     /// calls the memory and computationally intensive [report_events_slow] function.
+    ///
+    /// :type state_spec: StateSpec
+    /// :type event: Event
+    /// :type start_epoch: Epoch
+    /// :type end_epoch: Epoch
+    /// :rtype: list
     #[pyo3(name = "report_event_arcs")]
     fn py_report_event_arcs(
         &self,
