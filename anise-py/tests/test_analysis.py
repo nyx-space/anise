@@ -3,6 +3,7 @@ from anise import Almanac, Aberration
 import anise.analysis as analysis
 from anise.time import Epoch, TimeSeries, Unit
 from anise.constants import Frames
+from anise.astro import Frame
 
 def test_analysis_gen_report():
     """
@@ -157,3 +158,102 @@ def test_analysis_gen_report():
     for col_name, value in last_row.items():
         if "proj" in col_name:
             assert abs(value) <= 1.0
+
+def test_analysis_event():
+    """
+    Tests event finding for apoapsis, periapsis, eclipses, and other criteria.
+    """
+    almanac = Almanac("../data/de440s.bsp").load("../data/pck08.pca").load("../data/lro.bsp")
+
+    lro_frame = Frame(-85, 1) # LRO NAIF ID
+
+    lro_state_spec = analysis.StateSpec(
+        target_frame=analysis.FrameSpec.Loaded(lro_frame),
+        observer_frame=analysis.FrameSpec.Loaded(Frames.MOON_J2000),
+        ab_corr=None,
+    )
+
+    # Define several event criteria
+    sunset_nadir = analysis.Event(
+        scalar=analysis.ScalarExpr.SunAngle(observer_id=-85),
+        desired_value=90.0,
+        epoch_precision=Unit.Second * 0.5,
+        value_precision=0.1,
+        ab_corr=None,
+    )
+    apolune = analysis.Event.apoapsis()
+    perilune = analysis.Event.periapsis()
+    eclipse = analysis.Event.eclipse(Frames.MOON_J2000)
+
+    # Test event serialization
+    eclipse_s_expr = eclipse.to_s_expr()
+    deserialized_eclipse = analysis.Event.from_s_expr(eclipse_s_expr)
+
+    # Get the time domain for LRO from the loaded ephemeris
+    start_epoch, end_epoch = almanac.spk_domain(-85)
+    start_orbit = almanac.transform(lro_frame, Frames.MOON_J2000, start_epoch, None)
+    period = start_orbit.period()
+
+    # Find apoapsis events
+    apo_events = almanac.report_events(
+        lro_state_spec, apolune, start_epoch, end_epoch, period * 0.5
+    )
+    for event in apo_events:
+        ta_deg = event.orbit.ta_deg()
+        assert abs(ta_deg - 180.0) < apolune.value_precision
+
+    # Find periapsis events
+    peri_events = almanac.report_events(
+        lro_state_spec, perilune, start_epoch, end_epoch, period * 0.5
+    )
+    for event in peri_events:
+        ta_deg = event.orbit.ta_deg()
+        assert ta_deg < perilune.value_precision or abs(ta_deg - 360.0) < perilune.value_precision
+
+    # Check that we found one apoapsis/periapsis per orbit
+    dts_apo = [
+        s.orbit.epoch.timedelta(f.orbit.epoch) for f, s in zip(apo_events[:-1], apo_events[1:])
+    ]
+    assert all((dt - period).abs() < Unit.Minute * 5 for dt in dts_apo)
+    
+    dts_peri = [
+        s.orbit.epoch.timedelta(f.orbit.epoch) for f, s in zip(peri_events[:-1], peri_events[1:])
+    ]
+    assert all((dt - period).abs() < Unit.Minute * 5 for dt in dts_peri)
+
+    # Find sunset/sunrise arcs
+    sunset_arcs = almanac.report_event_arcs(
+        lro_state_spec, sunset_nadir, start_epoch, end_epoch
+    )
+    assert sunset_arcs[1].rise.edge == analysis.EventEdge.Rising()
+    assert sunset_arcs[1].fall.edge == analysis.EventEdge.Falling()
+    assert len(sunset_arcs) == 309
+
+    # Find eclipse arcs in a short time span
+    eclipse_arcs = almanac.report_event_arcs(
+        lro_state_spec, eclipse, start_epoch, start_epoch + Unit.Hour * 3
+    )
+    assert len(eclipse_arcs) == 2
+
+    # Validate the eclipse periods
+    for arc in eclipse_arcs:
+        assert Unit.Minute * 24 < arc.duration() < Unit.Minute * 40
+        
+        # Check points in and around the arc to confirm the event state
+        series = hifitime.TimeSeries(
+            arc.start_epoch() - eclipse.epoch_precision,
+            arc.end_epoch() + eclipse.epoch_precision,
+            Unit.Minute * 0.5,
+            inclusive=True,
+        )
+        for epoch in series:
+            orbit = lro_state_spec.evaluate(epoch, almanac)
+            eclipse_val = eclipse.eval(orbit, almanac)
+            is_in_eclipse = abs(eclipse_val) <= eclipse.value_precision
+            
+            if arc.start_epoch() <= epoch < arc.end_epoch():
+                assert is_in_eclipse, f"Epoch {epoch} should be in eclipse"
+            else:
+                # Outside the arc, it should not be in eclipse, or it's a falling value
+                assert not is_in_eclipse or eclipse_val < 0.0
+

@@ -34,10 +34,11 @@ impl Almanac {
     #[pyo3(name = "report_scalars")]
     pub fn py_report_scalars(
         &self,
+        py: Python,
         report: &ReportScalars,
         time_series: TimeSeries,
     ) -> Result<HashMap<String, HashMap<String, f64>>, AnalysisError> {
-        let data = self.report_scalars(report, time_series);
+        let data = py.detach(|| self.report_scalars(report, time_series));
         // Modify the values to set errors to NaN
         let mut rslt = HashMap::new();
         for (k, v) in data {
@@ -77,19 +78,22 @@ impl Almanac {
     #[allow(clippy::identity_op)]
     fn py_report_events(
         &self,
+        py: Python,
         state_spec: PyStateSpec,
         event: &Event,
         start_epoch: Epoch,
         end_epoch: Epoch,
         heuristic: Option<Duration>,
     ) -> Result<Vec<EventDetails>, AnalysisError> {
-        self.report_events(
-            &StateSpec::from(state_spec),
-            event,
-            start_epoch,
-            end_epoch,
-            heuristic,
-        )
+        py.detach(|| {
+            self.report_events(
+                &StateSpec::from(state_spec),
+                event,
+                start_epoch,
+                end_epoch,
+                heuristic,
+            )
+        })
     }
     /// Slow approach to finding **all** of the events between two epochs. This will evaluate ALL epochs in between the two bounds.
     /// This approach is more robust, but more computationally demanding since it's O(N).
@@ -97,12 +101,15 @@ impl Almanac {
     #[allow(clippy::identity_op)]
     fn py_report_events_slow(
         &self,
+        py: Python,
         state_spec: PyStateSpec,
         event: &Event,
         start_epoch: Epoch,
         end_epoch: Epoch,
     ) -> Result<Vec<EventDetails>, AnalysisError> {
-        self.report_events_slow(&StateSpec::from(state_spec), event, start_epoch, end_epoch)
+        py.detach(|| {
+            self.report_events_slow(&StateSpec::from(state_spec), event, start_epoch, end_epoch)
+        })
     }
 
     /// Find all event arcs, i.e. the start and stop time of when a given event occurs.
@@ -111,12 +118,15 @@ impl Almanac {
     #[pyo3(name = "report_event_arcs")]
     fn py_report_event_arcs(
         &self,
+        py: Python,
         state_spec: PyStateSpec,
         event: &Event,
         start_epoch: Epoch,
         end_epoch: Epoch,
     ) -> Result<Vec<EventArc>, AnalysisError> {
-        self.report_event_arcs(&StateSpec::from(state_spec), event, start_epoch, end_epoch)
+        py.detach(|| {
+            self.report_event_arcs(&StateSpec::from(state_spec), event, start_epoch, end_epoch)
+        })
     }
 }
 

@@ -254,6 +254,28 @@ impl Event {
         }
     }
 
+    #[getter]
+    fn scalar(&self) -> Result<PyScalarExpr, PyErr> {
+        PyScalarExpr::try_from(self.scalar.clone())
+    }
+
+    #[getter]
+    /// The desired self.desired_value, must be in the same units as the state parameter
+    fn desired_value(&self) -> f64 {
+        self.desired_value
+    }
+    /// The duration precision after which the solver will report that it cannot find any more precise
+    #[getter]
+    fn epoch_precision(&self) -> Duration {
+        self.epoch_precision
+    }
+    /// The precision on the desired value. Avoid setting it too low (e.g. 1e-3 degrees) because it may
+    /// cause events to be skipped if the value is not found within the epoch precision.
+    #[getter]
+    fn value_precision(&self) -> f64 {
+        self.value_precision
+    }
+
     fn __str__(&self) -> String {
         format!("{self}")
     }
@@ -409,9 +431,10 @@ impl EventDetails {
 }
 
 #[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pymethods)]
 impl EventDetails {
     /// :rtype: str
-    pub fn describe(&self) -> String {
+    fn describe(&self) -> String {
         format!("{self:?}")
     }
     fn __str__(&self) -> String {
