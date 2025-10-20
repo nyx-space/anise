@@ -169,7 +169,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: x86_64
-          args: --release --out dist --find-interpreter --compression-method stored
+          args: --release --out dist --find-interpreter --compression-method zstd
           sccache: 'true'
           working-directory: anise-py
 
@@ -214,7 +214,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: aarch64
-          args: --release --out dist --find-interpreter --compression-method stored
+          args: --release --out dist --find-interpreter --compression-method zstd
           sccache: 'true'
           working-directory: anise-py
 
@@ -259,7 +259,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: aarch64
-          args: --release --out dist --find-interpreter --compression-method stored
+          args: --release --out dist --find-interpreter --compression-method zstd
           sccache: 'true'
           working-directory: anise-py
 
