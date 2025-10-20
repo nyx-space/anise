@@ -53,7 +53,7 @@ impl ReportScalars {
 impl ReportScalars {
     /// Convert the S-Expression to a report builder
     /// :type expr: str
-    /// :rtype: Event
+    /// :rtype: ReportScalars
     #[classmethod]
     #[pyo3(name = "from_s_expr")]
     fn py_from_s_expr(_cls: Bound<'_, PyType>, expr: &str) -> Result<Self, PyErr> {

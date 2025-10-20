@@ -30,7 +30,7 @@ use super::{Almanac, MetaAlmanacError, MetaFile};
 /// The downloaded path will be stored in the "AppData" folder.
 ///
 /// :type maybe_path: str, optional
-/// :rtype: MetaAlmanac
+/// :rtype: Self
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
