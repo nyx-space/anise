@@ -41,7 +41,7 @@ use super::MetaAlmanacError;
 ///
 /// :type uri: str
 /// :type crc32: int, optional
-/// :rtype: MetaFile
+/// :rtype: Self
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, StaticType)]

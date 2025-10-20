@@ -36,7 +36,7 @@ use pyo3::pyclass::CompareOp;
 /// :type semi_major_equatorial_radius_km: float
 /// :type polar_radius_km: float, optional
 /// :type semi_minor_equatorial_radius_km: float, optional
-/// :rtype: Ellipsoid
+/// :rtype: Self
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "metaload", derive(StaticType))]
 #[cfg_attr(feature = "python", pyclass)]
