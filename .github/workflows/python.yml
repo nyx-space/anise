@@ -169,7 +169,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: x86_64
-          args: --release --out dist --find-interpreter --compression-method zstd
+          args: --release --out dist --find-interpreter
           sccache: 'true'
           working-directory: anise-py
 
@@ -214,7 +214,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: aarch64
-          args: --release --out dist --find-interpreter --compression-method zstd
+          args: --release --out dist --find-interpreter
           sccache: 'true'
           working-directory: anise-py
 
@@ -259,7 +259,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: aarch64
-          args: --release --out dist --find-interpreter --compression-method zstd
+          args: --release --out dist --find-interpreter
           sccache: 'true'
           working-directory: anise-py
 
@@ -316,9 +316,6 @@ jobs:
         with:
             pattern: wheels-*
             merge-multiple: true
-
-      - name: Delete MacOS 11 consistently failing wheels
-        run: rm anise-0.7.0-cp313-cp313-macosx_11_0_arm64.whl anise-0.7.0-cp314-cp314-macosx_11_0_arm64.whl
 
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
