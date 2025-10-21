@@ -24,10 +24,10 @@ use super::python::{PyScalarExpr, PyStateSpec};
 
 /// A basic report builder that can be serialized seperately from the execution.
 /// The scalars must be a tuple of (ScalarExpr, String) where the String is the alias (optional).
-// TODO: Once https://github.com/Nadrieril/dhall-rust/issues/242 is closed, enable Dhall serialization.
-//
-// :type scalars: list
-// :type state_spec: StateSpec
+///
+/// :type scalars: list
+/// :type state_spec: StateSpec
+/// :rtype: Self
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.analysis"))]

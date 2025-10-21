@@ -257,7 +257,8 @@ impl Event {
 
     /// Report events where the object is above the horizon when seen from the provided location ID.
     ///
-    /// :type eclipsing_frame: Frame
+    /// :type location_id: int
+    /// :type obstructing_body: Frame, optional
     /// :rtype: Event
     #[classmethod]
     #[pyo3(name = "above_horizon_from_location_id", signature=(location_id, obstructing_body=None))]
@@ -298,23 +299,28 @@ impl Event {
         }
     }
 
+    /// The scalar expression to compute
+    /// :rtype: ScalarExpr
     #[getter]
     fn scalar(&self) -> Result<PyScalarExpr, PyErr> {
         PyScalarExpr::try_from(self.scalar.clone())
     }
 
-    #[getter]
     /// The desired self.desired_value, must be in the same units as the state parameter
+    /// :rtype: float
+    #[getter]
     fn desired_value(&self) -> f64 {
         self.desired_value
     }
     /// The duration precision after which the solver will report that it cannot find any more precise
+    /// :rtype: Duration
     #[getter]
     fn epoch_precision(&self) -> Duration {
         self.epoch_precision
     }
     /// The precision on the desired value. Avoid setting it too low (e.g. 1e-3 degrees) because it may
     /// cause events to be skipped if the value is not found within the epoch precision.
+    /// :rtype: float
     #[getter]
     fn value_precision(&self) -> f64 {
         self.value_precision

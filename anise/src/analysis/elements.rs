@@ -270,14 +270,19 @@ impl OrbitalElement {
 #[cfg_attr(feature = "python", pymethods)]
 impl OrbitalElement {
     /// Evaluate the orbital element enum variant for the provided orbit
+    ///
+    /// :type orbit: Orbit
+    /// :rtype: float
     #[pyo3(name = "evaluate", signature=(orbit))]
     pub fn py_evaluate(&self, orbit: Orbit) -> Result<f64, PyErr> {
         self.evaluate(orbit)
             .map_err(|e| PyException::new_err(e.to_string()))
     }
+
     fn __eq__(&self, other: &Self) -> bool {
         self == other
     }
+
     fn __ne__(&self, other: &Self) -> bool {
         self != other
     }

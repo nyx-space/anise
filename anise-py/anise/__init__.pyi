@@ -430,9 +430,16 @@ class LocationDhallSet:
     def __init__(self, data: list) -> None:
         """A Dhall-serializable Location DataSet that serves as an optional intermediate to the LocationDataSet kernels."""
 
+    def dumps(self) -> str:
+        """Returns the Dhall representation of this LocationDhallSet. Equivalent to to_dhall."""
+
     @staticmethod
     def from_dhall(repr: str) -> LocationDhallSet:
-        """Loads thie Location dataset from its Dhall representation as a string"""
+        """Loads this Location dataset from its Dhall representation as a string"""
+
+    @staticmethod
+    def loads(repr: str) -> LocationDhallSet:
+        """Loads this Location dataset from its Dhall representation as a string. Equivalent to from_dhall."""
 
     def to_dataset(self) -> LocationDataSet:
         """Converts this location Dhall set into a Python-compatible Location DataSet."""
@@ -471,7 +478,11 @@ If it does not match, the file will be downloaded again. If no CRC32 is provided
 The downloaded path will be stored in the "AppData" folder."""
 
     def dumps(self) -> str:
-        """Dumps the configured Meta Almanac into a Dhall string."""
+        """Dumps the configured Meta Almanac into a Dhall string. Equivalent to to_dhall()."""
+
+    @staticmethod
+    def from_dhall(repr: str) -> MetaAlmanac:
+        """Loads this Meta Almanac from its Dhall string representation"""
 
     @staticmethod
     def latest(autodelete: bool=None) -> MetaAlmanac:
@@ -501,6 +512,9 @@ When downloading the data, ANISE will create a temporarily lock file to prevent 
 where multiple processes download the data at the same time. Set `autodelete` to true to delete
 this lock file if a dead lock is detected after 10 seconds. Set this flag to false if you have
 more than ten processes which may attempt to download files in parallel."""
+
+    def to_dhall(self) -> str:
+        """Serializes the configurated Meta Almanac into a Dhall string. Equivalent to dumps()."""
 
     def __eq__(self, value: typing.Any) -> bool:
         """Return self==value."""
