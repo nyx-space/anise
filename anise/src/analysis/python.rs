@@ -506,7 +506,7 @@ impl Clone for PyVectorExpr {
 }
 /// StateSpec allows defining a state from the target to the observer
 ///
-/// :type target_frame: FrameSpace
+/// :type target_frame: FrameSpec
 /// :type observer_frame: FrameSpec
 /// :type ab_corr: Aberration, optional
 /// :rtype: None
