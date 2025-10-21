@@ -45,7 +45,7 @@ use crate::errors::PhysicsError;
 /// More specifically, the 99th percentile of error is less than 5 meters, the 75th percentile is less than one meter, and the median error is less than 2 millimeters.
 ///
 /// :type name: str
-/// :rtype: Aberration
+/// :rtype: Self
 #[derive(Copy, Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "analysis", derive(Deserialize, Serialize))]
 #[cfg_attr(feature = "python", pyclass)]

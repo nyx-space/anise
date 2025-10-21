@@ -49,7 +49,7 @@ impl MetaAlmanac {
     /// Set `autodelete` to true to delete lock file if a dead lock is detected after 10 seconds.
     ///
     /// :type autodelete: bool, optional
-    /// :rtype: MetaAlmanac
+    /// :rtype: Almanac
     #[classmethod]
     #[pyo3(name = "latest")]
     #[pyo3(signature=(autodelete=None))]
