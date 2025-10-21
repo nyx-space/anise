@@ -134,17 +134,17 @@ impl<T: DataSetT> DataSet<T> {
 
     pub fn check_integrity(&self) -> Result<(), IntegrityError> {
         // Ensure that the data is correctly decoded
-        let computed_chksum = self.crc32();
-        if computed_chksum == self.data_checksum {
+        let computed = self.crc32();
+        if computed == self.data_checksum {
             Ok(())
         } else {
             error!(
-                "[integrity] expected hash {} but computed {}",
-                self.data_checksum, computed_chksum
+                "[integrity] expected hash {} but computed {computed}",
+                self.data_checksum
             );
             Err(IntegrityError::ChecksumInvalid {
                 expected: self.data_checksum,
-                computed: computed_chksum,
+                computed,
             })
         }
     }

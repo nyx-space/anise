@@ -9,7 +9,7 @@
  */
 
 use serde_derive::{Deserialize, Serialize};
-use serde_dhall::SimpleType;
+use serde_dhall::StaticType;
 use snafu::prelude::*;
 use std::str::FromStr;
 use url::Url;
@@ -31,7 +31,7 @@ use super::{Almanac, MetaAlmanacError, MetaFile};
 ///
 /// :type maybe_path: str, optional
 /// :rtype: MetaAlmanac
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, StaticType)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct MetaAlmanac {
@@ -102,22 +102,15 @@ impl FromStr for MetaAlmanac {
     }
 }
 
-// Methods shared between Rust and Python
 #[cfg_attr(feature = "python", pymethods)]
-#[allow(deprecated_in_future)]
+// #[allow(deprecated_in_future)]
 impl MetaAlmanac {
     /// Dumps the configured Meta Almanac into a Dhall string.
     ///
     /// :rtype: str
     pub fn dumps(&self) -> Result<String, MetaAlmanacError> {
-        // Define the Dhall type
-        let dhall_type: SimpleType =
-            serde_dhall::from_str("{ files : List { uri : Text, crc32 : Optional Natural } }")
-                .parse()
-                .unwrap();
-
         serde_dhall::serialize(&self)
-            .type_annotation(&dhall_type)
+            .static_type_annotation()
             .to_string()
             .map_err(|e| MetaAlmanacError::ExportDhall {
                 err: format!("{e}"),
@@ -153,14 +146,14 @@ impl Default for MetaAlmanac {
                 },
                 MetaFile {
                     uri: nyx_cloud_stor.join("v0.7/pck11.pca").unwrap().to_string(),
-                    crc32: Some(0x3503391),
+                    crc32: Some(0x51f69e46),
                 },
                 MetaFile {
                     uri: nyx_cloud_stor
                         .join("v0.7/moon_fk_de440.epa")
                         .unwrap()
                         .to_string(),
-                    crc32: Some(0xabd5ff11),
+                    crc32: Some(0x32c8f9d7),
                 },
                 MetaFile {
                     uri: nyx_cloud_stor
