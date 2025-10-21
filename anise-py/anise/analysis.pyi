@@ -3,6 +3,7 @@ import typing
 @typing.final
 class Event:
     """Defines a state parameter event finder from the desired value of the scalar expression to compute, precision on timing and value, and the aberration."""
+    ab_corr: Aberration
     desired_value: float
     epoch_precision: Duration
     scalar: ScalarExpr

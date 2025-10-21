@@ -325,6 +325,41 @@ impl Event {
     fn value_precision(&self) -> f64 {
         self.value_precision
     }
+    /// :rtype: Aberration
+    #[getter]
+    fn ab_corr(&self) -> Option<Aberration> {
+        self.ab_corr
+    }
+
+    /// :type scalar: ScalarExpr
+    #[setter]
+    fn set_scalar(&mut self, scalar: PyScalarExpr) {
+        self.scalar = scalar.into();
+    }
+
+    /// :type desired_value: float
+    #[setter]
+    fn set_desired_value(&mut self, desired_value: f64) {
+        self.desired_value = desired_value;
+    }
+
+    /// :type epoch_precision: Duration
+    #[setter]
+    fn set_epoch_precision(&mut self, epoch_precision: Duration) {
+        self.epoch_precision = epoch_precision;
+    }
+
+    /// :type value_precision: float
+    #[setter]
+    fn set_value_precision(&mut self, value_precision: f64) {
+        self.value_precision = value_precision;
+    }
+
+    /// type ab_corr: Aberration, optional
+    #[setter]
+    fn set_ab_corr(&mut self, ab_corr: Option<Aberration>) {
+        self.ab_corr = ab_corr;
+    }
 
     fn __str__(&self) -> String {
         format!("{self}")
