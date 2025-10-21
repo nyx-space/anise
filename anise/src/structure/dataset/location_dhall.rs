@@ -153,6 +153,23 @@ impl LocationDhallSet {
     fn set_data(&mut self, data: Vec<LocationDhallSetEntry>) {
         self.data = data;
     }
+
+    /// Loads this Location dataset from its Dhall representation as a string. Equivalent to from_dhall.
+    ///
+    /// :type repr: str
+    /// :rtype: LocationDhallSet
+    #[classmethod]
+    fn loads(_cls: &Bound<'_, PyType>, repr: &str) -> Result<Self, PyErr> {
+        Self::from_dhall(repr).map_err(PyException::new_err)
+    }
+
+    /// Returns the Dhall representation of this LocationDhallSet. Equivalent to to_dhall.
+    ///
+    /// :rtype: str
+    fn dumps(&self) -> Result<String, PyErr> {
+        self.to_dhall().map_err(PyException::new_err)
+    }
+
     /// Returns the Dhall representation of this Location
     ///
     /// :rtype: str
@@ -161,7 +178,7 @@ impl LocationDhallSet {
         self.to_dhall().map_err(PyException::new_err)
     }
 
-    /// Loads thie Location dataset from its Dhall representation as a string
+    /// Loads this Location dataset from its Dhall representation as a string
     ///
     /// :type repr: str
     /// :rtype: LocationDhallSet

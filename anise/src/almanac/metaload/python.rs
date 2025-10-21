@@ -1,4 +1,4 @@
-use pyo3::exceptions::PyTypeError;
+use pyo3::exceptions::{PyException, PyTypeError};
 use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
 use pyo3::types::PyType;
@@ -77,6 +77,25 @@ impl MetaAlmanac {
     #[pyo3(signature=(autodelete=None))]
     pub fn py_process(&mut self, py: Python, autodelete: Option<bool>) -> AlmanacResult<Almanac> {
         py.detach(|| self.process(autodelete.unwrap_or(true)))
+    }
+
+    /// Serializes the configurated Meta Almanac into a Dhall string. Equivalent to dumps().
+    ///
+    /// :rtype: str
+    #[pyo3(name = "to_dhall")]
+    fn py_to_dhall(&self) -> Result<String, PyErr> {
+        self.to_dhall()
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+
+    /// Loads this Meta Almanac from its Dhall string representation
+    ///
+    /// :type repr: str
+    /// :rtype: MetaAlmanac
+    #[classmethod]
+    #[pyo3(name = "from_dhall")]
+    fn py_from_dhall(_cls: Bound<'_, PyType>, repr: &str) -> Result<Self, PyErr> {
+        Self::from_dhall(repr).map_err(|e| PyException::new_err(e.to_string()))
     }
 
     fn __str__(&self) -> String {

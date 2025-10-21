@@ -86,35 +86,44 @@ impl MetaAlmanac {
     pub fn latest() -> AlmanacResult<Almanac> {
         Self::default().process(true)
     }
-}
 
-impl FromStr for MetaAlmanac {
-    type Err = MetaAlmanacError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match serde_dhall::from_str(s).parse::<Self>() {
-            Err(e) => Err(MetaAlmanacError::ParseDhall {
-                path: s.to_string(),
+    /// Loads this Meta Almanac from its Dhall string representation
+    pub fn from_dhall(repr: &str) -> Result<Self, MetaAlmanacError> {
+        serde_dhall::from_str(repr)
+            .static_type_annotation()
+            .parse::<Self>()
+            .map_err(|e| MetaAlmanacError::ParseDhall {
                 err: format!("{e}"),
-            }),
-            Ok(me) => Ok(me),
-        }
+                path: "from string representation".to_string(),
+            })
     }
-}
 
-#[cfg_attr(feature = "python", pymethods)]
-// #[allow(deprecated_in_future)]
-impl MetaAlmanac {
-    /// Dumps the configured Meta Almanac into a Dhall string.
-    ///
-    /// :rtype: str
-    pub fn dumps(&self) -> Result<String, MetaAlmanacError> {
+    /// Serializes the configurated Meta Almanac into a Dhall string
+    pub fn to_dhall(&self) -> Result<String, MetaAlmanacError> {
         serde_dhall::serialize(&self)
             .static_type_annotation()
             .to_string()
             .map_err(|e| MetaAlmanacError::ExportDhall {
                 err: format!("{e}"),
             })
+    }
+}
+
+impl FromStr for MetaAlmanac {
+    type Err = MetaAlmanacError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_dhall(s)
+    }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl MetaAlmanac {
+    /// Dumps the configured Meta Almanac into a Dhall string. Equivalent to to_dhall().
+    ///
+    /// :rtype: str
+    pub fn dumps(&self) -> Result<String, MetaAlmanacError> {
+        self.to_dhall()
     }
 }
 
