@@ -39,8 +39,8 @@ impl Almanac {
         // Search in seconds (convert to epoch just in time)
         let mut xa = 0.0;
         let mut xb = (xb_e - xa_e).to_seconds();
-        // Evaluate the event at both bounds
 
+        // Evaluate the event at both bounds
         let ya_state = state_spec.evaluate(xa_e, self)?;
         let yb_state = state_spec.evaluate(xb_e, self)?;
         let mut ya = event.eval(ya_state, self)?;

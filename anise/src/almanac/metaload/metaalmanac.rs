@@ -9,7 +9,7 @@
  */
 
 use serde_derive::{Deserialize, Serialize};
-use serde_dhall::SimpleType;
+use serde_dhall::StaticType;
 use snafu::prelude::*;
 use std::str::FromStr;
 use url::Url;
@@ -30,8 +30,8 @@ use super::{Almanac, MetaAlmanacError, MetaFile};
 /// The downloaded path will be stored in the "AppData" folder.
 ///
 /// :type maybe_path: str, optional
-/// :rtype: Self
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+/// :rtype: MetaAlmanac
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, StaticType)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct MetaAlmanac {
@@ -86,42 +86,44 @@ impl MetaAlmanac {
     pub fn latest() -> AlmanacResult<Almanac> {
         Self::default().process(true)
     }
+
+    /// Loads this Meta Almanac from its Dhall string representation
+    pub fn from_dhall(repr: &str) -> Result<Self, MetaAlmanacError> {
+        serde_dhall::from_str(repr)
+            .static_type_annotation()
+            .parse::<Self>()
+            .map_err(|e| MetaAlmanacError::ParseDhall {
+                err: format!("{e}"),
+                path: "from string representation".to_string(),
+            })
+    }
+
+    /// Serializes the configurated Meta Almanac into a Dhall string
+    pub fn to_dhall(&self) -> Result<String, MetaAlmanacError> {
+        serde_dhall::serialize(&self)
+            .static_type_annotation()
+            .to_string()
+            .map_err(|e| MetaAlmanacError::ExportDhall {
+                err: format!("{e}"),
+            })
+    }
 }
 
 impl FromStr for MetaAlmanac {
     type Err = MetaAlmanacError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match serde_dhall::from_str(s).parse::<Self>() {
-            Err(e) => Err(MetaAlmanacError::ParseDhall {
-                path: s.to_string(),
-                err: format!("{e}"),
-            }),
-            Ok(me) => Ok(me),
-        }
+        Self::from_dhall(s)
     }
 }
 
-// Methods shared between Rust and Python
 #[cfg_attr(feature = "python", pymethods)]
-#[allow(deprecated_in_future)]
 impl MetaAlmanac {
-    /// Dumps the configured Meta Almanac into a Dhall string.
+    /// Dumps the configured Meta Almanac into a Dhall string. Equivalent to to_dhall().
     ///
     /// :rtype: str
     pub fn dumps(&self) -> Result<String, MetaAlmanacError> {
-        // Define the Dhall type
-        let dhall_type: SimpleType =
-            serde_dhall::from_str("{ files : List { uri : Text, crc32 : Optional Natural } }")
-                .parse()
-                .unwrap();
-
-        serde_dhall::serialize(&self)
-            .type_annotation(&dhall_type)
-            .to_string()
-            .map_err(|e| MetaAlmanacError::ExportDhall {
-                err: format!("{e}"),
-            })
+        self.to_dhall()
     }
 }
 
@@ -153,14 +155,14 @@ impl Default for MetaAlmanac {
                 },
                 MetaFile {
                     uri: nyx_cloud_stor.join("v0.7/pck11.pca").unwrap().to_string(),
-                    crc32: Some(0x3503391),
+                    crc32: Some(0x51f69e46),
                 },
                 MetaFile {
                     uri: nyx_cloud_stor
                         .join("v0.7/moon_fk_de440.epa")
                         .unwrap()
                         .to_string(),
-                    crc32: Some(0xabd5ff11),
+                    crc32: Some(0x32c8f9d7),
                 },
                 MetaFile {
                     uri: nyx_cloud_stor

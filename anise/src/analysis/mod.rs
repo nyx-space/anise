@@ -440,7 +440,7 @@ mod ut_analysis {
     }
 
     #[rstest]
-    fn test_analysis_event(mut almanac: Almanac) {
+    fn test_analysis_event(almanac: Almanac) {
         let lro_frame = Frame::from_ephem_j2000(-85);
 
         let lro_state_spec = StateSpec {

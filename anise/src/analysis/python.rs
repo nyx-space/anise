@@ -505,18 +505,27 @@ impl Clone for PyVectorExpr {
     }
 }
 /// StateSpec allows defining a state from the target to the observer
+///
+/// :type target_frame: FrameSpec
+/// :type observer_frame: FrameSpec
+/// :type ab_corr: Aberration, optional
+/// :rtype: None
 #[derive(Clone)]
 #[pyclass]
 #[pyo3(module = "anise.analysis", name = "StateSpec", get_all, set_all)]
 pub struct PyStateSpec {
+    /// :rtype: FrameSpec
     pub target_frame: PyFrameSpec,
+    /// :rtype: FrameSpec
     pub observer_frame: PyFrameSpec,
+    /// :rtype: Aberration
     pub ab_corr: Option<Aberration>,
 }
 
 #[pymethods]
 impl PyStateSpec {
     #[new]
+    #[pyo3(signature=(target_frame, observer_frame, ab_corr=None))]
     fn new(
         target_frame: PyFrameSpec,
         observer_frame: PyFrameSpec,
@@ -548,6 +557,9 @@ impl PyStateSpec {
             .map_err(|e| PyException::new_err(e.to_string()))
     }
     /// Evaluate the orbital element enum variant for the provided orbit
+    /// :type epoch: Epoch
+    /// :type almanac: Almanac
+    /// :rtype: Orbit
     #[pyo3(name = "evaluate", signature=(epoch, almanac))]
     fn py_evaluate(&self, epoch: Epoch, almanac: &Almanac) -> Result<Orbit, PyErr> {
         let spec = StateSpec::from(self.clone());

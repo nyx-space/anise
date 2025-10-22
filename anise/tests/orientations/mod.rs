@@ -13,9 +13,16 @@ use anise::math::rotation::{EulerParameter, DCM};
 use anise::math::{Matrix3, Vector3};
 use anise::naif::kpl::parser::convert_tpc;
 
-use anise::prelude::*;
+use anise::structure::PlanetaryDataSet;
+use anise::{file2heap, prelude::*};
 
 mod validation;
+
+#[test]
+fn fetch_crc32() {
+    let data_set = PlanetaryDataSet::from_bytes(file2heap!("../data/pck11.pca").unwrap());
+    println!("{:x}", data_set.crc32());
+}
 
 #[test]
 fn test_find_root_from_pca() {
