@@ -118,11 +118,43 @@ impl Almanac {
                     event: Box::new(event.clone()),
                 });
             }
+
+            // --- NEWTON STEP CALCULATION ---
+            // Try to compute a Newton step as a fallback to inverse quadratic interpolation.
+            // This uses a numerical derivative computed from states "one step before and one after" xb.
+            let mut s_newton: Option<f64> = None;
+            let h = event.epoch_precision.to_seconds();
+            // Check if h is large enough to be meaningful
+            if h > f64::EPSILON {
+                let xb_epoch = xa_e + xb * Unit::Second;
+                // Try to compute the numerical derivative at xb
+                if let (Ok(prev_state), Ok(next_state)) = (
+                    state_spec.evaluate(xb_epoch - event.epoch_precision, self),
+                    state_spec.evaluate(xb_epoch + event.epoch_precision, self),
+                ) {
+                    if let (Ok(y_prev), Ok(y_next)) =
+                        (event.eval(prev_state, self), event.eval(next_state, self))
+                    {
+                        let deriv = (y_next - y_prev) / (2.0 * h);
+                        if deriv.abs() > 1e-10 {
+                            // Avoid division by near-zero
+                            s_newton = Some(xb - yb / deriv);
+                        }
+                    }
+                }
+            }
+            // --- END NEWTON STEP ---
+
             let mut s = if (ya - yc).abs() > f64::EPSILON && (yb - yc).abs() > f64::EPSILON {
+                // 1. Try Inverse quadratic interpolation (3 points)
                 xa * yb * yc / ((ya - yb) * (ya - yc))
                     + xb * ya * yc / ((yb - ya) * (yb - yc))
                     + xc * ya * yb / ((yc - ya) * (yc - yb))
+            } else if let Some(newton_step) = s_newton {
+                // 2. Try Newton step (if computed successfully)
+                newton_step
             } else {
+                // 3. Fallback to Secant method (2 points)
                 xb - yb * (xb - xa) / (yb - ya)
             };
 
