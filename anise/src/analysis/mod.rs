@@ -471,15 +471,12 @@ mod ut_analysis {
 
         // End setup
 
-        let apo_events = almanac
-            .report_events(
-                &lro_state_spec,
-                &apolune,
-                start_epoch,
-                end_epoch,
-                Some(period * 0.5),
-            )
-            .unwrap();
+        let apo_events =
+            match almanac.report_events(&lro_state_spec, &apolune, start_epoch, end_epoch) {
+                // match almanac.report_events(&lro_state_spec, &apolune, start_epoch, start_epoch + period*1.1) {
+                Ok(apo_events) => apo_events,
+                Err(e) => panic!("{e}"),
+            };
 
         println!("Searching for {apolune}");
         println!("\nAPO S-EXPR: {}", apolune.to_s_expr().unwrap());
@@ -495,13 +492,7 @@ mod ut_analysis {
         }
 
         let peri_events = almanac
-            .report_events(
-                &lro_state_spec,
-                &perilune,
-                start_epoch,
-                end_epoch,
-                Some(period * 0.5),
-            )
+            .report_events(&lro_state_spec, &perilune, start_epoch, end_epoch)
             .unwrap();
 
         println!("Searching for {perilune}");
@@ -521,6 +512,8 @@ mod ut_analysis {
             peri_events.len(),
             end_epoch - start_epoch
         );
+        assert_eq!(apo_events.len(), 308);
+        assert_eq!(peri_events.len(), 308);
 
         let mut missed_events = 0;
         // Check the time difference between two subsequent apoapses

@@ -75,7 +75,6 @@ impl Almanac {
     /// :type end_epoch: Epoch
     /// :type heuristic: Duration, optional
     /// :rtype: list
-    #[pyo3(name = "report_events", signature=(state_spec, event, start_epoch, end_epoch, heuristic=None))]
     #[allow(clippy::identity_op)]
     fn py_report_events(
         &self,
@@ -84,16 +83,9 @@ impl Almanac {
         event: &Event,
         start_epoch: Epoch,
         end_epoch: Epoch,
-        heuristic: Option<Duration>,
     ) -> Result<Vec<EventDetails>, AnalysisError> {
         py.detach(|| {
-            self.report_events(
-                &StateSpec::from(state_spec),
-                event,
-                start_epoch,
-                end_epoch,
-                heuristic,
-            )
+            self.report_events(&StateSpec::from(state_spec), event, start_epoch, end_epoch)
         })
     }
     /// Slow approach to finding **all** of the events between two epochs. This will evaluate ALL epochs in between the two bounds.
