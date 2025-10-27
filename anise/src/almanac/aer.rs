@@ -197,7 +197,7 @@ impl Almanac {
                     err: format!("{e} when fetching {} frame data", location.frame),
                 })?;
         let omega = self
-            .angular_velocity_wtr_j2000_rad_s(from_frame, epoch)
+            .angular_velocity_wrt_j2000_rad_s(from_frame, epoch)
             .context(OrientationSnafu {
                 action: "AER computation from location ID",
             })?;

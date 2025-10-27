@@ -680,7 +680,7 @@ impl Almanac {
         self.rotate_to(state, observer_frame)
     }
 
-    /// Returns the angular velocity vector in rad/s of the from_frame wtr to the to_frame.
+    /// Returns the angular velocity vector in rad/s of the from_frame wrt to the to_frame.
     ///
     /// This can be used to compute the angular velocity of the Earth ITRF93 frame with respect to the J2000 frame for example.
     ///
@@ -707,13 +707,24 @@ impl Almanac {
         Ok(PyArray1::<f64>::from_owned_array(py, omega))
     }
 
-    /// Returns the angular velocity vector in rad/s of the from_frame wtr to the J2000 frame.
+    #[deprecated(since = "0.7.1", note = "use `angular_velocity_wrt_j2000_rad_s` instead")]
+    #[pyo3(name = "angular_velocity_wtr_j2000_rad_s", signature = (from_frame, epoch))]
+    pub fn py_angular_velocity_wtr_j2000_rad_s<'py>(
+        &self,
+        py: Python<'py>,
+        from_frame: Frame,
+        epoch: Epoch,
+    ) -> Result<Bound<'py, PyArray1<f64>>, OrientationError> {
+        self.py_angular_velocity_wrt_j2000_rad_s(py, from_frame, epoch)
+    }
+
+    /// Returns the angular velocity vector in rad/s of the from_frame wrt to the J2000 frame.
     ///
     /// :type from_frame: Frame
     /// :type epoch: Epoch
     /// :rtype: numpy.array
-    #[pyo3(name="angular_velocity_wtr_j2000_rad_s", signature=(from_frame, epoch))]
-    pub fn py_angular_velocity_wtr_j2000_rad_s<'py>(
+    #[pyo3(name = "angular_velocity_wrt_j2000_rad_s", signature = (from_frame, epoch))]
+    pub fn py_angular_velocity_wrt_j2000_rad_s<'py>(
         &self,
         py: Python<'py>,
         from_frame: Frame,
@@ -722,7 +733,7 @@ impl Almanac {
         self.py_angular_velocity_rad_s(py, from_frame, from_frame.with_orient(J2000), epoch)
     }
 
-    /// Returns the angular velocity vector in deg/s of the from_frame wtr to the to_frame.
+    /// Returns the angular velocity vector in deg/s of the from_frame wrt to the to_frame.
     ///
     /// This can be used to compute the angular velocity of the Earth ITRF93 frame with respect to the J2000 frame for example.
     ///
@@ -749,13 +760,24 @@ impl Almanac {
         Ok(PyArray1::<f64>::from_owned_array(py, omega))
     }
 
-    /// Returns the angular velocity vector in deg/s of the from_frame wtr to the J2000 frame.
+    #[deprecated(since = "0.7.1", note = "use `angular_velocity_wrt_j2000_deg_s` instead")]
+    #[pyo3(name = "angular_velocity_wtr_j2000_deg_s", signature = (from_frame, epoch))]
+    pub fn py_angular_velocity_wtr_j2000_deg_s<'py>(
+        &self,
+        py: Python<'py>,
+        from_frame: Frame,
+        epoch: Epoch,
+    ) -> Result<Bound<'py, PyArray1<f64>>, OrientationError> {
+        self.py_angular_velocity_wrt_j2000_deg_s(py, from_frame, epoch)
+    }
+
+    /// Returns the angular velocity vector in deg/s of the from_frame wrt to the J2000 frame.
     ///
     /// :type from_frame: Frame
     /// :type epoch: Epoch
     /// :rtype: numpy.array
-    #[pyo3(name="angular_velocity_wtr_j2000_deg_s", signature=(from_frame, epoch))]
-    pub fn py_angular_velocity_wtr_j2000_deg_s<'py>(
+    #[pyo3(name = "angular_velocity_wrt_j2000_deg_s", signature = (from_frame, epoch))]
+    pub fn py_angular_velocity_wrt_j2000_deg_s<'py>(
         &self,
         py: Python<'py>,
         from_frame: Frame,

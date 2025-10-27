@@ -77,20 +77,20 @@ class Almanac:
         """An Almanac contains all of the loaded SPICE and ANISE data. It is the context for all computations."""
 
     def angular_velocity_deg_s(self, from_frame: Frame, to_frame: Frame, epoch: Epoch) -> numpy.array:
-        """Returns the angular velocity vector in deg/s of the from_frame wtr to the to_frame.
+        """Returns the angular velocity vector in deg/s of the from_frame wrt to the to_frame.
 
 This can be used to compute the angular velocity of the Earth ITRF93 frame with respect to the J2000 frame for example."""
 
     def angular_velocity_rad_s(self, from_frame: Frame, to_frame: Frame, epoch: Epoch) -> numpy.array:
-        """Returns the angular velocity vector in rad/s of the from_frame wtr to the to_frame.
+        """Returns the angular velocity vector in rad/s of the from_frame wrt to the to_frame.
 
 This can be used to compute the angular velocity of the Earth ITRF93 frame with respect to the J2000 frame for example."""
 
-    def angular_velocity_wtr_j2000_deg_s(self, from_frame: Frame, epoch: Epoch) -> numpy.array:
-        """Returns the angular velocity vector in deg/s of the from_frame wtr to the J2000 frame."""
+    def angular_velocity_wrt_j2000_deg_s(self, from_frame: Frame, epoch: Epoch) -> numpy.array:
+        """Returns the angular velocity vector in deg/s of the from_frame wrt to the J2000 frame."""
 
-    def angular_velocity_wtr_j2000_rad_s(self, from_frame: Frame, epoch: Epoch) -> numpy.array:
-        """Returns the angular velocity vector in rad/s of the from_frame wtr to the J2000 frame."""
+    def angular_velocity_wrt_j2000_rad_s(self, from_frame: Frame, epoch: Epoch) -> numpy.array:
+        """Returns the angular velocity vector in rad/s of the from_frame wrt to the J2000 frame."""
 
     def azimuth_elevation_range_sez(self, rx: Orbit, tx: Orbit, obstructing_body: Frame=None, ab_corr: Aberration=None) -> AzElRange:
         """Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the

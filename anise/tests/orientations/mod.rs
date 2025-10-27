@@ -190,7 +190,7 @@ fn test_itrf93_to_j2k() {
 
     // Check that the angular rate of the ITRF93 frame wrt to the J2000 frame is very close to the mean value.
     let omega_deg_s = almanac
-        .angular_velocity_wtr_j2000_deg_s(EARTH_ITRF93, epoch)
+        .angular_velocity_wrt_j2000_deg_s(EARTH_ITRF93, epoch)
         .unwrap();
 
     assert!(

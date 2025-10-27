@@ -152,7 +152,7 @@ Azimuth and elevation are calculated using the `azimuth_elevation_range_sez` fam
     *   Calls `Almanac::azimuth_elevation_range_sez_from_location`.
 2.  **`Almanac::azimuth_elevation_range_sez_from_location(rx, location, ...)`**
     *   Calls `Almanac::frame_from_uid` to get the `Frame` for the location.
-    *   Calls `Almanac::angular_velocity_wtr_j2000_rad_s` to get the angular velocity of the frame.
+    *   Calls `Almanac::angular_velocity_wrt_j2000_rad_s` to get the angular velocity of the frame.
     *   Creates a `Orbit` object for the location using `Orbit::try_latlongalt_omega`.
     *   Calls `Almanac::azimuth_elevation_range_sez`.
 3.  **`Almanac::azimuth_elevation_range_sez(rx, tx, ...)`**
