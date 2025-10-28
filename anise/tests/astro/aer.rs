@@ -191,7 +191,7 @@ fn validate_aer_vs_gmat_cislunar2() {
         states.iter().copied().zip(observations.iter().copied())
     {
         let omega = almanac
-            .angular_velocity_wtr_j2000_rad_s(IAU_EARTH_FRAME, rx.epoch)
+            .angular_velocity_wrt_j2000_rad_s(IAU_EARTH_FRAME, rx.epoch)
             .unwrap();
         // Rebuild the ground stations
         let tx = Orbit::try_latlongalt_omega(

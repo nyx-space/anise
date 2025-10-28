@@ -156,7 +156,7 @@ def test_state_transformation():
     assert abs(paris.height_km() - 0.4) < 1e-3
 
     # Lat/long/alt high fidelity
-    omega_itrf93 = almanac.angular_velocity_wtr_j2000_rad_s(Frames.EARTH_ITRF93, epoch)
+    omega_itrf93 = almanac.angular_velocity_wrt_j2000_rad_s(Frames.EARTH_ITRF93, epoch)
     paris_prec = Orbit.from_latlongalt_omega(
         48.8566,
         2.3522,
