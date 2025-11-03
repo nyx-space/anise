@@ -18,6 +18,7 @@ def path_to_type(*elements: str) -> ast.AST:
 
 OBJECT_MEMBERS = dict(inspect.getmembers(object))
 BUILTINS: Dict[str, Union[None, Tuple[List[ast.AST], ast.AST]]] = {
+    "__add__": ([path_to_type("typing", "Any")], path_to_type("typing", "Any")),
     "__annotations__": None,
     "__bool__": ([], path_to_type("bool")),
     "__bytes__": ([], path_to_type("bytes")),
@@ -29,6 +30,7 @@ BUILTINS: Dict[str, Union[None, Tuple[List[ast.AST], ast.AST]]] = {
     "__dict__": None,
     "__dir__": None,
     "__doc__": None,
+    "__div__": ([path_to_type("typing", "Any")], path_to_type("typing", "Any")),
     "__eq__": ([path_to_type("typing", "Any")], path_to_type("bool")),
     "__format__": ([path_to_type("str")], path_to_type("str")),
     "__ge__": ([path_to_type("typing", "Any")], path_to_type("bool")),
@@ -43,13 +45,18 @@ BUILTINS: Dict[str, Union[None, Tuple[List[ast.AST], ast.AST]]] = {
     "__len__": ([], path_to_type("int")),
     "__lt__": ([path_to_type("typing", "Any")], path_to_type("bool")),
     "__module__": None,
+    "__mul__": ([path_to_type("typing", "Any")], path_to_type("typing", "Any")),
     "__ne__": ([path_to_type("typing", "Any")], path_to_type("bool")),
     "__new__": None,
     "__next__": ([], path_to_type("typing", "Any")),
-    "__int__": ([], path_to_type("None")),
+    "__int__": ([], path_to_type("int")),
+    "__radd__": ([path_to_type("typing", "Any")], path_to_type("typing", "Any")),
+    "__rdiv__": ([path_to_type("typing", "Any")], path_to_type("typing", "Any")),
     "__reduce__": None,
     "__reduce_ex__": None,
     "__repr__": ([], path_to_type("str")),
+    "__rmul__": ([path_to_type("typing", "Any")], path_to_type("typing", "Any")),
+    "__rsub__": ([path_to_type("typing", "Any")], path_to_type("typing", "Any")),
     "__setattr__": (
         [path_to_type("str"), path_to_type("typing", "Any")],
         path_to_type("None"),
@@ -60,6 +67,7 @@ BUILTINS: Dict[str, Union[None, Tuple[List[ast.AST], ast.AST]]] = {
     ),
     "__sizeof__": None,
     "__str__": ([], path_to_type("str")),
+    "__sub__": ([path_to_type("typing", "Any")], path_to_type("typing", "Any")),
     "__subclasshook__": None,
 }
 
@@ -89,7 +97,14 @@ def module_stubs(module: Any) -> ast.Module:
         else:
             logging.warning(f"Unsupported root construction {member_name}")
     return ast.Module(
-        body=[ast.Import(names=[ast.alias(name=t)]) for t in sorted(types_to_import)]
+        body=[
+            ast.ImportFrom(
+                module="__future__",
+                names=[ast.alias(name="annotations")],
+                level=0,
+            ),
+            *[ast.Import(names=[ast.alias(name=t)]) for t in sorted(types_to_import)],
+        ]
         + classes
         + functions,
         type_ignores=[],
@@ -238,14 +253,23 @@ def function_stub(
             body.append(doc_comment)
 
     decorator_list = []
+    is_static = False
     if in_class and hasattr(fn_def, "__self__"):
         decorator_list.append(ast.Name("staticmethod"))
+        is_static = True
 
     print(f"Documenting {fn_name}")
 
     return ast.FunctionDef(
         fn_name,
-        arguments_stub(fn_name, fn_def, doc or "", element_path, types_to_import),
+        arguments_stub(
+            fn_name,
+            fn_def,
+            doc or "",
+            element_path,
+            types_to_import,
+            is_static=is_static,
+        ),
         body or [ast.Ellipsis()],
         decorator_list=decorator_list,
         returns=(
@@ -261,6 +285,8 @@ def arguments_stub(
     doc: str,
     element_path: List[str],
     types_to_import: Set[str],
+    *,
+    is_static: bool = False,
 ) -> ast.arguments:
     if "Error" in element_path[1]:
         # Don't document errors
@@ -270,9 +296,14 @@ def arguments_stub(
         callable_def
     ).parameters
 
-    if callable_name == "__init__":
+    if callable_name == "__init__" or not is_static:
         real_parameters = {
             "self": inspect.Parameter("self", inspect.Parameter.POSITIONAL_ONLY),
+            **real_parameters,
+        }
+    elif is_static:
+        real_parameters = {
+            "cls": inspect.Parameter("cls", inspect.Parameter.POSITIONAL_ONLY),
             **real_parameters,
         }
 
@@ -287,18 +318,6 @@ def arguments_stub(
             del param_names[0]
         for name, t in zip(param_names, builtin[0]):
             parsed_param_types[name] = t
-
-    elif callable_name in [
-        "__add__",
-        "__sub__",
-        "__div__",
-        "__mul__",
-        "__radd__",
-        "__rsub__",
-        "__rdiv__",
-        "__rmul__",
-    ]:
-        return ast.arguments(posonlyargs=[], args=[], defaults=[], kwonlyargs=[])
 
     # Types from comment
     for match in re.findall(
@@ -382,17 +401,6 @@ def returns_stub(
         # Don't document errors
         return
 
-    if callable_name in [
-        "__add__",
-        "__sub__",
-        "__div__",
-        "__mul__",
-        "__radd__",
-        "__rsub__",
-        "__rdiv__",
-        "__rmul__",
-    ]:
-        return
     m = re.findall(r"^ *:rtype: *([^\n]*) *$", doc, re.MULTILINE)
     if len(m) == 0:
         builtin = BUILTINS.get(callable_name)
