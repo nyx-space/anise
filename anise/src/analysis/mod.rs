@@ -653,4 +653,131 @@ mod ut_analysis {
             println!("\n");
         } */
     }
+
+    #[rstest]
+    fn test_debug_analysis_event(mut almanac: Almanac) {
+        let lro_frame = Frame::from_ephem_j2000(-85);
+
+        let lro_state_spec = StateSpec {
+            target_frame: FrameSpec::Loaded(lro_frame),
+            observer_frame: FrameSpec::Loaded(MOON_J2000),
+            ab_corr: None,
+        };
+
+        let sunset_nadir = Event {
+            scalar: ScalarExpr::SunAngle { observer_id: -85 },
+            desired_value: 90.0,
+            epoch_precision: Unit::Second * 0.5,
+            value_precision: 0.1,
+            ab_corr: None,
+        };
+
+        let (start_epoch, end_epoch) = almanac.spk_domain(-85).unwrap();
+        // let events = almanac
+        //     .report_event_arcs(&lro_state_spec, &sunset_nadir, start_epoch, end_epoch)
+        //     .unwrap();
+
+        // println!("First sunset of {}: {}", events.len(), events[1]);
+        // assert_eq!(events[1].rise.edge, EventEdge::Rising);
+        // assert_eq!(events[1].fall.edge, EventEdge::Falling);
+        // assert_eq!(events.len(), 309);
+
+        // let eclipse = Event::eclipse(MOON_J2000);
+        let eclipse = Event::apoapsis();
+        let eclipses = almanac
+            .report_event_arcs(
+                &lro_state_spec,
+                &eclipse,
+                start_epoch,
+                start_epoch + Unit::Hour * 3,
+            )
+            .unwrap();
+
+        // assert_eq!(eclipses.len(), 2, "wrong number of eclipse periods found");
+
+        // for event in &eclipses {
+        //     println!("{event}\n{event:?}");
+        //     assert!(event.duration() > Unit::Minute * 24 && event.duration() < Unit::Minute * 40);
+        //     // Check that this is valid
+        //     for epoch in TimeSeries::inclusive(
+        //         event.start_epoch() - eclipse.epoch_precision,
+        //         event.end_epoch() + eclipse.epoch_precision,
+        //         Unit::Minute * 0.5,
+        //     ) {
+        //         if let Ok(orbit) = lro_state_spec.evaluate(epoch, &almanac) {
+        //             let this_eclipse = eclipse.eval(orbit, &almanac).unwrap();
+        //             let in_eclipse = this_eclipse.abs() <= eclipse.value_precision.abs();
+
+        //             if (event.start_epoch()..event.end_epoch()).contains(&epoch) {
+        //                 // We're in the event, check that it is evaluated to be in the event.
+        //                 assert!(in_eclipse);
+        //             } else {
+        //                 assert!(!in_eclipse || this_eclipse < 0.0);
+        //             }
+        //         }
+        //     }
+        //     println!("\n");
+        // }
+
+        // https://github.com/nyx-space/anise/issues/537
+        // Test access times
+        let loc = Location {
+            latitude_deg: 40.427_222,
+            longitude_deg: 4.250_556,
+            height_km: 0.834_939,
+            frame: IAU_EARTH_FRAME.into(),
+            terrain_mask: vec![
+                TerrainMask {
+                    azimuth_deg: 0.0,
+                    elevation_mask_deg: 5.0,
+                },
+                TerrainMask {
+                    azimuth_deg: 35.0,
+                    elevation_mask_deg: 10.0,
+                },
+                TerrainMask {
+                    azimuth_deg: 270.0,
+                    elevation_mask_deg: 3.0,
+                },
+            ],
+            terrain_mask_ignored: false,
+        };
+
+        almanac.location_data.push(loc, Some(1), None).unwrap();
+
+        let comm = Event::above_horizon_from_location_id(1, None);
+
+        let comm_arcs = almanac
+            .report_event_arcs(
+                &lro_state_spec,
+                &comm,
+                start_epoch,
+                // end_epoch,
+                start_epoch + Unit::Day * 3,
+            )
+            .unwrap();
+        assert!(comm_arcs.len() > 1);
+        for event in &comm_arcs {
+            println!("{event}\n{event:?}");
+            // Check that this is valid
+            for epoch in TimeSeries::inclusive(
+                event.start_epoch() - Unit::Minute * 1,
+                event.end_epoch() + Unit::Minute * 1,
+                Unit::Minute * 0.5,
+            ) {
+                if let Ok(orbit) = lro_state_spec.evaluate(epoch, &almanac) {
+                    let this_eval = comm.eval(orbit, &almanac).unwrap();
+                    let is_accessible = this_eval.abs() <= comm.value_precision.abs();
+
+                    if (event.start_epoch()..event.end_epoch()).contains(&epoch) {
+                        // We're in the event, check that it is evaluated to be in the event.
+                        assert!(is_accessible);
+                    } else {
+                        assert!(!is_accessible || this_eval < 0.0);
+                    }
+                }
+            }
+            println!("\n");
+        }
+    }
 }

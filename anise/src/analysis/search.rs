@@ -12,6 +12,8 @@ use crate::almanac::Almanac;
 use hifitime::{Duration, Epoch, TimeSeries, Unit};
 use log::{debug, error, warn};
 use rayon::prelude::*;
+use std::fs::File; // Added for logging
+use std::io::Write; // Added for logging
 use std::sync::mpsc::channel;
 
 use super::{AnalysisError, Event, StateSpec};
@@ -154,9 +156,10 @@ impl Almanac {
         min_step_sec: f64,
         tol: f64,
         eval_fn: &F,
+        log_sender: Option<&std::sync::mpsc::Sender<String>>, // MODIFIED: Added log sender
     ) -> Result<Vec<(Epoch, Epoch)>, AnalysisError>
     where
-        F: Fn(Epoch) -> Result<f64, AnalysisError>,
+        F: Fn(Epoch) -> Result<f64, AnalysisError> + Sync, // MODIFIED: Added Sync bound for derivative calc
     {
         let mut brackets = Vec::new();
         let total_duration_sec = (end_epoch - start_epoch).to_seconds();
@@ -182,8 +185,36 @@ impl Almanac {
             }
 
             let t_next_epoch = t_prev_epoch + h_sec_clamped * Unit::Second;
+
+            // MODIFIED: Moved logging logic inside the Ok() arm
             let y_next = match eval_fn(t_next_epoch) {
-                Ok(y) => y,
+                Ok(y) => {
+                    // --- ADDED: Logging block ---
+                    if let Some(sender) = log_sender {
+                        let h_dur = min_step_sec * Unit::Second;
+                        let deriv = if min_step_sec > f64::EPSILON {
+                            // Central difference for derivative
+                            let y_plus_h = eval_fn(t_next_epoch + h_dur);
+                            let y_minus_h = eval_fn(t_next_epoch - h_dur);
+                            match (y_plus_h, y_minus_h) {
+                                (Ok(y_p), Ok(y_m)) => (y_p - y_m) / (2.0 * min_step_sec),
+                                _ => f64::NAN, // Handle eval errors during derivative calc
+                            }
+                        } else {
+                            f64::NAN // Step is too small
+                        };
+
+                        // Format as CSV: epoch (MJD TAI days), y_value, derivative
+                        // Using MJD TAI days as it's a stable f64 representation
+                        let epoch_mjd = t_next_epoch.to_mjd_tai_days();
+                        let csv_line = format!("{:.10}, {:.10}, {:.10}", epoch_mjd, y, deriv);
+
+                        // Send the data. We don't care if it fails (e.g., receiver dropped).
+                        let _ = sender.send(csv_line);
+                    }
+                    // --- END: Logging block ---
+                    y // Return y to be assigned to y_next
+                }
                 Err(e) => {
                     warn!("Eval function failed during adaptive scan at {t_next_epoch}: {e}");
                     break;
@@ -298,7 +329,7 @@ impl Almanac {
         // This is the most important parameter to tune.
         // For TA (-180 to 180 range), 1.0 is good.
         // For Eclipse (0 to 1 range), 0.1 might be good.
-        let scan_tol = 1e-1;
+        let scan_tol = 1e-4;
 
         // Split the total duration into a number of chunks based on available threads
         let n_threads = rayon::current_num_threads().max(1) * 4;
@@ -314,16 +345,79 @@ impl Almanac {
         }
 
         let (sender, receiver) = channel();
+
+        // --- ADDED: Create logging channel ---
+        let (log_sender, log_receiver) = channel::<String>();
+        let log_file_path = "adaptive_scan_log.csv";
+        // --- END: Create logging channel ---
+
         // Run the adaptive scan on each chunk in parallel
         chunks
             .into_par_iter()
-            .for_each_with(sender, |s, (chunk_start, chunk_end)| {
-                if let Ok(brackets) =
-                    self.adaptive_scan(chunk_start, chunk_end, min_step_sec, scan_tol, &f_real)
-                {
-                    s.send(brackets).unwrap();
+            // MODIFIED: Pass both bracket sender and log sender
+            .for_each_with(
+                (sender, log_sender.clone()),
+                |(s, log_s), (chunk_start, chunk_end)| {
+                    if let Ok(brackets) = self.adaptive_scan(
+                        chunk_start,
+                        chunk_end,
+                        min_step_sec,
+                        scan_tol,
+                        &f_real,
+                        Some(log_s),
+                    ) {
+                        s.send(brackets).unwrap();
+                    }
+                },
+            );
+
+        // --- ADDED: Drop original log sender to close channel ---
+        drop(log_sender);
+
+        // --- ADDED: Collect and write logs ---
+        debug!("Writing adaptive_scan log to {log_file_path}...");
+        let mut log_data: Vec<String> = log_receiver.iter().collect();
+
+        // Sort the data by epoch (the first column).
+        // This is CRITICAL as data arrives out of order from parallel threads.
+        log_data.sort_by(|a, b| {
+            let a_epoch = a
+                .split(',')
+                .next()
+                .unwrap_or("0.0")
+                .parse::<f64>()
+                .unwrap_or(0.0);
+            let b_epoch = b
+                .split(',')
+                .next()
+                .unwrap_or("0.0")
+                .parse::<f64>()
+                .unwrap_or(0.0);
+            a_epoch
+                .partial_cmp(&b_epoch)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        // Write to file
+        match File::create(log_file_path) {
+            Ok(mut file) => {
+                // Write header
+                if writeln!(file, "epoch_mjd_tai,f_value,f_derivative").is_err() {
+                    warn!("Failed to write header to {log_file_path}");
                 }
-            });
+                // Write data
+                for line in log_data {
+                    if writeln!(file, "{}", line).is_err() {
+                        warn!("Failed to write line to {log_file_path}");
+                    }
+                }
+                debug!("Log file written successfully.");
+            }
+            Err(e) => {
+                warn!("Failed to create log file {log_file_path}: {e}");
+            }
+        }
+        // --- END: Log collection ---
 
         // Collect the lists of brackets from all chunks and flatten
         let all_bracket_lists: Vec<Vec<(Epoch, Epoch)>> = receiver.iter().collect();
