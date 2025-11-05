@@ -707,7 +707,10 @@ impl Almanac {
         Ok(PyArray1::<f64>::from_owned_array(py, omega))
     }
 
-    #[deprecated(since = "0.7.1", note = "use `angular_velocity_wrt_j2000_rad_s` instead")]
+    #[deprecated(
+        since = "0.7.1",
+        note = "use `angular_velocity_wrt_j2000_rad_s` instead"
+    )]
     #[pyo3(name = "angular_velocity_wtr_j2000_rad_s", signature = (from_frame, epoch))]
     pub fn py_angular_velocity_wtr_j2000_rad_s<'py>(
         &self,
@@ -760,7 +763,10 @@ impl Almanac {
         Ok(PyArray1::<f64>::from_owned_array(py, omega))
     }
 
-    #[deprecated(since = "0.7.1", note = "use `angular_velocity_wrt_j2000_deg_s` instead")]
+    #[deprecated(
+        since = "0.7.1",
+        note = "use `angular_velocity_wrt_j2000_deg_s` instead"
+    )]
     #[pyo3(name = "angular_velocity_wtr_j2000_deg_s", signature = (from_frame, epoch))]
     pub fn py_angular_velocity_wtr_j2000_deg_s<'py>(
         &self,
