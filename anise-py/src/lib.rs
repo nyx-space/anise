@@ -53,6 +53,11 @@ fn anise(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<LocationDhallSet>()?;
     m.add_class::<LocationDhallSetEntry>()?;
     m.add_class::<PyLocationDataSet>()?;
+
+    m.add("__version__", env!("CARGO_PKG_VERSION"))?;
+    m.add("__doc__", env!("CARGO_PKG_DESCRIPTION"))?;
+    m.add("__author__", env!("CARGO_PKG_AUTHORS"))?;
+
     Ok(())
 }
 
