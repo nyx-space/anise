@@ -13,8 +13,7 @@ use core::fmt::Display;
 pub use hifitime::Unit as TimeUnit;
 
 /// Defines the distance units supported by ANISE. This notably allows storing interpolation information from instruments to comets.
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
-#[derive(Default)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Default)]
 pub enum LengthUnit {
     Micrometer,
     Millimeter,
@@ -63,4 +62,3 @@ impl Display for LengthUnit {
         }
     }
 }
-
