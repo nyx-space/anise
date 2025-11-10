@@ -712,7 +712,7 @@ class astro:
 
     @typing.final
     class Occultation:
-        """Stores the result of an occultation computation with the occulation percentage
+        """Stores the result of an occultation computation with the occultation percentage
     Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse/) for modeling details."""
         back_frame: Frame
         epoch: Epoch

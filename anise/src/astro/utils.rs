@@ -350,9 +350,12 @@ pub fn true_anomaly_to_eccentric_anomaly_rad(nu_rad: f64, ecc: f64) -> Result<f6
     }
 }
 
-/// Solves Kepler's equation for Eccentric Anomaly (E) from Mean Anomaly (M)
-/// for elliptical orbits.
-fn mean_anomaly_to_eccentric_anomaly_rad(ma_rad: f64, ecc: f64, tol: f64) -> PhysicsResult<f64> {
+/// Solves Kepler's equation for Eccentric Anomaly (E) from Mean Anomaly (M) for elliptical orbits.
+pub fn mean_anomaly_to_eccentric_anomaly_rad(
+    ma_rad: f64,
+    ecc: f64,
+    tol: f64,
+) -> PhysicsResult<f64> {
     if !(0.0..1.0).contains(&ecc) {
         return Err(PhysicsError::Hyperbolic { ecc });
     }
@@ -384,7 +387,7 @@ fn mean_anomaly_to_eccentric_anomaly_rad(ma_rad: f64, ecc: f64, tol: f64) -> Phy
     Err(PhysicsError::AppliedMath {
         source: MathError::MaxIterationsReached {
             iter: 1000,
-            action: "computing the eccentricy anomaly from the mean anomaly",
+            action: "computing the eccentricity anomaly from the mean anomaly",
         },
     })
 }

@@ -256,7 +256,7 @@ impl TerrainMask {
         self.elevation_mask_deg
     }
 
-    /// :type azimuth_deg: float
+    /// :type elevation_mask_deg: float
     #[setter]
     fn set_elevation_mask_deg(&mut self, elevation_mask_deg: f64) {
         self.elevation_mask_deg = elevation_mask_deg;

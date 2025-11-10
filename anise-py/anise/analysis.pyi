@@ -291,7 +291,7 @@ class ReportScalars:
     """A basic report builder that can be serialized seperately from the execution.
 The scalars must be a tuple of (ScalarExpr, String) where the String is the alias (optional)."""
 
-    def __init__(self, scalars: list, state_spec: StateSpec) -> ReportScalars:
+    def __init__(self, scalars: list, state_spec: StateSpec) -> None:
         """A basic report builder that can be serialized seperately from the execution.
 The scalars must be a tuple of (ScalarExpr, String) where the String is the alias (optional)."""
 

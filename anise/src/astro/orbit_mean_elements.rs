@@ -143,45 +143,7 @@ fn brouwer_mean_short_to_osculating_kep(
             - 3.0 * eccp * (2.0 * aopp + tap).sin()
             - eccp * (2.0 * aopp + 3.0 * tap).sin());
 
-    // Human note: these variables are UNUSED but in the GMAT code
-    // Note: The C++ code for aop1 and ma1 has J2 terms.
-    // The C++ `aop1` is not `aopp + daopp`, it's a full recalculation.
-    // We follow the C++ logic exactly.
-    // let aop1 = aopp
-    //     + 3.0 * j2 / 2.0 / p.powi(2)
-    //         * ((2.0 - 5.0 / 2.0 * sin_incp_sq) * (tap - mean_anom + eccp * tap.sin())
-    //             + (1.0 - 3.0 / 2.0 * sin_incp_sq)
-    //                 * (1.0 / eccp * (1.0 - 1.0 / 4.0 * eccp.powi(2)) * tap.sin()
-    //                     + 1.0 / 2.0 * (2.0 * tap).sin()
-    //                     + eccp / 12.0 * (3.0 * tap).sin())
-    //             - 1.0 / eccp
-    //                 * (1.0 / 4.0 * sin_incp_sq
-    //                     + (1.0 / 2.0 - 15.0 / 16.0 * sin_incp_sq) * eccp.powi(2))
-    //                 * (tap + 2.0 * aopp).sin()
-    //             + eccp / 16.0 * sin_incp_sq * (tap - 2.0 * aopp).sin()
-    //             - 1.0 / 2.0 * (1.0 - 5.0 / 2.0 * sin_incp_sq) * (2.0 * tap + 2.0 * aopp).sin()
-    //             + 1.0 / eccp
-    //                 * (7.0 / 12.0 * sin_incp_sq
-    //                     - 1.0 / 6.0 * (1.0 - 19.0 / 8.0 * sin_incp_sq) * eccp.powi(2))
-    //                 * (3.0 * tap + 2.0 * aopp).sin()
-    //             + 3.0 / 8.0 * sin_incp_sq * (4.0 * tap + 2.0 * aopp).sin()
-    //             + eccp / 16.0 * sin_incp_sq * (5.0 * tap + 2.0 * aopp).sin());
-
-    // `ma1` in C++ is also a full recalculation, not `mean_anom + dma`
-    // let mut ma1 = mean_anom
-    //     + 3.0 * j2 * eta / 2.0 / eccp / p.powi(2)
-    //         * (-(1.0 - 3.0 / 2.0 * sin_incp_sq)
-    //             * ((1.0 - eccp.powi(2) / 4.0) * tap.sin()
-    //                 + eccp / 2.0 * (2.0 * tap).sin()
-    //                 + eccp.powi(2) / 12.0 * (3.0 * tap).sin())
-    //             + sin_incp_sq
-    //                 * (1.0 / 4.0 * (1.0 + 5.0 / 4.0 * eccp.powi(2)) * (tap + 2.0 * aopp).sin()
-    //                     - eccp.powi(2) / 16.0 * (tap - 2.0 * aopp).sin()
-    //                     - 7.0 / 12.0
-    //                         * (1.0 - eccp.powi(2) / 28.0)
-    //                         * (3.0 * tap + 2.0 * aopp).sin()
-    //                     - 3.0 * eccp / 8.0 * (4.0 * tap + 2.0 * aopp).sin()
-    //                     - eccp.powi(2) / 16.0 * (5.0 * tap + 2.0 * aopp).sin()));
+    // Human note: the aop1 and ma1 variables from GMAT were UNUSED so I removed them.
 
     let lgh = raanp
         + aopp

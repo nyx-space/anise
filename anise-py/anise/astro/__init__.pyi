@@ -1,4 +1,4 @@
-import np
+import numpy as np
 import numpy
 import typing
 
@@ -242,7 +242,7 @@ If the location includes a terrain mask, it will be used for obstruction checks 
 
 @typing.final
 class Occultation:
-    """Stores the result of an occultation computation with the occulation percentage
+    """Stores the result of an occultation computation with the occultation percentage
 Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse/) for modeling details."""
     back_frame: Frame
     epoch: Epoch
@@ -250,7 +250,7 @@ Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse
     percentage: float
 
     def __init__(self) -> None:
-        """Stores the result of an occultation computation with the occulation percentage
+        """Stores the result of an occultation computation with the occultation percentage
 Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse/) for modeling details."""
 
     def factor(self) -> float:

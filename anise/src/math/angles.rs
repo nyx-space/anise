@@ -19,7 +19,6 @@ use std::f64::consts::TAU;
 /// # Arguments
 ///
 /// * `angle` - An angle in degrees.
-///
 pub fn between_0_360(angle: f64) -> f64 {
     angle.rem_euclid(360.0)
 }
@@ -30,8 +29,7 @@ pub fn between_0_360(angle: f64) -> f64 {
 ///
 /// # Arguments
 ///
-/// * `anglerad` - An angle in radians.
-///
+/// * `angle_rad` - An angle in radians.
 pub fn between_0_tau(angle_rad: f64) -> f64 {
     angle_rad.rem_euclid(TAU)
 }

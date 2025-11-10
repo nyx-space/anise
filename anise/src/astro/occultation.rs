@@ -17,7 +17,7 @@ use hifitime::Epoch;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
-/// Stores the result of an occultation computation with the occulation percentage
+/// Stores the result of an occultation computation with the occultation percentage
 /// Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse/) for modeling details.
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
