@@ -33,6 +33,18 @@ pub enum OrbitalElement {
     ApoapsisRadius,
     /// Altitude of apoapsis (km)
     ApoapsisAltitude,
+    /// Brouwer Mean Short Semi major axis (km)
+    BrouwerMeanShortSemiMajorAxis,
+    /// Brouwer Mean Short Eccentricity
+    BrouwerMeanShortEccentricity,
+    /// Brouwer Mean Short Inclination (deg)
+    BrouwerMeanShortInclination,
+    /// Brouwer Mean Short RAAN (deg)
+    BrouwerMeanShortRAAN,
+    /// Brouwer Mean Short Argument of Periapse (deg)
+    BrouwerMeanShortAoP,
+    /// Brouwer Mean Short Mean Anomaly (deg)
+    BrouwerMeanShortMeanAnomaly,
     /// C_3 in (km/s)^2
     C3,
     /// Declination (deg) (also called elevation if in a body fixed frame)
@@ -41,6 +53,16 @@ pub enum OrbitalElement {
     EccentricAnomaly,
     /// Eccentricity (no unit)
     Eccentricity,
+    /// Equinoctial H element
+    EquinoctialH,
+    /// Equinoctial K element
+    EquinoctialK,
+    /// Equinoctial P element
+    EquinoctialP,
+    /// Equinoctial Q element
+    EquinoctialQ,
+    /// Equinoctial mean longitude Lambda (deg)
+    EquinoctialLambda,
     /// Specific energy
     Energy,
     /// Flight path angle (deg)
@@ -121,6 +143,24 @@ impl OrbitalElement {
             Self::ApoapsisAltitude => orbit
                 .apoapsis_altitude_km()
                 .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::BrouwerMeanShortSemiMajorAxis => orbit
+                .sma_brouwer_short_km()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::BrouwerMeanShortInclination => orbit
+                .inc_brouwer_short_deg()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::BrouwerMeanShortEccentricity => orbit
+                .ecc_brouwer_short()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::BrouwerMeanShortAoP => orbit
+                .aop_brouwer_short_deg()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::BrouwerMeanShortRAAN => orbit
+                .raan_brouwer_short_deg()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::BrouwerMeanShortMeanAnomaly => orbit
+                .ma_brouwer_short_deg()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::C3 => orbit
                 .c3_km2_s2()
                 .context(PhysicsOrbitElSnafu { el: self, orbit }),
@@ -131,6 +171,21 @@ impl OrbitalElement {
             Self::Eccentricity => orbit.ecc().context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::Energy => orbit
                 .energy_km2_s2()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::EquinoctialH => orbit
+                .equinoctial_h()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::EquinoctialK => orbit
+                .equinoctial_k()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::EquinoctialP => orbit
+                .equinoctial_p()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::EquinoctialQ => orbit
+                .equinoctial_q()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::EquinoctialLambda => orbit
+                .equinoctial_lambda_mean_deg()
                 .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::FlightPathAngle => orbit
                 .fpa_deg()
@@ -224,7 +279,12 @@ impl OrbitalElement {
             // Angles
             Self::AoL
             | Self::AoP
+            | Self::BrouwerMeanShortInclination
+            | Self::BrouwerMeanShortRAAN
+            | Self::BrouwerMeanShortAoP
+            | Self::BrouwerMeanShortMeanAnomaly
             | Self::Declination
+            | Self::EquinoctialLambda
             | Self::Latitude
             | Self::Longitude
             | Self::FlightPathAngle
@@ -241,6 +301,7 @@ impl OrbitalElement {
             // Distances
             Self::ApoapsisRadius
             | Self::ApoapsisAltitude
+            | Self::BrouwerMeanShortSemiMajorAxis
             | Self::Height
             | Self::Hmag
             | Self::HX
@@ -259,8 +320,12 @@ impl OrbitalElement {
             // Velocities
             Self::VX | Self::VY | Self::VZ | Self::Vmag => "km/s",
 
-            Self::C3 | Self::Energy => "km^2/s^2",
-            Self::Eccentricity => "unitless",
+            Self::C3 | Self::BrouwerMeanShortEccentricity | Self::Energy => "km^2/s^2",
+            Self::Eccentricity
+            | Self::EquinoctialH
+            | Self::EquinoctialK
+            | Self::EquinoctialP
+            | Self::EquinoctialQ => "unitless",
             Self::Period => "s",
         }
     }
