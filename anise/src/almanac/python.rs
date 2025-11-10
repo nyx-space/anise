@@ -707,6 +707,11 @@ impl Almanac {
         Ok(PyArray1::<f64>::from_owned_array(py, omega))
     }
 
+    /// Returns the angular velocity vector in rad/s of the from_frame wrt to the J2000 frame.
+    ///
+    /// :type from_frame: Frame
+    /// :type epoch: Epoch
+    /// :rtype: numpy.array
     #[deprecated(
         since = "0.7.1",
         note = "use `angular_velocity_wrt_j2000_rad_s` instead"
@@ -763,6 +768,11 @@ impl Almanac {
         Ok(PyArray1::<f64>::from_owned_array(py, omega))
     }
 
+    /// Returns the angular velocity vector in deg/s of the from_frame wrt to the J2000 frame.
+    ///
+    /// :type from_frame: Frame
+    /// :type epoch: Epoch
+    /// :rtype: numpy.array
     #[deprecated(
         since = "0.7.1",
         note = "use `angular_velocity_wrt_j2000_deg_s` instead"

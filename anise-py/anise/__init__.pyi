@@ -1,6 +1,11 @@
 import numpy
 import typing
 
+from anise.analysis import Event, StateSpec, ReportScalars
+from anise.rotation import DCM
+from anise.astro import AzElRange, Frame, Occultation, Orbit, Location
+from anise.time import Duration, Epoch, TimeScale, TimeSeries
+
 @typing.final
 class Aberration:
     """Represents the aberration correction options in ANISE.
@@ -88,6 +93,12 @@ This can be used to compute the angular velocity of the Earth ITRF93 frame with 
         """Returns the angular velocity vector in deg/s of the from_frame wrt to the J2000 frame."""
 
     def angular_velocity_wrt_j2000_rad_s(self, from_frame: Frame, epoch: Epoch) -> numpy.array:
+        """Returns the angular velocity vector in rad/s of the from_frame wrt to the J2000 frame."""
+
+    def angular_velocity_wtr_j2000_deg_s(self, from_frame: Frame, epoch: Epoch) -> numpy.array:
+        """Returns the angular velocity vector in deg/s of the from_frame wrt to the J2000 frame."""
+
+    def angular_velocity_wtr_j2000_rad_s(self, from_frame: Frame, epoch: Epoch) -> numpy.array:
         """Returns the angular velocity vector in rad/s of the from_frame wrt to the J2000 frame."""
 
     def azimuth_elevation_range_sez(self, rx: Orbit, tx: Orbit, obstructing_body: Frame=None, ab_corr: Aberration=None) -> AzElRange:
@@ -413,10 +424,10 @@ Use this class to load and unload kernels. Manipulate using its LocationDhallSet
 Use this class to load and unload kernels. Manipulate using its LocationDhallSet representation."""
 
     @staticmethod
-    def load(path: string) -> LocationDataSet:
+    def load(path: str) -> LocationDataSet:
         """Loads a Location Dataset kernel from the provided path"""
 
-    def save_as(self, path: string, overwrite: bool=False) -> None:
+    def save_as(self, path: str, overwrite: bool=False) -> None:
         """Save this dataset as a kernel, optionally specifying whether to overwrite the existing file."""
 
     def to_dhallset(self) -> LocationDhallSet:
@@ -454,7 +465,7 @@ class LocationDhallSetEntry:
     id: int
     value: Location
 
-    def __init__(self, value: Location, id: int=None, alias: string=None) -> None:
+    def __init__(self, value: Location, id: int=None, alias: str=None) -> None:
         """Entry of a Location Dhall set"""
 
 @typing.final
@@ -485,7 +496,7 @@ The downloaded path will be stored in the "AppData" folder."""
         """Loads this Meta Almanac from its Dhall string representation"""
 
     @staticmethod
-    def latest(autodelete: bool=None) -> MetaAlmanac:
+    def latest(autodelete: bool=None) -> Almanac:
         """Returns an Almanac loaded from the latest NAIF data via the `default` MetaAlmanac.
 The MetaAlmanac will download the DE440s.bsp file, the PCK0008.PCA, the full Moon Principal Axis BPC (moon_pa_de440_200625) and the latest high precision Earth kernel from JPL.
 

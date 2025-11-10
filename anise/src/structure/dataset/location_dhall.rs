@@ -30,7 +30,7 @@ use super::{DataSet, DataSetType};
 /// Entry of a Location Dhall set
 ///
 /// :type id: int, optional
-/// :type alias: string, optional
+/// :type alias: str, optional
 /// :type value: Location
 #[derive(Clone, Debug, StaticType, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
@@ -257,7 +257,7 @@ pub struct PyLocationDataSet {
 impl PyLocationDataSet {
     /// Loads a Location Dataset kernel from the provided path
     ///
-    /// :type path: string
+    /// :type path: str
     /// :rtype: LocationDataSet
     #[classmethod]
     fn load(_cls: Bound<'_, PyType>, path: &str) -> Result<Self, PyErr> {
@@ -271,7 +271,7 @@ impl PyLocationDataSet {
 
     /// Save this dataset as a kernel, optionally specifying whether to overwrite the existing file.
     ///
-    /// :type path: string
+    /// :type path: str
     /// :type overwrite: bool, optional
     /// :rtype: None
     #[pyo3(signature=(path, overwrite=false))]

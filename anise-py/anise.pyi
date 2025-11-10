@@ -73,6 +73,9 @@ More specifically, the 99th percentile of error is less than 5 meters, the 75th 
 class Almanac:
     """An Almanac contains all of the loaded SPICE and ANISE data. It is the context for all computations."""
 
+    from anise.astro import Frame, Orbit, AzElRange
+    from anise.time import Epoch
+
     def __init__(self, path: str) -> Almanac:
         """An Almanac contains all of the loaded SPICE and ANISE data. It is the context for all computations."""
 
@@ -491,7 +494,7 @@ This function modified `self` and changes the URI to be the path to the download
         """Return str(self)."""
 
 @typing.final
-class astro:
+class astro:  
     @typing.final
     class AzElRange:
         """A structure that stores the result of Azimuth, Elevation, Range, Range rate calculation."""
@@ -3233,7 +3236,7 @@ class rotation:
             """Return str(self)."""
 @typing.final
 class constants:
-        import typing
+    import typing
 
     @typing.final
     class CelestialObjects:

@@ -1,6 +1,9 @@
-import numpy as np
+import np
 import numpy
 import typing
+
+from anise.rotation import DCM
+from anise.time import Duration, Epoch
 
 @typing.final
 class AzElRange:
@@ -204,6 +207,10 @@ class FrameUid:
     """A unique frame reference that only contains enough information to build the actual Frame object.
 It cannot be used for any computations, is it be used in any structure apart from error structures."""
 
+    def __init__(self, ephemeris_id: int, orientation_id: int) -> None:
+        """A unique frame reference that only contains enough information to build the actual Frame object.
+It cannot be used for any computations, is it be used in any structure apart from error structures."""
+
 @typing.final
 class Location:
     """Location is defined by its latitude, longitude, height above the geoid, mean angular rotation of the geoid, and a frame UID.
@@ -212,10 +219,26 @@ If the location includes a terrain mask, it will be used for obstruction checks 
     height_km: float
     latitude_deg: float
     longitude_deg: float
+    terrain_mask: list
     terrain_mask_ignored: bool
 
+    def __init__(self, latitude_deg: float, longitude_deg: float, height_km: float, frame: FrameUid, terrain_mask: list, terrain_mask_ignored: bool) -> None:
+        """Location is defined by its latitude, longitude, height above the geoid, mean angular rotation of the geoid, and a frame UID.
+If the location includes a terrain mask, it will be used for obstruction checks when computing azimuth and elevation.
+**Note:** The mean Earth angular velocity is `0.004178079012116429` deg/s."""
+
     def elevation_mask_at_azimuth_deg(self, azimuth_deg: float) -> float:
-        """Returns the elevation mask at the provided azimuth."""
+        """Returns the elevation mask at the provided azimuth, does NOT account for whether the mask is ignored or not."""
+
+    @staticmethod
+    def from_dhall(repr: str) -> Location:
+        """Loads a Location from its Dhall representation"""
+
+    def to_dhall(self) -> str:
+        """Returns the Dhall representation of this Location"""
+
+    def __str__(self) -> str:
+        """Return str(self)."""
 
 @typing.final
 class Occultation:
@@ -225,6 +248,10 @@ Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse
     epoch: Epoch
     front_frame: Frame
     percentage: float
+
+    def __init__(self) -> None:
+        """Stores the result of an occultation computation with the occulation percentage
+Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse/) for modeling details."""
 
     def factor(self) -> float:
         """Returns the percentage as a factor between 0 and 1"""
@@ -310,6 +337,9 @@ Raises an error if the frames do not match (epochs do not need to match)."""
 
 NOTE: If the orbit is near circular, the AoL will be computed from the true longitude
 instead of relying on the ill-defined true anomaly."""
+
+    def aop_brouwer_short_deg(self) -> float:
+        """Returns the Brouwer-short mean Argument of Perigee in degrees."""
 
     def aop_deg(self) -> float:
         """Returns the argument of periapsis in degrees"""
@@ -485,11 +515,32 @@ This is a conversion from GMAT's StateConversionUtil::TrueToEccentricAnomaly"""
     def ecc(self) -> float:
         """Returns the eccentricity (no unit)"""
 
+    def ecc_brouwer_short(self) -> float:
+        """Returns the Brouwer-short mean eccentricity."""
+
     def energy_km2_s2(self) -> float:
         """Returns the specific mechanical energy in km^2/s^2"""
 
     def eq_within(self, other: Orbit, radial_tol_km: float, velocity_tol_km_s: float) -> bool:
         """Returns whether this orbit and another are equal within the specified radial and velocity absolute tolerances"""
+
+    def equinoctial_a_km(self) -> float:
+        """Returns the equinoctial semi-major axis (a) in km."""
+
+    def equinoctial_h(self) -> float:
+        """Returns the equinoctial element h (ecc * sin(aop + raan))."""
+
+    def equinoctial_k(self) -> float:
+        """Returns the equinoctial element k (ecc * cos(aop + raan))."""
+
+    def equinoctial_lambda_mean_deg(self) -> float:
+        """Returns the equinoctial mean longitude (lambda = raan + aop + ma) in degrees."""
+
+    def equinoctial_p(self) -> float:
+        """Returns the equinoctial element p (sin(inc/2) * sin(raan))."""
+
+    def equinoctial_q(self) -> float:
+        """Returns the equinoctial element q (sin(inc/2) * cos(raan))."""
 
     def fpa_deg(self) -> float:
         """Returns the flight path angle in degrees"""
@@ -572,6 +623,9 @@ Returns an error if the orbit is not hyperbolic."""
     def hz(self) -> float:
         """Returns the orbital momentum value on the Z axis"""
 
+    def inc_brouwer_short_deg(self) -> float:
+        """Returns the Brouwer-short mean inclination in degrees."""
+
     def inc_deg(self) -> float:
         """Returns the inclination in degrees"""
 
@@ -614,6 +668,9 @@ This state MUST be in the body fixed frame (e.g. ITRF93) prior to calling this f
     def ltan_deg(self) -> float:
         """Returns the Longitude of the Ascending Node (LTAN), or an error of equatorial orbits"""
 
+    def ma_brouwer_short_deg(self) -> float:
+        """Returns the Brouwer-short mean Mean Anomaly in degrees."""
+
     def ma_deg(self) -> float:
         """Returns the mean anomaly in degrees
 
@@ -630,6 +687,9 @@ This is a conversion from GMAT's StateConversionUtil::TrueToMeanAnomaly"""
 
     def period(self) -> Duration:
         """Returns the period in seconds"""
+
+    def raan_brouwer_short_deg(self) -> float:
+        """Returns the Brouwer-short mean Right Ascension of the Ascending Node in degrees."""
 
     def raan_deg(self) -> float:
         """Returns the right ascension of the ascending node in degrees"""
@@ -704,6 +764,9 @@ Refer to dcm_from_ric_to_inertial for details on the RIC frame.
 
     def sma_altitude_km(self) -> float:
         """Returns the SMA altitude in km"""
+
+    def sma_brouwer_short_km(self) -> float:
+        """Returns the Brouwer-short mean semi-major axis in km."""
 
     def sma_km(self) -> float:
         """Returns the semi-major axis in km"""
@@ -799,3 +862,14 @@ Refer to dcm_from_vnc_to_inertial for details on the VNC frame.
 @typing.final
 class TerrainMask:
     """TerrainMask is used to compute obstructions during AER calculations."""
+    azimuth_deg: float
+    elevation_mask_deg: float
+
+    def __init__(self, azimuth_deg: float, elevation_mask_deg: float) -> None:
+        """TerrainMask is used to compute obstructions during AER calculations."""
+
+    def __repr__(self) -> str:
+        """Return repr(self)."""
+
+    def __str__(self) -> str:
+        """Return str(self)."""

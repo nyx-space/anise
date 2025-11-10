@@ -47,7 +47,7 @@ pub type PhysicsResult<T> = Result<T, PhysicsError>;
 /// :type range_km: float
 /// :type range_rate_km_s: float
 /// :type obstructed_by: Frame, optional
-/// :rtype: Self
+/// :rtype: AzElRange
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
