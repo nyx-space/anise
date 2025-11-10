@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::utils::compute_mean_to_true_anomaly_rad;
+use super::utils::mean_anomaly_to_true_anomaly_rad;
 use super::PhysicsResult;
 
 use crate::{
@@ -249,7 +249,7 @@ impl Orbit {
         frame: Frame,
     ) -> PhysicsResult<Self> {
         // Start by computing the true anomaly
-        let ta_rad = compute_mean_to_true_anomaly_rad(ma_deg.to_radians(), ecc)?;
+        let ta_rad = mean_anomaly_to_true_anomaly_rad(ma_deg.to_radians(), ecc)?;
 
         Self::try_keplerian(
             sma_km,
