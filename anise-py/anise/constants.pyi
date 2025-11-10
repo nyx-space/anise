@@ -1,5 +1,7 @@
 import typing
 
+from anise.astro import Frame
+
 @typing.final
 class CelestialObjects:
     EARTH: int = ...

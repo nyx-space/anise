@@ -202,6 +202,10 @@ pub enum PhysicsError {
     HyperbolicTrueAnomaly { ta_deg: f64 },
     #[snafu(display("calculation requires hyperbolic orbit, but its eccentricity is {ecc}"))]
     NotHyperbolic { ecc: f64 },
+    #[snafu(display("calculation requires non-hyperbolic orbit, but its eccentricity is {ecc}"))]
+    Hyperbolic { ecc: f64 },
+    #[snafu(display("mean element computation failed: {detail}"))]
+    MeanElement { detail: &'static str },
     #[snafu(display("infinite value encountered when {action}"))]
     InfiniteValue { action: &'static str },
     #[snafu(display("{source}"))]

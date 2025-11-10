@@ -39,7 +39,7 @@ use pyo3::pyclass::CompareOp;
 /// :type orientation_id: int
 /// :type mu_km3_s2: float, optional
 /// :type shape: Ellipsoid, optional
-/// :rtype: Self
+/// :rtype: Frame
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "metaload", derive(StaticType))]
 #[cfg_attr(feature = "python", pyclass)]

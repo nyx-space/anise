@@ -109,12 +109,18 @@ impl Location {
     }
 
     /// Returns the Dhall representation of this Location
+    ///
+    /// :rtype: str
     #[cfg(feature = "python")]
     #[pyo3(name = "to_dhall")]
     pub fn py_to_dhall(&self) -> Result<String, PyErr> {
         self.to_dhall().map_err(PyException::new_err)
     }
 
+    /// Loads a Location from its Dhall representation
+    ///
+    /// :type repr: str
+    /// :rtype: Location
     #[cfg(feature = "python")]
     #[classmethod]
     #[pyo3(name = "from_dhall", signature=(repr))]
@@ -232,21 +238,25 @@ impl TerrainMask {
 #[cfg(feature = "python")]
 #[cfg_attr(feature = "python", pymethods)]
 impl TerrainMask {
+    /// :rtype: float
     #[getter]
     fn get_azimuth_deg(&self) -> f64 {
         self.azimuth_deg
     }
 
+    /// :type azimuth_deg: float
     #[setter]
     fn set_azimuth_deg(&mut self, azimuth_deg: f64) {
         self.azimuth_deg = azimuth_deg;
     }
 
+    /// :rtype: float
     #[getter]
     fn get_elevation_mask_deg(&self) -> f64 {
         self.elevation_mask_deg
     }
 
+    /// :type elevation_mask_deg: float
     #[setter]
     fn set_elevation_mask_deg(&mut self, elevation_mask_deg: f64) {
         self.elevation_mask_deg = elevation_mask_deg;

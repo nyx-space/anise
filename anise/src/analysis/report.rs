@@ -27,7 +27,7 @@ use super::python::{PyScalarExpr, PyStateSpec};
 ///
 /// :type scalars: list
 /// :type state_spec: StateSpec
-/// :rtype: Self
+/// :rtype: ReportScalars
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.analysis"))]

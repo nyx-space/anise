@@ -38,6 +38,11 @@ macro_rules! f64_eq_tol {
     };
 }
 
+#[deprecated(since = "0.7.1", note = "use mean_anomaly_to_true_anomaly instead")]
+pub fn compute_mean_to_true_anomaly_rad(ma_radians: f64, ecc: f64) -> PhysicsResult<f64> {
+    mean_anomaly_to_true_anomaly_rad(ma_radians, ecc)
+}
+
 /// Computes the true anomaly from the given mean anomaly for an orbit.
 ///
 /// The computation process varies depending on whether the orbit is elliptical (eccentricity less than or equal to 1)
@@ -54,7 +59,7 @@ macro_rules! f64_eq_tol {
 /// This function uses GTDS MathSpec Equations 3-180, 3-181, and 3-186 for the iterative computation process.
 ///
 /// Source: GMAT source code (`compute_mean_to_true_anomaly`)
-pub fn compute_mean_to_true_anomaly_rad(ma_radians: f64, ecc: f64) -> PhysicsResult<f64> {
+pub fn mean_anomaly_to_true_anomaly_rad(ma_radians: f64, ecc: f64) -> PhysicsResult<f64> {
     let rm = ma_radians;
     if ecc <= 1.0 {
         // Elliptical orbit
@@ -345,6 +350,47 @@ pub fn true_anomaly_to_eccentric_anomaly_rad(nu_rad: f64, ecc: f64) -> Result<f6
     }
 }
 
+/// Solves Kepler's equation for Eccentric Anomaly (E) from Mean Anomaly (M) for elliptical orbits.
+pub fn mean_anomaly_to_eccentric_anomaly_rad(
+    ma_rad: f64,
+    ecc: f64,
+    tol: f64,
+) -> PhysicsResult<f64> {
+    if !(0.0..1.0).contains(&ecc) {
+        return Err(PhysicsError::Hyperbolic { ecc });
+    }
+
+    // Initial guess
+    let mut ea = ma_rad;
+
+    for _ in 0..1000 {
+        let f = ea - ecc * ea.sin() - ma_rad;
+        let f_prime = 1.0 - ecc * ea.cos();
+
+        if f_prime.abs() < 1.0e-12 {
+            return Err(PhysicsError::AppliedMath {
+                source: MathError::DomainError {
+                    value: f_prime,
+                    msg: "eccentricity anomaly iteration too small",
+                },
+            });
+        }
+
+        let delta = f / f_prime;
+        ea -= delta;
+
+        if delta.abs() < tol {
+            return Ok(ea);
+        }
+    }
+
+    Err(PhysicsError::AppliedMath {
+        source: MathError::MaxIterationsReached {
+            iter: 1000,
+            action: "computing the eccentricity anomaly from the mean anomaly",
+        },
+    })
+}
 #[cfg(test)]
 mod ut_utils {
     use super::*;

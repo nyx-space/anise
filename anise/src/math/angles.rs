@@ -8,6 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 
+use std::f64::consts::TAU;
+
 /// Returns the provided angle bounded between 0.0 and 360.0.
 ///
 /// This function takes an angle (in degrees) and normalizes it to the range [0, 360).
@@ -17,11 +19,20 @@
 /// # Arguments
 ///
 /// * `angle` - An angle in degrees.
-///
 pub fn between_0_360(angle: f64) -> f64 {
     angle.rem_euclid(360.0)
 }
 
+/// Returns the provided angle bounded between 0.0 and 2 PI (TAU).
+///
+/// This function takes an angle (in radians) and normalizes it to the range [0, TAU).
+///
+/// # Arguments
+///
+/// * `angle_rad` - An angle in radians.
+pub fn between_0_tau(angle_rad: f64) -> f64 {
+    angle_rad.rem_euclid(TAU)
+}
 /// Returns the provided angle bounded between -180.0 and +180.0
 pub fn between_pm_180(angle: f64) -> f64 {
     between_pm_x(angle, 180.0)
@@ -29,13 +40,13 @@ pub fn between_pm_180(angle: f64) -> f64 {
 
 /// Returns the provided angle bounded between -x and +x.
 ///
-/// This function takes an angle (in degrees) and normalizes it to the range [-x, x).
+/// This function takes an angle (in degrees or radians) and normalizes it to the range [-x, x).
 /// If the angle is outside this range, it will be converted to an equivalent angle within this range.
 /// For example, if x is 180, an angle of 270 degrees will be converted to -90 degrees.
 ///
 /// # Arguments
 ///
-/// * `angle` - An angle in degrees.
+/// * `angle` - An angle in degrees or radians.
 /// * `x` - The boundary for the angle normalization.
 pub fn between_pm_x(angle: f64, x: f64) -> f64 {
     let mut bounded = angle.rem_euclid(2.0 * x);
