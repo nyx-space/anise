@@ -28,6 +28,8 @@ pub mod search;
 pub mod specs;
 pub mod vector_expr;
 
+mod utils;
+
 use event::Event;
 use expr::ScalarExpr;
 use specs::StateSpec;
@@ -453,7 +455,7 @@ mod ut_analysis {
             scalar: ScalarExpr::SunAngle { observer_id: -85 },
             desired_value: 90.0,
             epoch_precision: Unit::Second * 0.5,
-            value_precision: 0.1,
+            use_derivative: true,
             ab_corr: None,
         };
 
@@ -472,26 +474,25 @@ mod ut_analysis {
         // End setup
 
         let apo_events = almanac
-            .report_events(
-                &lro_state_spec,
-                &apolune,
-                start_epoch,
-                end_epoch,
-                Some(period * 0.5),
-            )
+            .report_events_new(&lro_state_spec, &apolune, start_epoch, end_epoch)
             .unwrap();
 
-        println!("Searching for {apolune}");
+        println!(
+            "Searching for {apolune} yielded {} events",
+            apo_events.len()
+        );
         println!("\nAPO S-EXPR: {}", apolune.to_s_expr().unwrap());
         let eclipse_s_expr = eclipse.to_s_expr().unwrap();
         let deserd = Event::from_s_expr(&eclipse_s_expr).unwrap();
         assert_eq!(deserd, eclipse);
         println!("\nEclipse S-EXPR: {eclipse_s_expr}");
 
+        let ta_deg_precision = 1e-2; // TODO: Check precision
+
         for event in &apo_events {
             let ta_deg = event.orbit.ta_deg().unwrap();
             println!("{event} -> true anomaly = {ta_deg:.6} deg",);
-            assert!((ta_deg - 180.0).abs() < apolune.value_precision);
+            assert!((ta_deg - 180.0).abs() < ta_deg_precision);
         }
 
         let peri_events = almanac
@@ -509,10 +510,7 @@ mod ut_analysis {
         for event in &peri_events {
             let ta_deg = event.orbit.ta_deg().unwrap();
             println!("{event} -> true anomaly = {ta_deg:.6} deg",);
-            assert!(
-                ta_deg.abs() < perilune.value_precision
-                    || (ta_deg - 360.0).abs() < perilune.value_precision
-            );
+            assert!(ta_deg.abs() < ta_deg_precision || (ta_deg - 360.0).abs() < ta_deg_precision);
         }
 
         println!(
@@ -587,7 +585,7 @@ mod ut_analysis {
             ) {
                 if let Ok(orbit) = lro_state_spec.evaluate(epoch, &almanac) {
                     let this_eclipse = eclipse.eval(orbit, &almanac).unwrap();
-                    let in_eclipse = this_eclipse.abs() <= eclipse.value_precision.abs();
+                    let in_eclipse = this_eclipse.abs() >= 99.0;
 
                     if (event.start_epoch()..event.end_epoch()).contains(&epoch) {
                         // We're in the event, check that it is evaluated to be in the event.

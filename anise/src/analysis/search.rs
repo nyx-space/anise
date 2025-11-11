@@ -8,7 +8,13 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::almanac::Almanac;
+use crate::{
+    almanac::Almanac,
+    analysis::{
+        utils::{adaptive_step_scanner, brent_solver},
+        AnalysisResult,
+    },
+};
 use hifitime::{Duration, Epoch, TimeSeries, Unit};
 use log::{debug, error, warn};
 use rayon::prelude::*;
@@ -30,6 +36,7 @@ impl Almanac {
     ) -> Result<EventDetails, AnalysisError> {
         let max_iter = 50;
 
+        // Convergence criteria is strictly on the epoch bracketing.
         let has_converged =
             |xa: f64, xb: f64| (xa - xb).abs() <= event.epoch_precision.to_seconds();
 
@@ -46,27 +53,6 @@ impl Almanac {
         let mut ya = event.eval(ya_state, self)?;
         let mut yb = event.eval(yb_state, self)?;
 
-        // Check if we're already at the root
-        if ya.abs() <= event.value_precision.abs() {
-            debug!(
-                "{event} -- found with |{ya}| < {} @ {xa_e}",
-                event.value_precision.abs()
-            );
-            let prev_state = state_spec.evaluate(xa_e - event.epoch_precision, self).ok();
-            let next_state = state_spec.evaluate(xa_e + event.epoch_precision, self).ok();
-
-            return EventDetails::new(ya_state, ya, event, prev_state, next_state, self);
-        } else if yb.abs() <= event.value_precision.abs() {
-            debug!(
-                "{event} -- found with |{yb}| < {} @ {xb_e}",
-                event.value_precision.abs()
-            );
-            let prev_state = state_spec.evaluate(xb_e - event.epoch_precision, self).ok();
-            let next_state = state_spec.evaluate(xb_e + event.epoch_precision, self).ok();
-
-            return EventDetails::new(ya_state, ya, event, prev_state, next_state, self);
-        }
-
         // The Brent solver, from the roots crate (sadly could not directly integrate it here)
         // Source: https://docs.rs/roots/0.0.5/src/roots/numerical/brent.rs.html#57-131
 
@@ -74,42 +60,6 @@ impl Almanac {
         let mut flag = true;
 
         for _ in 0..max_iter {
-            if ya.abs() <= event.value_precision.abs() {
-                // Can't fail, we got it earlier
-                let epoch = xa_e + xa * Unit::Second;
-                let state = state_spec.evaluate(epoch, self)?;
-                debug!(
-                    "{event} -- found with |{ya}| < {} @ {}",
-                    event.value_precision.abs(),
-                    state.epoch,
-                );
-                let prev_state = state_spec
-                    .evaluate(epoch - event.epoch_precision, self)
-                    .ok();
-                let next_state = state_spec
-                    .evaluate(epoch + event.epoch_precision, self)
-                    .ok();
-
-                return EventDetails::new(state, ya, event, prev_state, next_state, self);
-            }
-            if yb.abs() <= event.value_precision.abs() {
-                // Can't fail, we got it earlier
-                let epoch = xa_e + xb * Unit::Second;
-                let state = state_spec.evaluate(epoch, self)?;
-                debug!(
-                    "{event} -- found with |{yb}| < {} @ {}",
-                    event.value_precision.abs(),
-                    state.epoch
-                );
-                let prev_state = state_spec
-                    .evaluate(epoch - event.epoch_precision, self)
-                    .ok();
-                let next_state = state_spec
-                    .evaluate(epoch + event.epoch_precision, self)
-                    .ok();
-
-                return EventDetails::new(state, ya, event, prev_state, next_state, self);
-            }
             if has_converged(xa, xb) {
                 // The event isn't in the bracket
                 return Err(AnalysisError::EventNotFound {
@@ -203,6 +153,75 @@ impl Almanac {
         })
     }
 
+    pub fn report_events_new(
+        &self,
+        state_spec: &StateSpec,
+        event: &Event,
+        start_epoch: Epoch,
+        end_epoch: Epoch,
+    ) -> Result<Vec<EventDetails>, AnalysisError> {
+        // Define the evaluator here since we use it in both cases.
+        let f_eval = |epoch: Epoch| -> Result<f64, AnalysisError> {
+            let state = state_spec.evaluate(epoch, self)?;
+            event.eval(state, self)
+        };
+
+        if event.use_derivative {
+            let h_tiny = event.epoch_precision;
+            // Define the derivative of the evaluator.
+            let f_deriv = |epoch: Epoch| -> Result<f64, AnalysisError> {
+                // Use central difference, handling boundary errors
+                let (y_next, y_prev) = match (f_eval(epoch + h_tiny), f_eval(epoch - h_tiny)) {
+                    (Ok(next), Ok(prev)) => (next, prev),
+                    // If one fails (e.g., at boundary), use forward/backward diff
+                    (Ok(next), Err(_)) => (next, f_eval(epoch)?),
+                    (Err(_), Ok(prev)) => (f_eval(epoch)?, prev),
+                    (Err(_), Err(_)) => (0.0, 0.0), // Can't evaluate, assume no change
+                };
+                let h_sec = h_tiny.to_seconds() * 2.0;
+                if h_sec.abs() < 1e-12 {
+                    return Ok(0.0); // Avoid div by zero
+                }
+                Ok((y_next - y_prev) / h_sec)
+            };
+
+            // Find the zero crossings of the derivative.
+            let zero_crossings = adaptive_step_scanner(f_deriv, event, start_epoch, end_epoch)?;
+            todo!()
+        } else {
+            // Find the zero crossings of the event itself
+            let zero_crossings = adaptive_step_scanner(f_eval, event, start_epoch, end_epoch)?;
+            // Find the exact events
+            let events = zero_crossings
+                .par_iter()
+                .map(|(start_epoch, end_epoch)| -> AnalysisResult<Epoch> {
+                    brent_solver(f_eval, event, *start_epoch, *end_epoch)
+                })
+                .filter_map(|brent_rslt| brent_rslt.ok())
+                .map(|epoch: Epoch| -> AnalysisResult<EventDetails> {
+                    let state = state_spec.evaluate(epoch, self)?;
+                    let this_eval = f_eval(epoch)?;
+                    let prev_state = state_spec
+                        .evaluate(epoch - event.epoch_precision, self)
+                        .ok();
+                    let next_state = state_spec
+                        .evaluate(epoch + event.epoch_precision, self)
+                        .ok();
+
+                    EventDetails::new(state, this_eval, event, prev_state, next_state, self)
+                })
+                .filter_map(|details_rslt| match details_rslt {
+                    Ok(deets) => Some(deets),
+                    Err(e) => {
+                        eprintln!("{e} when building event details -- please file a bug");
+                        None
+                    }
+                })
+                .collect::<Vec<EventDetails>>();
+
+            Ok(events)
+        }
+    }
     /// Report all of the states and event details where the provided event occurs.
     ///
     /// # Limitations
@@ -341,7 +360,8 @@ impl Almanac {
         start_epoch: Epoch,
         end_epoch: Epoch,
     ) -> Result<Vec<EventDetails>, AnalysisError> {
-        let step = event.epoch_precision;
+        todo!("disabled");
+        /* let step = event.epoch_precision;
 
         let (sender, receiver) = channel();
 
@@ -350,7 +370,7 @@ impl Almanac {
         epochs.into_par_iter().for_each_with(sender, |s, epoch| {
             if let Ok(state) = state_spec.evaluate(epoch, self) {
                 if let Ok(this_eval) = event.eval(state, self) {
-                    if this_eval.abs() < event.value_precision.abs() {
+                    if this_eval.abs() < event.use_derivative.abs() {
                         // This is an event!
                         let prev_state = state_spec
                             .evaluate(epoch - event.epoch_precision, self)
@@ -384,7 +404,7 @@ impl Almanac {
 
         // Remove duplicates and reorder once more
         events.sort_by(|s1, s2| s1.orbit.epoch.partial_cmp(&s2.orbit.epoch).unwrap());
-        Ok(events)
+        Ok(events) */
     }
 
     /// Find all event arcs, i.e. the start and stop time of when a given event occurs. This function

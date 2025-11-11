@@ -46,9 +46,8 @@ pub struct Event {
     pub desired_value: f64,
     /// The duration precision after which the solver will report that it cannot find any more precise
     pub epoch_precision: Duration,
-    /// The precision on the desired value. Avoid setting it too low (e.g. 1e-3 degrees) because it may
-    /// cause events to be skipped if the value is not found within the epoch precision.
-    pub value_precision: f64,
+    /// If this ScalarExpr has a smooth derivative, then enable the use_derivative flag for faster search
+    pub use_derivative: bool,
     pub ab_corr: Option<Aberration>,
 }
 
@@ -59,7 +58,7 @@ impl Event {
             scalar: ScalarExpr::Element(OrbitalElement::TrueAnomaly),
             desired_value: 180.0,
             epoch_precision: Unit::Second * 0.1,
-            value_precision: 1e-2,
+            use_derivative: false,
             ab_corr: None,
         }
     }
@@ -70,7 +69,7 @@ impl Event {
             scalar: ScalarExpr::Element(OrbitalElement::TrueAnomaly),
             desired_value: 0.0,
             epoch_precision: Unit::Second * 0.1,
-            value_precision: 1e-2,
+            use_derivative: false,
             ab_corr: None,
         }
     }
@@ -81,7 +80,7 @@ impl Event {
             scalar: ScalarExpr::SolarEclipsePercentage { eclipsing_frame },
             desired_value: 99.9,
             epoch_precision: Unit::Second * 0.1,
-            value_precision: 1.0,
+            use_derivative: false,
             ab_corr: None,
         }
     }
@@ -101,7 +100,7 @@ impl Event {
             },
             desired_value: 0.9,
             epoch_precision: Unit::Second * 0.1,
-            value_precision: 1.0,
+            use_derivative: true,
             ab_corr: None,
         }
     }
@@ -180,7 +179,7 @@ impl Event {
                 "|{} - {:e}| = {val:e} on {}",
                 self.scalar, self.desired_value, orbit.epoch
             ))
-        } else if self.desired_value > self.value_precision {
+        } else if self.desired_value > 1e-2 {
             Ok(format!(
                 "|{} - {:.3}| = {val:.3} on {}",
                 self.scalar, self.desired_value, orbit.epoch
@@ -216,13 +215,7 @@ impl Event {
     /// Apoapsis event finder, with an epoch precision of 0.1 seconds
     /// :rtype: Event
     fn py_apoapsis(_cls: Bound<'_, PyType>) -> Self {
-        Event {
-            scalar: ScalarExpr::Element(OrbitalElement::TrueAnomaly),
-            desired_value: 180.0,
-            epoch_precision: Unit::Second * 0.1,
-            value_precision: 1e-2,
-            ab_corr: None,
-        }
+        Event::apoapsis()
     }
 
     /// Periapsis event finder, with an epoch precision of 0.1 seconds
@@ -230,13 +223,7 @@ impl Event {
     #[classmethod]
     #[pyo3(name = "periapsis")]
     fn py_periapsis(_cls: Bound<'_, PyType>) -> Self {
-        Event {
-            scalar: ScalarExpr::Element(OrbitalElement::TrueAnomaly),
-            desired_value: 0.0,
-            epoch_precision: Unit::Second * 0.1,
-            value_precision: 1e-2,
-            ab_corr: None,
-        }
+        Event::periapsis()
     }
 
     /// Total eclipse event finder: returns events where the eclipsing percentage is greater than 98.9%.
@@ -246,13 +233,7 @@ impl Event {
     #[classmethod]
     #[pyo3(name = "eclipse")]
     fn py_eclipse(_cls: Bound<'_, PyType>, eclipsing_frame: Frame) -> Self {
-        Event {
-            scalar: ScalarExpr::SolarEclipsePercentage { eclipsing_frame },
-            desired_value: 99.9,
-            epoch_precision: Unit::Second * 0.1,
-            value_precision: 1.0,
-            ab_corr: None,
-        }
+        Event::eclipse(eclipsing_frame)
     }
 
     /// Report events where the object is above the horizon when seen from the provided location ID.
@@ -267,25 +248,16 @@ impl Event {
         location_id: i32,
         obstructing_body: Option<Frame>,
     ) -> Self {
-        Event {
-            scalar: ScalarExpr::ElevationFromLocation {
-                location_id,
-                obstructing_body,
-            },
-            desired_value: 0.1,
-            epoch_precision: Unit::Second * 0.1,
-            value_precision: 0.1,
-            ab_corr: None,
-        }
+        Event::above_horizon_from_location_id(location_id, obstructing_body)
     }
 
     #[new]
-    #[pyo3(signature=(scalar, desired_value, epoch_precision, value_precision, ab_corr=None))]
+    #[pyo3(signature=(scalar, desired_value, epoch_precision, use_derivative, ab_corr=None))]
     fn py_new(
         scalar: PyScalarExpr,
         desired_value: f64,
         epoch_precision: Duration,
-        value_precision: f64,
+        use_derivative: bool,
         ab_corr: Option<Aberration>,
     ) -> Self {
         let scalar = ScalarExpr::from(scalar);
@@ -294,7 +266,7 @@ impl Event {
             scalar,
             desired_value,
             epoch_precision,
-            value_precision,
+            use_derivative,
             ab_corr,
         }
     }
@@ -318,12 +290,11 @@ impl Event {
     fn epoch_precision(&self) -> Duration {
         self.epoch_precision
     }
-    /// The precision on the desired value. Avoid setting it too low (e.g. 1e-3 degrees) because it may
-    /// cause events to be skipped if the value is not found within the epoch precision.
-    /// :rtype: float
+    /// Whether this event should use the derivative when searching, should only be used on scalar expressions whose derivative is smooth.
+    /// :rtype: bool
     #[getter]
-    fn value_precision(&self) -> f64 {
-        self.value_precision
+    fn use_derivative(&self) -> bool {
+        self.use_derivative
     }
     /// :rtype: Aberration
     #[getter]
@@ -349,10 +320,10 @@ impl Event {
         self.epoch_precision = epoch_precision;
     }
 
-    /// :type value_precision: float
+    /// :type use_derivative: bool
     #[setter]
-    fn set_value_precision(&mut self, value_precision: f64) {
-        self.value_precision = value_precision;
+    fn set_use_derivative(&mut self, use_derivative: bool) {
+        self.use_derivative = use_derivative;
     }
 
     /// type ab_corr: Aberration, optional
@@ -383,11 +354,11 @@ impl fmt::Display for Event {
         if self.desired_value.abs() > 1e3 {
             write!(
                 f,
-                " = {:e} (± {:e})",
-                self.desired_value, self.value_precision,
+                " = {:e} (± {})",
+                self.desired_value, self.epoch_precision,
             )
         } else {
-            write!(f, " = {} (± {})", self.desired_value, self.value_precision)
+            write!(f, " = {} (± {})", self.desired_value, self.epoch_precision)
         }
     }
 }
