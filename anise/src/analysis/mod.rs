@@ -10,7 +10,7 @@
 
 use crate::{
     almanac::Almanac,
-    analysis::report::ReportScalars,
+    analysis::report::{ReportScalars, ScalarsRow, ScalarsTable},
     errors::{AlmanacError, MathError, PhysicsError},
     prelude::Orbit,
 };
@@ -91,6 +91,8 @@ pub enum AnalysisError {
         end: Epoch,
         event: Box<Event>,
     },
+    #[snafu(display("all scalars failed for {spec:?}"))]
+    AllScalarsFailed { spec: Box<StateSpec> },
 }
 
 pub type AnalysisResult<T> = Result<T, AnalysisError>;
@@ -123,6 +125,80 @@ impl Almanac {
                 }
             })
             .collect()
+    }
+
+    /// Report a set of scalar expressions, optionally with aliases, at a fixed time step defined in the TimeSeries, as a flat table that can be serialized in columnal form.
+    pub fn report_scalars_flat(
+        &self,
+        report: &ReportScalars,
+        time_series: TimeSeries,
+    ) -> AnalysisResult<ScalarsTable> {
+        let data = self.report_scalars(report, time_series);
+
+        if data.is_empty() {
+            return Ok(ScalarsTable {
+                headers: Vec::new(),
+                rows: Vec::new(),
+            });
+        }
+
+        let mut headers: Vec<String> = match data.values().find_map(|res| res.as_ref().ok()) {
+            Some(map) => map.keys().cloned().collect(),
+            None => {
+                if data.values().all(|res| res.is_err()) {
+                    // All errors, no headers.
+                    return Err(AnalysisError::AllScalarsFailed {
+                        spec: Box::new(report.state_spec.clone()),
+                    });
+                }
+
+                // This case means data is empty, which we handled.
+                return Ok(ScalarsTable {
+                    headers: Vec::new(),
+                    rows: Vec::new(),
+                });
+            }
+        };
+        headers.sort();
+
+        let mut sorted_data: Vec<_> = data.iter().collect();
+        sorted_data.sort_by(|(epoch_a, _), (epoch_b, _)| {
+            epoch_a
+                .partial_cmp(epoch_b)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        let mut table_rows = Vec::with_capacity(sorted_data.len());
+        let num_data_cols = headers.len();
+
+        for (epoch, result) in sorted_data {
+            let mut row_values = Vec::with_capacity(num_data_cols);
+
+            match result {
+                Ok(inner_map) => {
+                    for col_name in &headers {
+                        let value = inner_map[col_name]
+                            .as_ref()
+                            .copied()
+                            .unwrap_or(f64::NEG_INFINITY);
+                        row_values.push(value);
+                    }
+                }
+                Err(_) => {
+                    row_values.resize(num_data_cols, f64::NEG_INFINITY);
+                }
+            }
+
+            table_rows.push(ScalarsRow {
+                epoch: *epoch,
+                values: row_values,
+            });
+        }
+
+        Ok(ScalarsTable {
+            headers,
+            rows: table_rows,
+        })
     }
 }
 
@@ -473,12 +549,26 @@ mod ut_analysis {
 
         // End setup
 
+        // For code coverage (and used in debugging), export all of the true anomaly values.
+        let true_anom_report = almanac
+            .report_scalars_flat(
+                &ReportScalars {
+                    scalars: vec![(ScalarExpr::Element(OrbitalElement::TrueAnomaly), None)],
+                    state_spec: lro_state_spec.clone(),
+                },
+                TimeSeries::inclusive(start_epoch, start_epoch + 10 * period, Unit::Minute * 1),
+            )
+            .unwrap();
+        true_anom_report
+            .to_csv("lro_true_anomaly.csv".into())
+            .unwrap();
+
         let apo_events = almanac
             .report_events_new(&lro_state_spec, &apolune, start_epoch, end_epoch)
             .unwrap();
 
         println!(
-            "Searching for {apolune} yielded {} events",
+            "Searching for {apolune} yielded {} events (period = {period})",
             apo_events.len()
         );
         println!("\nAPO S-EXPR: {}", apolune.to_s_expr().unwrap());
@@ -487,25 +577,26 @@ mod ut_analysis {
         assert_eq!(deserd, eclipse);
         println!("\nEclipse S-EXPR: {eclipse_s_expr}");
 
-        let ta_deg_precision = 1e-2; // TODO: Check precision
+        let ta_deg_precision = 1e-2;
 
         for event in &apo_events {
             let ta_deg = event.orbit.ta_deg().unwrap();
-            println!("{event} -> true anomaly = {ta_deg:.6} deg",);
+            let orbit = lro_state_spec
+                .evaluate(event.orbit.epoch, &almanac)
+                .unwrap();
+            let ta_deg2 = apolune.eval(orbit, &almanac).unwrap();
+            println!("{event} -> true anomaly = {ta_deg:.6} deg\t{ta_deg2:.6} deg");
             assert!((ta_deg - 180.0).abs() < ta_deg_precision);
         }
 
         let peri_events = almanac
-            .report_events(
-                &lro_state_spec,
-                &perilune,
-                start_epoch,
-                end_epoch,
-                Some(period * 0.5),
-            )
+            .report_events_new(&lro_state_spec, &perilune, start_epoch, end_epoch)
             .unwrap();
 
-        println!("Searching for {perilune}");
+        println!(
+            "Searching for {perilune} yielded {} events",
+            peri_events.len()
+        );
 
         for event in &peri_events {
             let ta_deg = event.orbit.ta_deg().unwrap();

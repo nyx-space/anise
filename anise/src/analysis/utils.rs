@@ -8,13 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 
-use hifitime::{Duration, Epoch, TimeSeries, Unit};
-use log::{debug, error, warn};
-use rayon::prelude::*;
-use std::sync::mpsc::channel;
-
-use super::{AnalysisError, Event, StateSpec};
-use crate::analysis::event::{EventArc, EventDetails};
+use super::{AnalysisError, Event};
+use hifitime::{Epoch, Unit};
 
 /// A Brent method's root finder to find where, within the provided start/stop epoch brackets, the evaluator function evaluates to zero.
 /// The event's epoch precision is used for convergence.
@@ -43,7 +38,13 @@ where
 
     // Evaluate the event at both bounds
     let mut ya = evaluator(xa_e)?;
+    if ya.abs() <= f64::EPSILON {
+        return Ok(xa_e);
+    }
     let mut yb = evaluator(xb_e)?;
+    if yb.abs() <= f64::EPSILON {
+        return Ok(xb_e);
+    }
 
     // If the root is not bracketed, there is no point in iterating, return an error.
     if ya * yb >= 0.0 {
@@ -60,40 +61,14 @@ where
 
     for _ in 0..max_iter {
         if has_converged(xa, xb) {
-            // Return the halfway point has the exact time.
-            return Ok(xa_e + 0.5 * (xb - xa) * Unit::Second);
-        }
-
-        // Try to compute a Newton step as a fallback to inverse quadratic interpolation.
-        // This uses a numerical derivative computed from states "one step before and one after" xb.
-        let mut s_newton: Option<f64> = None;
-        let h = event.epoch_precision.to_seconds();
-        // Check if h is large enough to be meaningful
-        if h > f64::EPSILON {
-            let xb_epoch = xa_e + xb * Unit::Second;
-            // Try to compute the numerical derivative at xb
-            if let (Ok(y_prev), Ok(y_next)) = (
-                evaluator(xb_epoch - event.epoch_precision),
-                evaluator(xb_epoch + event.epoch_precision),
-            ) {
-                let deriv = (y_next - y_prev) / (2.0 * h);
-                if deriv.abs() > 1e-12 {
-                    // Avoid division by near-zero
-                    s_newton = Some(xb - yb / deriv);
-                }
-            }
+            return Ok(xa_e + xb * Unit::Second);
         }
 
         let mut s = if (ya - yc).abs() > f64::EPSILON && (yb - yc).abs() > f64::EPSILON {
-            // 1. Try Inverse quadratic interpolation (3 points)
             xa * yb * yc / ((ya - yb) * (ya - yc))
                 + xb * ya * yc / ((yb - ya) * (yb - yc))
                 + xc * ya * yb / ((yc - ya) * (yc - yb))
-        } else if let Some(newton_step) = s_newton {
-            // 2. Try Newton step (if computed successfully)
-            newton_step
         } else {
-            // 3. Fallback to Secant method (2 points)
             xb - yb * (xb - xa) / (yb - ya)
         };
 
@@ -110,6 +85,9 @@ where
         }
 
         let ys = evaluator(xa_e + s * Unit::Second)?;
+        if ys.abs() <= f64::EPSILON {
+            return Ok(xa_e + s * Unit::Second);
+        }
 
         xd = xc;
         xc = xb;
@@ -158,7 +136,11 @@ where
 
     let mut y_prev = evaluator(start_epoch)?;
     let mut t = start_epoch;
-    let mut step = (min_step * 1_000).max(max_step);
+    let mut step = if event.scalar.is_angle() {
+        max_step
+    } else {
+        (min_step * 1_000).max(max_step)
+    };
 
     while t < end_epoch {
         let remaining = end_epoch - t;
@@ -173,22 +155,47 @@ where
         };
 
         // Ensure that we're scanning linearly.
-        let delta_ratio = (y_next - y_prev).abs() / step.to_seconds();
-        // Update the step to try to achieve linearity.
-        let next_step = (step.to_seconds() / delta_ratio) * Unit::Second;
-        if delta_ratio > 1.1 && step >= min_step {
-            // More than 10% faster than linear scan, reject advancement, use updated step.
-            step = next_step;
-            continue;
-        }
-        // Previous step accepted, check if there was a zero crossing.
-        if y_prev * y_next < 0.0 {
-            println!("new bracket -> {t} - {} => {y_prev} * {y_next}", t + step);
-            brackets.push((t, t + step));
+        let delta = (y_next - y_prev).abs();
+        let delta_ratio = delta / step.to_seconds();
+
+        // For angles, we smooth the evaluation with an atan2 function of the difference
+        // between the desired and the event's evaluation angle.
+        // This means we'll see two sign crossings: one for the event, and one for the
+        // discontinuity. For the latter, the absolute difference (delta) will be nearly
+        // 360.0 degrees. Let's be conservative: if we see a delta of half of that, consider
+        // this normal, and accept the step, but don't consider it a valid event bracket.
+
+        if event.scalar.is_angle() {
+            // Atan2 is a triangular signal so a bracket exists only if y_prev is negative and y_next is positive.
+            // Anything else is a fluke, and we can quickly speed through the whole trajectory.
+
+            // // We saw a sign change and there was a discontinuity, accept the step, but don't consider this a bracket.
+            // let (accept, is_bracket) = if delta > 180.0 && y_next.signum() != y_prev.signum() {
+            //     (true, false)
+            // } else {
+            //     (delta_ratio <= 1.1, y_next.signum() != y_prev.signum())
+            // };
+            if y_prev.signum() < y_next.signum() {
+                println!("new bracket -> {t} - {} => {y_prev} * {y_next}", t + step);
+                brackets.push((t, t + step));
+            }
+        } else {
+            // Update the step to try to achieve linearity.
+            let next_step = (step.to_seconds() / delta_ratio) * Unit::Second;
+            if delta_ratio > 1.1 && step >= min_step {
+                // More than 10% faster than linear scan, reject advancement, use updated step.
+                step = next_step;
+                continue;
+            }
+
+            // Previous step accepted, check if there was a zero crossing.
+            if y_prev * y_next < 0.0 {
+                println!("new bracket -> {t} - {} => {y_prev} * {y_next}", t + step);
+            }
+            step = next_step.clamp(min_step, max_step);
         }
         y_prev = y_next;
         t = t + step;
-        step = next_step.clamp(min_step, max_step);
     }
 
     Ok(brackets)

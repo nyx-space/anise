@@ -126,26 +126,8 @@ impl Event {
     pub fn eval(&self, orbit: Orbit, almanac: &Almanac) -> Result<f64, AnalysisError> {
         let current_val = self.scalar.evaluate(orbit, self.ab_corr, almanac)?;
 
-        // Check if the scalar is an angle that needs special handling
-        let is_angle = match self.scalar {
-            ScalarExpr::Element(oe) => oe.is_angle(),
-            ScalarExpr::AngleBetween { a: _, b: _ }
-            | ScalarExpr::BetaAngle
-            | ScalarExpr::SunAngle { observer_id: _ }
-            | ScalarExpr::AzimuthFromLocation {
-                location_id: _,
-                obstructing_body: _,
-            }
-            | ScalarExpr::ElevationFromLocation {
-                location_id: _,
-                obstructing_body: _,
-            } => true,
-            _ => false,
-        };
-
-        if is_angle {
-            // Use the arctan function because it's smooth around zero, but convert back to degrees
-            // for the comparison.
+        if self.scalar.is_angle() {
+            // Use the arctan function because it's smooth around zero, but convert back to degrees for the comparison.
 
             let current_rad = current_val.to_radians();
             let desired_rad = self.desired_value.to_radians();
