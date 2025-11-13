@@ -325,8 +325,8 @@ pub mod frames {
     use super::{celestial_objects::*, orientations::*};
 
     pub const SSB_J2000: Frame = Frame::new(SOLAR_SYSTEM_BARYCENTER, J2000);
-    pub const MERCURY_J2000: Frame = Frame::new(MERCURY, J2000);
-    pub const VENUS_J2000: Frame = Frame::new(VENUS, J2000);
+    pub const MERCURY_J2000: Frame = Frame::new(MERCURY_BARYCENTER, J2000);
+    pub const VENUS_J2000: Frame = Frame::new(VENUS_BARYCENTER, J2000);
     pub const EARTH_MOON_BARYCENTER_J2000: Frame = Frame::new(EARTH_MOON_BARYCENTER, J2000);
     /// The Mars frame is not available in the standard DE files, and requires a Mars specific BSP.
     pub const MARS_J2000: Frame = Frame::new(MARS, J2000);
