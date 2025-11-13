@@ -29,36 +29,55 @@ use pyo3::exceptions::PyException;
 #[cfg(feature = "python")]
 use pyo3::types::PyType;
 
+/// Defines an event condition
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise.analysis"))]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum Condition {
+    Equals(f64),
+    Between(f64, f64),
+    LessThan(f64),
+    GreaterThan(f64),
+    Minimum(),
+    Maximum(),
+}
+
 /// Defines a state parameter event finder from the desired value of the scalar expression to compute, precision on timing and value, and the aberration.
 ///
 /// :type scalar: ScalarExpr
-/// :type desired_value: float
+/// :type condition: Condition
 /// :type epoch_precision: Duration
-/// :type value_precision: float
 /// :type ab_corr: Aberration, optional
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.analysis"))]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Event {
-    /// The state parameter
+    /// Scalar expression to evaluate
     pub scalar: ScalarExpr,
-    /// The desired self.desired_value, must be in the same units as the state parameter
-    pub desired_value: f64,
-    /// The duration precision after which the solver will report that it cannot find any more precise
+    /// Condition that defines the bounded values of the event.
+    pub condition: Condition,
+    /// The duration precision used in the adaptive step scanner, and to consider an Event to have converged. Typically use 100 ms.
     pub epoch_precision: Duration,
-    /// If this ScalarExpr has a smooth derivative, then enable the use_derivative flag for faster search
-    pub use_derivative: bool,
     pub ab_corr: Option<Aberration>,
 }
 
 impl Event {
+    /// Builds a new event where the epoch precision is set to its defauklt of 0.1 seconds.
+    pub fn new(scalar: ScalarExpr, condition: Condition) -> Self {
+        Self {
+            scalar,
+            condition,
+            epoch_precision: 0.1 * Unit::Second,
+            ab_corr: None,
+        }
+    }
+
     /// Apoapsis event finder
     pub fn apoapsis() -> Self {
         Event {
             scalar: ScalarExpr::Element(OrbitalElement::TrueAnomaly),
-            desired_value: 180.0,
+            condition: Condition::Equals(180.0),
             epoch_precision: Unit::Second * 0.1,
-            use_derivative: false,
             ab_corr: None,
         }
     }
@@ -67,9 +86,8 @@ impl Event {
     pub fn periapsis() -> Self {
         Event {
             scalar: ScalarExpr::Element(OrbitalElement::TrueAnomaly),
-            desired_value: 0.0,
+            condition: Condition::Equals(0.0),
             epoch_precision: Unit::Second * 0.1,
-            use_derivative: false,
             ab_corr: None,
         }
     }
@@ -78,9 +96,8 @@ impl Event {
     pub fn eclipse(eclipsing_frame: Frame) -> Self {
         Event {
             scalar: ScalarExpr::SolarEclipsePercentage { eclipsing_frame },
-            desired_value: 99.9,
+            condition: Condition::GreaterThan(99.0),
             epoch_precision: Unit::Second * 0.1,
-            use_derivative: false,
             ab_corr: None,
         }
     }
@@ -98,9 +115,8 @@ impl Event {
                 location_id,
                 obstructing_body,
             },
-            desired_value: 0.9,
+            condition: Condition::GreaterThan(0.0),
             epoch_precision: Unit::Second * 0.1,
-            use_derivative: true,
             ab_corr: None,
         }
     }
@@ -119,18 +135,30 @@ impl Event {
 #[cfg_attr(feature = "python", pymethods)]
 impl Event {
     /// Compute the event finding function of this event provided an Orbit and Almanac.
+    /// If we're "in the event", the evaluation will be greater or equal to zero.
     ///
     /// :type orbit: Orbit
     /// :type almanac: Almanac
     /// :rtype: float
     pub fn eval(&self, orbit: Orbit, almanac: &Almanac) -> Result<f64, AnalysisError> {
         let current_val = self.scalar.evaluate(orbit, self.ab_corr, almanac)?;
+        let desired_val = match self.condition {
+            Condition::Equals(val) => val,
+            _ => {
+                return Err(AnalysisError::InvalidEventEval {
+                    err: format!(
+                        "cannot call Eval on {:?}, it must be an Equals condition",
+                        self.condition
+                    ),
+                })
+            }
+        };
 
         if self.scalar.is_angle() {
             // Use the arctan function because it's smooth around zero, but convert back to degrees for the comparison.
 
             let current_rad = current_val.to_radians();
-            let desired_rad = self.desired_value.to_radians();
+            let desired_rad = desired_val.to_radians();
 
             // Convert the angles to points on a unit circle
             let (cur_sin, cur_cos) = current_rad.sin_cos();
@@ -144,7 +172,7 @@ impl Event {
             Ok(y.atan2(x).to_degrees())
         } else {
             // For all non-angular scalars, use the original logic
-            Ok(current_val - self.desired_value)
+            Ok(current_val - desired_val)
         }
     }
 
@@ -156,15 +184,26 @@ impl Event {
     pub fn eval_string(&self, orbit: Orbit, almanac: &Almanac) -> Result<String, AnalysisError> {
         let val = self.eval(orbit, almanac)?;
 
-        if self.desired_value.abs() > 1e3 {
+        let desired_val = match self.condition {
+            Condition::Equals(val) => val,
+            _ => {
+                return Err(AnalysisError::InvalidEventEval {
+                    err: format!(
+                        "cannot call Eval on {:?}, it must be an Equals condition",
+                        self.condition
+                    ),
+                })
+            }
+        };
+        if desired_val.abs() > 1e3 {
             Ok(format!(
-                "|{} - {:e}| = {val:e} on {}",
-                self.scalar, self.desired_value, orbit.epoch
+                "|{} - {desired_val:e}| = {val:e} on {}",
+                self.scalar, orbit.epoch
             ))
-        } else if self.desired_value > 1e-2 {
+        } else if desired_val > 1e-2 {
             Ok(format!(
-                "|{} - {:.3}| = {val:.3} on {}",
-                self.scalar, self.desired_value, orbit.epoch
+                "|{} - {desired_val:.3}| = {val:.3} on {}",
+                self.scalar, orbit.epoch
             ))
         } else {
             Ok(format!("|{}| = {val:.3} on {}", self.scalar, orbit.epoch))
@@ -234,21 +273,19 @@ impl Event {
     }
 
     #[new]
-    #[pyo3(signature=(scalar, desired_value, epoch_precision, use_derivative, ab_corr=None))]
+    #[pyo3(signature=(scalar, condition, epoch_precision, ab_corr=None))]
     fn py_new(
         scalar: PyScalarExpr,
-        desired_value: f64,
+        condition: Condition,
         epoch_precision: Duration,
-        use_derivative: bool,
         ab_corr: Option<Aberration>,
     ) -> Self {
         let scalar = ScalarExpr::from(scalar);
 
         Self {
             scalar,
-            desired_value,
+            condition,
             epoch_precision,
-            use_derivative,
             ab_corr,
         }
     }
@@ -261,22 +298,16 @@ impl Event {
     }
 
     /// The desired self.desired_value, must be in the same units as the state parameter
-    /// :rtype: float
+    /// :rtype: Condition
     #[getter]
-    fn desired_value(&self) -> f64 {
-        self.desired_value
+    fn condition(&self) -> Condition {
+        self.condition
     }
     /// The duration precision after which the solver will report that it cannot find any more precise
     /// :rtype: Duration
     #[getter]
     fn epoch_precision(&self) -> Duration {
         self.epoch_precision
-    }
-    /// Whether this event should use the derivative when searching, should only be used on scalar expressions whose derivative is smooth.
-    /// :rtype: bool
-    #[getter]
-    fn use_derivative(&self) -> bool {
-        self.use_derivative
     }
     /// :rtype: Aberration
     #[getter]
@@ -292,20 +323,14 @@ impl Event {
 
     /// :type desired_value: float
     #[setter]
-    fn set_desired_value(&mut self, desired_value: f64) {
-        self.desired_value = desired_value;
+    fn set_condition(&mut self, condition: Condition) {
+        self.condition = condition;
     }
 
     /// :type epoch_precision: Duration
     #[setter]
     fn set_epoch_precision(&mut self, epoch_precision: Duration) {
         self.epoch_precision = epoch_precision;
-    }
-
-    /// :type use_derivative: bool
-    #[setter]
-    fn set_use_derivative(&mut self, use_derivative: bool) {
-        self.use_derivative = use_derivative;
     }
 
     /// type ab_corr: Aberration, optional
@@ -333,14 +358,33 @@ impl Event {
 impl fmt::Display for Event {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.scalar)?;
-        if self.desired_value.abs() > 1e3 {
-            write!(
-                f,
-                " = {:e} (± {})",
-                self.desired_value, self.epoch_precision,
-            )
-        } else {
-            write!(f, " = {} (± {})", self.desired_value, self.epoch_precision)
+        match self.condition {
+            Condition::Equals(val) => {
+                if val.abs() > 1e3 {
+                    write!(f, " = {val:e} (± {})", self.epoch_precision)
+                } else {
+                    write!(f, " = {val} (± {})", self.epoch_precision)
+                }
+            }
+            Condition::Between(a, b) => {
+                write!(f, " in [{a}, {b}] (± {})", self.epoch_precision)
+            }
+            Condition::LessThan(val) => {
+                if val.abs() > 1e3 {
+                    write!(f, " <= {val:e} (± {})", self.epoch_precision)
+                } else {
+                    write!(f, " <= {val} (± {})", self.epoch_precision)
+                }
+            }
+            Condition::GreaterThan(val) => {
+                if val.abs() > 1e3 {
+                    write!(f, " >= {val:e} (± {})", self.epoch_precision)
+                } else {
+                    write!(f, " >= {val} (± {})", self.epoch_precision)
+                }
+            }
+            Condition::Minimum() => write!(f, " minimum value (± {})", self.epoch_precision),
+            Condition::Maximum() => write!(f, " maximum value (± {})", self.epoch_precision),
         }
     }
 }

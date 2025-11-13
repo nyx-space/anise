@@ -40,6 +40,7 @@ pub mod python;
 
 pub mod prelude {
     pub use super::elements::OrbitalElement;
+    pub use super::event::{Condition, Event, EventArc, EventDetails, EventEdge};
     pub use super::expr::ScalarExpr;
     pub use super::specs::{FrameSpec, StateSpec};
     pub use super::vector_expr::VectorExpr;
@@ -93,6 +94,8 @@ pub enum AnalysisError {
     },
     #[snafu(display("all scalars failed for {spec:?}"))]
     AllScalarsFailed { spec: Box<StateSpec> },
+    #[snafu(display("invalid call to the event evaluator: {err}"))]
+    InvalidEventEval { err: String },
 }
 
 pub type AnalysisResult<T> = Result<T, AnalysisError>;
@@ -527,11 +530,11 @@ mod ut_analysis {
             ab_corr: None,
         };
 
-        let sunset_nadir = Event {
+        // If the Sun has set, then the Sun Angle is less than 90 degrees.
+        let sun_has_set_nadir = Event {
             scalar: ScalarExpr::SunAngle { observer_id: -85 },
-            desired_value: 90.0,
-            epoch_precision: Unit::Second * 0.5,
-            use_derivative: true,
+            condition: Condition::LessThan(90.0),
+            epoch_precision: Unit::Second * 0.1,
             ab_corr: None,
         };
 
@@ -553,10 +556,19 @@ mod ut_analysis {
         let true_anom_report = almanac
             .report_scalars_flat(
                 &ReportScalars {
-                    scalars: vec![(ScalarExpr::Element(OrbitalElement::TrueAnomaly), None)],
+                    scalars: vec![
+                        (ScalarExpr::Element(OrbitalElement::TrueAnomaly), None),
+                        (ScalarExpr::SunAngle { observer_id: -85 }, None),
+                        (
+                            ScalarExpr::SolarEclipsePercentage {
+                                eclipsing_frame: MOON_J2000,
+                            },
+                            None,
+                        ),
+                    ],
                     state_spec: lro_state_spec.clone(),
                 },
-                TimeSeries::inclusive(start_epoch, start_epoch + 10 * period, Unit::Minute * 1),
+                TimeSeries::inclusive(start_epoch, start_epoch + 3 * period, Unit::Minute * 1),
             )
             .unwrap();
         true_anom_report
@@ -564,7 +576,7 @@ mod ut_analysis {
             .unwrap();
 
         let apo_events = almanac
-            .report_events_new(&lro_state_spec, &apolune, start_epoch, end_epoch)
+            .report_events(&lro_state_spec, &apolune, start_epoch, end_epoch)
             .unwrap();
 
         println!(
@@ -581,16 +593,12 @@ mod ut_analysis {
 
         for event in &apo_events {
             let ta_deg = event.orbit.ta_deg().unwrap();
-            let orbit = lro_state_spec
-                .evaluate(event.orbit.epoch, &almanac)
-                .unwrap();
-            let ta_deg2 = apolune.eval(orbit, &almanac).unwrap();
-            println!("{event} -> true anomaly = {ta_deg:.6} deg\t{ta_deg2:.6} deg");
+            println!("{event} -> true anomaly = {ta_deg:.6} deg");
             assert!((ta_deg - 180.0).abs() < ta_deg_precision);
         }
 
         let peri_events = almanac
-            .report_events_new(&lro_state_spec, &perilune, start_epoch, end_epoch)
+            .report_events(&lro_state_spec, &perilune, start_epoch, end_epoch)
             .unwrap();
 
         println!(
@@ -600,7 +608,6 @@ mod ut_analysis {
 
         for event in &peri_events {
             let ta_deg = event.orbit.ta_deg().unwrap();
-            println!("{event} -> true anomaly = {ta_deg:.6} deg",);
             assert!(ta_deg.abs() < ta_deg_precision || (ta_deg - 360.0).abs() < ta_deg_precision);
         }
 
@@ -646,24 +653,36 @@ mod ut_analysis {
         assert_eq!(missed_events, 0);
 
         let events = almanac
-            .report_event_arcs(&lro_state_spec, &sunset_nadir, start_epoch, end_epoch)
+            .report_event_arcs(&lro_state_spec, &sun_has_set_nadir, start_epoch, end_epoch)
             .unwrap();
 
-        println!("First sunset of {}: {}", events.len(), events[1]);
-        assert_eq!(events[1].rise.edge, EventEdge::Rising);
-        assert_eq!(events[1].fall.edge, EventEdge::Falling);
-        assert_eq!(events.len(), 309);
+        println!(
+            "First two sunset of {}:\n\t{}\n\t{}",
+            events.len(),
+            events[0],
+            events[1]
+        );
+        assert_eq!(events[1].rise.edge, EventEdge::Falling);
+        assert_eq!(events[1].fall.edge, EventEdge::Rising);
+        assert_eq!(events.len(), 308);
 
         let eclipses = almanac
             .report_event_arcs(
                 &lro_state_spec,
                 &eclipse,
                 start_epoch,
-                start_epoch + Unit::Hour * 3,
+                start_epoch + period * 3,
             )
-            .unwrap();
+            .expect("eclipses can be computed...");
 
-        assert_eq!(eclipses.len(), 2, "wrong number of eclipse periods found");
+        assert_eq!(eclipses.len(), 3, "wrong number of eclipse periods found");
+
+        let eclipse_as_boundary = Event {
+            scalar: eclipse.scalar.clone(),
+            condition: Condition::Equals(99.0),
+            epoch_precision: eclipse.epoch_precision,
+            ab_corr: eclipse.ab_corr,
+        };
 
         for event in &eclipses {
             println!("{event}\n{event:?}");
@@ -675,8 +694,8 @@ mod ut_analysis {
                 Unit::Minute * 0.5,
             ) {
                 if let Ok(orbit) = lro_state_spec.evaluate(epoch, &almanac) {
-                    let this_eclipse = eclipse.eval(orbit, &almanac).unwrap();
-                    let in_eclipse = this_eclipse.abs() >= 99.0;
+                    let this_eclipse = eclipse_as_boundary.eval(orbit, &almanac).unwrap();
+                    let in_eclipse = this_eclipse.abs() >= 0.0;
 
                     if (event.start_epoch()..event.end_epoch()).contains(&epoch) {
                         // We're in the event, check that it is evaluated to be in the event.

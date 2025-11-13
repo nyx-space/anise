@@ -15,363 +15,52 @@ use crate::{
         AnalysisResult,
     },
 };
-use hifitime::{Duration, Epoch, TimeSeries, Unit};
-use log::{debug, error, warn};
+use hifitime::Epoch;
 use rayon::prelude::*;
-use std::sync::mpsc::channel;
 
-use super::{AnalysisError, Event, StateSpec};
-use crate::analysis::event::{EventArc, EventDetails};
+use super::{AnalysisError, StateSpec};
+use crate::analysis::event::{Condition, Event, EventArc, EventDetails};
 
 impl Almanac {
-    /// Find the exact state where the request event happens. The event function is expected to be monotone in the provided interval because we find the event using a Brent solver.
-    /// This will only return _one_ event within the provided bracket.
-    #[allow(clippy::identity_op)]
-    pub fn report_event_once(
-        &self,
-        state_spec: &StateSpec,
-        event: &Event,
-        start_epoch: Epoch,
-        end_epoch: Epoch,
-    ) -> Result<EventDetails, AnalysisError> {
-        let max_iter = 50;
-
-        // Convergence criteria is strictly on the epoch bracketing.
-        let has_converged =
-            |xa: f64, xb: f64| (xa - xb).abs() <= event.epoch_precision.to_seconds();
-
-        let xa_e = start_epoch;
-        let xb_e = end_epoch;
-
-        // Search in seconds (convert to epoch just in time)
-        let mut xa = 0.0;
-        let mut xb = (xb_e - xa_e).to_seconds();
-
-        // Evaluate the event at both bounds
-        let ya_state = state_spec.evaluate(xa_e, self)?;
-        let yb_state = state_spec.evaluate(xb_e, self)?;
-        let mut ya = event.eval(ya_state, self)?;
-        let mut yb = event.eval(yb_state, self)?;
-
-        // The Brent solver, from the roots crate (sadly could not directly integrate it here)
-        // Source: https://docs.rs/roots/0.0.5/src/roots/numerical/brent.rs.html#57-131
-
-        let (mut xc, mut yc, mut xd) = (xa, ya, xa);
-        let mut flag = true;
-
-        for _ in 0..max_iter {
-            if has_converged(xa, xb) {
-                // The event isn't in the bracket
-                return Err(AnalysisError::EventNotFound {
-                    start: start_epoch,
-                    end: end_epoch,
-                    event: Box::new(event.clone()),
-                });
-            }
-
-            // --- NEWTON STEP CALCULATION ---
-            // Try to compute a Newton step as a fallback to inverse quadratic interpolation.
-            // This uses a numerical derivative computed from states "one step before and one after" xb.
-            let mut s_newton: Option<f64> = None;
-            let h = event.epoch_precision.to_seconds();
-            // Check if h is large enough to be meaningful
-            if h > f64::EPSILON {
-                let xb_epoch = xa_e + xb * Unit::Second;
-                // Try to compute the numerical derivative at xb
-                if let (Ok(prev_state), Ok(next_state)) = (
-                    state_spec.evaluate(xb_epoch - event.epoch_precision, self),
-                    state_spec.evaluate(xb_epoch + event.epoch_precision, self),
-                ) {
-                    if let (Ok(y_prev), Ok(y_next)) =
-                        (event.eval(prev_state, self), event.eval(next_state, self))
-                    {
-                        let deriv = (y_next - y_prev) / (2.0 * h);
-                        if deriv.abs() > 1e-10 {
-                            // Avoid division by near-zero
-                            s_newton = Some(xb - yb / deriv);
-                        }
-                    }
-                }
-            }
-            // --- END NEWTON STEP ---
-
-            let mut s = if (ya - yc).abs() > f64::EPSILON && (yb - yc).abs() > f64::EPSILON {
-                // 1. Try Inverse quadratic interpolation (3 points)
-                xa * yb * yc / ((ya - yb) * (ya - yc))
-                    + xb * ya * yc / ((yb - ya) * (yb - yc))
-                    + xc * ya * yb / ((yc - ya) * (yc - yb))
-            } else if let Some(newton_step) = s_newton {
-                // 2. Try Newton step (if computed successfully)
-                newton_step
-            } else {
-                // 3. Fallback to Secant method (2 points)
-                xb - yb * (xb - xa) / (yb - ya)
-            };
-
-            let cond1 = (s - xb) * (s - (3.0 * xa + xb) / 4.0) > 0.0;
-            let cond2 = flag && (s - xb).abs() >= (xb - xc).abs() / 2.0;
-            let cond3 = !flag && (s - xb).abs() >= (xc - xd).abs() / 2.0;
-            let cond4 = flag && has_converged(xb, xc);
-            let cond5 = !flag && has_converged(xc, xd);
-            if cond1 || cond2 || cond3 || cond4 || cond5 {
-                s = (xa + xb) / 2.0;
-                flag = true;
-            } else {
-                flag = false;
-            }
-
-            let next_try = state_spec.clone().evaluate(xa_e + s * Unit::Second, self)?;
-            let ys = event.eval(next_try, self)?;
-
-            xd = xc;
-            xc = xb;
-            yc = yb;
-
-            if ya * ys < 0.0 {
-                // Root is bracketed between xa and s
-                xb = s;
-                yb = ys;
-            } else {
-                // Root is bracketed between s and xb
-                xa = s;
-                ya = ys;
-            }
-
-            // The `arrange` part from your code is to ensure that `b` is always the best guess.
-            // This is a common practice in Brent solvers.
-            if ya.abs() < yb.abs() {
-                // Swap a and b
-                std::mem::swap(&mut xa, &mut xb);
-                std::mem::swap(&mut ya, &mut yb);
-            }
-        }
-        error!("Brent solver failed after {max_iter} iterations");
-        Err(AnalysisError::EventNotFound {
-            start: start_epoch,
-            end: end_epoch,
-            event: Box::new(event.clone()),
-        })
-    }
-
-    pub fn report_events_new(
-        &self,
-        state_spec: &StateSpec,
-        event: &Event,
-        start_epoch: Epoch,
-        end_epoch: Epoch,
-    ) -> Result<Vec<EventDetails>, AnalysisError> {
-        // Define the evaluator here since we use it in both cases.
-        let f_eval = |epoch: Epoch| -> Result<f64, AnalysisError> {
-            let state = state_spec.evaluate(epoch, self)?;
-            event.eval(state, self)
-        };
-
-        if event.use_derivative {
-            let h_tiny = event.epoch_precision;
-            // Define the derivative of the evaluator.
-            let f_deriv = |epoch: Epoch| -> Result<f64, AnalysisError> {
-                // Use central difference, handling boundary errors
-                let (y_next, y_prev) = match (f_eval(epoch + h_tiny), f_eval(epoch - h_tiny)) {
-                    (Ok(next), Ok(prev)) => (next, prev),
-                    // If one fails (e.g., at boundary), use forward/backward diff
-                    (Ok(next), Err(_)) => (next, f_eval(epoch)?),
-                    (Err(_), Ok(prev)) => (f_eval(epoch)?, prev),
-                    (Err(_), Err(_)) => (0.0, 0.0), // Can't evaluate, assume no change
-                };
-                let h_sec = h_tiny.to_seconds() * 2.0;
-                if h_sec.abs() < 1e-12 {
-                    return Ok(0.0); // Avoid div by zero
-                }
-                Ok((y_next - y_prev) / h_sec)
-            };
-
-            // Find the zero crossings of the derivative.
-            let zero_crossings = adaptive_step_scanner(f_deriv, event, start_epoch, end_epoch)?;
-            todo!()
-        } else {
-            // Find the zero crossings of the event itself
-            let zero_crossings = adaptive_step_scanner(f_eval, event, start_epoch, end_epoch)?;
-            // Find the exact events
-            let events = zero_crossings
-                .par_iter()
-                .map(|(start_epoch, end_epoch)| -> AnalysisResult<Epoch> {
-                    brent_solver(f_eval, event, *start_epoch, *end_epoch)
-                })
-                .filter_map(|brent_rslt| brent_rslt.ok())
-                .map(|epoch: Epoch| -> AnalysisResult<EventDetails> {
-                    let state = state_spec.evaluate(epoch, self)?;
-                    let this_eval = f_eval(epoch)?;
-                    let prev_state = state_spec
-                        .evaluate(epoch - event.epoch_precision, self)
-                        .ok();
-                    let next_state = state_spec
-                        .evaluate(epoch + event.epoch_precision, self)
-                        .ok();
-
-                    EventDetails::new(state, this_eval, event, prev_state, next_state, self)
-                })
-                .filter_map(|details_rslt| match details_rslt {
-                    Ok(deets) => Some(deets),
-                    Err(e) => {
-                        eprintln!("{e} when building event details -- please file a bug");
-                        None
-                    }
-                })
-                .collect::<Vec<EventDetails>>();
-
-            Ok(events)
-        }
-    }
-    /// Report all of the states and event details where the provided event occurs.
-    ///
-    /// # Limitations
-    /// This method uses a Brent solver, provides a superlinearity convergence (Golden ratio rate).
-    /// If the function that defines the event is not unimodal, the event finder may not converge correctly.
-    /// After the Brent solver is used, this function will check the median gap between events. Assuming most events are periodic,
-    /// any gap whose median repetition is greater than 125% will be slow searches. This _typically_ finds all of the events ... but it
-    /// may also add duplicates! To prevent reporting duplicate events, the found events are deduplicated if the same event is found
-    /// within 3 times the epoch precision. For example, if the epoch precision is 100 ms, if three events are "found" within 300 ms of each other
-    /// then only one of these three is preserved.
-    ///
-    /// # Heuristic detail
-    /// The initial search step is 1% of the duration requested, if the heuristic is set to None.
-    /// For example, if the trajectory is 100 days long, then we split the trajectory into 100 chunks of 1 day and see whether
-    /// the event is in there. If the event happens twice or more times within 1% of the trajectory duration, only the _one_ of
-    /// such events will be found.
-    #[allow(clippy::identity_op)]
     pub fn report_events(
         &self,
         state_spec: &StateSpec,
         event: &Event,
         start_epoch: Epoch,
         end_epoch: Epoch,
-        heuristic: Option<Duration>,
     ) -> Result<Vec<EventDetails>, AnalysisError> {
-        if start_epoch == end_epoch {
-            return Err(AnalysisError::EventNotFound {
-                start: start_epoch,
-                end: end_epoch,
-                event: Box::new(event.clone()),
-            });
-        }
-        let heuristic = heuristic.unwrap_or((end_epoch - start_epoch) / 100);
-        debug!("searching for {event} with initial heuristic of {heuristic}");
-
-        let (sender, receiver) = channel();
-
-        let epochs: Vec<Epoch> = TimeSeries::inclusive(start_epoch, end_epoch, heuristic).collect();
-        epochs.into_par_iter().for_each_with(sender, |s, epoch| {
-            if let Ok(event_state) =
-                self.report_event_once(state_spec, event, epoch, epoch + heuristic)
-            {
-                s.send(event_state).unwrap()
-            };
-        });
-        let mut events: Vec<_> = receiver.iter().collect();
-
-        if events.is_empty() {
-            warn!("Heuristic failed to find any {event} event, using slower approach");
-            // Crap, we didn't find the event.
-            // Let's find the min and max of this event throughout the trajectory, and search around there.
-            return self.report_events_slow(state_spec, event, start_epoch, end_epoch);
-        }
-
-        // Remove duplicates and reorder
-        events.sort_by(|s1, s2| s1.orbit.epoch.partial_cmp(&s2.orbit.epoch).unwrap());
-        events.dedup_by(|e1, e2| {
-            (e1.orbit.epoch - e2.orbit.epoch).abs() <= event.epoch_precision * 3.0
-        });
-
-        let possible_gap_times = if events.len() > 1 {
-            // We found some states, let's roughly check if we could have missed some events by searching for periodicity.
-            let mut dt_bw_events = events
-                .iter()
-                .take(events.len() - 1)
-                .zip(events.iter().skip(1))
-                .map(|(first, second)| {
-                    (
-                        first.orbit.epoch,
-                        second.orbit.epoch,
-                        second.orbit.epoch - first.orbit.epoch,
-                    )
-                })
-                .collect::<Vec<(Epoch, Epoch, Duration)>>();
-
-            dt_bw_events.sort_by(|dt1, dt2| dt1.2.cmp(&dt2.2));
-
-            let median_duration = dt_bw_events[dt_bw_events.len() / 2].2;
-
-            dt_bw_events
-                .iter()
-                .copied()
-                .filter(|(_start, _end, dt)| *dt > median_duration * 1.25)
-                .collect::<Vec<(Epoch, Epoch, Duration)>>()
-        } else {
-            vec![(start_epoch, end_epoch, end_epoch - start_epoch)]
-        };
-
-        let prev_len = events.len();
-        // Search specifically these gaps.
-        for (gap_start, gap_end, _) in possible_gap_times {
-            if let Ok(mut gapped_events) = self.report_events_slow(
-                state_spec,
-                event,
-                gap_start + event.epoch_precision,
-                gap_end - event.epoch_precision,
-            ) {
-                events.append(&mut gapped_events);
-            }
-        }
-
-        if events.len() != prev_len {
-            // Remove duplicates and reorder once more
-            events.sort_by(|s1, s2| s1.orbit.epoch.partial_cmp(&s2.orbit.epoch).unwrap());
-            // Dedupliate by the same event with three times the epoch precision,
-            // because that would be one edge and then the other edge of the precision plus one event in the middle
-            // from the slow search.
-            events.dedup_by(|e1, e2| {
-                (e1.orbit.epoch - e2.orbit.epoch).abs() <= event.epoch_precision * 3.0
+        if matches!(
+            event.condition,
+            Condition::Between(..) | Condition::LessThan(..) | Condition::GreaterThan(..)
+        ) {
+            return Err(AnalysisError::InvalidEventEval {
+                err: format!(
+                    "cannot report an individual event on an event like {:?}, use report_event_arcs",
+                    event.condition
+                ),
             });
         }
 
-        match events.len() {
-            0 => debug!("event {event} not found"),
-            1 => debug!("event {event} found once on {}", events[0].orbit.epoch),
-            _ => {
-                debug!(
-                    "event {event} found {} times from {} until {}",
-                    events.len(),
-                    events.first().unwrap().orbit.epoch,
-                    events.last().unwrap().orbit.epoch
-                )
-            }
+        // Define the evaluator here since we use it in all remaining cases.
+        let f_eval = |epoch: Epoch| -> Result<f64, AnalysisError> {
+            let state = state_spec.evaluate(epoch, self)?;
+            event.eval(state, self)
         };
 
-        Ok(events)
-    }
-
-    /// Slow approach to finding **all** of the events between two epochs. This will evaluate ALL epochs in between the two bounds.
-    /// This approach is more robust, but more computationally demanding since it's O(N).
-    #[allow(clippy::identity_op)]
-    pub fn report_events_slow(
-        &self,
-        state_spec: &StateSpec,
-        event: &Event,
-        start_epoch: Epoch,
-        end_epoch: Epoch,
-    ) -> Result<Vec<EventDetails>, AnalysisError> {
-        todo!("disabled");
-        /* let step = event.epoch_precision;
-
-        let (sender, receiver) = channel();
-
-        let epochs: Vec<Epoch> = TimeSeries::inclusive(start_epoch, end_epoch, step).collect();
-
-        epochs.into_par_iter().for_each_with(sender, |s, epoch| {
-            if let Ok(state) = state_spec.evaluate(epoch, self) {
-                if let Ok(this_eval) = event.eval(state, self) {
-                    if this_eval.abs() < event.use_derivative.abs() {
-                        // This is an event!
+        match event.condition {
+            Condition::Equals(_val) => {
+                // Find the zero crossings of the event itself
+                let zero_crossings = adaptive_step_scanner(f_eval, event, start_epoch, end_epoch)?;
+                // Find the exact events
+                let mut events = zero_crossings
+                    .par_iter()
+                    .map(|(start_epoch, end_epoch)| -> AnalysisResult<Epoch> {
+                        brent_solver(f_eval, event, *start_epoch, *end_epoch)
+                    })
+                    .filter_map(|brent_rslt| brent_rslt.ok())
+                    .map(|epoch: Epoch| -> AnalysisResult<EventDetails> {
+                        let state = state_spec.evaluate(epoch, self)?;
+                        let this_eval = f_eval(epoch)?;
                         let prev_state = state_spec
                             .evaluate(epoch - event.epoch_precision, self)
                             .ok();
@@ -379,32 +68,50 @@ impl Almanac {
                             .evaluate(epoch + event.epoch_precision, self)
                             .ok();
 
-                        if let Ok(details) =
-                            EventDetails::new(state, this_eval, event, prev_state, next_state, self)
-                        {
-                            if s.send(details).is_err() {
-                                eprintln!("receiver for event search dropped");
-                            }
+                        EventDetails::new(state, this_eval, event, prev_state, next_state, self)
+                    })
+                    .filter_map(|details_rslt| match details_rslt {
+                        Ok(deets) => Some(deets),
+                        Err(e) => {
+                            eprintln!("{e} when building event details -- please file a bug");
+                            None
                         }
-                    }
-                }
+                    })
+                    .collect::<Vec<EventDetails>>();
+
+                // Sort them using a _stable_ sort, which is faster than the unstable sort when trying are partially sorted (it's the case here).
+                events.sort_by(|event_detail1, event_detail2| {
+                    event_detail1.orbit.epoch.cmp(&event_detail2.orbit.epoch)
+                });
+
+                Ok(events)
             }
-        });
+            Condition::Minimum() | Condition::Maximum() => {
+                let h_tiny = event.epoch_precision;
+                let f_deriv = |epoch: Epoch| -> Result<f64, AnalysisError> {
+                    // Use central difference, handling boundary errors
+                    let (y_next, y_prev) = match (f_eval(epoch + h_tiny), f_eval(epoch - h_tiny)) {
+                        (Ok(next), Ok(prev)) => (next, prev),
+                        // If one fails (e.g., at boundary), use forward/backward diff
+                        (Ok(next), Err(_)) => (next, f_eval(epoch)?),
+                        (Err(_), Ok(prev)) => (f_eval(epoch)?, prev),
+                        (Err(_), Err(_)) => (0.0, 0.0), // Can't evaluate, assume no change
+                    };
+                    let h_sec = h_tiny.to_seconds() * 2.0;
+                    if h_sec.abs() < 1e-12 {
+                        return Ok(0.0); // Avoid div by zero
+                    }
+                    Ok((y_next - y_prev) / h_sec)
+                };
 
-        let mut events: Vec<_> = receiver.iter().collect();
-
-        // If there still isn't any match, report that the event was not found
-        if events.is_empty() {
-            return Err(AnalysisError::EventNotFound {
-                start: start_epoch,
-                end: end_epoch,
-                event: Box::new(event.clone()),
-            });
+                // Find the extremas, i.e. when the derivative is a zero crossing.
+                let extrema = adaptive_step_scanner(f_deriv, event, start_epoch, end_epoch)?;
+                todo!()
+            }
+            Condition::Between(..) | Condition::LessThan(..) | Condition::GreaterThan(..) => {
+                unreachable!()
+            }
         }
-
-        // Remove duplicates and reorder once more
-        events.sort_by(|s1, s2| s1.orbit.epoch.partial_cmp(&s2.orbit.epoch).unwrap());
-        Ok(events) */
     }
 
     /// Find all event arcs, i.e. the start and stop time of when a given event occurs. This function
@@ -416,108 +123,168 @@ impl Almanac {
         start_epoch: Epoch,
         end_epoch: Epoch,
     ) -> Result<Vec<EventArc>, AnalysisError> {
-        // Step 1: Get all zero-crossings. We will completely ignore their reported 'edge' status, already sorted by time.
-        let crossings = match self.report_events_slow(state_spec, event, start_epoch, end_epoch) {
-            Ok(events) => events,
-            Err(_) => {
-                // No crossings were found. The only possibility for an arc is if the entire
-                // trajectory is within the event.
-                let start_orbit = state_spec.evaluate(start_epoch, self)?;
-                let start_eval = event.eval(start_orbit, self)?;
-                if start_eval > 0.0 {
+        if matches!(
+            event.condition,
+            Condition::Equals(..) | Condition::Minimum() | Condition::Maximum()
+        ) {
+            return Err(AnalysisError::InvalidEventEval {
+                err: format!(
+                    "cannot report event arcs on an individual event like {:?}, use report_events",
+                    event.condition
+                ),
+            });
+        }
+
+        match event.condition {
+            Condition::Between(min_val, max_val) => {
+                let min_event = Event {
+                    scalar: event.scalar.clone(),
+                    condition: Condition::Equals(min_val),
+                    epoch_precision: event.epoch_precision,
+                    ab_corr: event.ab_corr,
+                };
+
+                let max_event = Event {
+                    scalar: event.scalar.clone(),
+                    condition: Condition::Equals(max_val),
+                    epoch_precision: event.epoch_precision,
+                    ab_corr: event.ab_corr,
+                };
+
+                let min_events =
+                    self.report_events(state_spec, &min_event, start_epoch, end_epoch)?;
+
+                let max_events =
+                    self.report_events(state_spec, &max_event, start_epoch, end_epoch)?;
+
+                todo!("logic to merge the events")
+            }
+            Condition::LessThan(val) | Condition::GreaterThan(val) => {
+                let boundary_event = Event {
+                    scalar: event.scalar.clone(),
+                    condition: Condition::Equals(val),
+                    epoch_precision: event.epoch_precision,
+                    ab_corr: event.ab_corr,
+                };
+
+                let crossings =
+                    self.report_events(state_spec, &boundary_event, start_epoch, end_epoch)?;
+
+                if crossings.is_empty() {
+                    // We never cross the boundary, so check if we're in the boundary at the start or not.
+
+                    let start_orbit = state_spec.evaluate(start_epoch, self)?;
+                    let start_eval = boundary_event.eval(start_orbit, self)?;
                     let end_orbit = state_spec.evaluate(end_epoch, self)?;
-                    let end_eval = event.eval(end_orbit, self)?;
-                    let rise = EventDetails::new(
+                    let end_eval = boundary_event.eval(end_orbit, self)?;
+                    let start_inside = start_eval >= 0.0;
+                    // In the case of both angles and other scalars, the evaluation will be negative if the current
+                    // value is less the desired value; positive otherwise.
+                    // If the user is seeking when the event is LessThan X, and start_eval >= 0.0, it means that there
+                    // are NO event windows that match the desired value.
+                    let no_events = (matches!(event.condition, Condition::LessThan(..))
+                        && start_inside)
+                        || (matches!(event.condition, Condition::GreaterThan(..)) && !start_inside);
+
+                    if no_events {
+                        return Ok(Vec::new());
+                    } else {
+                        // We're less than the desired value the whole time.
+                        let rise = EventDetails::new(
+                            start_orbit,
+                            start_eval,
+                            event,
+                            None,
+                            Some(end_orbit),
+                            self,
+                        )?;
+                        let fall = EventDetails::new(
+                            end_orbit,
+                            end_eval,
+                            event,
+                            Some(start_orbit),
+                            None,
+                            self,
+                        )?;
+                        return Ok(vec![EventArc { rise, fall }]);
+                    }
+                }
+
+                // We have at least one crossing at this point.
+                let init_crossing = crossings.first().unwrap();
+
+                // So we can employ the same logic, we're using signum checks directly.
+                let desired_sign = if matches!(event.condition, Condition::LessThan(..)) {
+                    -1.0
+                } else {
+                    1.0
+                };
+
+                let mut is_inside_arc = init_crossing.value.signum() == desired_sign;
+
+                let mut arcs = Vec::new();
+
+                let mut rise: Option<EventDetails> = None;
+
+                // If we start *inside* the arc, create a "rise" event for the start.
+                if is_inside_arc {
+                    let start_orbit = state_spec.evaluate(start_epoch, self)?;
+                    let start_eval = boundary_event.eval(start_orbit, self)?;
+                    let next_orbit = state_spec.evaluate(start_epoch + event.epoch_precision, self);
+                    let start_details = EventDetails::new(
                         start_orbit,
                         start_eval,
-                        event,
+                        &boundary_event,
                         None,
-                        Some(end_orbit),
+                        next_orbit.ok(),
                         self,
                     )?;
-                    let fall = EventDetails::new(
-                        end_orbit,
-                        end_eval,
-                        event,
-                        Some(start_orbit),
-                        None,
-                        self,
-                    )?;
-                    return Ok(vec![EventArc { rise, fall }]);
+                    rise = Some(start_details);
                 }
-                return Ok(Vec::new()); // The event never happens.
-            }
-        };
 
-        // We have at least one crossing at this point.
-        let init_crossing = crossings.first().unwrap();
-        let mut is_inside_arc = init_crossing.value >= 0.0;
-
-        let mut arcs = Vec::new();
-        let mut rise: Option<EventDetails> = None;
-
-        if is_inside_arc {
-            if let Some(next_value) = init_crossing.next_value {
-                if next_value < 0.0 {
-                    // We start at the _end_ of this event.
-                    // Compute the event details for this next epoch.
-                    let fall = self.report_event_once(
-                        state_spec,
-                        event,
-                        init_crossing.orbit.epoch + event.epoch_precision,
-                        init_crossing.orbit.epoch + event.epoch_precision * 2,
-                    )?;
-                    arcs.push(EventArc {
-                        rise: init_crossing.clone(),
-                        fall,
-                    });
-                }
-            }
-            rise = Some(init_crossing.clone());
-        }
-
-        for crossing in crossings.iter().skip(1) {
-            let event_value = crossing.value;
-            if event_value >= 0.0 {
-                // We're in an arc.
-                if let Some(next_value) = crossing.next_value {
-                    if next_value < 0.0 && rise.is_some() {
-                        // At the next immediate step, the event ends, so this marks the end of the arc.
+                // Loop over *all* crossings. Each crossing is a state flip.
+                for crossing in crossings {
+                    if is_inside_arc {
+                        // We were IN an arc, this crossing is the FALL.
+                        // Close the arc.
                         arcs.push(EventArc {
-                            rise: rise.clone().unwrap(),
-                            fall: crossing.clone(),
+                            rise: rise.take().unwrap(), // We must have had a rise
+                            fall: crossing,
                         });
                         is_inside_arc = false;
-                        continue; // Move onto the next crossing.
+                    } else {
+                        // We were OUT of an arc, this crossing is the RISE.
+                        // Start a new arc.
+                        rise = Some(crossing);
+                        is_inside_arc = true;
                     }
-                    // else we're still in the arc on the next step.
                 }
-                // If we weren't in an arc, store this as the new rise.
-                if !is_inside_arc {
-                    rise = Some(crossing.clone());
-                    is_inside_arc = true;
-                }
-            } else if is_inside_arc {
-                // We aren't in an arc but we were until this event crossing.
-                // Close out this arc.
-                if let Some(rise) = rise.take() {
-                    arcs.push(EventArc {
-                        rise,
-                        fall: crossing.clone(),
-                    });
-                }
-                is_inside_arc = false;
-            }
-        }
+                // After the loop, if we are *still* in an arc, it must continue until `end_epoch`.
+                if is_inside_arc {
+                    if let Some(rise) = rise.take() {
+                        let end_orbit = state_spec.evaluate(end_epoch, self)?;
+                        let end_eval = boundary_event.eval(end_orbit, self)?;
+                        let prev_orbit =
+                            state_spec.evaluate(start_epoch - event.epoch_precision, self);
 
-        if is_inside_arc {
-            if let Some(rise) = rise {
-                if let Some(fall) = crossings.last().cloned() {
-                    arcs.push(EventArc { rise, fall });
-                }
-            }
-        }
+                        let fall_details = EventDetails::new(
+                            end_orbit,
+                            end_eval,
+                            &boundary_event,
+                            prev_orbit.ok(),
+                            None,
+                            self,
+                        )?;
 
-        Ok(arcs)
+                        arcs.push(EventArc {
+                            rise,
+                            fall: fall_details,
+                        });
+                    }
+                }
+                Ok(arcs)
+            }
+            Condition::Equals(..) | Condition::Minimum() | Condition::Maximum() => unreachable!(),
+        }
     }
 }

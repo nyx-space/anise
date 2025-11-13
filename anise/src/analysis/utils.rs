@@ -168,15 +168,7 @@ where
         if event.scalar.is_angle() {
             // Atan2 is a triangular signal so a bracket exists only if y_prev is negative and y_next is positive.
             // Anything else is a fluke, and we can quickly speed through the whole trajectory.
-
-            // // We saw a sign change and there was a discontinuity, accept the step, but don't consider this a bracket.
-            // let (accept, is_bracket) = if delta > 180.0 && y_next.signum() != y_prev.signum() {
-            //     (true, false)
-            // } else {
-            //     (delta_ratio <= 1.1, y_next.signum() != y_prev.signum())
-            // };
-            if y_prev.signum() < y_next.signum() {
-                println!("new bracket -> {t} - {} => {y_prev} * {y_next}", t + step);
+            if y_prev.signum() != y_next.signum() && delta < 180.0 {
                 brackets.push((t, t + step));
             }
         } else {
@@ -190,7 +182,7 @@ where
 
             // Previous step accepted, check if there was a zero crossing.
             if y_prev * y_next < 0.0 {
-                println!("new bracket -> {t} - {} => {y_prev} * {y_next}", t + step);
+                brackets.push((t, t + step));
             }
             step = next_step.clamp(min_step, max_step);
         }
