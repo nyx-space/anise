@@ -15,8 +15,10 @@ pub mod celestial_objects {
     use crate::{ephemerides::EphemerisError, NaifId};
 
     pub const SOLAR_SYSTEM_BARYCENTER: NaifId = 0;
-    pub const MERCURY: NaifId = 1;
-    pub const VENUS: NaifId = 2;
+    pub const MERCURY_BARYCENTER: NaifId = 1;
+    pub const VENUS_BARYCENTER: NaifId = 2;
+    pub const MERCURY: NaifId = 199;
+    pub const VENUS: NaifId = 299;
     pub const EARTH_MOON_BARYCENTER: NaifId = 3;
     pub const MARS_BARYCENTER: NaifId = 4;
     pub const JUPITER_BARYCENTER: NaifId = 5;
@@ -37,6 +39,8 @@ pub mod celestial_objects {
     pub const fn celestial_name_from_id(id: NaifId) -> Option<&'static str> {
         match id {
             SOLAR_SYSTEM_BARYCENTER => Some("Solar System Barycenter"),
+            MERCURY_BARYCENTER => Some("Mercury Barycenter"),
+            VENUS_BARYCENTER => Some("Venus Barycenter"),
             MERCURY => Some("Mercury"),
             VENUS => Some("Venus"),
             EARTH_MOON_BARYCENTER => Some("Earth-Moon Barycenter"),
@@ -62,6 +66,8 @@ pub mod celestial_objects {
     /// Converts the provided ID to its human name. Only works for the common celestial bodies. Should be compatible with CCSDS OEM names
     pub fn id_from_celestial_name(name: &str) -> Result<NaifId, EphemerisError> {
         match name {
+            "Mercury Barycenter" => Ok(MERCURY_BARYCENTER),
+            "Venus Barycenter" => Ok(VENUS_BARYCENTER),
             "Mercury" => Ok(MERCURY),
             "Venus" => Ok(VENUS),
             "Earth" => Ok(EARTH),
