@@ -17,9 +17,9 @@ fn format_frame() {
 
     assert_eq!(format!("{SUN_J2000}"), "Sun J2000");
 
-    assert_eq!(format!("{MERCURY_J2000}"), "Mercury J2000");
+    assert_eq!(format!("{MERCURY_J2000}"), "Mercury Barycenter J2000");
 
-    assert_eq!(format!("{VENUS_J2000}"), "Venus J2000");
+    assert_eq!(format!("{VENUS_J2000}"), "Venus Barycenter J2000");
 
     assert_eq!(
         format!("{EARTH_MOON_BARYCENTER_J2000}"),
