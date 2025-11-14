@@ -181,10 +181,7 @@ impl Almanac {
             match result {
                 Ok(inner_map) => {
                     for col_name in &headers {
-                        let value = inner_map[col_name]
-                            .as_ref()
-                            .copied()
-                            .unwrap_or(f64::NEG_INFINITY);
+                        let value = inner_map[col_name].as_ref().copied().unwrap_or(f64::NAN);
                         row_values.push(value);
                     }
                 }

@@ -136,11 +136,8 @@ where
 
     let mut y_prev = evaluator(start_epoch)?;
     let mut t = start_epoch;
-    let mut step = if event.scalar.is_angle() {
-        max_step
-    } else {
-        (min_step * 1_000).max(max_step)
-    };
+    // Always start with the max step, and the adaptive step will reject and take a smaller step if needed.
+    let mut step = max_step;
 
     while t < end_epoch {
         let remaining = end_epoch - t;
@@ -187,7 +184,7 @@ where
             step = next_step.clamp(min_step, max_step);
         }
         y_prev = y_next;
-        t = t + step;
+        t += step;
     }
 
     Ok(brackets)

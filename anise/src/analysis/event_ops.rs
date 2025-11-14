@@ -12,7 +12,7 @@ use super::event::{EventArc, EventEdge};
 use hifitime::Epoch;
 use std::cmp::Ordering;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd)]
+#[derive(Debug, PartialEq, Eq)]
 struct EventPoint {
     epoch: Epoch,
     kind: EventEdge,
@@ -31,6 +31,13 @@ impl Ord for EventPoint {
         })
     }
 }
+
+impl PartialOrd for EventPoint {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 /// Finds the intersection of multiple event arc timelines.
 ///
 /// Input: A Vec where each element is a timeline (Vec<EventArc>)
