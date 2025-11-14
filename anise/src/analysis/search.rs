@@ -61,8 +61,10 @@ impl Almanac {
                     })
                     .filter_map(|brent_rslt| brent_rslt.ok())
                     .map(|epoch: Epoch| -> AnalysisResult<EventDetails> {
+                        // Note that we don't call f_eval because it recomputes the state
+                        // but it does not return it, and we need the state anyway.
                         let state = state_spec.evaluate(epoch, self)?;
-                        let this_eval = f_eval(epoch)?;
+                        let this_eval = event.eval(state, self)?;
                         let prev_state = state_spec
                             .evaluate(epoch - event.epoch_precision, self)
                             .ok();
@@ -89,7 +91,7 @@ impl Almanac {
                 Ok(events)
             }
             Condition::Minimum() | Condition::Maximum() => {
-                let h_tiny = event.epoch_precision;
+                let h_tiny = event.epoch_precision * 10.0;
                 let f_deriv = |epoch: Epoch| -> Result<f64, AnalysisError> {
                     // Use central difference, handling boundary errors
                     let (y_next, y_prev) = match (f_eval(epoch + h_tiny), f_eval(epoch - h_tiny)) {
@@ -103,12 +105,64 @@ impl Almanac {
                     if h_sec.abs() < 1e-12 {
                         return Ok(0.0); // Avoid div by zero
                     }
-                    Ok((y_next - y_prev) / h_sec)
+                    // Ok((y_next - y_prev) / h_sec)
+                    let v = (y_next - y_prev) / h_sec;
+                    dbg!(v);
+                    Ok(v)
                 };
 
                 // Find the extremas, i.e. when the derivative is a zero crossing.
-                let extrema = adaptive_step_scanner(f_deriv, event, start_epoch, end_epoch)?;
-                todo!()
+                let extremas = adaptive_step_scanner(f_deriv, event, start_epoch, end_epoch)?;
+                dbg!(&extremas);
+
+                // Find the exact events by running the Brent solver on the derivative.
+                let mut events = extremas
+                    .par_iter()
+                    .map(|(start_epoch, end_epoch)| -> AnalysisResult<Epoch> {
+                        brent_solver(f_deriv, event, *start_epoch, *end_epoch)
+                    })
+                    .filter_map(|brent_rslt| brent_rslt.ok())
+                    .map(|epoch: Epoch| -> AnalysisResult<EventDetails> {
+                        // Find the actual event extrema at this time by evaluating the event
+                        // (not its derivative like we have been).
+                        let state = state_spec.evaluate(epoch, self)?;
+                        let this_eval = event.eval(state, self)?;
+                        let prev_state = state_spec
+                            .evaluate(epoch - event.epoch_precision, self)
+                            .ok();
+                        let next_state = state_spec
+                            .evaluate(epoch + event.epoch_precision, self)
+                            .ok();
+
+                        EventDetails::new(state, this_eval, event, prev_state, next_state, self)
+                    })
+                    .filter_map(|details_rslt| match details_rslt {
+                        Ok(deets) => Some(deets),
+                        Err(e) => {
+                            eprintln!("{e} when building event details -- please file a bug");
+                            None
+                        }
+                    })
+                    .filter(|details| {
+                        println!("cond = {:?}, edge = {:?}", event.condition, details.edge);
+                        match event.condition {
+                            Condition::Minimum() => {
+                                matches!(details.edge, EventEdge::LocalMin | EventEdge::Rising)
+                            }
+                            Condition::Maximum() => {
+                                matches!(details.edge, EventEdge::LocalMax | EventEdge::Falling)
+                            }
+                            _ => unreachable!(),
+                        }
+                    })
+                    .collect::<Vec<EventDetails>>();
+
+                // Sort them using a _stable_ sort, which is faster than the unstable sort when trying are partially sorted (it's the case here).
+                events.sort_by(|event_detail1, event_detail2| {
+                    event_detail1.orbit.epoch.cmp(&event_detail2.orbit.epoch)
+                });
+
+                Ok(events)
             }
             Condition::Between(..) | Condition::LessThan(..) | Condition::GreaterThan(..) => {
                 unreachable!()

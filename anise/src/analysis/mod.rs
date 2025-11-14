@@ -543,6 +543,18 @@ mod ut_analysis {
             Condition::GreaterThan(90.0),
         );
 
+        let max_sun_el = Event {
+            scalar: ScalarExpr::SunAngle { observer_id: -85 },
+            condition: Condition::Maximum(),
+            epoch_precision: Unit::Second * 0.1,
+            ab_corr: None,
+        };
+
+        let min_sun_el = Event::new(
+            ScalarExpr::SunAngle { observer_id: -85 },
+            Condition::Minimum(),
+        );
+
         let apolune = Event::apoapsis();
         let perilune = Event::periapsis();
 
@@ -683,6 +695,22 @@ mod ut_analysis {
 
         let intersections = find_arc_intersections(vec![sunrise_events, sunset_events]);
         assert!(intersections.is_empty(), "sunrise and sunset events should NOT intersect because one is LessThan the other GreaterThan");
+
+        // Seek the min and max sun angles
+        let min_sun_angles = almanac
+            .report_events(&lro_state_spec, &min_sun_el, start_epoch, end_epoch)
+            .unwrap();
+        assert!(!min_sun_angles.is_empty());
+        for min_ev in min_sun_angles {
+            println!("MIN SUN -> {min_ev}");
+        }
+        let max_sun_angles = almanac
+            .report_events(&lro_state_spec, &max_sun_el, start_epoch, end_epoch)
+            .unwrap();
+        assert!(!max_sun_angles.is_empty());
+        for max_ev in max_sun_angles {
+            println!("MAX SUN -> {max_ev}");
+        }
 
         let eclipses = almanac
             .report_event_arcs(
