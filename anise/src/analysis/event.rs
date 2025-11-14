@@ -92,11 +92,31 @@ impl Event {
         }
     }
 
-    /// Total eclipse event finder: returns events where the eclipsing percentage is greater than 98.9%.
-    pub fn eclipse(eclipsing_frame: Frame) -> Self {
+    /// Total eclipse event finder: returns events where the eclipsing percentage is greater than 99%.
+    pub fn total_eclipse(eclipsing_frame: Frame) -> Self {
         Event {
             scalar: ScalarExpr::SolarEclipsePercentage { eclipsing_frame },
             condition: Condition::GreaterThan(99.0),
+            epoch_precision: Unit::Second * 0.1,
+            ab_corr: None,
+        }
+    }
+
+    /// Eclipse event finder, including penumbras: returns events where the eclipsing percentage is greater than 1%.
+    pub fn eclipse(eclipsing_frame: Frame) -> Self {
+        Event {
+            scalar: ScalarExpr::SolarEclipsePercentage { eclipsing_frame },
+            condition: Condition::GreaterThan(1.0),
+            epoch_precision: Unit::Second * 0.1,
+            ab_corr: None,
+        }
+    }
+
+    /// Penumbral eclipse event finder: returns events where the eclipsing percentage is greater than 1% and less than 99%.
+    pub fn penumbra(eclipsing_frame: Frame) -> Self {
+        Event {
+            scalar: ScalarExpr::SolarEclipsePercentage { eclipsing_frame },
+            condition: Condition::Between(1.0, 99.0),
             epoch_precision: Unit::Second * 0.1,
             ab_corr: None,
         }
@@ -252,9 +272,29 @@ impl Event {
     /// :type eclipsing_frame: Frame
     /// :rtype: Event
     #[classmethod]
+    #[pyo3(name = "total_eclipse")]
+    fn py_total_eclipse(_cls: Bound<'_, PyType>, eclipsing_frame: Frame) -> Self {
+        Event::total_eclipse(eclipsing_frame)
+    }
+
+    /// Eclipse event finder, including penumbras: returns events where the eclipsing percentage is greater than 1%.
+    ///
+    /// :type eclipsing_frame: Frame
+    /// :rtype: Event
+    #[classmethod]
     #[pyo3(name = "eclipse")]
     fn py_eclipse(_cls: Bound<'_, PyType>, eclipsing_frame: Frame) -> Self {
         Event::eclipse(eclipsing_frame)
+    }
+
+    /// Penumbral eclipse event finder: returns events where the eclipsing percentage is greater than 1% and less than 99%.
+    ///
+    /// :type eclipsing_frame: Frame
+    /// :rtype: Event
+    #[classmethod]
+    #[pyo3(name = "penumbra")]
+    fn py_penumbra(_cls: Bound<'_, PyType>, eclipsing_frame: Frame) -> Self {
+        Event::penumbra(eclipsing_frame)
     }
 
     /// Report events where the object is above the horizon when seen from the provided location ID.

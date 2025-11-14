@@ -546,7 +546,8 @@ mod ut_analysis {
         let apolune = Event::apoapsis();
         let perilune = Event::periapsis();
 
-        let eclipse = Event::eclipse(MOON_J2000);
+        let eclipse = Event::total_eclipse(MOON_J2000);
+        let penumbras = Event::penumbra(MOON_J2000);
 
         let (start_epoch, end_epoch) = almanac.spk_domain(-85).unwrap();
 
@@ -712,7 +713,7 @@ mod ut_analysis {
             ) {
                 if let Ok(orbit) = lro_state_spec.evaluate(epoch, &almanac) {
                     let this_eclipse = eclipse_as_boundary.eval(orbit, &almanac).unwrap();
-                    let in_eclipse = this_eclipse.abs() >= 0.0;
+                    let in_eclipse = this_eclipse >= 0.0;
 
                     if (event.start_epoch()..event.end_epoch()).contains(&epoch) {
                         // We're in the event, check that it is evaluated to be in the event.
@@ -724,6 +725,26 @@ mod ut_analysis {
             }
             println!("\n");
         }
+
+        let penumbra_events = almanac
+            .report_event_arcs(
+                &lro_state_spec,
+                &penumbras,
+                start_epoch,
+                start_epoch + period * 3,
+            )
+            .expect("eclipses can be computed...");
+
+        for event in &penumbra_events {
+            println!("{event}");
+        }
+
+        let intersect_total_penumra = find_arc_intersections(vec![penumbra_events, eclipses]);
+
+        assert!(
+            intersect_total_penumra.is_empty(),
+            "penumbras and total eclipses should not intersect"
+        );
 
         // Test access times
         let loc = Location {

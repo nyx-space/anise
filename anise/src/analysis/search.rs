@@ -11,6 +11,8 @@
 use crate::{
     almanac::Almanac,
     analysis::{
+        event::EventEdge,
+        event_ops::find_arc_intersections,
         utils::{adaptive_step_scanner, brent_solver},
         AnalysisResult,
     },
@@ -137,27 +139,79 @@ impl Almanac {
 
         match event.condition {
             Condition::Between(min_val, max_val) => {
-                let min_event = Event {
+                let lt_event = Event {
+                    scalar: event.scalar.clone(),
+                    condition: Condition::LessThan(max_val),
+                    epoch_precision: event.epoch_precision,
+                    ab_corr: event.ab_corr,
+                };
+
+                let gt_event = Event {
+                    scalar: event.scalar.clone(),
+                    condition: Condition::GreaterThan(min_val),
+                    epoch_precision: event.epoch_precision,
+                    ab_corr: event.ab_corr,
+                };
+
+                let min_boundary_event = Event {
                     scalar: event.scalar.clone(),
                     condition: Condition::Equals(min_val),
                     epoch_precision: event.epoch_precision,
                     ab_corr: event.ab_corr,
                 };
 
-                let max_event = Event {
+                let max_boundary_event = Event {
                     scalar: event.scalar.clone(),
                     condition: Condition::Equals(max_val),
                     epoch_precision: event.epoch_precision,
                     ab_corr: event.ab_corr,
                 };
 
-                let min_events =
-                    self.report_events(state_spec, &min_event, start_epoch, end_epoch)?;
+                // We could probably run these in parallel but the overhead to spin up a thread
+                // is likely greater than just running both calls sequentially.
+                let lt_events =
+                    self.report_event_arcs(state_spec, &lt_event, start_epoch, end_epoch)?;
 
-                let max_events =
-                    self.report_events(state_spec, &max_event, start_epoch, end_epoch)?;
+                let gt_events =
+                    self.report_event_arcs(state_spec, &gt_event, start_epoch, end_epoch)?;
 
-                todo!("logic to merge the events")
+                // Compute the start and stop times when both conditions are true, i.e. the event is greater
+                // than the min value and less than the max value
+                let intersection = find_arc_intersections(vec![lt_events, gt_events]);
+                let mut arcs = Vec::with_capacity(intersection.len());
+                // Rebuild the EventDetails and EventArcs for each.
+                for (intersect_start, intersect_end) in intersection {
+                    let start_orbit = state_spec.evaluate(intersect_start, &self)?;
+                    let end_orbit = state_spec.evaluate(intersect_end, &self)?;
+
+                    let start_eval = min_boundary_event.eval(start_orbit, self)?;
+                    let end_eval = max_boundary_event.eval(start_orbit, self)?;
+
+                    // We don't need the prev/next evaluations because we know that the event is rising and falling
+                    // via the intersection call.
+                    arcs.push(EventArc {
+                        rise: EventDetails {
+                            orbit: start_orbit,
+                            edge: EventEdge::Rising,
+                            value: start_eval,
+                            prev_value: None,
+                            next_value: None,
+                            pm_duration: event.epoch_precision,
+                            repr: min_boundary_event.eval_string(start_orbit, &self)?,
+                        },
+                        fall: EventDetails {
+                            orbit: end_orbit,
+                            edge: EventEdge::Falling,
+                            value: end_eval,
+                            prev_value: None,
+                            next_value: None,
+                            pm_duration: event.epoch_precision,
+                            repr: max_boundary_event.eval_string(end_orbit, &self)?,
+                        },
+                    })
+                }
+
+                Ok(arcs)
             }
             Condition::LessThan(val) | Condition::GreaterThan(val) => {
                 let boundary_event = Event {
