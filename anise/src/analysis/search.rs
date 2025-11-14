@@ -211,7 +211,9 @@ impl Almanac {
                 }
 
                 // We have at least one crossing at this point.
-                let init_crossing = crossings.first().unwrap();
+                let start_orbit = state_spec.evaluate(start_epoch, self)?;
+                let start_eval = boundary_event.eval(start_orbit, self)?;
+                // let init_crossing = crossings.first().unwrap();
 
                 // So we can employ the same logic, we're using signum checks directly.
                 let desired_sign = if matches!(event.condition, Condition::LessThan(..)) {
@@ -220,7 +222,7 @@ impl Almanac {
                     1.0
                 };
 
-                let mut is_inside_arc = init_crossing.value.signum() == desired_sign;
+                let mut is_inside_arc = start_eval.signum() == desired_sign;
 
                 let mut arcs = Vec::new();
 

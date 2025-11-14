@@ -103,6 +103,10 @@ pub struct ScalarsTable {
 impl ScalarsTable {
     /// Export this scalars table to CSV
     pub fn to_csv(&self, path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+        if self.rows.is_empty() {
+            return Ok(());
+        }
+
         let mut wtr = Writer::from_path(path)?;
 
         // Write the epoch header in the proper timescale

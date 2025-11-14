@@ -22,6 +22,7 @@ use std::collections::HashMap;
 
 pub mod elements;
 pub mod event;
+pub mod event_ops;
 pub mod expr;
 pub mod report;
 pub mod search;
@@ -521,7 +522,9 @@ mod ut_analysis {
     }
 
     #[rstest]
-    fn test_analysis_event(almanac: Almanac) {
+    fn test_analysis_event(mut almanac: Almanac) {
+        use crate::analysis::event_ops::find_arc_intersections;
+
         let lro_frame = Frame::from_ephem_j2000(-85);
 
         let lro_state_spec = StateSpec {
@@ -537,6 +540,11 @@ mod ut_analysis {
             epoch_precision: Unit::Second * 0.1,
             ab_corr: None,
         };
+
+        let sun_has_risen_nadir = Event::new(
+            ScalarExpr::SunAngle { observer_id: -85 },
+            Condition::GreaterThan(90.0),
+        );
 
         let apolune = Event::apoapsis();
         let perilune = Event::periapsis();
@@ -572,7 +580,7 @@ mod ut_analysis {
             )
             .unwrap();
         true_anom_report
-            .to_csv("lro_true_anomaly.csv".into())
+            .to_csv("analysis_verif.csv".into())
             .unwrap();
 
         let apo_events = almanac
@@ -652,19 +660,31 @@ mod ut_analysis {
         }
         assert_eq!(missed_events, 0);
 
-        let events = almanac
+        let sunset_events = almanac
             .report_event_arcs(&lro_state_spec, &sun_has_set_nadir, start_epoch, end_epoch)
             .unwrap();
 
         println!(
             "First two sunset of {}:\n\t{}\n\t{}",
-            events.len(),
-            events[0],
-            events[1]
+            sunset_events.len(),
+            sunset_events[0],
+            sunset_events[1]
         );
-        assert_eq!(events[1].rise.edge, EventEdge::Falling);
-        assert_eq!(events[1].fall.edge, EventEdge::Rising);
-        assert_eq!(events.len(), 308);
+        assert_eq!(sunset_events[1].rise.edge, EventEdge::Falling);
+        assert_eq!(sunset_events[1].fall.edge, EventEdge::Rising);
+        assert_eq!(sunset_events.len(), 308);
+
+        let sunrise_events = almanac
+            .report_event_arcs(
+                &lro_state_spec,
+                &sun_has_risen_nadir,
+                start_epoch,
+                end_epoch,
+            )
+            .unwrap();
+
+        let intersections = find_arc_intersections(vec![sunrise_events, sunset_events]);
+        assert!(intersections.is_empty(), "sunrise and sunset events should NOT intersect because one is LessThan the other GreaterThan");
 
         let eclipses = almanac
             .report_event_arcs(
@@ -708,8 +728,7 @@ mod ut_analysis {
             println!("\n");
         }
 
-        // https://github.com/nyx-space/anise/issues/537
-        /* // Test access times
+        // Test access times
         let loc = Location {
             latitude_deg: 40.427_222,
             longitude_deg: 4.250_556,
@@ -729,12 +748,32 @@ mod ut_analysis {
                     elevation_mask_deg: 3.0,
                 },
             ],
-            terrain_mask_ignored: false,
+            terrain_mask_ignored: true,
         };
 
         almanac.location_data.push(loc, Some(1), None).unwrap();
 
+        // For code coverage (and used in debugging), export all of the true anomaly values.
+        let comms_report = almanac
+            .report_scalars_flat(
+                &ReportScalars {
+                    scalars: vec![(
+                        ScalarExpr::ElevationFromLocation {
+                            location_id: 1,
+                            obstructing_body: None,
+                        },
+                        None,
+                    )],
+                    state_spec: lro_state_spec.clone(),
+                },
+                TimeSeries::inclusive(start_epoch, start_epoch + Unit::Day * 3, Unit::Minute * 1),
+            )
+            .unwrap();
+        comms_report.to_csv("comms_verif.csv".into()).unwrap();
+
         let comm = Event::above_horizon_from_location_id(1, None);
+        let mut comm_boundary = comm.clone();
+        comm_boundary.condition = Condition::Equals(0.0);
 
         let comm_arcs = almanac
             .report_event_arcs(
@@ -744,9 +783,16 @@ mod ut_analysis {
                 start_epoch + Unit::Day * 3,
             )
             .unwrap();
-        assert!(comm_arcs.len() > 1);
-        for event in &comm_arcs {
-            println!("{event}\n{event:?}");
+        assert!(comm_arcs.len() == 3);
+
+        let exp_durations = [
+            Unit::Hour * 8 + Unit::Minute * 57,
+            Unit::Hour * 9 + Unit::Minute * 34,
+            Unit::Hour * 10 + Unit::Minute * 15,
+        ];
+
+        for (event, duration) in comm_arcs.iter().zip(exp_durations) {
+            println!("comms - {event}");
             // Check that this is valid
             for epoch in TimeSeries::inclusive(
                 event.start_epoch() - Unit::Minute * 1,
@@ -754,8 +800,8 @@ mod ut_analysis {
                 Unit::Minute * 0.5,
             ) {
                 if let Ok(orbit) = lro_state_spec.evaluate(epoch, &almanac) {
-                    let this_eval = comm.eval(orbit, &almanac).unwrap();
-                    let is_accessible = this_eval.abs() <= comm.value_precision.abs();
+                    let this_eval = comm_boundary.eval(orbit, &almanac).unwrap();
+                    let is_accessible = this_eval.abs() >= 0.0;
 
                     if (event.start_epoch()..event.end_epoch()).contains(&epoch) {
                         // We're in the event, check that it is evaluated to be in the event.
@@ -765,7 +811,8 @@ mod ut_analysis {
                     }
                 }
             }
-            println!("\n");
-        } */
+            // I only defined the durations to within a minute, so check that these are correct.
+            assert!((event.duration() - duration).abs() < Unit::Minute * 1);
+        }
     }
 }
