@@ -150,6 +150,9 @@ impl Almanac {
                         }
                     })
                     .filter(|details| match event.condition {
+                        // An extremum at the boundary of the search interval might be classified as
+                        // Rising/Falling instead of LocalMin/LocalMax by `EventDetails::new` because
+                        // one of the neighbors is missing. We include them here to catch those cases.
                         Condition::Minimum() => {
                             matches!(details.edge, EventEdge::LocalMin | EventEdge::Rising)
                         }

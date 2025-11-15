@@ -12,6 +12,9 @@ use super::event::{EventArc, EventEdge};
 use hifitime::Epoch;
 use std::cmp::Ordering;
 
+#[cfg(feature = "python")]
+use pyo3::pyfunction;
+
 #[derive(Debug, PartialEq, Eq)]
 struct EventPoint {
     epoch: Epoch,
@@ -44,6 +47,8 @@ impl PartialOrd for EventPoint {
 ///        e.g., [ timeline_A_arcs, timeline_B_arcs, ... ]
 ///
 /// Output: A Vec of (Epoch, Epoch) windows where *all* timelines were active.
+
+#[cfg_attr(feature = "python", pyfunction)]
 pub fn find_arc_intersections(timelines: Vec<Vec<EventArc>>) -> Vec<(Epoch, Epoch)> {
     let num_timelines = timelines.len();
     if num_timelines == 0 {

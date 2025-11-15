@@ -11,6 +11,7 @@
 use ::anise::almanac::metaload::{MetaAlmanac, MetaFile};
 use ::anise::almanac::Almanac;
 use ::anise::analysis::event::{Event, EventArc, EventDetails, EventEdge};
+use ::anise::analysis::event_ops::find_arc_intersections;
 use ::anise::analysis::prelude::OrbitalElement;
 use ::anise::analysis::python::{
     PyFrameSpec, PyOrthogonalFrame, PyScalarExpr, PyStateSpec, PyVectorExpr,
@@ -75,6 +76,7 @@ fn analysis(_py: Python, sm: &Bound<PyModule>) -> PyResult<()> {
     sm.add_class::<EventEdge>()?;
     sm.add_class::<EventArc>()?;
     sm.add_class::<ReportScalars>()?;
+    sm.add_wrapped(wrap_pyfunction!(find_arc_intersections))?;
     Ok(())
 }
 
