@@ -43,14 +43,13 @@ impl Almanac {
             });
         }
 
-        // Define the evaluator here since we use it in all remaining cases.
-        let f_eval = |epoch: Epoch| -> Result<f64, AnalysisError> {
-            let state = state_spec.evaluate(epoch, self)?;
-            event.eval(state, self)
-        };
-
         match event.condition {
             Condition::Equals(_val) => {
+                let f_eval = |epoch: Epoch| -> Result<f64, AnalysisError> {
+                    let state = state_spec.evaluate(epoch, self)?;
+                    event.eval(state, self)
+                };
+
                 // Find the zero crossings of the event itself
                 let zero_crossings = adaptive_step_scanner(f_eval, event, start_epoch, end_epoch)?;
                 // Find the exact events
@@ -91,6 +90,17 @@ impl Almanac {
                 Ok(events)
             }
             Condition::Minimum() | Condition::Maximum() => {
+                // Rebuild the event as an Equals, and therefore rebuild the closure.
+                let boundary = Event {
+                    scalar: event.scalar.clone(),
+                    condition: Condition::Equals(0.0),
+                    epoch_precision: event.epoch_precision,
+                    ab_corr: event.ab_corr,
+                };
+                let f_eval = |epoch: Epoch| -> Result<f64, AnalysisError> {
+                    let state = state_spec.evaluate(epoch, self)?;
+                    boundary.eval(state, self)
+                };
                 let h_tiny = event.epoch_precision * 10.0;
                 let f_deriv = |epoch: Epoch| -> Result<f64, AnalysisError> {
                     // Use central difference, handling boundary errors
@@ -105,28 +115,24 @@ impl Almanac {
                     if h_sec.abs() < 1e-12 {
                         return Ok(0.0); // Avoid div by zero
                     }
-                    // Ok((y_next - y_prev) / h_sec)
-                    let v = (y_next - y_prev) / h_sec;
-                    dbg!(v);
-                    Ok(v)
+                    Ok((y_next - y_prev) / h_sec)
                 };
 
                 // Find the extremas, i.e. when the derivative is a zero crossing.
-                let extremas = adaptive_step_scanner(f_deriv, event, start_epoch, end_epoch)?;
-                dbg!(&extremas);
+                let extremas = adaptive_step_scanner(f_deriv, &boundary, start_epoch, end_epoch)?;
 
                 // Find the exact events by running the Brent solver on the derivative.
                 let mut events = extremas
                     .par_iter()
                     .map(|(start_epoch, end_epoch)| -> AnalysisResult<Epoch> {
-                        brent_solver(f_deriv, event, *start_epoch, *end_epoch)
+                        brent_solver(f_deriv, &boundary, *start_epoch, *end_epoch)
                     })
                     .filter_map(|brent_rslt| brent_rslt.ok())
                     .map(|epoch: Epoch| -> AnalysisResult<EventDetails> {
                         // Find the actual event extrema at this time by evaluating the event
                         // (not its derivative like we have been).
                         let state = state_spec.evaluate(epoch, self)?;
-                        let this_eval = event.eval(state, self)?;
+                        let this_eval = boundary.eval(state, self)?;
                         let prev_state = state_spec
                             .evaluate(epoch - event.epoch_precision, self)
                             .ok();
@@ -134,7 +140,7 @@ impl Almanac {
                             .evaluate(epoch + event.epoch_precision, self)
                             .ok();
 
-                        EventDetails::new(state, this_eval, event, prev_state, next_state, self)
+                        EventDetails::new(state, this_eval, &boundary, prev_state, next_state, self)
                     })
                     .filter_map(|details_rslt| match details_rslt {
                         Ok(deets) => Some(deets),
@@ -143,17 +149,14 @@ impl Almanac {
                             None
                         }
                     })
-                    .filter(|details| {
-                        println!("cond = {:?}, edge = {:?}", event.condition, details.edge);
-                        match event.condition {
-                            Condition::Minimum() => {
-                                matches!(details.edge, EventEdge::LocalMin | EventEdge::Rising)
-                            }
-                            Condition::Maximum() => {
-                                matches!(details.edge, EventEdge::LocalMax | EventEdge::Falling)
-                            }
-                            _ => unreachable!(),
+                    .filter(|details| match event.condition {
+                        Condition::Minimum() => {
+                            matches!(details.edge, EventEdge::LocalMin | EventEdge::Rising)
                         }
+                        Condition::Maximum() => {
+                            matches!(details.edge, EventEdge::LocalMax | EventEdge::Falling)
+                        }
+                        _ => unreachable!(),
                     })
                     .collect::<Vec<EventDetails>>();
 
@@ -235,8 +238,8 @@ impl Almanac {
                 let mut arcs = Vec::with_capacity(intersection.len());
                 // Rebuild the EventDetails and EventArcs for each.
                 for (intersect_start, intersect_end) in intersection {
-                    let start_orbit = state_spec.evaluate(intersect_start, &self)?;
-                    let end_orbit = state_spec.evaluate(intersect_end, &self)?;
+                    let start_orbit = state_spec.evaluate(intersect_start, self)?;
+                    let end_orbit = state_spec.evaluate(intersect_end, self)?;
 
                     let start_eval = min_boundary_event.eval(start_orbit, self)?;
                     let end_eval = max_boundary_event.eval(start_orbit, self)?;
@@ -251,7 +254,7 @@ impl Almanac {
                             prev_value: None,
                             next_value: None,
                             pm_duration: event.epoch_precision,
-                            repr: min_boundary_event.eval_string(start_orbit, &self)?,
+                            repr: min_boundary_event.eval_string(start_orbit, self)?,
                         },
                         fall: EventDetails {
                             orbit: end_orbit,
@@ -260,7 +263,7 @@ impl Almanac {
                             prev_value: None,
                             next_value: None,
                             pm_duration: event.epoch_precision,
-                            repr: max_boundary_event.eval_string(end_orbit, &self)?,
+                            repr: max_boundary_event.eval_string(end_orbit, self)?,
                         },
                     })
                 }

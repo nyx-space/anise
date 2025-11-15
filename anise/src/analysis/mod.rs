@@ -701,15 +701,23 @@ mod ut_analysis {
             .report_events(&lro_state_spec, &min_sun_el, start_epoch, end_epoch)
             .unwrap();
         assert!(!min_sun_angles.is_empty());
-        for min_ev in min_sun_angles {
+        for min_ev in min_sun_angles.iter().take(3) {
             println!("MIN SUN -> {min_ev}");
+            assert!(
+                (min_ev.value - 50.0).abs() < 1.0,
+                "wrong min sun angle found"
+            );
         }
         let max_sun_angles = almanac
             .report_events(&lro_state_spec, &max_sun_el, start_epoch, end_epoch)
             .unwrap();
         assert!(!max_sun_angles.is_empty());
-        for max_ev in max_sun_angles {
+        for max_ev in max_sun_angles.iter().take(3) {
             println!("MAX SUN -> {max_ev}");
+            assert!(
+                (max_ev.value - 129.0).abs() < 1.0,
+                "wrong max sun angle found"
+            );
         }
 
         let eclipses = almanac
