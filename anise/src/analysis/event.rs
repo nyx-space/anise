@@ -62,7 +62,8 @@ pub struct Event {
 }
 
 impl Event {
-    /// Builds a new event where the epoch precision is set to its defauklt of 0.1 seconds.
+    /// Builds a new event where the epoch precision is set to its default of 0.1 seconds.
+    #[must_use]
     pub fn new(scalar: ScalarExpr, condition: Condition) -> Self {
         Self {
             scalar,
