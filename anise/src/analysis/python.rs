@@ -7,7 +7,7 @@
  *
  * Documentation: https://nyxspace.com/
  */
-use hifitime::{Duration, Epoch, TimeSeries};
+use hifitime::{Epoch, TimeSeries};
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
@@ -73,9 +73,8 @@ impl Almanac {
     /// :type event: Event
     /// :type start_epoch: Epoch
     /// :type end_epoch: Epoch
-    /// :type heuristic: Duration, optional
     /// :rtype: list
-    #[pyo3(name = "report_events", signature=(state_spec, event, start_epoch, end_epoch, heuristic=None))]
+    #[pyo3(name = "report_events", signature=(state_spec, event, start_epoch, end_epoch))]
     #[allow(clippy::identity_op)]
     fn py_report_events(
         &self,
@@ -84,38 +83,9 @@ impl Almanac {
         event: &Event,
         start_epoch: Epoch,
         end_epoch: Epoch,
-        heuristic: Option<Duration>,
     ) -> Result<Vec<EventDetails>, AnalysisError> {
         py.detach(|| {
-            self.report_events(
-                &StateSpec::from(state_spec),
-                event,
-                start_epoch,
-                end_epoch,
-                heuristic,
-            )
-        })
-    }
-    /// Slow approach to finding **all** of the events between two epochs. This will evaluate ALL epochs in between the two bounds.
-    /// This approach is more robust, but more computationally demanding since it's O(N).
-    ///
-    /// :type state_spec: StateSpec
-    /// :type event: Event
-    /// :type start_epoch: Epoch
-    /// :type end_epoch: Epoch
-    /// :rtype: list
-    #[pyo3(name = "report_events_slow")]
-    #[allow(clippy::identity_op)]
-    fn py_report_events_slow(
-        &self,
-        py: Python,
-        state_spec: PyStateSpec,
-        event: &Event,
-        start_epoch: Epoch,
-        end_epoch: Epoch,
-    ) -> Result<Vec<EventDetails>, AnalysisError> {
-        py.detach(|| {
-            self.report_events_slow(&StateSpec::from(state_spec), event, start_epoch, end_epoch)
+            self.report_events(&StateSpec::from(state_spec), event, start_epoch, end_epoch)
         })
     }
 

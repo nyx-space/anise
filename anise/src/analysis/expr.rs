@@ -402,6 +402,25 @@ impl ScalarExpr {
         }
     }
 
+    /// Returns true if this is known to be an angle.
+    pub fn is_angle(&self) -> bool {
+        match self {
+            ScalarExpr::Element(oe) => oe.is_angle(),
+            ScalarExpr::AngleBetween { a: _, b: _ }
+            | ScalarExpr::BetaAngle
+            | ScalarExpr::SunAngle { observer_id: _ }
+            | ScalarExpr::AzimuthFromLocation {
+                location_id: _,
+                obstructing_body: _,
+            }
+            | ScalarExpr::ElevationFromLocation {
+                location_id: _,
+                obstructing_body: _,
+            } => true,
+            _ => false,
+        }
+    }
+
     /// Export this Scalar Expression to S-Expression / LISP syntax
     pub fn to_s_expr(&self) -> Result<String, serde_lexpr::Error> {
         Ok(serde_lexpr::to_value(self)?.to_string())
