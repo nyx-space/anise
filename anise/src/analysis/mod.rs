@@ -855,7 +855,7 @@ mod ut_analysis {
             ) {
                 if let Ok(orbit) = lro_state_spec.evaluate(epoch, &almanac) {
                     let this_eval = comm_boundary.eval(orbit, &almanac).unwrap();
-                    let is_accessible = this_eval.abs() >= 0.0;
+                    let is_accessible = this_eval >= 0.0;
 
                     if (event.start_epoch()..event.end_epoch()).contains(&epoch) {
                         // We're in the event, check that it is evaluated to be in the event.
