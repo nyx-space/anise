@@ -30,7 +30,7 @@ use core::f64::consts::{PI, TAU};
 
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits, Unit};
-use log::{error, info, warn};
+use log::{info, warn};
 use snafu::ensure;
 
 #[cfg(feature = "python")]
