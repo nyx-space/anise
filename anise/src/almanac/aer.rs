@@ -12,7 +12,7 @@ use crate::{
     astro::{Aberration, AzElRange},
     constants::SPEED_OF_LIGHT_KM_S,
     ephemerides::{EphemerisError, EphemerisPhysicsSnafu},
-    errors::{AlmanacError, EphemerisSnafu, OrientationSnafu, PhysicsError},
+    errors::{AlmanacError, EphemerisSnafu, PhysicsError},
     frames::Frame,
     math::angles::{between_0_360, between_pm_180},
     prelude::Orbit,
@@ -196,17 +196,11 @@ impl Almanac {
                 .map_err(|e| AlmanacError::GenericError {
                     err: format!("{e} when fetching {} frame data", location.frame),
                 })?;
-        let omega = self
-            .angular_velocity_wrt_j2000_rad_s(from_frame, epoch)
-            .context(OrientationSnafu {
-                action: "AER computation from location ID",
-            })?;
         // Build the state of this orbit
-        match Orbit::try_latlongalt_omega(
+        match Orbit::try_latlongalt(
             location.latitude_deg,
             location.longitude_deg,
             location.height_km,
-            omega,
             epoch,
             from_frame,
         ) {

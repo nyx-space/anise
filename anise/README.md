@@ -62,7 +62,7 @@ let almanac = ctx
 
 // Let's build an orbit
 // Start by grabbing a copy of the frame.
-let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
+let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
 
 // Define an epoch, in TDB, but you may specify UTC, TT, TAI, GPST, and more.
 let epoch = Epoch::from_str("2021-10-29 12:34:56 TDB").unwrap();
@@ -198,7 +198,6 @@ To calculate the azimuth, elevation, and range of a spacecraft from a ground sta
 ```rust
 use anise::prelude::*;
 use anise::constants::frames::{IAU_EARTH_FRAME, EME2000};
-use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
 use hifitime::Epoch;
 use core::str::FromStr;
 
@@ -209,7 +208,7 @@ const DSS65_HEIGHT_KM: f64 = 0.834_939;
 
 let almanac = MetaAlmanac::latest().unwrap();
 
-let eme2k = almanac.frame_from_uid(EME2000).unwrap();
+let eme2k = almanac.frame_info(EME2000).unwrap();
 
 let rx = Orbit::new(
     58643.769540,
@@ -227,9 +226,8 @@ let tx = Orbit::try_latlongalt(
     DSS65_LATITUDE_DEG,
     DSS65_LONGITUDE_DEG,
     DSS65_HEIGHT_KM,
-    MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
     rx.epoch,
-    almanac.frame_from_uid(IAU_EARTH_FRAME).unwrap(),
+    almanac.frame_info(IAU_EARTH_FRAME).unwrap(),
 )
 .unwrap();
 
@@ -251,7 +249,7 @@ use hifitime::Epoch;
 
 let almanac = Almanac::new("../data/de440s.bsp").unwrap().load("../data/pck08.pca").unwrap();
 let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 1, 1);
-let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
+let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
 let orbit = Orbit::try_keplerian_altitude(
     500.0, 0.01, 1.0, 72.0, 45.0, 270.0, epoch, eme2k,
 ).unwrap();
@@ -279,7 +277,7 @@ use core::str::FromStr;
 
 let almanac = MetaAlmanac::latest().unwrap();
 
-let eme2k = almanac.frame_from_uid(EARTH_J2000).unwrap();
+let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
 let epoch = Epoch::from_str("2021-10-29 12:34:56 TDB").unwrap();
 
 let orig_state = Orbit::try_keplerian(
