@@ -10,14 +10,13 @@
 
 use ::anise::almanac::metaload::{MetaAlmanac, MetaFile};
 use ::anise::almanac::Almanac;
-use ::anise::analysis::event::{Event, EventArc, EventDetails, EventEdge};
-use ::anise::analysis::event_ops::find_arc_intersections;
-use ::anise::analysis::prelude::OrbitalElement;
+use ::anise::analysis::prelude::{
+    find_arc_intersections, Condition, Event, EventArc, EventDetails, EventEdge, OrbitalElement,
+    Plane, ReportScalars,
+};
 use ::anise::analysis::python::{
     PyFrameSpec, PyOrthogonalFrame, PyScalarExpr, PyStateSpec, PyVectorExpr,
 };
-use ::anise::analysis::report::ReportScalars;
-use ::anise::analysis::specs::Plane;
 use ::anise::astro::Aberration;
 use ::anise::structure::dataset::location_dhall::PyLocationDataSet;
 use ::anise::structure::dataset::location_dhall::{LocationDhallSet, LocationDhallSetEntry};
@@ -70,6 +69,7 @@ fn analysis(_py: Python, sm: &Bound<PyModule>) -> PyResult<()> {
     sm.add_class::<PyScalarExpr>()?;
     sm.add_class::<PyFrameSpec>()?;
     sm.add_class::<OrbitalElement>()?;
+    sm.add_class::<Condition>()?;
     sm.add_class::<Plane>()?;
     sm.add_class::<Event>()?;
     sm.add_class::<EventDetails>()?;

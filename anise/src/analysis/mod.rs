@@ -42,8 +42,10 @@ pub mod python;
 pub mod prelude {
     pub use super::elements::OrbitalElement;
     pub use super::event::{Condition, Event, EventArc, EventDetails, EventEdge};
+    pub use super::event_ops::find_arc_intersections;
     pub use super::expr::ScalarExpr;
-    pub use super::specs::{FrameSpec, StateSpec};
+    pub use super::report::{ReportScalars, ScalarsTable};
+    pub use super::specs::{FrameSpec, Plane, StateSpec};
     pub use super::vector_expr::VectorExpr;
     pub use crate::prelude::Frame;
 }

@@ -47,7 +47,9 @@ impl PartialOrd for EventPoint {
 ///        e.g., [ timeline_A_arcs, timeline_B_arcs, ... ]
 ///
 /// Output: A Vec of (Epoch, Epoch) windows where *all* timelines were active.
-
+///
+/// :type timelines: list[list[EventArc]]
+/// :rtype: list[tuple]
 #[cfg_attr(feature = "python", pyfunction)]
 pub fn find_arc_intersections(timelines: Vec<Vec<EventArc>>) -> Vec<(Epoch, Epoch)> {
     let num_timelines = timelines.len();
