@@ -9,7 +9,10 @@
  */
 
 use crate::analysis::{ScalarExpr, StateSpec};
+use csv::Writer;
+use hifitime::Epoch;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
@@ -81,5 +84,56 @@ impl ReportScalars {
             scalars,
             state_spec,
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ScalarsRow {
+    pub epoch: Epoch,
+    pub values: Vec<f64>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ScalarsTable {
+    /// The "epoch" column is implicit and always first.
+    pub headers: Vec<String>,
+    pub rows: Vec<ScalarsRow>,
+}
+
+impl ScalarsTable {
+    /// Export this scalars table to CSV
+    pub fn to_csv(&self, path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+        if self.rows.is_empty() {
+            return Ok(());
+        }
+
+        let mut wtr = Writer::from_path(path)?;
+
+        // Write the epoch header in the proper timescale
+        wtr.write_field(format!("Epoch ({})", self.rows[0].epoch.time_scale))?;
+        // Write all the other headers from our struct
+        for header in &self.headers {
+            wtr.write_field(header)?;
+        }
+        // Finalize the header row
+        wtr.write_record(None::<&[u8]>)?;
+
+        for row in &self.rows {
+            wtr.write_field(row.epoch.to_string())?;
+
+            // Write all f64 values
+            for value in &row.values {
+                wtr.write_field(value.to_string())?;
+            }
+
+            // Finalize this data row
+            wtr.write_record(None::<&[u8]>)?;
+        }
+
+        // The writer will be flushed automatically when it goes out of scope,
+        // but explicit flush is good practice to catch I/O errors.
+        wtr.flush()?;
+
+        Ok(())
     }
 }

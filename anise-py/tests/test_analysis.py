@@ -6,7 +6,7 @@ from anise import (
     LocationDataSet,
 )
 from anise.astro import Location, TerrainMask, FrameUid
-from anise.analysis import Event
+from anise.analysis import Event, Condition
 import anise.analysis as analysis
 from anise.time import Epoch, TimeSeries, Unit
 from anise.constants import Frames
@@ -203,16 +203,18 @@ def test_analysis_event():
     )
 
     # Define several event criteria
-    sunset_nadir = analysis.Event(
-        scalar=analysis.ScalarExpr.SunAngle(observer_id=-85),
-        desired_value=90.0,
-        epoch_precision=Unit.Second * 0.5,
-        value_precision=0.1,
+    sun_has_set = analysis.Event(
+        analysis.ScalarExpr.SunAngle(observer_id=-85),
+        Condition.LessThan(90.0),
+        Unit.Second * 0.5,
         ab_corr=None,
     )
-    apolune = analysis.Event.apoapsis()
-    perilune = analysis.Event.periapsis()
-    eclipse = analysis.Event.eclipse(Frames.MOON_J2000)
+    apolune = Event.apoapsis()
+    perilune = Event.periapsis()
+    eclipse = Event.total_eclipse(Frames.MOON_J2000)
+    eclipse_boundary = Event(
+        eclipse.scalar, Condition.Equals(99.0), eclipse.epoch_precision, None
+    )
 
     # Test event serialization
     eclipse_s_expr = eclipse.to_s_expr()
@@ -225,23 +227,18 @@ def test_analysis_event():
     period = start_orbit.period()
 
     # Find apoapsis events
-    apo_events = almanac.report_events(
-        lro_state_spec, apolune, start_epoch, end_epoch, period * 0.5
-    )
+    apo_events = almanac.report_events(lro_state_spec, apolune, start_epoch, end_epoch)
     for event in apo_events:
         ta_deg = event.orbit.ta_deg()
-        assert abs(ta_deg - 180.0) < apolune.value_precision
+        assert abs(ta_deg - 180.0) < 1e-2
 
     # Find periapsis events
     peri_events = almanac.report_events(
-        lro_state_spec, perilune, start_epoch, end_epoch, period * 0.5
+        lro_state_spec, perilune, start_epoch, end_epoch
     )
     for event in peri_events:
         ta_deg = event.orbit.ta_deg()
-        assert (
-            ta_deg < perilune.value_precision
-            or abs(ta_deg - 360.0) < perilune.value_precision
-        )
+        assert ta_deg < 1e-2 or abs(ta_deg - 360.0) < 1e-2
 
     # Check that we found one apoapsis/periapsis per orbit
     dts_apo = [
@@ -259,21 +256,21 @@ def test_analysis_event():
     tick = Epoch.system_now()
     # Find sunset/sunrise arcs
     sunset_arcs = almanac.report_event_arcs(
-        lro_state_spec, sunset_nadir, start_epoch, end_epoch
+        lro_state_spec, sun_has_set, start_epoch, end_epoch
     )
     print(
         f"{len(sunset_arcs)} sunset arcs found in {Epoch.system_now().timedelta(tick)}"
     )
-    assert sunset_arcs[1].rise.edge == analysis.EventEdge.Rising
-    assert sunset_arcs[1].fall.edge == analysis.EventEdge.Falling
-    assert len(sunset_arcs) == 309
+    assert sunset_arcs[1].rise.edge == analysis.EventEdge.Falling
+    assert sunset_arcs[1].fall.edge == analysis.EventEdge.Rising
+    assert len(sunset_arcs) == 124
 
     # Find eclipse arcs in a short time span
     tick = Epoch.system_now()
     eclipse_arcs = almanac.report_event_arcs(
-        lro_state_spec, eclipse, start_epoch, start_epoch + Unit.Hour * 3
+        lro_state_spec, eclipse, start_epoch, start_epoch + period * 3
     )
-    assert len(eclipse_arcs) == 2
+    assert len(eclipse_arcs) == 3
     print("Eclipse arcs found in ", Epoch.system_now().timedelta(tick))
 
     # Validate the eclipse periods
@@ -289,11 +286,14 @@ def test_analysis_event():
         )
         for epoch in series:
             orbit = lro_state_spec.evaluate(epoch, almanac)
-            eclipse_val = eclipse.eval(orbit, almanac)
-            is_in_eclipse = abs(eclipse_val) <= eclipse.value_precision
+            # IMPORTANT: Eclipse is not defined as a Condition.Equal
+            # so it cannot be used as-is for an `eval` check.
+            # Instead we use the eclipse boundary. That's how's the internals work.
+            eclipse_val = eclipse_boundary.eval(orbit, almanac)
+            is_in_eclipse = eclipse_val >= 0.0
 
             if arc.start_epoch() <= epoch < arc.end_epoch():
-                assert is_in_eclipse, f"Epoch {epoch} should be in eclipse"
+                assert is_in_eclipse, f"Epoch {epoch} should be in eclipse: {eclipse_val}: {arc}"
             else:
                 # Outside the arc, it should not be in eclipse, or it's a falling value
                 assert not is_in_eclipse or eclipse_val < 0.0
@@ -313,7 +313,7 @@ def test_location_accesses():
         0.834_939,
         FrameUid(399, 399),
         mask,
-        terrain_mask_ignored=False,
+        terrain_mask_ignored=True,
     )
 
     # To build a location data set kernel, we must first build a location dhall set entry
@@ -353,19 +353,13 @@ def test_location_accesses():
     )
     print(f"{len(comm_arcs)} Comm arcs found in ", Epoch.system_now().timedelta(tick))
 
-    report = analysis.ReportScalars(
-        [(analysis.ScalarExpr.ElevationFromLocation(1, None), "Elevation")],
-        lro_state_spec,
-    )
     series = TimeSeries(
         start_epoch,
         start_epoch + Unit.Day * 3,
         Unit.Minute * 0.5,
         inclusive=True,
     )
-    data = almanac.report_scalars(report, series)
 
-    # Broken: https://github.com/nyx-space/anise/issues/537
     for arc in comm_arcs:
         # Check points in and around the arc to confirm the event state
         series = TimeSeries(
@@ -376,15 +370,10 @@ def test_location_accesses():
         )
         for epoch in series:
             orbit = lro_state_spec.evaluate(epoch, almanac)
-            elevation_val = horizon.eval(orbit, almanac)
-            is_visible = abs(elevation_val) <= horizon.value_precision
+            aer = almanac.azimuth_elevation_range_sez_from_location_name(orbit, "My Alias")
+            is_visible = aer.elevation_deg > 0.0
 
             if arc.start_epoch() <= epoch < arc.end_epoch():
                 assert is_visible, f"Epoch {epoch} should be visible"
             else:
-                assert not is_in_visible or elevation_val < 0.0
-
-            # We can also call the AER function directly for this location
-            breakponit()
-            aer = almanac.azimuth
-            print("")
+                assert not is_visible

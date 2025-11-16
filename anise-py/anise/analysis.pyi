@@ -5,15 +5,27 @@ from anise.astro import Frame, Orbit
 from anise.time import Duration, Epoch
 
 @typing.final
+class Condition:
+    """Defines an event condition"""
+
+    def __init__(self) -> None:
+        """Defines an event condition"""
+    Between: type = ...
+    Equals: type = ...
+    GreaterThan: type = ...
+    LessThan: type = ...
+    Maximum: type = ...
+    Minimum: type = ...
+
+@typing.final
 class Event:
     """Defines a state parameter event finder from the desired value of the scalar expression to compute, precision on timing and value, and the aberration."""
     ab_corr: Aberration
-    desired_value: float
+    condition: Condition
     epoch_precision: Duration
     scalar: ScalarExpr
-    value_precision: float
 
-    def __init__(self, scalar: ScalarExpr, desired_value: float, epoch_precision: Duration, value_precision: float, ab_corr: Aberration=None) -> None:
+    def __init__(self, scalar: ScalarExpr, condition: Condition, epoch_precision: Duration, ab_corr: Aberration=None) -> None:
         """Defines a state parameter event finder from the desired value of the scalar expression to compute, precision on timing and value, and the aberration."""
 
     @staticmethod
@@ -26,10 +38,11 @@ class Event:
 
     @staticmethod
     def eclipse(eclipsing_frame: Frame) -> Event:
-        """Total eclipse event finder: returns events where the eclipsing percentage is greater than 98.9%."""
+        """Eclipse event finder, including penumbras: returns events where the eclipsing percentage is greater than 1%."""
 
     def eval(self, orbit: Orbit, almanac: Almanac) -> float:
-        """Compute the event finding function of this event provided an Orbit and Almanac."""
+        """Compute the event finding function of this event provided an Orbit and Almanac.
+If we're "in the event", the evaluation will be greater or equal to zero."""
 
     def eval_string(self, orbit: Orbit, almanac: Almanac) -> str:
         """Pretty print the evaluation of this event for the provided Orbit and Almanac"""
@@ -39,11 +52,19 @@ class Event:
         """Convert the S-Expression to a Event"""
 
     @staticmethod
+    def penumbra(eclipsing_frame: Frame) -> Event:
+        """Penumbral eclipse event finder: returns events where the eclipsing percentage is greater than 1% and less than 99%."""
+
+    @staticmethod
     def periapsis() -> Event:
         """Periapsis event finder, with an epoch precision of 0.1 seconds"""
 
     def to_s_expr(self) -> str:
         """Converts this Event to its S-Expression"""
+
+    @staticmethod
+    def total_eclipse(eclipsing_frame: Frame) -> Event:
+        """Total eclipse event finder: returns events where the eclipsing percentage is greater than 98.9%."""
 
     def __eq__(self, value: typing.Any) -> bool:
         """Return self==value."""
@@ -302,7 +323,7 @@ class ReportScalars:
     """A basic report builder that can be serialized seperately from the execution.
 The scalars must be a tuple of (ScalarExpr, String) where the String is the alias (optional)."""
 
-    def __init__(self, scalars: list, state_spec: StateSpec) -> None:
+    def __init__(self, scalars: list, state_spec: StateSpec) -> ReportScalars:
         """A basic report builder that can be serialized seperately from the execution.
 The scalars must be a tuple of (ScalarExpr, String) where the String is the alias (optional)."""
 
@@ -422,3 +443,11 @@ class VectorExpr:
     Unit: type = ...
     VecProjection: type = ...
     Velocity: type = ...
+
+def find_arc_intersections(timelines: list[list[EventArc]]) -> list[tuple]:
+    """Finds the intersection of multiple event arc timelines.
+
+Input: A Vec where each element is a timeline (Vec<EventArc>)
+e.g., [ timeline_A_arcs, timeline_B_arcs, ... ]
+
+Output: A Vec of (Epoch, Epoch) windows where *all* timelines were active."""
