@@ -14,7 +14,6 @@ use anise::constants::frames::{
     EARTH_ITRF93, EARTH_J2000, IAU_EARTH_FRAME, IAU_MOON_FRAME, MOON_J2000, SUN_J2000, VENUS_J2000,
 };
 use anise::constants::orientations::ITRF93;
-use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
 use anise::math::Vector3;
 use anise::prelude::*;
 
@@ -333,15 +332,9 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
 
     for epoch in TimeSeries::inclusive(epoch, epoch + period, 1.seconds()) {
         // Rebuild the ground station at this new epoch
-        let tx_madrid = Orbit::try_latlongalt(
-            latitude_deg,
-            longitude_deg,
-            height_km,
-            MEAN_EARTH_ANGULAR_VELOCITY_DEG_S.to_radians(),
-            epoch,
-            iau_earth,
-        )
-        .unwrap();
+        let tx_madrid =
+            Orbit::try_latlongalt(latitude_deg, longitude_deg, height_km, epoch, iau_earth)
+                .unwrap();
 
         let rx_lro = almanac
             .transform(lro_frame, MOON_J2000, epoch, None)

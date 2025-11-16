@@ -2,7 +2,6 @@ extern crate pretty_env_logger as pel;
 
 use anise::astro::orbit::ECC_EPSILON;
 use anise::constants::frames::{EARTH_J2000, MOON_J2000};
-use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
 use anise::errors::PhysicsError;
 use anise::math::angles::{between_0_360, between_pm_180};
 use anise::math::Vector3;
@@ -602,15 +601,7 @@ fn verif_geodetic_vallado(almanac: Almanac) {
         "Periapsis altitude"
     );
 
-    let r = Orbit::try_latlongalt(
-        lat,
-        long,
-        height,
-        MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
-        epoch,
-        eme2k,
-    )
-    .unwrap();
+    let r = Orbit::try_latlongalt(lat, long, height, epoch, eme2k).unwrap();
     f64_eq!(r.radius_km.x, ri_val, "r_i");
     f64_eq!(r.radius_km.y, rj_val, "r_j");
     f64_eq!(r.radius_km.z, rk, "r_k");
@@ -624,15 +615,7 @@ fn verif_geodetic_vallado(almanac: Almanac) {
     let ri = 6_119.403_233_271_109;
     let rj = -1_571.480_316_600_378_3;
     let rk = -871.560_226_712_024_7;
-    let r = Orbit::try_latlongalt(
-        lat,
-        long,
-        height,
-        MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
-        epoch,
-        eme2k,
-    )
-    .unwrap();
+    let r = Orbit::try_latlongalt(lat, long, height, epoch, eme2k).unwrap();
     f64_eq!(r.radius_km.x, ri, "r_i");
     f64_eq!(r.radius_km.y, rj, "r_j");
     f64_eq!(r.radius_km.z, rk, "r_k");
@@ -643,15 +626,7 @@ fn verif_geodetic_vallado(almanac: Almanac) {
     f64_eq!(r.height_km().unwrap(), height_val, "height");
 
     // Check reciprocity near poles
-    let r = Orbit::try_latlongalt(
-        0.1,
-        long,
-        height_val,
-        MEAN_EARTH_ANGULAR_VELOCITY_DEG_S.to_radians(),
-        epoch,
-        eme2k,
-    )
-    .unwrap();
+    let r = Orbit::try_latlongalt(0.1, long, height_val, epoch, eme2k).unwrap();
     f64_eq!(r.latitude_deg().unwrap(), 0.1, "latitude (φ)");
 }
 

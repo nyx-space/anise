@@ -146,7 +146,6 @@ def test_state_transformation():
         48.8566,
         2.3522,
         0.4,
-        radians(mean_earth_angular_velocity_deg_s),
         epoch,
         itrf93,
     )

@@ -12,7 +12,7 @@ use crate::{
     astro::{Aberration, AzElRange},
     constants::SPEED_OF_LIGHT_KM_S,
     ephemerides::{EphemerisError, EphemerisPhysicsSnafu},
-    errors::{AlmanacError, EphemerisSnafu, OrientationSnafu, PhysicsError},
+    errors::{AlmanacError, EphemerisSnafu, PhysicsError},
     frames::Frame,
     math::angles::{between_0_360, between_pm_180},
     prelude::Orbit,
@@ -196,17 +196,11 @@ impl Almanac {
                 .map_err(|e| AlmanacError::GenericError {
                     err: format!("{e} when fetching {} frame data", location.frame),
                 })?;
-        let omega = self
-            .angular_velocity_wrt_j2000_rad_s(from_frame, epoch)
-            .context(OrientationSnafu {
-                action: "AER computation from location ID",
-            })?;
         // Build the state of this orbit
-        match Orbit::try_latlongalt_omega(
+        match Orbit::try_latlongalt(
             location.latitude_deg,
             location.longitude_deg,
             location.height_km,
-            omega,
             epoch,
             from_frame,
         ) {
@@ -249,7 +243,6 @@ mod ut_aer {
     use crate::astro::orbit::Orbit;
     use crate::astro::AzElRange;
     use crate::constants::frames::{EARTH_ITRF93, EARTH_J2000, IAU_EARTH_FRAME};
-    use crate::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
     use crate::math::cartesian::CartesianState;
     use crate::prelude::{Almanac, Epoch};
     use crate::structure::location::{Location, TerrainMask};
@@ -266,21 +259,33 @@ mod ut_aer {
         let height_km = 56.0e-3;
         let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 1, 14);
 
-        let ground_station = Orbit::try_latlongalt(
-            latitude_deg,
-            longitude_deg,
-            height_km,
-            MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
-            epoch,
-            itrf93,
-        )
-        .unwrap();
+        let ground_station =
+            Orbit::try_latlongalt(latitude_deg, longitude_deg, height_km, epoch, itrf93).unwrap();
 
         let aer = almanac
             .azimuth_elevation_range_sez(ground_station, ground_station, None, None)
             .unwrap();
 
         assert!(!aer.is_valid());
+    }
+
+    #[test]
+    fn gh569_regress() {
+        let almanac = Almanac::new("../data/pck08.pca")
+            .unwrap()
+            .load("../data/de440s.bsp")
+            .unwrap();
+        let iau_earth = almanac.frame_info(IAU_EARTH_FRAME).unwrap();
+
+        let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 1, 14);
+
+        let orbit_iau = Orbit::try_latlongalt(0.0, 0.0, 35_786.00, epoch, iau_earth).unwrap();
+
+        println!("{orbit_iau:x}");
+        let orbit = almanac.transform_to(orbit_iau, EARTH_J2000, None).unwrap();
+
+        println!("{orbit:x}");
+        assert!(orbit.sma_km().unwrap() >= 0.0);
     }
 
     /// Test comes from Nyx v 2.0.0-beta where we propagate a trajectory in GMAT and in Nyx and check that we match the measurement data.
@@ -420,7 +425,6 @@ mod ut_aer {
                 latitude_deg,
                 longitude_deg,
                 height_km,
-                MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
                 state.epoch,
                 iau_earth,
             )
@@ -460,7 +464,6 @@ mod ut_aer {
                 latitude_deg,
                 longitude_deg,
                 height_km,
-                MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
                 state.epoch,
                 iau_earth,
             )
