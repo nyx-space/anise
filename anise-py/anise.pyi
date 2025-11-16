@@ -1029,7 +1029,7 @@ class astro:
             """Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid, and with ZERO angular velocity in this frame.
     Use this initializer for creating a fixed point in the ITRF93 frame for example: the correct angular velocity will be applied when transforming this to EME2000 for example.
 
-    Refer to [try_latlongalt_omega] if you need to build a fixed point with a non-zero angular velocity in the definition frame.
+    Refer to [from_latlongalt_omega] if you need to build a fixed point with a non-zero angular velocity in the definition frame.
 
     NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
     Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016"""

@@ -138,6 +138,8 @@ def test_state_transformation():
 
     assert orig_state == from_state_itrf93_to_eme2k
 
+    # Demo creation of a ground station
+    mean_earth_angular_velocity_deg_s = 0.004178079012116429
     # Grab the loaded frame info
     itrf93 = almanac.frame_info(Frames.EARTH_ITRF93)
     paris = Orbit.from_latlongalt(
