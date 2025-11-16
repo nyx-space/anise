@@ -115,7 +115,6 @@ mod ut_solar {
         constants::{
             celestial_objects::EARTH,
             frames::{EARTH_J2000, IAU_EARTH_FRAME, SUN_J2000},
-            usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
         },
         prelude::*,
     };
@@ -165,7 +164,6 @@ mod ut_solar {
                 state_bf.latitude_deg().unwrap(),
                 state_bf.longitude_deg(),
                 0.0,
-                MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
                 epoch,
                 iau_earth,
             )

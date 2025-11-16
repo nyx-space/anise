@@ -1,8 +1,5 @@
 use anise::{
-    constants::{
-        frames::{EME2000, IAU_EARTH_FRAME},
-        usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
-    },
+    constants::frames::{EME2000, IAU_EARTH_FRAME},
     prelude::{Almanac, Orbit},
 };
 use core::str::FromStr;
@@ -96,7 +93,6 @@ fn validate_aer_vs_gmat_cislunar1() {
             DSS65_LATITUDE_DEG,
             DSS65_LONGITUDE_DEG,
             DSS65_HEIGHT_KM,
-            MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
             rx.epoch,
             almanac.frame_info(IAU_EARTH_FRAME).unwrap(),
         )

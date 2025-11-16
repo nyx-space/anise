@@ -249,7 +249,6 @@ mod ut_aer {
     use crate::astro::orbit::Orbit;
     use crate::astro::AzElRange;
     use crate::constants::frames::{EARTH_ITRF93, EARTH_J2000, IAU_EARTH_FRAME};
-    use crate::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
     use crate::math::cartesian::CartesianState;
     use crate::prelude::{Almanac, Epoch};
     use crate::structure::location::{Location, TerrainMask};
@@ -266,15 +265,8 @@ mod ut_aer {
         let height_km = 56.0e-3;
         let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 1, 14);
 
-        let ground_station = Orbit::try_latlongalt(
-            latitude_deg,
-            longitude_deg,
-            height_km,
-            MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
-            epoch,
-            itrf93,
-        )
-        .unwrap();
+        let ground_station =
+            Orbit::try_latlongalt(latitude_deg, longitude_deg, height_km, epoch, itrf93).unwrap();
 
         let aer = almanac
             .azimuth_elevation_range_sez(ground_station, ground_station, None, None)
@@ -420,7 +412,6 @@ mod ut_aer {
                 latitude_deg,
                 longitude_deg,
                 height_km,
-                MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
                 state.epoch,
                 iau_earth,
             )
@@ -460,7 +451,6 @@ mod ut_aer {
                 latitude_deg,
                 longitude_deg,
                 height_km,
-                MEAN_EARTH_ANGULAR_VELOCITY_DEG_S,
                 state.epoch,
                 iau_earth,
             )
