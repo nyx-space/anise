@@ -836,7 +836,7 @@ mod ut_analysis {
             .unwrap();
         comms_report.to_csv("comms_verif.csv".into()).unwrap();
 
-        let comm = Event::above_horizon_from_location_id(1, None);
+        let comm = Event::visible_from_location_id(1, None);
         let mut comm_boundary = comm.clone();
         comm_boundary.condition = Condition::Equals(0.0);
 
@@ -853,7 +853,7 @@ mod ut_analysis {
         // Build another comms report with the mask enabled.
         // TODO: Replace this with the new function
 
-        let comm_mask = Event::above_horizon_from_location_id(2, None);
+        let comm_mask = Event::visible_from_location_id(2, None);
         let mut comm_boundary_mask = comm_mask.clone();
         comm_boundary_mask.condition = Condition::Equals(0.0);
 
