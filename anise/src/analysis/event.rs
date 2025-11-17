@@ -124,9 +124,6 @@ impl Event {
     }
 
     /// Report events where the object is above the horizon when seen from the provided location ID.
-    ///
-    /// :type eclipsing_frame: Frame
-    /// :rtype: Event
     pub fn above_horizon_from_location_id(
         location_id: i32,
         obstructing_body: Option<Frame>,

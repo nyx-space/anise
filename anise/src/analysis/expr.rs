@@ -368,7 +368,7 @@ impl ScalarExpr {
                     expr: Box::new(self.clone()),
                     state: orbit,
                 })?
-                .elevation_deg),
+                .elevation_above_mask_deg()),
             Self::RangeFromLocation {
                 location_id,
                 obstructing_body,

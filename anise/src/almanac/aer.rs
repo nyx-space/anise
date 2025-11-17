@@ -124,6 +124,7 @@ impl Almanac {
             range_km: rho_sez.norm(),
             range_rate_km_s,
             obstructed_by,
+            mask_deg: None,
             light_time: (rho_sez.norm() / SPEED_OF_LIGHT_KM_S).seconds(),
         })
     }
@@ -207,17 +208,10 @@ impl Almanac {
             Ok(tx) => self
                 .azimuth_elevation_range_sez(rx, tx, obstructing_body, ab_corr)
                 .map(|mut aer| {
-                    // Apply elevation mask
-                    if location.elevation_mask_at_azimuth_deg(aer.azimuth_deg) >= aer.elevation_deg
-                    {
-                        // Specify that it's obstructed, and set all values to NaN.
-                        aer.obstructed_by = Some(from_frame);
-                        if !location.terrain_mask_ignored {
-                            aer.range_km = f64::NAN;
-                            aer.range_rate_km_s = f64::NAN;
-                            aer.azimuth_deg = f64::NAN;
-                            aer.elevation_deg = f64::NAN;
-                        }
+                    // Set the elevation mask at this azimuth, if desired
+                    if !location.terrain_mask_ignored {
+                        aer.mask_deg =
+                            Some(location.elevation_mask_at_azimuth_deg(aer.azimuth_deg));
                     }
                     // Return the mutated aer
                     aer
@@ -326,6 +320,7 @@ mod ut_aer {
                 range_km: 91457.2680164461,
                 range_rate_km_s: 2.198785823156608,
                 obstructed_by: None,
+                mask_deg: None,
                 light_time: 305068608 * Unit::Nanosecond,
             },
             AzElRange {
@@ -335,6 +330,7 @@ mod ut_aer {
                 range_km: 99963.52694785153,
                 range_rate_km_s: 2.1050771837046436,
                 obstructed_by: None,
+                mask_deg: None,
                 light_time: 333442434 * Unit::Nanosecond,
             },
             AzElRange {
@@ -344,6 +340,7 @@ mod ut_aer {
                 range_km: 107320.26696466877,
                 range_rate_km_s: 2.0559576546712433,
                 obstructed_by: None,
+                mask_deg: None,
                 light_time: 357981877 * Unit::Nanosecond,
             },
             AzElRange {
@@ -353,6 +350,7 @@ mod ut_aer {
                 range_km: 114548.0748997545,
                 range_rate_km_s: 2.0308909733778924,
                 obstructed_by: None,
+                mask_deg: None,
                 light_time: 382091249 * Unit::Nanosecond,
             },
             AzElRange {
@@ -362,6 +360,7 @@ mod ut_aer {
                 range_km: 126569.46572408297,
                 range_rate_km_s: 2.021336308601692,
                 obstructed_by: None,
+                mask_deg: None,
                 light_time: 422190293 * Unit::Nanosecond,
             },
         ];
