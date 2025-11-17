@@ -197,6 +197,7 @@ impl Almanac {
                 .map_err(|e| AlmanacError::GenericError {
                     err: format!("{e} when fetching {} frame data", location.frame),
                 })?;
+
         // Build the state of this orbit
         match Orbit::try_latlongalt(
             location.latitude_deg,
@@ -543,7 +544,7 @@ mod ut_aer {
                 },
             ],
             // Ignore terrain mask for the test
-            terrain_mask_ignored: true,
+            terrain_mask_ignored: false,
         };
 
         // Build a dataset with this single location
@@ -633,8 +634,7 @@ mod ut_aer {
 
             // IMPORTANT: We're getting much larger errors here but much less deviation than in the `gmat_verif` case.
             // Here, the first four errors are -5 km +/- 0.7 (and the last case is -2.6 km). In the other test, we vary
-            // from 0.3 km to 5 km.
-            // This indicates that the higher precision rotation is better, but that the data source used in that test is different.
+            // from 0.3 km to 5 km. I don't know the source of this.
             let expect = gmat_ranges_km[sno];
             assert!(dbg!(aer_from_name.range_km - expect).abs() < 5.1);
 

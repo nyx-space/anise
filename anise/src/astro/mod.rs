@@ -77,8 +77,8 @@ impl AzElRange {
     /// Returns whether there is an obstruction.
     ///
     /// :rtype: bool
-    pub const fn is_obstructed(&self) -> bool {
-        self.obstructed_by.is_some()
+    pub fn is_obstructed(&self) -> bool {
+        self.obstructed_by.is_some() || self.elevation_above_mask_deg() < 0.0
     }
 
     /// Returns the elevation above the terrain mask for this azimuth, in degrees.
@@ -235,7 +235,9 @@ impl AzElRange {
     ///
     /// :rtype: typing.Tuple
     #[allow(clippy::type_complexity)]
-    fn __getnewargs__(&self) -> Result<(Epoch, f64, f64, f64, f64, Option<Frame>), PyErr> {
+    fn __getnewargs__(
+        &self,
+    ) -> Result<(Epoch, f64, f64, f64, f64, Option<Frame>, Option<f64>), PyErr> {
         Ok((
             self.epoch,
             self.azimuth_deg,
@@ -243,6 +245,7 @@ impl AzElRange {
             self.range_km,
             self.range_rate_km_s,
             self.obstructed_by,
+            self.mask_deg,
         ))
     }
 }
