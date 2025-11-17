@@ -12,12 +12,17 @@ class AzElRange:
     elevation_deg: float
     epoch: Epoch
     light_time: Duration
+    mask_deg: float
     obstructed_by: Frame
     range_km: float
     range_rate_km_s: float
 
-    def __init__(self, epoch: Epoch, azimuth_deg: float, elevation_deg: float, range_km: float, range_rate_km_s: float, obstructed_by: Frame=None) -> AzElRange:
+    def __init__(self, epoch: Epoch, azimuth_deg: float, elevation_deg: float, range_km: float, range_rate_km_s: float, obstructed_by: Frame=None, mask_deg: float=None) -> AzElRange:
         """A structure that stores the result of Azimuth, Elevation, Range, Range rate calculation."""
+
+    def elevation_above_mask_deg(self) -> float:
+        """Returns the elevation above the terrain mask for this azimuth, in degrees.
+If the terrain mask was zero at this azimuth, then the elevation above mask is equal to the elevation_deg field."""
 
     def is_obstructed(self) -> bool:
         """Returns whether there is an obstruction."""
@@ -583,21 +588,22 @@ using the keplerian(..) method.
 The conversion is from GMAT's MeanToTrueAnomaly function, transliterated originally by Claude and GPT4 with human adjustments."""
 
     @staticmethod
-    def from_latlongalt(latitude_deg: float, longitude_deg: float, height_km: float, angular_velocity_rad_s: float, epoch: Epoch, frame: Frame) -> Orbit:
-        """(Low fidelity) Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid given the angular velocity in rad/s applied entirely on the +Z axis.
+    def from_latlongalt(latitude_deg: float, longitude_deg: float, height_km: float, epoch: Epoch, frame: Frame) -> Orbit:
+        """Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid, and with ZERO angular velocity in this frame.
+Use this initializer for creating a fixed point in the ITRF93 frame for example: the correct angular velocity will be applied when transforming this to EME2000 for example.
 
-**WARNING**: This function assumes that all the angular velocity is applied on the +Z axis..
-
-**Note:** The mean Earth angular velocity is `0.004178079012116429` deg/s, or 7.292123516990373e-05 rad/s.
+Refer to [try_latlongalt_omega] if you need to build a fixed point with a non-zero angular velocity in the definition frame.
 
 NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
 Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016"""
 
     @staticmethod
     def from_latlongalt_omega(latitude_deg: float, longitude_deg: float, height_km: float, angular_velocity_rad_s: np.array, epoch: Epoch, frame: Frame) -> Orbit:
-        """Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid given the angular velocity vector (omega).
+        """Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid given the angular velocity vector.
+NOTE: Only specify the angular velocity if there's an EXTRA angular velocity of the lat/long/alt point in the provided frame.
 
 Consider using the [Almanac]'s [angular_velocity_wrt_j2000_rad_s] function or [angular_velocity_rad_s] to retrieve the exact angular velocity vector between two orientations.
+Example: build a lat/long/alt point referenced in the ITRF93 frame but by specifying the Frame as the EME2000 frame and providing the angular velocity between the ITRF93 and EME2000 frame at the desired time.
 
 NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
 Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016"""

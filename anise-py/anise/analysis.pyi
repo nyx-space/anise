@@ -29,10 +29,6 @@ class Event:
         """Defines a state parameter event finder from the desired value of the scalar expression to compute, precision on timing and value, and the aberration."""
 
     @staticmethod
-    def above_horizon_from_location_id(location_id: int, obstructing_body: Frame=None) -> Event:
-        """Report events where the object is above the horizon when seen from the provided location ID."""
-
-    @staticmethod
     def apoapsis() -> Event:
         """Apoapsis event finder, with an epoch precision of 0.1 seconds"""
 
@@ -65,6 +61,10 @@ If we're "in the event", the evaluation will be greater or equal to zero."""
     @staticmethod
     def total_eclipse(eclipsing_frame: Frame) -> Event:
         """Total eclipse event finder: returns events where the eclipsing percentage is greater than 98.9%."""
+
+    @staticmethod
+    def visible_from_location_id(location_id: int, obstructing_body: Frame=None) -> Event:
+        """Report events where the object is above the terrain (or horizon if terrain is not set) when seen from the provided location ID."""
 
     def __eq__(self, value: typing.Any) -> bool:
         """Return self==value."""

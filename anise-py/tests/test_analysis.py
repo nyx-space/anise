@@ -336,7 +336,7 @@ def test_location_accesses():
     almanac.describe(locations=True)
 
     # Build the horizon event
-    horizon = Event.above_horizon_from_location_id(1)
+    horizon = Event.visible_from_location_id(1)
 
     lro_frame = Frame(-85, 1)  # LRO NAIF ID
     start_epoch, _end_epoch = almanac.spk_domain(-85)

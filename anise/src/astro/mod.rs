@@ -47,6 +47,7 @@ pub type PhysicsResult<T> = Result<T, PhysicsError>;
 /// :type range_km: float
 /// :type range_rate_km_s: float
 /// :type obstructed_by: Frame, optional
+/// :type mask_deg: float, optional
 /// :rtype: AzElRange
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
@@ -54,10 +55,13 @@ pub type PhysicsResult<T> = Result<T, PhysicsError>;
 pub struct AzElRange {
     pub epoch: Epoch,
     pub azimuth_deg: f64,
+    /// Elevation above the horizon, without accounting for the terrain mask if one was set
     pub elevation_deg: f64,
     pub range_km: f64,
     pub range_rate_km_s: f64,
-    /// Set to the frame of the location if a terrain mask hides the object.
+    /// Optionally set a terrain mask at this azimuth
+    pub mask_deg: Option<f64>,
+    /// Obstructed by only set if the AER computation checked for obstructions. Use elevation_above_mask_deg to check for terrain.
     pub obstructed_by: Option<Frame>,
     pub light_time: Duration,
 }
@@ -74,17 +78,24 @@ impl AzElRange {
     /// Returns whether there is an obstruction.
     ///
     /// :rtype: bool
-    pub const fn is_obstructed(&self) -> bool {
-        self.obstructed_by.is_some()
+    pub fn is_obstructed(&self) -> bool {
+        self.obstructed_by.is_some() || self.elevation_above_mask_deg() < 0.0
+    }
+
+    /// Returns the elevation above the terrain mask for this azimuth, in degrees.
+    /// If the terrain mask was zero at this azimuth, then the elevation above mask is equal to the elevation_deg field.
+    ///
+    /// :rtype: float
+    pub fn elevation_above_mask_deg(&self) -> f64 {
+        self.elevation_deg - self.mask_deg.unwrap_or(0.0)
     }
 }
 
 #[cfg_attr(feature = "python", pymethods)]
 #[cfg(feature = "python")]
 impl AzElRange {
-    /// Initializes a new AzElRange instance
     #[new]
-    #[pyo3(signature=(epoch, azimuth_deg, elevation_deg, range_km, range_rate_km_s, obstructed_by=None))]
+    #[pyo3(signature=(epoch, azimuth_deg, elevation_deg, range_km, range_rate_km_s, obstructed_by=None, mask_deg=None))]
     pub fn py_new(
         epoch: Epoch,
         azimuth_deg: f64,
@@ -92,6 +103,7 @@ impl AzElRange {
         range_km: f64,
         range_rate_km_s: f64,
         obstructed_by: Option<Frame>,
+        mask_deg: Option<f64>,
     ) -> Self {
         use crate::constants::SPEED_OF_LIGHT_KM_S;
         use hifitime::TimeUnits;
@@ -103,6 +115,7 @@ impl AzElRange {
             range_km,
             range_rate_km_s,
             obstructed_by,
+            mask_deg,
             light_time: (range_km / SPEED_OF_LIGHT_KM_S).seconds(),
         }
     }
@@ -183,6 +196,18 @@ impl AzElRange {
         Ok(())
     }
 
+    /// :rtype: float
+    #[getter]
+    fn get_mask_deg(&self) -> PyResult<Option<f64>> {
+        Ok(self.mask_deg)
+    }
+    /// :type mask_deg: float
+    #[setter]
+    fn set_mask_deg(&mut self, mask_deg: Option<f64>) -> PyResult<()> {
+        self.mask_deg = mask_deg;
+        Ok(())
+    }
+
     /// :rtype: Duration
     #[getter]
     fn get_light_time(&self) -> PyResult<Duration> {
@@ -211,7 +236,9 @@ impl AzElRange {
     ///
     /// :rtype: typing.Tuple
     #[allow(clippy::type_complexity)]
-    fn __getnewargs__(&self) -> Result<(Epoch, f64, f64, f64, f64, Option<Frame>), PyErr> {
+    fn __getnewargs__(
+        &self,
+    ) -> Result<(Epoch, f64, f64, f64, f64, Option<Frame>, Option<f64>), PyErr> {
         Ok((
             self.epoch,
             self.azimuth_deg,
@@ -219,6 +246,7 @@ impl AzElRange {
             self.range_km,
             self.range_rate_km_s,
             self.obstructed_by,
+            self.mask_deg,
         ))
     }
 }

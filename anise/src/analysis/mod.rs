@@ -785,7 +785,7 @@ mod ut_analysis {
         );
 
         // Test access times
-        let loc = Location {
+        let mut loc = Location {
             latitude_deg: 40.427_222,
             longitude_deg: 4.250_556,
             height_km: 0.834_939,
@@ -807,9 +807,18 @@ mod ut_analysis {
             terrain_mask_ignored: true,
         };
 
-        almanac.location_data.push(loc, Some(1), None).unwrap();
+        almanac
+            .location_data
+            .push(loc.clone(), Some(1), None)
+            .unwrap();
 
-        // For code coverage (and used in debugging), export all of the true anomaly values.
+        // Insert a duplicate of this location but where the terrain mask is applied
+        loc.terrain_mask_ignored = false;
+        almanac
+            .location_data
+            .push(loc, Some(2), Some("Paris w/ mask"))
+            .unwrap();
+
         let comms_report = almanac
             .report_scalars_flat(
                 &ReportScalars {
@@ -827,7 +836,7 @@ mod ut_analysis {
             .unwrap();
         comms_report.to_csv("comms_verif.csv".into()).unwrap();
 
-        let comm = Event::above_horizon_from_location_id(1, None);
+        let comm = Event::visible_from_location_id(1, None);
         let mut comm_boundary = comm.clone();
         comm_boundary.condition = Condition::Equals(0.0);
 
@@ -841,13 +850,35 @@ mod ut_analysis {
             .unwrap();
         assert!(comm_arcs.len() == 3);
 
+        // Build another comms report with the mask enabled.
+        // TODO: Replace this with the new function
+
+        let comm_mask = Event::visible_from_location_id(2, None);
+        let mut comm_boundary_mask = comm_mask.clone();
+        comm_boundary_mask.condition = Condition::Equals(0.0);
+
+        let comm_arcs_w_mask = almanac
+            .report_event_arcs(
+                &lro_state_spec,
+                &comm_mask,
+                start_epoch,
+                start_epoch + Unit::Day * 3,
+            )
+            .unwrap();
+        assert!(comm_arcs_w_mask.len() == 3);
+        for pass in &comm_arcs_w_mask {
+            println!("w mask: {pass}");
+        }
+
         let exp_durations = [
             Unit::Hour * 8 + Unit::Minute * 57,
             Unit::Hour * 9 + Unit::Minute * 34,
             Unit::Hour * 10 + Unit::Minute * 15,
         ];
 
-        for (event, duration) in comm_arcs.iter().zip(exp_durations) {
+        for ((event, duration), event_mask) in
+            comm_arcs.iter().zip(exp_durations).zip(comm_arcs_w_mask)
+        {
             println!("comms - {event}");
             // Check that this is valid
             for epoch in TimeSeries::inclusive(
@@ -869,6 +900,8 @@ mod ut_analysis {
             }
             // I only defined the durations to within a minute, so check that these are correct.
             assert!((event.duration() - duration).abs() < Unit::Minute * 1);
+            // Check that the event with mask is of shorter duration than without
+            assert!(event.duration() > event_mask.duration());
         }
     }
 }

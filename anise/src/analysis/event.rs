@@ -123,14 +123,8 @@ impl Event {
         }
     }
 
-    /// Report events where the object is above the horizon when seen from the provided location ID.
-    ///
-    /// :type eclipsing_frame: Frame
-    /// :rtype: Event
-    pub fn above_horizon_from_location_id(
-        location_id: i32,
-        obstructing_body: Option<Frame>,
-    ) -> Self {
+    /// Report events where the object is above the terrain (or horizon if terrain is not set) when seen from the provided location ID.
+    pub fn visible_from_location_id(location_id: i32, obstructing_body: Option<Frame>) -> Self {
         Event {
             scalar: ScalarExpr::ElevationFromLocation {
                 location_id,
@@ -298,19 +292,19 @@ impl Event {
         Event::penumbra(eclipsing_frame)
     }
 
-    /// Report events where the object is above the horizon when seen from the provided location ID.
+    /// Report events where the object is above the terrain (or horizon if terrain is not set) when seen from the provided location ID.
     ///
     /// :type location_id: int
     /// :type obstructing_body: Frame, optional
     /// :rtype: Event
     #[classmethod]
-    #[pyo3(name = "above_horizon_from_location_id", signature=(location_id, obstructing_body=None))]
-    fn py_above_horizon_from_location_id(
+    #[pyo3(name = "visible_from_location_id", signature=(location_id, obstructing_body=None))]
+    fn py_visible_from_location_id(
         _cls: Bound<'_, PyType>,
         location_id: i32,
         obstructing_body: Option<Frame>,
     ) -> Self {
-        Event::above_horizon_from_location_id(location_id, obstructing_body)
+        Event::visible_from_location_id(location_id, obstructing_body)
     }
 
     #[new]
