@@ -502,12 +502,17 @@ class astro:
         elevation_deg: float
         epoch: Epoch
         light_time: Duration
+        mask_deg: float
         obstructed_by: Frame
         range_km: float
         range_rate_km_s: float
 
-        def __init__(self, epoch: Epoch, azimuth_deg: float, elevation_deg: float, range_km: float, range_rate_km_s: float, obstructed_by: Frame=None) -> AzElRange:
+        def __init__(self, epoch: Epoch, azimuth_deg: float, elevation_deg: float, range_km: float, range_rate_km_s: float, obstructed_by: Frame=None, mask_deg: float=None) -> AzElRange:
             """A structure that stores the result of Azimuth, Elevation, Range, Range rate calculation."""
+
+        def elevation_above_mask_deg(self) -> float:
+            """Returns the elevation above the terrain mask for this azimuth, in degrees.
+If the terrain mask was zero at this azimuth, then the elevation above mask is equal to the elevation_deg field."""
 
         def is_obstructed(self) -> bool:
             """Returns whether there is an obstruction."""
