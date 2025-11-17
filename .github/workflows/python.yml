@@ -309,7 +309,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    if: github.ref_type == 'tag'
+    # if: github.ref_type == 'tag'
     needs: [linux, windows, sdist]
     steps:
       - uses: actions/download-artifact@v4 # No `name` to download all artifacts.
