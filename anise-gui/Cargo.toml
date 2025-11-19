@@ -10,7 +10,7 @@ description = "A graphical user interface for ANISE"
 build = "build.rs"
 
 [dependencies]
-anise = { workspace = true }
+anise = { workspace = true, features = ["analysis", "metaload", "serde_dhall"] }
 hifitime = { workspace = true }
 log = { workspace = true }
 bytes = { workspace = true }

@@ -5,6 +5,7 @@ const LOG_VAR: &str = "ANISE_LOG";
 mod ui;
 use ui::UiApp;
 
+mod analysis;
 mod bpc;
 mod epa;
 mod pca;
