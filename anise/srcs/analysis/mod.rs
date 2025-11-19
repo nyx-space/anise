@@ -39,19 +39,13 @@ use vector_expr::VectorExpr;
 #[cfg(feature = "python")]
 pub mod python;
 
-pub mod prelude {
-    pub use super::elements::OrbitalElement;
-    pub use super::event::{Condition, Event, EventArc, EventDetails, EventEdge};
-    pub use super::report::ReportScalars;
-    pub use super::specs::{FrameSpec, StateSpec};
-    pub use super::expr::ScalarExpr;
-    pub use super::event_ops::find_arc_intersections;
-    pub use super::expr::ScalarExpr;
-    pub use super::report::{ReportScalars, ScalarsTable};
-    pub use super::specs::{FrameSpec, Plane, StateSpec};
-    pub use super::vector_expr::VectorExpr;
-    pub use crate::prelude::Frame;
-}
+pub use self::elements::OrbitalElement;
+pub use self::event::{Condition, Event, EventArc, EventDetails, EventEdge};
+pub use self::event_ops::find_arc_intersections;
+pub use self::expr::ScalarExpr;
+pub use self::report::{ReportScalars, ScalarsTable};
+pub use self::specs::{FrameSpec, Plane, StateSpec};
+pub use self::vector_expr::VectorExpr;
 
 #[derive(Debug, PartialEq, Snafu)]
 #[snafu(visibility(pub))]
@@ -897,7 +891,7 @@ mod ut_analysis {
                         // We're in the event, check that it is evaluated to be in the event.
                         assert!(is_accessible);
                     } else {
-                        assert!(!is_accessible || this_eval < 0.0);
+                        assert!(!in_eclipse || this_eval < 0.0);
                     }
                 }
             }
