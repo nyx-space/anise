@@ -62,13 +62,13 @@ pub struct Event {
 }
 
 impl Event {
-    /// Builds a new event where the epoch precision is set to its default of 0.1 seconds.
+    /// Builds a new event where the epoch precision is set to its default of 10 milliseconds
     #[must_use]
     pub fn new(scalar: ScalarExpr, condition: Condition) -> Self {
         Self {
             scalar,
             condition,
-            epoch_precision: 0.1 * Unit::Second,
+            epoch_precision: Unit::Millisecond * 10,
             ab_corr: None,
         }
     }
@@ -88,7 +88,7 @@ impl Event {
         Event {
             scalar: ScalarExpr::Element(OrbitalElement::TrueAnomaly),
             condition: Condition::Equals(0.0),
-            epoch_precision: Unit::Second * 0.1,
+            epoch_precision: Unit::Millisecond * 10,
             ab_corr: None,
         }
     }
@@ -98,7 +98,7 @@ impl Event {
         Event {
             scalar: ScalarExpr::SolarEclipsePercentage { eclipsing_frame },
             condition: Condition::GreaterThan(99.0),
-            epoch_precision: Unit::Second * 0.1,
+            epoch_precision: Unit::Millisecond * 10,
             ab_corr: None,
         }
     }
@@ -108,7 +108,7 @@ impl Event {
         Event {
             scalar: ScalarExpr::SolarEclipsePercentage { eclipsing_frame },
             condition: Condition::GreaterThan(1.0),
-            epoch_precision: Unit::Second * 0.1,
+            epoch_precision: Unit::Millisecond * 10,
             ab_corr: None,
         }
     }
@@ -118,7 +118,7 @@ impl Event {
         Event {
             scalar: ScalarExpr::SolarEclipsePercentage { eclipsing_frame },
             condition: Condition::Between(1.0, 99.0),
-            epoch_precision: Unit::Second * 0.1,
+            epoch_precision: Unit::Millisecond * 10,
             ab_corr: None,
         }
     }
@@ -131,7 +131,7 @@ impl Event {
                 obstructing_body,
             },
             condition: Condition::GreaterThan(0.0),
-            epoch_precision: Unit::Second * 0.1,
+            epoch_precision: Unit::Millisecond * 10,
             ab_corr: None,
         }
     }
@@ -156,8 +156,8 @@ impl Event {
     /// :type almanac: Almanac
     /// :rtype: float
     pub fn eval(&self, orbit: Orbit, almanac: &Almanac) -> Result<f64, AnalysisError> {
-        let current_val = self.scalar.evaluate(orbit, self.ab_corr, almanac)?;
-        let desired_val = match self.condition {
+        let mut current_val = self.scalar.evaluate(orbit, self.ab_corr, almanac)?;
+        let mut desired_val = match self.condition {
             Condition::Equals(val) => val,
             _ => {
                 return Err(AnalysisError::InvalidEventEval {
@@ -169,9 +169,24 @@ impl Event {
             }
         };
 
-        if self.scalar.is_angle() {
-            // Use the arctan function because it's smooth around zero, but convert back to degrees for the comparison.
+        // Scale to be akin to a full circle.
+        if self.scalar.is_local_time() {
+            current_val *= 360.0 / 24.0;
+            desired_val *= 360.0 / 24.0;
+        } else if let ScalarExpr::Modulo { v: _, ref m } = self.scalar {
+            let modmax = m.evaluate(orbit, self.ab_corr, almanac)?;
+            if modmax >= 1e-12 {
+                current_val *= 360.0 / modmax;
+                desired_val *= 360.0 / modmax;
+            }
+        }
 
+        let use_trig = self.scalar.is_angle()
+            || self.scalar.is_local_time()
+            || matches!(self.scalar, ScalarExpr::Modulo { .. });
+
+        if use_trig {
+            // Use the arctan function because it's smooth around zero, but convert back to degrees for the comparison.
             let current_rad = current_val.to_radians();
             let desired_rad = desired_val.to_radians();
 

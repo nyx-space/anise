@@ -258,13 +258,18 @@ impl OrbitalElement {
             self,
             Self::AoL
                 | Self::AoP
+                | Self::BrouwerMeanShortInclination
+                | Self::BrouwerMeanShortRAAN
+                | Self::BrouwerMeanShortAoP
+                | Self::BrouwerMeanShortMeanAnomaly
                 | Self::Declination
                 | Self::EccentricAnomaly
+                | Self::EquinoctialLambda
                 | Self::FlightPathAngle
-                | Self::Latitude
-                | Self::Longitude
                 | Self::HyperbolicAnomaly
                 | Self::Inclination
+                | Self::Latitude
+                | Self::Longitude
                 | Self::MeanAnomaly
                 | Self::RightAscension
                 | Self::RAAN
@@ -284,19 +289,19 @@ impl OrbitalElement {
             | Self::BrouwerMeanShortAoP
             | Self::BrouwerMeanShortMeanAnomaly
             | Self::Declination
+            | Self::EccentricAnomaly
             | Self::EquinoctialLambda
+            | Self::FlightPathAngle
+            | Self::HyperbolicAnomaly
+            | Self::Inclination
             | Self::Latitude
             | Self::Longitude
-            | Self::FlightPathAngle
-            | Self::Inclination
+            | Self::MeanAnomaly
             | Self::RightAscension
             | Self::RAAN
+            | Self::TrueAnomaly
             | Self::TrueLongitude
-            | Self::VelocityDeclination
-            | Self::MeanAnomaly
-            | Self::EccentricAnomaly
-            | Self::HyperbolicAnomaly
-            | Self::TrueAnomaly => "deg",
+            | Self::VelocityDeclination => "deg",
 
             // Distances
             Self::ApoapsisRadius

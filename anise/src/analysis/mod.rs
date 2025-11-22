@@ -545,6 +545,8 @@ mod ut_analysis {
             Condition::GreaterThan(90.0),
         );
 
+        let solar_0600 = Event::new(ScalarExpr::LocalSolarTime, Condition::Equals(6.0));
+
         let max_sun_el = Event {
             scalar: ScalarExpr::SunAngle { observer_id: -85 },
             condition: Condition::Maximum(),
@@ -784,6 +786,17 @@ mod ut_analysis {
             "penumbras and total eclipses should not intersect"
         );
 
+        let solar6am_events = almanac
+            .report_events(&lro_state_spec, &solar_0600, start_epoch, end_epoch)
+            .unwrap();
+        for (eno, event) in solar6am_events.iter().enumerate() {
+            if eno == 0 {
+                let solar_time = almanac.local_solar_time(event.orbit, None).unwrap();
+                println!("{event} => {solar_time}");
+            }
+            assert!(event.value.abs() < 1e-2);
+        }
+
         // Test access times
         let mut loc = Location {
             latitude_deg: 40.427_222,
@@ -888,13 +901,14 @@ mod ut_analysis {
             ) {
                 if let Ok(orbit) = lro_state_spec.evaluate(epoch, &almanac) {
                     let this_eval = comm_boundary.eval(orbit, &almanac).unwrap();
-                    let is_accessible = this_eval >= 0.0;
+                    // The event is precise to 10 ms, so it may start a few nano degrees below the horizon.
+                    let is_accessible = this_eval >= -1e-9;
 
                     if (event.start_epoch()..event.end_epoch()).contains(&epoch) {
                         // We're in the event, check that it is evaluated to be in the event.
-                        assert!(is_accessible);
+                        assert!(is_accessible, "{this_eval}");
                     } else {
-                        assert!(!is_accessible || this_eval < 0.0);
+                        assert!(!is_accessible, "{this_eval}");
                     }
                 }
             }
