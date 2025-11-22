@@ -46,6 +46,7 @@ pub enum ScalarExpr {
     GravParam {
         celestial_object: i32,
     },
+    Abs(Box<Self>),
     Add {
         a: Box<Self>,
         b: Box<Self>,
@@ -221,6 +222,8 @@ impl ScalarExpr {
                     expr: Box::new(self.clone()),
                 }))?
                 .mu_km3_s2),
+
+            Self::Abs(v) => Ok(v.evaluate(orbit, ab_corr, almanac)?.abs()),
 
             Self::Add { a, b } => {
                 Ok(a.evaluate(orbit, ab_corr, almanac)? + b.evaluate(orbit, ab_corr, almanac)?)
@@ -416,7 +419,21 @@ impl ScalarExpr {
             | ScalarExpr::ElevationFromLocation {
                 location_id: _,
                 obstructing_body: _,
-            } => true,
+            }
+            | ScalarExpr::LocalSolarTime
+            | ScalarExpr::LocalTimeAscNode
+            | ScalarExpr::LocalTimeDescNode
+            | ScalarExpr::Modulo { v: _, m: _ } => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if this is known to be a local time between 0 and 24 hours.
+    pub fn is_local_time(&self) -> bool {
+        match self {
+            ScalarExpr::LocalSolarTime
+            | ScalarExpr::LocalTimeAscNode
+            | ScalarExpr::LocalTimeDescNode => true,
             _ => false,
         }
     }
@@ -436,6 +453,7 @@ impl fmt::Display for ScalarExpr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Constant(v) => write!(f, "{v}"),
+            Self::Abs(v) => write!(f, "|{v}|"),
             Self::Add { a, b } => write!(f, "{a} + {b}"),
             Self::Mul { a, b } => write!(f, "{a} * {b}"),
             Self::Invert(v) => write!(f, "1.0/{v}"),

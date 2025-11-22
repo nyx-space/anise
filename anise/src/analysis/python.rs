@@ -136,6 +136,7 @@ pub enum PyScalarExpr {
     GravParam {
         celestial_object: i32,
     },
+    Abs(Py<PyScalarExpr>),
     Add {
         a: Py<PyScalarExpr>,
         b: Py<PyScalarExpr>,
@@ -255,6 +256,7 @@ impl Clone for PyScalarExpr {
                 Self::GravParam { celestial_object } => Self::GravParam {
                     celestial_object: *celestial_object,
                 },
+                Self::Abs(v) => Self::Abs(v.clone_ref(py)),
                 Self::Add { a, b } => Self::Add {
                     a: a.clone_ref(py),
                     b: b.clone_ref(py),
@@ -766,6 +768,10 @@ impl TryFrom<ScalarExpr> for PyScalarExpr {
                     )?,
                     n,
                 }),
+                ScalarExpr::Abs(v) => Ok(Self::Abs(Py::new(
+                    py,
+                    <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*v)?,
+                )?)),
                 ScalarExpr::Add { a, b } => Ok(Self::Add {
                     a: Py::new(py, <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*a)?)?,
                     b: Py::new(py, <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*b)?)?,
@@ -958,6 +964,7 @@ impl From<PyScalarExpr> for ScalarExpr {
             },
 
             // --- Recursive Conversions (now using the acquired `py` token) ---
+            PyScalarExpr::Abs(v) => ScalarExpr::Abs(Box::new(v.borrow(py).clone().into())),
             PyScalarExpr::Add { a, b } => ScalarExpr::Add {
                 a: Box::new(a.borrow(py).clone().into()),
                 b: Box::new(b.borrow(py).clone().into()),
