@@ -906,13 +906,14 @@ mod ut_analysis {
             ) {
                 if let Ok(orbit) = lro_state_spec.evaluate(epoch, &almanac) {
                     let this_eval = comm_boundary.eval(orbit, &almanac).unwrap();
-                    let is_accessible = this_eval >= 0.0;
+                    // The event is precise to 10 ms, so it may start a few nano degrees below the horizon.
+                    let is_accessible = this_eval >= -1e-9;
 
                     if (event.start_epoch()..event.end_epoch()).contains(&epoch) {
                         // We're in the event, check that it is evaluated to be in the event.
-                        assert!(is_accessible);
+                        assert!(is_accessible, "{this_eval}");
                     } else {
-                        assert!(!is_accessible || this_eval < 0.0);
+                        assert!(!is_accessible, "{this_eval}");
                     }
                 }
             }

@@ -62,13 +62,13 @@ pub struct Event {
 }
 
 impl Event {
-    /// Builds a new event where the epoch precision is set to its default of 0.1 seconds.
+    /// Builds a new event where the epoch precision is set to its default of 10 milliseconds
     #[must_use]
     pub fn new(scalar: ScalarExpr, condition: Condition) -> Self {
         Self {
             scalar,
             condition,
-            epoch_precision: 0.1 * Unit::Second,
+            epoch_precision: Unit::Millisecond * 10,
             ab_corr: None,
         }
     }
@@ -88,7 +88,7 @@ impl Event {
         Event {
             scalar: ScalarExpr::Element(OrbitalElement::TrueAnomaly),
             condition: Condition::Equals(0.0),
-            epoch_precision: Unit::Second * 0.1,
+            epoch_precision: Unit::Millisecond * 10,
             ab_corr: None,
         }
     }
@@ -98,7 +98,7 @@ impl Event {
         Event {
             scalar: ScalarExpr::SolarEclipsePercentage { eclipsing_frame },
             condition: Condition::GreaterThan(99.0),
-            epoch_precision: Unit::Second * 0.1,
+            epoch_precision: Unit::Millisecond * 10,
             ab_corr: None,
         }
     }
@@ -108,7 +108,7 @@ impl Event {
         Event {
             scalar: ScalarExpr::SolarEclipsePercentage { eclipsing_frame },
             condition: Condition::GreaterThan(1.0),
-            epoch_precision: Unit::Second * 0.1,
+            epoch_precision: Unit::Millisecond * 10,
             ab_corr: None,
         }
     }
@@ -118,7 +118,7 @@ impl Event {
         Event {
             scalar: ScalarExpr::SolarEclipsePercentage { eclipsing_frame },
             condition: Condition::Between(1.0, 99.0),
-            epoch_precision: Unit::Second * 0.1,
+            epoch_precision: Unit::Millisecond * 10,
             ab_corr: None,
         }
     }
@@ -131,7 +131,7 @@ impl Event {
                 obstructing_body,
             },
             condition: Condition::GreaterThan(0.0),
-            epoch_precision: Unit::Second * 0.1,
+            epoch_precision: Unit::Millisecond * 10,
             ab_corr: None,
         }
     }

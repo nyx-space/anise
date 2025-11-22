@@ -9,7 +9,7 @@
  */
 
 use super::event::{EventArc, EventEdge};
-use hifitime::Epoch;
+use hifitime::{Epoch, Unit};
 use std::cmp::Ordering;
 
 #[cfg(feature = "python")]
@@ -112,8 +112,8 @@ pub fn find_arc_intersections(timelines: Vec<Vec<EventArc>>) -> Vec<(Epoch, Epoc
             // We just left a full intersection.
             // This epoch is the end of the window.
             if let Some(start_epoch) = intersection_start.take() {
-                // Add the window, but only if it's valid (start < end)
-                if current_epoch > start_epoch {
+                // Add the window, but only if it's valid (start < end) and lasts more than 1 ms
+                if current_epoch > start_epoch + Unit::Millisecond * 1 {
                     result_windows.push((start_epoch, current_epoch));
                 }
             }
