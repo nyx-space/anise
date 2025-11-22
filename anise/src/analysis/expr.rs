@@ -419,23 +419,19 @@ impl ScalarExpr {
             | ScalarExpr::ElevationFromLocation {
                 location_id: _,
                 obstructing_body: _,
-            }
-            | ScalarExpr::LocalSolarTime
-            | ScalarExpr::LocalTimeAscNode
-            | ScalarExpr::LocalTimeDescNode
-            | ScalarExpr::Modulo { v: _, m: _ } => true,
+            } => true,
             _ => false,
         }
     }
 
     /// Returns true if this is known to be a local time between 0 and 24 hours.
     pub fn is_local_time(&self) -> bool {
-        match self {
+        matches!(
+            self,
             ScalarExpr::LocalSolarTime
-            | ScalarExpr::LocalTimeAscNode
-            | ScalarExpr::LocalTimeDescNode => true,
-            _ => false,
-        }
+                | ScalarExpr::LocalTimeAscNode
+                | ScalarExpr::LocalTimeDescNode
+        )
     }
 
     /// Export this Scalar Expression to S-Expression / LISP syntax

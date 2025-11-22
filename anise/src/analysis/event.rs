@@ -175,7 +175,7 @@ impl Event {
             desired_val *= 360.0 / 24.0;
         } else if let ScalarExpr::Modulo { v: _, ref m } = self.scalar {
             let modmax = m.evaluate(orbit, self.ab_corr, almanac)?;
-            if modmax != 0.0 {
+            if modmax >= 1e-12 {
                 current_val *= 360.0 / modmax;
                 desired_val *= 360.0 / modmax;
             }

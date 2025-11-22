@@ -789,18 +789,13 @@ mod ut_analysis {
         let solar6am_events = almanac
             .report_events(&lro_state_spec, &solar_0600, start_epoch, end_epoch)
             .unwrap();
-        let mut num_err = 0;
         for (eno, event) in solar6am_events.iter().enumerate() {
             if eno == 0 {
                 let solar_time = almanac.local_solar_time(event.orbit, None).unwrap();
                 println!("{event} => {solar_time}");
             }
-            if event.value.abs() > 1e-2 {
-                num_err += 1;
-            }
-            // assert!(dbg!(event.value.abs()) < 1e-2);
+            assert!(event.value.abs() < 1e-2);
         }
-        assert_eq!(num_err, 0);
 
         // Test access times
         let mut loc = Location {
