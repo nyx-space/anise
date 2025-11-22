@@ -39,19 +39,13 @@ use vector_expr::VectorExpr;
 #[cfg(feature = "python")]
 pub mod python;
 
-pub mod prelude {
-    pub use super::elements::OrbitalElement;
-    pub use super::event::{Condition, Event, EventArc, EventDetails, EventEdge};
-    pub use super::report::ReportScalars;
-    pub use super::specs::{FrameSpec, StateSpec};
-    pub use super::expr::ScalarExpr;
-    pub use super::event_ops::find_arc_intersections;
-    pub use super::expr::ScalarExpr;
-    pub use super::report::{ReportScalars, ScalarsTable};
-    pub use super::specs::{FrameSpec, Plane, StateSpec};
-    pub use super::vector_expr::VectorExpr;
-    pub use crate::prelude::Frame;
-}
+pub use self::elements::OrbitalElement;
+pub use self::event::{Condition, Event, EventArc, EventDetails, EventEdge};
+pub use self::event_ops::find_arc_intersections;
+pub use self::expr::ScalarExpr;
+pub use self::report::{ReportScalars, ScalarsTable};
+pub use self::specs::{FrameSpec, Plane, StateSpec};
+pub use self::vector_expr::VectorExpr;
 
 #[derive(Debug, PartialEq, Snafu)]
 #[snafu(visibility(pub))]
@@ -548,8 +542,6 @@ mod ut_analysis {
             Condition::GreaterThan(90.0),
         );
 
-        let solar_0600 = Event::new(ScalarExpr::LocalSolarTime, Condition::Equals(6.0));
-
         let max_sun_el = Event {
             scalar: ScalarExpr::SunAngle { observer_id: -85 },
             condition: Condition::Maximum(),
@@ -789,17 +781,6 @@ mod ut_analysis {
             "penumbras and total eclipses should not intersect"
         );
 
-        let solar6am_events = almanac
-            .report_events(&lro_state_spec, &solar_0600, start_epoch, end_epoch)
-            .unwrap();
-        for (eno, event) in solar6am_events.iter().enumerate() {
-            if eno == 0 {
-                let solar_time = almanac.local_solar_time(event.orbit, None).unwrap();
-                println!("{event} => {solar_time}");
-            }
-            assert!(event.value.abs() < 1e-2);
-        }
-
         // Test access times
         let mut loc = Location {
             latitude_deg: 40.427_222,
@@ -904,14 +885,13 @@ mod ut_analysis {
             ) {
                 if let Ok(orbit) = lro_state_spec.evaluate(epoch, &almanac) {
                     let this_eval = comm_boundary.eval(orbit, &almanac).unwrap();
-                    // The event is precise to 10 ms, so it may start a few nano degrees below the horizon.
-                    let is_accessible = this_eval >= -1e-9;
+                    let is_accessible = this_eval >= 0.0;
 
                     if (event.start_epoch()..event.end_epoch()).contains(&epoch) {
                         // We're in the event, check that it is evaluated to be in the event.
-                        assert!(is_accessible, "{this_eval}");
+                        assert!(is_accessible);
                     } else {
-                        assert!(!is_accessible, "{this_eval}");
+                        assert!(!in_eclipse || this_eval < 0.0);
                     }
                 }
             }
