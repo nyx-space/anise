@@ -30,6 +30,7 @@ pub mod specs;
 pub mod vector_expr;
 
 mod utils;
+pub use utils::{adaptive_step_scanner, brent_solver};
 
 use event::Event;
 use expr::ScalarExpr;
