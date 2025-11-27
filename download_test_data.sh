@@ -21,7 +21,7 @@ download_if_missing() {
         
         if [ "$fsize" -lt 300 ]; then
             # 2. Check content: Look for the LFS signature url
-            if grep -q "version https://git-lfs.github.com" "$file"; then
+            if grep -q "version" "$file"; then
                 echo "Detected Git LFS pointer for $filename ($fsize bytes). Deleting..."
                 rm "$file"
                 should_download=true
