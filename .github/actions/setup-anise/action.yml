@@ -1,0 +1,43 @@
+name: "Setup Anise Environment"
+description: "Installs Rust, CSPICE, and downloads test data with caching"
+inputs:
+  download-data:
+    description: "Whether to download test data"
+    required: false
+    default: "false"
+  components:
+    description: "Rust components to install"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install stable toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: ${{ inputs.components }}
+
+    - name: Install CSPICE
+      shell: bash
+      run: |
+        if [ -f "dev-env-setup.sh" ]; then
+          sh dev-env-setup.sh
+        else
+          # Handle case where we might be inside a subdirectory if calling from odd places
+          echo "Warning: dev-env-setup.sh not found in current directory"
+        fi
+
+    - name: Cache Test Data
+      if: inputs.download-data == 'true'
+      id: cache-data
+      uses: actions/cache@v3
+      with:
+        path: data
+        # Update the hash if the download script changes
+        key: test-data-${{ hashFiles('download_test_data.sh') }}
+
+    - name: Download Data
+      if: inputs.download-data == 'true' && steps.cache-data.outputs.cache-hit != 'true'
+      shell: bash
+      run: sh download_test_data.sh
