@@ -18,8 +18,15 @@ runs:
       with:
         components: ${{ inputs.components }}
 
+    - name: Install System Dependencies
+      shell: bash
+      run: |
+            sudo apt-get update
+            sudo apt-get install -y tcsh
+
     - name: Install CSPICE
-      run: sh dev-env-setup.sh && cd ..
+      shell: bash
+      run: sh dev-env-setup.sh
 
     - name: Cache Test Data
       if: inputs.download-data == 'true'
