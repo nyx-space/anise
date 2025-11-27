@@ -46,71 +46,85 @@ pub fn bpc_ui(
         .body(|mut body| {
             let pck = almanac.bpc_data.get_index(0).unwrap().1;
 
-            for (sno, summary) in pck.data_summaries().unwrap().iter().enumerate() {
-                let name_rcrd = pck.name_record().unwrap();
-                let name = name_rcrd.nth_name(sno, pck.file_record().unwrap().summary_size());
-                if summary.is_empty() {
-                    continue;
-                }
+            // NOTE: Using the explicit loop and index here to we can fetch the name record correctly.
+            let mut idx = None;
+            loop {
+                for (sno, summary) in pck.data_summaries(idx).unwrap().iter().enumerate() {
+                    let name_rcrd = pck.name_record(idx).unwrap();
+                    let name = name_rcrd.nth_name(sno, pck.file_record().unwrap().summary_size());
+                    if summary.is_empty() {
+                        continue;
+                    }
 
-                body.row(30.0, |mut row| {
-                    row.col(|ui| {
-                        ui.label(name);
-                    });
+                    body.row(30.0, |mut row| {
+                        row.col(|ui| {
+                            ui.label(name);
+                        });
 
-                    row.col(|ui| match orientation_name_from_id(summary.frame_id) {
-                        Some(name) => {
-                            ui.label(format!("{name} ({})", summary.frame_id));
-                        }
-                        None => {
-                            ui.label(format!("{}", summary.frame_id));
-                        }
-                    });
-
-                    row.col(|ui| {
-                        if show_unix {
-                            ui.text_edit_singleline(&mut format!(
-                                "{}",
-                                summary.start_epoch().to_unix_seconds()
-                            ));
-                        } else {
-                            ui.label(summary.start_epoch().to_gregorian_str(selected_time_scale));
-                        };
-                    });
-
-                    row.col(|ui| {
-                        if show_unix {
-                            ui.text_edit_singleline(&mut format!(
-                                "{}",
-                                summary.end_epoch().to_unix_seconds()
-                            ));
-                        } else {
-                            ui.label(summary.end_epoch().to_gregorian_str(selected_time_scale));
-                        };
-                    });
-
-                    row.col(
-                        |ui| match orientation_name_from_id(summary.inertial_frame_id) {
+                        row.col(|ui| match orientation_name_from_id(summary.frame_id) {
                             Some(name) => {
-                                ui.label(format!("{name} ({})", summary.inertial_frame_id));
+                                ui.label(format!("{name} ({})", summary.frame_id));
                             }
                             None => {
-                                ui.label(format!("{}", summary.inertial_frame_id));
+                                ui.label(format!("{}", summary.frame_id));
                             }
-                        },
-                    );
+                        });
 
-                    row.col(|ui| {
-                        ui.label(format!(
-                            "{}",
-                            (summary.end_epoch() - summary.start_epoch()).round(Unit::Second * 1)
-                        ));
-                    });
+                        row.col(|ui| {
+                            if show_unix {
+                                ui.text_edit_singleline(&mut format!(
+                                    "{}",
+                                    summary.start_epoch().to_unix_seconds()
+                                ));
+                            } else {
+                                ui.label(
+                                    summary.start_epoch().to_gregorian_str(selected_time_scale),
+                                );
+                            };
+                        });
 
-                    row.col(|ui| {
-                        ui.label(format!("{}", summary.data_type().unwrap()));
+                        row.col(|ui| {
+                            if show_unix {
+                                ui.text_edit_singleline(&mut format!(
+                                    "{}",
+                                    summary.end_epoch().to_unix_seconds()
+                                ));
+                            } else {
+                                ui.label(summary.end_epoch().to_gregorian_str(selected_time_scale));
+                            };
+                        });
+
+                        row.col(
+                            |ui| match orientation_name_from_id(summary.inertial_frame_id) {
+                                Some(name) => {
+                                    ui.label(format!("{name} ({})", summary.inertial_frame_id));
+                                }
+                                None => {
+                                    ui.label(format!("{}", summary.inertial_frame_id));
+                                }
+                            },
+                        );
+
+                        row.col(|ui| {
+                            ui.label(format!(
+                                "{}",
+                                (summary.end_epoch() - summary.start_epoch())
+                                    .round(Unit::Second * 1)
+                            ));
+                        });
+
+                        row.col(|ui| {
+                            ui.label(format!("{}", summary.data_type().unwrap()));
+                        });
                     });
-                });
+                }
+                if let Ok(summary) = pck.daf_summary(idx) {
+                    if summary.is_final_record() {
+                        break;
+                    } else {
+                        idx = Some(summary.next_record());
+                    }
+                }
             }
         });
 }

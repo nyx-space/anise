@@ -200,7 +200,7 @@ impl eframe::App for UiApp {
                                                 .get_index(0)
                                                 .unwrap()
                                                 .1
-                                                .daf_summary()
+                                                .daf_summary(None)
                                                 .unwrap()
                                                 .num_summaries();
                                             ui.label("Number of summaries");
@@ -212,7 +212,7 @@ impl eframe::App for UiApp {
                                                 .get_index(0)
                                                 .unwrap()
                                                 .1
-                                                .daf_summary()
+                                                .daf_summary(None)
                                                 .unwrap()
                                                 .num_summaries();
                                             ui.label("Number of summaries");
