@@ -1,18 +1,41 @@
 #!/bin/bash
 mkdir -p data
 
-# Define a function to download only if missing
+# Define a function to download only if missing or if it's a Git LFS pointer
 download_if_missing() {
     url="$1"
-    file="data/$(basename "$2")"
+    # Ensure we strip any existing paths from the second argument to enforce the data/ directory
+    filename=$(basename "$2")
+    file="data/$filename"
+    
+    should_download=false
+
     if [ ! -f "$file" ]; then
-        echo "Downloading $2..."
+        should_download=true
+    else
+        # File exists, check if it is an LFS pointer.
+        # 1. Check size: LFS pointers are text files ~130 bytes. 
+        #    Real SPICE kernels are binary and much larger.
+        #    We use 300 bytes as a safe upper bound for a pointer.
+        fsize=$(wc -c < "$file" | tr -d ' ')
+        
+        if [ "$fsize" -lt 300 ]; then
+            # 2. Check content: Look for the LFS signature url
+            if grep -q "version https://git-lfs.github.com" "$file"; then
+                echo "Detected Git LFS pointer for $filename ($fsize bytes). Deleting..."
+                rm "$file"
+                should_download=true
+            fi
+        fi
+    fi
+
+    if [ "$should_download" = true ]; then
+        echo "Downloading $filename..."
         wget -q -O "$file" "$url"
     else
-        echo "Found $file, skipping download."
+        echo "Found $file (valid), skipping download."
     fi
 }
-
 download_if_missing "http://public-data.nyxspace.com/anise/de421.bsp" "de421.bsp"
 download_if_missing "http://public-data.nyxspace.com/anise/de430.bsp" "de430.bsp"
 download_if_missing "http://public-data.nyxspace.com/anise/de440s.bsp" "de440s.bsp"
