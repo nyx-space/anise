@@ -381,7 +381,7 @@ fn type13_hermite_query() {
     use anise::naif::kpl::parser::convert_tpc;
 
     let traj = SPK::load("../data/gmat-hermite.bsp").unwrap();
-    let summary = traj.data_summaries().unwrap()[0];
+    let summary = traj.data_summaries(None).unwrap()[0];
     println!("{summary}");
 
     let mut ctx = Almanac::from_spk(traj);

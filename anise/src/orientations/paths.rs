@@ -9,9 +9,10 @@
  */
 
 use hifitime::Epoch;
+use log::warn;
 use snafu::{ensure, ResultExt};
 
-use super::{BPCSnafu, NoOrientationsLoadedSnafu, OrientationDataSetSnafu, OrientationError};
+use super::{NoOrientationsLoadedSnafu, OrientationDataSetSnafu, OrientationError};
 use crate::almanac::Almanac;
 use crate::constants::orientations::{ECLIPJ2000, J2000};
 use crate::frames::Frame;
@@ -38,15 +39,24 @@ impl Almanac {
         let mut common_center = i32::MAX;
 
         for bpc in self.bpc_data.values().rev() {
-            for summary in bpc.data_summaries().context(BPCSnafu {
-                action: "finding orientation root",
-            })? {
-                // This summary exists, so we need to follow the branch of centers up the tree.
-                if !summary.is_empty() && summary.inertial_frame_id.abs() < common_center.abs() {
-                    common_center = summary.inertial_frame_id;
-                    if common_center == J2000 {
-                        // there is nothing higher up
-                        return Ok(common_center);
+            for block_result in bpc.iter_summary_blocks() {
+                let these_summaries = match block_result {
+                    Ok(s) => s,
+                    Err(e) => {
+                        warn!("DAF/BPC is corrupted: {e}");
+                        continue;
+                    }
+                };
+
+                for summary in these_summaries {
+                    // This summary exists, so we need to follow the branch of centers up the tree.
+                    if !summary.is_empty() && summary.inertial_frame_id.abs() < common_center.abs()
+                    {
+                        common_center = summary.inertial_frame_id;
+                        if common_center == J2000 {
+                            // there is nothing higher up
+                            return Ok(common_center);
+                        }
                     }
                 }
             }
