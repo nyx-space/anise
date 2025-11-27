@@ -38,7 +38,7 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
         };
         // Check that these calls will succeed.
         me.file_record()?;
-        me.name_record()?;
+        me.name_record(None)?;
         Ok(me)
     }
 
@@ -75,7 +75,8 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
         new_start_epoch: Epoch,
         new_end_epoch: Epoch,
     ) -> Result<(), DAFError> {
-        let summaries = self.data_summaries()?;
+        // NOTE: This function will be rewritten in full after https://github.com/nyx-space/anise/issues/262
+        let summaries = self.data_summaries(None)?;
         let this_summary = summaries
             .get(idx)
             .ok_or(DAFError::InvalidIndex { idx, kind: R::NAME })?;
@@ -147,7 +148,8 @@ impl<R: NAIFSummaryRecord> MutDAF<R> {
 
     /// Deletes the data for the n-th segment of this DAF file.
     pub fn delete_nth_data(&mut self, idx: usize) -> Result<(), DAFError> {
-        let summaries = self.data_summaries()?;
+        // NOTE: This function will be rewritten in full after https://github.com/nyx-space/anise/issues/262
+        let summaries = self.data_summaries(None)?;
         let this_summary = summaries
             .get(idx)
             .ok_or(DAFError::InvalidIndex { idx, kind: R::NAME })?;

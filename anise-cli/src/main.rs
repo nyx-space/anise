@@ -235,7 +235,7 @@ where
     let fmt = DAF::<R>::parse(bytes).context(CliDAFSnafu)?;
 
     let mut ids = HashSet::new();
-    for summary in fmt.data_summaries().context(CliDAFSnafu)? {
+    for summary in fmt.data_summaries(None).context(CliDAFSnafu)? {
         ids.insert(summary.id());
     }
 
@@ -269,7 +269,7 @@ where
     let fmt = DAF::<R>::parse(bytes).context(CliDAFSnafu)?;
 
     let mut ids = HashSet::new();
-    for summary in fmt.data_summaries().context(CliDAFSnafu)? {
+    for summary in fmt.data_summaries(None).context(CliDAFSnafu)? {
         ids.insert(summary.id());
     }
 

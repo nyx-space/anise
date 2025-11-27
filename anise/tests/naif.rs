@@ -11,7 +11,9 @@
 use std::mem::size_of_val;
 
 use anise::{
+    constants::frames::EARTH_ITRF93,
     file2heap,
+    math::rotation::Quaternion,
     naif::{
         daf::{datatypes::Type2ChebyshevSet, NAIFDataSet, DAF},
         pck::BPCSummaryRecord,
@@ -34,10 +36,10 @@ fn test_binary_pck_load() {
     assert_eq!(high_prec.crc32(), 0x97bca34c);
     assert!(high_prec.scrub().is_ok());
 
-    let name_rcrd = high_prec.name_record().unwrap();
+    let name_rcrd = high_prec.name_record(None).unwrap();
     let summary_size = high_prec.file_record().unwrap().summary_size();
     for idx in 0..name_rcrd.num_entries(summary_size) {
-        let summary = &high_prec.data_summaries().unwrap()[idx];
+        let summary = &high_prec.data_summaries(None).unwrap()[idx];
         if summary.is_empty() {
             break;
         }
@@ -74,9 +76,9 @@ fn test_spk_load_bytes() {
         de421.file_record().unwrap().endianness().unwrap(),
         Endian::Little
     );
-    assert_eq!(de421.daf_summary().unwrap().num_summaries(), 15);
-    assert_eq!(de421.daf_summary().unwrap().next_record(), 0);
-    assert_eq!(de421.daf_summary().unwrap().prev_record(), 0);
+    assert_eq!(de421.daf_summary(None).unwrap().num_summaries(), 15);
+    assert_eq!(de421.daf_summary(None).unwrap().next_record(), 0);
+    assert_eq!(de421.daf_summary(None).unwrap().prev_record(), 0);
 
     println!("{}", de421.comments().unwrap().unwrap());
 
@@ -89,16 +91,16 @@ fn test_spk_load_bytes() {
         7040, 3520, 3520, 1760, 1760, 1760, 1760, 1760, 1760, 3520, 14080, 14080, 1, 1, 1,
     ];
 
-    let name_rcrd = de421.name_record().unwrap();
+    let name_rcrd = de421.name_record(None).unwrap();
     let summary_size = de421.file_record().unwrap().summary_size();
 
     for (n, segment) in seg_len
         .iter()
         .enumerate()
-        .take(de421.daf_summary().unwrap().num_summaries())
+        .take(de421.daf_summary(None).unwrap().num_summaries())
     {
         let name = name_rcrd.nth_name(n, summary_size);
-        let summary = &de421.data_summaries().unwrap()[n];
+        let summary = &de421.data_summaries(None).unwrap()[n];
 
         println!("{name} -> {summary}");
         // We know that the DE421 data is all in Type 2
@@ -178,10 +180,10 @@ fn test_spk_mut_summary_name() {
 
     let summary_size = my_spk.file_record().unwrap().summary_size();
 
-    let mut name_rcrd = my_spk.name_record().unwrap();
+    let mut name_rcrd = my_spk.name_record(None).unwrap();
 
     // Rename all summaries
-    for sno in 0..my_spk.data_summaries().unwrap().len() {
+    for sno in 0..my_spk.data_summaries(None).unwrap().len() {
         name_rcrd.set_nth_name(
             sno,
             summary_size,
@@ -195,7 +197,10 @@ fn test_spk_mut_summary_name() {
     // Check that the written file is correct.
     let reloaded = SPK::load(output_path).unwrap();
     assert_eq!(
-        reloaded.name_record().unwrap().nth_name(0, summary_size),
+        reloaded
+            .name_record(None)
+            .unwrap()
+            .nth_name(0, summary_size),
         "Renamed #0 (ANISE by Nyx Space)"
     );
 }
@@ -213,7 +218,7 @@ fn test_spk_truncate_cheby() {
 
     let idx = 10;
 
-    let summary = my_spk.data_summaries().unwrap()[idx];
+    let summary = my_spk.data_summaries(None).unwrap()[idx];
     let segment = my_spk.nth_data::<Type2ChebyshevSet>(idx).unwrap();
 
     let orig_init_epoch = segment.init_epoch;
@@ -243,7 +248,7 @@ fn test_spk_truncate_cheby() {
     my_spk_trunc.persist(output_path).unwrap();
 
     let reloaded = SPK::load(output_path).unwrap();
-    let summary = reloaded.data_summaries().unwrap()[idx];
+    let summary = reloaded.data_summaries(None).unwrap()[idx];
     assert_eq!(summary.start_epoch(), new_start);
 
     // Test that we can remove segments all togethet
@@ -259,4 +264,41 @@ fn test_spk_truncate_cheby() {
         reloaded.summary_from_id(301).is_err(),
         "summary 301 not removed"
     );
+}
+
+#[test]
+fn test_multisummary_daf_gh420() {
+    use anise::naif::pretty_print::NAIFPrettyPrint;
+    let _ = pretty_env_logger::try_init();
+
+    let filename = "../data/earth_2025_250826_2125_predict.bpc";
+
+    let large_daf = DAF::<BPCSummaryRecord>::load(filename).unwrap();
+
+    let first_summary = large_daf.daf_summary(None).unwrap();
+
+    assert!(!first_summary.is_final_record());
+
+    let second_summary = large_daf
+        .daf_summary(Some(first_summary.next_record()))
+        .unwrap();
+
+    assert!(second_summary.is_final_record());
+
+    assert_eq!(second_summary.num_summaries(), 12);
+
+    println!("{}", large_daf.describe_in(TimeScale::ET, None));
+
+    // Check that we can query this ephem on the very last segment.
+    let almanac = Almanac::from_bpc(large_daf);
+
+    let (_, end_epoch) = almanac.bpc_domain(3000).unwrap();
+    println!("{end_epoch:?}");
+    assert!(end_epoch > Epoch::from_gregorian_utc_at_midnight(2125, 11, 22));
+
+    let q: Quaternion = almanac
+        .rotation_to_parent(EARTH_ITRF93, end_epoch)
+        .unwrap()
+        .into();
+    println!("{q}");
 }

@@ -62,24 +62,35 @@ impl NAIFPrettyPrint for BPC {
             Unit::Second * 0
         };
 
-        for (sno, summary) in self.data_summaries().unwrap().iter().enumerate() {
-            let name_rcrd = self.name_record().unwrap();
-            let name = name_rcrd.nth_name(sno, self.file_record().unwrap().summary_size());
-            if summary.is_empty() {
-                continue;
+        // NOTE: Using the explicit loop and index here to we can fetch the name record correctly.
+        let mut idx = None;
+        loop {
+            for (sno, summary) in self.data_summaries(idx).unwrap().iter().enumerate() {
+                let name_rcrd = self.name_record(idx).unwrap();
+                let name = name_rcrd.nth_name(sno, self.file_record().unwrap().summary_size());
+                if summary.is_empty() {
+                    continue;
+                }
+                rows.push(BpcRow {
+                    name: name.to_string(),
+                    start_epoch: summary
+                        .start_epoch()
+                        .to_gregorian_str(time_scale)
+                        .to_string(),
+                    end_epoch: summary.end_epoch().to_gregorian_str(time_scale).to_string(),
+                    duration: (summary.end_epoch() - summary.start_epoch()).round(round_value),
+                    interpolation_kind: summary.data_type().unwrap().to_string(),
+                    frame: format!("{}", summary.frame_id),
+                    inertial_frame: format!("{}", summary.inertial_frame_id),
+                });
             }
-            rows.push(BpcRow {
-                name: name.to_string(),
-                start_epoch: summary
-                    .start_epoch()
-                    .to_gregorian_str(time_scale)
-                    .to_string(),
-                end_epoch: summary.end_epoch().to_gregorian_str(time_scale).to_string(),
-                duration: (summary.end_epoch() - summary.start_epoch()).round(round_value),
-                interpolation_kind: summary.data_type().unwrap().to_string(),
-                frame: format!("{}", summary.frame_id),
-                inertial_frame: format!("{}", summary.inertial_frame_id),
-            });
+            if let Ok(summary) = self.daf_summary(idx) {
+                if summary.is_final_record() {
+                    break;
+                } else {
+                    idx = Some(summary.next_record());
+                }
+            }
         }
 
         let mut tbl = Table::new(rows);
@@ -101,27 +112,37 @@ impl NAIFPrettyPrint for SPK {
             Unit::Second * 0
         };
 
-        for (sno, summary) in self.data_summaries().unwrap().iter().enumerate() {
-            let name_rcrd = self.name_record().unwrap();
-            let name = name_rcrd.nth_name(sno, self.file_record().unwrap().summary_size());
-            if summary.is_empty() {
-                continue;
+        // NOTE: Using the explicit loop and index here to we can fetch the name record correctly.
+        let mut idx = None;
+        loop {
+            for (sno, summary) in self.data_summaries(idx).unwrap().iter().enumerate() {
+                let name_rcrd = self.name_record(idx).unwrap();
+                let name = name_rcrd.nth_name(sno, self.file_record().unwrap().summary_size());
+                if summary.is_empty() {
+                    continue;
+                }
+
+                rows.push(SpkRow {
+                    name: name.to_string(),
+                    center: summary.center_frame_uid().to_string(),
+                    start_epoch: summary
+                        .start_epoch()
+                        .to_gregorian_str(time_scale)
+                        .to_string(),
+                    end_epoch: summary.end_epoch().to_gregorian_str(time_scale).to_string(),
+                    duration: (summary.end_epoch() - summary.start_epoch()).round(round_value),
+                    interpolation_kind: summary.data_type().unwrap().to_string(),
+                    target: summary.target_frame_uid().to_string(),
+                });
             }
-
-            rows.push(SpkRow {
-                name: name.to_string(),
-                center: summary.center_frame_uid().to_string(),
-                start_epoch: summary
-                    .start_epoch()
-                    .to_gregorian_str(time_scale)
-                    .to_string(),
-                end_epoch: summary.end_epoch().to_gregorian_str(time_scale).to_string(),
-                duration: (summary.end_epoch() - summary.start_epoch()).round(round_value),
-                interpolation_kind: summary.data_type().unwrap().to_string(),
-                target: summary.target_frame_uid().to_string(),
-            });
+            if let Ok(summary) = self.daf_summary(idx) {
+                if summary.is_final_record() {
+                    break;
+                } else {
+                    idx = Some(summary.next_record());
+                }
+            }
         }
-
         let mut tbl = Table::new(rows);
         tbl.with(Style::sharp());
         format!("{tbl}")

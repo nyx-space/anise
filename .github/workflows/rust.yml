@@ -21,11 +21,8 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install CSPICE
-        run: sh dev-env-setup.sh
+      - name: Setup ANISE tests
+        uses: ./.github/actions/setup-anise
 
       - name: Run cargo check
         run: cargo check --workspace --exclude anise-gui --exclude anise-py
@@ -37,30 +34,9 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Download data
-        run: |
-          wget -O data/de421.bsp http://public-data.nyxspace.com/anise/de421.bsp
-          wget -O data/de430.bsp http://public-data.nyxspace.com/anise/de430.bsp
-          wget -O data/de440s.bsp http://public-data.nyxspace.com/anise/de440s.bsp
-          wget -O data/de440.bsp http://public-data.nyxspace.com/anise/de440.bsp
-          wget -O data/de440_type3.bsp http://public-data.nyxspace.com/anise/de440_type3.bsp
-          wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v0.5/pck08.pca
-          wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v0.5/pck11.pca
-          wget -O data/moon_fk.epa http://public-data.nyxspace.com/anise/v0.5/moon_fk.epa
-          wget -O data/moon_fk_de440.epa http://public-data.nyxspace.com/anise/v0.5/moon_fk_de440.epa
-          wget -O data/moon_pa_de440_200625.bpc http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc
-          wget -O data/gmat-hermite.bsp http://public-data.nyxspace.com/anise/ci/gmat-hermite.bsp
-          wget -O data/gmat-hermite-big-endian.bsp http://public-data.nyxspace.com/anise/ci/gmat-hermite-big-endian.bsp
-          wget -O data/variable-seg-size-hermite.bsp http://public-data.nyxspace.com/anise/ci/variable-seg-size-hermite.bsp
-          wget -O data/earth_latest_high_prec.bpc http://public-data.nyxspace.com/anise/ci/earth_latest_high_prec-2023-09-08.bpc
-          wget -O data/lro.bsp http://public-data.nyxspace.com/nyx/examples/lrorg_2023349_2024075_v01_LE.bsp
-          wget -O data/mro.bsp http://public-data.nyxspace.com/anise/ci/mro.bsp
+      - name: Setup ANISE tests
+        uses: ./.github/actions/setup-anise
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install CSPICE
-        run: sh dev-env-setup.sh && cd .. # Return to root
 
       - name: Test debug
         env:
@@ -109,27 +85,8 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Download data
-        run: |
-          wget -O data/de421.bsp http://public-data.nyxspace.com/anise/de421.bsp
-          wget -O data/de430.bsp http://public-data.nyxspace.com/anise/de430.bsp
-          wget -O data/de440s.bsp http://public-data.nyxspace.com/anise/de440s.bsp
-          wget -O data/de440.bsp http://public-data.nyxspace.com/anise/de440.bsp
-          wget -O data/de440_type3.bsp http://public-data.nyxspace.com/anise/de440_type3.bsp
-          wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v0.5/pck08.pca
-          wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v0.5/pck11.pca
-          wget -O data/gmat-hermite.bsp http://public-data.nyxspace.com/anise/ci/gmat-hermite.bsp
-          wget -O data/gmat-hermite-big-endian.bsp http://public-data.nyxspace.com/anise/ci/gmat-hermite-big-endian.bsp
-          wget -O data/variable-seg-size-hermite.bsp http://public-data.nyxspace.com/anise/ci/variable-seg-size-hermite.bsp
-          wget -O data/earth_latest_high_prec.bpc http://public-data.nyxspace.com/anise/ci/earth_latest_high_prec-2023-09-08.bpc
-          wget -O data/lro.bsp http://public-data.nyxspace.com/nyx/examples/lrorg_2023349_2024075_v01_LE.bsp
-          wget -O data/mro.bsp http://public-data.nyxspace.com/anise/ci/mro.bsp
-
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install CSPICE
-        run: sh dev-env-setup.sh && cd .. # Return to root
+      - name: Setup ANISE tests
+        uses: ./.github/actions/setup-anise
 
       - name: CLI SPK
         run: |
@@ -187,31 +144,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download data
-        run: |
-          wget -O data/de421.bsp http://public-data.nyxspace.com/anise/de421.bsp
-          wget -O data/de430.bsp http://public-data.nyxspace.com/anise/de430.bsp
-          wget -O data/de440s.bsp http://public-data.nyxspace.com/anise/de440s.bsp
-          wget -O data/de440.bsp http://public-data.nyxspace.com/anise/de440.bsp
-          wget -O data/de440_type3.bsp http://public-data.nyxspace.com/anise/de440_type3.bsp
-          wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v0.5/pck08.pca
-          wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v0.5/pck11.pca
-          wget -O data/gmat-hermite.bsp http://public-data.nyxspace.com/anise/ci/gmat-hermite.bsp
-          wget -O data/gmat-hermite-big-endian.bsp http://public-data.nyxspace.com/anise/ci/gmat-hermite-big-endian.bsp
-          wget -O data/variable-seg-size-hermite.bsp http://public-data.nyxspace.com/anise/ci/variable-seg-size-hermite.bsp
-          wget -O data/earth_latest_high_prec.bpc http://public-data.nyxspace.com/anise/ci/earth_latest_high_prec-2023-09-08.bpc
-          wget -O data/lro.bsp http://public-data.nyxspace.com/nyx/examples/lrorg_2023349_2024075_v01_LE.bsp
-          wget -O data/moon_fk_de440.epa http://public-data.nyxspace.com/anise/v0.5/moon_fk_de440.epa
-          wget -O data/moon_pa_de440_200625.bpc http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc
-          wget -O data/mro.bsp http://public-data.nyxspace.com/anise/ci/mro.bsp 
-
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-
-      - name: Install CSPICE
-        run: sh dev-env-setup.sh && cd .. # Return to root
+      - name: Setup ANISE tests
+        uses: ./.github/actions/setup-anise
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov

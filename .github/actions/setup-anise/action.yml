@@ -1,0 +1,38 @@
+name: "Setup Anise Environment"
+description: "Installs Rust, CSPICE, and downloads test data with caching"
+inputs:
+  components:
+    description: "Rust components to install"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install stable toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: ${{ inputs.components }}
+
+    - name: Install System Dependencies
+      shell: bash
+      run: |
+            sudo apt-get update
+            sudo apt-get install -y tcsh
+
+    - name: Install CSPICE
+      shell: bash
+      run: sh dev-env-setup.sh
+
+    - name: Cache Test Data
+      id: cache-data
+      uses: actions/cache@v3
+      with:
+        path: data
+        # Update the hash if the download script changes
+        key: test-data-${{ hashFiles('download_test_data.sh') }}
+
+    - name: Download Data
+      if: steps.cache-data.outputs.cache-hit != 'true'
+      shell: bash
+      run: sh download_test_data.sh

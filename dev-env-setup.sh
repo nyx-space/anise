@@ -4,3 +4,4 @@ tar xzvf cspice.tar.Z
 cd cspice
 tcsh makeall.csh
 mv lib/cspice.a lib/libcspice.a
+cd ..

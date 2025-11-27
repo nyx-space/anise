@@ -13,12 +13,15 @@ from anise._anise import (
     constants,
     rotation,
     utils,
+    __version__,
+    __doc__,
+    __author__,
 )
 
 __all__ = [
     # modules
-    "astro",
     "analysis",
+    "astro",
     "constants",
     "time",
     "rotation",
@@ -33,4 +36,7 @@ __all__ = [
     "LocationDataSet"
     # functions
     "exec_gui",
+    "__version__",
+    "__doc__",
+    "__author__",
 ]
