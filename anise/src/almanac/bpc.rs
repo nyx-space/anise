@@ -171,12 +171,10 @@ impl Almanac {
         let mut summaries = vec![];
 
         for bpc in self.bpc_data.values().rev() {
-            for block in bpc.iter_summary_blocks() {
-                if let Ok(these_summaries) = block {
-                    for summary in these_summaries {
-                        if summary.id() == id {
-                            summaries.push(*summary);
-                        }
+            for these_summaries in bpc.iter_summary_blocks().flatten() {
+                for summary in these_summaries {
+                    if summary.id() == id {
+                        summaries.push(*summary);
                     }
                 }
             }

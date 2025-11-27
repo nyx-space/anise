@@ -315,15 +315,13 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
             if let Some(idx) = self.data_summaries(daf_idx)?.get(idx) {
                 this_summary = idx;
                 break;
+            } else if summary.is_final_record() {
+                return Err(DAFError::InvalidIndex {
+                    kind: S::DATASET_NAME,
+                    idx,
+                });
             } else {
-                if summary.is_final_record() {
-                    return Err(DAFError::InvalidIndex {
-                        kind: S::DATASET_NAME,
-                        idx,
-                    });
-                } else {
-                    daf_idx = Some(summary.next_record());
-                }
+                daf_idx = Some(summary.next_record());
             }
         }
         // Grab the data in native endianness
