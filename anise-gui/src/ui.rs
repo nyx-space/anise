@@ -99,7 +99,7 @@ impl eframe::App for UiApp {
         egui::TopBottomPanel::top("header").show(ctx, |ui| {
             ui.horizontal_centered(|ui| {
                 ui.vertical_centered(|ui| {
-                    ui.heading("ANISE v0.7");
+                    ui.heading("ANISE v0.8");
                     ui.label("A modern rewrite of NASA's SPICE toolkit");
                     ui.hyperlink_to(
                         "https://www.nyxspace.com",
@@ -194,27 +194,35 @@ impl eframe::App for UiApp {
                                         ui.text_edit_singleline(&mut format!("{crc}"));
 
                                         if label.ends_with("SPK") {
-                                            let num_summaries = self
-                                                .almanac
-                                                .spk_data
-                                                .get_index(0)
-                                                .unwrap()
-                                                .1
-                                                .daf_summary(None)
-                                                .unwrap()
-                                                .num_summaries();
+                                            // NOTE: Use the explicit loop method because we need the DAF summary info
+                                            let mut num_summaries = 0;
+                                            let spk = self.almanac.spk_data.get_index(0).unwrap().1;
+                                            let mut idx = None;
+                                            loop {
+                                                let summary = spk.daf_summary(idx).unwrap();
+                                                num_summaries += summary.num_summaries();
+                                                if summary.is_final_record() {
+                                                    break;
+                                                } else {
+                                                    idx = Some(summary.next_record());
+                                                }
+                                            }
                                             ui.label("Number of summaries");
                                             ui.label(format!("{num_summaries}"));
                                         } else if label.ends_with("PCK") {
-                                            let num_summaries = self
-                                                .almanac
-                                                .bpc_data
-                                                .get_index(0)
-                                                .unwrap()
-                                                .1
-                                                .daf_summary(None)
-                                                .unwrap()
-                                                .num_summaries();
+                                            // NOTE: Use the explicit loop method because we need the DAF summary info
+                                            let mut num_summaries = 0;
+                                            let bpc = self.almanac.bpc_data.get_index(0).unwrap().1;
+                                            let mut idx = None;
+                                            loop {
+                                                let summary = bpc.daf_summary(idx).unwrap();
+                                                num_summaries += summary.num_summaries();
+                                                if summary.is_final_record() {
+                                                    break;
+                                                } else {
+                                                    idx = Some(summary.next_record());
+                                                }
+                                            }
                                             ui.label("Number of summaries");
                                             ui.label(format!("{num_summaries}"));
                                         }

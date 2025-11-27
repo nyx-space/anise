@@ -114,6 +114,7 @@ pub fn spk_ui(
                         break;
                     } else {
                         idx = Some(summary.next_record());
+                        println!("{idx:?}");
                     }
                 }
             }
