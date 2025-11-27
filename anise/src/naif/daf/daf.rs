@@ -224,9 +224,9 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
     pub fn summary_from_id(&self, id: i32) -> Result<(&R, usize), DAFError> {
         let mut idx = None;
         loop {
-            for (idx, summary) in self.data_summaries(idx)?.iter().enumerate() {
+            for (summary_idx, summary) in self.data_summaries(idx)?.iter().enumerate() {
                 if summary.id() == id {
-                    return Ok((summary, idx));
+                    return Ok((summary, summary_idx));
                 }
             }
             let summary = self.daf_summary(idx)?;
@@ -308,22 +308,28 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
     /// Provided a name that is in the summary, return its full data, if name is available.
     /// This function retrieves the data associated with the nth summary record.
     pub fn nth_data<'a, S: NAIFDataSet<'a>>(&'a self, idx: usize) -> Result<S, DAFError> {
+        let mut remaining_idx = idx;
         let mut daf_idx = None;
         let this_summary;
         loop {
-            let summary = self.daf_summary(daf_idx)?;
-            if let Some(idx) = self.data_summaries(daf_idx)?.get(idx) {
-                this_summary = idx;
+            let summaries = self.data_summaries(daf_idx)?;
+            if remaining_idx < summaries.len() {
+                this_summary = &summaries[remaining_idx];
                 break;
-            } else if summary.is_final_record() {
-                return Err(DAFError::InvalidIndex {
-                    kind: S::DATASET_NAME,
-                    idx,
-                });
             } else {
-                daf_idx = Some(summary.next_record());
+                remaining_idx -= summaries.len();
+                let summary = self.daf_summary(daf_idx)?;
+                if summary.is_final_record() {
+                    return Err(DAFError::InvalidIndex {
+                        kind: S::DATASET_NAME,
+                        idx,
+                    });
+                } else {
+                    daf_idx = Some(summary.next_record());
+                }
             }
         }
+
         // Grab the data in native endianness
         if self.file_record()?.is_empty() {
             return Err(DAFError::FileRecord {

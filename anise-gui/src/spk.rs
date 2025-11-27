@@ -45,8 +45,8 @@ pub fn spk_ui(
             // NOTE: Using the explicit loop and index here to we can fetch the name record correctly.
             let mut idx = None;
             loop {
-                for (sno, summary) in spk.data_summaries(None).unwrap().iter().enumerate() {
-                    let name_rcrd = spk.name_record(None).unwrap();
+                for (sno, summary) in spk.data_summaries(idx).unwrap().iter().enumerate() {
+                    let name_rcrd = spk.name_record(idx).unwrap();
                     let name = name_rcrd.nth_name(sno, spk.file_record().unwrap().summary_size());
                     if summary.is_empty() {
                         continue;
@@ -114,7 +114,6 @@ pub fn spk_ui(
                         break;
                     } else {
                         idx = Some(summary.next_record());
-                        println!("{idx:?}");
                     }
                 }
             }

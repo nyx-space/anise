@@ -19,14 +19,7 @@ runs:
         components: ${{ inputs.components }}
 
     - name: Install CSPICE
-      shell: bash
-      run: |
-        if [ -f "dev-env-setup.sh" ]; then
-          sh dev-env-setup.sh
-        else
-          # Handle case where we might be inside a subdirectory if calling from odd places
-          echo "Warning: dev-env-setup.sh not found in current directory"
-        fi
+      run: sh dev-env-setup.sh && cd ..
 
     - name: Cache Test Data
       if: inputs.download-data == 'true'
