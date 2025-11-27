@@ -1,10 +1,6 @@
 name: "Setup Anise Environment"
 description: "Installs Rust, CSPICE, and downloads test data with caching"
 inputs:
-  download-data:
-    description: "Whether to download test data"
-    required: false
-    default: "false"
   components:
     description: "Rust components to install"
     required: false
@@ -29,7 +25,6 @@ runs:
       run: sh dev-env-setup.sh
 
     - name: Cache Test Data
-      if: inputs.download-data == 'true'
       id: cache-data
       uses: actions/cache@v3
       with:
@@ -38,6 +33,6 @@ runs:
         key: test-data-${{ hashFiles('download_test_data.sh') }}
 
     - name: Download Data
-      if: inputs.download-data == 'true' && steps.cache-data.outputs.cache-hit != 'true'
+      if: steps.cache-data.outputs.cache-hit != 'true'
       shell: bash
       run: sh download_test_data.sh
