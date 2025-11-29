@@ -241,7 +241,7 @@ where
 
     info!("IDs present in file: {ids:?}");
 
-    let (_, idx) = fmt.summary_from_id(id).context(CliDAFSnafu)?;
+    let (_, _, idx) = fmt.summary_from_id(id).context(CliDAFSnafu)?;
 
     let mut my_fmt_mut = fmt.to_mutable();
     my_fmt_mut.delete_nth_data(idx).context(CliDAFSnafu)?;
@@ -275,7 +275,7 @@ where
 
     info!("IDs present in file: {ids:?}");
 
-    let (summary, idx) = fmt.summary_from_id(id).context(CliDAFSnafu)?;
+    let (summary, daf_idx, idx) = fmt.summary_from_id(id).context(CliDAFSnafu)?;
 
     let data_type = summary.data_type().map_err(|err| CliErrors::CliDataType {
         error: Box::new(err),
@@ -288,7 +288,7 @@ where
                     );
 
     let segment = fmt
-        .nth_data::<Type2ChebyshevSet>(idx)
+        .nth_data::<Type2ChebyshevSet>(daf_idx, idx)
         .context(CliDAFSnafu)?;
 
     let updated_segment = segment

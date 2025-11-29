@@ -70,10 +70,11 @@ impl Almanac {
         &self,
         name: &str,
         epoch: Epoch,
-    ) -> Result<(&BPCSummaryRecord, usize, usize), OrientationError> {
+    ) -> Result<(&BPCSummaryRecord, usize, Option<usize>, usize), OrientationError> {
         for (no, bpc) in self.bpc_data.values().rev().enumerate() {
-            if let Ok((summary, idx_in_bpc)) = bpc.summary_from_name_at_epoch(name, epoch) {
-                return Ok((summary, no, idx_in_bpc));
+            if let Ok((summary, daf_idx, idx_in_bpc)) = bpc.summary_from_name_at_epoch(name, epoch)
+            {
+                return Ok((summary, self.num_loaded_bpc() - no - 1, daf_idx, idx_in_bpc));
             }
         }
 
@@ -93,11 +94,11 @@ impl Almanac {
         &self,
         id: i32,
         epoch: Epoch,
-    ) -> Result<(&BPCSummaryRecord, usize, usize), OrientationError> {
+    ) -> Result<(&BPCSummaryRecord, usize, Option<usize>, usize), OrientationError> {
         for (no, bpc) in self.bpc_data.values().rev().enumerate() {
-            if let Ok((summary, idx_in_bpc)) = bpc.summary_from_id_at_epoch(id, epoch) {
+            if let Ok((summary, daf_idx, idx_in_bpc)) = bpc.summary_from_id_at_epoch(id, epoch) {
                 // NOTE: We're iterating backward, so the correct BPC number is "total loaded" minus "current iteration".
-                return Ok((summary, self.num_loaded_bpc() - no - 1, idx_in_bpc));
+                return Ok((summary, self.num_loaded_bpc() - no - 1, daf_idx, idx_in_bpc));
             }
         }
 
@@ -121,10 +122,10 @@ impl Almanac {
     pub fn bpc_summary_from_name(
         &self,
         name: &str,
-    ) -> Result<(&BPCSummaryRecord, usize, usize), OrientationError> {
-        for (bpc_no, bpc) in self.bpc_data.values().rev().enumerate() {
-            if let Ok((summary, idx_in_bpc)) = bpc.summary_from_name(name) {
-                return Ok((summary, bpc_no, idx_in_bpc));
+    ) -> Result<(&BPCSummaryRecord, usize, Option<usize>, usize), OrientationError> {
+        for (no, bpc) in self.bpc_data.values().rev().enumerate() {
+            if let Ok((summary, daf_idx, idx_in_bpc)) = bpc.summary_from_name(name) {
+                return Ok((summary, self.num_loaded_bpc() - no - 1, daf_idx, idx_in_bpc));
             }
         }
 
@@ -142,11 +143,11 @@ impl Almanac {
     pub fn bpc_summary(
         &self,
         id: i32,
-    ) -> Result<(&BPCSummaryRecord, usize, usize), OrientationError> {
+    ) -> Result<(&BPCSummaryRecord, usize, Option<usize>, usize), OrientationError> {
         for (no, bpc) in self.bpc_data.values().rev().enumerate() {
-            if let Ok((summary, idx_in_bpc)) = bpc.summary_from_id(id) {
+            if let Ok((summary, daf_idx, idx_in_bpc)) = bpc.summary_from_id(id) {
                 // NOTE: We're iterating backward, so the correct BPC number is "total loaded" minus "current iteration".
-                return Ok((summary, self.num_loaded_bpc() - no - 1, idx_in_bpc));
+                return Ok((summary, self.num_loaded_bpc() - no - 1, daf_idx, idx_in_bpc));
             }
         }
 

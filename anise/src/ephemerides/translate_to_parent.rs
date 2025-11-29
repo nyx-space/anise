@@ -42,7 +42,7 @@ impl Almanac {
         epoch: Epoch,
     ) -> Result<(Vector3, Vector3, Frame), EphemerisError> {
         // First, let's find the SPK summary for this frame.
-        let (summary, spk_no, idx_in_spk) =
+        let (summary, spk_no, daf_idx, idx_in_spk) =
             self.spk_summary_at_epoch(source.ephemeris_id, epoch)?;
 
         let new_frame = source.with_ephem(summary.center_id);
@@ -59,38 +59,35 @@ impl Almanac {
 
         let (pos_km, vel_km_s) = match summary.data_type()? {
             DafDataType::Type1ModifiedDifferenceArray => {
-                let data =
-                    spk_data
-                        .nth_data::<ModifiedDiffType1>(idx_in_spk)
-                        .context(SPKSnafu {
-                            action: "fetching data for interpolation",
-                        })?;
+                let data = spk_data
+                    .nth_data::<ModifiedDiffType1>(daf_idx, idx_in_spk)
+                    .context(SPKSnafu {
+                        action: "fetching data for interpolation",
+                    })?;
                 data.evaluate(epoch, summary)
                     .context(EphemInterpolationSnafu)?
             }
             DafDataType::Type2ChebyshevTriplet => {
-                let data =
-                    spk_data
-                        .nth_data::<Type2ChebyshevSet>(idx_in_spk)
-                        .context(SPKSnafu {
-                            action: "fetching data for interpolation",
-                        })?;
+                let data = spk_data
+                    .nth_data::<Type2ChebyshevSet>(daf_idx, idx_in_spk)
+                    .context(SPKSnafu {
+                        action: "fetching data for interpolation",
+                    })?;
                 data.evaluate(epoch, summary)
                     .context(EphemInterpolationSnafu)?
             }
             DafDataType::Type3ChebyshevSextuplet => {
-                let data =
-                    spk_data
-                        .nth_data::<Type3ChebyshevSet>(idx_in_spk)
-                        .context(SPKSnafu {
-                            action: "fetching data for interpolation",
-                        })?;
+                let data = spk_data
+                    .nth_data::<Type3ChebyshevSet>(daf_idx, idx_in_spk)
+                    .context(SPKSnafu {
+                        action: "fetching data for interpolation",
+                    })?;
                 data.evaluate(epoch, summary)
                     .context(EphemInterpolationSnafu)?
             }
             DafDataType::Type9LagrangeUnequalStep => {
                 let data = spk_data
-                    .nth_data::<LagrangeSetType9>(idx_in_spk)
+                    .nth_data::<LagrangeSetType9>(daf_idx, idx_in_spk)
                     .context(SPKSnafu {
                         action: "fetching data for interpolation",
                     })?;
@@ -99,7 +96,7 @@ impl Almanac {
             }
             DafDataType::Type13HermiteUnequalStep => {
                 let data = spk_data
-                    .nth_data::<HermiteSetType13>(idx_in_spk)
+                    .nth_data::<HermiteSetType13>(daf_idx, idx_in_spk)
                     .context(SPKSnafu {
                         action: "fetching data for interpolation",
                     })?;

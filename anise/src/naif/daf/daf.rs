@@ -175,7 +175,7 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
     }
 
     /// Returns the summary given the name of the summary record
-    pub fn summary_from_name(&self, name: &str) -> Result<(&R, usize), DAFError> {
+    pub fn summary_from_name(&self, name: &str) -> Result<(&R, Option<usize>, usize), DAFError> {
         // Catch the error until we've reached the last summary.
         let mut idx = None;
         loop {
@@ -185,7 +185,7 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
                 .index_from_name::<R>(name, self.file_record()?.summary_size())
             {
                 Ok(summary_idx) => {
-                    return Ok((&self.data_summaries(idx)?[summary_idx], summary_idx))
+                    return Ok((&self.data_summaries(idx)?[summary_idx], idx, summary_idx))
                 }
                 Err(e) => {
                     if summary.is_final_record() {
@@ -203,13 +203,13 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
         &self,
         name: &str,
         epoch: Epoch,
-    ) -> Result<(&R, usize), DAFError> {
-        let (summary, idx) = self.summary_from_name(name)?;
+    ) -> Result<(&R, Option<usize>, usize), DAFError> {
+        let (summary, daf_idx, idx) = self.summary_from_name(name)?;
 
         if epoch >= summary.start_epoch() - Unit::Nanosecond * 100
             && epoch <= summary.end_epoch() + Unit::Nanosecond * 100
         {
-            Ok((summary, idx))
+            Ok((summary, daf_idx, idx))
         } else {
             error!("No summary {name} valid at epoch {epoch}");
             Err(DAFError::SummaryNameAtEpochError {
@@ -221,12 +221,12 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
     }
 
     /// Returns the summary given the id of the summary record
-    pub fn summary_from_id(&self, id: i32) -> Result<(&R, usize), DAFError> {
+    pub fn summary_from_id(&self, id: i32) -> Result<(&R, Option<usize>, usize), DAFError> {
         let mut idx = None;
         loop {
             for (summary_idx, summary) in self.data_summaries(idx)?.iter().enumerate() {
                 if summary.id() == id {
-                    return Ok((summary, summary_idx));
+                    return Ok((summary, idx, summary_idx));
                 }
             }
             let summary = self.daf_summary(idx)?;
@@ -240,19 +240,23 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
         Err(DAFError::SummaryIdError { kind: R::NAME, id })
     }
 
-    /// Returns the summary given the name of the summary record if that summary has data defined at the requested epoch
-    pub fn summary_from_id_at_epoch(&self, id: i32, epoch: Epoch) -> Result<(&R, usize), DAFError> {
+    /// Returns the summary given the id of the summary record if that summary has data defined at the requested epoch
+    pub fn summary_from_id_at_epoch(
+        &self,
+        id: i32,
+        epoch: Epoch,
+    ) -> Result<(&R, Option<usize>, usize), DAFError> {
         // NOTE: We iterate through the whole summary because a specific NAIF ID may be repeated in the summary for different valid epochs
         // so we can't just call `summary_from_id`.
         let mut idx = None;
         loop {
-            for (idx, summary) in self.data_summaries(idx)?.iter().enumerate() {
+            for (summary_idx, summary) in self.data_summaries(idx)?.iter().enumerate() {
                 if summary.id() == id {
                     if epoch >= summary.start_epoch() - Unit::Nanosecond * 100
                         && epoch <= summary.end_epoch() + Unit::Nanosecond * 100
                     {
-                        trace!("Found {id} in position {idx}: {summary:?}");
-                        return Ok((summary, idx));
+                        trace!("Found {id} in position {summary_idx}: {summary:?}");
+                        return Ok((summary, idx, summary_idx));
                     } else {
                         debug!(
                         "Summary {id} not valid at {epoch:?} (only from {:?} to {:?}, offset of {} - {})",
@@ -281,22 +285,22 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
     /// Provided a name that is in the summary, return its full data, if name is available.
     pub fn data_from_name<'a, S: NAIFDataSet<'a>>(&'a self, name: &str) -> Result<S, DAFError> {
         // O(N) search through the summaries
-        let mut idx = None;
+        let mut daf_idx = None;
         loop {
-            let name_rcrd = self.name_record(idx)?;
+            let name_rcrd = self.name_record(daf_idx)?;
             for idx in 0..name_rcrd.num_entries(self.file_record()?.summary_size()) {
                 let this_name = name_rcrd.nth_name(idx, self.file_record()?.summary_size());
 
                 if name.trim() == this_name.trim() {
                     // Found it!
-                    return self.nth_data(idx);
+                    return self.nth_data(daf_idx, idx);
                 }
             }
-            let summary = self.daf_summary(idx)?;
+            let summary = self.daf_summary(daf_idx)?;
             if summary.is_final_record() {
                 break;
             } else {
-                idx = Some(summary.next_record());
+                daf_idx = Some(summary.next_record());
             }
         }
         Err(DAFError::NameError {
@@ -307,28 +311,18 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
 
     /// Provided a name that is in the summary, return its full data, if name is available.
     /// This function retrieves the data associated with the nth summary record.
-    pub fn nth_data<'a, S: NAIFDataSet<'a>>(&'a self, idx: usize) -> Result<S, DAFError> {
-        let mut remaining_idx = idx;
-        let mut daf_idx = None;
-        let this_summary;
-        loop {
-            let summaries = self.data_summaries(daf_idx)?;
-            if remaining_idx < summaries.len() {
-                this_summary = &summaries[remaining_idx];
-                break;
-            } else {
-                remaining_idx -= summaries.len();
-                let summary = self.daf_summary(daf_idx)?;
-                if summary.is_final_record() {
-                    return Err(DAFError::InvalidIndex {
-                        kind: S::DATASET_NAME,
-                        idx,
-                    });
-                } else {
-                    daf_idx = Some(summary.next_record());
-                }
-            }
-        }
+    pub fn nth_data<'a, S: NAIFDataSet<'a>>(
+        &'a self,
+        daf_idx: Option<usize>,
+        idx: usize,
+    ) -> Result<S, DAFError> {
+        let this_summary =
+            self.data_summaries(daf_idx)?
+                .get(idx)
+                .ok_or(DAFError::InvalidIndex {
+                    idx,
+                    kind: S::DATASET_NAME,
+                })?;
 
         // Grab the data in native endianness
         if self.file_record()?.is_empty() {
@@ -637,7 +631,7 @@ mod daf_ut {
             })
         );
 
-        if traj.nth_data::<HermiteSetType13>(0).unwrap()
+        if traj.nth_data::<HermiteSetType13>(None, 0).unwrap()
             != traj.data_from_name("SPK_SEGMENT").unwrap()
         {
             // We cannot user assert_eq! because the NAIF Data Set do not (and should not) impl Debug

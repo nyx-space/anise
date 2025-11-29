@@ -104,7 +104,7 @@ impl Almanac {
         // Grab the summary data, which we use to find the paths
         // Let's see if this orientation is defined in the loaded BPC files
         let mut inertial_frame_id = match self.bpc_summary_at_epoch(source.orientation_id, epoch) {
-            Ok((summary, _, _)) => summary.inertial_frame_id,
+            Ok((summary, _, _, _)) => summary.inertial_frame_id,
             Err(_) => {
                 // Not available as a BPC, so let's see if there's planetary data for it.
                 match self.planetary_data.get_by_id(source.orientation_id) {
@@ -137,7 +137,7 @@ impl Almanac {
 
         for _ in 0..MAX_TREE_DEPTH - 1 {
             inertial_frame_id = match self.bpc_summary_at_epoch(inertial_frame_id, epoch) {
-                Ok((summary, _, _)) => summary.inertial_frame_id,
+                Ok((summary, _, _, _)) => summary.inertial_frame_id,
                 Err(_) => {
                     // Not available as a BPC, so let's see if there's planetary data for it.
                     match self.planetary_data.get_by_id(inertial_frame_id) {

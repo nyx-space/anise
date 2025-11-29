@@ -47,7 +47,7 @@ impl Almanac {
         }
         // Let's see if this orientation is defined in the loaded BPC files
         match self.bpc_summary_at_epoch(source.orientation_id, epoch) {
-            Ok((summary, bpc_no, idx_in_bpc)) => {
+            Ok((summary, bpc_no, daf_idx, idx_in_bpc)) => {
                 let new_frame = source.with_orient(summary.inertial_frame_id);
 
                 trace!("rotate {source} wrt to {new_frame} @ {epoch:E}");
@@ -61,11 +61,11 @@ impl Almanac {
                 // Compute the angles and their rates
                 let (ra_dec_w, d_ra_dec_w) = match summary.data_type()? {
                     DafDataType::Type2ChebyshevTriplet => {
-                        let data = bpc_data.nth_data::<Type2ChebyshevSet>(idx_in_bpc).context(
-                            BPCSnafu {
+                        let data = bpc_data
+                            .nth_data::<Type2ChebyshevSet>(daf_idx, idx_in_bpc)
+                            .context(BPCSnafu {
                                 action: "fetching data for interpolation",
-                            },
-                        )?;
+                            })?;
                         data.evaluate(epoch, summary)
                             .context(OrientationInterpolationSnafu)?
                     }

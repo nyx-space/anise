@@ -104,7 +104,7 @@ fn test_spk_load_bytes() {
 
         println!("{name} -> {summary}");
         // We know that the DE421 data is all in Type 2
-        let data_set = de421.nth_data::<Type2ChebyshevSet>(n).unwrap();
+        let data_set = de421.nth_data::<Type2ChebyshevSet>(None, n).unwrap();
         assert_eq!(data_set.num_records, *segment);
         if summary.target_id == 301 {
             assert_eq!(
@@ -130,7 +130,7 @@ fn test_spk_load_bytes() {
     }
 
     // Try to grab some data here!
-    let data_set = de421.nth_data::<Type2ChebyshevSet>(3).unwrap();
+    let data_set = de421.nth_data::<Type2ChebyshevSet>(None, 3).unwrap();
     println!("{data_set}");
 
     // Put this in a context
@@ -214,12 +214,12 @@ fn test_spk_truncate_cheby() {
     let my_spk = SPK::load(path).unwrap();
 
     // Check that we correctly throw an error if the nth data does not exist.
-    assert!(my_spk.nth_data::<Type2ChebyshevSet>(100).is_err());
+    assert!(my_spk.nth_data::<Type2ChebyshevSet>(None, 100).is_err());
 
     let idx = 10;
 
     let summary = my_spk.data_summaries(None).unwrap()[idx];
-    let segment = my_spk.nth_data::<Type2ChebyshevSet>(idx).unwrap();
+    let segment = my_spk.nth_data::<Type2ChebyshevSet>(None, idx).unwrap();
 
     let orig_init_epoch = segment.init_epoch;
 
