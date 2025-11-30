@@ -168,10 +168,14 @@ impl StateSpec {
                         epoch,
                     })
             } else {
-                unimplemented!("custom frames in not yet supported")
+                Err(AnalysisError::YetUnimplemented {
+                    err: "custom frames in not yet supported",
+                })
             }
         } else {
-            unimplemented!("custom frames in not yet supported")
+            Err(AnalysisError::YetUnimplemented {
+                err: "custom frames in not yet supported",
+            })
         }
     }
 }

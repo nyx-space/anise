@@ -286,7 +286,6 @@ impl Almanac {
 
                 if crossings.is_empty() {
                     // We never cross the boundary, so check if we're in the boundary at the start or not.
-
                     let start_orbit = state_spec.evaluate(start_epoch, self)?;
                     let start_eval = boundary_event.eval(start_orbit, self)?;
                     let end_orbit = state_spec.evaluate(end_epoch, self)?;
@@ -327,7 +326,6 @@ impl Almanac {
                 // We have at least one crossing at this point.
                 let start_orbit = state_spec.evaluate(start_epoch, self)?;
                 let start_eval = boundary_event.eval(start_orbit, self)?;
-                // let init_crossing = crossings.first().unwrap();
 
                 // So we can employ the same logic, we're using signum checks directly.
                 let desired_sign = if matches!(event.condition, Condition::LessThan(..)) {
@@ -381,7 +379,7 @@ impl Almanac {
                         let end_orbit = state_spec.evaluate(end_epoch, self)?;
                         let end_eval = boundary_event.eval(end_orbit, self)?;
                         let prev_orbit =
-                            state_spec.evaluate(start_epoch - event.epoch_precision, self);
+                            state_spec.evaluate(end_epoch - event.epoch_precision, self);
 
                         let fall_details = EventDetails::new(
                             end_orbit,

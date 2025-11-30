@@ -9,9 +9,10 @@
  */
 
 use hifitime::Epoch;
-use snafu::{ensure, ResultExt};
+use log::warn;
+use snafu::ensure;
 
-use super::{EphemerisError, NoEphemerisLoadedSnafu, SPKSnafu};
+use super::{EphemerisError, NoEphemerisLoadedSnafu};
 use crate::almanac::Almanac;
 use crate::frames::Frame;
 use crate::naif::daf::{DAFError, NAIFSummaryRecord};
@@ -34,15 +35,22 @@ impl Almanac {
         let mut common_center = i32::MAX;
 
         for spk in self.spk_data.values().rev() {
-            for summary in spk.data_summaries().context(SPKSnafu {
-                action: "finding ephemeris root",
-            })? {
-                // This summary exists, so we need to follow the branch of centers up the tree.
-                if !summary.is_empty() && summary.center_id.abs() < common_center.abs() {
-                    common_center = summary.center_id;
-                    if common_center == 0 {
-                        // We're at the SSB, there is nothing higher up
-                        return Ok(common_center);
+            for block_result in spk.iter_summary_blocks() {
+                let these_summaries = match block_result {
+                    Ok(s) => s,
+                    Err(e) => {
+                        warn!("DAF/SPK is corrupted: {e}");
+                        continue;
+                    }
+                };
+                for summary in these_summaries {
+                    // This summary exists, so we need to follow the branch of centers up the tree.
+                    if !summary.is_empty() && summary.center_id.abs() < common_center.abs() {
+                        common_center = summary.center_id;
+                        if common_center == 0 {
+                            // We're at the SSB, there is nothing higher up
+                            return Ok(common_center);
+                        }
                     }
                 }
             }

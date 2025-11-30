@@ -21,15 +21,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         
-      - name: Download data
-        run: |
-          wget -O data/de421.bsp http://public-data.nyxspace.com/anise/de421.bsp
-          wget -O data/de430.bsp http://public-data.nyxspace.com/anise/de430.bsp
-          wget -O data/de440s.bsp http://public-data.nyxspace.com/anise/de440s.bsp
-          wget -O data/de440.bsp http://public-data.nyxspace.com/anise/de440.bsp
-          wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v0.5/pck08.pca
-          wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v0.5/pck11.pca
-          wget -O data/lro.bsp http://public-data.nyxspace.com/nyx/examples/lrorg_2023349_2024075_v01_LE.bsp
+      - name: Download Data
+        if: steps.cache-data.outputs.cache-hit != 'true'
+        shell: bash
+        run: sh download_test_data.sh
 
       - name: Setup Python on ${{ matrix.target }} 
         uses: actions/setup-python@v5
@@ -151,15 +146,10 @@ jobs:
         with:
           lfs: true
 
-      - name: Download data
-        run: |
-          wget -O data/de421.bsp http://public-data.nyxspace.com/anise/de421.bsp
-          wget -O data/de430.bsp http://public-data.nyxspace.com/anise/de430.bsp
-          wget -O data/de440s.bsp http://public-data.nyxspace.com/anise/de440s.bsp
-          wget -O data/de440.bsp http://public-data.nyxspace.com/anise/de440.bsp
-          wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v0.5/pck08.pca
-          wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v0.5/pck11.pca
-          wget -O data/lro.bsp http://public-data.nyxspace.com/nyx/examples/lrorg_2023349_2024075_v01_LE.bsp
+      - name: Download Data
+        if: steps.cache-data.outputs.cache-hit != 'true'
+        shell: bash
+        run: sh download_test_data.sh
 
       - uses: actions/setup-python@v5
         with:
@@ -196,15 +186,10 @@ jobs:
         with:
           lfs: true
 
-      - name: Download data
-        run: |
-          wget -O data/de421.bsp http://public-data.nyxspace.com/anise/de421.bsp
-          wget -O data/de430.bsp http://public-data.nyxspace.com/anise/de430.bsp
-          wget -O data/de440s.bsp http://public-data.nyxspace.com/anise/de440s.bsp
-          wget -O data/de440.bsp http://public-data.nyxspace.com/anise/de440.bsp
-          wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v0.5/pck08.pca
-          wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v0.5/pck11.pca
-          wget -O data/lro.bsp http://public-data.nyxspace.com/nyx/examples/lrorg_2023349_2024075_v01_LE.bsp
+      - name: Download Data
+        if: steps.cache-data.outputs.cache-hit != 'true'
+        shell: bash
+        run: sh download_test_data.sh
 
       - uses: actions/setup-python@v5
         with:
@@ -241,15 +226,10 @@ jobs:
         with:
           lfs: true
 
-      - name: Download data
-        run: |
-          wget -O data/de421.bsp http://public-data.nyxspace.com/anise/de421.bsp
-          wget -O data/de430.bsp http://public-data.nyxspace.com/anise/de430.bsp
-          wget -O data/de440s.bsp http://public-data.nyxspace.com/anise/de440s.bsp
-          wget -O data/de440.bsp http://public-data.nyxspace.com/anise/de440.bsp
-          wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v0.5/pck08.pca
-          wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v0.5/pck11.pca
-          wget -O data/lro.bsp http://public-data.nyxspace.com/nyx/examples/lrorg_2023349_2024075_v01_LE.bsp
+      - name: Download Data
+        if: steps.cache-data.outputs.cache-hit != 'true'
+        shell: bash
+        run: sh download_test_data.sh
 
       - uses: actions/setup-python@v5
         with:
@@ -283,16 +263,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        
-      - name: Download data
-        run: |
-          wget -O data/de421.bsp http://public-data.nyxspace.com/anise/de421.bsp
-          wget -O data/de430.bsp http://public-data.nyxspace.com/anise/de430.bsp
-          wget -O data/de440s.bsp http://public-data.nyxspace.com/anise/de440s.bsp
-          wget -O data/de440.bsp http://public-data.nyxspace.com/anise/de440.bsp
-          wget -O data/pck08.pca http://public-data.nyxspace.com/anise/v0.5/pck08.pca
-          wget -O data/pck11.pca http://public-data.nyxspace.com/anise/v0.5/pck11.pca
-          wget -O data/lro.bsp http://public-data.nyxspace.com/nyx/examples/lrorg_2023349_2024075_v01_LE.bsp
 
       - name: Build sdist
         uses: PyO3/maturin-action@v1

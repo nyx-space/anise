@@ -100,6 +100,8 @@ pub enum AnalysisError {
     AllScalarsFailed { spec: Box<StateSpec> },
     #[snafu(display("invalid call to the event evaluator: {err}"))]
     InvalidEventEval { err: String },
+    #[snafu(display("{err}"))]
+    YetUnimplemented { err: &'static str },
 }
 
 pub type AnalysisResult<T> = Result<T, AnalysisError>;
@@ -566,7 +568,13 @@ mod ut_analysis {
         let eclipse = Event::total_eclipse(MOON_J2000);
         let penumbras = Event::penumbra(MOON_J2000);
 
-        let (start_epoch, end_epoch) = almanac.spk_domain(-85).unwrap();
+        let (start_epoch, mut end_epoch) = almanac.spk_domain(-85).unwrap();
+        assert!(
+            (end_epoch - Epoch::from_gregorian_utc_at_midnight(2024, 3, 15)).abs()
+                < Unit::Second * 1
+        );
+        // Now set the end epoch to what we had in version 0.8.0 for test consistency.
+        end_epoch = Epoch::from_gregorian_str("2024-01-09T00:01:09.184137727 ET").unwrap();
 
         let start_orbit = almanac
             .transform(lro_frame, MOON_J2000, start_epoch, None)

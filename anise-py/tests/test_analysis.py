@@ -263,7 +263,7 @@ def test_analysis_event():
     )
     assert sunset_arcs[1].rise.edge == analysis.EventEdge.Falling
     assert sunset_arcs[1].fall.edge == analysis.EventEdge.Rising
-    assert len(sunset_arcs) == 124
+    assert len(sunset_arcs) == 452
 
     # Find eclipse arcs in a short time span
     tick = Epoch.system_now()

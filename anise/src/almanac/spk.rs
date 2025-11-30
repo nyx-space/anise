@@ -75,10 +75,17 @@ impl Almanac {
         &self,
         name: &str,
         epoch: Epoch,
-    ) -> Result<(&SPKSummaryRecord, usize, usize), EphemerisError> {
+    ) -> Result<(&SPKSummaryRecord, usize, Option<usize>, usize), EphemerisError> {
         for (spk_no, spk) in self.spk_data.values().rev().enumerate() {
-            if let Ok((summary, idx_in_spk)) = spk.summary_from_name_at_epoch(name, epoch) {
-                return Ok((summary, spk_no, idx_in_spk));
+            if let Ok((summary, daf_idx, idx_in_spk)) = spk.summary_from_name_at_epoch(name, epoch)
+            {
+                // NOTE: We're iterating backward, so the correct SPK number is "total loaded" minus "current iteration".
+                return Ok((
+                    summary,
+                    self.num_loaded_spk() - spk_no - 1,
+                    daf_idx,
+                    idx_in_spk,
+                ));
             }
         }
 
@@ -99,11 +106,16 @@ impl Almanac {
         &self,
         id: i32,
         epoch: Epoch,
-    ) -> Result<(&SPKSummaryRecord, usize, usize), EphemerisError> {
+    ) -> Result<(&SPKSummaryRecord, usize, Option<usize>, usize), EphemerisError> {
         for (spk_no, spk) in self.spk_data.values().rev().enumerate() {
-            if let Ok((summary, idx_in_spk)) = spk.summary_from_id_at_epoch(id, epoch) {
+            if let Ok((summary, daf_idx, idx_in_spk)) = spk.summary_from_id_at_epoch(id, epoch) {
                 // NOTE: We're iterating backward, so the correct SPK number is "total loaded" minus "current iteration".
-                return Ok((summary, self.num_loaded_spk() - spk_no - 1, idx_in_spk));
+                return Ok((
+                    summary,
+                    self.num_loaded_spk() - spk_no - 1,
+                    daf_idx,
+                    idx_in_spk,
+                ));
             }
         }
 
@@ -127,10 +139,16 @@ impl Almanac {
     pub fn spk_summary_from_name(
         &self,
         name: &str,
-    ) -> Result<(&SPKSummaryRecord, usize, usize), EphemerisError> {
+    ) -> Result<(&SPKSummaryRecord, usize, Option<usize>, usize), EphemerisError> {
         for (spk_no, spk) in self.spk_data.values().rev().enumerate() {
-            if let Ok((summary, idx_in_spk)) = spk.summary_from_name(name) {
-                return Ok((summary, spk_no, idx_in_spk));
+            if let Ok((summary, daf_idx, idx_in_spk)) = spk.summary_from_name(name) {
+                // NOTE: We're iterating backward, so the correct SPK number is "total loaded" minus "current iteration".
+                return Ok((
+                    summary,
+                    self.num_loaded_spk() - spk_no - 1,
+                    daf_idx,
+                    idx_in_spk,
+                ));
             }
         }
 
@@ -150,11 +168,16 @@ impl Almanac {
     pub fn spk_summary(
         &self,
         id: i32,
-    ) -> Result<(&SPKSummaryRecord, usize, usize), EphemerisError> {
+    ) -> Result<(&SPKSummaryRecord, usize, Option<usize>, usize), EphemerisError> {
         for (spk_no, spk) in self.spk_data.values().rev().enumerate() {
-            if let Ok((summary, idx_in_spk)) = spk.summary_from_id(id) {
+            if let Ok((summary, daf_idx, idx_in_spk)) = spk.summary_from_id(id) {
                 // NOTE: We're iterating backward, so the correct SPK number is "total loaded" minus "current iteration".
-                return Ok((summary, self.num_loaded_spk() - spk_no - 1, idx_in_spk));
+                return Ok((
+                    summary,
+                    self.num_loaded_spk() - spk_no - 1,
+                    daf_idx,
+                    idx_in_spk,
+                ));
             }
         }
 
@@ -179,7 +202,7 @@ impl Almanac {
     pub fn spk_summaries(&self, id: NaifId) -> Result<Vec<SPKSummaryRecord>, EphemerisError> {
         let mut summaries = vec![];
         for spk in self.spk_data.values().rev() {
-            if let Ok(these_summaries) = spk.data_summaries() {
+            for these_summaries in spk.iter_summary_blocks().flatten() {
                 for summary in these_summaries {
                     if summary.id() == id {
                         summaries.push(*summary);
@@ -234,7 +257,7 @@ impl Almanac {
 
         let mut domains = HashMap::new();
         for spk in self.spk_data.values().rev() {
-            if let Ok(these_summaries) = spk.data_summaries() {
+            for these_summaries in spk.iter_summary_blocks().flatten() {
                 for summary in these_summaries {
                     let this_id = summary.id();
                     match domains.get_mut(&this_id) {

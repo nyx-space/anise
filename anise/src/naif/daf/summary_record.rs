@@ -12,6 +12,7 @@ use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 use super::NAIFRecord;
 
+/// DAF Summary record is stored a 64-bit floats, but these are actually integers.
 #[derive(IntoBytes, Clone, Copy, Debug, Default, FromBytes, KnownLayout, Immutable)]
 #[repr(C)]
 pub struct SummaryRecord {

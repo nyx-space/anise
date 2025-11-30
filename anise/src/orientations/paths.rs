@@ -11,7 +11,7 @@
 use hifitime::Epoch;
 use snafu::{ensure, ResultExt};
 
-use super::{BPCSnafu, NoOrientationsLoadedSnafu, OrientationDataSetSnafu, OrientationError};
+use super::{NoOrientationsLoadedSnafu, OrientationDataSetSnafu, OrientationError};
 use crate::almanac::Almanac;
 use crate::constants::orientations::{ECLIPJ2000, J2000};
 use crate::frames::Frame;
@@ -38,15 +38,16 @@ impl Almanac {
         let mut common_center = i32::MAX;
 
         for bpc in self.bpc_data.values().rev() {
-            for summary in bpc.data_summaries().context(BPCSnafu {
-                action: "finding orientation root",
-            })? {
-                // This summary exists, so we need to follow the branch of centers up the tree.
-                if !summary.is_empty() && summary.inertial_frame_id.abs() < common_center.abs() {
-                    common_center = summary.inertial_frame_id;
-                    if common_center == J2000 {
-                        // there is nothing higher up
-                        return Ok(common_center);
+            for these_summaries in bpc.iter_summary_blocks().flatten() {
+                for summary in these_summaries {
+                    // This summary exists, so we need to follow the branch of centers up the tree.
+                    if !summary.is_empty() && summary.inertial_frame_id.abs() < common_center.abs()
+                    {
+                        common_center = summary.inertial_frame_id;
+                        if common_center == J2000 {
+                            // there is nothing higher up
+                            return Ok(common_center);
+                        }
                     }
                 }
             }
@@ -94,7 +95,7 @@ impl Almanac {
         // Grab the summary data, which we use to find the paths
         // Let's see if this orientation is defined in the loaded BPC files
         let mut inertial_frame_id = match self.bpc_summary_at_epoch(source.orientation_id, epoch) {
-            Ok((summary, _, _)) => summary.inertial_frame_id,
+            Ok((summary, _, _, _)) => summary.inertial_frame_id,
             Err(_) => {
                 // Not available as a BPC, so let's see if there's planetary data for it.
                 match self.planetary_data.get_by_id(source.orientation_id) {
@@ -127,7 +128,7 @@ impl Almanac {
 
         for _ in 0..MAX_TREE_DEPTH - 1 {
             inertial_frame_id = match self.bpc_summary_at_epoch(inertial_frame_id, epoch) {
-                Ok((summary, _, _)) => summary.inertial_frame_id,
+                Ok((summary, _, _, _)) => summary.inertial_frame_id,
                 Err(_) => {
                     // Not available as a BPC, so let's see if there's planetary data for it.
                     match self.planetary_data.get_by_id(inertial_frame_id) {
