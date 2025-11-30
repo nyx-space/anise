@@ -21,8 +21,9 @@ use crate::analysis::specs::{OrthogonalFrame, Plane};
 
 use super::event::{Event, EventArc, EventDetails};
 use super::prelude::{ScalarExpr, VectorExpr};
+use super::report::PyReportScalars;
 use super::specs::{FrameSpec, StateSpec, StateSpecTrait};
-use super::{AnalysisError, ReportScalars};
+use super::AnalysisError;
 
 #[pymethods]
 impl Almanac {
@@ -35,10 +36,10 @@ impl Almanac {
     pub fn py_report_scalars(
         &self,
         py: Python,
-        report: &ReportScalars,
+        report: &PyReportScalars,
         time_series: TimeSeries,
     ) -> Result<HashMap<String, HashMap<String, f64>>, AnalysisError> {
-        let data = py.detach(|| self.report_scalars(report, time_series));
+        let data = py.detach(|| self.report_scalars(&report.inner, time_series));
         // Modify the values to set errors to NaN
         let mut rslt = HashMap::new();
         for (k, v) in data {

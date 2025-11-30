@@ -176,9 +176,16 @@ impl StateSpecTrait for StateSpec {
             })
         }
     }
+
+    fn ab_corr(&self) -> Option<Aberration> {
+        self.ab_corr
+    }
 }
 
-pub trait StateSpecTrait: Clone + core::fmt::Debug + Sync {
+pub trait StateSpecTrait: Clone + core::fmt::Debug + core::fmt::Display + Sync {
     /// Evaluates this state specification at the provided epoch, returning a cartesian state
     fn evaluate(&self, epoch: Epoch, almanac: &Almanac) -> Result<CartesianState, AnalysisError>;
+
+    /// Returns the aberration correction, if set.
+    fn ab_corr(&self) -> Option<Aberration>;
 }
