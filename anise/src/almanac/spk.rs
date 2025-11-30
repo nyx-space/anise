@@ -143,7 +143,12 @@ impl Almanac {
         for (spk_no, spk) in self.spk_data.values().rev().enumerate() {
             if let Ok((summary, daf_idx, idx_in_spk)) = spk.summary_from_name(name) {
                 // NOTE: We're iterating backward, so the correct SPK number is "total loaded" minus "current iteration".
-                return Ok((summary, spk_no, daf_idx, idx_in_spk));
+                return Ok((
+                    summary,
+                    self.num_loaded_spk() - spk_no - 1,
+                    daf_idx,
+                    idx_in_spk,
+                ));
             }
         }
 
@@ -197,15 +202,7 @@ impl Almanac {
     pub fn spk_summaries(&self, id: NaifId) -> Result<Vec<SPKSummaryRecord>, EphemerisError> {
         let mut summaries = vec![];
         for spk in self.spk_data.values().rev() {
-            for block_result in spk.iter_summary_blocks() {
-                let these_summaries = match block_result {
-                    Ok(s) => s,
-                    Err(e) => {
-                        warn!("DAF/SPK is corrupted: {e}");
-                        continue;
-                    }
-                };
-
+            for these_summaries in spk.iter_summary_blocks().flatten() {
                 for summary in these_summaries {
                     if summary.id() == id {
                         summaries.push(*summary);
@@ -260,15 +257,7 @@ impl Almanac {
 
         let mut domains = HashMap::new();
         for spk in self.spk_data.values().rev() {
-            for block_result in spk.iter_summary_blocks() {
-                let these_summaries = match block_result {
-                    Ok(s) => s,
-                    Err(e) => {
-                        warn!("DAF/SPK is corrupted: {e}");
-                        continue;
-                    }
-                };
-
+            for these_summaries in spk.iter_summary_blocks().flatten() {
                 for summary in these_summaries {
                     let this_id = summary.id();
                     match domains.get_mut(&this_id) {

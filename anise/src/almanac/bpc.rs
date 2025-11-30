@@ -226,15 +226,7 @@ impl Almanac {
 
         let mut domains = HashMap::new();
         for bpc in self.bpc_data.values().rev() {
-            for block_result in bpc.iter_summary_blocks() {
-                let these_summaries = match block_result {
-                    Ok(s) => s,
-                    Err(e) => {
-                        warn!("DAF/BPC is corrupted: {e}");
-                        continue;
-                    }
-                };
-
+            for these_summaries in bpc.iter_summary_blocks().flatten() {
                 for summary in these_summaries {
                     let this_id = summary.id();
                     match domains.get_mut(&this_id) {

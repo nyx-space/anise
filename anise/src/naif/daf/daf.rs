@@ -545,6 +545,7 @@ impl<'a, R: NAIFSummaryRecord, W: MutKind> Iterator for DafBlockIterator<'a, R, 
             Ok(s) => s,
             Err(e) => {
                 self.next_idx = None; // Stop iteration on error
+                error!("DAF found to be corrupted when iterating through summary blocks: {e}");
                 return Some(Err(e));
             }
         };

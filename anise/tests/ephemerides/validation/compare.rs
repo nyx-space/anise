@@ -150,7 +150,7 @@ impl CompareEphem {
         let mut pairs: HashMap<(i32, i32), (Frame, Frame, Epoch, Epoch)> = HashMap::new();
 
         for spk in &spks {
-            for ephem1 in spk.data_summaries().unwrap() {
+            for ephem1 in spk.data_summaries(None).unwrap() {
                 if ephem1.is_empty() {
                     // We're reached the end of useful summaries.
                     break;
@@ -158,7 +158,7 @@ impl CompareEphem {
 
                 let from_frame = Frame::from_ephem_j2000(ephem1.target_id);
 
-                for ephem2 in spk.data_summaries().unwrap() {
+                for ephem2 in spk.data_summaries(None).unwrap() {
                     if ephem1.target_id == ephem2.target_id {
                         continue;
                     }

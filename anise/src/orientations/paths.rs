@@ -9,7 +9,6 @@
  */
 
 use hifitime::Epoch;
-use log::warn;
 use snafu::{ensure, ResultExt};
 
 use super::{NoOrientationsLoadedSnafu, OrientationDataSetSnafu, OrientationError};
@@ -39,15 +38,7 @@ impl Almanac {
         let mut common_center = i32::MAX;
 
         for bpc in self.bpc_data.values().rev() {
-            for block_result in bpc.iter_summary_blocks() {
-                let these_summaries = match block_result {
-                    Ok(s) => s,
-                    Err(e) => {
-                        warn!("DAF/BPC is corrupted: {e}");
-                        continue;
-                    }
-                };
-
+            for these_summaries in bpc.iter_summary_blocks().flatten() {
                 for summary in these_summaries {
                     // This summary exists, so we need to follow the branch of centers up the tree.
                     if !summary.is_empty() && summary.inertial_frame_id.abs() < common_center.abs()

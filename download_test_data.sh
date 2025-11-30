@@ -52,4 +52,4 @@ download_if_missing "http://public-data.nyxspace.com/anise/ci/variable-seg-size-
 download_if_missing "http://public-data.nyxspace.com/anise/ci/earth_latest_high_prec-2023-09-08.bpc" "earth_latest_high_prec.bpc"
 download_if_missing "http://public-data.nyxspace.com/nyx/examples/lrorg_2023349_2024075_v01_LE.bsp" "lro.bsp"
 download_if_missing "http://public-data.nyxspace.com/anise/ci/mro.bsp" "mro.bsp"
-download_if_missing "http://public-data.nyxspace.com/anise/ci/earth_2025_250826_2125_predict.bpc" "data/earth_2025_250826_2125_predict.bpc"
+download_if_missing "http://public-data.nyxspace.com/anise/ci/earth_2025_250826_2125_predict.bpc" "earth_2025_250826_2125_predict.bpc"

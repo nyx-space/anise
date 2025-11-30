@@ -695,9 +695,8 @@ mod ut_analysis {
         );
         assert_eq!(sunset_events[1].rise.edge, EventEdge::Falling);
         assert_eq!(sunset_events[1].fall.edge, EventEdge::Rising);
-        // assert_eq!(sunset_events.len(), 308);
+        assert_eq!(sunset_events.len(), 308);
 
-        dbg!(start_epoch, end_epoch);
         let sunrise_events = almanac
             .report_event_arcs(
                 &lro_state_spec,
