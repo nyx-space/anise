@@ -21,7 +21,7 @@ use crate::analysis::specs::{OrthogonalFrame, Plane};
 
 use super::event::{Event, EventArc, EventDetails};
 use super::prelude::{ScalarExpr, VectorExpr};
-use super::specs::{FrameSpec, StateSpec};
+use super::specs::{FrameSpec, StateSpec, StateSpecTrait};
 use super::{AnalysisError, ReportScalars};
 
 #[pymethods]

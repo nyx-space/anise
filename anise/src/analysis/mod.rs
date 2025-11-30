@@ -34,7 +34,7 @@ pub use utils::{adaptive_step_scanner, brent_solver};
 
 use event::Event;
 use expr::ScalarExpr;
-use specs::StateSpec;
+use specs::{StateSpec, StateSpecTrait};
 use vector_expr::VectorExpr;
 
 #[cfg(feature = "python")]
@@ -46,7 +46,7 @@ pub mod prelude {
     pub use super::event_ops::find_arc_intersections;
     pub use super::expr::ScalarExpr;
     pub use super::report::{ReportScalars, ScalarsTable};
-    pub use super::specs::{FrameSpec, Plane, StateSpec};
+    pub use super::specs::{FrameSpec, Plane, StateSpec, StateSpecTrait};
     pub use super::vector_expr::VectorExpr;
     pub use crate::prelude::Frame;
 }

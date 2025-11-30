@@ -99,7 +99,7 @@ impl eframe::App for UiApp {
         egui::TopBottomPanel::top("header").show(ctx, |ui| {
             ui.horizontal_centered(|ui| {
                 ui.vertical_centered(|ui| {
-                    ui.heading("ANISE v0.8");
+                    ui.heading("ANISE v0.9");
                     ui.label("A modern rewrite of NASA's SPICE toolkit");
                     ui.hyperlink_to(
                         "https://www.nyxspace.com",
