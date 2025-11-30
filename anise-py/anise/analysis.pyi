@@ -97,11 +97,11 @@ class EventArc:
 
     def __init__(self):...
 
-    def duration(self):...
+    def duration(self) -> Duration:...
 
-    def end_epoch(self):...
+    def end_epoch(self) -> Epoch:...
 
-    def start_epoch(self):...
+    def start_epoch(self) -> Epoch:...
 
     def __repr__(self) -> str:
         """Return repr(self)."""
@@ -113,10 +113,7 @@ class EventArc:
 class EventDetails:
     """Represents the details of an event occurring along a trajectory.
 
-`EventDetails` encapsulates the state at which a particular event occurs in a trajectory, along with additional information about the nature of the event. This struct is particularly useful for understanding the dynamics of the event, such as whether it represents a rising or falling edge, or if the edge is unclear.
-
-# Generics
-S: Interpolatable - A type that represents the state of the trajectory. This type must implement the `Interpolatable` trait, ensuring that it can be interpolated and manipulated according to the trajectory's requirements."""
+`EventDetails` encapsulates the state at which a particular event occurs in a trajectory, along with additional information about the nature of the event. This struct is particularly useful for understanding the dynamics of the event, such as whether it represents a rising or falling edge, or if the edge is unclear."""
     edge: EventEdge
     next_value: float
     orbit: Orbit
@@ -128,10 +125,7 @@ S: Interpolatable - A type that represents the state of the trajectory. This typ
     def __init__(self) -> None:
         """Represents the details of an event occurring along a trajectory.
 
-`EventDetails` encapsulates the state at which a particular event occurs in a trajectory, along with additional information about the nature of the event. This struct is particularly useful for understanding the dynamics of the event, such as whether it represents a rising or falling edge, or if the edge is unclear.
-
-# Generics
-S: Interpolatable - A type that represents the state of the trajectory. This type must implement the `Interpolatable` trait, ensuring that it can be interpolated and manipulated according to the trajectory's requirements."""
+`EventDetails` encapsulates the state at which a particular event occurs in a trajectory, along with additional information about the nature of the event. This struct is particularly useful for understanding the dynamics of the event, such as whether it represents a rising or falling edge, or if the edge is unclear."""
 
     def describe(self) -> str:...
 
@@ -350,6 +344,7 @@ class ScalarExpr:
 
     def to_s_expr(self) -> str:
         """Converts this ScalarExpr to its S-Expression"""
+    Abs: type = ...
     Acos: type = ...
     Add: type = ...
     AngleBetween: type = ...
@@ -443,6 +438,29 @@ class VectorExpr:
     Unit: type = ...
     VecProjection: type = ...
     Velocity: type = ...
+
+@typing.final
+class VisibilityArc:
+    aer_data: list
+    fall: EventDetails
+    location: Location
+    location_ref: str
+    rise: EventDetails
+    sample_rate: Duration
+
+    def __init__(self):...
+
+    def duration(self) -> Duration:...
+
+    def end_epoch(self) -> Epoch:...
+
+    def start_epoch(self) -> Epoch:...
+
+    def __repr__(self) -> str:
+        """Return repr(self)."""
+
+    def __str__(self) -> str:
+        """Return str(self)."""
 
 def find_arc_intersections(timelines: list[list[EventArc]]) -> list[tuple]:
     """Finds the intersection of multiple event arc timelines.

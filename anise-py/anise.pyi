@@ -162,6 +162,10 @@ This function performs a memory allocation."""
 # Warning
 This function performs a memory allocation."""
 
+    def bpc_unload(self, alias: str) -> None:
+            """Unloads (in-place) the BPC with the provided alias.
+    **WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded."""
+
     def describe(self, spk: bool=None, bpc: bool=None, planetary: bool=None, eulerparams: bool=None, time_scale: TimeScale=None, round_time: bool=None) -> None:
         """Pretty prints the description of this Almanac, showing everything by default. Default time scale is TDB.
 If any parameter is set to true, then nothing other than that will be printed."""
@@ -214,6 +218,35 @@ A 100%  percent occultation means that the back object is fully hidden from the 
 A value in between means that the back object is partially hidden from the observser (i.e. _penumbra_ if the back object is the Sun).
 Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse/) for modeling details."""
 
+    def report_event_arcs(self, state_spec: StateSpec, event: Event, start_epoch: Epoch, end_epoch: Epoch) -> list:
+        """Report the rising and falling edges/states where the event arc happens.
+
+For example, for a scalar expression less than X, this will report all of the times when the expression falls below X and rises above X.
+This method uses the report_events function under the hood."""
+
+    def report_events(self, state_spec: StateSpec, event: Event, start_epoch: Epoch, end_epoch: Epoch) -> list:
+        """Report all of the states when the provided event happens.
+This method may only be used for equality events, minimum, and maximum events. For spanned events (e.g. Less Than/Greater Than), use report_event_arcs.
+
+# Method
+The report event function starts by lineraly scanning the whole state spec from the start to the end epoch.
+This uses an adaptive step scan modeled on the Runge Kutta adaptive step integrator, but the objective is to ensure that the scalar expression
+of the event is evaluated at steps where it is linearly changing (to within 10% of linearity). This allows finding coarse brackets where
+the expression changes signs exactly once.
+Then, each bracket it sent in parallel to a Brent's method root finder to find the exact time of the event.
+
+# Limitation
+While this approach is both very robust and very fast, if you think the finder may be missing some events, you should _reduce_ the epoch precision
+of the event as a multiplicative factor of that precision is used to scan the trajectory linearly. Alternatively, you may export the scalars at
+a fixed interval using the report_scalars or report_scalars_flat function and manually analyze the results of the scalar expression."""
+
+    def report_scalars(self, report: ReportScalars, time_series: TimeSeries) -> dict:
+        """Report a set of scalar expressions, optionally with aliases, at a fixed time step defined in the TimeSeries."""
+
+    def report_visibility_arcs(self, state_spec: StateSpec, location_id: int, start_epoch: Epoch, end_epoch: Epoch, sample_rate: Duration, obstructing_body: Frame=None) -> list:
+        """Report the list of visibility arcs for the desired location ID."""
+
+
     def rotate(self, from_frame: Frame, to_frame: Frame, epoch: Epoch) -> DCM:
         """Returns the 6x6 DCM needed to rotation the `from_frame` to the `to_frame`.
 
@@ -259,6 +292,10 @@ This function performs a memory allocation."""
 
 # Warning
 This function performs a memory allocation."""
+
+    def spk_unload(self, alias: str) -> None:
+        """Unloads (in-place) the SPK with the provided alias.
+**WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded."""
 
     def state_of(self, object_id: int, observer: Frame, epoch: Epoch, ab_corr: Aberration=None) -> Orbit:
         """Returns the Cartesian state of the object as seen from the provided observer frame (essentially `spkezr`).
@@ -372,6 +409,60 @@ This function performs a recursion of no more than twice the [MAX_TREE_DEPTH].""
         """Return str(self)."""
 
 @typing.final
+class LocationDataSet:
+    """A wrapper around a location dataset kernel (PyO3 does not handle type aliases).
+Use this class to load and unload kernels. Manipulate using its LocationDhallSet representation."""
+
+    def __init__(self) -> None:
+        """A wrapper around a location dataset kernel (PyO3 does not handle type aliases).
+Use this class to load and unload kernels. Manipulate using its LocationDhallSet representation."""
+
+    @staticmethod
+    def load(path: str) -> LocationDataSet:
+        """Loads a Location Dataset kernel from the provided path"""
+
+    def save_as(self, path: str, overwrite: bool=False) -> None:
+        """Save this dataset as a kernel, optionally specifying whether to overwrite the existing file."""
+
+    def to_dhallset(self) -> LocationDhallSet:
+        """Converts this location dataset into a manipulable location Dhall set."""
+
+@typing.final
+class LocationDhallSet:
+    """A Dhall-serializable Location DataSet that serves as an optional intermediate to the LocationDataSet kernels."""
+    data: list
+
+    def __init__(self, data: list) -> None:
+        """A Dhall-serializable Location DataSet that serves as an optional intermediate to the LocationDataSet kernels."""
+
+    def dumps(self) -> str:
+        """Returns the Dhall representation of this LocationDhallSet. Equivalent to to_dhall."""
+
+    @staticmethod
+    def from_dhall(repr: str) -> LocationDhallSet:
+        """Loads this Location dataset from its Dhall representation as a string"""
+
+    @staticmethod
+    def loads(repr: str) -> LocationDhallSet:
+        """Loads this Location dataset from its Dhall representation as a string. Equivalent to from_dhall."""
+
+    def to_dataset(self) -> LocationDataSet:
+        """Converts this location Dhall set into a Python-compatible Location DataSet."""
+
+    def to_dhall(self) -> str:
+        """Returns the Dhall representation of this Location"""
+
+@typing.final
+class LocationDhallSetEntry:
+    """Entry of a Location Dhall set"""
+    alias: str
+    id: int
+    value: Location
+
+    def __init__(self, value: Location, id: int=None, alias: str=None) -> None:
+        """Entry of a Location Dhall set"""
+
+@typing.final
 class MetaAlmanac:
     """A structure to set up an Almanac, with automatic downloading, local storage, checksum checking, and more.
 
@@ -392,10 +483,14 @@ If it does not match, the file will be downloaded again. If no CRC32 is provided
 The downloaded path will be stored in the "AppData" folder."""
 
     def dumps(self) -> str:
-        """Dumps the configured Meta Almanac into a Dhall string."""
+        """Dumps the configured Meta Almanac into a Dhall string. Equivalent to to_dhall()."""
 
     @staticmethod
-    def latest(autodelete: bool=None) -> MetaAlmanac:
+    def from_dhall(repr: str) -> MetaAlmanac:
+        """Loads this Meta Almanac from its Dhall string representation"""
+        
+    @staticmethod
+    def latest(autodelete: bool=None) -> Almanac:
         """Returns an Almanac loaded from the latest NAIF data via the `default` MetaAlmanac.
 The MetaAlmanac will download the DE440s.bsp file, the PCK0008.PCA, the full Moon Principal Axis BPC (moon_pa_de440_200625) and the latest high precision Earth kernel from JPL.
 
@@ -422,6 +517,9 @@ When downloading the data, ANISE will create a temporarily lock file to prevent 
 where multiple processes download the data at the same time. Set `autodelete` to true to delete
 this lock file if a dead lock is detected after 10 seconds. Set this flag to false if you have
 more than ten processes which may attempt to download files in parallel."""
+
+    def to_dhall(self) -> str:
+        """Serializes the configurated Meta Almanac into a Dhall string. Equivalent to dumps()."""
 
     def __eq__(self, value: typing.Any) -> bool:
         """Return self==value."""

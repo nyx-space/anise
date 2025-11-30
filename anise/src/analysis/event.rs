@@ -640,17 +640,17 @@ pub struct EventArc {
 
 #[cfg_attr(feature = "python", pymethods)]
 impl EventArc {
-    /// rtype: Duration
+    /// :rtype: Duration
     pub fn duration(&self) -> Duration {
         self.end_epoch() - self.start_epoch()
     }
 
-    /// rtype: Epoch
+    /// :rtype: Epoch
     pub fn start_epoch(&self) -> Epoch {
         self.rise.orbit.epoch
     }
 
-    /// rtype: Epoch
+    /// :rtype: Epoch
     pub fn end_epoch(&self) -> Epoch {
         self.fall.orbit.epoch
     }
@@ -685,7 +685,7 @@ impl fmt::Debug for EventArc {
 
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.analysis", get_all))]
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct VisibilityArc {
     /// rise event of this arc
     /// :rtype: EventDetails
@@ -706,17 +706,17 @@ pub struct VisibilityArc {
 
 #[cfg_attr(feature = "python", pymethods)]
 impl VisibilityArc {
-    /// rtype: Duration
+    /// :rtype: Duration
     pub fn duration(&self) -> Duration {
         self.end_epoch() - self.start_epoch()
     }
 
-    /// rtype: Epoch
+    /// :rtype: Epoch
     pub fn start_epoch(&self) -> Epoch {
         self.rise.orbit.epoch
     }
 
-    /// rtype: Epoch
+    /// :rtype: Epoch
     pub fn end_epoch(&self) -> Epoch {
         self.fall.orbit.epoch
     }
@@ -743,11 +743,5 @@ impl fmt::Display for VisibilityArc {
             self.duration(),
             self.aer_data.len()
         )
-    }
-}
-
-impl fmt::Debug for VisibilityArc {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} until {}", self.rise, self.fall)
     }
 }
