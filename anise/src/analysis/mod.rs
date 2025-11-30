@@ -42,7 +42,7 @@ pub mod python;
 
 pub mod prelude {
     pub use super::elements::OrbitalElement;
-    pub use super::event::{Condition, Event, EventArc, EventDetails, EventEdge};
+    pub use super::event::{Condition, Event, EventArc, EventDetails, EventEdge, VisibilityArc};
     pub use super::event_ops::find_arc_intersections;
     pub use super::expr::ScalarExpr;
     pub use super::report::{ReportScalars, ScalarsTable};
@@ -102,6 +102,12 @@ pub enum AnalysisError {
     InvalidEventEval { err: String },
     #[snafu(display("{err}"))]
     YetUnimplemented { err: &'static str },
+    #[snafu(display("computing AER on {state} encountered an Almanac error {source}"))]
+    AlmanacVisibility {
+        state: Box<Orbit>,
+        #[snafu(source(from(AlmanacError, Box::new)))]
+        source: Box<AlmanacError>,
+    },
 }
 
 pub type AnalysisResult<T> = Result<T, AnalysisError>;
@@ -927,13 +933,13 @@ mod ut_analysis {
         }
 
         let vis_arcs = almanac
-            .report_visibility_arc(
+            .report_visibility_arcs(
                 &lro_state_spec,
                 2,
-                None,
                 start_epoch,
                 start_epoch + Unit::Day * 3,
                 Unit::Minute * 5,
+                None,
             )
             .unwrap();
         // Duration with mask
@@ -946,7 +952,14 @@ mod ut_analysis {
             println!("{arc}");
             assert!((arc.duration() - duration).abs() < Unit::Minute * 1);
             // Check the sample rate of 5 min
-            assert!((arc.aer_data.len() as f64 / duration.to_unit(Unit::Minute)).abs() < 1.0);
+            let expected_samples = duration.to_unit(Unit::Minute) / 5.0;
+            assert!(
+                (arc.aer_data.len() as f64 - expected_samples).abs() < 2.0,
+                "Expected about {} samples for a duration of {}, but got {}",
+                expected_samples.round(),
+                duration,
+                arc.aer_data.len()
+            );
         }
     }
 }

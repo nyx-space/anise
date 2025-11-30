@@ -203,7 +203,11 @@ impl Location {
     }
 
     fn __str__(&self) -> String {
-        format!("{self:?}")
+        format!("{self}")
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{self:?}@{self:p}")
     }
 }
 
