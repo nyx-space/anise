@@ -11,13 +11,15 @@
 use crate::{
     almanac::Almanac,
     analysis::{
-        event::EventEdge,
+        event::{EventEdge, VisibilityArc},
         event_ops::find_arc_intersections,
         utils::{adaptive_step_scanner, brent_solver},
         AnalysisResult,
     },
+    astro::AzElRange,
+    frames::Frame,
 };
-use hifitime::Epoch;
+use hifitime::{Duration, Epoch, TimeSeries};
 use rayon::prelude::*;
 
 use super::{AnalysisError, StateSpecTrait};
@@ -400,5 +402,73 @@ impl Almanac {
             }
             Condition::Equals(..) | Condition::Minimum() | Condition::Maximum() => unreachable!(),
         }
+    }
+
+    /// Returns the list of visibility arcs for the desired location ID.
+    /// TODO: Export to Python and test
+    pub fn report_visibility_arc<S: StateSpecTrait>(
+        &self,
+        state_spec: &S,
+        location_id: i32,
+        obstructing_body: Option<Frame>,
+        start_epoch: Epoch,
+        end_epoch: Epoch,
+        sample_rate: Duration,
+    ) -> Result<Vec<VisibilityArc>, AnalysisError> {
+        // Find the event arcs first to ensure that the location is valid so we can unwrap safely after the loop.
+        let event = Event::visible_from_location_id(location_id, obstructing_body);
+        let event_arcs = self.report_event_arcs(state_spec, &event, start_epoch, end_epoch)?;
+
+        // Find the location info
+        let mut location_ref = None;
+        let mut location = None;
+        for (idx, (opt_id, opt_name)) in self.location_data.lut.entries() {
+            if let Some(id) = opt_id {
+                if id == location_id {
+                    match opt_name {
+                        Some(name) => location_ref = Some(format!("{name} (#{id})")),
+                        None => location_ref = Some(format!("#{id}")),
+                    };
+                    location = Some(self.location_data.data[idx as usize].clone());
+                    break;
+                }
+            }
+        }
+
+        // Build the AER data
+        let mut arcs = Vec::with_capacity(event_arcs.len());
+
+        for comm in event_arcs {
+            let ts = TimeSeries::exclusive(comm.start_epoch(), comm.end_epoch(), sample_rate);
+            let mut aer_data = ts
+                .par_bridge()
+                .map(|epoch| {
+                    // Eval the state spec
+                    let rx = state_spec
+                        .evaluate(epoch, self)
+                        .expect("state spec eval failed in visibility -- should not be possible");
+
+                    self.azimuth_elevation_range_sez_from_location_id(
+                        rx,
+                        location_id,
+                        obstructing_body,
+                        state_spec.ab_corr(),
+                    )
+                    .expect("AER failed in visibility -- should not be possible")
+                })
+                .collect::<Vec<AzElRange>>();
+            aer_data.sort_unstable_by_key(|aer| aer.epoch);
+
+            arcs.push(VisibilityArc {
+                rise: comm.rise,
+                fall: comm.fall,
+                location_ref: location_ref.clone().unwrap(),
+                aer_data,
+                sample_rate,
+                location: location.clone().unwrap(),
+            });
+        }
+
+        Ok(arcs)
     }
 }

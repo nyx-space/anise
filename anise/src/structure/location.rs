@@ -332,6 +332,16 @@ impl<'a> Decode<'a> for Location {
     }
 }
 
+impl core::fmt::Display for Location {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "lat.: {:.3} deg, long.: {:.3} deg, alt.: {:.3} km on {}",
+            self.latitude_deg, self.longitude_deg, self.height_km, self.frame
+        )
+    }
+}
+
 #[cfg(feature = "analysis")]
 #[cfg(test)]
 mod ut_loc {

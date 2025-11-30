@@ -873,8 +873,6 @@ mod ut_analysis {
         assert!(comm_arcs.len() == 3);
 
         // Build another comms report with the mask enabled.
-        // TODO: Replace this with the new function
-
         let comm_mask = Event::visible_from_location_id(2, None);
         let mut comm_boundary_mask = comm_mask.clone();
         comm_boundary_mask.condition = Condition::Equals(0.0);
@@ -892,6 +890,7 @@ mod ut_analysis {
             println!("w mask: {pass}");
         }
 
+        // Durations no mask
         let exp_durations = [
             Unit::Hour * 8 + Unit::Minute * 57,
             Unit::Hour * 9 + Unit::Minute * 34,
@@ -925,6 +924,29 @@ mod ut_analysis {
             assert!((event.duration() - duration).abs() < Unit::Minute * 1);
             // Check that the event with mask is of shorter duration than without
             assert!(event.duration() > event_mask.duration());
+        }
+
+        let vis_arcs = almanac
+            .report_visibility_arc(
+                &lro_state_spec,
+                2,
+                None,
+                start_epoch,
+                start_epoch + Unit::Day * 3,
+                Unit::Minute * 5,
+            )
+            .unwrap();
+        // Duration with mask
+        let exp_durations = [
+            Unit::Hour * 6 + Unit::Minute * 32,
+            Unit::Hour * 7 + Unit::Minute * 16,
+            Unit::Hour * 8 + Unit::Minute * 14,
+        ];
+        for (arc, duration) in vis_arcs.iter().zip(exp_durations) {
+            println!("{arc}");
+            assert!((arc.duration() - duration).abs() < Unit::Minute * 1);
+            // Check the sample rate of 5 min
+            assert!((arc.aer_data.len() as f64 / duration.to_unit(Unit::Minute)).abs() < 1.0);
         }
     }
 }
