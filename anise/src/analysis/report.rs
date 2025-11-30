@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::analysis::{ScalarExpr, StateSpec};
+use crate::analysis::{specs::StateSpecTrait, ScalarExpr, StateSpec};
 use csv::Writer;
 use hifitime::Epoch;
 use serde::{Deserialize, Serialize};
@@ -27,19 +27,29 @@ use super::python::{PyScalarExpr, PyStateSpec};
 
 /// A basic report builder that can be serialized seperately from the execution.
 /// The scalars must be a tuple of (ScalarExpr, String) where the String is the alias (optional).
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ReportScalars<S: StateSpecTrait> {
+    pub scalars: Vec<(ScalarExpr, Option<String>)>,
+    pub state_spec: S,
+}
+
+/// A basic report builder that can be serialized seperately from the execution.
+/// The scalars must be a tuple of (ScalarExpr, String) where the String is the alias (optional).
 ///
 /// :type scalars: list
 /// :type state_spec: StateSpec
 /// :rtype: ReportScalars
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
-#[cfg_attr(feature = "python", pyo3(module = "anise.analysis"))]
-pub struct ReportScalars {
-    pub scalars: Vec<(ScalarExpr, Option<String>)>,
-    pub state_spec: StateSpec,
+#[cfg_attr(
+    feature = "python",
+    pyo3(module = "anise.analysis", name = "ReportScalars")
+)]
+pub struct PyReportScalars {
+    pub(crate) inner: ReportScalars<StateSpec>,
 }
 
-impl ReportScalars {
+impl ReportScalars<StateSpec> {
     /// Export this Scalar Expression to S-Expression / LISP syntax
     pub fn to_s_expr(&self) -> Result<String, serde_lexpr::Error> {
         Ok(serde_lexpr::to_value(self)?.to_string())
@@ -53,21 +63,24 @@ impl ReportScalars {
 
 #[cfg(feature = "python")]
 #[cfg_attr(feature = "python", pymethods)]
-impl ReportScalars {
+impl PyReportScalars {
     /// Convert the S-Expression to a report builder
     /// :type expr: str
     /// :rtype: ReportScalars
     #[classmethod]
     #[pyo3(name = "from_s_expr")]
     fn py_from_s_expr(_cls: Bound<'_, PyType>, expr: &str) -> Result<Self, PyErr> {
-        Self::from_s_expr(expr).map_err(|e| PyException::new_err(e.to_string()))
+        let inner = ReportScalars::<StateSpec>::from_s_expr(expr)
+            .map_err(|e| PyException::new_err(e.to_string()))?;
+        Ok(Self { inner })
     }
 
     /// Converts this report builder to its S-Expression
     /// :rtype: str
     #[pyo3(name = "to_s_expr")]
     fn py_to_s_expr(&self) -> Result<String, PyErr> {
-        self.to_s_expr()
+        self.inner
+            .to_s_expr()
             .map_err(|e| PyException::new_err(e.to_string()))
     }
 
@@ -81,8 +94,10 @@ impl ReportScalars {
             .collect();
 
         Self {
-            scalars,
-            state_spec,
+            inner: ReportScalars {
+                scalars,
+                state_spec,
+            },
         }
     }
 }

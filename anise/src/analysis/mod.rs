@@ -34,7 +34,7 @@ pub use utils::{adaptive_step_scanner, brent_solver};
 
 use event::Event;
 use expr::ScalarExpr;
-use specs::StateSpec;
+use specs::{StateSpec, StateSpecTrait};
 use vector_expr::VectorExpr;
 
 #[cfg(feature = "python")]
@@ -46,7 +46,7 @@ pub mod prelude {
     pub use super::event_ops::find_arc_intersections;
     pub use super::expr::ScalarExpr;
     pub use super::report::{ReportScalars, ScalarsTable};
-    pub use super::specs::{FrameSpec, Plane, StateSpec};
+    pub use super::specs::{FrameSpec, Plane, StateSpec, StateSpecTrait};
     pub use super::vector_expr::VectorExpr;
     pub use crate::prelude::Frame;
 }
@@ -96,8 +96,8 @@ pub enum AnalysisError {
         end: Epoch,
         event: Box<Event>,
     },
-    #[snafu(display("all scalars failed for {spec:?}"))]
-    AllScalarsFailed { spec: Box<StateSpec> },
+    #[snafu(display("all scalars failed for {spec}"))]
+    AllScalarsFailed { spec: String },
     #[snafu(display("invalid call to the event evaluator: {err}"))]
     InvalidEventEval { err: String },
     #[snafu(display("{err}"))]
@@ -108,9 +108,9 @@ pub type AnalysisResult<T> = Result<T, AnalysisError>;
 
 impl Almanac {
     /// Report a set of scalar expressions, optionally with aliases, at a fixed time step defined in the TimeSeries.
-    pub fn report_scalars(
+    pub fn report_scalars<S: StateSpecTrait>(
         &self,
-        report: &ReportScalars,
+        report: &ReportScalars<S>,
         time_series: TimeSeries,
     ) -> HashMap<Epoch, Result<HashMap<String, AnalysisResult<f64>>, AnalysisError>> {
         time_series
@@ -120,7 +120,7 @@ impl Almanac {
                     Ok(orbit) => {
                         let mut data = HashMap::new();
 
-                        let ab_corr = report.state_spec.ab_corr;
+                        let ab_corr = report.state_spec.ab_corr();
 
                         for (expr, alias) in report.scalars.iter() {
                             data.insert(
@@ -137,9 +137,9 @@ impl Almanac {
     }
 
     /// Report a set of scalar expressions, optionally with aliases, at a fixed time step defined in the TimeSeries, as a flat table that can be serialized in columnal form.
-    pub fn report_scalars_flat(
+    pub fn report_scalars_flat<S: StateSpecTrait>(
         &self,
-        report: &ReportScalars,
+        report: &ReportScalars<S>,
         time_series: TimeSeries,
     ) -> AnalysisResult<ScalarsTable> {
         let data = self.report_scalars(report, time_series);
@@ -157,7 +157,7 @@ impl Almanac {
                 if data.values().all(|res| res.is_err()) {
                     // All errors, no headers.
                     return Err(AnalysisError::AllScalarsFailed {
-                        spec: Box::new(report.state_spec.clone()),
+                        spec: report.state_spec.to_string(),
                     });
                 }
 

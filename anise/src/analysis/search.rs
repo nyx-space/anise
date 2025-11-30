@@ -20,13 +20,13 @@ use crate::{
 use hifitime::Epoch;
 use rayon::prelude::*;
 
-use super::{AnalysisError, StateSpec};
+use super::{AnalysisError, StateSpecTrait};
 use crate::analysis::event::{Condition, Event, EventArc, EventDetails};
 
 impl Almanac {
-    pub fn report_events(
+    pub fn report_events<S: StateSpecTrait>(
         &self,
-        state_spec: &StateSpec,
+        state_spec: &S,
         event: &Event,
         start_epoch: Epoch,
         end_epoch: Epoch,
@@ -178,9 +178,9 @@ impl Almanac {
 
     /// Find all event arcs, i.e. the start and stop time of when a given event occurs. This function
     /// calls the memory and computationally intensive [report_events_slow] function.
-    pub fn report_event_arcs(
+    pub fn report_event_arcs<S: StateSpecTrait>(
         &self,
-        state_spec: &StateSpec,
+        state_spec: &S,
         event: &Event,
         start_epoch: Epoch,
         end_epoch: Epoch,

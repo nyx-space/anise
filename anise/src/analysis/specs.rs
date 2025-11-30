@@ -152,13 +152,11 @@ impl StateSpec {
     pub fn from_s_expr(expr: &str) -> Result<Self, serde_lexpr::Error> {
         serde_lexpr::from_str(expr)
     }
+}
 
+impl StateSpecTrait for StateSpec {
     /// Evaluates this state specification at the provided epoch.
-    pub fn evaluate(
-        &self,
-        epoch: Epoch,
-        almanac: &Almanac,
-    ) -> Result<CartesianState, AnalysisError> {
+    fn evaluate(&self, epoch: Epoch, almanac: &Almanac) -> Result<CartesianState, AnalysisError> {
         if let FrameSpec::Loaded(target_frame) = self.target_frame {
             if let FrameSpec::Loaded(observer_frame) = self.observer_frame {
                 almanac
@@ -178,4 +176,16 @@ impl StateSpec {
             })
         }
     }
+
+    fn ab_corr(&self) -> Option<Aberration> {
+        self.ab_corr
+    }
+}
+
+pub trait StateSpecTrait: Clone + core::fmt::Debug + core::fmt::Display + Sync {
+    /// Evaluates this state specification at the provided epoch, returning a cartesian state
+    fn evaluate(&self, epoch: Epoch, almanac: &Almanac) -> Result<CartesianState, AnalysisError>;
+
+    /// Returns the aberration correction, if set.
+    fn ab_corr(&self) -> Option<Aberration>;
 }

@@ -17,7 +17,7 @@ use crate::analysis::PhysicsVecExprSnafu;
 use crate::math::Vector3;
 use crate::prelude::Epoch;
 
-use super::specs::{OrthogonalFrame, Plane, StateSpec};
+use super::specs::{OrthogonalFrame, Plane, StateSpec, StateSpecTrait};
 use super::AnalysisError;
 
 /// VectorExpr defines a vector expression, which can either be computed from a state, or from a fixed definition.
