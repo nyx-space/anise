@@ -203,7 +203,11 @@ impl Location {
     }
 
     fn __str__(&self) -> String {
-        format!("{self:?}")
+        format!("{self}")
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{self:?}@{self:p}")
     }
 }
 
@@ -329,6 +333,16 @@ impl<'a> Decode<'a> for Location {
             terrain_mask: decoder.decode()?,
             terrain_mask_ignored: decoder.decode()?,
         })
+    }
+}
+
+impl core::fmt::Display for Location {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "lat.: {:.3} deg, long.: {:.3} deg, alt.: {:.3} km on {}",
+            self.latitude_deg, self.longitude_deg, self.height_km, self.frame
+        )
     }
 }
 

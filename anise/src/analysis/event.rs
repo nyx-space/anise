@@ -11,7 +11,7 @@
 use super::{OrbitalElement, ScalarExpr};
 use crate::{
     analysis::AnalysisError,
-    astro::Aberration,
+    astro::{Aberration, AzElRange, Location},
     prelude::{Almanac, Frame, Orbit},
 };
 use hifitime::{Duration, Epoch, Unit};
@@ -471,9 +471,6 @@ impl EventEdge {
 /// Represents the details of an event occurring along a trajectory.
 ///
 /// `EventDetails` encapsulates the state at which a particular event occurs in a trajectory, along with additional information about the nature of the event. This struct is particularly useful for understanding the dynamics of the event, such as whether it represents a rising or falling edge, or if the edge is unclear.
-///
-/// # Generics
-/// S: Interpolatable - A type that represents the state of the trajectory. This type must implement the `Interpolatable` trait, ensuring that it can be interpolated and manipulated according to the trajectory's requirements.
 #[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.analysis", get_all))]
@@ -643,14 +640,17 @@ pub struct EventArc {
 
 #[cfg_attr(feature = "python", pymethods)]
 impl EventArc {
+    /// :rtype: Duration
     pub fn duration(&self) -> Duration {
         self.end_epoch() - self.start_epoch()
     }
 
+    /// :rtype: Epoch
     pub fn start_epoch(&self) -> Epoch {
         self.rise.orbit.epoch
     }
 
+    /// :rtype: Epoch
     pub fn end_epoch(&self) -> Epoch {
         self.fall.orbit.epoch
     }
@@ -676,8 +676,72 @@ impl fmt::Display for EventArc {
         )
     }
 }
+
 impl fmt::Debug for EventArc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} until {}", self.rise, self.fall)
+    }
+}
+
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise.analysis", get_all))]
+#[derive(Clone, Debug, PartialEq)]
+pub struct VisibilityArc {
+    /// rise event of this arc
+    /// :rtype: EventDetails
+    pub rise: EventDetails,
+    /// fall event of this arc
+    /// :rtype: EventDetails
+    pub fall: EventDetails,
+    /// :rtype: str
+    pub location_ref: String,
+    /// :rtype: Location
+    pub location: Location,
+    /// Azimuth, Elevation, Range, Range-rate
+    /// :rtype: list
+    pub aer_data: Vec<AzElRange>,
+    /// :rtype: Duration
+    pub sample_rate: Duration,
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl VisibilityArc {
+    /// :rtype: Duration
+    pub fn duration(&self) -> Duration {
+        self.end_epoch() - self.start_epoch()
+    }
+
+    /// :rtype: Epoch
+    pub fn start_epoch(&self) -> Epoch {
+        self.rise.orbit.epoch
+    }
+
+    /// :rtype: Epoch
+    pub fn end_epoch(&self) -> Epoch {
+        self.fall.orbit.epoch
+    }
+
+    #[cfg(feature = "python")]
+    fn __str__(&self) -> String {
+        format!("{self}")
+    }
+    #[cfg(feature = "python")]
+    fn __repr__(&self) -> String {
+        format!("{self}@{self:p}")
+    }
+}
+
+impl fmt::Display for VisibilityArc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} ({}) visible from {} until {} ({}) ({} AER data)",
+            self.location_ref,
+            self.location,
+            self.start_epoch(),
+            self.end_epoch(),
+            self.duration(),
+            self.aer_data.len()
+        )
     }
 }

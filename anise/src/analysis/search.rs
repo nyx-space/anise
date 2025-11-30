@@ -11,19 +11,37 @@
 use crate::{
     almanac::Almanac,
     analysis::{
-        event::EventEdge,
+        event::{EventEdge, VisibilityArc},
         event_ops::find_arc_intersections,
         utils::{adaptive_step_scanner, brent_solver},
-        AnalysisResult,
+        AlmanacVisibilitySnafu, AnalysisResult,
     },
+    astro::AzElRange,
+    frames::Frame,
 };
-use hifitime::Epoch;
+use hifitime::{Duration, Epoch, TimeSeries};
 use rayon::prelude::*;
+use snafu::ResultExt;
 
 use super::{AnalysisError, StateSpecTrait};
 use crate::analysis::event::{Condition, Event, EventArc, EventDetails};
 
 impl Almanac {
+    /// Report all of the states when the provided event happens.
+    /// This method may only be used for equality events, minimum, and maximum events. For spanned events (e.g. Less Than/Greater Than), use report_event_arcs.
+    ///
+    /// # Method
+    /// The report event function starts by lineraly scanning the whole state spec from the start to the end epoch.
+    /// This uses an adaptive step scan modeled on the Runge Kutta adaptive step integrator, but the objective is to ensure that the scalar expression
+    /// of the event is evaluated at steps where it is linearly changing (to within 10% of linearity). This allows finding coarse brackets where
+    /// the expression changes signs exactly once.
+    /// Then, each bracket it sent in parallel to a Brent's method root finder to find the exact time of the event.
+    ///
+    /// # Limitation
+    /// While this approach is both very robust and very fast, if you think the finder may be missing some events, you should _reduce_ the epoch precision
+    /// of the event as a multiplicative factor of that precision is used to scan the trajectory linearly. Alternatively, you may export the scalars at
+    /// a fixed interval using the report_scalars or report_scalars_flat function and manually analyze the results of the scalar expression.
+    ///
     pub fn report_events<S: StateSpecTrait>(
         &self,
         state_spec: &S,
@@ -176,8 +194,11 @@ impl Almanac {
         }
     }
 
-    /// Find all event arcs, i.e. the start and stop time of when a given event occurs. This function
-    /// calls the memory and computationally intensive [report_events_slow] function.
+    /// Report the rising and falling edges/states where the event arc happens.
+    ///
+    /// For example, for a scalar expression less than X, this will report all of the times when the expression falls below X and rises above X.
+    /// This method uses the report_events function under the hood.
+    ///
     pub fn report_event_arcs<S: StateSpecTrait>(
         &self,
         state_spec: &S,
@@ -400,5 +421,70 @@ impl Almanac {
             }
             Condition::Equals(..) | Condition::Minimum() | Condition::Maximum() => unreachable!(),
         }
+    }
+
+    /// Report the list of visibility arcs for the desired location ID.
+    pub fn report_visibility_arcs<S: StateSpecTrait>(
+        &self,
+        state_spec: &S,
+        location_id: i32,
+        start_epoch: Epoch,
+        end_epoch: Epoch,
+        sample_rate: Duration,
+        obstructing_body: Option<Frame>,
+    ) -> Result<Vec<VisibilityArc>, AnalysisError> {
+        // Find the event arcs first to ensure that the location is valid so we can unwrap safely after the loop.
+        let event = Event::visible_from_location_id(location_id, obstructing_body);
+        let event_arcs = self.report_event_arcs(state_spec, &event, start_epoch, end_epoch)?;
+
+        // Find the location info
+        let mut location_ref = None;
+        let mut location = None;
+        for (idx, (opt_id, opt_name)) in self.location_data.lut.entries() {
+            if let Some(id) = opt_id {
+                if id == location_id {
+                    match opt_name {
+                        Some(name) => location_ref = Some(format!("{name} (#{id})")),
+                        None => location_ref = Some(format!("#{id}")),
+                    };
+                    location = Some(self.location_data.data[idx as usize].clone());
+                    break;
+                }
+            }
+        }
+
+        // Build the AER data
+        let mut arcs = Vec::with_capacity(event_arcs.len());
+
+        for comm in event_arcs {
+            let ts = TimeSeries::exclusive(comm.start_epoch(), comm.end_epoch(), sample_rate);
+            let mut aer_data = ts
+                .par_bridge()
+                .map(|epoch| {
+                    // Eval the state spec
+                    let rx = state_spec.evaluate(epoch, self)?;
+
+                    self.azimuth_elevation_range_sez_from_location_id(
+                        rx,
+                        location_id,
+                        obstructing_body,
+                        state_spec.ab_corr(),
+                    )
+                    .context(AlmanacVisibilitySnafu { state: rx })
+                })
+                .collect::<Result<Vec<AzElRange>, AnalysisError>>()?;
+            aer_data.sort_unstable_by_key(|aer| aer.epoch);
+
+            arcs.push(VisibilityArc {
+                rise: comm.rise,
+                fall: comm.fall,
+                location_ref: location_ref.clone().unwrap(),
+                aer_data,
+                sample_rate,
+                location: location.clone().unwrap(),
+            });
+        }
+
+        Ok(arcs)
     }
 }

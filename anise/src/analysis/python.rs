@@ -7,7 +7,7 @@
  *
  * Documentation: https://nyxspace.com/
  */
-use hifitime::{Epoch, TimeSeries};
+use hifitime::{Duration, Epoch, TimeSeries};
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
@@ -19,7 +19,7 @@ use crate::NaifId;
 pub use crate::analysis::elements::OrbitalElement;
 use crate::analysis::specs::{OrthogonalFrame, Plane};
 
-use super::event::{Event, EventArc, EventDetails};
+use super::event::{Event, EventArc, EventDetails, VisibilityArc};
 use super::prelude::{ScalarExpr, VectorExpr};
 use super::report::PyReportScalars;
 use super::specs::{FrameSpec, StateSpec, StateSpecTrait};
@@ -53,22 +53,20 @@ impl Almanac {
         Ok(rslt)
     }
 
-    /// Report all of the states and event details where the provided event occurs.
+    /// Report all of the states when the provided event happens.
+    /// This method may only be used for equality events, minimum, and maximum events. For spanned events (e.g. Less Than/Greater Than), use report_event_arcs.
     ///
-    /// # Limitations
-    /// This method uses a Brent solver, provides a superlinearity convergence (Golden ratio rate).
-    /// If the function that defines the event is not unimodal, the event finder may not converge correctly.
-    /// After the Brent solver is used, this function will check the median gap between events. Assuming most events are periodic,
-    /// any gap whose median repetition is greater than 125% will be slow searches. This _typically_ finds all of the events ... but it
-    /// may also add duplicates! To prevent reporting duplicate events, the found events are deduplicated if the same event is found
-    /// within 3 times the epoch precision. For example, if the epoch precision is 100 ms, if three events are "found" within 300 ms of each other
-    /// then only one of these three is preserved.
+    /// # Method
+    /// The report event function starts by lineraly scanning the whole state spec from the start to the end epoch.
+    /// This uses an adaptive step scan modeled on the Runge Kutta adaptive step integrator, but the objective is to ensure that the scalar expression
+    /// of the event is evaluated at steps where it is linearly changing (to within 10% of linearity). This allows finding coarse brackets where
+    /// the expression changes signs exactly once.
+    /// Then, each bracket it sent in parallel to a Brent's method root finder to find the exact time of the event.
     ///
-    /// # Heuristic detail
-    /// The initial search step is 1% of the duration requested, if the heuristic is set to None.
-    /// For example, if the trajectory is 100 days long, then we split the trajectory into 100 chunks of 1 day and see whether
-    /// the event is in there. If the event happens twice or more times within 1% of the trajectory duration, only the _one_ of
-    /// such events will be found.
+    /// # Limitation
+    /// While this approach is both very robust and very fast, if you think the finder may be missing some events, you should _reduce_ the epoch precision
+    /// of the event as a multiplicative factor of that precision is used to scan the trajectory linearly. Alternatively, you may export the scalars at
+    /// a fixed interval using the report_scalars or report_scalars_flat function and manually analyze the results of the scalar expression.
     ///
     /// :type state_spec: StateSpec
     /// :type event: Event
@@ -90,8 +88,10 @@ impl Almanac {
         })
     }
 
-    /// Find all event arcs, i.e. the start and stop time of when a given event occurs. This function
-    /// calls the memory and computationally intensive [report_events_slow] function.
+    /// Report the rising and falling edges/states where the event arc happens.
+    ///
+    /// For example, for a scalar expression less than X, this will report all of the times when the expression falls below X and rises above X.
+    /// This method uses the report_events function under the hood.
     ///
     /// :type state_spec: StateSpec
     /// :type event: Event
@@ -109,6 +109,39 @@ impl Almanac {
     ) -> Result<Vec<EventArc>, AnalysisError> {
         py.detach(|| {
             self.report_event_arcs(&StateSpec::from(state_spec), event, start_epoch, end_epoch)
+        })
+    }
+
+    /// Report the list of visibility arcs for the desired location ID.
+    ///
+    /// :type state_spec: StateSpec
+    /// :type location_id: int
+    /// :type start_epoch: Epoch
+    /// :type end_epoch: Epoch
+    /// :type sample_rate: Duration
+    /// :type obstructing_body: Frame, optional
+    /// :rtype: list
+    #[pyo3(name = "report_visibility_arcs", signature=(state_spec, location_id, start_epoch, end_epoch, sample_rate, obstructing_body=None))]
+    #[allow(clippy::identity_op)]
+    fn py_report_visibility_arcs(
+        &self,
+        py: Python,
+        state_spec: PyStateSpec,
+        location_id: i32,
+        start_epoch: Epoch,
+        end_epoch: Epoch,
+        sample_rate: Duration,
+        obstructing_body: Option<Frame>,
+    ) -> Result<Vec<VisibilityArc>, AnalysisError> {
+        py.detach(|| {
+            self.report_visibility_arcs(
+                &StateSpec::from(state_spec),
+                location_id,
+                start_epoch,
+                end_epoch,
+                sample_rate,
+                obstructing_body,
+            )
         })
     }
 }

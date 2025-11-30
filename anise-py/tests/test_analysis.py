@@ -8,7 +8,7 @@ from anise import (
 from anise.astro import Location, TerrainMask, FrameUid
 from anise.analysis import Event, Condition
 import anise.analysis as analysis
-from anise.time import Epoch, TimeSeries, Unit
+from anise.time import Duration, Epoch, TimeSeries, Unit
 from anise.constants import Frames
 from anise.astro import Frame
 from pathlib import Path
@@ -377,3 +377,15 @@ def test_location_accesses():
                 assert is_visible, f"Epoch {epoch} should be visible"
             else:
                 assert not is_visible
+
+    # Check visibility arc function
+    visibility_arcs = almanac.report_visibility_arcs(lro_state_spec, 1, start_epoch, start_epoch + Unit.Day*3, Unit.Minute*10, None)
+    first_pass = visibility_arcs[0]
+    assert first_pass.duration().round(Unit.Second*1) == Duration("8 h 56 min 55 s")
+    # Visibility Arc contains the location reference info for pretty printing
+    print(first_pass.location_ref)
+    # And the location data itself
+    print(first_pass.location, first_pass.location.height_km)
+    # AER data is a list of AzElRange objects
+    assert len(first_pass.aer_data) == 54
+    assert abs(first_pass.aer_data[0].elevation_deg - 1e-11) < 1e-11, "elevation should be nearly zero"

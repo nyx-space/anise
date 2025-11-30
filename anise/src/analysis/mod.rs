@@ -42,7 +42,7 @@ pub mod python;
 
 pub mod prelude {
     pub use super::elements::OrbitalElement;
-    pub use super::event::{Condition, Event, EventArc, EventDetails, EventEdge};
+    pub use super::event::{Condition, Event, EventArc, EventDetails, EventEdge, VisibilityArc};
     pub use super::event_ops::find_arc_intersections;
     pub use super::expr::ScalarExpr;
     pub use super::report::{ReportScalars, ScalarsTable};
@@ -102,6 +102,12 @@ pub enum AnalysisError {
     InvalidEventEval { err: String },
     #[snafu(display("{err}"))]
     YetUnimplemented { err: &'static str },
+    #[snafu(display("computing AER on {state} encountered an Almanac error {source}"))]
+    AlmanacVisibility {
+        state: Box<Orbit>,
+        #[snafu(source(from(AlmanacError, Box::new)))]
+        source: Box<AlmanacError>,
+    },
 }
 
 pub type AnalysisResult<T> = Result<T, AnalysisError>;
@@ -873,8 +879,6 @@ mod ut_analysis {
         assert!(comm_arcs.len() == 3);
 
         // Build another comms report with the mask enabled.
-        // TODO: Replace this with the new function
-
         let comm_mask = Event::visible_from_location_id(2, None);
         let mut comm_boundary_mask = comm_mask.clone();
         comm_boundary_mask.condition = Condition::Equals(0.0);
@@ -892,6 +896,7 @@ mod ut_analysis {
             println!("w mask: {pass}");
         }
 
+        // Durations no mask
         let exp_durations = [
             Unit::Hour * 8 + Unit::Minute * 57,
             Unit::Hour * 9 + Unit::Minute * 34,
@@ -925,6 +930,36 @@ mod ut_analysis {
             assert!((event.duration() - duration).abs() < Unit::Minute * 1);
             // Check that the event with mask is of shorter duration than without
             assert!(event.duration() > event_mask.duration());
+        }
+
+        let vis_arcs = almanac
+            .report_visibility_arcs(
+                &lro_state_spec,
+                2,
+                start_epoch,
+                start_epoch + Unit::Day * 3,
+                Unit::Minute * 5,
+                None,
+            )
+            .unwrap();
+        // Duration with mask
+        let exp_durations = [
+            Unit::Hour * 6 + Unit::Minute * 32,
+            Unit::Hour * 7 + Unit::Minute * 16,
+            Unit::Hour * 8 + Unit::Minute * 14,
+        ];
+        for (arc, duration) in vis_arcs.iter().zip(exp_durations) {
+            println!("{arc}");
+            assert!((arc.duration() - duration).abs() < Unit::Minute * 1);
+            // Check the sample rate of 5 min
+            let expected_samples = duration.to_unit(Unit::Minute) / 5.0;
+            assert!(
+                (arc.aer_data.len() as f64 - expected_samples).abs() < 2.0,
+                "Expected about {} samples for a duration of {}, but got {}",
+                expected_samples.round(),
+                duration,
+                arc.aer_data.len()
+            );
         }
     }
 }
