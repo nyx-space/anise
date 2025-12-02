@@ -442,7 +442,9 @@ impl Orbit {
                     aeqmean2[i] = aeqmean[i] + (aeq[i] - aeq2[i]);
                 }
             } else {
-                warn!("Brouwer Mean Short algorithm convergence not improving, current rel. error {emag_old}");
+                if emag_old >= 1e-6 {
+                    warn!("Brouwer Mean Short algorithm convergence not improving, current rel. error {emag_old}");
+                }
                 break;
             }
 
