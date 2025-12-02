@@ -50,7 +50,7 @@ indexmap = "2.11.4"
 
 [dev-dependencies]
 rust-spice = "0.7.6"
-parquet = "56.0.0"
+parquet = "57.1.0"
 arrow = "56.0.0"
 criterion = "0.8"
 iai-callgrind = "0.16"
