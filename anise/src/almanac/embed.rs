@@ -3,7 +3,7 @@ use crate::{
     errors::{AlmanacError, AlmanacResult, TLDataSetSnafu},
     structure::PlanetaryDataSet,
 };
-use bytes::Bytes;
+use bytes::BytesMut;
 use rust_embed::Embed;
 use snafu::ResultExt;
 
@@ -36,7 +36,7 @@ impl Almanac {
             err: "could not find de440s.bsp in embedded files".to_string(),
         })?;
 
-        almanac.load_from_bytes(Bytes::copy_from_slice(pl_ephem.data.as_ref()))
+        almanac.load_from_bytes(BytesMut::from(pl_ephem.data.as_ref()))
     }
 }
 
