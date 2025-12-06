@@ -79,12 +79,12 @@ impl Almanac {
         })
     }
 
-    /// Loads the provided planetary data into a clone of this original Almanac.
+    /// Loads the provided planetary data.
     pub fn with_planetary_data(self, planetary_data: PlanetaryDataSet) -> Self {
         self.with_planetary_data_as(planetary_data, None)
     }
 
-    /// Loads the provided planetary data into a clone of this original Almanac.
+    /// Loads the provided planetary data.
     pub fn with_planetary_data_as(
         mut self,
         planetary_data: PlanetaryDataSet,

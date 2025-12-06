@@ -9,9 +9,9 @@
  */
 
 use bytes::{BufMut, BytesMut};
-use hifitime::TimeScale;
+use hifitime::{Epoch, TimeScale};
 use indexmap::IndexMap;
-use log::info;
+use log::{info, warn};
 use snafu::ResultExt;
 use zerocopy::FromBytes;
 
@@ -71,7 +71,7 @@ pub struct Almanac {
     /// Dataset of planetary data
     pub planetary_data: IndexMap<String, PlanetaryDataSet>,
     /// Dataset of spacecraft data
-    pub spacecraft_data: SpacecraftDataSet,
+    pub spacecraft_data: IndexMap<String, SpacecraftDataSet>,
     /// Dataset of euler parameters
     pub euler_param_data: EulerParameterDataSet,
     /// Dataset of locations
@@ -89,8 +89,8 @@ impl fmt::Display for Almanac {
         if !self.planetary_data.is_empty() {
             write!(f, "\t#Planetary kernels = {}", self.planetary_data.len())?;
         }
-        if !self.spacecraft_data.lut.by_id.is_empty() {
-            write!(f, "\t{}", self.spacecraft_data)?;
+        if !self.spacecraft_data.is_empty() {
+            write!(f, "\t#Spacecraft kernels = {}", self.spacecraft_data.len())?;
         }
         if !self.euler_param_data.lut.by_id.is_empty() {
             write!(f, "\t{}", self.euler_param_data)?;
@@ -105,9 +105,26 @@ impl Almanac {
         Self::default().load(path)
     }
 
-    /// Loads the provided spacecraft data into a clone of this original Almanac.
-    pub fn with_spacecraft_data(mut self, spacecraft_data: SpacecraftDataSet) -> Self {
-        self.spacecraft_data = spacecraft_data;
+    /// Loads the provided spacecraft data.
+    pub fn with_spacecraft_data(self, spacecraft_data: SpacecraftDataSet) -> Self {
+        self.with_spacecraft_data_as(spacecraft_data, None)
+    }
+
+    /// Loads the provided spacecraft data.
+    pub fn with_spacecraft_data_as(
+        mut self,
+        spacecraft_data: SpacecraftDataSet,
+        alias: Option<String>,
+    ) -> Self {
+        let alias = alias.unwrap_or(Epoch::now().unwrap_or_default().to_string());
+        let msg = format!("unloading spacecraft data `{alias}`");
+        if self
+            .spacecraft_data
+            .insert(alias, spacecraft_data)
+            .is_some()
+        {
+            warn!("{msg}");
+        }
         self
     }
 

@@ -169,9 +169,9 @@ impl eframe::App for UiApp {
                                         self.almanac.bpc_data.get_index(0).unwrap().1.crc32(),
                                     )
                                 } else if !self.almanac.planetary_data.is_empty() {
-                                    ("ANISE/PCA", self.almanac.planetary_data.crc32())
+                                    ("ANISE/PCA", self.almanac.planetary_data.values().next().unwrap().crc32())
                                 } else if !self.almanac.spacecraft_data.is_empty() {
-                                    ("ANISE/SCA", self.almanac.spacecraft_data.crc32())
+                                    ("ANISE/SCA", self.almanac.spacecraft_data.values().next().unwrap().crc32())
                                 } else if !self.almanac.euler_param_data.is_empty() {
                                     ("ANISE/EPA", self.almanac.euler_param_data.crc32())
                                 } else {
