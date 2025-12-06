@@ -31,7 +31,8 @@ fn test_binary_pck_load() {
     let filename = "../data/earth_latest_high_prec.bpc";
     let bytes = file2heap!(filename).unwrap();
 
-    let high_prec = DAF::<BPCSummaryRecord>::parse(bytes).unwrap();
+    let mut high_prec = DAF::<BPCSummaryRecord>::parse(bytes).unwrap();
+    high_prec.set_crc32();
 
     assert_eq!(high_prec.crc32(), 0x97bca34c);
     assert!(high_prec.scrub().is_ok());
@@ -55,7 +56,8 @@ fn test_spk_load_bytes() {
     // Using the DE421 as demo because the correct data is in the DAF documentation
     let bytes = file2heap!("../data/de421.bsp").unwrap();
 
-    let de421 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
+    let mut de421 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
+    de421.set_crc32();
 
     assert_eq!(de421.crc32(), 0x5c78bc13);
     assert!(de421.scrub().is_ok());
@@ -176,7 +178,7 @@ fn test_spk_mut_summary_name() {
     let path = "../data/variable-seg-size-hermite.bsp";
     let output_path = "../target/rename-test.bsp";
 
-    let mut my_spk = SPK::load(path).unwrap().to_mutable();
+    let mut my_spk = SPK::load(path).unwrap();
 
     let summary_size = my_spk.file_record().unwrap().summary_size();
 
@@ -238,7 +240,7 @@ fn test_spk_truncate_cheby() {
     );
 
     // Now we can grab a mutable version of the SPK and modify it.
-    let mut my_spk_trunc = my_spk.to_mutable();
+    let mut my_spk_trunc = my_spk.clone();
     assert!(my_spk_trunc
         .set_nth_data(idx, updated_segment, new_start, summary.end_epoch())
         .is_ok());
@@ -252,7 +254,7 @@ fn test_spk_truncate_cheby() {
     assert_eq!(summary.start_epoch(), new_start);
 
     // Test that we can remove segments all togethet
-    let mut my_spk_rm = my_spk.to_mutable();
+    let mut my_spk_rm = my_spk.clone();
     assert!(my_spk_rm.delete_nth_data(idx).is_ok());
 
     // Serialize the data into a new BSP and confirm that we've updated everything.

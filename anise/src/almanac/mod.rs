@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use bytes::Bytes;
+use bytes::{BufMut, BytesMut};
 use hifitime::TimeScale;
 use indexmap::IndexMap;
 use log::info;
@@ -17,9 +17,9 @@ use zerocopy::FromBytes;
 
 use crate::ephemerides::SPKSnafu;
 use crate::errors::{
-    AlmanacError, AlmanacResult, EphemerisSnafu, LoadingSnafu, OrientationSnafu, TLDataSetSnafu,
+    AlmanacError, AlmanacResult, EphemerisSnafu, InputOutputError, LoadingSnafu, OrientationSnafu,
+    TLDataSetSnafu,
 };
-use crate::file2heap;
 use crate::naif::daf::{FileRecord, NAIFRecord};
 use crate::naif::pretty_print::NAIFPrettyPrint;
 use crate::naif::{BPC, SPK};
@@ -124,11 +124,11 @@ impl Almanac {
     }
 
     /// Loads the provides bytes as one of the data types supported in ANISE.
-    pub fn load_from_bytes(self, bytes: Bytes) -> AlmanacResult<Self> {
+    pub fn load_from_bytes(self, bytes: BytesMut) -> AlmanacResult<Self> {
         self._load_from_bytes(bytes, None)
     }
 
-    fn _load_from_bytes(self, bytes: Bytes, path: Option<&str>) -> AlmanacResult<Self> {
+    fn _load_from_bytes(self, bytes: BytesMut, path: Option<&str>) -> AlmanacResult<Self> {
         // Check if they forgot to run git lfs
         if let Some(lfs_header) = bytes.get(..8) {
             if lfs_header == "version".as_bytes() {
@@ -245,9 +245,15 @@ impl Almanac {
     /// Generic function that tries to load the provided path guessing to the file type.
     pub fn load(self, path: &str) -> AlmanacResult<Self> {
         // Load the data onto the heap
-        let bytes = file2heap!(path).context(LoadingSnafu {
-            path: path.to_string(),
-        })?;
+        let bytes = match std::fs::read(path) {
+            Err(e) => {
+                return Err(AlmanacError::Loading {
+                    path: path.to_string(),
+                    source: InputOutputError::IOError { kind: e.kind() },
+                })
+            }
+            Ok(bytes) => BytesMut::from(&bytes[..]),
+        };
 
         self._load_from_bytes(bytes, Some(path))
             .map_err(|e| match e {
@@ -312,5 +318,119 @@ impl Almanac {
         if locations.unwrap_or(!print_any) {
             println!("=== LOCATIONS DATA ==\n{}", self.location_data.describe());
         }
+    }
+
+    /// Set the CRC32 of all loaded DAF files
+    pub fn set_crc32(&mut self) {
+        for spk in self.spk_data.values_mut() {
+            spk.set_crc32();
+        }
+        for bpc in self.bpc_data.values_mut() {
+            bpc.set_crc32();
+        }
+    }
+
+    /// Load a new DAF/SPK file in place of the one in the provided alias.
+    ///
+    /// This reuses the existing memory buffer, growing it only if the new file
+    /// is larger than the previous capacity. This effectively adopts a
+    /// "high watermark" memory strategy, where the memory usage for this slot
+    /// is determined by the largest file ever loaded into it.
+    pub fn spk_swap(
+        &mut self,
+        alias: &str,
+        new_spk_path: &str,
+        new_alias: String,
+    ) -> Result<(), AlmanacError> {
+        let mut file = std::fs::File::open(new_spk_path)
+            .map_err(|e| InputOutputError::IOError { kind: e.kind() })
+            .context(LoadingSnafu {
+                path: new_spk_path.to_string(),
+            })?;
+
+        let file_len = file.metadata().map(|m| m.len()).unwrap_or(0);
+
+        let entry = self
+            .spk_data
+            .get_mut(alias)
+            .ok_or(AlmanacError::GenericError {
+                err: format!("no SPK alias `{alias}`"),
+            })?;
+
+        let buffer = &mut entry.bytes;
+
+        buffer.clear(); // Sets len to 0, keeps capacity
+        buffer.reserve(file_len as usize); // Ensure we have enough space to avoid re-allocs
+
+        // Zero-Copy Read: Stream file directly into the BytesMut
+        // .writer() adapts the BytesMut to implement std::io::Write
+        let mut writer = buffer.writer();
+        std::io::copy(&mut file, &mut writer)
+            .map_err(|e| InputOutputError::IOError { kind: e.kind() })
+            .context(LoadingSnafu {
+                path: new_spk_path.to_string(),
+            })?;
+
+        // 5. Handle Renaming
+        if alias != new_alias {
+            // Use shift remove instead of swap remove to preserve loading order.
+            if let Some(entry) = self.spk_data.shift_remove(alias) {
+                self.spk_data.insert(new_alias, entry);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Load a new DAF/BPC file in place of the one in the provided alias.
+    ///
+    /// This reuses the existing memory buffer, growing it only if the new file
+    /// is larger than the previous capacity. This effectively adopts a
+    /// "high watermark" memory strategy, where the memory usage for this slot
+    /// is determined by the largest file ever loaded into it.
+    pub fn bpc_swap(
+        &mut self,
+        alias: &str,
+        new_bpc_path: &str,
+        new_alias: String,
+    ) -> Result<(), AlmanacError> {
+        let mut file = std::fs::File::open(new_bpc_path)
+            .map_err(|e| InputOutputError::IOError { kind: e.kind() })
+            .context(LoadingSnafu {
+                path: new_bpc_path.to_string(),
+            })?;
+
+        let file_len = file.metadata().map(|m| m.len()).unwrap_or(0);
+
+        let entry = self
+            .bpc_data
+            .get_mut(alias)
+            .ok_or(AlmanacError::GenericError {
+                err: format!("no BPC alias `{alias}`"),
+            })?;
+
+        let buffer = &mut entry.bytes;
+
+        buffer.clear(); // Sets len to 0, keeps capacity
+        buffer.reserve(file_len as usize); // Ensure we have enough space to avoid re-allocs
+
+        // Zero-Copy Read: Stream file directly into the BytesMut
+        // .writer() adapts the BytesMut to implement std::io::Write
+        let mut writer = buffer.writer();
+        std::io::copy(&mut file, &mut writer)
+            .map_err(|e| InputOutputError::IOError { kind: e.kind() })
+            .context(LoadingSnafu {
+                path: new_bpc_path.to_string(),
+            })?;
+
+        // 5. Handle Renaming
+        if alias != new_alias {
+            // Use shift remove instead of swap remove to preserve loading order.
+            if let Some(entry) = self.bpc_data.shift_remove(alias) {
+                self.bpc_data.insert(new_alias, entry);
+            }
+        }
+
+        Ok(())
     }
 }

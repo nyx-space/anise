@@ -10,12 +10,11 @@
 
 use super::file_record::FileRecordError;
 use super::{
-    DAFError, DecodingNameSnafu, DecodingSummarySnafu, FileRecordSnafu, IOSnafu, NAIFDataSet,
-    NAIFRecord, NAIFSummaryRecord,
+    DAFError, DecodingNameSnafu, DecodingSummarySnafu, FileRecordSnafu, NAIFDataSet, NAIFRecord,
+    NAIFSummaryRecord,
 };
 pub use super::{FileRecord, NameRecord, SummaryRecord};
-use crate::errors::DecodingError;
-use crate::file2heap;
+use crate::errors::{DecodingError, InputOutputError};
 use crate::naif::daf::DecodingDataSnafu;
 use crate::{errors::IntegrityError, DBL_SIZE};
 use bytes::{Bytes, BytesMut};
@@ -43,36 +42,101 @@ io_imports!();
 
 pub(crate) const RCRD_LEN: usize = 1024;
 #[derive(Clone, Default, Debug, PartialEq)]
-pub struct GenericDAF<R: NAIFSummaryRecord, W: MutKind> {
-    pub bytes: W,
-    pub crc32_checksum: u32,
+pub struct DAF<R: NAIFSummaryRecord> {
+    pub bytes: BytesMut,
+    pub crc32: Option<u32>,
     pub _daf_type: PhantomData<R>,
 }
 
-pub type DAF<R> = GenericDAF<R, Bytes>;
-pub type MutDAF<R> = GenericDAF<R, BytesMut>;
+impl<R: NAIFSummaryRecord> DAF<R> {
+    /// Parse the provided bytes as a SPICE Double Array File.
+    ///
+    /// # DAF File Structure
+    /// A DAF is composed of three main parts:
+    /// 1.  **File Record:** The first record (1024 bytes) of the file. It contains metadata about the file, such as the endianness, the number of records, and pointers to the other sections.
+    /// 2.  **Comment Area:** An optional area for storing comments.
+    /// 3.  **Summary/Name Records and Data:** The remaining records contain the summary records, name records, and the actual data arrays. The file record contains pointers to the start of these sections.
+    ///
+    /// # Parsing Process
+    /// 1.  The entire file is read into a `Bytes` object.
+    /// 2.  The CRC32 checksum of the bytes is computed.
+    /// 3.  The `file_record` and `name_record` are parsed to ensure the file is a valid DAF.
+    pub fn parse<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DAFError> {
+        let me = Self {
+            bytes: BytesMut::from(&bytes[..]),
+            crc32: None,
+            _daf_type: PhantomData,
+        };
+        // Check that the file record and name record can be parsed successfully.
+        // This validates that the file is a DAF and that the endianness is correct.
+        me.file_record()?;
+        // Ensure tha twe can parse the first name record.
+        me.name_record(None)?;
+        Ok(me)
+    }
 
-pub trait MutKind: Deref<Target = [u8]> {}
-impl MutKind for Bytes {}
-impl MutKind for BytesMut {}
+    /// Parse the DAF only if the CRC32 checksum of the data is valid
+    pub fn check_then_parse<B: Deref<Target = [u8]>>(
+        bytes: B,
+        expected: u32,
+    ) -> Result<Self, DAFError> {
+        let computed = crc32fast::hash(&bytes);
+        if computed != expected {
+            return Err(DAFError::DAFIntegrity {
+                source: IntegrityError::ChecksumInvalid {
+                    expected: Some(expected),
+                    computed,
+                },
+            });
+        }
 
-impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
+        let mut me = Self::parse(bytes)?;
+        me.crc32 = Some(computed);
+        Ok(me)
+    }
+
+    /// Loads the provided path in heap and parse.
+    pub fn load(path: &str) -> Result<Self, DAFError> {
+        let bytes = match std::fs::read(path) {
+            Err(e) => {
+                return Err(DAFError::IO {
+                    action: format!("loading {path:?}"),
+                    source: InputOutputError::IOError { kind: e.kind() },
+                })
+            }
+            Ok(bytes) => BytesMut::from(&bytes[..]),
+        };
+
+        Self::parse(bytes)
+    }
+
+    /// Parse the provided static byte array as a SPICE Double Array File
+    pub fn from_static<B: Deref<Target = [u8]>>(bytes: &'static B) -> Result<Self, DAFError> {
+        Self::parse(Bytes::from_static(bytes))
+    }
+
     /// Compute the CRC32 of the underlying bytes
     pub fn crc32(&self) -> u32 {
         crc32fast::hash(&self.bytes)
     }
 
+    /// Sets the CRC32 of this DAF.
+    pub fn set_crc32(&mut self) {
+        self.crc32 = Some(self.crc32());
+    }
+
     /// Scrubs the data by computing the CRC32 of the bytes and making sure that it still matches the previously known hash
     pub fn scrub(&self) -> Result<(), IntegrityError> {
-        if self.crc32() == self.crc32_checksum {
-            Ok(())
-        } else {
-            // Compiler will optimize the double computation away
-            Err(IntegrityError::ChecksumInvalid {
-                expected: self.crc32_checksum,
-                computed: self.crc32(),
-            })
+        if let Some(cur_crc32) = self.crc32 {
+            if cur_crc32 == self.crc32() {
+                return Ok(());
+            }
         }
+        // Compiler will optimize the double computation away
+        Err(IntegrityError::ChecksumInvalid {
+            expected: self.crc32,
+            computed: self.crc32(),
+        })
     }
 
     /// Reads and parses the file record from the DAF bytes.
@@ -434,7 +498,7 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
     }
 
     /// Returns an iterator over all summary data blocks.
-    pub fn iter_summary_blocks<'a>(&'a self) -> DafBlockIterator<'a, R, W> {
+    pub fn iter_summary_blocks<'a>(&'a self) -> DafBlockIterator<'a, R> {
         // Initialize with the first record pointer
         let start = self.file_record().map(|f| f.fwrd_idx()).unwrap_or(0);
         DafBlockIterator {
@@ -444,86 +508,19 @@ impl<R: NAIFSummaryRecord, W: MutKind> GenericDAF<R, W> {
     }
 }
 
-impl<R: NAIFSummaryRecord, W: MutKind> Hash for GenericDAF<R, W> {
+impl<R: NAIFSummaryRecord> Hash for DAF<R> {
     /// Hash will only hash the bytes, nothing else (since these are derived from the bytes anyway).
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.bytes.hash(state);
     }
 }
 
-impl<R: NAIFSummaryRecord> DAF<R> {
-    /// Parse the provided bytes as a SPICE Double Array File.
-    ///
-    /// # DAF File Structure
-    /// A DAF is composed of three main parts:
-    /// 1.  **File Record:** The first record (1024 bytes) of the file. It contains metadata about the file, such as the endianness, the number of records, and pointers to the other sections.
-    /// 2.  **Comment Area:** An optional area for storing comments.
-    /// 3.  **Summary/Name Records and Data:** The remaining records contain the summary records, name records, and the actual data arrays. The file record contains pointers to the start of these sections.
-    ///
-    /// # Parsing Process
-    /// 1.  The entire file is read into a `Bytes` object.
-    /// 2.  The CRC32 checksum of the bytes is computed.
-    /// 3.  The `file_record` and `name_record` are parsed to ensure the file is a valid DAF.
-    pub fn parse<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DAFError> {
-        let crc32_checksum = crc32fast::hash(&bytes);
-        let me = Self {
-            bytes: Bytes::copy_from_slice(&bytes),
-            crc32_checksum,
-            _daf_type: PhantomData,
-        };
-        // Check that the file record and name record can be parsed successfully.
-        // This validates that the file is a DAF and that the endianness is correct.
-        me.file_record()?;
-        // Ensure tha twe can parse the first name record.
-        me.name_record(None)?;
-        Ok(me)
-    }
-
-    /// Parse the DAF only if the CRC32 checksum of the data is valid
-    pub fn check_then_parse<B: Deref<Target = [u8]>>(
-        bytes: B,
-        expected: u32,
-    ) -> Result<Self, DAFError> {
-        let computed = crc32fast::hash(&bytes);
-        if computed != expected {
-            return Err(DAFError::DAFIntegrity {
-                source: IntegrityError::ChecksumInvalid { expected, computed },
-            });
-        }
-
-        Self::parse(bytes)
-    }
-
-    /// Loads the provided path in heap and parse.
-    pub fn load(path: &str) -> Result<Self, DAFError> {
-        let bytes = file2heap!(path).context(IOSnafu {
-            action: format!("loading {path:?}"),
-        })?;
-
-        Self::parse(bytes)
-    }
-
-    /// Parse the provided static byte array as a SPICE Double Array File
-    pub fn from_static<B: Deref<Target = [u8]>>(bytes: &'static B) -> Result<Self, DAFError> {
-        Self::parse(Bytes::from_static(bytes))
-    }
-
-    /// Copies the underlying bytes of this DAF into a MutDAF, enabling modification of the DAF.
-    pub fn to_mutable(&self) -> MutDAF<R> {
-        MutDAF {
-            bytes: BytesMut::from_iter(&self.bytes),
-            crc32_checksum: self.crc32_checksum,
-            _daf_type: PhantomData,
-        }
-    }
-}
-
-pub struct DafBlockIterator<'a, R: NAIFSummaryRecord, W: MutKind> {
-    daf: &'a GenericDAF<R, W>,
+pub struct DafBlockIterator<'a, R: NAIFSummaryRecord> {
+    daf: &'a DAF<R>,
     next_idx: Option<usize>,
 }
 
-impl<'a, R: NAIFSummaryRecord, W: MutKind> Iterator for DafBlockIterator<'a, R, W> {
+impl<'a, R: NAIFSummaryRecord> Iterator for DafBlockIterator<'a, R> {
     // Yields the slice of summaries for the current block
     type Item = Result<&'a [R], DAFError>;
 
@@ -591,18 +588,19 @@ mod daf_ut {
             ),
             Err(DAFError::DAFIntegrity {
                 source: IntegrityError::ChecksumInvalid {
-                    expected: nominal_crc + 1,
+                    expected: Some(nominal_crc + 1),
                     computed: nominal_crc
                 },
             })
         );
 
         // Change the checksum of the traj and check that scrub fails
-        traj.crc32_checksum += 1;
+        traj.set_crc32();
+        *traj.crc32.as_mut().unwrap() = nominal_crc + 1;
         assert_eq!(
             traj.scrub(),
             Err(IntegrityError::ChecksumInvalid {
-                expected: nominal_crc + 1,
+                expected: Some(nominal_crc + 1),
                 computed: nominal_crc
             })
         );

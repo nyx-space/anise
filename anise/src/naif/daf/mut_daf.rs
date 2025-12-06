@@ -8,15 +8,11 @@
  * Documentation: https://nyxspace.com/
  */
 
-use core::{marker::PhantomData, ops::Deref};
-
 use super::{
-    daf::MutDAF, DAFError, DecodingNameSnafu, IOSnafu, NAIFDataSet, NAIFSummaryRecord, NameRecord,
-    RCRD_LEN,
+    daf::DAF, DAFError, DecodingNameSnafu, NAIFDataSet, NAIFSummaryRecord, NameRecord, RCRD_LEN,
 };
 use crate::{
     errors::DecodingError,
-    file2heap,
     naif::daf::{file_record::FileRecordError, NAIFRecord, SummaryRecord},
     DBL_SIZE,
 };
@@ -25,31 +21,7 @@ use hifitime::Epoch;
 use snafu::ResultExt;
 use zerocopy::IntoBytes;
 
-impl<R: NAIFSummaryRecord> MutDAF<R> {
-    /// Parse the provided bytes as a SPICE Double Array File
-    pub fn parse<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DAFError> {
-        let crc32_checksum = crc32fast::hash(&bytes);
-        let mut buf = BytesMut::with_capacity(0);
-        buf.extend(bytes.iter());
-        let me = Self {
-            bytes: buf,
-            crc32_checksum,
-            _daf_type: PhantomData,
-        };
-        // Check that these calls will succeed.
-        me.file_record()?;
-        me.name_record(None)?;
-        Ok(me)
-    }
-
-    pub fn load(path: &str) -> Result<Self, DAFError> {
-        let bytes = file2heap!(path).context(IOSnafu {
-            action: format!("loading {path:?}"),
-        })?;
-
-        Self::parse(bytes)
-    }
-
+impl<R: NAIFSummaryRecord> DAF<R> {
     /// Sets the name record of this mutable DAF file to the one provided as a parameter.
     pub fn set_name_record(&mut self, new_name_record: NameRecord) -> Result<(), DAFError> {
         let rcrd_idx = self.file_record()?.fwrd_idx() * RCRD_LEN;
