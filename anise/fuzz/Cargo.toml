@@ -63,20 +63,6 @@ doc = false
 bench = false
 
 [[bin]]
-name = "parse_mut_bpc"
-path = "fuzz_targets/parse_mut_bpc.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "parse_mut_spk"
-path = "fuzz_targets/parse_mut_spk.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
 name = "fkitem_extract_key"
 path = "fuzz_targets/fkitem_extract_key.rs"
 test = false

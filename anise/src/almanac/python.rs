@@ -129,6 +129,39 @@ impl Almanac {
     fn py_bpc_unload(&mut self, alias: &str) -> Result<(), OrientationError> {
         self.bpc_unload(alias)
     }
+
+    /// Load a new DAF/SPK file in place of the one in the provided alias.
+    ///
+    /// This reuses the existing memory buffer, growing it only if the new file
+    /// is larger than the previous capacity. This effectively adopts a
+    /// "high watermark" memory strategy, where the memory usage for this slot
+    /// is determined by the largest file ever loaded into it.
+    #[pyo3(name = "spk_swap")]
+    pub fn py_spk_swap(
+        &mut self,
+        alias: &str,
+        new_spk_path: &str,
+        new_alias: String,
+    ) -> AlmanacResult<()> {
+        self.spk_swap(alias, new_spk_path, new_alias)
+    }
+
+    /// Load a new DAF/BPC file in place of the one in the provided alias.
+    ///
+    /// This reuses the existing memory buffer, growing it only if the new file
+    /// is larger than the previous capacity. This effectively adopts a
+    /// "high watermark" memory strategy, where the memory usage for this slot
+    /// is determined by the largest file ever loaded into it.
+    #[pyo3(name = "bpc_swap")]
+    pub fn py_bpc_swap(
+        &mut self,
+        alias: &str,
+        new_bpc_path: &str,
+        new_alias: String,
+    ) -> AlmanacResult<()> {
+        self.bpc_swap(alias, new_bpc_path, new_alias)
+    }
+
     /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
     /// receiver state (`rx`) seen from the transmitter state (`tx`), once converted into the SEZ frame of the transmitter.
     ///

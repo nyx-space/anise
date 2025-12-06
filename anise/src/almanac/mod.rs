@@ -20,7 +20,6 @@ use crate::errors::{
     AlmanacError, AlmanacResult, EphemerisSnafu, InputOutputError, LoadingSnafu, OrientationSnafu,
     TLDataSetSnafu,
 };
-use crate::file2heap;
 use crate::naif::daf::{FileRecord, NAIFRecord};
 use crate::naif::pretty_print::NAIFPrettyPrint;
 use crate::naif::{BPC, SPK};
@@ -246,9 +245,15 @@ impl Almanac {
     /// Generic function that tries to load the provided path guessing to the file type.
     pub fn load(self, path: &str) -> AlmanacResult<Self> {
         // Load the data onto the heap
-        let bytes = file2heap!(path).context(LoadingSnafu {
-            path: path.to_string(),
-        })?;
+        let bytes = match std::fs::read(path) {
+            Err(e) => {
+                return Err(AlmanacError::Loading {
+                    path: path.to_string(),
+                    source: InputOutputError::IOError { kind: e.kind() },
+                })
+            }
+            Ok(bytes) => BytesMut::from(&bytes[..]),
+        };
 
         self._load_from_bytes(bytes, Some(path))
             .map_err(|e| match e {
@@ -401,7 +406,7 @@ impl Almanac {
             .bpc_data
             .get_mut(alias)
             .ok_or(AlmanacError::GenericError {
-                err: format!("no SPK alias `{alias}`"),
+                err: format!("no BPC alias `{alias}`"),
             })?;
 
         let buffer = &mut entry.bytes;

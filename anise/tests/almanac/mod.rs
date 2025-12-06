@@ -23,6 +23,46 @@ fn test_load_ctx() {
     println!("{loaded_ctx}");
 
     dbg!(core::mem::size_of::<Almanac>());
+
+    // Test swapping
+    let keys = loaded_ctx
+        .spk_data
+        .keys()
+        .map(|k| k.to_string())
+        .collect::<Vec<String>>();
+
+    loaded_ctx
+        .spk_swap(&keys[0], "../data/de440s.bsp", "new de440s".to_string())
+        .unwrap();
+
+    let keys = loaded_ctx
+        .spk_data
+        .keys()
+        .map(|k| k.to_string())
+        .collect::<Vec<String>>();
+    assert_eq!(keys[0], "new de440s".to_string());
+
+    // Repeat for BPC
+    let keys = loaded_ctx
+        .bpc_data
+        .keys()
+        .map(|k| k.to_string())
+        .collect::<Vec<String>>();
+
+    loaded_ctx
+        .bpc_swap(
+            &keys[0],
+            "../data/earth_latest_high_prec.bpc",
+            "new EOP".to_string(),
+        )
+        .unwrap();
+
+    let keys = loaded_ctx
+        .bpc_data
+        .keys()
+        .map(|k| k.to_string())
+        .collect::<Vec<String>>();
+    assert_eq!(keys[0], "new EOP".to_string());
 }
 
 #[test]

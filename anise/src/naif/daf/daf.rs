@@ -10,12 +10,11 @@
 
 use super::file_record::FileRecordError;
 use super::{
-    DAFError, DecodingNameSnafu, DecodingSummarySnafu, FileRecordSnafu, IOSnafu, NAIFDataSet,
-    NAIFRecord, NAIFSummaryRecord,
+    DAFError, DecodingNameSnafu, DecodingSummarySnafu, FileRecordSnafu, NAIFDataSet, NAIFRecord,
+    NAIFSummaryRecord,
 };
 pub use super::{FileRecord, NameRecord, SummaryRecord};
-use crate::errors::DecodingError;
-use crate::file2heap;
+use crate::errors::{DecodingError, InputOutputError};
 use crate::naif::daf::DecodingDataSnafu;
 use crate::{errors::IntegrityError, DBL_SIZE};
 use bytes::{Bytes, BytesMut};
@@ -101,9 +100,15 @@ impl<R: NAIFSummaryRecord> DAF<R> {
 
     /// Loads the provided path in heap and parse.
     pub fn load(path: &str) -> Result<Self, DAFError> {
-        let bytes = file2heap!(path).context(IOSnafu {
-            action: format!("loading {path:?}"),
-        })?;
+        let bytes = match std::fs::read(path) {
+            Err(e) => {
+                return Err(DAFError::IO {
+                    action: format!("loading {path:?}"),
+                    source: InputOutputError::IOError { kind: e.kind() },
+                })
+            }
+            Ok(bytes) => BytesMut::from(&bytes[..]),
+        };
 
         Self::parse(bytes)
     }

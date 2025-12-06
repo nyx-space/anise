@@ -76,10 +76,7 @@ macro_rules! file2heap {
             Err(e) => Err($crate::errors::InputOutputError::IOError { kind: e.kind() }),
             Ok(bytes) => {
                 use bytes::BytesMut;
-                let mut bytes_mut = BytesMut::new();
-                bytes_mut.reserve(bytes.len());
-                bytes_mut.extend(bytes.iter());
-                Ok(bytes_mut)
+                Ok(BytesMut::from(&bytes[..]))
             }
         }
     };
