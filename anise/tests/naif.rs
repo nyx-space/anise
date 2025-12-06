@@ -31,7 +31,8 @@ fn test_binary_pck_load() {
     let filename = "../data/earth_latest_high_prec.bpc";
     let bytes = file2heap!(filename).unwrap();
 
-    let high_prec = DAF::<BPCSummaryRecord>::parse(bytes).unwrap();
+    let mut high_prec = DAF::<BPCSummaryRecord>::parse(bytes).unwrap();
+    high_prec.set_crc32();
 
     assert_eq!(high_prec.crc32(), 0x97bca34c);
     assert!(high_prec.scrub().is_ok());
@@ -55,7 +56,8 @@ fn test_spk_load_bytes() {
     // Using the DE421 as demo because the correct data is in the DAF documentation
     let bytes = file2heap!("../data/de421.bsp").unwrap();
 
-    let de421 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
+    let mut de421 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
+    de421.set_crc32();
 
     assert_eq!(de421.crc32(), 0x5c78bc13);
     assert!(de421.scrub().is_ok());
