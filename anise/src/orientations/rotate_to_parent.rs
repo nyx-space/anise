@@ -105,31 +105,28 @@ impl Almanac {
             }
             Err(_) => {
                 // Not available as a BPC, so let's see if there's planetary data for it.
-                match self.planetary_data.get_by_id(source.orientation_id) {
-                    Ok(planetary_data) => {
-                        trace!("query {source} wrt to its parent @ {epoch:E} using planetary data");
+                for data in self.planetary_data.values().rev() {
+                    if let Ok(planetary_data) = data.get_by_id(source.orientation_id) {
                         // Fetch the parent info
-                        let system_data =
-                            match self.planetary_data.get_by_id(planetary_data.parent_id) {
-                                Ok(parent) => parent,
-                                Err(_) => planetary_data,
-                            };
+                        let system_data = match data.get_by_id(planetary_data.parent_id) {
+                            Ok(parent) => parent,
+                            Err(_) => planetary_data,
+                        };
 
-                        planetary_data
+                        return planetary_data
                             .rotation_to_parent(epoch, &system_data)
-                            .context(OrientationPhysicsSnafu)
-                    }
-                    Err(_) => {
-                        trace!("query {source} wrt to its parent @ {epoch:E} using Euler parameter data");
-                        // Finally, let's see if it's in the loaded Euler Parameters.
-                        // We can call `into` because EPs can be converted directly into DCMs.
-                        Ok(self
-                            .euler_param_data
-                            .get_by_id(source.orientation_id)
-                            .context(OrientationDataSetSnafu)?
-                            .into())
+                            .context(OrientationPhysicsSnafu);
                     }
                 }
+
+                trace!("query {source} wrt to its parent @ {epoch:E} using Euler parameter data");
+                // Finally, let's see if it's in the loaded Euler Parameters.
+                // We can call `into` because EPs can be converted directly into DCMs.
+                Ok(self
+                    .euler_param_data
+                    .get_by_id(source.orientation_id)
+                    .context(OrientationDataSetSnafu)?
+                    .into())
             }
         }
     }

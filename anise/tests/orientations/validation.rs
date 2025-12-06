@@ -49,10 +49,7 @@ fn validate_iau_rotation_to_parent() {
     spice::furnsh(pck);
     let planetary_data = convert_tpc(pck, "../data/gm_de431.tpc").unwrap();
 
-    let almanac = Almanac {
-        planetary_data,
-        ..Default::default()
-    };
+    let almanac = Almanac::default().with_planetary_data(planetary_data);
 
     for frame in [
         IAU_MERCURY_FRAME,
@@ -542,11 +539,9 @@ fn validate_bpc_to_iau_rotations() {
     spice::furnsh(pck);
     let planetary_data = convert_tpc(pck, "../data/gm_de431.tpc").unwrap();
 
-    let almanac = Almanac {
-        planetary_data,
-        ..Default::default()
-    };
-    let almanac = almanac.with_bpc(BPC::load(bpc).unwrap());
+    let almanac = Almanac::default()
+        .with_planetary_data(planetary_data)
+        .with_bpc(BPC::load(bpc).unwrap());
 
     println!("{almanac}");
 

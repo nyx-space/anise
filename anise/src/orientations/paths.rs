@@ -54,9 +54,10 @@ impl Almanac {
         }
 
         // If we reached this point, it means that we didn't find J2000 in the loaded BPCs, so let's iterate through the planetary data
-        if !self.planetary_data.is_empty() {
-            for id in self.planetary_data.lut.by_id.keys() {
-                if let Ok(pc) = self.planetary_data.get_by_id(*id) {
+
+        for data in self.planetary_data.values().rev() {
+            for id in data.lut.by_id.keys() {
+                if let Ok(pc) = data.get_by_id(*id) {
                     if pc.parent_id < common_center {
                         common_center = pc.parent_id;
                         if common_center == J2000 {
@@ -98,7 +99,7 @@ impl Almanac {
             Ok((summary, _, _, _)) => summary.inertial_frame_id,
             Err(_) => {
                 // Not available as a BPC, so let's see if there's planetary data for it.
-                match self.planetary_data.get_by_id(source.orientation_id) {
+                match self.planetary_data_from_id(source.orientation_id) {
                     Ok(planetary_data) => planetary_data.parent_id,
                     Err(_) => {
                         // Finally, let's see if it's in the loaded Euler Parameters.
@@ -131,7 +132,7 @@ impl Almanac {
                 Ok((summary, _, _, _)) => summary.inertial_frame_id,
                 Err(_) => {
                     // Not available as a BPC, so let's see if there's planetary data for it.
-                    match self.planetary_data.get_by_id(inertial_frame_id) {
+                    match self.planetary_data_from_id(inertial_frame_id) {
                         Ok(planetary_data) => planetary_data.parent_id,
                         Err(_) => {
                             // Finally, let's see if it's in the loaded Euler Parameters.

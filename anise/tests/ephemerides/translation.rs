@@ -386,7 +386,8 @@ fn type13_hermite_query() {
 
     let mut ctx = Almanac::from_spk(traj);
     // Also load the plantery data
-    ctx.planetary_data = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
+    ctx = ctx
+        .with_planetary_data(convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap());
 
     let summary_from_ctx = ctx.spk_summary_from_name("SPK_SEGMENT").unwrap().0;
 

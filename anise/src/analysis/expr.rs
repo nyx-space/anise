@@ -150,8 +150,7 @@ impl ScalarExpr {
         match self {
             Self::Constant(v) => Ok(*v),
             Self::MeanEquatorialRadius { celestial_object } => almanac
-                .planetary_data
-                .get_by_id(*celestial_object)
+                .planetary_data_from_id(*celestial_object)
                 .or(Err(AnalysisError::AlmanacMissingDataExpr {
                     expr: Box::new(self.clone()),
                 }))?
@@ -163,8 +162,7 @@ impl ScalarExpr {
                     |shape| Ok(shape.mean_equatorial_radius_km()),
                 ),
             Self::SemiMajorEquatorialRadius { celestial_object } => almanac
-                .planetary_data
-                .get_by_id(*celestial_object)
+                .planetary_data_from_id(*celestial_object)
                 .or(Err(AnalysisError::AlmanacMissingDataExpr {
                     expr: Box::new(self.clone()),
                 }))?
@@ -176,8 +174,7 @@ impl ScalarExpr {
                     |shape| Ok(shape.semi_major_equatorial_radius_km),
                 ),
             Self::SemiMinorEquatorialRadius { celestial_object } => almanac
-                .planetary_data
-                .get_by_id(*celestial_object)
+                .planetary_data_from_id(*celestial_object)
                 .or(Err(AnalysisError::AlmanacMissingDataExpr {
                     expr: Box::new(self.clone()),
                 }))?
@@ -189,8 +186,7 @@ impl ScalarExpr {
                     |shape| Ok(shape.semi_minor_equatorial_radius_km),
                 ),
             Self::PolarRadius { celestial_object } => almanac
-                .planetary_data
-                .get_by_id(*celestial_object)
+                .planetary_data_from_id(*celestial_object)
                 .or(Err(AnalysisError::AlmanacMissingDataExpr {
                     expr: Box::new(self.clone()),
                 }))?
@@ -202,8 +198,7 @@ impl ScalarExpr {
                     |shape| Ok(shape.polar_radius_km),
                 ),
             Self::Flattening { celestial_object } => almanac
-                .planetary_data
-                .get_by_id(*celestial_object)
+                .planetary_data_from_id(*celestial_object)
                 .or(Err(AnalysisError::AlmanacMissingDataExpr {
                     expr: Box::new(self.clone()),
                 }))?
@@ -216,8 +211,7 @@ impl ScalarExpr {
                 ),
 
             Self::GravParam { celestial_object } => Ok(almanac
-                .planetary_data
-                .get_by_id(*celestial_object)
+                .planetary_data_from_id(*celestial_object)
                 .or(Err(AnalysisError::AlmanacMissingDataExpr {
                     expr: Box::new(self.clone()),
                 }))?

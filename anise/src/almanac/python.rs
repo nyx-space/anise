@@ -8,10 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::{
-    planetary::{PlanetaryDataError, PlanetaryDataSetSnafu},
-    Almanac,
-};
+use super::{planetary::PlanetaryDataError, Almanac};
 use crate::constants::orientations::J2000;
 use crate::{
     astro::{Aberration, AzElRange, Location, Occultation},
@@ -27,7 +24,6 @@ use ndarray::Array1;
 use numpy::PyArray1;
 use pyo3::prelude::*;
 use rayon::prelude::*;
-use snafu::prelude::*;
 
 #[pymethods]
 impl Almanac {
@@ -36,13 +32,7 @@ impl Almanac {
     /// :rtype: Frame
     #[pyo3(name = "frame_info", signature=(uid))]
     fn py_frame_info(&self, uid: Frame) -> Result<Frame, PlanetaryDataError> {
-        Ok(self
-            .planetary_data
-            .get_by_id(uid.ephemeris_id)
-            .context(PlanetaryDataSetSnafu {
-                action: "fetching frame by its UID via ephemeris_id",
-            })?
-            .to_frame(uid.into()))
+        self.frame_info(uid)
     }
 
     /// Initializes a new Almanac from the provided file path, guessing at the file type
@@ -99,6 +89,33 @@ impl Almanac {
             time_scale,
             round_time,
         )
+    }
+
+    /// Returns the list of loaded kernels
+    ///
+    /// :type spk: bool, optional
+    /// :type bpc: bool, optional
+    /// :type planetary: bool, optional
+    /// :type eulerparams: bool, optional
+    /// :type locations: bool, optional
+    /// :rtype: list
+    #[pyo3(name = "list_kernels", signature=(
+        spk=None,
+        bpc=None,
+        planetary=None,
+        eulerparams=None,
+        locations=None,
+    ))]
+    #[allow(clippy::too_many_arguments)]
+    fn py_list_kernels(
+        &self,
+        spk: Option<bool>,
+        bpc: Option<bool>,
+        planetary: Option<bool>,
+        eulerparams: Option<bool>,
+        locations: Option<bool>,
+    ) -> Vec<String> {
+        self.list_kernels(spk, bpc, planetary, eulerparams, locations)
     }
 
     /// Generic function that tries to load the provided path guessing to the file type.

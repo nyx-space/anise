@@ -8,13 +8,18 @@
  * Documentation: https://nyxspace.com/
  */
 use super::Almanac;
-use snafu::prelude::*;
-use tabled::{settings::Style, Table, Tabled};
-
 use crate::{
     prelude::{Frame, FrameUid},
-    structure::{dataset::DataSetError, PlanetaryDataSet},
+    structure::{
+        dataset::DataSetError, lookuptable::LutError, planetocentric::PlanetaryData,
+        PlanetaryDataSet,
+    },
+    NaifId,
 };
+use hifitime::Epoch;
+use log::warn;
+use snafu::prelude::*;
+use tabled::{settings::Style, Table, Tabled};
 
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]
@@ -37,20 +42,62 @@ impl Almanac {
     /// Given the frame UID (or something that can be transformed into it), attempt to retrieve the full frame information, if that frame is loaded
     pub fn frame_info<U: Into<FrameUid>>(&self, uid: U) -> Result<Frame, PlanetaryDataError> {
         let uid = uid.into();
-        Ok(self
-            .planetary_data
-            .get_by_id(uid.ephemeris_id)
-            .context(PlanetaryDataSetSnafu {
-                action: "fetching frame by its UID via ephemeris_id",
-            })?
-            .to_frame(uid))
+        for data in self.planetary_data.values().rev() {
+            if let Ok(datum) = data.get_by_id(uid.ephemeris_id) {
+                return Ok(datum.to_frame(uid));
+            }
+        }
+
+        Err(PlanetaryDataError::PlanetaryDataSet {
+            action: "fetching frame by its UID via ephemeris_id",
+            source: DataSetError::DataSetLut {
+                action: "fetching by ID",
+                source: LutError::UnknownId {
+                    id: uid.ephemeris_id,
+                },
+            },
+        })
+    }
+
+    /// Returns the plantary from its ID, searching through all loaded planetary datasets in reverse order.
+    pub(crate) fn planetary_data_from_id(
+        &self,
+        id: NaifId,
+    ) -> Result<PlanetaryData, PlanetaryDataError> {
+        for data in self.planetary_data.values().rev() {
+            if let Ok(datum) = data.get_by_id(id) {
+                return Ok(datum);
+            }
+        }
+
+        Err(PlanetaryDataError::PlanetaryDataSet {
+            action: "fetching planetary data via its id",
+            source: DataSetError::DataSetLut {
+                action: "fetching by ID",
+                source: LutError::UnknownId { id },
+            },
+        })
     }
 
     /// Loads the provided planetary data into a clone of this original Almanac.
-    pub fn with_planetary_data(&self, planetary_data: PlanetaryDataSet) -> Self {
-        let mut me = self.clone();
-        me.planetary_data = planetary_data;
-        me
+    pub fn with_planetary_data(self, planetary_data: PlanetaryDataSet) -> Self {
+        self.with_planetary_data_as(planetary_data, None)
+    }
+
+    /// Loads the provided planetary data into a clone of this original Almanac.
+    pub fn with_planetary_data_as(
+        mut self,
+        planetary_data: PlanetaryDataSet,
+        alias: Option<String>,
+    ) -> Self {
+        // For lifetime reasons, we format the message using a ref first.
+        // This message is only displayed if there was something with that name before.
+        let alias = alias.unwrap_or(Epoch::now().unwrap_or_default().to_string());
+        let msg = format!("unloading planetary data `{alias}`");
+        if self.planetary_data.insert(alias, planetary_data).is_some() {
+            warn!("{msg}");
+        }
+        self
     }
 }
 

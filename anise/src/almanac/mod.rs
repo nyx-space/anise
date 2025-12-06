@@ -69,7 +69,7 @@ pub struct Almanac {
     /// NAIF BPC is kept unchanged
     pub bpc_data: IndexMap<String, BPC>,
     /// Dataset of planetary data
-    pub planetary_data: PlanetaryDataSet,
+    pub planetary_data: IndexMap<String, PlanetaryDataSet>,
     /// Dataset of spacecraft data
     pub spacecraft_data: SpacecraftDataSet,
     /// Dataset of euler parameters
@@ -86,8 +86,8 @@ impl fmt::Display for Almanac {
             self.num_loaded_spk(),
             self.num_loaded_bpc()
         )?;
-        if !self.planetary_data.lut.by_id.is_empty() {
-            write!(f, "\t{}", self.planetary_data)?;
+        if !self.planetary_data.is_empty() {
+            write!(f, "\t#Planetary kernels = {}", self.planetary_data.len())?;
         }
         if !self.spacecraft_data.lut.by_id.is_empty() {
             write!(f, "\t{}", self.spacecraft_data)?;
@@ -305,7 +305,12 @@ impl Almanac {
         }
 
         if planetary.unwrap_or(!print_any) {
-            println!("=== PLANETARY DATA ==\n{}", self.planetary_data.describe());
+            for (num, (alias, data)) in self.planetary_data.iter().rev().enumerate() {
+                println!(
+                    "=== PLANETARY DATA #{num}: `{alias}` ===\n{}",
+                    data.describe()
+                );
+            }
         }
 
         if eulerparams.unwrap_or(!print_any) {
@@ -320,6 +325,66 @@ impl Almanac {
         }
     }
 
+    /// Returns the list of loaded kernels
+    pub fn list_kernels(
+        &self,
+        spk: Option<bool>,
+        bpc: Option<bool>,
+        planetary: Option<bool>,
+        eulerparams: Option<bool>,
+        locations: Option<bool>,
+    ) -> Vec<String> {
+        let print_any = spk.unwrap_or(false)
+            || bpc.unwrap_or(false)
+            || planetary.unwrap_or(false)
+            || eulerparams.unwrap_or(false)
+            || locations.unwrap_or(false);
+
+        let mut kernels = vec![];
+
+        if spk.unwrap_or(!print_any) {
+            kernels.extend_from_slice(
+                &self
+                    .spk_data
+                    .keys()
+                    .map(|k| k.to_string())
+                    .collect::<Vec<String>>(),
+            );
+        }
+
+        if bpc.unwrap_or(!print_any) {
+            kernels.extend_from_slice(
+                &self
+                    .bpc_data
+                    .keys()
+                    .map(|k| k.to_string())
+                    .collect::<Vec<String>>(),
+            );
+        }
+
+        if planetary.unwrap_or(!print_any) {
+            kernels.extend_from_slice(
+                &self
+                    .planetary_data
+                    .keys()
+                    .map(|k| k.to_string())
+                    .collect::<Vec<String>>(),
+            );
+        }
+
+        if eulerparams.unwrap_or(!print_any) {
+            println!(
+                "=== EULER PARAMETER DATA ==\n{}",
+                self.euler_param_data.describe()
+            );
+        }
+
+        if locations.unwrap_or(!print_any) {
+            println!("=== LOCATIONS DATA ==\n{}", self.location_data.describe());
+        }
+
+        kernels
+    }
     /// Set the CRC32 of all loaded DAF files
     pub fn set_crc32(&mut self) {
         for spk in self.spk_data.values_mut() {
