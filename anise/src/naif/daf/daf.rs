@@ -595,6 +595,7 @@ mod daf_ut {
         );
 
         // Change the checksum of the traj and check that scrub fails
+        traj.set_crc32();
         *traj.crc32.as_mut().unwrap() = nominal_crc + 1;
         assert_eq!(
             traj.scrub(),
