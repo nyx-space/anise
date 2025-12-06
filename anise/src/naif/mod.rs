@@ -16,20 +16,14 @@ pub mod spk;
 
 pub mod pretty_print;
 
-use self::{
-    daf::{daf::MutDAF, DAF},
-    pck::BPCSummaryRecord,
-    spk::summary::SPKSummaryRecord,
-};
+use daf::DAF;
+use pck::BPCSummaryRecord;
+use spk::summary::SPKSummaryRecord;
 
 /// Spacecraft Planetary Kernel
 pub type SPK = DAF<SPKSummaryRecord>;
-/// Spacecraft Planetary Kernel, mutable, for editing DAF/SPK files
-pub type MutSPK = MutDAF<SPKSummaryRecord>;
 /// Binary Planetary Constant
 pub type BPC = DAF<BPCSummaryRecord>;
-/// Binary Planetary Constant, mutable, for editing DAF/PCK files
-pub type MutBPC = MutDAF<BPCSummaryRecord>;
 
 #[macro_export]
 macro_rules! parse_bytes_as {

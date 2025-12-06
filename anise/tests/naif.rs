@@ -176,7 +176,7 @@ fn test_spk_mut_summary_name() {
     let path = "../data/variable-seg-size-hermite.bsp";
     let output_path = "../target/rename-test.bsp";
 
-    let mut my_spk = SPK::load(path).unwrap().to_mutable();
+    let mut my_spk = SPK::load(path).unwrap();
 
     let summary_size = my_spk.file_record().unwrap().summary_size();
 
@@ -238,7 +238,7 @@ fn test_spk_truncate_cheby() {
     );
 
     // Now we can grab a mutable version of the SPK and modify it.
-    let mut my_spk_trunc = my_spk.to_mutable();
+    let mut my_spk_trunc = my_spk.clone();
     assert!(my_spk_trunc
         .set_nth_data(idx, updated_segment, new_start, summary.end_epoch())
         .is_ok());
@@ -252,7 +252,7 @@ fn test_spk_truncate_cheby() {
     assert_eq!(summary.start_epoch(), new_start);
 
     // Test that we can remove segments all togethet
-    let mut my_spk_rm = my_spk.to_mutable();
+    let mut my_spk_rm = my_spk.clone();
     assert!(my_spk_rm.delete_nth_data(idx).is_ok());
 
     // Serialize the data into a new BSP and confirm that we've updated everything.

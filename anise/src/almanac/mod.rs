@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use bytes::Bytes;
+use bytes::BytesMut;
 use hifitime::TimeScale;
 use indexmap::IndexMap;
 use log::info;
@@ -124,11 +124,11 @@ impl Almanac {
     }
 
     /// Loads the provides bytes as one of the data types supported in ANISE.
-    pub fn load_from_bytes(self, bytes: Bytes) -> AlmanacResult<Self> {
+    pub fn load_from_bytes(self, bytes: BytesMut) -> AlmanacResult<Self> {
         self._load_from_bytes(bytes, None)
     }
 
-    fn _load_from_bytes(self, bytes: Bytes, path: Option<&str>) -> AlmanacResult<Self> {
+    fn _load_from_bytes(self, bytes: BytesMut, path: Option<&str>) -> AlmanacResult<Self> {
         // Check if they forgot to run git lfs
         if let Some(lfs_header) = bytes.get(..8) {
             if lfs_header == "version".as_bytes() {

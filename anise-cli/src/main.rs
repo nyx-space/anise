@@ -10,7 +10,7 @@ use anise::naif::daf::{DafDataType, NAIFDataSet, DAF};
 use anise::naif::pck::BPCSummaryRecord;
 use anise::naif::pretty_print::NAIFPrettyPrint;
 use anise::naif::spk::summary::SPKSummaryRecord;
-use bytes::Bytes;
+use bytes::BytesMut;
 use clap::Parser;
 use log::info;
 use snafu::prelude::*;
@@ -199,14 +199,14 @@ fn main() -> Result<(), CliErrors> {
     }
 }
 
-fn read_and_record(path_str: PathBuf) -> Result<(bytes::Bytes, FileRecord), CliErrors> {
+fn read_and_record(path_str: PathBuf) -> Result<(bytes::BytesMut, FileRecord), CliErrors> {
     let bytes = file2heap!(path_str).context(AniseSnafu)?;
     // Load the header only
     let file_record = FileRecord::read_from_bytes(&bytes[..FileRecord::SIZE]).unwrap();
     Ok((bytes, file_record))
 }
 
-fn inspect<R>(path_str: PathBuf, bytes: Bytes) -> Result<(), CliErrors>
+fn inspect<R>(path_str: PathBuf, bytes: BytesMut) -> Result<(), CliErrors>
 where
     R: NAIFSummaryRecord,
     DAF<R>: NAIFPrettyPrint,
@@ -226,7 +226,7 @@ where
 
 fn rm_daf_by_id<R>(
     args::RmById { input, output, id }: args::RmById,
-    bytes: Bytes,
+    bytes: BytesMut,
 ) -> Result<(), CliErrors>
 where
     R: NAIFSummaryRecord,
@@ -243,7 +243,7 @@ where
 
     let (_, _, idx) = fmt.summary_from_id(id).context(CliDAFSnafu)?;
 
-    let mut my_fmt_mut = fmt.to_mutable();
+    let mut my_fmt_mut = fmt.clone();
     my_fmt_mut.delete_nth_data(idx).context(CliDAFSnafu)?;
 
     info!("Saving file to {output:?}");
@@ -260,7 +260,7 @@ fn truncate_daf_by_id<R>(
         start,
         end,
     }: args::TruncateById,
-    bytes: Bytes,
+    bytes: BytesMut,
 ) -> Result<(), CliErrors>
 where
     R: NAIFSummaryRecord,
@@ -295,7 +295,7 @@ where
         .truncate(summary, start, end)
         .context(SegmentInterpolationSnafu)?;
 
-    let mut my_pck_mut = fmt.to_mutable();
+    let mut my_pck_mut = fmt.clone();
     assert!(my_pck_mut
         .set_nth_data(
             idx,

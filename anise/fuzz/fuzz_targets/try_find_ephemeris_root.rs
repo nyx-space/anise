@@ -6,7 +6,7 @@ use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
     let almanac = Almanac::default();
-    let data = Bytes::copy_from_slice(data);
+    let data = Bytes::copy_from_slice(data).try_into_mut().unwrap();
     if let Ok(almanac) = almanac.load_from_bytes(data) {
         let _ = almanac.try_find_ephemeris_root();
     }

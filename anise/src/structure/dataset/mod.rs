@@ -143,7 +143,7 @@ impl<T: DataSetT> DataSet<T> {
                 self.data_checksum
             );
             Err(IntegrityError::ChecksumInvalid {
-                expected: self.data_checksum,
+                expected: Some(self.data_checksum),
                 computed,
             })
         }
@@ -156,7 +156,7 @@ impl<T: DataSetT> DataSet<T> {
         } else {
             // Compiler will optimize the double computation away
             Err(IntegrityError::ChecksumInvalid {
-                expected: self.data_checksum,
+                expected: Some(self.data_checksum),
                 computed: self.crc32(),
             })
         }

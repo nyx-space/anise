@@ -112,7 +112,10 @@ pub enum DecodingError {
 #[non_exhaustive]
 pub enum IntegrityError {
     /// Data checksum differs from expected checksum
-    ChecksumInvalid { expected: u32, computed: u32 },
+    ChecksumInvalid {
+        expected: Option<u32>,
+        computed: u32,
+    },
     /// Data between two ephemerides expected to be identical mismatch (may happen on merger of files)
     DataMismatchOnMerge,
     /// Could not fetch spline data that was expected to be there
