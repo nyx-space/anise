@@ -62,11 +62,8 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     /// 2.  The CRC32 checksum of the bytes is computed.
     /// 3.  The `file_record` and `name_record` are parsed to ensure the file is a valid DAF.
     pub fn parse<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DAFError> {
-        let mut daf_bytes = BytesMut::new();
-        daf_bytes.reserve(bytes.len());
-        daf_bytes.extend(bytes.iter());
         let me = Self {
-            bytes: daf_bytes,
+            bytes: BytesMut::from(&bytes[..]),
             crc32: None,
             _daf_type: PhantomData,
         };
