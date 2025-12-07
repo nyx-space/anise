@@ -27,7 +27,7 @@ exclude = [
 ]
 
 [workspace.dependencies]
-hifitime = "4.2.3"
+hifitime = { git = "https://github.com/nyx-space/hifitime", rev = "501f3a012c60d3ca26446fc37270adb8782bfd5b" }
 memmap2 = "0.9.4"
 crc32fast = "1.4.2"
 der = { version = "0.7.8", features = ["derive", "alloc", "real"] }
