@@ -44,7 +44,7 @@ pub fn pca_ui(ui: &mut egui::Ui, almanac: &Almanac) {
             });
         })
         .body(|mut body| {
-            let pck = &almanac.planetary_data;
+            let pck = &almanac.planetary_data.values().next().unwrap();
 
             let binding = pck.lut.entries();
             let mut values = binding.values().collect::<Vec<_>>().to_vec();

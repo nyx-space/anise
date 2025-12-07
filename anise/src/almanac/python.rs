@@ -8,10 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::{
-    planetary::{PlanetaryDataError, PlanetaryDataSetSnafu},
-    Almanac,
-};
+use super::{planetary::PlanetaryDataError, Almanac};
 use crate::constants::orientations::J2000;
 use crate::{
     astro::{Aberration, AzElRange, Location, Occultation},
@@ -27,7 +24,6 @@ use ndarray::Array1;
 use numpy::PyArray1;
 use pyo3::prelude::*;
 use rayon::prelude::*;
-use snafu::prelude::*;
 
 #[pymethods]
 impl Almanac {
@@ -36,13 +32,7 @@ impl Almanac {
     /// :rtype: Frame
     #[pyo3(name = "frame_info", signature=(uid))]
     fn py_frame_info(&self, uid: Frame) -> Result<Frame, PlanetaryDataError> {
-        Ok(self
-            .planetary_data
-            .get_by_id(uid.ephemeris_id)
-            .context(PlanetaryDataSetSnafu {
-                action: "fetching frame by its UID via ephemeris_id",
-            })?
-            .to_frame(uid.into()))
+        self.frame_info(uid)
     }
 
     /// Initializes a new Almanac from the provided file path, guessing at the file type
@@ -65,6 +55,7 @@ impl Almanac {
     /// :type spk: bool, optional
     /// :type bpc: bool, optional
     /// :type planetary: bool, optional
+    /// :type spacecraft: bool, optional
     /// :type eulerparams: bool, optional
     /// :type locations: bool, optional
     /// :type time_scale: TimeScale, optional
@@ -74,6 +65,7 @@ impl Almanac {
         spk=None,
         bpc=None,
         planetary=None,
+        spacecraft=None,
         eulerparams=None,
         locations=None,
         time_scale=None,
@@ -85,6 +77,7 @@ impl Almanac {
         spk: Option<bool>,
         bpc: Option<bool>,
         planetary: Option<bool>,
+        spacecraft: Option<bool>,
         eulerparams: Option<bool>,
         locations: Option<bool>,
         time_scale: Option<TimeScale>,
@@ -94,11 +87,42 @@ impl Almanac {
             spk,
             bpc,
             planetary,
+            spacecraft,
             eulerparams,
             locations,
             time_scale,
             round_time,
         )
+    }
+
+    /// Returns the list of loaded kernels
+    ///
+    /// :type spk: bool, optional
+    /// :type bpc: bool, optional
+    /// :type planetary: bool, optional
+    /// :type spacecraft: bool, optional
+    /// :type eulerparams: bool, optional
+    /// :type locations: bool, optional
+    /// :rtype: list
+    #[pyo3(name = "list_kernels", signature=(
+        spk=None,
+        bpc=None,
+        planetary=None,
+        spacecraft=None,
+        eulerparams=None,
+        locations=None,
+    ))]
+    #[allow(clippy::too_many_arguments)]
+    fn py_list_kernels(
+        &self,
+        spk: Option<bool>,
+        bpc: Option<bool>,
+        planetary: Option<bool>,
+        spacecraft: Option<bool>,
+        eulerparams: Option<bool>,
+        locations: Option<bool>,
+    ) -> Vec<String> {
+        self.list_kernels(spk, bpc, planetary, spacecraft, eulerparams, locations)
     }
 
     /// Generic function that tries to load the provided path guessing to the file type.
@@ -135,7 +159,12 @@ impl Almanac {
     /// This reuses the existing memory buffer, growing it only if the new file
     /// is larger than the previous capacity. This effectively adopts a
     /// "high watermark" memory strategy, where the memory usage for this slot
-    /// is determined by the largest file ever loaded into it.
+    /// is determined by the largest file ever loaded into it
+    /// .
+    /// :type alias: str
+    /// :type new_spk_path: str
+    /// :type new_alias: str
+    /// :rtype: None
     #[pyo3(name = "spk_swap")]
     pub fn py_spk_swap(
         &mut self,
@@ -152,6 +181,11 @@ impl Almanac {
     /// is larger than the previous capacity. This effectively adopts a
     /// "high watermark" memory strategy, where the memory usage for this slot
     /// is determined by the largest file ever loaded into it.
+    ///
+    /// :type alias: str
+    /// :type new_bpc_path: str
+    /// :type new_alias: str
+    /// :rtype: None
     #[pyo3(name = "bpc_swap")]
     pub fn py_bpc_swap(
         &mut self,
@@ -866,5 +900,23 @@ impl Almanac {
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<AzElRange> {
         self.azimuth_elevation_range_sez_from_location(rx, location, obstructing_body, ab_corr)
+    }
+
+    /// Returns the Location from its ID, searching through all loaded location datasets in reverse order.
+    ///
+    /// :type id: int
+    /// :rtype: Location
+    #[pyo3(name = "location_from_id")]
+    pub fn py_location_from_id(&self, id: i32) -> AlmanacResult<Location> {
+        self.location_from_id(id)
+    }
+
+    /// Returns the Location from its name, searching through all loaded location datasets in reverse order.
+    ///
+    /// :type name: str
+    /// :rtype: Location
+    #[pyo3(name = "location_from_name")]
+    pub fn py_location_from_name(&self, name: &str) -> AlmanacResult<Location> {
+        self.location_from_name(name)
     }
 }

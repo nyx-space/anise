@@ -23,14 +23,11 @@ impl Almanac {
         let pck11 = AstroData::get("pck11.pca").ok_or(AlmanacError::GenericError {
             err: "could not find pck11.pca in embedded files".to_string(),
         })?;
-        let almanac = Almanac {
-            planetary_data: PlanetaryDataSet::try_from_bytes(pck11.data.as_ref()).context(
-                TLDataSetSnafu {
-                    action: "loading PCK11 from embedded file",
-                },
-            )?,
-            ..Default::default()
-        };
+        let almanac = Almanac::default().with_planetary_data(
+            PlanetaryDataSet::try_from_bytes(pck11.data.as_ref()).context(TLDataSetSnafu {
+                action: "loading PCK11 from embedded file",
+            })?,
+        );
 
         let pl_ephem = AstroData::get("de440s.bsp").ok_or(AlmanacError::GenericError {
             err: "could not find de440s.bsp in embedded files".to_string(),
@@ -49,7 +46,7 @@ mod ut_embed {
         let almanac = Almanac::until_2035().unwrap();
         assert_eq!(almanac.num_loaded_spk(), 1);
         assert_eq!(almanac.num_loaded_bpc(), 0);
-        assert_ne!(almanac.planetary_data.crc32(), 0);
+        assert_ne!(almanac.planetary_data.values().next().unwrap().crc32(), 0);
     }
 
     #[test]

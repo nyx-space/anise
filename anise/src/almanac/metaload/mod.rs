@@ -70,6 +70,25 @@ impl Almanac {
         })?;
         self.load(&metafile.uri)
     }
+
+    /// Saves the current configuration to a MetaAlmanac for future reloading from the local file system.
+    ///
+    /// WARNING: If data was loaded from its raw bytes, or if a custom alias was used, then the MetaFile produced will not be usable.
+    /// The alias used for each data type is expected to be a path. Further, all paths are ASSUMED to be loaded from the same directory.
+    /// The Almanac does not resolve directories for you.
+    pub fn to_metaalmanac(&self) -> MetaAlmanac {
+        MetaAlmanac {
+            files: self
+                .list_kernels(None, None, None, None, None, None)
+                .iter()
+                .cloned()
+                .map(|path| MetaFile {
+                    uri: path,
+                    crc32: None,
+                })
+                .collect::<Vec<MetaFile>>(),
+        }
+    }
 }
 
 #[cfg(feature = "python")]
@@ -91,13 +110,24 @@ impl Almanac {
     ) -> AlmanacResult<Self> {
         py.detach(|| self.clone().load_from_metafile(metafile, autodelete))
     }
+
+    /// Saves the current configuration to a MetaAlmanac for future reloading from the local file system.
+    ///
+    /// WARNING: If data was loaded from its raw bytes, or if a custom alias was used, then the MetaFile produced will not be usable.
+    /// The alias used for each data type is expected to be a path. Further, all paths are ASSUMED to be loaded from the same directory.
+    /// The Almanac does not resolve directories for you.
+    /// :rtype: MetaAlmanac
+    #[pyo3(name = "to_metaalmanac")]
+    fn py_to_metaalmanac(&self) -> MetaAlmanac {
+        self.to_metaalmanac()
+    }
 }
 
 #[cfg(test)]
 mod meta_test {
-    use crate::almanac::metaload::MetaFile;
-
     use super::MetaAlmanac;
+    use crate::almanac::metaload::MetaFile;
+    use hifitime::Epoch;
     use std::path::Path;
     use std::{env, str::FromStr};
 
@@ -109,7 +139,13 @@ mod meta_test {
 
         let almanac = meta.process(true).unwrap();
         // Shows everything in this Almanac
-        almanac.describe(None, None, None, None, None, None, None);
+        almanac.describe(None, None, None, None, None, None, None, None);
+        let rtn_meta = almanac.to_metaalmanac();
+        println!("{}", rtn_meta.to_dhall().unwrap());
+        // Check that none of the URIs are epochs
+        for file in rtn_meta.files {
+            assert!(Epoch::from_str(&file.uri).is_err());
+        }
 
         // Process again to confirm that the CRC check works
         assert!(meta.process(true).is_ok());

@@ -18,7 +18,7 @@ fn test_load_ctx() {
 
     let mut loaded_ctx = ctx.load("../data/earth_latest_high_prec.bpc").unwrap();
 
-    loaded_ctx.planetary_data = dataset;
+    loaded_ctx = loaded_ctx.with_planetary_data(dataset);
 
     println!("{loaded_ctx}");
 

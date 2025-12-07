@@ -162,11 +162,19 @@ This function performs a memory allocation."""
 # Warning
 This function performs a memory allocation."""
 
-    def bpc_unload(self, alias: str) -> None:
-            """Unloads (in-place) the BPC with the provided alias.
-    **WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded."""
+    def bpc_swap(self, alias: str, new_bpc_path: str, new_alias: str) -> None:
+        """Load a new DAF/BPC file in place of the one in the provided alias.
 
-    def describe(self, spk: bool=None, bpc: bool=None, planetary: bool=None, eulerparams: bool=None, time_scale: TimeScale=None, round_time: bool=None) -> None:
+This reuses the existing memory buffer, growing it only if the new file
+is larger than the previous capacity. This effectively adopts a
+"high watermark" memory strategy, where the memory usage for this slot
+is determined by the largest file ever loaded into it."""
+
+    def bpc_unload(self, alias: str) -> None:
+        """Unloads (in-place) the BPC with the provided alias.
+**WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded."""
+
+    def describe(self, spk: bool=None, bpc: bool=None, planetary: bool=None, spacecraft: bool=None, eulerparams: bool=None, locations: bool=None, time_scale: TimeScale=None, round_time: bool=None) -> None:
         """Pretty prints the description of this Almanac, showing everything by default. Default time scale is TDB.
 If any parameter is set to true, then nothing other than that will be printed."""
 
@@ -202,6 +210,15 @@ Algorithm (source: Algorithm 35 of Vallado, 4th edition, page 308.):
 - `r1dotr2` is the dot product of `r1` and `r2`.
 - `tau` is a parameter that determines the intersection point along the line of sight.
 - The condition `(1.0 - tau) * r1sq + r1dotr2 * tau <= ob_mean_eq_radius_km^2` checks if the line of sight is within the obstructing body's radius, indicating an obstruction."""
+
+    def list_kernels(self, spk: bool=None, bpc: bool=None, planetary: bool=None, spacecraft: bool=None, eulerparams: bool=None, locations: bool=None) -> list:
+        """Returns the list of loaded kernels"""
+
+    def location_from_id(self, id: int) -> Location:
+        """Returns the Location from its ID, searching through all loaded location datasets in reverse order."""
+
+    def location_from_name(self, name: str) -> Location:
+        """Returns the Location from its name, searching through all loaded location datasets in reverse order."""
 
     def load(self, path: str) -> Almanac:
         """Generic function that tries to load the provided path guessing to the file type."""
@@ -245,7 +262,6 @@ a fixed interval using the report_scalars or report_scalars_flat function and ma
 
     def report_visibility_arcs(self, state_spec: StateSpec, location_id: int, start_epoch: Epoch, end_epoch: Epoch, sample_rate: Duration, obstructing_body: Frame=None) -> list:
         """Report the list of visibility arcs for the desired location ID."""
-
 
     def rotate(self, from_frame: Frame, to_frame: Frame, epoch: Epoch) -> DCM:
         """Returns the 6x6 DCM needed to rotation the `from_frame` to the `to_frame`.
@@ -292,6 +308,14 @@ This function performs a memory allocation."""
 
 # Warning
 This function performs a memory allocation."""
+
+    def spk_swap(self, alias: str, new_spk_path: str, new_alias: str) -> None:
+        """Load a new DAF/SPK file in place of the one in the provided alias.
+
+This reuses the existing memory buffer, growing it only if the new file
+is larger than the previous capacity. This effectively adopts a
+"high watermark" memory strategy, where the memory usage for this slot
+is determined by the largest file ever loaded into it."""
 
     def spk_unload(self, alias: str) -> None:
         """Unloads (in-place) the SPK with the provided alias.
@@ -343,6 +367,13 @@ Obs. -- Target
 
     def sun_angle_deg_from_frame(self, target: Frame, observer: Frame, epoch: Epoch, ab_corr: Aberration) -> float:
         """Convenience function that calls `sun_angle_deg` with the provided frames instead of the ephemeris ID."""
+
+    def to_metaalmanac(self) -> MetaAlmanac:
+        """Saves the current configuration to a MetaAlmanac for future reloading from the local file system.
+
+WARNING: If data was loaded from its raw bytes, or if a custom alias was used, then the MetaFile produced will not be usable.
+The alias used for each data type is expected to be a path. Further, all paths are ASSUMED to be loaded from the same directory.
+The Almanac does not resolve directories for you."""
 
     def transform(self, target_frame: Frame, observer_frame: Frame, epoch: Epoch, ab_corr: Aberration=None) -> Orbit:
         """Returns the Cartesian state needed to transform the `from_frame` to the `to_frame`.
@@ -488,7 +519,7 @@ The downloaded path will be stored in the "AppData" folder."""
     @staticmethod
     def from_dhall(repr: str) -> MetaAlmanac:
         """Loads this Meta Almanac from its Dhall string representation"""
-        
+
     @staticmethod
     def latest(autodelete: bool=None) -> Almanac:
         """Returns an Almanac loaded from the latest NAIF data via the `default` MetaAlmanac.

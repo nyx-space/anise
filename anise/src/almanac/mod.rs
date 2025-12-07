@@ -9,9 +9,9 @@
  */
 
 use bytes::{BufMut, BytesMut};
-use hifitime::TimeScale;
+use hifitime::{Epoch, TimeScale};
 use indexmap::IndexMap;
-use log::info;
+use log::{info, warn};
 use snafu::ResultExt;
 use zerocopy::FromBytes;
 
@@ -20,20 +20,19 @@ use crate::errors::{
     AlmanacError, AlmanacResult, EphemerisSnafu, InputOutputError, LoadingSnafu, OrientationSnafu,
     TLDataSetSnafu,
 };
+use crate::math::rotation::EulerParameter;
 use crate::naif::daf::{FileRecord, NAIFRecord};
 use crate::naif::pretty_print::NAIFPrettyPrint;
 use crate::naif::{BPC, SPK};
-use crate::orientations::BPCSnafu;
-use crate::structure::dataset::DataSetType;
+use crate::orientations::{BPCSnafu, OrientationError};
+use crate::structure::dataset::{DataSetError, DataSetType};
+use crate::structure::lookuptable::LutError;
 use crate::structure::metadata::Metadata;
 use crate::structure::{
     EulerParameterDataSet, LocationDataSet, PlanetaryDataSet, SpacecraftDataSet,
 };
+use crate::NaifId;
 use core::fmt;
-
-// TODO: Switch these to build constants so that it's configurable when building the library.
-pub const MAX_LOADED_SPKS: usize = 32;
-pub const MAX_LOADED_BPCS: usize = 8;
 
 pub mod aer;
 pub mod bpc;
@@ -69,13 +68,13 @@ pub struct Almanac {
     /// NAIF BPC is kept unchanged
     pub bpc_data: IndexMap<String, BPC>,
     /// Dataset of planetary data
-    pub planetary_data: PlanetaryDataSet,
+    pub planetary_data: IndexMap<String, PlanetaryDataSet>,
     /// Dataset of spacecraft data
-    pub spacecraft_data: SpacecraftDataSet,
+    pub spacecraft_data: IndexMap<String, SpacecraftDataSet>,
     /// Dataset of euler parameters
-    pub euler_param_data: EulerParameterDataSet,
+    pub euler_param_data: IndexMap<String, EulerParameterDataSet>,
     /// Dataset of locations
-    pub location_data: LocationDataSet,
+    pub location_data: IndexMap<String, LocationDataSet>,
 }
 
 impl fmt::Display for Almanac {
@@ -86,14 +85,21 @@ impl fmt::Display for Almanac {
             self.num_loaded_spk(),
             self.num_loaded_bpc()
         )?;
-        if !self.planetary_data.lut.by_id.is_empty() {
-            write!(f, "\t{}", self.planetary_data)?;
+        if !self.planetary_data.is_empty() {
+            write!(f, "\t#Planetary kernels = {}", self.planetary_data.len())?;
         }
-        if !self.spacecraft_data.lut.by_id.is_empty() {
-            write!(f, "\t{}", self.spacecraft_data)?;
+        if !self.spacecraft_data.is_empty() {
+            write!(f, "\t#Spacecraft kernels = {}", self.spacecraft_data.len())?;
         }
-        if !self.euler_param_data.lut.by_id.is_empty() {
-            write!(f, "\t{}", self.euler_param_data)?;
+        if !self.euler_param_data.is_empty() {
+            write!(
+                f,
+                "\t#Euler param kernels = {}",
+                self.euler_param_data.len()
+            )?;
+        }
+        if !self.location_data.is_empty() {
+            write!(f, "\t#Location kernels = {}", self.location_data.len())?;
         }
         Ok(())
     }
@@ -105,21 +111,64 @@ impl Almanac {
         Self::default().load(path)
     }
 
-    /// Loads the provided spacecraft data into a clone of this original Almanac.
-    pub fn with_spacecraft_data(mut self, spacecraft_data: SpacecraftDataSet) -> Self {
-        self.spacecraft_data = spacecraft_data;
+    /// Loads the provided spacecraft data.
+    pub fn with_spacecraft_data(self, spacecraft_data: SpacecraftDataSet) -> Self {
+        self.with_spacecraft_data_as(spacecraft_data, None)
+    }
+
+    /// Loads the provided spacecraft data.
+    pub fn with_spacecraft_data_as(
+        mut self,
+        spacecraft_data: SpacecraftDataSet,
+        alias: Option<String>,
+    ) -> Self {
+        let alias = alias.unwrap_or(Epoch::now().unwrap_or_default().to_string());
+        let msg = format!("unloading spacecraft data `{alias}`");
+        if self
+            .spacecraft_data
+            .insert(alias, spacecraft_data)
+            .is_some()
+        {
+            warn!("{msg}");
+        }
         self
     }
 
     /// Loads the provided Euler parameter data into a clone of this original Almanac.
-    pub fn with_euler_parameters(mut self, ep_dataset: EulerParameterDataSet) -> Self {
-        self.euler_param_data = ep_dataset;
+    pub fn with_euler_parameters(self, ep_dataset: EulerParameterDataSet) -> Self {
+        self.with_euler_parameters_as(ep_dataset, None)
+    }
+
+    /// Loads the provided Euler parameter data.
+    pub fn with_euler_parameters_as(
+        mut self,
+        ep_dataset: EulerParameterDataSet,
+        alias: Option<String>,
+    ) -> Self {
+        let alias = alias.unwrap_or(Epoch::now().unwrap_or_default().to_string());
+        let msg = format!("unloading Euler parameter data `{alias}`");
+        if self.euler_param_data.insert(alias, ep_dataset).is_some() {
+            warn!("{msg}");
+        }
         self
     }
 
-    /// Loads the provided location data into a clone of this original Almanac.
-    pub fn with_location_data(mut self, loc_dataset: LocationDataSet) -> Self {
-        self.location_data = loc_dataset;
+    /// Loads the provided location data.
+    pub fn with_location_data(self, loc_dataset: LocationDataSet) -> Self {
+        self.with_location_data_as(loc_dataset, None)
+    }
+
+    /// Loads the provided location data.
+    pub fn with_location_data_as(
+        mut self,
+        loc_dataset: LocationDataSet,
+        alias: Option<String>,
+    ) -> Self {
+        let alias = alias.unwrap_or(Epoch::now().unwrap_or_default().to_string());
+        let msg = format!("unloading location data `{alias}`");
+        if self.location_data.insert(alias, loc_dataset).is_some() {
+            warn!("{msg}");
+        }
         self
     }
 
@@ -138,6 +187,8 @@ impl Almanac {
             }
         }
 
+        let path_str = path.map_or_else(|| None, |p| Some(p.to_string()));
+
         // Load the header only
         if let Some(file_record_bytes) = bytes.get(..FileRecord::SIZE) {
             let file_record = FileRecord::read_from_bytes(file_record_bytes).unwrap();
@@ -152,8 +203,7 @@ impl Almanac {
                             .context(OrientationSnafu {
                                 action: "from generic loading",
                             })?;
-                        Ok(self
-                            .with_bpc_as(bpc, path.map_or_else(|| None, |p| Some(p.to_string()))))
+                        Ok(self.with_bpc_as(bpc, path_str))
                     }
                     "SPK" => {
                         info!("Loading {} as DAF/SPK", path.unwrap_or("bytes"));
@@ -164,8 +214,7 @@ impl Almanac {
                             .context(EphemerisSnafu {
                                 action: "from generic loading",
                             })?;
-                        Ok(self
-                            .with_spk_as(spk, path.map_or_else(|| None, |p| Some(p.to_string()))))
+                        Ok(self.with_spk_as(spk, path_str))
                     }
                     fileid => Err(AlmanacError::GenericError {
                         err: format!("DAF/{fileid} is not yet supported"),
@@ -203,7 +252,7 @@ impl Almanac {
                         "Loading {} as ANISE spacecraft data",
                         path.unwrap_or("bytes")
                     );
-                    Ok(self.with_spacecraft_data(dataset))
+                    Ok(self.with_spacecraft_data_as(dataset, path_str))
                 }
                 DataSetType::PlanetaryData => {
                     // Decode as planetary data
@@ -213,7 +262,7 @@ impl Almanac {
                         }
                     })?;
                     info!("Loading {} as ANISE/PCA", path.unwrap_or("bytes"));
-                    Ok(self.with_planetary_data(dataset))
+                    Ok(self.with_planetary_data_as(dataset, path_str))
                 }
                 DataSetType::EulerParameterData => {
                     // Decode as euler parameter data
@@ -223,7 +272,7 @@ impl Almanac {
                         }
                     })?;
                     info!("Loading {} as ANISE/EPA", path.unwrap_or("bytes"));
-                    Ok(self.with_euler_parameters(dataset))
+                    Ok(self.with_euler_parameters_as(dataset, path_str))
                 }
                 DataSetType::LocationData => {
                     let dataset = LocationDataSet::try_from_bytes(bytes).context({
@@ -232,7 +281,7 @@ impl Almanac {
                         }
                     })?;
                     info!("Loading {} as ANISE/LDA", path.unwrap_or("bytes"));
-                    Ok(self.with_location_data(dataset))
+                    Ok(self.with_location_data_as(dataset, path_str))
                 }
             }
         } else {
@@ -275,6 +324,7 @@ impl Almanac {
         spk: Option<bool>,
         bpc: Option<bool>,
         planetary: Option<bool>,
+        spacecraft: Option<bool>,
         eulerparams: Option<bool>,
         locations: Option<bool>,
         time_scale: Option<TimeScale>,
@@ -305,21 +355,86 @@ impl Almanac {
         }
 
         if planetary.unwrap_or(!print_any) {
-            println!("=== PLANETARY DATA ==\n{}", self.planetary_data.describe());
+            for (num, (alias, data)) in self.planetary_data.iter().rev().enumerate() {
+                println!(
+                    "=== PLANETARY DATA #{num}: `{alias}` ===\n{}",
+                    data.describe()
+                );
+            }
+        }
+
+        if spacecraft.unwrap_or(!print_any) {
+            for (num, (alias, data)) in self.spacecraft_data.iter().rev().enumerate() {
+                println!(
+                    "=== SPACECRAFT DATA #{num}: `{alias}` ===\n{}",
+                    data.describe()
+                );
+            }
         }
 
         if eulerparams.unwrap_or(!print_any) {
-            println!(
-                "=== EULER PARAMETER DATA ==\n{}",
-                self.euler_param_data.describe()
-            );
+            for (num, (alias, data)) in self.euler_param_data.iter().rev().enumerate() {
+                println!(
+                    "=== EULER PARAMETER DATA #{num}: `{alias}` ===\n{}",
+                    data.describe()
+                );
+            }
         }
 
         if locations.unwrap_or(!print_any) {
-            println!("=== LOCATIONS DATA ==\n{}", self.location_data.describe());
+            for (num, (alias, data)) in self.location_data.iter().rev().enumerate() {
+                println!(
+                    "=== LOCATIONS DATA #{num}: `{alias}` ===\n{}",
+                    data.describe()
+                );
+            }
         }
     }
 
+    /// Returns the list of loaded kernels
+    pub fn list_kernels(
+        &self,
+        spk: Option<bool>,
+        bpc: Option<bool>,
+        planetary: Option<bool>,
+        spacecraft: Option<bool>,
+        eulerparams: Option<bool>,
+        locations: Option<bool>,
+    ) -> Vec<String> {
+        let print_any = spk.unwrap_or(false)
+            || bpc.unwrap_or(false)
+            || planetary.unwrap_or(false)
+            || eulerparams.unwrap_or(false)
+            || locations.unwrap_or(false);
+
+        let mut kernels = vec![];
+
+        if spk.unwrap_or(!print_any) {
+            kernels.extend(self.spk_data.keys().cloned());
+        }
+
+        if bpc.unwrap_or(!print_any) {
+            kernels.extend(self.bpc_data.keys().cloned());
+        }
+
+        if planetary.unwrap_or(!print_any) {
+            kernels.extend(self.planetary_data.keys().cloned());
+        }
+
+        if spacecraft.unwrap_or(!print_any) {
+            kernels.extend(self.spacecraft_data.keys().cloned());
+        }
+
+        if eulerparams.unwrap_or(!print_any) {
+            kernels.extend(self.euler_param_data.keys().cloned());
+        }
+
+        if locations.unwrap_or(!print_any) {
+            kernels.extend(self.location_data.keys().cloned());
+        }
+
+        kernels
+    }
     /// Set the CRC32 of all loaded DAF files
     pub fn set_crc32(&mut self) {
         for spk in self.spk_data.values_mut() {
@@ -432,5 +547,24 @@ impl Almanac {
         }
 
         Ok(())
+    }
+
+    /// Returns the Euler parameter from its ID, searching through all loaded EP datasets in reverse order.
+    pub(crate) fn euler_param_from_id(
+        &self,
+        id: NaifId,
+    ) -> Result<EulerParameter, OrientationError> {
+        for data in self.euler_param_data.values().rev() {
+            if let Ok(datum) = data.get_by_id(id) {
+                return Ok(datum);
+            }
+        }
+
+        Err(OrientationError::OrientationDataSet {
+            source: DataSetError::DataSetLut {
+                action: "fetching by ID",
+                source: LutError::UnknownId { id },
+            },
+        })
     }
 }
