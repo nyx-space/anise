@@ -55,6 +55,7 @@ impl Almanac {
     /// :type spk: bool, optional
     /// :type bpc: bool, optional
     /// :type planetary: bool, optional
+    /// :type spacecraft: bool, optional
     /// :type eulerparams: bool, optional
     /// :type locations: bool, optional
     /// :type time_scale: TimeScale, optional
@@ -64,6 +65,7 @@ impl Almanac {
         spk=None,
         bpc=None,
         planetary=None,
+        spacecraft=None,
         eulerparams=None,
         locations=None,
         time_scale=None,
@@ -75,6 +77,7 @@ impl Almanac {
         spk: Option<bool>,
         bpc: Option<bool>,
         planetary: Option<bool>,
+        spacecraft: Option<bool>,
         eulerparams: Option<bool>,
         locations: Option<bool>,
         time_scale: Option<TimeScale>,
@@ -84,6 +87,7 @@ impl Almanac {
             spk,
             bpc,
             planetary,
+            spacecraft,
             eulerparams,
             locations,
             time_scale,

@@ -16,6 +16,7 @@ fuzz_target!(|data: &[u8]| {
             Some(true),
             Some(true),
             Some(true),
+            Some(true),
             None,
             None,
         );

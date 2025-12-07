@@ -191,6 +191,8 @@ impl Almanac {
             }
         }
 
+        let path_str = path.map_or_else(|| None, |p| Some(p.to_string()));
+
         // Load the header only
         if let Some(file_record_bytes) = bytes.get(..FileRecord::SIZE) {
             let file_record = FileRecord::read_from_bytes(file_record_bytes).unwrap();
@@ -205,8 +207,7 @@ impl Almanac {
                             .context(OrientationSnafu {
                                 action: "from generic loading",
                             })?;
-                        Ok(self
-                            .with_bpc_as(bpc, path.map_or_else(|| None, |p| Some(p.to_string()))))
+                        Ok(self.with_bpc_as(bpc, path_str))
                     }
                     "SPK" => {
                         info!("Loading {} as DAF/SPK", path.unwrap_or("bytes"));
@@ -217,8 +218,7 @@ impl Almanac {
                             .context(EphemerisSnafu {
                                 action: "from generic loading",
                             })?;
-                        Ok(self
-                            .with_spk_as(spk, path.map_or_else(|| None, |p| Some(p.to_string()))))
+                        Ok(self.with_spk_as(spk, path_str))
                     }
                     fileid => Err(AlmanacError::GenericError {
                         err: format!("DAF/{fileid} is not yet supported"),
@@ -256,7 +256,7 @@ impl Almanac {
                         "Loading {} as ANISE spacecraft data",
                         path.unwrap_or("bytes")
                     );
-                    Ok(self.with_spacecraft_data(dataset))
+                    Ok(self.with_spacecraft_data_as(dataset, path_str))
                 }
                 DataSetType::PlanetaryData => {
                     // Decode as planetary data
@@ -266,7 +266,7 @@ impl Almanac {
                         }
                     })?;
                     info!("Loading {} as ANISE/PCA", path.unwrap_or("bytes"));
-                    Ok(self.with_planetary_data(dataset))
+                    Ok(self.with_planetary_data_as(dataset, path_str))
                 }
                 DataSetType::EulerParameterData => {
                     // Decode as euler parameter data
@@ -276,7 +276,7 @@ impl Almanac {
                         }
                     })?;
                     info!("Loading {} as ANISE/EPA", path.unwrap_or("bytes"));
-                    Ok(self.with_euler_parameters(dataset))
+                    Ok(self.with_euler_parameters_as(dataset, path_str))
                 }
                 DataSetType::LocationData => {
                     let dataset = LocationDataSet::try_from_bytes(bytes).context({
@@ -285,7 +285,7 @@ impl Almanac {
                         }
                     })?;
                     info!("Loading {} as ANISE/LDA", path.unwrap_or("bytes"));
-                    Ok(self.with_location_data(dataset))
+                    Ok(self.with_location_data_as(dataset, path_str))
                 }
             }
         } else {
@@ -328,6 +328,7 @@ impl Almanac {
         spk: Option<bool>,
         bpc: Option<bool>,
         planetary: Option<bool>,
+        spacecraft: Option<bool>,
         eulerparams: Option<bool>,
         locations: Option<bool>,
         time_scale: Option<TimeScale>,
@@ -361,6 +362,15 @@ impl Almanac {
             for (num, (alias, data)) in self.planetary_data.iter().rev().enumerate() {
                 println!(
                     "=== PLANETARY DATA #{num}: `{alias}` ===\n{}",
+                    data.describe()
+                );
+            }
+        }
+
+        if spacecraft.unwrap_or(!print_any) {
+            for (num, (alias, data)) in self.spacecraft_data.iter().rev().enumerate() {
+                println!(
+                    "=== SPACECRAFT DATA #{num}: `{alias}` ===\n{}",
                     data.describe()
                 );
             }

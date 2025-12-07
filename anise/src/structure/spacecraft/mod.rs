@@ -7,19 +7,20 @@
  *
  * Documentation: https://nyxspace.com/
  */
+use super::dataset::DataSetT;
+use super::SpacecraftDataSet;
 use der::{Decode, Encode, Reader, Writer};
+pub use drag::DragData;
+pub use inertia::Inertia;
+pub use mass::Mass;
 use serde::{Deserialize, Serialize};
+pub use srp::SRPData;
+use tabled::{settings::Style, Table, Tabled};
 
 mod drag;
 mod inertia;
 mod mass;
 mod srp;
-
-use super::dataset::DataSetT;
-pub use drag::DragData;
-pub use inertia::Inertia;
-pub use mass::Mass;
-pub use srp::SRPData;
 
 /// Spacecraft constants can store the some of the spacecraft constant data as the CCSDS Orbit Parameter Message (OPM) and CCSDS Attitude Parameter Messages (APM)
 #[derive(Copy, Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
@@ -119,6 +120,65 @@ impl<'a> Decode<'a> for SpacecraftData {
             drag_data,
             inertia,
         })
+    }
+}
+
+#[derive(Tabled, Default)]
+struct SpacecraftRow {
+    #[tabled(rename = "Name")]
+    name: String,
+    #[tabled(rename = "ID")]
+    id: String,
+    #[tabled(rename = "Mass")]
+    mass: String,
+    #[tabled(rename = "SRP")]
+    srp: String,
+    #[tabled(rename = "Drag")]
+    drag: String,
+    #[tabled(rename = "Inertia")]
+    inertia: String,
+}
+
+impl SpacecraftDataSet {
+    /// Returns a table describing this planetary data set
+    pub fn describe(&self) -> String {
+        let binding = self.lut.entries();
+        let mut values = binding.values().collect::<Vec<_>>().to_vec();
+        values.sort_by_key(|(opt_id, _)| match opt_id {
+            Some(id) => *id,
+            None => 0,
+        });
+
+        let mut rows = Vec::new();
+
+        for (opt_id, opt_name) in values {
+            let data = if let Some(id) = opt_id {
+                self.get_by_id(*id).unwrap()
+            } else {
+                self.get_by_name(&opt_name.clone().unwrap()).unwrap()
+            };
+
+            let row = SpacecraftRow {
+                name: match opt_name {
+                    Some(name) => name.clone(),
+                    None => "Unset".to_string(),
+                },
+                id: match opt_id {
+                    Some(id) => format!("{id}"),
+                    None => "Unset".to_string(),
+                },
+                mass: format!("{:?}", data.mass),
+                srp: format!("{:?}", data.srp_data),
+                drag: format!("{:?}", data.drag_data),
+                inertia: format!("{:?}", data.inertia),
+            };
+
+            rows.push(row);
+        }
+
+        let mut tbl = Table::new(rows);
+        tbl.with(Style::modern());
+        format!("{tbl}")
     }
 }
 
