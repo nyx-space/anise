@@ -127,10 +127,7 @@ use anise::naif::kpl::parser::convert_tpc;
 // Note that the ASN1 ANISE format for planetary data also stores the gravity parameters, so we must convert both at once into a single ANISE file.
 let planetary_data = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
 
-let almanac = Almanac {
-    planetary_data,
-    ..Default::default()
-};
+let almanac = Almanac::default().with_planetary_data(planetary_data);
 
 // Load the useful frame constants
 use anise::constants::frames::*;

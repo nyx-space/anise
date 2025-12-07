@@ -214,6 +214,12 @@ Algorithm (source: Algorithm 35 of Vallado, 4th edition, page 308.):
     def list_kernels(self, spk: bool=None, bpc: bool=None, planetary: bool=None, spacecraft: bool=None, eulerparams: bool=None, locations: bool=None) -> list:
         """Returns the list of loaded kernels"""
 
+    def location_from_id(self, id: int) -> Location:
+        """Returns the Location from its ID, searching through all loaded location datasets in reverse order."""
+
+    def location_from_name(self, name: str) -> Location:
+        """Returns the Location from its name, searching through all loaded location datasets in reverse order."""
+
     def load(self, path: str) -> Almanac:
         """Generic function that tries to load the provided path guessing to the file type."""
 
@@ -309,8 +315,7 @@ This function performs a memory allocation."""
 This reuses the existing memory buffer, growing it only if the new file
 is larger than the previous capacity. This effectively adopts a
 "high watermark" memory strategy, where the memory usage for this slot
-is determined by the largest file ever loaded into it
-."""
+is determined by the largest file ever loaded into it."""
 
     def spk_unload(self, alias: str) -> None:
         """Unloads (in-place) the SPK with the provided alias.

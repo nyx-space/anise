@@ -901,4 +901,22 @@ impl Almanac {
     ) -> AlmanacResult<AzElRange> {
         self.azimuth_elevation_range_sez_from_location(rx, location, obstructing_body, ab_corr)
     }
+
+    /// Returns the Location from its ID, searching through all loaded location datasets in reverse order.
+    ///
+    /// :type id: int
+    /// :rtype: Location
+    #[pyo3(name = "location_from_id")]
+    pub fn py_location_from_id(&self, id: i32) -> AlmanacResult<Location> {
+        self.location_from_id(id)
+    }
+
+    /// Returns the Location from its name, searching through all loaded location datasets in reverse order.
+    ///
+    /// :type name: str
+    /// :rtype: Location
+    #[pyo3(name = "location_from_name")]
+    pub fn py_location_from_name(&self, name: &str) -> AlmanacResult<Location> {
+        self.location_from_name(name)
+    }
 }

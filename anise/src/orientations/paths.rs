@@ -133,7 +133,7 @@ impl Almanac {
                         Ok(planetary_data) => planetary_data.parent_id,
                         Err(_) => {
                             // Finally, let's see if it's in the loaded Euler Parameters.
-                            self.euler_param_from_id(source.orientation_id)?.to
+                            self.euler_param_from_id(inertial_frame_id)?.to
                         }
                     }
                 }

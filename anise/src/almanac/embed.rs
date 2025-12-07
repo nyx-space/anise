@@ -46,7 +46,7 @@ mod ut_embed {
         let almanac = Almanac::until_2035().unwrap();
         assert_eq!(almanac.num_loaded_spk(), 1);
         assert_eq!(almanac.num_loaded_bpc(), 0);
-        assert_ne!(almanac.planetary_data.crc32(), 0);
+        assert_ne!(almanac.planetary_data.values().next().unwrap().crc32(), 0);
     }
 
     #[test]

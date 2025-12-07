@@ -34,10 +34,6 @@ use crate::structure::{
 use crate::NaifId;
 use core::fmt;
 
-// TODO: Switch these to build constants so that it's configurable when building the library.
-pub const MAX_LOADED_SPKS: usize = 32;
-pub const MAX_LOADED_BPCS: usize = 8;
-
 pub mod aer;
 pub mod bpc;
 pub mod eclipse;
@@ -414,63 +410,27 @@ impl Almanac {
         let mut kernels = vec![];
 
         if spk.unwrap_or(!print_any) {
-            kernels.extend_from_slice(
-                &self
-                    .spk_data
-                    .keys()
-                    .map(|k| k.to_string())
-                    .collect::<Vec<String>>(),
-            );
+            kernels.extend(self.spk_data.keys().cloned());
         }
 
         if bpc.unwrap_or(!print_any) {
-            kernels.extend_from_slice(
-                &self
-                    .bpc_data
-                    .keys()
-                    .map(|k| k.to_string())
-                    .collect::<Vec<String>>(),
-            );
+            kernels.extend(self.bpc_data.keys().cloned());
         }
 
         if planetary.unwrap_or(!print_any) {
-            kernels.extend_from_slice(
-                &self
-                    .planetary_data
-                    .keys()
-                    .map(|k| k.to_string())
-                    .collect::<Vec<String>>(),
-            );
+            kernels.extend(self.planetary_data.keys().cloned());
         }
 
         if spacecraft.unwrap_or(!print_any) {
-            kernels.extend_from_slice(
-                &self
-                    .spacecraft_data
-                    .keys()
-                    .map(|k| k.to_string())
-                    .collect::<Vec<String>>(),
-            );
+            kernels.extend(self.spacecraft_data.keys().cloned());
         }
 
         if eulerparams.unwrap_or(!print_any) {
-            kernels.extend_from_slice(
-                &self
-                    .euler_param_data
-                    .keys()
-                    .map(|k| k.to_string())
-                    .collect::<Vec<String>>(),
-            );
+            kernels.extend(self.euler_param_data.keys().cloned());
         }
 
         if locations.unwrap_or(!print_any) {
-            kernels.extend_from_slice(
-                &self
-                    .location_data
-                    .keys()
-                    .map(|k| k.to_string())
-                    .collect::<Vec<String>>(),
-            );
+            kernels.extend(self.location_data.keys().cloned());
         }
 
         kernels

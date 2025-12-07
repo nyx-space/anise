@@ -45,7 +45,7 @@ impl Almanac {
         })
     }
 
-    /// Returns the Location from its ID, searching through all loaded location datasets in reverse order.
+    /// Returns the Location from its name, searching through all loaded location datasets in reverse order.
     pub fn location_from_name(&self, name: &str) -> AlmanacResult<Location> {
         for data in self.location_data.values().rev() {
             if let Ok(datum) = data.get_by_name(name) {
@@ -56,7 +56,7 @@ impl Almanac {
         Err(AlmanacError::TLDataSet {
             action: "AER for location",
             source: DataSetError::DataSetLut {
-                action: "seeking location by ID",
+                action: "seeking location by name",
                 source: LutError::UnknownName {
                     name: name.to_string(),
                 },
