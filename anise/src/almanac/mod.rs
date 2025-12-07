@@ -401,6 +401,7 @@ impl Almanac {
         spk: Option<bool>,
         bpc: Option<bool>,
         planetary: Option<bool>,
+        spacecraft: Option<bool>,
         eulerparams: Option<bool>,
         locations: Option<bool>,
     ) -> Vec<String> {
@@ -436,6 +437,16 @@ impl Almanac {
             kernels.extend_from_slice(
                 &self
                     .planetary_data
+                    .keys()
+                    .map(|k| k.to_string())
+                    .collect::<Vec<String>>(),
+            );
+        }
+
+        if spacecraft.unwrap_or(!print_any) {
+            kernels.extend_from_slice(
+                &self
+                    .spacecraft_data
                     .keys()
                     .map(|k| k.to_string())
                     .collect::<Vec<String>>(),

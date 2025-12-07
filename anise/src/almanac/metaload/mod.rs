@@ -79,7 +79,7 @@ impl Almanac {
     pub fn to_metaalmanac(&self) -> MetaAlmanac {
         MetaAlmanac {
             files: self
-                .list_kernels(None, None, None, None, None)
+                .list_kernels(None, None, None, None, None, None)
                 .iter()
                 .cloned()
                 .map(|path| MetaFile {

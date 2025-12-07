@@ -100,6 +100,7 @@ impl Almanac {
     /// :type spk: bool, optional
     /// :type bpc: bool, optional
     /// :type planetary: bool, optional
+    /// :type spacecraft: bool, optional
     /// :type eulerparams: bool, optional
     /// :type locations: bool, optional
     /// :rtype: list
@@ -107,6 +108,7 @@ impl Almanac {
         spk=None,
         bpc=None,
         planetary=None,
+        spacecraft=None,
         eulerparams=None,
         locations=None,
     ))]
@@ -116,10 +118,11 @@ impl Almanac {
         spk: Option<bool>,
         bpc: Option<bool>,
         planetary: Option<bool>,
+        spacecraft: Option<bool>,
         eulerparams: Option<bool>,
         locations: Option<bool>,
     ) -> Vec<String> {
-        self.list_kernels(spk, bpc, planetary, eulerparams, locations)
+        self.list_kernels(spk, bpc, planetary, spacecraft, eulerparams, locations)
     }
 
     /// Generic function that tries to load the provided path guessing to the file type.
@@ -156,7 +159,12 @@ impl Almanac {
     /// This reuses the existing memory buffer, growing it only if the new file
     /// is larger than the previous capacity. This effectively adopts a
     /// "high watermark" memory strategy, where the memory usage for this slot
-    /// is determined by the largest file ever loaded into it.
+    /// is determined by the largest file ever loaded into it
+    /// .
+    /// :type alias: str
+    /// :type new_spk_path: str
+    /// :type new_alias: str
+    /// :rtype: None
     #[pyo3(name = "spk_swap")]
     pub fn py_spk_swap(
         &mut self,
@@ -173,6 +181,11 @@ impl Almanac {
     /// is larger than the previous capacity. This effectively adopts a
     /// "high watermark" memory strategy, where the memory usage for this slot
     /// is determined by the largest file ever loaded into it.
+    ///
+    /// :type alias: str
+    /// :type new_bpc_path: str
+    /// :type new_alias: str
+    /// :rtype: None
     #[pyo3(name = "bpc_swap")]
     pub fn py_bpc_swap(
         &mut self,
