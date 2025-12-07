@@ -20,15 +20,18 @@ use crate::errors::{
     AlmanacError, AlmanacResult, EphemerisSnafu, InputOutputError, LoadingSnafu, OrientationSnafu,
     TLDataSetSnafu,
 };
+use crate::math::rotation::EulerParameter;
 use crate::naif::daf::{FileRecord, NAIFRecord};
 use crate::naif::pretty_print::NAIFPrettyPrint;
 use crate::naif::{BPC, SPK};
-use crate::orientations::BPCSnafu;
-use crate::structure::dataset::DataSetType;
+use crate::orientations::{BPCSnafu, OrientationError};
+use crate::structure::dataset::{DataSetError, DataSetType};
+use crate::structure::lookuptable::LutError;
 use crate::structure::metadata::Metadata;
 use crate::structure::{
     EulerParameterDataSet, LocationDataSet, PlanetaryDataSet, SpacecraftDataSet,
 };
+use crate::NaifId;
 use core::fmt;
 
 // TODO: Switch these to build constants so that it's configurable when building the library.
@@ -73,9 +76,9 @@ pub struct Almanac {
     /// Dataset of spacecraft data
     pub spacecraft_data: IndexMap<String, SpacecraftDataSet>,
     /// Dataset of euler parameters
-    pub euler_param_data: EulerParameterDataSet,
+    pub euler_param_data: IndexMap<String, EulerParameterDataSet>,
     /// Dataset of locations
-    pub location_data: LocationDataSet,
+    pub location_data: IndexMap<String, LocationDataSet>,
 }
 
 impl fmt::Display for Almanac {
@@ -92,8 +95,15 @@ impl fmt::Display for Almanac {
         if !self.spacecraft_data.is_empty() {
             write!(f, "\t#Spacecraft kernels = {}", self.spacecraft_data.len())?;
         }
-        if !self.euler_param_data.lut.by_id.is_empty() {
-            write!(f, "\t{}", self.euler_param_data)?;
+        if !self.euler_param_data.is_empty() {
+            write!(
+                f,
+                "\t#Euler param kernels = {}",
+                self.euler_param_data.len()
+            )?;
+        }
+        if !self.location_data.is_empty() {
+            write!(f, "\t#Location kernels = {}", self.location_data.len())?;
         }
         Ok(())
     }
@@ -129,14 +139,40 @@ impl Almanac {
     }
 
     /// Loads the provided Euler parameter data into a clone of this original Almanac.
-    pub fn with_euler_parameters(mut self, ep_dataset: EulerParameterDataSet) -> Self {
-        self.euler_param_data = ep_dataset;
+    pub fn with_euler_parameters(self, ep_dataset: EulerParameterDataSet) -> Self {
+        self.with_euler_parameters_as(ep_dataset, None)
+    }
+
+    /// Loads the provided Euler parameter data.
+    pub fn with_euler_parameters_as(
+        mut self,
+        ep_dataset: EulerParameterDataSet,
+        alias: Option<String>,
+    ) -> Self {
+        let alias = alias.unwrap_or(Epoch::now().unwrap_or_default().to_string());
+        let msg = format!("unloading Euler parameter data `{alias}`");
+        if self.euler_param_data.insert(alias, ep_dataset).is_some() {
+            warn!("{msg}");
+        }
         self
     }
 
-    /// Loads the provided location data into a clone of this original Almanac.
-    pub fn with_location_data(mut self, loc_dataset: LocationDataSet) -> Self {
-        self.location_data = loc_dataset;
+    /// Loads the provided location data.
+    pub fn with_location_data(self, loc_dataset: LocationDataSet) -> Self {
+        self.with_location_data_as(loc_dataset, None)
+    }
+
+    /// Loads the provided location data.
+    pub fn with_location_data_as(
+        mut self,
+        loc_dataset: LocationDataSet,
+        alias: Option<String>,
+    ) -> Self {
+        let alias = alias.unwrap_or(Epoch::now().unwrap_or_default().to_string());
+        let msg = format!("unloading location data `{alias}`");
+        if self.location_data.insert(alias, loc_dataset).is_some() {
+            warn!("{msg}");
+        }
         self
     }
 
@@ -331,14 +367,21 @@ impl Almanac {
         }
 
         if eulerparams.unwrap_or(!print_any) {
-            println!(
-                "=== EULER PARAMETER DATA ==\n{}",
-                self.euler_param_data.describe()
-            );
+            for (num, (alias, data)) in self.euler_param_data.iter().rev().enumerate() {
+                println!(
+                    "=== EULER PARAMETER DATA #{num}: `{alias}` ===\n{}",
+                    data.describe()
+                );
+            }
         }
 
         if locations.unwrap_or(!print_any) {
-            println!("=== LOCATIONS DATA ==\n{}", self.location_data.describe());
+            for (num, (alias, data)) in self.location_data.iter().rev().enumerate() {
+                println!(
+                    "=== LOCATIONS DATA #{num}: `{alias}` ===\n{}",
+                    data.describe()
+                );
+            }
         }
     }
 
@@ -390,14 +433,23 @@ impl Almanac {
         }
 
         if eulerparams.unwrap_or(!print_any) {
-            println!(
-                "=== EULER PARAMETER DATA ==\n{}",
-                self.euler_param_data.describe()
+            kernels.extend_from_slice(
+                &self
+                    .euler_param_data
+                    .keys()
+                    .map(|k| k.to_string())
+                    .collect::<Vec<String>>(),
             );
         }
 
         if locations.unwrap_or(!print_any) {
-            println!("=== LOCATIONS DATA ==\n{}", self.location_data.describe());
+            kernels.extend_from_slice(
+                &self
+                    .location_data
+                    .keys()
+                    .map(|k| k.to_string())
+                    .collect::<Vec<String>>(),
+            );
         }
 
         kernels
@@ -514,5 +566,24 @@ impl Almanac {
         }
 
         Ok(())
+    }
+
+    /// Returns the Euler parameter from its ID, searching through all loaded EP datasets in reverse order.
+    pub(crate) fn euler_param_from_id(
+        &self,
+        id: NaifId,
+    ) -> Result<EulerParameter, OrientationError> {
+        for data in self.euler_param_data.values().rev() {
+            if let Ok(datum) = data.get_by_id(id) {
+                return Ok(datum);
+            }
+        }
+
+        Err(OrientationError::OrientationDataSet {
+            source: DataSetError::DataSetLut {
+                action: "fetching by ID",
+                source: LutError::UnknownId { id },
+            },
+        })
     }
 }

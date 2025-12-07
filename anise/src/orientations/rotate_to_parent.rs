@@ -18,7 +18,7 @@ use crate::hifitime::Epoch;
 use crate::math::rotation::{r1, r1_dot, r3, r3_dot, DCM};
 use crate::naif::daf::datatypes::Type2ChebyshevSet;
 use crate::naif::daf::{DAFError, DafDataType, NAIFDataSet, NAIFSummaryRecord};
-use crate::orientations::{BPCSnafu, OrientationDataSetSnafu, OrientationInterpolationSnafu};
+use crate::orientations::{BPCSnafu, OrientationInterpolationSnafu};
 use crate::prelude::Frame;
 
 impl Almanac {
@@ -122,11 +122,7 @@ impl Almanac {
                 trace!("query {source} wrt to its parent @ {epoch:E} using Euler parameter data");
                 // Finally, let's see if it's in the loaded Euler Parameters.
                 // We can call `into` because EPs can be converted directly into DCMs.
-                Ok(self
-                    .euler_param_data
-                    .get_by_id(source.orientation_id)
-                    .context(OrientationDataSetSnafu)?
-                    .into())
+                Ok(self.euler_param_from_id(source.orientation_id)?.into())
             }
         }
     }

@@ -440,15 +440,17 @@ impl Almanac {
         // Find the location info
         let mut location_ref = None;
         let mut location = None;
-        for (idx, (opt_id, opt_name)) in self.location_data.lut.entries() {
-            if let Some(id) = opt_id {
-                if id == location_id {
-                    match opt_name {
-                        Some(name) => location_ref = Some(format!("{name} (#{id})")),
-                        None => location_ref = Some(format!("#{id}")),
-                    };
-                    location = Some(self.location_data.data[idx as usize].clone());
-                    break;
+        'outer: for location_data in self.location_data.values().rev() {
+            for (idx, (opt_id, opt_name)) in location_data.lut.entries() {
+                if let Some(id) = opt_id {
+                    if id == location_id {
+                        match opt_name {
+                            Some(name) => location_ref = Some(format!("{name} (#{id})")),
+                            None => location_ref = Some(format!("#{id}")),
+                        };
+                        location = Some(location_data.data[idx as usize].clone());
+                        break 'outer;
+                    }
                 }
             }
         }

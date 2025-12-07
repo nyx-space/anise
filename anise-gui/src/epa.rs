@@ -40,7 +40,7 @@ pub fn epa_ui(ui: &mut egui::Ui, almanac: &Almanac) {
             });
         })
         .body(|mut body| {
-            let epa = &almanac.euler_param_data;
+            let epa = &almanac.euler_param_data.values().next().unwrap();
 
             let binding = epa.lut.entries();
             let mut values = binding.values().collect::<Vec<_>>().to_vec();

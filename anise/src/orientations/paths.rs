@@ -9,9 +9,9 @@
  */
 
 use hifitime::Epoch;
-use snafu::{ensure, ResultExt};
+use snafu::ensure;
 
-use super::{NoOrientationsLoadedSnafu, OrientationDataSetSnafu, OrientationError};
+use super::{NoOrientationsLoadedSnafu, OrientationError};
 use crate::almanac::Almanac;
 use crate::constants::orientations::{ECLIPJ2000, J2000};
 use crate::frames::Frame;
@@ -103,10 +103,7 @@ impl Almanac {
                     Ok(planetary_data) => planetary_data.parent_id,
                     Err(_) => {
                         // Finally, let's see if it's in the loaded Euler Parameters.
-                        self.euler_param_data
-                            .get_by_id(source.orientation_id)
-                            .context(OrientationDataSetSnafu)?
-                            .to
+                        self.euler_param_from_id(source.orientation_id)?.to
                     }
                 }
             }
@@ -136,10 +133,7 @@ impl Almanac {
                         Ok(planetary_data) => planetary_data.parent_id,
                         Err(_) => {
                             // Finally, let's see if it's in the loaded Euler Parameters.
-                            self.euler_param_data
-                                .get_by_id(inertial_frame_id)
-                                .context(OrientationDataSetSnafu)?
-                                .to
+                            self.euler_param_from_id(source.orientation_id)?.to
                         }
                     }
                 }

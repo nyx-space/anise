@@ -16,7 +16,7 @@ use crate::{
     frames::Frame,
     math::angles::{between_0_360, between_pm_180},
     prelude::Orbit,
-    structure::location::Location,
+    structure::{dataset::DataSetError, location::Location, lookuptable::LutError},
 };
 
 use super::Almanac;
@@ -28,6 +28,42 @@ use log::warn;
 use snafu::ResultExt;
 
 impl Almanac {
+    /// Returns the Location from its ID, searching through all loaded location datasets in reverse order.
+    pub fn location_from_id(&self, id: i32) -> AlmanacResult<Location> {
+        for data in self.location_data.values().rev() {
+            if let Ok(datum) = data.get_by_id(id) {
+                return Ok(datum);
+            }
+        }
+
+        Err(AlmanacError::TLDataSet {
+            action: "AER for location",
+            source: DataSetError::DataSetLut {
+                action: "seeking location by ID",
+                source: LutError::UnknownId { id },
+            },
+        })
+    }
+
+    /// Returns the Location from its ID, searching through all loaded location datasets in reverse order.
+    pub fn location_from_name(&self, name: &str) -> AlmanacResult<Location> {
+        for data in self.location_data.values().rev() {
+            if let Ok(datum) = data.get_by_name(name) {
+                return Ok(datum);
+            }
+        }
+
+        Err(AlmanacError::TLDataSet {
+            action: "AER for location",
+            source: DataSetError::DataSetLut {
+                action: "seeking location by ID",
+                source: LutError::UnknownName {
+                    name: name.to_string(),
+                },
+            },
+        })
+    }
+
     /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
     /// receiver state (`rx`) seen from the transmitter state (`tx`), once converted into the SEZ frame of the transmitter.
     ///
@@ -139,19 +175,8 @@ impl Almanac {
         obstructing_body: Option<Frame>,
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<AzElRange> {
-        match self.location_data.get_by_id(location_id) {
-            Ok(location) => self.azimuth_elevation_range_sez_from_location(
-                rx,
-                location,
-                obstructing_body,
-                ab_corr,
-            ),
-
-            Err(source) => Err(AlmanacError::TLDataSet {
-                action: "AER for location",
-                source,
-            }),
-        }
+        let location = self.location_from_id(location_id)?;
+        self.azimuth_elevation_range_sez_from_location(rx, location, obstructing_body, ab_corr)
     }
 
     /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
@@ -164,19 +189,8 @@ impl Almanac {
         obstructing_body: Option<Frame>,
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<AzElRange> {
-        match self.location_data.get_by_name(location_name) {
-            Ok(location) => self.azimuth_elevation_range_sez_from_location(
-                rx,
-                location,
-                obstructing_body,
-                ab_corr,
-            ),
-
-            Err(source) => Err(AlmanacError::TLDataSet {
-                action: "AER for location",
-                source,
-            }),
-        }
+        let location = self.location_from_name(location_name)?;
+        self.azimuth_elevation_range_sez_from_location(rx, location, obstructing_body, ab_corr)
     }
 
     /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
@@ -561,7 +575,7 @@ mod ut_aer {
                 .unwrap()
                 .load("../data/pck08.pca")
                 .unwrap();
-        almanac.location_data = loc_data;
+        almanac = almanac.with_location_data(loc_data);
 
         let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
         // Data from another test case

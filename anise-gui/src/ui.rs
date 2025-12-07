@@ -173,7 +173,7 @@ impl eframe::App for UiApp {
                                 } else if !self.almanac.spacecraft_data.is_empty() {
                                     ("ANISE/SCA", self.almanac.spacecraft_data.values().next().unwrap().crc32())
                                 } else if !self.almanac.euler_param_data.is_empty() {
-                                    ("ANISE/EPA", self.almanac.euler_param_data.crc32())
+                                    ("ANISE/EPA", self.almanac.euler_param_data.values().next().unwrap().crc32())
                                 } else {
                                     ("UNKNOWN", 0)
                                 };

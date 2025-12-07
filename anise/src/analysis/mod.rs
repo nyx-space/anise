@@ -288,7 +288,7 @@ mod ut_analysis {
         )
         .unwrap();
 
-        almanac.location_data = loc_data;
+        almanac = almanac.with_location_data(loc_data);
 
         almanac
     }
@@ -835,17 +835,14 @@ mod ut_analysis {
             terrain_mask_ignored: true,
         };
 
-        almanac
-            .location_data
-            .push(loc.clone(), Some(1), None)
-            .unwrap();
+        let mut loc_data = LocationDataSet::default();
+        loc_data.push(loc.clone(), Some(1), None).unwrap();
 
         // Insert a duplicate of this location but where the terrain mask is applied
         loc.terrain_mask_ignored = false;
-        almanac
-            .location_data
-            .push(loc, Some(2), Some("Paris w/ mask"))
-            .unwrap();
+        loc_data.push(loc, Some(2), Some("Paris w/ mask")).unwrap();
+
+        almanac = almanac.with_location_data(loc_data);
 
         let comms_report = almanac
             .report_scalars_flat(
