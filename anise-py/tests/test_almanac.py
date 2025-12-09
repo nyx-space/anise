@@ -332,6 +332,12 @@ def test_location():
     print(terrain_mask)
 
 
+def test_version():
+    from anise import __version__
+
+    assert __version__ is not None
+
+
 if __name__ == "__main__":
     # test_meta_load()
     # test_exports()
