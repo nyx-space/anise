@@ -230,6 +230,38 @@ def test_state_transformation():
     assert len(states) == int(stop.timedelta(start).to_unit(Unit.Minute))
 
 
+def test_numpy_constructor():
+    import numpy as np
+
+    if environ.get("CI", False):
+        # Load from meta kernel to not use Git LFS quota
+        data_path = Path(__file__).parent.joinpath(
+            "..", "..", "data", "ci_config.dhall"
+        )
+        meta = MetaAlmanac(str(data_path))
+        almanac = meta.process()
+    else:
+        data_path = Path(__file__).parent.joinpath("..", "..", "data")
+        almanac = Almanac(str(data_path.joinpath("pck08.pca")))
+    
+    epoch = Epoch("2021-10-29 12:34:56 TDB")
+    eme2k = almanac.frame_info(Frames.EME2000)
+
+    state_vector = np.array([8_191.93, 0.0, 0.0, 0.0, 7.6, 0.0])
+
+    orbit_from_npy = Orbit(state_vector, epoch, eme2k)
+
+    orbit_from_floats = Orbit(
+        8_191.93, 0.0, 0.0, 0.0, 7.6, 0.0, epoch, eme2k
+    )
+
+    assert orbit_from_npy == orbit_from_floats
+
+    # Test that it fails with a wrong-sized array
+    with np.testing.assert_raises(ValueError):
+        Orbit(np.array([1.0, 2.0, 3.0]), epoch, eme2k)
+
+
 def test_convert_tpc():
     """Attempt to reproduce GH issue #339"""
     try:

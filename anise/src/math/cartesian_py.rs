@@ -14,11 +14,30 @@ use super::cartesian::CartesianState;
 use crate::prelude::Frame;
 use hifitime::Epoch;
 use ndarray::Array1;
-use numpy::PyArray1;
-use pyo3::exceptions::PyTypeError;
+use numpy::{PyReadonlyArray1, PyArray1};
+use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
-use pyo3::types::PyType;
+use pyo3::types::{PyTuple, PyType};
+
+fn from_npy_slice(pos_vel_na: &[f64], epoch: Epoch, frame: Frame) -> PyResult<CartesianState> {
+    if pos_vel_na.len() != 6 {
+        return Err(PyValueError::new_err(format!(
+            "Expected a numpy array of size 6, got {}",
+            pos_vel_na.len()
+        )));
+    }
+    Ok(CartesianState::new(
+        pos_vel_na[0],
+        pos_vel_na[1],
+        pos_vel_na[2],
+        pos_vel_na[3],
+        pos_vel_na[4],
+        pos_vel_na[5],
+        epoch,
+        frame,
+    ))
+}
 
 #[pymethods]
 impl CartesianState {
@@ -51,22 +70,48 @@ impl CartesianState {
         Self::new(x_km, y_km, z_km, vx_km_s, vy_km_s, vz_km_s, epoch, frame)
     }
 
+    /// Creates a new Cartesian state from a numpy array, an epoch, and a frame.
+    ///
+    /// **Units:** km, km, km, km/s, km/s, km/s
+    #[classmethod]
+    pub fn from_cartesian_npy(
+        _cls: &Bound<'_, PyType>,
+        pos_vel: PyReadonlyArray1<f64>,
+        epoch: Epoch,
+        frame: Frame,
+    ) -> PyResult<Self> {
+        from_npy_slice(pos_vel.as_slice()?, epoch, frame)
+    }
+
     /// Creates a new Cartesian state in the provided frame at the provided Epoch (calls from_cartesian).
     ///
     /// **Units:** km, km, km, km/s, km/s, km/s
     #[allow(clippy::too_many_arguments)]
     #[new]
-    pub fn py_new(
-        x_km: f64,
-        y_km: f64,
-        z_km: f64,
-        vx_km_s: f64,
-        vy_km_s: f64,
-        vz_km_s: f64,
-        epoch: Epoch,
-        frame: Frame,
-    ) -> Self {
-        Self::new(x_km, y_km, z_km, vx_km_s, vy_km_s, vz_km_s, epoch, frame)
+    #[pyo3(signature = (*args))]
+    pub fn py_new(args: &Bound<'_, PyTuple>) -> PyResult<Self> {
+        if args.len() == 8 {
+            let x_km: f64 = args.get_item(0)?.extract()?;
+            let y_km: f64 = args.get_item(1)?.extract()?;
+            let z_km: f64 = args.get_item(2)?.extract()?;
+            let vx_km_s: f64 = args.get_item(3)?.extract()?;
+            let vy_km_s: f64 = args.get_item(4)?.extract()?;
+            let vz_km_s: f64 = args.get_item(5)?.extract()?;
+            let epoch: Epoch = args.get_item(6)?.extract()?;
+            let frame: Frame = args.get_item(7)?.extract()?;
+            Ok(Self::new(
+                x_km, y_km, z_km, vx_km_s, vy_km_s, vz_km_s, epoch, frame,
+            ))
+        } else if args.len() == 3 {
+            let pos_vel: PyReadonlyArray1<f64> = args.get_item(0)?.extract()?;
+            let epoch: Epoch = args.get_item(1)?.extract()?;
+            let frame: Frame = args.get_item(2)?.extract()?;
+            from_npy_slice(pos_vel.as_slice()?, epoch, frame)
+        } else {
+            Err(PyTypeError::new_err(
+                "Orbit constructor takes either 6 floats, an epoch, and a frame, or a 6-element numpy array, an epoch, and a frame.",
+            ))
+        }
     }
 
     /// :rtype: float
