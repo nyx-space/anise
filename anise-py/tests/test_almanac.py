@@ -233,7 +233,7 @@ def test_state_transformation():
 def test_numpy_constructor():
     import numpy as np
 
-     if environ.get("CI", False):
+    if environ.get("CI", False):
         # Load from meta kernel to not use Git LFS quota
         data_path = Path(__file__).parent.joinpath(
             "..", "..", "data", "ci_config.dhall"
