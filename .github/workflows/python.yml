@@ -172,7 +172,7 @@ jobs:
           pip install anise --find-links anise-py/dist --force-reinstall
           pip install pytest numpy twine
           pytest
-          twine check dist/*
+          twine check anise-py/dist/*
           
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -219,7 +219,7 @@ jobs:
           pip install anise --find-links anise-py/dist --force-reinstall
           pip install pytest numpy twine
           pytest
-          twine check dist/*
+          twine check anise-py/dist/*
 
   sdist:
     runs-on: ubuntu-latest
