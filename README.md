@@ -36,12 +36,12 @@ ANISE is a "Core + Bindings" ecosystem. The heavy lifting is done in Rust, ensur
 ```mermaid
 graph TD
     Data[Kernels: SPK, PCK, LKA] --> Core
-    Core[ANISE Core (Rust)]
+    Core["ANISE Core (Rust)"]
     Core --> Bindings[Bindings & Tools]
-    Bindings --> Py[Python (anise-py)]
-    Bindings --> CLI[CLI Tools (anise-cli)]
-    Bindings --> GUI[Visualizer (anise-gui)]
-    Bindings --> CPP[C++ (Coming Soon)]
+    Bindings --> Py["Python (anise-py)"]
+    Bindings --> CLI["CLI Tools (anise-cli)"]
+    Bindings --> GUI["Visualizer (anise-gui)"]
+    Bindings --> CPP["C++ (Coming Soon)"]
 ```
 
 ## Key Features
