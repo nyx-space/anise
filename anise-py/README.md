@@ -120,6 +120,7 @@ ANISE allows you to build declarative expressions for scalars and vectors. These
 import anise.analysis as analysis
 from anise import Almanac
 from anise.constants import Frames, Orientations
+from anise.astro improt Frame
 from anise.time import Epoch, Unit
 
 # Define the state we want to analyze (e.g., LRO orbiting the Moon)
