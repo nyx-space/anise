@@ -33,7 +33,7 @@ __all__ = [
     "MetaFile",
     "LocationDhallSet",
     "LocationDhallSetEntry",
-    "LocationDataSet"
+    "LocationDataSet",
     # functions
     "exec_gui",
     "__version__",
