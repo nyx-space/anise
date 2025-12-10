@@ -2,8 +2,8 @@
 
 ## A modern, high-performance toolkit for space mission design and operations.
 
-[](https://github.com/nyx-space/anise/actions/workflows/rust.yml)
-[](https://opensource.org/licenses/MPL-2.0)
+[![Rust](https://github.com/nyx-space/anise/actions/workflows/rust.yml/badge.svg)](https://github.com/nyx-space/anise/actions/workflows/rust.yml)
+[![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
 
 ![ANISE LOGO](./ANISE-logo.png)
 
@@ -101,7 +101,7 @@ Nyx Space provides several important SPICE files for your convenience:
   * **[pck08.pca](http://public-data.nyxspace.com/anise/v0.7/pck08.pca)**: Planetary constants kernel (ANISE format), built from JPL's gravitational data.
   * **[moon_fk_de440.epa](http://public-data.nyxspace.com/anise/v0.7/moon_fk_de440.epa)**: A Moon frame kernel built from JPL data.
 
-> **Note on Lunar Frames**: For accurate lunar work, we recommend using the `moon_fk_de440.epa` file with `moon_pa_de440_200625.bpc` (Principal Axes) rather than the low-fidelity IAU Moon frame. See [`moon_de440_220930.txt`](./data/moon_de440_220930.txt) for details.
+> **Note on Lunar Frames**: For accurate lunar work, we recommend using the `moon_fk_de440.epa` file with `moon_pa_de440_200625.bpc` (Principal Axes) and an ephemeris file (e.g., `de440.bsp`), rather than the low-fidelity IAU Moon frame. See [`moon_de440_220930.txt`](./data/moon_de440_220930.txt) for details.
 
 ## Contributing
 
