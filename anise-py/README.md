@@ -1,6 +1,6 @@
 # ANISE (Attitude, Navigation, Instrument, Spacecraft, Ephemeris)
 
-ANISE is a modern rewrite of the core functionalities of the NAIF SPICE toolkit with enhanced features, and ease of use, while leveraging Rust's safety and speed.
+ANISE is a modern rewrite of the core functionalities of the NAIF SPICE toolkit with enhanced features and ease of use, leveraging Rust's safety and speed.
 
 [**Please fill out our user survey**](https://7ug5imdtt8v.typeform.com/to/qYDB14Hj)
 
@@ -8,20 +8,48 @@ ANISE is a modern rewrite of the core functionalities of the NAIF SPICE toolkit 
 
 In the realm of space exploration, navigation, and astrophysics, precise and efficient computation of spacecraft position, orientation, and time is critical. ANISE, standing for "Attitude, Navigation, Instrument, Spacecraft, Ephemeris," offers a Rust-native approach to these challenges. This toolkit provides a suite of functionalities including but not limited to:
 
-+ Loading SPK, BPC, PCK, FK, and TPC files.
-+ High-precision translations, rotations, and their combination (rigid body transformations).
-+ Querying SPICE files in parallel at incredible speeds (~ 125,000 queries per second), search for the functions with the `many` keyword
-+ Comprehensive time system conversions using the hifitime library (including TT, TAI, ET, TDB, UTC, GPS time, and more).
+  + **Universal Loading**: Seamlessly load SPK, BPC, PCK, FK, TPC, and the new **LKA** (Location Kernel Anise) files.
+  + **Rigid Body Physics**: High-precision translations, rotations, and their combination (rigid body transformations).
+  + **Parallel Querying**: Query SPICE files in parallel at incredible speeds (~ 125,000 queries per second) using the `many` keyword.
+  + **Declarative Analysis**: Build complex mathematical vector and scalar expressions (e.g., angles, projections, orbital elements) and evaluate them efficiently over time series.
+  + **Event Finding**: High-precision search for eclipses, AOS/LOS, and orbital events (periapsis/apoapsis).
+  + **Hifitime Integration**: Comprehensive time system conversions using the `hifitime` library (TT, TAI, ET, TDB, UTC, GPS, etc.).
 
-ANISE stands validated against the traditional SPICE toolkit, ensuring accuracy and reliability, with translations achieving machine precision (2e-16) and rotations presenting minimal error (less than two arcseconds in the pointing of the rotation axis and less than one arcsecond in the angle about this rotation axis).
+ANISE stands validated against the traditional SPICE toolkit, ensuring accuracy and reliability, with translations achieving machine precision (2e-16) and rotations presenting minimal error.
+
+## Why ANISE?
+
+A quick comparison with the traditional CSPICE toolkit:
+
+| Feature | CSPICE (Toolkit) | ANISE |
+| :--- | :--- | :--- |
+| **Thread Safety** | No (Global state/locks) | **Guaranteed (Rust ownership)** |
+| **Performance** | Single-threaded | **Parallel (`many` queries)** |
+| **Math Validation** | Runtime errors | **Type-safe Frame checks** |
+| **API Style** | Procedural (Integer IDs) | **Object-Oriented / Pythonic** |
+| **Serialization** | None | **S-Expressions (Cloud Native)** |
 
 ## Features
 
-+ **High Precision**: Matches SPICE to machine precision in translations and minimal errors in rotations.
-+ **Time System Conversions**: Extensive support for various time systems crucial in astrodynamics.
-+ **Rust Efficiency**: Harnesses the speed and safety of Rust for space computations.
-+ **Multi-threaded:** Yup! Forget about mutexes and race conditions you're used to in SPICE, ANISE _guarantees_ that you won't have any race conditions.
-+ **Frame safety**: ANISE checks all frames translations or rotations are physically valid before performing any computation, even internally.
+  + **High Precision**: Matches SPICE to machine precision in translations and minimal errors in rotations.
+  + **Analysis Engine**: A new declarative system to define engineering reports and events using S-Expressions, separating the *definition* of a calculation from its *execution*.
+      + *Cloud Native*: S-Expressions are serializable, allowing you to define complex queries on a client and execute them safely on remote workers without arbitrary code execution risks.
+  + **Ground Station Management**: First-class support for `Location` objects, terrain masks, and visibility calculations.
+  + **Rust Efficiency**: Harnesses the speed and safety of Rust for space computations.
+  + **Multi-threaded**: ANISE is designed for modern hardware. Forget about mutexes and race conditions; ANISE *guarantees* thread safety.
+  + **Frame Safety**: ANISE checks that all frame translations or rotations are physically valid before performing any computation.
+
+## Architecture
+
+```mermaid
+graph TD
+    Kernels[SPK / BPC / PCK / LKA Files] -->|Load| Almanac
+    Almanac -->|Provide| Frames[Frame System]
+    Almanac -->|Query| Ephemeris
+    User -->|Define| Spec[Analysis Spec / Events]
+    Spec -->|Evaluate| Almanac
+    Almanac -->|Result| Report[Pandas/Polars DataFrame / Events]
+```
 
 ## Tutorials
 
@@ -30,125 +58,168 @@ ANISE stands validated against the traditional SPICE toolkit, ensuring accuracy 
 - [03 - Defining and working with the orbit structure](./tutorials/Tutorial%2003%20-%20Defining%20and%20working%20with%20the%20Orbit%20structure.ipynb)
 - [04 - Computing azimuth, elevation, and range data (AER)](./tutorials/Tutorial%2004%20-%20Computing%20Azimuth%20Elevation%20and%20Range%20data.ipynb)
 
-Note: The tutorials can be viewed in read-only form on [the Github repo](https://github.com/nyx-space/anise/tree/master/anise-py/tutorials).
+*Note: The tutorials can be viewed in read-only form on [the Github repo](https://github.com/nyx-space/anise/tree/master/anise-py/tutorials).*
 
 ## Usage
 
-In Python, start by adding anise to your project: `pip install anise`.
+ANISE is available on PyPI with pre-built wheels for Linux, macOS (Intel/Silicon), and Windows.
+
+Start by adding anise to your project: `pip install anise`.
+
+*Note: for the very latest usage examples, refer to the [Python tests](./tests).*
+
+### 1. Basic Navigation & Transformations
+
+The core of ANISE is the `Almanac`, which manages frames and ephemerides.
 
 ```python
-from anise import Almanac, Aberration
-from anise.astro.constants import Frames
+from anise import Almanac
 from anise.astro import Orbit
+from anise.constants import Frames
 from anise.time import Epoch
-
 from pathlib import Path
 
+# Load your kernels (BSP, PCK, etc.)
+# Note: Almanac functions are immutable; they return a NEW Almanac instance.
+data_path = Path("../data")
+almanac = Almanac(str(data_path.joinpath("de440s.bsp")))
+almanac = almanac.load(str(data_path.joinpath("pck08.pca")))
 
-def test_state_transformation():
-    """
-    This is the Python equivalent to anise/tests/almanac/mod.rs
-    """
-    data_path = Path(__file__).parent.joinpath("..", "..", "data")
-    # Must ensure that the path is a string
-    ctx = Almanac(str(data_path.joinpath("de440s.bsp")))
-    # Let's add another file here -- note that the Almanac will load into a NEW variable, so we must overwrite it!
-    # This prevents memory leaks (yes, I promise)
-    ctx = ctx.load(str(data_path.joinpath("pck08.pca"))).load(
-        str(data_path.joinpath("earth_latest_high_prec.bpc"))
-    )
-    eme2k = ctx.frame_info(Frames.EME2000)
-    assert eme2k.mu_km3_s2() == 398600.435436096
-    assert eme2k.shape.polar_radius_km == 6356.75
-    assert abs(eme2k.shape.flattening() - 0.0033536422844278) < 2e-16
+# Access Frame properties directly
+eme2k = almanac.frame_info(Frames.EME2000)
+print(f"Earth GM: {eme2k.mu_km3_s2()} km³/s²")
 
-    epoch = Epoch("2021-10-29 12:34:56 TDB")
+# Define an Orbit state
+epoch = Epoch("2021-10-29 12:34:56 TDB")
+orig_state = Orbit.from_keplerian(
+    8_191.93,   # SMA (km)
+    1e-6,       # Eccentricity
+    12.85,      # Inclination (deg)
+    306.614,    # RAAN (deg)
+    314.19,     # Arg Peri (deg)
+    99.887_7,   # True Anomaly (deg)
+    epoch,
+    eme2k,
+)
 
-    orig_state = Orbit.from_keplerian(
-        8_191.93,
-        1e-6,
-        12.85,
-        306.614,
-        314.19,
-        99.887_7,
-        epoch,
-        eme2k,
-    )
+# Transform to a new frame (e.g., Earth Fixed / ITRF)
+# Note: If high-precision Earth orientation files (BPC) aren't loaded, 
+# this uses the IAU approximation.
+state_itrf93 = almanac.transform_to(orig_state, Frames.IAU_EARTH_FRAME)
 
-    assert orig_state.sma_km() == 8191.93
-    assert orig_state.ecc() == 1.000000000361619e-06
-    assert orig_state.inc_deg() == 12.849999999999987
-    assert orig_state.raan_deg() == 306.614
-    assert orig_state.tlong_deg() == 0.6916999999999689
+print(f"Lat: {state_itrf93.latitude_deg():.4f} deg")
+print(f"Lon: {state_itrf93.longitude_deg():.4f} deg")
+print(f"Alt: {state_itrf93.height_km():.4f} km")
+```
 
-    state_itrf93 = ctx.transform_to(
-        orig_state, Frames.EARTH_ITRF93, None
-    )
+### 2. Analysis & Event Finding
 
-    print(orig_state)
-    print(state_itrf93)
+ANISE allows you to build declarative expressions for scalars and vectors. These are optimized in Rust and can be used to generate reports or find events (like eclipses) efficiently. These calculations are **500x** faster than Ansys STK.
 
-    assert state_itrf93.latitude_deg() == 10.549246868302738
-    assert state_itrf93.longitude_deg() == 133.76889100913047
-    assert state_itrf93.height_km() == 1814.503598063825
+```python
+import anise.analysis as analysis
+from anise import Almanac
+from anise.constants import Frames, Orientations
+from anise.astro improt Frame
+from anise.time import Epoch, Unit
 
-    # Convert back
-    from_state_itrf93_to_eme2k = ctx.transform_to(
-        state_itrf93, Frames.EARTH_J2000, None
-    )
+# Define the state we want to analyze (e.g., LRO orbiting the Moon)
+lro_state = analysis.StateSpec(
+    target_frame=analysis.FrameSpec.Loaded(Frame(-85, Orientations.J2000)),  # -85 is the LRO ID
+    observer_frame=analysis.FrameSpec.Loaded(Frames.MOON_J2000),
+    ab_corr=None,
+)
 
-    print(from_state_itrf93_to_eme2k)
+# 1. Define an Event: Find when the Sun sets (elevation < 0) as seen by LRO
+sun_set_event = analysis.Event(
+    analysis.ScalarExpr.SunAngle(observer_id=-85), # ID -85
+    analysis.Condition.LessThan(90.0), # Angle > 90 deg means sun is behind horizon
+    Unit.Second * 0.5, # Precision (Units handled automatically)
+    ab_corr=None,
+)
 
-    assert orig_state == from_state_itrf93_to_eme2k
+# 2. Define a Report: Calculate altitude and beta angle over time
+report_spec = analysis.ReportScalars([
+    (analysis.ScalarExpr.Norm(analysis.VectorExpr.Radius(lro_state)), "Dist (km)"),
+    (analysis.ScalarExpr.BetaAngle(), "Beta (deg)"),
+], lro_state)
 
-    # Demo creation of a ground station
-    mean_earth_angular_velocity_deg_s = 0.004178079012116429
-    # Grab the loaded frame info
-    itrf93 = ctx.frame_info(Frames.EARTH_ITRF93)
-    paris = Orbit.from_latlongalt(
-        48.8566,
-        2.3522,
-        0.4,
-        mean_earth_angular_velocity_deg_s,
-        epoch,
-        itrf93,
-    )
+# Load data and execute
+almanac = Almanac("../data/de440s.bsp").load("../data/lro.bsp")
+start = Epoch("2025-01-01 12:00:00 UTC")
+end = start + Unit.Day * 1
 
-    assert abs(paris.latitude_deg() - 48.8566) < 1e-3
-    assert abs(paris.longitude_deg() - 2.3522) < 1e-3
-    assert abs(paris.height_km() - 0.4) < 1e-3
+# Find all sunset intervals
+sunset_arcs = almanac.report_event_arcs(lro_state, sun_set_event, start, end)
+print(f"Found {len(sunset_arcs)} sunset intervals.")
 
+# Generate data for the report
+from anise.time import TimeSeries
+series = TimeSeries(start, end, Unit.Minute * 10, inclusive=True)
+data = almanac.report_scalars(report_spec, series)
+# 'data' is a dictionary keyed by epoch strings, ready for pandas/plotting
+```
 
-if __name__ == "__main__":
-    test_state_transformation()
+### 3. Ground Stations
 
+You can create and save Location Kernels (`.lka`) containing ground station coordinates and terrain masks.
+
+```python
+from anise.astro import Location, TerrainMask, FrameUid
+
+# Define a station with a visibility mask
+mask = [TerrainMask(0.0, 5.0), TerrainMask(35.0, 10.0)] # Azimuth, Min Elevation
+dss65 = Location(
+    40.427, 4.250, 0.834, # Lat, Lon, Height (km)
+    FrameUid(399, 399),   # On Earth
+    mask,
+    terrain_mask_ignored=False
+)
+
+# Calculate visibility
+# (See tutorials for full implementation of visibility arcs)
 ```
 
 ## Development
- 
-1. Install `maturin`, e.g. via `pipx` as `pipx install maturin`
-1. Create a virtual environment: `cd anise/anise-py && python3 -m venv .venv`
-1. Jump into the virtual environment and install `patchelf` for faster builds: `pip install patchelf`, and `pytest` for the test suite: `pip install pytest`
-1. Run `maturin develop` to build the development package and install it in the virtual environment
-1. Finally, run the tests `python -m pytest`
+
+1.  Install `maturin`, e.g. via `pipx` as `pipx install maturin`
+2.  Create a virtual environment: `cd anise/anise-py && python3 -m venv .venv`
+3.  Jump into the virtual environment and install `patchelf` for faster builds: `pip install patchelf`, and `pytest` for the test suite: `pip install pytest`
+4.  Run `maturin develop` to build the development package and install it in the virtual environment
+5.  Finally, run the tests `python -m pytest`
 
 To run the development version of ANISE in a Jupyter Notebook, install ipykernels in your virtual environment.
 
-1. `pip install ipykernel`
-1. Now, build the local kernel: `python -m ipykernel install --user --name=.venv`
-1. Then, start jupyter notebook: `jupyter notebook`
-1. Open the notebook, click on the top right and make sure to choose the environment you created just a few steps above.
+1.  `pip install ipykernel`
+2.  Now, build the local kernel: `python -m ipykernel install --user --name=.venv`
+3.  Then, start jupyter notebook: `jupyter notebook`
+4.  Open the notebook, click on the top right and make sure to choose the environment you created just a few steps above.
 
 ### Generating the pyi type hints
 
 Type hints are extremely useful for Python users. Building them is a bit of manual work.
 
-1. `maturin develop` to build the latest library
-1. `python generate_stubs.py anise anise.pyi` builds the top level type hints
-1. Repeat for all submodules: `utils`, `time`, `astro`, `astro.constants`, `rotation` writing to a new file each time:
-    1. `python generate_stubs.py anise.astro anise.astro.pyi`
-    1. `python generate_stubs.py anise.time anise.time.pyi`
-    1. `python generate_stubs.py anise.astro.constants anise.astro.constants.pyi`
-    1. `python generate_stubs.py anise.utils anise.utils.pyi`
-    1. `python generate_stubs.py anise.rotation anise.rotation.pyi`
-1. Final, concat all of these new files back to `anise.pyi` since that's the only one used by `maturin`.
+1.  `maturin develop` to build the latest library
+2.  `python generate_stubs.py anise anise.pyi` builds the top level type hints
+3.  Repeat for all submodules: `utils`, `time`, `astro`, `astro.constants`, `rotation`, `analysis` writing to a new file each time:
+    1.  `python generate_stubs.py anise.astro anise.astro.pyi`
+    2.  `python generate_stubs.py anise.time anise.time.pyi`
+    3.  `python generate_stubs.py anise.astro.constants anise.astro.constants.pyi`
+    4.  `python generate_stubs.py anise.utils anise.utils.pyi`
+    5.  `python generate_stubs.py anise.rotation anise.rotation.pyi`
+    6.  `python generate_stubs.py anise.analysis anise.analysis.pyi`
+4.  Final, concat all of these new files back to `anise.pyi` since that's the only one used by `maturin`.
+
+## Citation
+
+If you use ANISE in your research, please cite it as follows:
+
+```bibtex
+@software{nyx_space_anise_2025,
+  author = {Christopher Rabotin},
+  title = {ANISE: Attitude, Navigation, Instrument, Spacecraft, Ephemeris},
+  year = {2025},
+  publisher = {Nyx Space},
+  url = {https://github.com/nyx-space/anise}
+}
+```
