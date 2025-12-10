@@ -2,88 +2,106 @@
 
 ## A modern, high-performance toolkit for space mission design and operations.
 
-Tired of the usual complexities in spacecraft navigation? ANISE is a fresh, Rust-powered alternative to the NAIF SPICE toolkit, engineered for performance, safety, and ease of use.
+[![Rust](https://github.com/nyx-space/anise/actions/workflows/rust.yml/badge.svg)](https://github.com/nyx-space/anise/actions/workflows/rust.yml)
+[![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
 
 ![ANISE LOGO](./ANISE-logo.png)
 
 **NASA TRL 9**: ANISE was used throughout the operations of the Firefly Blue Ghost lunar lander, from launch until successful landing.
 
-[**Please fill out our user survey**](https://7ug5imdtt8v.typeform.com/to/qYDB14Hj)
+-----
 
-## Why ANISE?
+## Introduction
 
-Space missions demand precision. ANISE delivers. It handles the critical calculations of spacecraft position, orientation, and time with validated, high-precision accuracy. Whether you're plotting a trajectory to Mars or orienting a satellite, ANISE provides the tools you need to get it right.
+Tired of the usual complexities, global state, and lack of thread safety in legacy astrodynamics toolkits? **ANISE** is a fresh, Rust-powered alternative to the NAIF SPICE toolkit, engineered for modern computing environments.
 
-Here's what you can do with ANISE:
+Whether you are plotting a trajectory to Mars, orienting a constellation of satellites, or performing massive parallel analysis on the cloud, ANISE provides the tools you need to get it right.
 
-* **Load and process essential space data files**: SPK, BPC, PCK, FK, and TPC.
-* **Perform high-precision calculations**: Translations, rotations, and rigid body transformations.
-* **Seamlessly convert between time systems**: TT, TAI, ET, TDB, UTC, GPS, and more, powered by the `hifitime` library.
+### Why ANISE?
 
-Validated against the traditional SPICE toolkit, ANISE achieves machine precision (2e-16) for translations and minimal error for rotations (less than two arcseconds in pointing, one arcsecond in angle).
+Space missions demand precision, but modern engineering demands efficiency and safety.
+
+| Feature | CSPICE / SpiceyPy | ANISE |
+| :--- | :--- | :--- |
+| **Thread Safety** | No (Global state/locks) | **Guaranteed (Rust ownership)** |
+| **Performance** | Single-threaded | **Parallel (`many` queries)** |
+| **Math Validation** | Runtime errors | **Type-safe Frame checks** |
+| **API Style** | Procedural (Integer IDs) | **Object-Oriented / Pythonic** |
+| **Serialization** | None | **S-Expressions (Cloud Native)** |
+
+## Architecture
+
+ANISE is a "Core + Bindings" ecosystem. The heavy lifting is done in Rust, ensuring maximum performance and safety, which is then exposed to your language or tool of choice.
+
+```mermaid
+graph TD
+    Data[Kernels: SPK, PCK, LKA] --> Core
+    Core["ANISE Core (Rust)"]
+    Core --> Bindings[Bindings & Tools]
+    Bindings --> Py["Python (anise-py)"]
+    Bindings --> CLI["CLI Tools (anise-cli)"]
+    Bindings --> GUI["Visualizer (anise-gui)"]
+    Bindings --> CPP["C++ (Coming Soon)"]
+```
 
 ## Key Features
 
-* **High Precision**: Get the accuracy you need, matching SPICE to machine precision in translations and minimal errors in rotations.
-* **Time System Mastery**: Extensive support for all the time systems crucial in astrodynamics.
-* **Rust Performance**: Harness the speed and safety of Rust for your space computations.
-* **Built for Concurrency**: Say goodbye to the mutexes and race conditions of older toolkits. ANISE guarantees thread safety.
-* **Frame Safety**: ANISE ensures that all frame translations and rotations are physically valid before any computation, preventing costly errors.
-* **Automatic Data Acquisition**: Simplify your workflow. ANISE can automatically download the latest Earth orientation parameters or any other SPICE or ANISE file from a remote source and integrate it for immediate use.
+  * **Universal Loading**: Seamlessly load SPK, BPC, PCK, FK, TPC, and the new **LKA** (Location Kernel Anise) files.
+  * **Analysis Engine**: A declarative system to define engineering reports and events using **S-Expressions**. Define complex queries (eclipses, line-of-sight) on a client and execute them safely on remote workers without arbitrary code execution risks.
+  * **Time System Mastery**: Extensive support for all time systems (TT, TAI, ET, TDB, UTC, GPS) powered by the `hifitime` library.
+  * **Rigid Body Physics**: Validated high-precision translations, rotations, and rigid body transformations.
+  * **Frame Safety**: ANISE checks that all frame translations or rotations are physically valid before performing any computation.
+  * **Concurrency**: Designed for modern hardware. Forget about mutexes and race conditions; ANISE guarantees thread safety.
 
-## Get Started in Your Language of Choice
+## The Ecosystem
 
-### Rust
+This repository contains the entire ANISE suite:
 
-ANISE is built in Rust, giving you direct access to its full range of features, including memory safety, efficient concurrency, a powerful testing framework, and robust error handling. If you're a Rust developer, you're getting the best of ANISE, first.
+### 🦀 [ANISE Core (Rust)](./anise/README.md)
 
-Dive into the [Rust README](./anise/README.md) for more, or check out the [API documentation](https://docs.rs/anise/latest/anise/).
+The heart of the project. Direct access to the full range of features, memory safety, and robust error handling.
 
-### Python
+  * **Location**: [`./anise`](./anise/)
+  * **Docs**: [API Documentation](https://docs.rs/anise/latest/anise/)
 
-We get it. Python is everywhere in the space community. That's why ANISE has first-class support for Python, so you can leverage its power without leaving your favorite environment. If you find a feature missing, let us know by opening a GitHub issue.
+### 🐍 [ANISE Python](./anise-py/README.md)
 
-For tutorials and resources, head over to the [Python README](./anise-py/README.md) and our Jupyter notebooks.
+First-class support for Python. Leverage Rust's speed without leaving your favorite scripting environment. Includes Jupyter notebooks and tutorials.
 
-### GUI
+  * **Location**: [`./anise-py`](./anise-py/)
 
-Need to inspect your data files? ANISE provides a graphical interface for SPK, BPC, and PCA (Planetary Constant ANISE) files. You can quickly check segment start and end times in any time scale, including UNIX UTC seconds.
+### 🖥️ [ANISE GUI](./anise-gui/README.md)
 
-Find out more in the [GUI README](./anise-gui/README.md).
+A graphical interface to inspect your data files. Quickly check segment start/end times in any time scale (including UNIX UTC seconds) for SPK, BPC, and PCA files.
 
-### C++
+  * **Location**: [`./anise-gui`](./anise-gui/)
 
-Coming soon! C++ bindings are in progress.
+### ⚙️ [ANISE CLI](./anise-cli/)
 
-## Validated and Reliable
+Command-line utilities for quick file inspection, downloading test data, and converting kernel formats.
 
-[![ANISE Validation](https://github.com/nyx-space/anise/actions/workflows/rust.yml/badge.svg)](https://github.com/nyx-space/anise/actions/workflows/rust.yml)
+  * **Location**: [`./anise-cli`](./anise-cli/)
 
-We rigorously validate ANISE against SPICE. Our validation workflow runs over 100,000 queries on the DE440.bsp file, 7,305 queries for each frame in the PCK08 file (covering 20 years of data), and thousands of rotations from Earth's high-precision BPC file.
+## Validation
 
-**A Note on Precision**: The PCK data from the IAU is based on angle, rate, and acceleration data expressed in centuries past J2000. SPICE uses floating-point values for these calculations, which can introduce rounding errors. ANISE, using `hifitime`, relies on integer arithmetic for all time computations, eliminating this risk. You might see discrepancies of up to 1 millidegree in rotation angles, but this is a sign of ANISE's higher precision.
+We rigorously validate ANISE against SPICE. Our validation workflow runs:
+
+  * Over **100,000 queries** on the `DE440.bsp` file.
+  * **7,305 queries** for each frame in the `PCK08` file (covering 20 years of data).
+  * Thousands of rotations from Earth's high-precision BPC file.
+
+**A Note on Precision**: The PCK data from the IAU is based on polynomial approximations expressed in centuries past J2000. While legacy toolkits use floating-point arithmetic for time, ANISE uses `hifitime` (integer arithmetic) for all time computations. You might see discrepancies of up to 1 millidegree in rotation angles, but this represents ANISE's higher temporal precision avoiding floating-point rounding errors.
 
 ## Resources and Assets
 
 Nyx Space provides several important SPICE files for your convenience:
 
-* **[de440s.bsp](http://public-data.nyxspace.com/anise/de440s.bsp)**: JPL's latest ephemeris dataset (1900-20250).
-* **[de440.bsp](http://public-data.nyxspace.com/anise/de440.bsp)**: JPL's long-term ephemeris dataset.
-* **[pck08.pca](http://public-data.nyxspace.com/anise/v0.5/pck08.pca)**: Planetary constants kernel, built from JPL's gravitational data and planetary constants file.
-* **[pck11.pca](http://public-data.nyxspace.com/anise/v0.5/pck11.pca)**: An alternative planetary constants kernel.
-* **[moon_fk_de440.epa](http://public-data.nyxspace.com/anise/v0.5/moon_fk_de440.epa)**: A Moon frame kernel built from JPL data.
+  * **[de440s.bsp](http://public-data.nyxspace.com/anise/de440s.bsp)**: JPL's latest ephemeris dataset (1900-2050).
+  * **[de440.bsp](http://public-data.nyxspace.com/anise/de440.bsp)**: JPL's long-term ephemeris dataset.
+  * **[pck08.pca](http://public-data.nyxspace.com/anise/v0.7/pck08.pca)**: Planetary constants kernel (ANISE format), built from JPL's gravitational data.
+  * **[moon_fk_de440.epa](http://public-data.nyxspace.com/anise/v0.7/moon_fk_de440.epa)**: A Moon frame kernel built from JPL data.
 
-almanac = MetaAlmanac("ci_config.dhall").process(True)
-
-### Understanding Moon Frames
-
-Astrodynamicists use three main body-fixed frames for the Moon:
-
-* **IAU Moon**: A low-fidelity frame.
-* **Moon Principal Axes (PA)**: Used for representing mass concentrations and gravity fields.
-* **Moon Mean Earth (ME)**: The cartographic frame, used for images of the lunar surface.
-
-For accurate work, use the provided `moon_fk_de440.epa` file with `moon_pa_de440_200625.bpc` and `de440.bsp` (or `de440s.bsp`), as recommended in the [`moon_de440_220930.txt`](./data/moon_de440_220930.txt) documentation.
+> **Note on Lunar Frames**: For accurate lunar work, we recommend using the `moon_fk_de440.epa` file with `moon_pa_de440_200625.bpc` (Principal Axes) and an ephemeris file (e.g., `de440.bsp`), rather than the low-fidelity IAU Moon frame. See [`moon_de440_220930.txt`](./data/moon_de440_220930.txt) for details.
 
 ## Contributing
 
@@ -101,4 +119,4 @@ ANISE is heavily inspired by the NAIF SPICE toolkit and its excellent documentat
 
 ## Contact
 
-Have questions or feedback? [Open an issue on GitHub](https://github.com/nyx-space/anise/issues) or email the maintainer at christopher.rabotin@gmail.com.
+Have questions or feedback? [Open an issue on GitHub](https://github.com/nyx-space/anise/issues) or email the maintainer at `christopher.rabotin@gmail.com`.
