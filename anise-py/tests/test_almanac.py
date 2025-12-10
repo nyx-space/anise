@@ -233,23 +233,8 @@ def test_state_transformation():
 def test_numpy_constructor():
     import numpy as np
 
-    if environ.get("CI", False):
-        # Load from meta kernel to not use Git LFS quota
-        data_path = Path(__file__).parent.joinpath(
-            "..", "..", "data", "ci_config.dhall"
-        )
-        meta = MetaAlmanac(str(data_path))
-        almanac = meta.process()
-    else:
-        data_path = Path(__file__).parent.joinpath("..", "..", "data")
-        # Must ensure that the path is a string
-        almanac = Almanac(str(data_path.joinpath("de440s.bsp")))
-        almanac = almanac.load(str(data_path.joinpath("pck08.pca"))).load(
-            str(data_path.joinpath("earth_latest_high_prec.bpc"))
-        )
-    
     epoch = Epoch("2021-10-29 12:34:56 TDB")
-    eme2k = almanac.frame_info(Frames.EME2000)
+    eme2k = Almanac().frame_info(Frames.EME2000)
 
     state_vector = np.array([8_191.93, 0.0, 0.0, 0.0, 7.6, 0.0])
 

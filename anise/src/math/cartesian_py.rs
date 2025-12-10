@@ -88,6 +88,7 @@ impl CartesianState {
     /// **Units:** km, km, km, km/s, km/s, km/s
     #[allow(clippy::too_many_arguments)]
     #[new]
+    #[pyo3(signature = (*args))]
     pub fn py_new(args: &Bound<'_, PyTuple>) -> PyResult<Self> {
         if args.len() == 8 {
             let x_km: f64 = args.get_item(0)?.extract()?;
