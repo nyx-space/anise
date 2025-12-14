@@ -14,7 +14,7 @@ use super::cartesian::CartesianState;
 use crate::prelude::Frame;
 use hifitime::Epoch;
 use ndarray::Array1;
-use numpy::{PyReadonlyArray1, PyArray1};
+use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
