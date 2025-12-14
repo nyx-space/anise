@@ -204,13 +204,11 @@ impl<T: DataSetT> DataSet<T> {
                 }
             }
             None => {
-                if name.is_some() {
+                if let Some(name) = name {
                     // Only a name
-                    self.lut
-                        .append_name(name.unwrap(), index)
-                        .context(DataSetLutSnafu {
-                            action: "pushing data with name only",
-                        })?;
+                    self.lut.append_name(name, index).context(DataSetLutSnafu {
+                        action: "pushing data with name only",
+                    })?;
                 } else {
                     return Err(DataSetError::DataSetLut {
                         action: "pushing data",
