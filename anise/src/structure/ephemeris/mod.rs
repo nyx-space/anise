@@ -15,7 +15,7 @@ use core::fmt;
 use hifitime::{Epoch, HifitimeError};
 use log::warn;
 use snafu::{ResultExt, Snafu};
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
@@ -38,7 +38,7 @@ pub struct EphemEntry {
     /// Orbit of this ephemeris entry
     pub orbit: Orbit,
     /// Optional covariance associated with this orbit
-    pub covar: Option<Matrix6>,
+    pub covar: Option<Covariance>,
 }
 
 #[derive(Clone, Debug)]
@@ -48,6 +48,20 @@ pub struct Ephemeris {
     degree: usize,
     /// Ephemeris entries in chronological order
     state_data: Vec<EphemEntry>,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum LocalFrame {
+    Inertial,
+    RIC,
+    VNC,
+    RCN,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct Covariance {
+    mat: Matrix6,
+    local_frame: LocalFrame,
 }
 
 impl Ephemeris {
@@ -66,13 +80,6 @@ impl Ephemeris {
 
         let reader = BufReader::new(file);
 
-        let ignored_tokens: HashSet<_> = [
-            "CCSDS_OMM_VERS".to_string(),
-            "CREATION_DATE".to_string(),
-            "ORIGINATOR".to_string(),
-        ]
-        .into();
-
         let mut in_state_data = false;
         let mut in_cov_data = false;
 
@@ -85,6 +92,7 @@ impl Ephemeris {
         let mut object_id: Option<String> = None;
         let mut cov_epoch = None;
         let mut cov_mat = None;
+        let mut cov_frame = None;
         let mut cov_row = 0;
 
         // Store the temporary data in a BTreeMap so we have O(1) access when adding the covariance information
@@ -103,7 +111,7 @@ impl Ephemeris {
             }
         };
 
-        'lines: for (lno, line) in reader.lines().enumerate() {
+        for (lno, line) in reader.lines().enumerate() {
             let line = line.map_err(|e| EphemerisError::OEMError {
                 lno,
                 details: format!("could not read line: {e}"),
@@ -114,15 +122,38 @@ impl Ephemeris {
                 continue;
             }
 
-            if ignored_tokens.iter().any(|t| line.starts_with(t)) {
-                continue 'lines;
+            if line.starts_with("CCSDS_OEM_VERS") {
+                let version_str = parse_one_val(lno, line, "no value for CCSDS_OEM_VERS")?;
+                match version_str.parse::<f32>() {
+                    Ok(version_val) => match version_val as i16 {
+                        1 | 2 => {}
+                        _ => {
+                            return Err(EphemerisError::OEMError {
+                                lno,
+                                details: "CCSDS OEM version {version_val} not supported"
+                                    .to_string(),
+                            })
+                        }
+                    },
+                    Err(_) => {
+                        return Err(EphemerisError::OEMError {
+                            lno,
+                            details: format!("could not parse OEM version `{version_str}`"),
+                        })
+                    }
+                }
             }
             if line.starts_with("OBJECT_ID") {
                 // Extract the object ID from the line
                 let oem_obj_id = parse_one_val(lno, line, "no value for OBJECT_ID")?;
                 if let Some(prev_obj_id) = object_id {
                     if oem_obj_id != prev_obj_id {
-                        return Err(EphemerisError::OEMError { lno, details: format!("more than one object ID in OEM -- previous ID `{prev_obj_id}`, now `{oem_obj_id}`") });
+                        return Err(EphemerisError::OEMError {
+                            lno,
+                            details: format!(
+                                "OEM must have only one object: `{prev_obj_id}` != `{oem_obj_id}`"
+                            ),
+                        });
                     }
                 }
                 object_id = Some(oem_obj_id);
@@ -172,14 +203,30 @@ impl Ephemeris {
             } else if line.starts_with("COMMENT") {
                 // Ignore
             } else if in_state_data {
-                let frame = Frame::from_name(
-                    center_name.clone().unwrap().as_str(),
-                    orient_name.clone().unwrap().as_str(),
-                )
-                .map_err(|e| EphemerisError::OEMError {
-                    lno,
-                    details: format!("frame error `{center_name:?} {orient_name:?}`: {e}"),
-                })?;
+                // Capitalize the center name
+                let center_name = center_name
+                    .as_ref()
+                    .unwrap()
+                    .split_whitespace()
+                    .map(|word| {
+                        let word = word.to_lowercase();
+                        let mut chars = word.chars();
+                        match chars.next() {
+                            None => String::new(),
+                            Some(first) => {
+                                first.to_uppercase().collect::<String>() + chars.as_str()
+                            }
+                        }
+                    })
+                    .collect::<Vec<String>>()
+                    .join(" ");
+
+                let frame =
+                    Frame::from_name(center_name.as_str(), orient_name.clone().unwrap().as_str())
+                        .map_err(|e| EphemerisError::OEMError {
+                        lno,
+                        details: format!("frame error `{center_name:?} {orient_name:?}`: {e}"),
+                    })?;
 
                 // Split the line into components
                 let parts: Vec<&str> = line.split_whitespace().collect();
@@ -250,10 +297,18 @@ impl Ephemeris {
                     cov_row = 0;
                 } else if line.starts_with("COV_REF_FRAME") {
                     // Only do a check here, nothing to set.
-                    let cov_frame = parse_one_val(lno, line, "invalid COV_REF_FRAME token")?;
-                    if cov_frame != "EME2000" && cov_frame != "ICRF" {
-                        return Err(EphemerisError::OEMError { lno, details: format!("ANISE only supports EME2000/ICRF frames for covariance, cf. CCSDS OEM Blue Book Annex A") });
-                    }
+                    let cov_frame_str = parse_one_val(lno, line, "invalid COV_REF_FRAME token")?;
+                    match cov_frame_str.as_str() {
+                        "EME2000" | "ICRF" => cov_frame = Some(LocalFrame::Inertial),
+                        "RSW" | "RTN" => cov_frame = Some(LocalFrame::RIC),
+                        "TNW" => cov_frame = Some(LocalFrame::VNC),
+                        _ => {
+                            return Err(EphemerisError::OEMError {
+                                lno,
+                                details: format!("invalid COV_REF_FRAME `{cov_frame_str}`"),
+                            })
+                        }
+                    };
                 } else {
                     // Matrix data!
                     let parts: Vec<&str> = line.split_whitespace().collect();
@@ -261,8 +316,9 @@ impl Ephemeris {
                         return Err(EphemerisError::OEMError {
                             lno,
                             details: format!(
-                                "expected {} values for covariance row {cov_row}",
-                                cov_row + 1
+                                "expected {} values for covariance row {cov_row} but got {}",
+                                cov_row + 1,
+                                parts.len()
                             ),
                         });
                     }
@@ -299,9 +355,16 @@ impl Ephemeris {
                         // We've parsed everything, set the covariance
                         match cov_epoch {
                             Some(cov_epoch) => {
+                                let covar = match cov_mat {
+                                    Some(mat) => Some(Covariance {
+                                        mat,
+                                        local_frame: cov_frame.unwrap_or(LocalFrame::Inertial),
+                                    }),
+                                    None => None,
+                                };
                                 data.get_mut(&cov_epoch)
                                     .expect("epoch was valid but now no?")
-                                    .covar = cov_mat
+                                    .covar = covar;
                             }
                             None => {
                                 return Err(EphemerisError::OEMError {
@@ -311,9 +374,6 @@ impl Ephemeris {
                             }
                         }
                     }
-                    // Reset
-                    cov_row = 0;
-                    cov_mat = Some(Matrix6::zeros());
                 }
             }
         }
@@ -361,7 +421,7 @@ mod ut_oem {
     use hifitime::Epoch;
 
     #[test]
-    fn parse_test_oem() {
+    fn test_parse_oem_leo() {
         let ephem = Ephemeris::from_oem_file("../data/tests/ccsds/oem/LEO_10s.oem")
             .expect("could not parse");
 
@@ -375,6 +435,69 @@ mod ut_oem {
             Epoch::from_gregorian_utc_hms(2020, 6, 1, 13, 0, 0)
         );
         assert_eq!(ephem.interpolation, DataType::Type9LagrangeUnequalStep);
+        assert_eq!(ephem.degree, 7);
+
+        println!("{ephem}");
+    }
+
+    #[test]
+    fn test_parse_oem_meo() {
+        let ephem = Ephemeris::from_oem_file("../data/tests/ccsds/oem/MEO_60s.oem")
+            .expect("could not parse");
+
+        assert_eq!(ephem.state_data.len(), 61);
+        assert_eq!(
+            ephem.state_data.first().unwrap().orbit.epoch,
+            Epoch::from_gregorian_utc_at_noon(2020, 6, 1)
+        );
+        assert_eq!(
+            ephem.state_data.last().unwrap().orbit.epoch,
+            Epoch::from_gregorian_utc_hms(2020, 6, 1, 13, 0, 0)
+        );
+        assert_eq!(ephem.interpolation, DataType::Type9LagrangeUnequalStep);
+        assert_eq!(ephem.degree, 5);
+
+        println!("{ephem}");
+    }
+
+    #[test]
+    fn test_parse_oem_meo_bad() {
+        assert!(Ephemeris::from_oem_file("../data/tests/ccsds/oem/MEO_60s_bad.oem").is_err());
+    }
+
+    #[test]
+    fn test_parse_oem_covar() {
+        let ephem = Ephemeris::from_oem_file("../data/tests/ccsds/oem/JPL_MGS_cov.oem")
+            .expect("could not parse");
+
+        assert_eq!(ephem.state_data.len(), 4);
+        assert_eq!(
+            ephem.state_data.first().unwrap().orbit.epoch,
+            Epoch::from_gregorian(
+                1996,
+                12,
+                28,
+                21,
+                29,
+                07,
+                267_000_000,
+                hifitime::TimeScale::TDB
+            )
+        );
+        assert_eq!(
+            ephem.state_data.last().unwrap().orbit.epoch,
+            Epoch::from_gregorian(
+                1996,
+                12,
+                30,
+                1,
+                28,
+                02,
+                267_000_000,
+                hifitime::TimeScale::TDB
+            )
+        );
+        assert_eq!(ephem.interpolation, DataType::Type13HermiteUnequalStep);
         assert_eq!(ephem.degree, 7);
 
         println!("{ephem}");

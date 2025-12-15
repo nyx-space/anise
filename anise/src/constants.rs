@@ -293,7 +293,7 @@ pub mod orientations {
     /// Converts the provided ID to its human name. Only works for the common celestial bodies. Should be compatible with CCSDS OEM names
     pub fn id_from_orientation_name(name: &str) -> Result<NaifId, OrientationError> {
         match name {
-            "J2000" | "ICRF" => Ok(J2000),
+            "J2000" | "ICRF" | "EME2000" => Ok(J2000),
             "B1950" => Ok(B1950),
             "FK4" => Ok(FK4),
             "Galactic" => Ok(GALACTIC),
