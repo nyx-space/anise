@@ -57,4 +57,6 @@ pub enum InterpolationError {
         "{dataset} is not yet supported -- https://github.com/nyx-space/anise/issues/{issue}"
     ))]
     UnimplementedType { issue: u32, dataset: &'static str },
+    #[snafu(display("no interpolation data in this ephemeris"))]
+    EmptyInterpolationData {},
 }

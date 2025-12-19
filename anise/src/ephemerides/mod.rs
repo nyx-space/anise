@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use hifitime::Epoch;
+use hifitime::{Epoch, HifitimeError};
 use snafu::prelude::*;
 
 use crate::{
@@ -16,6 +16,7 @@ use crate::{
     naif::daf::DAFError, prelude::FrameUid, NaifId,
 };
 
+pub mod ephemeris;
 pub mod paths;
 pub mod translate_to_parent;
 pub mod translations;
@@ -67,4 +68,12 @@ pub enum EphemerisError {
     IdToName { id: NaifId },
     #[snafu(display("unknown NAIF ID associated with `{name}`"))]
     NameToId { name: String },
+    #[snafu(display("CCSDS OEM parsing error on line {lno}: {details}"))]
+    OEMError { lno: usize, details: String },
+    #[snafu(display("CCSDS OEM epoch parsing error on line {line}: {details}"))]
+    OEMTimeParsingError {
+        line: usize,
+        details: String,
+        source: HifitimeError,
+    },
 }

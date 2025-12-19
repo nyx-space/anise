@@ -13,7 +13,6 @@
  * All other computations are at a higher level module.
  */
 pub mod dataset;
-pub mod ephemeris;
 pub mod location;
 pub mod lookuptable;
 pub mod metadata;
