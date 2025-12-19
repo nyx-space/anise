@@ -8,27 +8,26 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::{EphemerisError, OEMTimeParsingSnafu};
+use super::{EphemerisError, EphemerisPhysicsSnafu, OEMTimeParsingSnafu};
 use crate::ephemerides::EphemInterpolationSnafu;
 use crate::math::interpolation::{hermite_eval, lagrange_eval};
-use crate::math::{Matrix6, Vector6};
+use crate::math::rotation::DCM;
+use crate::math::Vector6;
 use crate::naif::daf::data_types::DataType;
-use crate::prelude::{Almanac, Frame, Orbit};
+use crate::prelude::{uuid_from_epoch, Almanac, Orbit};
 use core::fmt;
 use covariance::interpolate_covar_log_euclidean;
 use hifitime::Epoch;
-use log::warn;
 use snafu::ResultExt;
 use std::collections::BTreeMap;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::path::Path;
-use std::str::FromStr;
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
 mod covariance;
+mod oem;
+#[cfg(feature = "python")]
+mod python;
 pub use covariance::{Covariance, LocalFrame};
 
 #[derive(Copy, Clone, Debug)]
@@ -53,341 +52,6 @@ pub struct Ephemeris {
 }
 
 impl Ephemeris {
-    /// Initialize a new ephemeris from the path to a CCSDS OEM file.
-    ///
-    /// # Limitations
-    /// - Support covariance only in EME2000 frame
-    pub fn from_ccsds_oem_file<P: AsRef<Path>>(path: P) -> Result<Self, EphemerisError> {
-        // Open the file
-        let file = File::open(path).map_err(|e| EphemerisError::OEMError {
-            lno: 0,
-            details: format!("could not open file: {e}"),
-        })?;
-
-        let reader = BufReader::new(file);
-
-        let mut in_state_data = false;
-        let mut in_cov_data = false;
-
-        // Define header variables we care about.
-        let mut time_system = String::new();
-        let mut center_name = None;
-        let mut orient_name = None;
-        let mut interpolation = DataType::Type13HermiteUnequalStep;
-        let mut degree = 5;
-        let mut object_id: Option<String> = None;
-        let mut cov_epoch = None;
-        let mut cov_mat = None;
-        let mut cov_frame = None;
-        let mut cov_row = 0;
-
-        // Store the temporary data in a BTreeMap so we have O(1) access when adding the covariance information
-        // and we can iterate in order when building the vector.
-        let mut state_data = BTreeMap::new();
-
-        let parse_one_val = |lno: usize, line: &str, err: &str| -> Result<String, EphemerisError> {
-            let parts: Vec<&str> = line.split('=').collect();
-
-            match parts.get(1) {
-                Some(val_str) => Ok(val_str.trim().to_string()),
-                None => Err(EphemerisError::OEMError {
-                    lno,
-                    details: err.to_string(),
-                }),
-            }
-        };
-
-        for (lno, line) in reader.lines().enumerate() {
-            let line = line.map_err(|e| EphemerisError::OEMError {
-                lno,
-                details: format!("could not read line: {e}"),
-            })?;
-
-            let line = line.trim();
-            if line.is_empty() {
-                continue;
-            }
-
-            if line.starts_with("CCSDS_OEM_VERS") {
-                let version_str = parse_one_val(lno, line, "no value for CCSDS_OEM_VERS")?;
-                match version_str.parse::<f32>() {
-                    Ok(version_val) => match version_val as i16 {
-                        1 | 2 => {}
-                        _ => {
-                            return Err(EphemerisError::OEMError {
-                                lno,
-                                details: "CCSDS OEM version {version_val} not supported"
-                                    .to_string(),
-                            })
-                        }
-                    },
-                    Err(_) => {
-                        return Err(EphemerisError::OEMError {
-                            lno,
-                            details: format!("could not parse OEM version `{version_str}`"),
-                        })
-                    }
-                }
-            }
-            if line.starts_with("OBJECT_ID") {
-                // Extract the object ID from the line
-                let oem_obj_id = parse_one_val(lno, line, "no value for OBJECT_ID")?;
-                if let Some(prev_obj_id) = object_id {
-                    if oem_obj_id != prev_obj_id {
-                        return Err(EphemerisError::OEMError {
-                            lno,
-                            details: format!(
-                                "OEM must have only one object: `{prev_obj_id}` != `{oem_obj_id}`"
-                            ),
-                        });
-                    }
-                }
-                object_id = Some(oem_obj_id);
-            } else if line.starts_with("CENTER_NAME") {
-                center_name = Some(parse_one_val(lno, line, "no value for CENTER")?);
-            } else if line.starts_with("REF_FRAME") {
-                orient_name = Some(parse_one_val(lno, line, "no value for REF_FRAME")?);
-            } else if line.starts_with("TIME_SYSTEM") {
-                time_system = parse_one_val(lno, line, "no value for TIME_SYSTEM")?;
-            } else if line.starts_with("INTERPOLATION_DEGREE") {
-                let interp_str =
-                    parse_one_val(lno, line, "no value for INTERPOLATION_DEGREE")?.to_lowercase();
-
-                match interp_str.parse::<usize>() {
-                    Ok(ideg) => degree = ideg,
-                    Err(_) => {
-                        return Err(EphemerisError::OEMError {
-                            lno,
-                            details: format!("could not parse `{interp_str}` as float"),
-                        })
-                    }
-                }
-            } else if line.starts_with("INTERPOLATION") {
-                let interp_str =
-                    parse_one_val(lno, line, "no value for INTERPOLATION")?.to_lowercase();
-
-                match interp_str.as_str() {
-                    "lagrange" => interpolation = DataType::Type9LagrangeUnequalStep,
-                    "hermite" => interpolation = DataType::Type13HermiteUnequalStep,
-                    _ => {
-                        warn!("unsupported interpolation `{interp_str}` using Hermite")
-                    }
-                };
-            } else if line.starts_with("META_STOP") {
-                // We can start parsing now
-                in_state_data = true;
-                in_cov_data = false;
-            } else if line.starts_with("META_START") {
-                in_state_data = false;
-                in_cov_data = false;
-            } else if line.starts_with("COVARIANCE_START") {
-                in_state_data = false;
-                in_cov_data = true;
-            } else if line.starts_with("COVARIANCE_STOP") {
-                in_state_data = false;
-                in_cov_data = false;
-            } else if line.starts_with("COMMENT") {
-                // Ignore
-            } else if in_state_data {
-                // Capitalize the center name
-                let center_name = center_name
-                    .as_ref()
-                    .unwrap()
-                    .split_whitespace()
-                    .map(|word| {
-                        let word = word.to_lowercase();
-                        let mut chars = word.chars();
-                        match chars.next() {
-                            None => String::new(),
-                            Some(first) => {
-                                first.to_uppercase().collect::<String>() + chars.as_str()
-                            }
-                        }
-                    })
-                    .collect::<Vec<String>>()
-                    .join(" ");
-
-                let frame =
-                    Frame::from_name(center_name.as_str(), orient_name.clone().unwrap().as_str())
-                        .map_err(|e| EphemerisError::OEMError {
-                        lno,
-                        details: format!("frame error `{center_name:?} {orient_name:?}`: {e}"),
-                    })?;
-
-                // Split the line into components
-                let parts: Vec<&str> = line.split_whitespace().collect();
-                let mut state_vec = Vector6::zeros();
-
-                // Build the epoch
-                let epoch = match parts.first() {
-                    Some(state_epoch) => {
-                        let epoch_str = format!("{state_epoch} {time_system}");
-                        Epoch::from_str(epoch_str.trim()).context(OEMTimeParsingSnafu {
-                            line: lno,
-                            details: format!("`{epoch_str}` for state epoch"),
-                        })?
-                    }
-                    None => {
-                        return Err(EphemerisError::OEMError {
-                            lno,
-                            details: "no `=` sign for covariance epoch".to_string(),
-                        })
-                    }
-                };
-
-                // Convert the state data
-                for i in 0..6 {
-                    match parts.get(i + 1) {
-                        Some(val_str) => match val_str.trim().parse::<f64>() {
-                            Ok(val_f64) => {
-                                state_vec[i] = val_f64;
-                            }
-                            Err(_) => {
-                                return Err(EphemerisError::OEMError {
-                                    lno,
-                                    details: format!(
-                                        "could not parse `{}` as float",
-                                        val_str.trim()
-                                    ),
-                                })
-                            }
-                        },
-                        None => {
-                            return Err(EphemerisError::OEMError {
-                                lno,
-                                details: format!("missing float in position {}", i + 1),
-                            })
-                        }
-                    };
-                }
-
-                // We only reach this point if the state data is fully parsed.
-                let orbit = Orbit::from_cartesian_pos_vel(state_vec, epoch, frame);
-                state_data.insert(epoch, EphemEntry { orbit, covar: None });
-            } else if in_cov_data {
-                if line.starts_with("EPOCH") {
-                    let state_epoch = parse_one_val(lno, line, "no `=` sign for covariance epoch")?;
-                    let epoch_str = format!("{state_epoch} {time_system}");
-                    let epoch = Epoch::from_str(epoch_str.trim()).context(OEMTimeParsingSnafu {
-                        line: lno,
-                        details: format!("`{epoch_str}` for covariance epoch"),
-                    })?;
-
-                    // Check that we have associated state data
-                    if !state_data.contains_key(&epoch) {
-                        return Err(EphemerisError::OEMError { lno, details: format!("cannot have covariance data at {epoch} because no orbit data at that epoch")});
-                    }
-
-                    cov_epoch = Some(epoch);
-                    cov_mat = Some(Matrix6::zeros());
-                    cov_row = 0;
-                } else if line.starts_with("COV_REF_FRAME") {
-                    // Only do a check here, nothing to set.
-                    let cov_frame_str = parse_one_val(lno, line, "invalid COV_REF_FRAME token")?;
-                    match cov_frame_str.as_str() {
-                        "EME2000" | "ICRF" => cov_frame = Some(LocalFrame::Inertial),
-                        "RSW" | "RTN" => cov_frame = Some(LocalFrame::RIC),
-                        "TNW" => cov_frame = Some(LocalFrame::VNC),
-                        _ => {
-                            return Err(EphemerisError::OEMError {
-                                lno,
-                                details: format!("invalid COV_REF_FRAME `{cov_frame_str}`"),
-                            })
-                        }
-                    };
-                } else {
-                    // Matrix data!
-                    let parts: Vec<&str> = line.split_whitespace().collect();
-                    if parts.len() != cov_row + 1 {
-                        return Err(EphemerisError::OEMError {
-                            lno,
-                            details: format!(
-                                "expected {} values for covariance row {cov_row} but got {}",
-                                cov_row + 1,
-                                parts.len()
-                            ),
-                        });
-                    }
-
-                    for col in 0..cov_row + 1 {
-                        match parts.get(col) {
-                            Some(val_str) => match val_str.trim().parse::<f64>() {
-                                Ok(val_f64) => {
-                                    cov_mat.as_mut().unwrap()[(col, cov_row)] = val_f64;
-                                    cov_mat.as_mut().unwrap()[(cov_row, col)] = val_f64;
-                                }
-                                Err(_) => {
-                                    return Err(EphemerisError::OEMError {
-                                        lno,
-                                        details: format!(
-                                            "could not parse `{}` as float",
-                                            val_str.trim()
-                                        ),
-                                    })
-                                }
-                            },
-                            None => {
-                                return Err(EphemerisError::OEMError {
-                                    lno,
-                                    details: format!(
-                                        "missing float in covariance data position {col}"
-                                    ),
-                                })
-                            }
-                        };
-                    }
-                    cov_row += 1;
-                    if cov_row == 6 {
-                        // We've parsed everything, set the covariance
-                        match cov_epoch {
-                            Some(cov_epoch) => {
-                                let covar = cov_mat.map(|mat| Covariance {
-                                    matrix: mat,
-                                    local_frame: cov_frame.unwrap_or(LocalFrame::Inertial),
-                                });
-                                state_data
-                                    .get_mut(&cov_epoch)
-                                    .expect("epoch was valid but now no?")
-                                    .covar = covar;
-                            }
-                            None => {
-                                return Err(EphemerisError::OEMError {
-                                    lno,
-                                    details: "no cov epoch ever found?!".to_string(),
-                                })
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if state_data.is_empty() {
-            return Err(EphemerisError::OEMError {
-                lno: 0,
-                details: "ephemeris file contains no state data".to_string(),
-            });
-        }
-
-        // Build the Ephemeris
-        if let Some(object_id) = object_id {
-            Ok(Ephemeris {
-                object_id,
-                degree,
-                interpolation,
-                state_data,
-            })
-        } else {
-            Err(EphemerisError::OEMError {
-                lno: 0,
-                details: "no OBJECT_ID found throughout the file".to_string(),
-            })
-        }
-    }
-}
-
-#[cfg_attr(feature = "python", pymethods)]
-impl Ephemeris {
     pub fn domain(&self) -> Result<(Epoch, Epoch), EphemerisError> {
         if self.state_data.is_empty() {
             Err(EphemerisError::EphemInterpolation {
@@ -399,6 +63,28 @@ impl Ephemeris {
                 *self.state_data.last_key_value().unwrap().0,
             ))
         }
+    }
+
+    /// Returns whether all of the data in this ephemeris includes the covariance.
+    ///
+    /// :rtype: bool
+    pub fn includes_covariance(&self) -> bool {
+        self.state_data
+            .values()
+            .filter(|entry| entry.covar.is_none())
+            .count()
+            > 0
+    }
+
+    /// Inserts a new ephemeris entry to this ephemeris (it is automatically sorted chronologically).
+    pub fn insert(&mut self, entry: EphemEntry) {
+        self.state_data.insert(entry.orbit.epoch, entry);
+    }
+
+    /// Inserts a new orbit (without covariance) to this ephemeris (it is automatically sorted chronologically).
+    pub fn insert_orbit(&mut self, orbit: Orbit) {
+        self.state_data
+            .insert(orbit.epoch, EphemEntry { orbit, covar: None });
     }
 
     pub fn nearest_before(
@@ -461,21 +147,45 @@ impl Ephemeris {
         &self,
         epoch: Epoch,
         almanac: &Almanac,
-    ) -> Result<Option<(Covariance, Epoch)>, EphemerisError> {
+    ) -> Result<Option<(Epoch, Covariance)>, EphemerisError> {
         let entry = self.nearest_before(epoch, almanac)?;
-        Ok(entry.covar.map(|c| (c, entry.orbit.epoch)))
+        Ok(entry.covar.map(|c| (entry.orbit.epoch, c)))
     }
 
     pub fn nearest_covar_after(
         &self,
         epoch: Epoch,
         almanac: &Almanac,
-    ) -> Result<Option<(Covariance, Epoch)>, EphemerisError> {
+    ) -> Result<Option<(Epoch, Covariance)>, EphemerisError> {
         let entry = self.nearest_after(epoch, almanac)?;
-        Ok(entry.covar.map(|c| (c, entry.orbit.epoch)))
+        Ok(entry.covar.map(|c| (entry.orbit.epoch, c)))
     }
 
-    /// Interpolate the ephemeris at the provided epoch.
+    /// Interpolates the ephemeris state and covariance at the provided epoch.
+    ///
+    /// # Orbit Interpolation
+    /// The orbital state is interpolated using high-fidelity numeric methods consistent
+    /// with SPICE standards:
+    /// * **Type 9 (Lagrange):** Uses an Nth-order Lagrange polynomial interpolation on
+    ///   unequal time steps. It interpolates each of the 6 state components (position
+    ///   and velocity) independently.
+    /// * **Type 13 (Hermite):** Uses an Nth-order Hermite interpolation. This method
+    ///   explicitly uses the velocity data (derivatives) to constrain the interpolation
+    ///   of the position, ensuring that the resulting position curve is smooth and
+    ///   dynamically consistent with the velocity.
+    ///
+    /// # Covariance Interpolation (Log-Euclidean)
+    /// If covariance data is available, this method performs **Log-Euclidean Riemannian
+    /// Interpolation**. Unlike standard linear element-wise interpolation, this approach
+    /// respects the geometric manifold of Symmetric Positive Definite (SPD) matrices.
+    ///
+    /// This guarantees that:
+    /// 1. **Positive Definiteness:** The interpolated covariance matrix is always mathematically
+    ///    valid (all eigenvalues are strictly positive), preventing numerical crashes in downstream filters.
+    /// 2. **Volume Preservation:** It prevents the artificial "swelling" (determinant increase)
+    ///    of uncertainty that occurs when linearly interpolating between two valid matrices.
+    ///    The interpolation follows the "geodesic" (shortest path) on the curved surface of
+    ///    covariance matrices.
     pub fn at(&self, epoch: Epoch, almanac: &Almanac) -> Result<EphemEntry, EphemerisError> {
         // Grab the N/2 previous states
         let n = self.degree / 2;
@@ -542,9 +252,64 @@ impl Ephemeris {
 
         // Interpolate the covariances if they're set
         let mut covar = None;
-        if let Ok(Some((covar0, epoch0))) = self.nearest_covar_before(epoch, almanac) {
-            if let Ok(Some((covar1, epoch1))) = self.nearest_covar_after(epoch, almanac) {
+        if let Ok(Some((epoch0, covar0))) = self.nearest_covar_before(epoch, almanac) {
+            if let Ok(Some((epoch1, mut covar1))) = self.nearest_covar_after(epoch, almanac) {
                 // TODO: Rotate the covariances if need be!
+                if covar0.local_frame != covar1.local_frame {
+                    // Rotate the second covariance into the frame of the first.
+                    let orbit0 = self.nearest_orbit_before(epoch, almanac)?;
+                    let orbit1 = self.nearest_orbit_after(epoch, almanac)?;
+                    let dcm_0_to_inertial =
+                        match covar0.local_frame {
+                            LocalFrame::Inertial => DCM::identity(
+                                uuid_from_epoch(orbit0.frame.orientation_id, orbit0.epoch),
+                                orbit0.frame.orientation_id,
+                            ),
+                            LocalFrame::RIC => orbit0.dcm_from_ric_to_inertial().context(
+                                EphemerisPhysicsSnafu {
+                                    action: "rotating covariance from RIC to Inertial",
+                                },
+                            )?,
+                            LocalFrame::RCN => orbit0.dcm_from_ric_to_inertial().context(
+                                EphemerisPhysicsSnafu {
+                                    action: "rotating covariance from RCN to Inertial",
+                                },
+                            )?,
+                            LocalFrame::VNC => orbit0.dcm_from_ric_to_inertial().context(
+                                EphemerisPhysicsSnafu {
+                                    action: "rotating covariance from VNC to Inertial",
+                                },
+                            )?,
+                        };
+
+                    let dcm_1_to_inertial =
+                        match covar1.local_frame {
+                            LocalFrame::Inertial => DCM::identity(
+                                uuid_from_epoch(orbit1.frame.orientation_id, orbit1.epoch),
+                                orbit1.frame.orientation_id,
+                            ),
+                            LocalFrame::RIC => orbit1.dcm_from_ric_to_inertial().context(
+                                EphemerisPhysicsSnafu {
+                                    action: "rotating covariance from RIC to Inertial",
+                                },
+                            )?,
+                            LocalFrame::RCN => orbit1.dcm_from_ric_to_inertial().context(
+                                EphemerisPhysicsSnafu {
+                                    action: "rotating covariance from RCN to Inertial",
+                                },
+                            )?,
+                            LocalFrame::VNC => orbit1.dcm_from_ric_to_inertial().context(
+                                EphemerisPhysicsSnafu {
+                                    action: "rotating covariance from VNC to Inertial",
+                                },
+                            )?,
+                        };
+
+                    let dcm = (dcm_0_to_inertial * dcm_1_to_inertial.transpose())
+                        .expect("internal error");
+                    // Rotate covar1 from its frame to the frame of the covar0
+                    covar1.matrix = dcm.state_dcm() * covar1.matrix * dcm.state_dcm().transpose();
+                }
                 if epoch1 != epoch0 {
                     let alpha = (epoch - epoch0).to_seconds() / (epoch1 - epoch0).to_seconds();
 
@@ -565,25 +330,90 @@ impl Ephemeris {
         Ok(entry)
     }
 
+    /// Interpolate the ephemeris at the provided epoch, returning only the orbit.
     pub fn orbit_at(&self, epoch: Epoch, almanac: &Almanac) -> Result<Orbit, EphemerisError> {
         Ok(self.at(epoch, almanac)?.orbit)
     }
 
+    /// Interpolate the ephemeris at the provided epoch, returning only the covariance.
     pub fn covar_at(
         &self,
         epoch: Epoch,
+        local_frame: LocalFrame,
         almanac: &Almanac,
     ) -> Result<Option<Covariance>, EphemerisError> {
-        Ok(self.at(epoch, almanac)?.covar)
-    }
-}
+        let entry = self.at(epoch, almanac)?;
 
-#[cfg(feature = "python")]
-#[cfg_attr(feature = "python", pymethods)]
-impl Ephemeris {
-    #[getter]
-    fn get_object_id(&self) -> String {
-        self.object_id.clone()
+        if let Some(mut covar) = entry.covar {
+            let orbit = entry.orbit;
+
+            let desired_frame_to_inertial = match local_frame {
+                LocalFrame::Inertial => DCM::identity(
+                    uuid_from_epoch(orbit.frame.orientation_id, orbit.epoch),
+                    orbit.frame.orientation_id,
+                ),
+                LocalFrame::RIC => {
+                    orbit
+                        .dcm_from_ric_to_inertial()
+                        .context(EphemerisPhysicsSnafu {
+                            action: "rotating covariance from RIC to Inertial",
+                        })?
+                }
+                LocalFrame::RCN => {
+                    orbit
+                        .dcm_from_ric_to_inertial()
+                        .context(EphemerisPhysicsSnafu {
+                            action: "rotating covariance from RCN to Inertial",
+                        })?
+                }
+                LocalFrame::VNC => {
+                    orbit
+                        .dcm_from_ric_to_inertial()
+                        .context(EphemerisPhysicsSnafu {
+                            action: "rotating covariance from VNC to Inertial",
+                        })?
+                }
+            };
+
+            let cur_frame_to_inertial = match covar.local_frame {
+                LocalFrame::Inertial => DCM::identity(
+                    uuid_from_epoch(orbit.frame.orientation_id, orbit.epoch),
+                    orbit.frame.orientation_id,
+                ),
+                LocalFrame::RIC => {
+                    orbit
+                        .dcm_from_ric_to_inertial()
+                        .context(EphemerisPhysicsSnafu {
+                            action: "rotating covariance from RIC to Inertial",
+                        })?
+                }
+                LocalFrame::RCN => {
+                    orbit
+                        .dcm_from_ric_to_inertial()
+                        .context(EphemerisPhysicsSnafu {
+                            action: "rotating covariance from RCN to Inertial",
+                        })?
+                }
+                LocalFrame::VNC => {
+                    orbit
+                        .dcm_from_ric_to_inertial()
+                        .context(EphemerisPhysicsSnafu {
+                            action: "rotating covariance from VNC to Inertial",
+                        })?
+                }
+            };
+
+            let dcm = (desired_frame_to_inertial * cur_frame_to_inertial.transpose())
+                .expect("internal error");
+
+            // Rotate covar1 from its frame to the frame of the covar0
+            covar.matrix = dcm.state_dcm() * covar.matrix * dcm.state_dcm().transpose();
+
+            Ok(Some(covar))
+        } else {
+            Ok(None)
+        }
+        // Ok(self.at(epoch, almanac)?.covar)
     }
 }
 
@@ -705,18 +535,26 @@ mod ut_oem {
 
         // Check that we can interpolate the covariance and that it correctly rotates.
         let epoch = start + Unit::Second * 5;
-        let halfway = ephem.covar_at(epoch, &almanac).unwrap().unwrap().matrix;
+        let halfway = ephem
+            .covar_at(
+                epoch,
+                crate::ephemerides::ephemeris::LocalFrame::Inertial,
+                &almanac,
+            )
+            .unwrap()
+            .unwrap()
+            .matrix;
         let before = ephem
             .nearest_covar_before(epoch, &almanac)
             .unwrap()
             .unwrap()
-            .0
+            .1
             .matrix;
         let after = ephem
             .nearest_covar_after(epoch, &almanac)
             .unwrap()
             .unwrap()
-            .0
+            .1
             .matrix;
         println!("before = {before}\nduring = {halfway}\nafter = {after}");
         // NOTE this will need changing after I implement the rotations

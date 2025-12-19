@@ -14,7 +14,7 @@ use nalgebra::SymmetricEigen;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub enum LocalFrame {
