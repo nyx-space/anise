@@ -11,10 +11,9 @@
 use super::{EphemerisError, EphemerisPhysicsSnafu, OEMTimeParsingSnafu};
 use crate::ephemerides::EphemInterpolationSnafu;
 use crate::math::interpolation::{hermite_eval, lagrange_eval};
-use crate::math::rotation::DCM;
 use crate::math::Vector6;
 use crate::naif::daf::data_types::DataType;
-use crate::prelude::{uuid_from_epoch, Almanac, Orbit};
+use crate::prelude::{Almanac, Orbit};
 use core::fmt;
 use covariance::interpolate_covar_log_euclidean;
 use hifitime::Epoch;
@@ -232,7 +231,7 @@ impl Ephemeris {
                         .collect::<Vec<f64>>();
                     let ydots = states
                         .clone()
-                        .map(|entry| entry.orbit.to_cartesian_pos_vel()[i])
+                        .map(|entry| entry.orbit.to_cartesian_pos_vel()[i + 3])
                         .collect::<Vec<f64>>();
 
                     let (val, valdot) = hermite_eval(&xs, &ys, &ydots, epoch.to_tdb_seconds())
@@ -259,51 +258,17 @@ impl Ephemeris {
                     // Rotate the second covariance into the frame of the first.
                     let orbit0 = self.nearest_orbit_before(epoch, almanac)?;
                     let orbit1 = self.nearest_orbit_after(epoch, almanac)?;
-                    let dcm_0_to_inertial =
-                        match covar0.local_frame {
-                            LocalFrame::Inertial => DCM::identity(
-                                uuid_from_epoch(orbit0.frame.orientation_id, orbit0.epoch),
-                                orbit0.frame.orientation_id,
-                            ),
-                            LocalFrame::RIC => orbit0.dcm_from_ric_to_inertial().context(
-                                EphemerisPhysicsSnafu {
-                                    action: "rotating covariance from RIC to Inertial",
-                                },
-                            )?,
-                            LocalFrame::RCN => orbit0.dcm_from_ric_to_inertial().context(
-                                EphemerisPhysicsSnafu {
-                                    action: "rotating covariance from RCN to Inertial",
-                                },
-                            )?,
-                            LocalFrame::VNC => orbit0.dcm_from_ric_to_inertial().context(
-                                EphemerisPhysicsSnafu {
-                                    action: "rotating covariance from VNC to Inertial",
-                                },
-                            )?,
-                        };
+                    let dcm_0_to_inertial = orbit0.dcm_to_inertial(covar0.local_frame).context(
+                        EphemerisPhysicsSnafu {
+                            action: "rotating orbit0 covariance",
+                        },
+                    )?;
 
-                    let dcm_1_to_inertial =
-                        match covar1.local_frame {
-                            LocalFrame::Inertial => DCM::identity(
-                                uuid_from_epoch(orbit1.frame.orientation_id, orbit1.epoch),
-                                orbit1.frame.orientation_id,
-                            ),
-                            LocalFrame::RIC => orbit1.dcm_from_ric_to_inertial().context(
-                                EphemerisPhysicsSnafu {
-                                    action: "rotating covariance from RIC to Inertial",
-                                },
-                            )?,
-                            LocalFrame::RCN => orbit1.dcm_from_ric_to_inertial().context(
-                                EphemerisPhysicsSnafu {
-                                    action: "rotating covariance from RCN to Inertial",
-                                },
-                            )?,
-                            LocalFrame::VNC => orbit1.dcm_from_ric_to_inertial().context(
-                                EphemerisPhysicsSnafu {
-                                    action: "rotating covariance from VNC to Inertial",
-                                },
-                            )?,
-                        };
+                    let dcm_1_to_inertial = orbit1.dcm_to_inertial(covar1.local_frame).context(
+                        EphemerisPhysicsSnafu {
+                            action: "rotating orbit1 covariance",
+                        },
+                    )?;
 
                     let dcm = (dcm_0_to_inertial * dcm_1_to_inertial.transpose())
                         .expect("internal error");
@@ -372,62 +337,20 @@ impl Ephemeris {
             }
 
             // Calculate Target Frame -> Inertial
-            let desired_frame_to_inertial = match local_frame {
-                LocalFrame::Inertial => DCM::identity(
-                    uuid_from_epoch(orbit.frame.orientation_id, orbit.epoch),
-                    orbit.frame.orientation_id,
-                ),
-                LocalFrame::RIC => {
-                    orbit
-                        .dcm_from_ric_to_inertial()
-                        .context(EphemerisPhysicsSnafu {
-                            action: "rotating covariance to Inertial",
-                        })?
-                }
-                LocalFrame::RCN => {
-                    orbit
-                        .dcm_from_rcn_to_inertial()
-                        .context(EphemerisPhysicsSnafu {
-                            action: "rotating covariance to Inertial",
-                        })?
-                }
-                LocalFrame::VNC => {
-                    orbit
-                        .dcm_from_vnc_to_inertial()
-                        .context(EphemerisPhysicsSnafu {
-                            action: "rotating covariance to Inertial",
-                        })?
-                }
-            };
+            let desired_frame_to_inertial =
+                orbit
+                    .dcm_to_inertial(local_frame)
+                    .context(EphemerisPhysicsSnafu {
+                        action: "rotating desired covariance to Inertial",
+                    })?;
 
             // Calculate Current Covar Frame -> Inertial
-            let cur_frame_to_inertial = match covar.local_frame {
-                LocalFrame::Inertial => DCM::identity(
-                    uuid_from_epoch(orbit.frame.orientation_id, orbit.epoch),
-                    orbit.frame.orientation_id,
-                ),
-                LocalFrame::RIC => {
-                    orbit
-                        .dcm_from_ric_to_inertial()
-                        .context(EphemerisPhysicsSnafu {
-                            action: "rotating source covariance to Inertial",
-                        })?
-                }
-                LocalFrame::RCN => {
-                    orbit
-                        .dcm_from_rcn_to_inertial()
-                        .context(EphemerisPhysicsSnafu {
-                            action: "rotating source covariance to Inertial",
-                        })?
-                }
-                LocalFrame::VNC => {
-                    orbit
-                        .dcm_from_vnc_to_inertial()
-                        .context(EphemerisPhysicsSnafu {
-                            action: "rotating source covariance to Inertial",
-                        })?
-                }
-            };
+            let cur_frame_to_inertial =
+                orbit
+                    .dcm_to_inertial(covar.local_frame)
+                    .context(EphemerisPhysicsSnafu {
+                        action: "rotating source covariance to Inertial",
+                    })?;
 
             // M = R_target_to_inertial * (R_source_to_inertial)^T
             // M maps Source -> Target
@@ -545,8 +468,8 @@ mod ut_oem {
         println!("before = {before}\nduring = {halfway_orbit}\nafter = {after}",);
         // Check that the Keplerian data is reasonably constant.
         // Note that the true Hermite test is in the NAIF SPK tests.
-        assert!((before.sma_km().unwrap() - halfway_orbit.sma_km().unwrap()).abs() < 1e-1);
-        assert!((after.sma_km().unwrap() - halfway_orbit.sma_km().unwrap()).abs() < 1e-1);
+        assert!(dbg!(before.sma_km().unwrap() - halfway_orbit.sma_km().unwrap()).abs() < 1e-1);
+        assert!(dbg!(after.sma_km().unwrap() - halfway_orbit.sma_km().unwrap()).abs() < 1e-1);
     }
 
     #[test]
@@ -608,7 +531,7 @@ mod ut_oem {
         println!("{ephem}");
 
         // Check that we can interpolate the covariance
-        let epoch = start + Unit::Second * 5;
+        let epoch = start + Unit::Minute * 15;
         let halfway = ephem
             .covar_at(
                 epoch,

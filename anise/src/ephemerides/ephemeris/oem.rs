@@ -103,8 +103,8 @@ impl Ephemeris {
             if line.starts_with("OBJECT_ID") {
                 // Extract the object ID from the line
                 let oem_obj_id = parse_one_val(lno, line, "no value for OBJECT_ID")?;
-                if let Some(prev_obj_id) = object_id {
-                    if oem_obj_id != prev_obj_id {
+                if let Some(prev_obj_id) = &object_id {
+                    if oem_obj_id != *prev_obj_id {
                         return Err(EphemerisError::OEMError {
                             lno,
                             details: format!(
@@ -112,8 +112,9 @@ impl Ephemeris {
                             ),
                         });
                     }
+                } else {
+                    object_id = Some(oem_obj_id);
                 }
-                object_id = Some(oem_obj_id);
             } else if line.starts_with("CENTER_NAME") {
                 center_name = Some(parse_one_val(lno, line, "no value for CENTER")?);
             } else if line.starts_with("REF_FRAME") {

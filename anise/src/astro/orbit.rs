@@ -13,6 +13,7 @@ use super::PhysicsResult;
 
 use crate::{
     astro::utils::true_anomaly_to_mean_anomaly_rad,
+    ephemerides::ephemeris::LocalFrame,
     errors::{
         HyperbolicTrueAnomalySnafu, InfiniteValueSnafu, MathError, ParabolicEccentricitySnafu,
         ParabolicSemiParamSnafu, PhysicsError, RadiusSnafu, VelocitySnafu,
@@ -601,6 +602,18 @@ impl Orbit {
             from: uuid_from_epoch(self.frame.orientation_id, self.epoch),
             to: self.frame.orientation_id,
         })
+    }
+
+    pub fn dcm_to_inertial(&self, local_frame: LocalFrame) -> PhysicsResult<DCM> {
+        match local_frame {
+            LocalFrame::Inertial => Ok(DCM::identity(
+                uuid_from_epoch(self.frame.orientation_id, self.epoch),
+                self.frame.orientation_id,
+            )),
+            LocalFrame::RIC => self.dcm_from_ric_to_inertial(),
+            LocalFrame::RCN => self.dcm_from_rcn_to_inertial(),
+            LocalFrame::VNC => self.dcm_from_vnc_to_inertial(),
+        }
     }
 
     /// Creates a new Orbit around the provided Celestial or Geoid frame from the Keplerian orbital elements.
