@@ -8,4 +8,12 @@
  * Documentation: https://nyxspace.com/
  */
 
+use super::{EphemEntry, Ephemeris};
+use crate::prelude::Almanac;
 
+impl Almanac {
+    pub fn build_ephemeris() {
+        // Q: Should this be in the analysis module? Use the same state spec etc.
+        todo!()
+    }
+}

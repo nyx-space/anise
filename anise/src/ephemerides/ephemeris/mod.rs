@@ -24,6 +24,7 @@ use std::collections::BTreeMap;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
+mod almanac;
 mod covariance;
 mod oem;
 #[cfg(feature = "python")]
@@ -32,7 +33,7 @@ pub use covariance::{Covariance, LocalFrame};
 
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(feature = "python", pyclass)]
-#[cfg_attr(feature = "python", pyo3(module = "anise"))]
+#[cfg_attr(feature = "python", pyo3(module = "anise.ephemeris", get_all))]
 pub struct EphemEntry {
     /// Orbit of this ephemeris entry
     pub orbit: Orbit,
@@ -42,7 +43,7 @@ pub struct EphemEntry {
 
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "python", pyclass)]
-#[cfg_attr(feature = "python", pyo3(module = "anise"))]
+#[cfg_attr(feature = "python", pyo3(module = "anise.ephemeris"))]
 pub struct Ephemeris {
     object_id: String,
     interpolation: DataType,
@@ -254,7 +255,6 @@ impl Ephemeris {
         let mut covar = None;
         if let Ok(Some((epoch0, covar0))) = self.nearest_covar_before(epoch, almanac) {
             if let Ok(Some((epoch1, mut covar1))) = self.nearest_covar_after(epoch, almanac) {
-                // TODO: Rotate the covariances if need be!
                 if covar0.local_frame != covar1.local_frame {
                     // Rotate the second covariance into the frame of the first.
                     let orbit0 = self.nearest_orbit_before(epoch, almanac)?;
@@ -335,18 +335,43 @@ impl Ephemeris {
         Ok(self.at(epoch, almanac)?.orbit)
     }
 
-    /// Interpolate the ephemeris at the provided epoch, returning only the covariance.
+    /// Interpolate the ephemeris covariance at the provided epoch.
+    ///
+    /// This method implements a "Rotate-Then-Interpolate" strategy to avoid physical
+    /// artifacts when interpolating rotating covariances.
+    ///
+    /// 1. Finds the nearest covariance before and after the requested epoch.
+    /// 2. Rotates BOTH endpoints into the requested `local_frame`.
+    /// 3. Interpolates between the two stable matrices using Log-Euclidean Riemannian interpolation.
     pub fn covar_at(
         &self,
         epoch: Epoch,
         local_frame: LocalFrame,
         almanac: &Almanac,
     ) -> Result<Option<Covariance>, EphemerisError> {
-        let entry = self.at(epoch, almanac)?;
+        // 1. Retrieve the bounding covariance records
+        // Note: We ignore the Orbit interpolation here because we only need the
+        // Orbits at the ENDPOINTS to compute the rotation DCMs.
+        let prev_entry = self.nearest_before(epoch, almanac)?;
+        let next_entry = self.nearest_after(epoch, almanac)?;
 
-        if let Some(mut covar) = entry.covar {
+        // If we have no covariance data at the endpoints, we can't do anything.
+        if prev_entry.covar.is_none() || next_entry.covar.is_none() {
+            return Ok(None);
+        }
+
+        // 2. Define a helper to rotate a specific entry's covariance into the target frame.
+        // We capture 'almanac' and 'local_frame' from the environment.
+        let rotate_to_target = |entry: EphemEntry| -> Result<Covariance, EphemerisError> {
+            let mut covar = entry.covar.unwrap();
             let orbit = entry.orbit;
 
+            // If it's already in the right frame, no-op
+            if covar.local_frame == local_frame {
+                return Ok(covar);
+            }
+
+            // Calculate Target Frame -> Inertial
             let desired_frame_to_inertial = match local_frame {
                 LocalFrame::Inertial => DCM::identity(
                     uuid_from_epoch(orbit.frame.orientation_id, orbit.epoch),
@@ -356,25 +381,26 @@ impl Ephemeris {
                     orbit
                         .dcm_from_ric_to_inertial()
                         .context(EphemerisPhysicsSnafu {
-                            action: "rotating covariance from RIC to Inertial",
+                            action: "rotating covariance to Inertial",
                         })?
                 }
                 LocalFrame::RCN => {
                     orbit
-                        .dcm_from_ric_to_inertial()
+                        .dcm_from_rcn_to_inertial()
                         .context(EphemerisPhysicsSnafu {
-                            action: "rotating covariance from RCN to Inertial",
+                            action: "rotating covariance to Inertial",
                         })?
                 }
                 LocalFrame::VNC => {
                     orbit
-                        .dcm_from_ric_to_inertial()
+                        .dcm_from_vnc_to_inertial()
                         .context(EphemerisPhysicsSnafu {
-                            action: "rotating covariance from VNC to Inertial",
+                            action: "rotating covariance to Inertial",
                         })?
                 }
             };
 
+            // Calculate Current Covar Frame -> Inertial
             let cur_frame_to_inertial = match covar.local_frame {
                 LocalFrame::Inertial => DCM::identity(
                     uuid_from_epoch(orbit.frame.orientation_id, orbit.epoch),
@@ -384,36 +410,66 @@ impl Ephemeris {
                     orbit
                         .dcm_from_ric_to_inertial()
                         .context(EphemerisPhysicsSnafu {
-                            action: "rotating covariance from RIC to Inertial",
+                            action: "rotating source covariance to Inertial",
                         })?
                 }
                 LocalFrame::RCN => {
                     orbit
-                        .dcm_from_ric_to_inertial()
+                        .dcm_from_rcn_to_inertial()
                         .context(EphemerisPhysicsSnafu {
-                            action: "rotating covariance from RCN to Inertial",
+                            action: "rotating source covariance to Inertial",
                         })?
                 }
                 LocalFrame::VNC => {
                     orbit
-                        .dcm_from_ric_to_inertial()
+                        .dcm_from_vnc_to_inertial()
                         .context(EphemerisPhysicsSnafu {
-                            action: "rotating covariance from VNC to Inertial",
+                            action: "rotating source covariance to Inertial",
                         })?
                 }
             };
 
+            // M = R_target_to_inertial * (R_source_to_inertial)^T
+            // M maps Source -> Target
             let dcm = (desired_frame_to_inertial * cur_frame_to_inertial.transpose())
-                .expect("internal error");
+                .expect("internal error: DCM multiplication failed");
 
-            // Rotate covar1 from its frame to the frame of the covar0
+            // Apply 6x6 Rotation: P_new = M * P_old * M^T
             covar.matrix = dcm.state_dcm() * covar.matrix * dcm.state_dcm().transpose();
+            covar.local_frame = local_frame;
 
-            Ok(Some(covar))
+            Ok(covar)
+        };
+
+        // 3. Rotate endpoints to the STABLE frame
+        let prev_covar = rotate_to_target(prev_entry)?;
+        let next_covar = rotate_to_target(next_entry)?;
+
+        // 4. Calculate Alpha
+        let t0 = prev_entry.orbit.epoch;
+        let t1 = next_entry.orbit.epoch;
+        let total_dt = (t1 - t0).to_seconds();
+
+        // Handle exact match or zero-duration step
+        if total_dt.abs() < 1e-9 {
+            return Ok(Some(prev_covar));
+        }
+
+        let alpha = (epoch - t0).to_seconds() / total_dt;
+
+        // 5. Interpolate (Log-Euclidean)
+        // Now valid because both matrices are in the same, likely stable, frame.
+        if let Some(mat) =
+            interpolate_covar_log_euclidean(prev_covar.matrix, next_covar.matrix, alpha)
+        {
+            Ok(Some(Covariance {
+                matrix: mat,
+                local_frame, // We interpolated in this frame, so the result is in this frame
+            }))
         } else {
+            // Fallback or Error if PSD check fails (unlikely with valid inputs)
             Ok(None)
         }
-        // Ok(self.at(epoch, almanac)?.covar)
     }
 }
 
@@ -436,10 +492,28 @@ impl fmt::Display for Ephemeris {
 
 #[cfg(test)]
 mod ut_oem {
-    use super::{Almanac, DataType, Ephemeris};
+    use super::{Almanac, DataType, Ephemeris, LocalFrame};
     use hifitime::{Epoch, Unit};
+    use nalgebra::{Matrix6, SymmetricEigen, Vector6};
 
     use rstest::*;
+
+    fn riemannian_distance(p1: &Matrix6<f64>, p2: &Matrix6<f64>) -> f64 {
+        // 1. Compute M = P1^-1 * P2.
+        // Optimization: Cholesky solve is better than explicit inverse.
+        let m = p1.cholesky().unwrap().solve(p2);
+
+        // 2. Eigenvalues of M (Generalized Eigenvalues)
+        // Since P1, P2 are SPD, eigenvalues of P1^-1 P2 are real and positive.
+        let complex_eigenvalues = m.complex_eigenvalues();
+
+        // 3. Sum of log-squares
+        complex_eigenvalues
+            .iter()
+            .map(|c| c.re.ln().powi(2))
+            .sum::<f64>()
+            .sqrt()
+    }
 
     #[fixture]
     fn almanac() -> Almanac {
@@ -533,7 +607,7 @@ mod ut_oem {
 
         println!("{ephem}");
 
-        // Check that we can interpolate the covariance and that it correctly rotates.
+        // Check that we can interpolate the covariance
         let epoch = start + Unit::Second * 5;
         let halfway = ephem
             .covar_at(
@@ -557,8 +631,122 @@ mod ut_oem {
             .1
             .matrix;
         println!("before = {before}\nduring = {halfway}\nafter = {after}");
-        // NOTE this will need changing after I implement the rotations
-        println!("delta before = {:e}", halfway - before);
-        println!("delta after = {:e}", after - halfway)
+        assert!((halfway - before).norm() < 1e-14);
+        assert!((halfway - after).norm() < 1e-14);
+    }
+
+    #[rstest]
+    fn test_oem_interp_covar_truth(almanac: Almanac) {
+        let ephem = Ephemeris::from_ccsds_oem_file("../data/tests/ccsds/oem/LRO_Nyx.oem")
+            .expect("could not parse");
+
+        let start = Epoch::from_gregorian_utc_at_midnight(2024, 1, 1);
+        let end = start + Unit::Minute * 3;
+
+        assert_eq!(ephem.state_data.len(), 4);
+        assert_eq!(ephem.domain().unwrap(), (start, end));
+        assert_eq!(ephem.interpolation, DataType::Type13HermiteUnequalStep);
+        assert_eq!(ephem.degree, 7);
+
+        // We have data from Nyx showing the proper covariance in between the data in the OEM.
+        // So we'll check that the interpolator somewhat matches that data.
+        let offset = Unit::Minute * 1 + Unit::Second * 24.696597;
+
+        let epoch = start + offset;
+
+        // Check that we can interpolate the covariance and that it correctly rotates.
+        let bw_1_2 = ephem
+            .covar_at(epoch, LocalFrame::Inertial, &almanac)
+            .unwrap()
+            .unwrap();
+        assert_eq!(bw_1_2.local_frame, LocalFrame::Inertial);
+        let bw_1_2_truth = Matrix6::new(
+            0.209575, 0.4048630, 0.2455520, 0.001016, 0.0019710, 0.0011840, // X column
+            0.404863, 1.1089200, -0.066758, 0.001961, 0.0055080, -0.000494, // Y column
+            0.245552, -0.066758, 1.1863670, 0.001197, -0.000509, 0.0060070, // Z column
+            0.001016, 0.0019610, 0.0011970, 0.000012, 0.0000240, 0.0000140, // Vx column
+            0.001971, 0.0055080, -0.000509, 0.000024, 0.0000660, 0.0000060, // Vy column
+            0.001184, -0.000494, 0.0060070, 0.000014, 0.0000060, 0.0000720, // Vz column
+        );
+
+        // Compute the Riemann distance since we interpolate in Reimann space
+        let rdist = riemannian_distance(&bw_1_2.matrix, &bw_1_2_truth);
+        assert!(rdist < 0.4, "arbitrary max distance failed");
+
+        let covar_prev = ephem
+            .nearest_covar_before(epoch, &almanac)
+            .unwrap()
+            .unwrap()
+            .1
+            .matrix;
+        let covar_next = ephem
+            .nearest_covar_after(epoch, &almanac)
+            .unwrap()
+            .unwrap()
+            .1
+            .matrix;
+
+        let det_prev = covar_prev.determinant();
+        let det_next = covar_next.determinant();
+        let det_interp = bw_1_2.matrix.determinant();
+        let det_truth = bw_1_2_truth.determinant();
+
+        // Log-Euclidean guarantees the log-determinant is linearly interpolated!
+        // This is a MUCH stricter mathematical check than comparing to external truth.
+        let log_det_prev = det_prev.ln();
+        let log_det_next = det_next.ln();
+        let log_det_interp = det_interp.ln();
+        let log_det_truth = det_truth.ln();
+
+        // VALIDATION: Check Log-Euclidean Property (Volume Monotonicity)
+        // The log-determinant must be linearly interpolated.
+        // This validates the math of the implementation.
+        let alpha = (offset - Unit::Minute).to_seconds() / 60.0;
+        let expected_log_det = log_det_prev * (1.0 - alpha) + log_det_next * alpha;
+
+        // Tolerance can be very tight because this is purely algebraic
+        assert!(
+            (log_det_interp - expected_log_det).abs() < 1e-12,
+            "Log-Euclidean implementation failed linearity check"
+        );
+
+        // OBSERVATION: Compare with Truth
+        // We expect a deviation here because interpolation != propagation.
+        // This print confirms the "swelling/shrinking" discrepancy.
+        let vol_ratio = (log_det_interp - log_det_truth).exp();
+        println!("Volume Ratio (Interp/Truth): {vol_ratio:.4}");
+        // Truth covar has a larger volume (less negative) because dynamics are not the shortest path in Log-Euclidian space
+        assert!((vol_ratio - 0.8).abs() < 0.05);
+        // Expect ~0.80 (Interp is smaller)
+
+        dbg!(log_det_prev, log_det_next, log_det_interp, log_det_truth);
+
+        // Ensure that this is a symmetric matrix
+        assert!((bw_1_2.matrix.transpose() - bw_1_2.matrix).norm() < 1e-15);
+        // Ensure that it's PSD
+        let decomp = SymmetricEigen::new(bw_1_2.matrix);
+        assert!(decomp.eigenvalues.iter().all(|&e| e >= 0.0));
+
+        // Ensure that we're close to the RIC frame uncertainties
+
+        let bw_1_2_ric = ephem
+            .covar_at(epoch, LocalFrame::RIC, &almanac)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(bw_1_2_ric.local_frame, LocalFrame::RIC);
+
+        let diag = bw_1_2_ric.matrix.diagonal();
+        let diag_sqrt = Vector6::from_iterator(diag.iter().map(|x| x.sqrt()));
+
+        // Nyx reports these as Sigmas, so we apply the square root of the covariance here.
+        let ric_diag_sigmas =
+            Vector6::new(0.961317, 0.854136, 0.922597, 0.007343, 0.006684, 0.007138);
+        let ric_err = diag_sqrt - ric_diag_sigmas;
+        println!("{diag_sqrt:.6e}\n{ric_diag_sigmas:.6e}\n{ric_err:0.6e}",);
+        let ric_pos_km_err = ric_err.fixed_rows::<3>(0);
+        let ric_vel_km_s_err = ric_err.fixed_rows::<3>(3);
+        assert!(ric_pos_km_err.norm() < 0.06);
+        assert!(ric_vel_km_s_err.norm() < 1e-3);
     }
 }

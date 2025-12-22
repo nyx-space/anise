@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::{Almanac, Covariance, EphemEntry, Ephemeris, EphemerisError, Orbit};
+use super::{Almanac, Covariance, EphemEntry, Ephemeris, EphemerisError, LocalFrame, Orbit};
 use hifitime::Epoch;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
@@ -175,8 +175,9 @@ impl Ephemeris {
     pub fn py_covar_at(
         &self,
         epoch: Epoch,
+        local_frame: LocalFrame,
         almanac: &Almanac,
     ) -> Result<Option<Covariance>, EphemerisError> {
-        self.covar_at(epoch, almanac)
+        self.covar_at(epoch, local_frame, almanac)
     }
 }
