@@ -47,7 +47,6 @@ pub struct Ephemeris {
     object_id: String,
     interpolation: DataType,
     degree: usize,
-    /// Ephemeris entries in chronological order
     state_data: BTreeMap<Epoch, EphemEntry>,
 }
 
