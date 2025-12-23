@@ -9,15 +9,19 @@
  */
 
 use super::{EphemerisError, OEMTimeParsingSnafu};
+use crate::constants::orientations::J2000;
 use crate::math::{Matrix6, Vector6};
 use crate::naif::daf::data_types::DataType;
 use crate::prelude::{Frame, Orbit};
-use hifitime::Epoch;
+use hifitime::{
+    efmt::{Format, Formatter},
+    Epoch,
+};
 use log::warn;
 use snafu::ResultExt;
 use std::collections::BTreeMap;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
 use std::str::FromStr;
 
@@ -30,7 +34,7 @@ impl Ephemeris {
     /// - Support covariance only in EME2000 frame
     pub fn from_ccsds_oem_file<P: AsRef<Path>>(path: P) -> Result<Self, EphemerisError> {
         // Open the file
-        let file = File::open(path).map_err(|e| EphemerisError::OEMError {
+        let file = File::open(path).map_err(|e| EphemerisError::OEMParsingError {
             lno: 0,
             details: format!("could not open file: {e}"),
         })?;
@@ -61,7 +65,7 @@ impl Ephemeris {
 
             match parts.get(1) {
                 Some(val_str) => Ok(val_str.trim().to_string()),
-                None => Err(EphemerisError::OEMError {
+                None => Err(EphemerisError::OEMParsingError {
                     lno,
                     details: err.to_string(),
                 }),
@@ -69,7 +73,7 @@ impl Ephemeris {
         };
 
         for (lno, line) in reader.lines().enumerate() {
-            let line = line.map_err(|e| EphemerisError::OEMError {
+            let line = line.map_err(|e| EphemerisError::OEMParsingError {
                 lno,
                 details: format!("could not read line: {e}"),
             })?;
@@ -85,7 +89,7 @@ impl Ephemeris {
                     Ok(version_val) => match version_val as i16 {
                         1 | 2 => {}
                         _ => {
-                            return Err(EphemerisError::OEMError {
+                            return Err(EphemerisError::OEMParsingError {
                                 lno,
                                 details: "CCSDS OEM version {version_val} not supported"
                                     .to_string(),
@@ -93,7 +97,7 @@ impl Ephemeris {
                         }
                     },
                     Err(_) => {
-                        return Err(EphemerisError::OEMError {
+                        return Err(EphemerisError::OEMParsingError {
                             lno,
                             details: format!("could not parse OEM version `{version_str}`"),
                         })
@@ -105,7 +109,7 @@ impl Ephemeris {
                 let oem_obj_id = parse_one_val(lno, line, "no value for OBJECT_ID")?;
                 if let Some(prev_obj_id) = &object_id {
                     if oem_obj_id != *prev_obj_id {
-                        return Err(EphemerisError::OEMError {
+                        return Err(EphemerisError::OEMParsingError {
                             lno,
                             details: format!(
                                 "OEM must have only one object: `{prev_obj_id}` != `{oem_obj_id}`"
@@ -128,7 +132,7 @@ impl Ephemeris {
                 match interp_str.parse::<usize>() {
                     Ok(ideg) => degree = ideg,
                     Err(_) => {
-                        return Err(EphemerisError::OEMError {
+                        return Err(EphemerisError::OEMParsingError {
                             lno,
                             details: format!("could not parse `{interp_str}` as float"),
                         })
@@ -181,7 +185,7 @@ impl Ephemeris {
 
                 let frame =
                     Frame::from_name(center_name.as_str(), orient_name.clone().unwrap().as_str())
-                        .map_err(|e| EphemerisError::OEMError {
+                        .map_err(|e| EphemerisError::OEMParsingError {
                         lno,
                         details: format!("frame error `{center_name:?} {orient_name:?}`: {e}"),
                     })?;
@@ -200,7 +204,7 @@ impl Ephemeris {
                         })?
                     }
                     None => {
-                        return Err(EphemerisError::OEMError {
+                        return Err(EphemerisError::OEMParsingError {
                             lno,
                             details: "no `=` sign for covariance epoch".to_string(),
                         })
@@ -215,7 +219,7 @@ impl Ephemeris {
                                 state_vec[i] = val_f64;
                             }
                             Err(_) => {
-                                return Err(EphemerisError::OEMError {
+                                return Err(EphemerisError::OEMParsingError {
                                     lno,
                                     details: format!(
                                         "could not parse `{}` as float",
@@ -225,7 +229,7 @@ impl Ephemeris {
                             }
                         },
                         None => {
-                            return Err(EphemerisError::OEMError {
+                            return Err(EphemerisError::OEMParsingError {
                                 lno,
                                 details: format!("missing float in position {}", i + 1),
                             })
@@ -247,7 +251,7 @@ impl Ephemeris {
 
                     // Check that we have associated state data
                     if !state_data.contains_key(&epoch) {
-                        return Err(EphemerisError::OEMError { lno, details: format!("cannot have covariance data at {epoch} because no orbit data at that epoch")});
+                        return Err(EphemerisError::OEMParsingError { lno, details: format!("cannot have covariance data at {epoch} because no orbit data at that epoch")});
                     }
 
                     cov_epoch = Some(epoch);
@@ -261,7 +265,7 @@ impl Ephemeris {
                         "RSW" | "RTN" => cov_frame = Some(LocalFrame::RIC),
                         "TNW" => cov_frame = Some(LocalFrame::VNC),
                         _ => {
-                            return Err(EphemerisError::OEMError {
+                            return Err(EphemerisError::OEMParsingError {
                                 lno,
                                 details: format!("invalid COV_REF_FRAME `{cov_frame_str}`"),
                             })
@@ -271,7 +275,7 @@ impl Ephemeris {
                     // Matrix data!
                     let parts: Vec<&str> = line.split_whitespace().collect();
                     if parts.len() != cov_row + 1 {
-                        return Err(EphemerisError::OEMError {
+                        return Err(EphemerisError::OEMParsingError {
                             lno,
                             details: format!(
                                 "expected {} values for covariance row {cov_row} but got {}",
@@ -289,7 +293,7 @@ impl Ephemeris {
                                     cov_mat.as_mut().unwrap()[(cov_row, col)] = val_f64;
                                 }
                                 Err(_) => {
-                                    return Err(EphemerisError::OEMError {
+                                    return Err(EphemerisError::OEMParsingError {
                                         lno,
                                         details: format!(
                                             "could not parse `{}` as float",
@@ -299,7 +303,7 @@ impl Ephemeris {
                                 }
                             },
                             None => {
-                                return Err(EphemerisError::OEMError {
+                                return Err(EphemerisError::OEMParsingError {
                                     lno,
                                     details: format!(
                                         "missing float in covariance data position {col}"
@@ -323,7 +327,7 @@ impl Ephemeris {
                                     .covar = covar;
                             }
                             None => {
-                                return Err(EphemerisError::OEMError {
+                                return Err(EphemerisError::OEMParsingError {
                                     lno,
                                     details: "no cov epoch ever found?!".to_string(),
                                 })
@@ -335,7 +339,7 @@ impl Ephemeris {
         }
 
         if state_data.is_empty() {
-            return Err(EphemerisError::OEMError {
+            return Err(EphemerisError::OEMParsingError {
                 lno: 0,
                 details: "ephemeris file contains no state data".to_string(),
             });
@@ -350,10 +354,160 @@ impl Ephemeris {
                 state_data,
             })
         } else {
-            Err(EphemerisError::OEMError {
+            Err(EphemerisError::OEMParsingError {
                 lno: 0,
                 details: "no OBJECT_ID found throughout the file".to_string(),
             })
         }
+    }
+
+    /// Export this Ephemeris to CCSDS OEM format
+    pub fn to_ccsds_oem_file<P: AsRef<Path>>(
+        &self,
+        path: P,
+        originator: Option<String>,
+        object_name: Option<String>,
+    ) -> Result<(), EphemerisError> {
+        if self.state_data.is_empty() {
+            return Err(EphemerisError::OEMParsingError {
+                lno: 0,
+                details: "ephemeris file contains no state data".to_string(),
+            });
+        }
+
+        let file = File::create(&path).map_err(|e| EphemerisError::OEMWritingError {
+            details: format!("could not create file: {e}"),
+        })?;
+        let mut writer = BufWriter::new(file);
+
+        let err_hdlr = |e| EphemerisError::OEMWritingError {
+            details: format!("{e}"),
+        };
+
+        // Epoch formmatter.
+        let iso8601_no_ts = Format::from_str("%Y-%m-%dT%H:%M:%S.%f").unwrap();
+
+        // Write mandatory metadata
+        writeln!(writer, "CCSDS_OEM_VERS = 2.0\n").map_err(err_hdlr)?;
+
+        writeln!(
+            writer,
+            "COMMENT Built by ANISE, a modern rewrite of NASA/NAIF SPICE (https://nyxspace.com/anise)",
+        )
+        .map_err(err_hdlr)?;
+        writeln!(
+            writer,
+            "COMMENT ANISE is open-source software provided under the Mozilla Public License 2.0 (https://github.com/nyx-space/anise)\n"
+        )
+        .map_err(err_hdlr)?;
+
+        writeln!(
+            writer,
+            "CREATION_DATE = {}",
+            Formatter::new(Epoch::now().unwrap(), iso8601_no_ts)
+        )
+        .map_err(err_hdlr)?;
+        writeln!(
+            writer,
+            "ORIGINATOR = {}\n",
+            originator.unwrap_or("Nyx Space ANISE".to_string())
+        )
+        .map_err(err_hdlr)?;
+
+        writeln!(writer, "META_START").map_err(err_hdlr)?;
+        writeln!(writer, "\tOBJECT_ID = {}", self.object_id).map_err(err_hdlr)?;
+
+        if let Some(object_name) = object_name {
+            writeln!(writer, "\tOBJECT_NAME = {object_name}").map_err(err_hdlr)?;
+        }
+
+        let first_orbit = self.state_data.first_key_value().unwrap().1.orbit;
+        let first_frame = first_orbit.frame;
+        let last_orbit = self.state_data.last_key_value().unwrap().1.orbit;
+
+        let frame_str = format!(
+            "{first_frame:e} {}",
+            match first_frame.orientation_id {
+                J2000 => "ICRF".to_string(),
+                _ => format!("{first_frame:o}"),
+            }
+        );
+        let splt: Vec<&str> = frame_str.split(' ').collect();
+        let center = splt[0];
+        let ref_frame = frame_str.replace(center, " ");
+        writeln!(
+            writer,
+            "\tREF_FRAME = {}",
+            match ref_frame.trim() {
+                "J2000" => "ICRF",
+                _ => ref_frame.trim(),
+            }
+        )
+        .map_err(err_hdlr)?;
+
+        writeln!(writer, "\tCENTER_NAME = {center}",).map_err(err_hdlr)?;
+        writeln!(writer, "\tTIME_SYSTEM = {}", first_orbit.epoch.time_scale).map_err(err_hdlr)?;
+        writeln!(
+            writer,
+            "\tINTERPOLATION = {}",
+            match self.interpolation {
+                DataType::Type9LagrangeUnequalStep => "LAGRANGE",
+                DataType::Type13HermiteUnequalStep => "HERMITE",
+                _ => unreachable!(),
+            }
+        )
+        .map_err(err_hdlr)?;
+
+        writeln!(writer, "\tINTERPOLATION_DEGREE = {}", self.degree).map_err(err_hdlr)?;
+
+        writeln!(
+            writer,
+            "\tSTART_TIME = {}",
+            Formatter::new(first_orbit.epoch, iso8601_no_ts)
+        )
+        .map_err(err_hdlr)?;
+        writeln!(
+            writer,
+            "\tUSEABLE_START_TIME = {}",
+            Formatter::new(first_orbit.epoch, iso8601_no_ts)
+        )
+        .map_err(err_hdlr)?;
+        writeln!(
+            writer,
+            "\tUSEABLE_STOP_TIME = {}",
+            Formatter::new(last_orbit.epoch, iso8601_no_ts)
+        )
+        .map_err(err_hdlr)?;
+        writeln!(
+            writer,
+            "\tSTOP_TIME = {}",
+            Formatter::new(last_orbit.epoch, iso8601_no_ts)
+        )
+        .map_err(err_hdlr)?;
+
+        writeln!(writer, "META_STOP\n").map_err(err_hdlr)?;
+
+        for (epoch, entry) in self.state_data.iter() {
+            let orbit = entry.orbit;
+            writeln!(
+                writer,
+                "{} {:E} {:E} {:E} {:E} {:E} {:E}",
+                Formatter::new(*epoch, iso8601_no_ts),
+                orbit.radius_km.x,
+                orbit.radius_km.y,
+                orbit.radius_km.z,
+                orbit.velocity_km_s.x,
+                orbit.velocity_km_s.y,
+                orbit.velocity_km_s.z
+            )
+            .map_err(err_hdlr)?;
+        }
+
+        #[allow(clippy::writeln_empty_string)]
+        writeln!(writer, "").map_err(err_hdlr)?;
+
+        // TODO: Add covariance
+
+        Ok(())
     }
 }

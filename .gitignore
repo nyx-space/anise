@@ -16,3 +16,4 @@ anise-py/notebooks/.ipynb_checkpoints/ANISE Tutorial for querying SPK files-chec
 data/lro.bsp
 data/mro.bsp
 *.csv
+data/tests/ccsds/oem/*_rebuilt.oem

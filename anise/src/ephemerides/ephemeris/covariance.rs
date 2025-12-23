@@ -24,7 +24,7 @@ pub enum LocalFrame {
     RCN,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.ephemeris"))]
 pub struct Covariance {

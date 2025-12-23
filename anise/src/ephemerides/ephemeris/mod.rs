@@ -30,7 +30,7 @@ mod oem;
 mod python;
 pub use covariance::{Covariance, LocalFrame};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.ephemeris", get_all))]
 pub struct EphemEntry {
@@ -40,7 +40,14 @@ pub struct EphemEntry {
     pub covar: Option<Covariance>,
 }
 
-#[derive(Clone, Debug)]
+/// Initializes a new Ephemeris from the list of Orbit instances and a given object ID.
+///
+/// In Python if you need to build an ephemeris with covariance, initialize with an empty list of
+/// orbit instances and then insert each EphemEntry with covariance.
+///
+/// :type orbit_list: list
+/// :type object_id: str
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.ephemeris"))]
 pub struct Ephemeris {
@@ -65,8 +72,6 @@ impl Ephemeris {
     }
 
     /// Returns whether all of the data in this ephemeris includes the covariance.
-    ///
-    /// :rtype: bool
     pub fn includes_covariance(&self) -> bool {
         self.state_data
             .values()
@@ -488,6 +493,15 @@ mod ut_oem {
         assert_eq!(ephem.degree, 5);
 
         println!("{ephem}");
+
+        // Ensure that we can build an OEM, re-parse it, and it should match
+        let outpath = "../data/tests/ccsds/oem/MEO_60s_rebuilt.oem";
+        ephem
+            .to_ccsds_oem_file(outpath, Some("My Originator".to_string()), None)
+            .unwrap();
+
+        let ephem2 = Ephemeris::from_ccsds_oem_file(outpath).unwrap();
+        assert_eq!(ephem2, ephem);
     }
 
     #[test]

@@ -69,11 +69,13 @@ pub enum EphemerisError {
     #[snafu(display("unknown NAIF ID associated with `{name}`"))]
     NameToId { name: String },
     #[snafu(display("CCSDS OEM parsing error on line {lno}: {details}"))]
-    OEMError { lno: usize, details: String },
+    OEMParsingError { lno: usize, details: String },
     #[snafu(display("CCSDS OEM epoch parsing error on line {line}: {details}"))]
     OEMTimeParsingError {
         line: usize,
         details: String,
         source: HifitimeError,
     },
+    #[snafu(display("CCSDS OEM writing error: {details}"))]
+    OEMWritingError { details: String },
 }

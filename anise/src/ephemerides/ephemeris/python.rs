@@ -9,19 +9,73 @@
  */
 
 use super::{Almanac, Covariance, EphemEntry, Ephemeris, EphemerisError, LocalFrame, Orbit};
+use crate::naif::daf::data_types::DataType;
+use crate::naif::daf::DafDataType;
 use hifitime::Epoch;
-#[cfg(feature = "python")]
 use pyo3::prelude::*;
+use pyo3::types::PyType;
+use std::collections::BTreeMap;
 
 #[pymethods]
 impl Ephemeris {
+    /// :rtype: str
     #[getter]
     fn get_object_id(&self) -> String {
         self.object_id.clone()
     }
-}
 
-impl Ephemeris {
+    #[getter]
+    fn get_interpolation(&self) -> String {
+        match self.interpolation {
+            DataType::Type9LagrangeUnequalStep => "LAGRANGE".to_string(),
+            DataType::Type13HermiteUnequalStep => "HERMITE".to_string(),
+            _ => unreachable!(),
+        }
+    }
+
+    #[new]
+    fn py_new(orbit_list: Vec<Orbit>, object_id: String) -> Self {
+        let mut state_data = BTreeMap::new();
+
+        for orbit in orbit_list {
+            state_data.insert(orbit.epoch, EphemEntry { orbit, covar: None });
+        }
+
+        Self {
+            state_data,
+            object_id,
+            interpolation: DafDataType::Type13HermiteUnequalStep,
+            degree: 7,
+        }
+    }
+
+    /// Initializes a new Ephemeris from a file path to CCSDS OEM file.
+    ///
+    /// :type path: str
+    /// :rtype: Ephemeris
+    #[classmethod]
+    #[pyo3(name = "from_ccsds_oem_file", signature=(path))]
+    fn py_from_ccsds_oem_file(_cls: Bound<'_, PyType>, path: &str) -> Result<Self, EphemerisError> {
+        Self::from_ccsds_oem_file(path)
+    }
+
+    /// Exports this Ephemeris to CCSDS OEM at the provided path, optionally specifying an originator and/or an object name
+    ///
+    /// :type path: str
+    /// :type originator: str, optional
+    /// :type object_name: str, optional
+    fn py_to_ccsds_oem_file(
+        &self,
+        path: &str,
+        originator: Option<String>,
+        object_name: Option<String>,
+    ) -> Result<(), EphemerisError> {
+        self.to_ccsds_oem_file(path, originator, object_name)
+    }
+
+    /// Returns the time domain of this ephemeris.
+    ///
+    /// :rtype: tuple
     pub fn py_domain(&self) -> Result<(Epoch, Epoch), EphemerisError> {
         self.domain()
     }
@@ -145,7 +199,7 @@ impl Ephemeris {
     ///
     /// This guarantees that:
     /// 1. **Positive Definiteness:** The interpolated covariance matrix is always mathematically
-    ///    valid (all eigenvalues $> 0$), preventing numerical crashes in downstream filters.
+    ///    valid (all eigenvalues are strictly positive), preventing numerical crashes in downstream filters.
     /// 2. **Volume Preservation:** It prevents the artificial "swelling" (determinant increase)
     ///    of uncertainty that occurs when linearly interpolating between two valid matrices.
     ///    The interpolation follows the "geodesic" (shortest path) on the curved surface of
