@@ -38,10 +38,14 @@ impl Ephemeris {
         let mut bytes = vec![];
         let mut statedata_bytes = vec![];
         // Create the FileRecord, mutable because we need to set the addresses later.
-        let mut file_rcrd = FileRecord::spk("ANISE");
+        let mut file_rcrd = FileRecord::spk("Nyx Space ANISE");
         // Write this object name in the name record, there will be only one summary/segment for the whole ephem.
-        let mut raw_names = [0x0; RCRD_LEN];
-        for (dest, src) in raw_names.iter_mut().zip(self.object_id.as_bytes()) {
+        // The names are trimmed so we initialize the bytes with spacex (0x20).
+        let mut raw_names = [0x20; RCRD_LEN];
+        for (dest, src) in raw_names
+            .iter_mut()
+            .zip(format!("{} (converted by Nyx Space ANISE)", self.object_id).as_bytes())
+        {
             *dest = *src;
         }
 
@@ -56,10 +60,10 @@ impl Ephemeris {
         let first_orbit = self.state_data.first_key_value().unwrap().1.orbit;
         let first_frame = first_orbit.frame;
         let last_orbit = self.state_data.last_key_value().unwrap().1.orbit;
-        let summary = SPKSummaryRecord {
+        let daf_summary = SPKSummaryRecord {
             start_epoch_et_s: first_orbit.epoch.to_et_seconds(),
             end_epoch_et_s: last_orbit.epoch.to_et_seconds(),
-            target_id: naif_id,
+            target_id: dbg!(naif_id),
             center_id: first_frame.ephemeris_id,
             frame_id: first_frame.orientation_id,
             data_type_i: interpolation.into(),
@@ -68,7 +72,7 @@ impl Ephemeris {
         };
 
         // Build a single Summary record
-        let sum_rcrd = SummaryRecord {
+        let spk_summary = SummaryRecord {
             next_record: 0.0,
             prev_record: 0.0,
             num_summaries: 1.0,
@@ -107,13 +111,14 @@ impl Ephemeris {
         };
 
         // Update the file record
-        file_rcrd.free_addr = bytes.len() as u32;
+        file_rcrd.free_addr = statedata_bytes.len() as u32;
 
         // Write the bytes in order.
         place_in_rcrd(file_rcrd.as_bytes(), &mut bytes);
+        place_in_rcrd(daf_summary.as_bytes(), &mut bytes);
+        place_in_rcrd([0x0].as_bytes(), &mut bytes);
         place_in_rcrd(name_rcrd.as_bytes(), &mut bytes);
-        place_in_rcrd(sum_rcrd.as_bytes(), &mut bytes);
-        place_in_rcrd(summary.as_bytes(), &mut bytes);
+        place_in_rcrd(spk_summary.as_bytes(), &mut bytes);
         bytes.extend_from_slice(&statedata_bytes);
 
         let u8_bytes = bytes.as_bytes();

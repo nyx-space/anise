@@ -14,6 +14,7 @@ use snafu::prelude::*;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 use crate::naif::Endian;
+use core::fmt;
 use log::error;
 
 use super::NAIFRecord;
@@ -154,15 +155,27 @@ impl FileRecord {
         }
 
         Self {
-            id_str: *b"DAF/SPK\0",
+            id_str: *b"DAF/SPK ",
             nd: 2,
             ni: 6,
             internal_filename,
-            forward: 4,
-            backward: 4,
+            forward: 3,
+            backward: 3,
             free_addr: 0,
             endian_str: Endian::daf_endian_str(),
             ..Default::default()
         }
+    }
+}
+
+impl fmt::Display for FileRecord {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let id = self.identification().unwrap(); //_or("invalid identifier");
+        let endian = if let Ok(endian) = self.endianness() {
+            format!("{endian:?}")
+        } else {
+            "invalid endian".to_string()
+        };
+        write!(f, "FileRecord for {id} in {endian}",)
     }
 }

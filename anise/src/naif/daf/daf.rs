@@ -289,11 +289,12 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         let mut idx = None;
         loop {
             for (summary_idx, summary) in self.data_summaries(idx)?.iter().enumerate() {
-                if summary.id() == id {
+                if dbg!(summary.id()) == id {
                     return Ok((summary, idx, summary_idx));
                 }
             }
             let summary = self.daf_summary(idx)?;
+            println!("{summary:?}");
             if summary.is_final_record() {
                 break;
             } else {

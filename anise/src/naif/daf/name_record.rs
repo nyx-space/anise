@@ -46,7 +46,7 @@ impl NameRecord {
             Ok(name) => name.trim(),
             Err(e) => {
                 warn!("malformed name record: `{e}` from {this_name:?}!",);
-                "UNNAMED OBJECT"
+                "MALFORMED NAME"
             }
         }
     }

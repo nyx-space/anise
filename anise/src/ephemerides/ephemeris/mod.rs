@@ -424,6 +424,7 @@ mod ut_oem {
     use super::{Almanac, DataType, Ephemeris, LocalFrame};
     use hifitime::{Epoch, Unit};
     use nalgebra::{Matrix6, SymmetricEigen, Vector6};
+    use std::{fs::File, io::Write};
 
     use rstest::*;
 
@@ -509,7 +510,19 @@ mod ut_oem {
         let my_spk = ephem
             .to_spice_bsp_spk(-159, Some(DataType::Type13HermiteUnequalStep))
             .unwrap();
-        println!("{:?}", my_spk.file_record().unwrap());
+
+        let mut file = File::create("../data/tests/naif/spk/meo.bsp").unwrap();
+        file.write_all(&my_spk.bytes).unwrap();
+
+        let frcrd = my_spk.file_record().unwrap();
+        println!("{frcrd}");
+        println!(
+            "{:?}",
+            my_spk
+                .name_record(None)
+                .unwrap()
+                .nth_name(0, frcrd.summary_size())
+        );
         let summary = my_spk.summary_from_id(-159).unwrap().0;
         println!("{summary:?}");
     }
