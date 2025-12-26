@@ -159,8 +159,8 @@ impl FileRecord {
             nd: 2,
             ni: 6,
             internal_filename,
-            forward: 3,
-            backward: 3,
+            forward: 2,
+            backward: 2,
             free_addr: 0,
             endian_str: Endian::daf_endian_str(),
             ..Default::default()

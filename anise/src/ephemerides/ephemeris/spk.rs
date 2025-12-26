@@ -60,7 +60,7 @@ impl Ephemeris {
         let first_orbit = self.state_data.first_key_value().unwrap().1.orbit;
         let first_frame = first_orbit.frame;
         let last_orbit = self.state_data.last_key_value().unwrap().1.orbit;
-        let daf_summary = SPKSummaryRecord {
+        let spk_summary = SPKSummaryRecord {
             start_epoch_et_s: first_orbit.epoch.to_et_seconds(),
             end_epoch_et_s: last_orbit.epoch.to_et_seconds(),
             target_id: dbg!(naif_id),
@@ -72,7 +72,7 @@ impl Ephemeris {
         };
 
         // Build a single Summary record
-        let spk_summary = SummaryRecord {
+        let daf_summary = SummaryRecord {
             next_record: 0.0,
             prev_record: 0.0,
             num_summaries: 1.0,
@@ -87,16 +87,16 @@ impl Ephemeris {
                 for (idx, (_, entry)) in self.state_data.iter().enumerate() {
                     let orbit = entry.orbit;
                     state_data.extend_from_slice(&[
-                        orbit.radius_km.x,
-                        orbit.radius_km.y,
-                        orbit.radius_km.z,
-                        orbit.velocity_km_s.x,
-                        orbit.velocity_km_s.y,
-                        orbit.velocity_km_s.z,
+                        orbit.radius_km.x.to_ne_bytes(),
+                        orbit.radius_km.y.to_ne_bytes(),
+                        orbit.radius_km.z.to_ne_bytes(),
+                        orbit.velocity_km_s.x.to_ne_bytes(),
+                        orbit.velocity_km_s.y.to_ne_bytes(),
+                        orbit.velocity_km_s.z.to_ne_bytes(),
                     ]);
-                    epoch_data.push(orbit.epoch.to_et_seconds());
+                    epoch_data.push(orbit.epoch.to_et_seconds().to_ne_bytes());
                     if idx % 100 == 0 {
-                        epoch_registry.push(orbit.epoch.to_et_seconds());
+                        epoch_registry.push(orbit.epoch.to_et_seconds().to_ne_bytes());
                     }
                 }
 
@@ -104,8 +104,8 @@ impl Ephemeris {
                 statedata_bytes.extend_from_slice(&state_data);
                 statedata_bytes.extend_from_slice(&epoch_data);
                 statedata_bytes.extend_from_slice(&epoch_registry);
-                statedata_bytes.push(self.degree as f64);
-                statedata_bytes.push((self.state_data.len() - 1) as f64);
+                statedata_bytes.push((self.degree as f64).to_ne_bytes());
+                statedata_bytes.push(((self.state_data.len() - 1) as f64).to_ne_bytes());
             }
             _ => unreachable!(),
         };
@@ -115,11 +115,19 @@ impl Ephemeris {
 
         // Write the bytes in order.
         place_in_rcrd(file_rcrd.as_bytes(), &mut bytes);
-        place_in_rcrd(daf_summary.as_bytes(), &mut bytes);
-        place_in_rcrd([0x0].as_bytes(), &mut bytes);
+        dbg!("file rcrd", &bytes.len());
+        // The SPK summary immediately follows the DAF summary for each summary!
+        let summaries = [daf_summary.as_bytes(), spk_summary.as_bytes()].concat();
+
+        dbg!(daf_summary.as_bytes());
+        dbg!(spk_summary.as_bytes());
+        place_in_rcrd(&summaries, &mut bytes);
+        dbg!("summaries", &bytes.len());
+        // place_in_rcrd([0x0].as_bytes(), &mut bytes);
+        // dbg!("nulls", &bytes.len());
         place_in_rcrd(name_rcrd.as_bytes(), &mut bytes);
-        place_in_rcrd(spk_summary.as_bytes(), &mut bytes);
-        bytes.extend_from_slice(&statedata_bytes);
+        dbg!("name rcrd", &bytes.len());
+        bytes.extend_from_slice(statedata_bytes.as_bytes());
 
         let u8_bytes = bytes.as_bytes();
 
@@ -134,12 +142,11 @@ impl Ephemeris {
     }
 }
 
-fn place_in_rcrd(input_bytes: &[u8], output_bytes: &mut Vec<f64>) {
+fn place_in_rcrd(input_bytes: &[u8], output_bytes: &mut Vec<u8>) {
     let mut rcrd_bytes = [0x0; RCRD_LEN];
     for (dest, src) in rcrd_bytes.iter_mut().zip(input_bytes) {
         *dest = *src;
     }
-    let f64_bytes = Ref::into_ref(Ref::<&[u8], [f64]>::from_bytes(&rcrd_bytes).unwrap());
 
-    output_bytes.extend_from_slice(f64_bytes);
+    output_bytes.extend_from_slice(&rcrd_bytes);
 }
