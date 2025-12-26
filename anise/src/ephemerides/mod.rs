@@ -16,6 +16,7 @@ use crate::{
     naif::daf::DAFError, prelude::FrameUid, NaifId,
 };
 
+#[cfg(feature = "analysis")]
 pub mod ephemeris;
 pub mod paths;
 pub mod translate_to_parent;

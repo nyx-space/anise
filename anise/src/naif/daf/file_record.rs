@@ -146,4 +146,23 @@ impl FileRecord {
     pub fn is_empty(&self) -> bool {
         self == &Self::default()
     }
+
+    pub(crate) fn spk(filename: &str) -> Self {
+        let mut internal_filename = [0u8; 60];
+        for (dest, src) in internal_filename.iter_mut().zip(filename.as_bytes()) {
+            *dest = *src;
+        }
+
+        Self {
+            id_str: *b"DAF/SPK\0",
+            nd: 2,
+            ni: 6,
+            internal_filename,
+            forward: 4,
+            backward: 4,
+            free_addr: 0,
+            endian_str: Endian::daf_endian_str(),
+            ..Default::default()
+        }
+    }
 }

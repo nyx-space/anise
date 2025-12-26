@@ -18,7 +18,7 @@ use super::{DAFError, NAIFRecord, NAIFSummaryRecord, RCRD_LEN};
 #[derive(IntoBytes, FromBytes, KnownLayout, Immutable, Clone, Debug)]
 #[repr(C)]
 pub struct NameRecord {
-    raw_names: [u8; RCRD_LEN],
+    pub(crate) raw_names: [u8; RCRD_LEN],
 }
 
 impl Default for NameRecord {

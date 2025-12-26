@@ -28,6 +28,8 @@ mod covariance;
 mod oem;
 #[cfg(feature = "python")]
 mod python;
+mod spk;
+
 pub use covariance::{Covariance, LocalFrame};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -502,6 +504,14 @@ mod ut_oem {
 
         let ephem2 = Ephemeris::from_ccsds_oem_file(outpath).unwrap();
         assert_eq!(ephem2, ephem);
+
+        // Build the SPK/BSP file as Type13 first
+        let my_spk = ephem
+            .to_spice_bsp_spk(-159, Some(DataType::Type13HermiteUnequalStep))
+            .unwrap();
+        println!("{:?}", my_spk.file_record().unwrap());
+        let summary = my_spk.summary_from_id(-159).unwrap().0;
+        println!("{summary:?}");
     }
 
     #[test]

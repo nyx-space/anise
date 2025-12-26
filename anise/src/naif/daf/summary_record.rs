@@ -16,9 +16,9 @@ use super::NAIFRecord;
 #[derive(IntoBytes, Clone, Copy, Debug, Default, FromBytes, KnownLayout, Immutable)]
 #[repr(C)]
 pub struct SummaryRecord {
-    next_record: f64,
-    prev_record: f64,
-    num_summaries: f64,
+    pub(crate) next_record: f64,
+    pub(crate) prev_record: f64,
+    pub(crate) num_summaries: f64,
 }
 
 impl NAIFRecord for SummaryRecord {}
