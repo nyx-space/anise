@@ -182,11 +182,6 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     /// Reads and parses the DAF summary record, starting at the provided idx (1-index!) or at the file record's forward index if no index provided.
     pub fn daf_summary(&self, idx: Option<usize>) -> Result<SummaryRecord, DAFError> {
         let rcrd_idx = (idx.unwrap_or(self.file_record()?.fwrd_idx()) - 1) * RCRD_LEN;
-        println!(
-            "daf summary read from {rcrd_idx} to {} until {}",
-            rcrd_idx + RCRD_LEN,
-            SummaryRecord::SIZE
-        );
         let rcrd_bytes = self
             .bytes
             .get(rcrd_idx..rcrd_idx + RCRD_LEN)
@@ -214,11 +209,6 @@ impl<R: NAIFSummaryRecord> DAF<R> {
 
         // The file record's forward pointer points to the first summary record.
         let rcrd_idx = (idx.unwrap_or(self.file_record()?.fwrd_idx()) - 1) * RCRD_LEN;
-        println!(
-            "SPK summary read from {rcrd_idx} to {} .. but starting at {}",
-            rcrd_idx + RCRD_LEN,
-            SummaryRecord::SIZE
-        );
         let rcrd_bytes = match self
             .bytes
             .get(rcrd_idx..rcrd_idx + RCRD_LEN)
@@ -235,8 +225,6 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 })
             }
         };
-
-        println!("data sum: {rcrd_bytes:?}");
 
         // The summaries are located after the main DAF summary record within the same record.
         Ok(
@@ -301,12 +289,11 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         let mut idx = None;
         loop {
             for (summary_idx, summary) in self.data_summaries(idx)?.iter().enumerate() {
-                if dbg!(summary.id()) == id {
+                if summary.id() == id {
                     return Ok((summary, idx, summary_idx));
                 }
             }
             let summary = self.daf_summary(idx)?;
-            println!("{summary:?}");
             if summary.is_final_record() {
                 break;
             } else {

@@ -18,7 +18,7 @@ use crate::{
     NaifId, DBL_SIZE,
 };
 use bytes::BytesMut;
-use zerocopy::{IntoBytes, Ref};
+use zerocopy::IntoBytes;
 
 use super::Ephemeris;
 
@@ -63,7 +63,7 @@ impl Ephemeris {
         let spk_summary = SPKSummaryRecord {
             start_epoch_et_s: first_orbit.epoch.to_et_seconds(),
             end_epoch_et_s: last_orbit.epoch.to_et_seconds(),
-            target_id: dbg!(naif_id),
+            target_id: naif_id,
             center_id: first_frame.ephemeris_id,
             frame_id: first_frame.orientation_id,
             data_type_i: interpolation.into(),
@@ -115,18 +115,10 @@ impl Ephemeris {
 
         // Write the bytes in order.
         place_in_rcrd(file_rcrd.as_bytes(), &mut bytes);
-        dbg!("file rcrd", &bytes.len());
         // The SPK summary immediately follows the DAF summary for each summary!
         let summaries = [daf_summary.as_bytes(), spk_summary.as_bytes()].concat();
-
-        dbg!(daf_summary.as_bytes());
-        dbg!(spk_summary.as_bytes());
         place_in_rcrd(&summaries, &mut bytes);
-        dbg!("summaries", &bytes.len());
-        // place_in_rcrd([0x0].as_bytes(), &mut bytes);
-        // dbg!("nulls", &bytes.len());
         place_in_rcrd(name_rcrd.as_bytes(), &mut bytes);
-        dbg!("name rcrd", &bytes.len());
         bytes.extend_from_slice(statedata_bytes.as_bytes());
 
         let u8_bytes = bytes.as_bytes();

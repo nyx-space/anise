@@ -73,6 +73,14 @@ impl Ephemeris {
         }
     }
 
+    pub fn start_epoch(&self) -> Result<Epoch, EphemerisError> {
+        Ok(self.domain()?.0)
+    }
+
+    pub fn end_epoch(&self) -> Result<Epoch, EphemerisError> {
+        Ok(self.domain()?.1)
+    }
+
     /// Returns whether all of the data in this ephemeris includes the covariance.
     pub fn includes_covariance(&self) -> bool {
         self.state_data
@@ -421,6 +429,8 @@ impl fmt::Display for Ephemeris {
 
 #[cfg(test)]
 mod ut_oem {
+    use crate::prelude::NAIFSummaryRecord;
+
     use super::{Almanac, DataType, Ephemeris, LocalFrame};
     use hifitime::{Epoch, Unit};
     use nalgebra::{Matrix6, SymmetricEigen, Vector6};
@@ -515,16 +525,20 @@ mod ut_oem {
         file.write_all(&my_spk.bytes).unwrap();
 
         let frcrd = my_spk.file_record().unwrap();
-        println!("{frcrd}");
-        println!(
-            "{:?}",
-            my_spk
-                .name_record(None)
-                .unwrap()
-                .nth_name(0, frcrd.summary_size())
-        );
+        let name_rcrd = my_spk.name_record(None).unwrap();
+        let summary_name = name_rcrd.nth_name(0, frcrd.summary_size());
+        assert_eq!(summary_name, "0000-000A (converted by Nyx Space ANISE)");
         let summary = my_spk.summary_from_id(-159).unwrap().0;
-        println!("{summary:?}");
+        assert_eq!(
+            summary.data_type().unwrap(),
+            DataType::Type13HermiteUnequalStep
+        );
+        assert!(
+            (summary.start_epoch() - ephem.start_epoch().unwrap()).abs() < Unit::Microsecond * 0.05
+        );
+        assert!(
+            (summary.end_epoch() - ephem.end_epoch().unwrap()).abs() < Unit::Microsecond * 0.05
+        );
     }
 
     #[test]
