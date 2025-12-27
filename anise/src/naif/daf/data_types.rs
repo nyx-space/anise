@@ -77,6 +77,29 @@ impl TryFrom<i32> for DataType {
     }
 }
 
+impl From<DataType> for i32 {
+    fn from(data_type: DataType) -> i32 {
+        match data_type {
+            DataType::Type1ModifiedDifferenceArray => 1,
+            DataType::Type2ChebyshevTriplet => 2,
+            DataType::Type3ChebyshevSextuplet => 3,
+            DataType::Type5DiscreteStates => 5,
+            DataType::Type8LagrangeEqualStep => 8,
+            DataType::Type9LagrangeUnequalStep => 9,
+            DataType::Type10SpaceCommandTLE => 10,
+            DataType::Type12HermiteEqualStep => 12,
+            DataType::Type13HermiteUnequalStep => 13,
+            DataType::Type14ChebyshevUnequalStep => 14,
+            DataType::Type15PrecessingConics => 15,
+            DataType::Type17Equinoctial => 17,
+            DataType::Type18ESOCHermiteLagrange => 18,
+            DataType::Type19ESOCPiecewise => 19,
+            DataType::Type20ChebyshevDerivative => 20,
+            DataType::Type21ExtendedModifiedDifferenceArray => 21,
+        }
+    }
+}
+
 impl fmt::Display for DataType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(

@@ -369,6 +369,37 @@ def test_version():
 
     assert __version__ is not None
 
+def test_oem():
+    # Load an Almanac for the various frames used here.
+    almanac = Almanac("data/pck11.pca")
+    # 1. Load an OEM to Ephem
+    ephem = Ephemeris.from_ccsds_oem_file("data/tests/ccsds/oem/LRO_Nyx.oem")
+    print(ephem)
+    (start, end) = ephem.domain()
+    # Query the covariance using the Log Euclidean method
+    covar = ephem.covar_at(start + (end-start)*0.5, LocalFrame.RIC, almanac)
+    print(covar)
+    covar = ephem.covar_at(start + (end-start)*0.5, LocalFrame.Inertial, almanac)
+    print(covar)
+    covar = ephem.covar_at(start + (end-start)*0.5, LocalFrame.RCN, almanac)
+    print(covar)
+    covar = ephem.covar_at(start + (end-start)*0.5, LocalFrame.VNC, almanac)
+    print(covar)
+    # Export to SPICE BSP
+    ephem.write_spice_bsp(-159, "data/tests/naif/spk/ephem_from_python.bsp", DataType.Type13HermiteUnequalStep)
+
+    # 2. Load OEM to new Almanac, providing an ID to convert this OEM to SPK
+    almanac2 = Almanac.from_ccsds_oem_file("data/tests/ccsds/oem/LRO_Nyx.oem", -159)
+    start2, end2 = almanac2.spk_domain(-159)
+    # Small difference due to Ephemeris Time conversion, cf. hifitime docs
+    assert (start2 - start).abs().to_seconds() < 1e-7
+    assert (end2 - end).abs().to_seconds() < 1e-7
+    # 3. Load OEM to existing almanac
+    almanac = almanac.load_ccsds_oem_file("data/tests/ccsds/oem/LRO_Nyx.oem", -160)
+    start3, end3 = almanac.spk_domain(-160)
+    assert start2 == start3
+    assert end2 == end3
+    print(end3.to_et_seconds())
 
 if __name__ == "__main__":
     # test_meta_load()
@@ -376,4 +407,5 @@ if __name__ == "__main__":
     # test_frame_defs()
     # test_convert_tpc()
     # test_state_transformation()
-    test_location()
+    # test_location()
+    test_oem()

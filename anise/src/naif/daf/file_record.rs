@@ -14,6 +14,7 @@ use snafu::prelude::*;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 use crate::naif::Endian;
+use core::fmt;
 use log::error;
 
 use super::NAIFRecord;
@@ -145,5 +146,36 @@ impl FileRecord {
     /// Returns whether this record was just null bytes
     pub fn is_empty(&self) -> bool {
         self == &Self::default()
+    }
+
+    pub(crate) fn spk(filename: &str) -> Self {
+        let mut internal_filename = [0u8; 60];
+        for (dest, src) in internal_filename.iter_mut().zip(filename.as_bytes()) {
+            *dest = *src;
+        }
+
+        Self {
+            id_str: *b"DAF/SPK ",
+            nd: 2,
+            ni: 6,
+            internal_filename,
+            forward: 2,
+            backward: 2,
+            free_addr: 0,
+            endian_str: Endian::daf_endian_str(),
+            ..Default::default()
+        }
+    }
+}
+
+impl fmt::Display for FileRecord {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let id = self.identification().unwrap(); //_or("invalid identifier");
+        let endian = if let Ok(endian) = self.endianness() {
+            format!("{endian:?}")
+        } else {
+            "invalid endian".to_string()
+        };
+        write!(f, "FileRecord for {id} in {endian}",)
     }
 }

@@ -64,4 +64,11 @@ impl Endian {
             Self::Little
         }
     }
+
+    pub(crate) fn daf_endian_str() -> [u8; 8] {
+        match Self::f64_native() {
+            Endian::Little => *b"LTL-IEEE",
+            Endian::Big => *b"BIG-IEEE",
+        }
+    }
 }
