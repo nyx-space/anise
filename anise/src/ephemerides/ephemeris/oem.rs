@@ -29,9 +29,6 @@ use super::{Covariance, EphemEntry, Ephemeris, LocalFrame};
 
 impl Ephemeris {
     /// Initialize a new ephemeris from the path to a CCSDS OEM file.
-    ///
-    /// # Limitations
-    /// - Support covariance only in EME2000 frame
     pub fn from_ccsds_oem_file<P: AsRef<Path>>(path: P) -> Result<Self, EphemerisError> {
         // Open the file
         let file = File::open(path).map_err(|e| EphemerisError::OEMParsingError {

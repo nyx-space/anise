@@ -32,7 +32,7 @@ impl Almanac {
                 self.transform(target_frame, observer_frame, epoch, ab_corr)
                     .map_or_else(
                         |e| {
-                            eprintln!("{e}");
+                            warn!("{e}");
                             None
                         },
                         Some,

@@ -102,7 +102,7 @@ impl Ephemeris {
         // Build the data records. Both Lagrange and Hermite use the same structure.
         let mut state_data = Vec::with_capacity(self.state_data.len() * 7);
         let mut epoch_data = Vec::with_capacity(self.state_data.len());
-        let mut epoch_registry = Vec::with_capacity(self.state_data.len() % 100 + 1);
+        let mut epoch_registry = Vec::with_capacity(self.state_data.len() / 100);
         for (idx, (_, entry)) in self.state_data.iter().enumerate() {
             let orbit = entry.orbit;
             state_data.extend_from_slice(&[

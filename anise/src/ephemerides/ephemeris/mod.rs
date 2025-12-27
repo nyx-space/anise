@@ -199,12 +199,13 @@ impl Ephemeris {
     ///    The interpolation follows the "geodesic" (shortest path) on the curved surface of
     ///    covariance matrices.
     pub fn at(&self, epoch: Epoch, almanac: &Almanac) -> Result<EphemEntry, EphemerisError> {
-        if !(self.start_epoch()?..self.end_epoch()?).contains(&epoch) {
+        let (start, end) = self.domain()?;
+        if !(start..end).contains(&epoch) {
             return Err(EphemerisError::EphemInterpolation {
                 source: crate::math::interpolation::InterpolationError::NoInterpolationData {
                     req: epoch,
-                    start: self.start_epoch().expect("unreachable error"),
-                    end: self.end_epoch().expect("unreacuable"),
+                    start,
+                    end,
                 },
             });
         }

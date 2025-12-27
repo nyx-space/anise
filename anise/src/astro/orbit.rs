@@ -609,7 +609,7 @@ impl Orbit {
     pub fn dcm_to_inertial(&self, local_frame: LocalFrame) -> PhysicsResult<DCM> {
         match local_frame {
             LocalFrame::Inertial => Ok(DCM::identity(
-                uuid_from_epoch(self.frame.orientation_id, self.epoch),
+                self.frame.orientation_id,
                 self.frame.orientation_id,
             )),
             LocalFrame::RIC => self.dcm_from_ric_to_inertial(),
