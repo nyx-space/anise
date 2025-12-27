@@ -77,9 +77,9 @@ impl TryFrom<i32> for DataType {
     }
 }
 
-impl Into<i32> for DataType {
-    fn into(self) -> i32 {
-        match self {
+impl From<DataType> for i32 {
+    fn from(data_type: DataType) -> i32 {
+        match data_type {
             DataType::Type1ModifiedDifferenceArray => 1,
             DataType::Type2ChebyshevTriplet => 2,
             DataType::Type3ChebyshevSextuplet => 3,
