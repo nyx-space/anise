@@ -15,7 +15,7 @@ use crate::{
         spk::summary::SPKSummaryRecord,
         SPK,
     },
-    NaifId, DBL_SIZE,
+    NaifId,
 };
 use bytes::BytesMut;
 use log::warn;
@@ -81,7 +81,7 @@ impl Ephemeris {
         let first_orbit = self.state_data.first_key_value().unwrap().1.orbit;
         let first_frame = first_orbit.frame;
         let last_orbit = self.state_data.last_key_value().unwrap().1.orbit;
-        let spk_summary = SPKSummaryRecord {
+        let mut spk_summary = SPKSummaryRecord {
             start_epoch_et_s: first_orbit.epoch.to_et_seconds(),
             end_epoch_et_s: last_orbit.epoch.to_et_seconds(),
             target_id: naif_id,
@@ -89,7 +89,7 @@ impl Ephemeris {
             frame_id: first_frame.orientation_id,
             data_type_i: interpolation.into(),
             start_idx: 0,
-            end_idx: (self.state_data.len() * 7 * DBL_SIZE) as i32,
+            end_idx: 0,
         };
 
         // Build a single Summary record
@@ -114,7 +114,7 @@ impl Ephemeris {
                 orbit.velocity_km_s.z.to_ne_bytes(),
             ]);
             epoch_data.push(orbit.epoch.to_et_seconds().to_ne_bytes());
-            if idx % 100 == 0 {
+            if idx > 0 && (idx + 1) % 100 == 0 {
                 epoch_registry.push(orbit.epoch.to_et_seconds().to_ne_bytes());
             }
         }
@@ -124,10 +124,17 @@ impl Ephemeris {
         statedata_bytes.extend_from_slice(&epoch_data);
         statedata_bytes.extend_from_slice(&epoch_registry);
         statedata_bytes.push((self.degree as f64).to_ne_bytes());
-        statedata_bytes.push(((self.state_data.len() - 1) as f64).to_ne_bytes());
+        statedata_bytes.push((self.state_data.len() as f64).to_ne_bytes());
+
+        // Update the indices. DAF indices are 1-based word counts.
+        // We write 3 blocks of 1024 bytes (128 words each) before the data.
+        let start_idx = 385;
+        let end_idx = start_idx + statedata_bytes.len() - 1;
+        spk_summary.start_idx = start_idx as i32;
+        spk_summary.end_idx = end_idx as i32;
 
         // Update the file record
-        file_rcrd.free_addr = statedata_bytes.len() as u32;
+        file_rcrd.free_addr = (end_idx + 1) as u32;
 
         // Write the bytes in order.
         place_in_rcrd(file_rcrd.as_bytes(), &mut bytes);
@@ -138,10 +145,13 @@ impl Ephemeris {
         bytes.extend_from_slice(statedata_bytes.as_bytes());
 
         let u8_bytes = bytes.as_bytes();
+        // Pad to the nearest 1024 bytes block size.
+        let mut padded_bytes = vec![0u8; (u8_bytes.len() as f64 / 1024.0).ceil() as usize * 1024];
+        padded_bytes[..u8_bytes.len()].copy_from_slice(u8_bytes);
 
         // Finally, builds the DAF!
         let mut spk = SPK {
-            bytes: BytesMut::from(u8_bytes),
+            bytes: BytesMut::from(&padded_bytes[..]),
             crc32: None,
             _daf_type: std::marker::PhantomData,
         };
