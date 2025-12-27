@@ -13,7 +13,6 @@ use super::PhysicsResult;
 
 use crate::{
     astro::utils::true_anomaly_to_mean_anomaly_rad,
-    ephemerides::ephemeris::LocalFrame,
     errors::{
         HyperbolicTrueAnomalySnafu, InfiniteValueSnafu, MathError, ParabolicEccentricitySnafu,
         ParabolicSemiParamSnafu, PhysicsError, RadiusSnafu, VelocitySnafu,
@@ -27,8 +26,10 @@ use crate::{
     prelude::{uuid_from_epoch, Frame},
     NaifId,
 };
-use core::f64::consts::{PI, TAU};
 
+#[cfg(feature = "analysis")]
+use crate::ephemerides::ephemeris::LocalFrame;
+use core::f64::consts::{PI, TAU};
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits, Unit};
 use log::{info, warn};
@@ -604,6 +605,7 @@ impl Orbit {
         })
     }
 
+    #[cfg(feature = "analysis")]
     pub fn dcm_to_inertial(&self, local_frame: LocalFrame) -> PhysicsResult<DCM> {
         match local_frame {
             LocalFrame::Inertial => Ok(DCM::identity(

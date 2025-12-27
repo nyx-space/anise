@@ -26,7 +26,7 @@ use zerocopy::IntoBytes;
 use super::Ephemeris;
 
 impl Ephemeris {
-    pub fn to_spice_bsp_spk(
+    pub fn to_spice_bsp(
         &self,
         naif_id: NaifId,
         data_type: Option<DataType>,
@@ -150,13 +150,13 @@ impl Ephemeris {
     }
 
     /// Converts this ephemeris to SPICE BSP/SPK file in the provided data type, saved to the provided output_fname.
-    pub fn write_spice_bsp_spk(
+    pub fn write_spice_bsp(
         &self,
         naif_id: NaifId,
         output_fname: &str,
         data_type: Option<DataType>,
     ) -> Result<(), EphemerisError> {
-        let spk = self.to_spice_bsp_spk(naif_id, data_type)?;
+        let spk = self.to_spice_bsp(naif_id, data_type)?;
 
         match File::create(output_fname) {
             Ok(mut file) => {

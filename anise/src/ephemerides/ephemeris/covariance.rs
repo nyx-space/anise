@@ -9,6 +9,7 @@
  */
 
 use crate::math::Matrix6;
+use core::fmt;
 use nalgebra::SymmetricEigen;
 
 #[cfg(feature = "python")]
@@ -30,6 +31,13 @@ pub enum LocalFrame {
 pub struct Covariance {
     pub matrix: Matrix6,
     pub local_frame: LocalFrame,
+}
+
+impl fmt::Display for Covariance {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Covariance in {:?}", self.local_frame)?;
+        write!(f, "{:.6}", self.matrix)
+    }
 }
 
 /// Computes the Matrix Logarithm of a Symmetric Positive Definite matrix.

@@ -61,11 +61,9 @@ impl Almanac {
             action: "loading CCSDS OEM",
         })?;
         // Convert to BSP
-        let spk = ephem
-            .to_spice_bsp_spk(naif_id, None)
-            .context(EphemerisSnafu {
-                action: "converting CCSDS OEM to SPICE BSP",
-            })?;
+        let spk = ephem.to_spice_bsp(naif_id, None).context(EphemerisSnafu {
+            action: "converting CCSDS OEM to SPICE BSP",
+        })?;
         Ok(Self::default().with_spk(spk))
     }
 
@@ -173,11 +171,9 @@ impl Almanac {
             action: "loading CCSDS OEM",
         })?;
         // Convert to BSP
-        let spk = ephem
-            .to_spice_bsp_spk(naif_id, None)
-            .context(EphemerisSnafu {
-                action: "converting CCSDS OEM to SPICE BSP",
-            })?;
+        let spk = ephem.to_spice_bsp(naif_id, None).context(EphemerisSnafu {
+            action: "converting CCSDS OEM to SPICE BSP",
+        })?;
         Ok(self.clone().with_spk(spk))
     }
 

@@ -85,7 +85,7 @@ impl Ephemeris {
     ///
     /// This is a helper function which isn't used in other functions.
     pub fn includes_covariance(&self) -> bool {
-        self.state_data.values().any(|entry| entry.covar.is_none())
+        !self.state_data.is_empty() && self.state_data.values().all(|entry| entry.covar.is_some())
     }
 
     /// Inserts a new ephemeris entry to this ephemeris (it is automatically sorted chronologically).
@@ -199,6 +199,15 @@ impl Ephemeris {
     ///    The interpolation follows the "geodesic" (shortest path) on the curved surface of
     ///    covariance matrices.
     pub fn at(&self, epoch: Epoch, almanac: &Almanac) -> Result<EphemEntry, EphemerisError> {
+        if !(self.start_epoch()?..self.end_epoch()?).contains(&epoch) {
+            return Err(EphemerisError::EphemInterpolation {
+                source: crate::math::interpolation::InterpolationError::NoInterpolationData {
+                    req: epoch,
+                    start: self.start_epoch().expect("unreachable error"),
+                    end: self.end_epoch().expect("unreacuable"),
+                },
+            });
+        }
         // Grab the N/2 previous states
         let n = self.degree / 2;
         let prev_states: Vec<EphemEntry> = {
@@ -267,47 +276,10 @@ impl Ephemeris {
             orbit.frame = frame;
         }
 
-        // Interpolate the covariances if they're set
-        let mut covar = None;
-        if let Ok(Some((epoch0, covar0))) = self.nearest_covar_before(epoch, almanac) {
-            if let Ok(Some((epoch1, mut covar1))) = self.nearest_covar_after(epoch, almanac) {
-                if covar0.local_frame != covar1.local_frame {
-                    // Rotate the second covariance into the frame of the first.
-                    let orbit0 = self.nearest_orbit_before(epoch, almanac)?;
-                    let orbit1 = self.nearest_orbit_after(epoch, almanac)?;
-                    let dcm_0_to_inertial = orbit0.dcm_to_inertial(covar0.local_frame).context(
-                        EphemerisPhysicsSnafu {
-                            action: "rotating orbit0 covariance",
-                        },
-                    )?;
-
-                    let dcm_1_to_inertial = orbit1.dcm_to_inertial(covar1.local_frame).context(
-                        EphemerisPhysicsSnafu {
-                            action: "rotating orbit1 covariance",
-                        },
-                    )?;
-
-                    let dcm = (dcm_0_to_inertial * dcm_1_to_inertial.transpose())
-                        .expect("internal error");
-                    // Rotate covar1 from its frame to the frame of the covar0
-                    covar1.matrix = dcm.state_dcm() * covar1.matrix * dcm.state_dcm().transpose();
-                }
-                if epoch1 != epoch0 {
-                    let alpha = (epoch - epoch0).to_seconds() / (epoch1 - epoch0).to_seconds();
-
-                    if let Some(covar_mat) =
-                        interpolate_covar_log_euclidean(covar0.matrix, covar1.matrix, alpha)
-                    {
-                        covar = Some(Covariance {
-                            matrix: covar_mat,
-                            local_frame: covar0.local_frame,
-                        });
-                    }
-                }
-            }
-        }
-
-        let entry = EphemEntry { orbit, covar };
+        let entry = EphemEntry {
+            orbit,
+            covar: self.covar_at(epoch, LocalFrame::Inertial, almanac)?,
+        };
 
         Ok(entry)
     }
@@ -435,7 +407,7 @@ mod ut_oem {
     use crate::prelude::NAIFSummaryRecord;
 
     use super::{Almanac, DataType, Ephemeris, LocalFrame};
-    use hifitime::{Epoch, Unit};
+    use hifitime::{Epoch, TimeSeries, Unit};
     use nalgebra::{Matrix6, SymmetricEigen, Vector6};
     use std::{fs::File, io::Write};
 
@@ -521,7 +493,7 @@ mod ut_oem {
 
         // Build the SPK/BSP file as Type13 first
         let my_spk = ephem
-            .to_spice_bsp_spk(-159, Some(DataType::Type13HermiteUnequalStep))
+            .to_spice_bsp(-159, Some(DataType::Type13HermiteUnequalStep))
             .unwrap();
 
         let mut file = File::create("../data/tests/naif/spk/meo.bsp").unwrap();
@@ -545,7 +517,7 @@ mod ut_oem {
 
         // Build without specifying the data type, which causes the builder to default to using a Lagrange interpolation.
         ephem
-            .write_spice_bsp_spk(-159, "../data/tests/naif/spk/meo_lagrange.bsp", None)
+            .write_spice_bsp(-159, "../data/tests/naif/spk/meo_lagrange.bsp", None)
             .unwrap();
     }
 
@@ -614,6 +586,15 @@ mod ut_oem {
         println!("before = {before}\nduring = {halfway}\nafter = {after}");
         assert!((halfway - before).norm() < 1e-14);
         assert!((halfway - after).norm() < 1e-14);
+
+        // Check that we can interpolate throughout the ephemeris
+        for epoch in TimeSeries::inclusive(
+            ephem.start_epoch().unwrap(),
+            ephem.end_epoch().unwrap(),
+            Unit::Minute * 1.337,
+        ) {
+            assert!(ephem.at(epoch, &almanac).is_ok());
+        }
     }
 
     #[rstest]

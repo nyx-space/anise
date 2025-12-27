@@ -13,6 +13,8 @@ use crate::naif::daf::data_types::DataType;
 use crate::naif::daf::DafDataType;
 use crate::NaifId;
 use hifitime::Epoch;
+use ndarray::Array2;
+use numpy::PyArray2;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
 use std::collections::BTreeMap;
@@ -255,13 +257,48 @@ impl Ephemeris {
     /// :type naif_id: int
     /// :type output_fname: str
     /// :type data_type: DataType
-    #[pyo3(name = "write_spice_bsp_spk")]
-    pub fn py_write_spice_bsp_spk(
+    #[pyo3(name = "write_spice_bsp")]
+    pub fn py_write_spice_bsp(
         &self,
         naif_id: NaifId,
         output_fname: &str,
         data_type: Option<DataType>,
     ) -> Result<(), EphemerisError> {
-        self.write_spice_bsp_spk(naif_id, output_fname, data_type)
+        self.write_spice_bsp(naif_id, output_fname, data_type)
+    }
+
+    fn __str__(&self) -> String {
+        format!("{self}")
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{self}@{self:p}")
+    }
+}
+
+#[pymethods]
+impl Covariance {
+    /// Returns the 6x6 DCM to rotate a state. If the time derivative of this DCM is defined, this 6x6 accounts for the transport theorem.
+    /// Warning: you MUST manually install numpy to call this function.
+    /// :rtype: numpy.array
+    #[getter]
+    fn get_matrix<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray2<f64>>> {
+        // Extract data from SMatrix (column-major order, hence the transpose)
+        let data: Vec<f64> = self.matrix.transpose().iter().copied().collect();
+
+        // Create an ndarray Array2 (row-major order)
+        let state_dcm = Array2::from_shape_vec((6, 6), data).unwrap();
+
+        let pt_state_dcm = PyArray2::<f64>::from_owned_array(py, state_dcm);
+
+        Ok(pt_state_dcm)
+    }
+
+    fn __str__(&self) -> String {
+        format!("{self}")
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{self}@{self:p}")
     }
 }
