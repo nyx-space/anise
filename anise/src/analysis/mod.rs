@@ -958,5 +958,37 @@ mod ut_analysis {
                 arc.aer_data.len()
             );
         }
+
+        // Test for a condition that is always met.
+        let fpa_always_lt = Event {
+            scalar: ScalarExpr::Element(OrbitalElement::FlightPathAngle),
+            condition: Condition::LessThan(45.0),
+            epoch_precision: Unit::Second * 0.1,
+            ab_corr: None,
+        };
+
+        let arcs = almanac
+            .report_event_arcs(
+                &lro_state_spec,
+                &fpa_always_lt,
+                start_epoch,
+                start_epoch + Unit::Day * 1,
+            )
+            .unwrap();
+        assert_eq!(
+            arcs.len(),
+            1,
+            "expected a single arc for a condition that is always met"
+        );
+        assert_eq!(
+            arcs[0].start_epoch(),
+            start_epoch,
+            "arc should start at the beginning of the search interval"
+        );
+        assert_eq!(
+            arcs[0].end_epoch(),
+            start_epoch + Unit::Day * 1,
+            "arc should end at the end of the search interval"
+        );
     }
 }
