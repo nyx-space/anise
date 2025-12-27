@@ -10,6 +10,8 @@
 
 use super::{planetary::PlanetaryDataError, Almanac};
 use crate::constants::orientations::J2000;
+use crate::ephemerides::ephemeris::Ephemeris;
+use crate::errors::EphemerisSnafu;
 use crate::{
     astro::{Aberration, AzElRange, Location, Occultation},
     ephemerides::EphemerisError,
@@ -23,7 +25,9 @@ use hifitime::{Epoch, TimeScale, TimeSeries};
 use ndarray::Array1;
 use numpy::PyArray1;
 use pyo3::prelude::*;
+use pyo3::types::PyType;
 use rayon::prelude::*;
+use snafu::ResultExt;
 
 #[pymethods]
 impl Almanac {
@@ -39,6 +43,30 @@ impl Almanac {
     #[new]
     fn py_new(path: &str) -> AlmanacResult<Self> {
         Self::new(path)
+    }
+
+    /// Initializes a new Almanac from a file path to CCSDS OEM file, after converting to to SPICE SPK/BSP
+    ///
+    /// :type path: str
+    /// :type naif_id: int
+    /// :rtype: Almanac
+    #[classmethod]
+    #[pyo3(name = "from_ccsds_oem_file")]
+    fn py_from_ccsds_oem_file(
+        _cls: Bound<'_, PyType>,
+        path: &str,
+        naif_id: NaifId,
+    ) -> AlmanacResult<Self> {
+        let ephem = Ephemeris::from_ccsds_oem_file(path).context(EphemerisSnafu {
+            action: "loading CCSDS OEM",
+        })?;
+        // Convert to BSP
+        let spk = ephem
+            .to_spice_bsp_spk(naif_id, None)
+            .context(EphemerisSnafu {
+                action: "converting CCSDS OEM to SPICE BSP",
+            })?;
+        Ok(Self::default().with_spk(spk))
     }
 
     fn __str__(&self) -> String {
@@ -132,6 +160,25 @@ impl Almanac {
     #[pyo3(name = "load")]
     fn py_load(&self, path: &str) -> AlmanacResult<Self> {
         self.clone().load(path)
+    }
+
+    /// Converts the provided CCSDS OEM to SPICE SPK/BSP and loads it in the Almanac.
+    ///
+    /// :type path: str
+    /// :type naif_id: int
+    /// :rtype: Almanac
+    #[pyo3(name = "load_ccsds_oem_file")]
+    fn py_load_ccsds_oem_file(&self, path: &str, naif_id: NaifId) -> AlmanacResult<Self> {
+        let ephem = Ephemeris::from_ccsds_oem_file(path).context(EphemerisSnafu {
+            action: "loading CCSDS OEM",
+        })?;
+        // Convert to BSP
+        let spk = ephem
+            .to_spice_bsp_spk(naif_id, None)
+            .context(EphemerisSnafu {
+                action: "converting CCSDS OEM to SPICE BSP",
+            })?;
+        Ok(self.clone().with_spk(spk))
     }
 
     /// Unloads (in-place) the SPK with the provided alias.

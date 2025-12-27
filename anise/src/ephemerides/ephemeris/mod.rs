@@ -81,13 +81,11 @@ impl Ephemeris {
         Ok(self.domain()?.1)
     }
 
-    /// Returns whether all of the data in this ephemeris includes the covariance.
+    /// Returns true if all of the data in this ephemeris includes covariance.
+    ///
+    /// This is a helper function which isn't used in other functions.
     pub fn includes_covariance(&self) -> bool {
-        self.state_data
-            .values()
-            .filter(|entry| entry.covar.is_none())
-            .count()
-            > 0
+        self.state_data.values().any(|entry| entry.covar.is_none())
     }
 
     /// Inserts a new ephemeris entry to this ephemeris (it is automatically sorted chronologically).
@@ -203,12 +201,17 @@ impl Ephemeris {
     pub fn at(&self, epoch: Epoch, almanac: &Almanac) -> Result<EphemEntry, EphemerisError> {
         // Grab the N/2 previous states
         let n = self.degree / 2;
-        let prev_states = self
-            .state_data
-            .range(..=epoch)
-            .take(n)
-            .map(|e| *e.1)
-            .collect::<Vec<EphemEntry>>();
+        let prev_states: Vec<EphemEntry> = {
+            let mut states: Vec<EphemEntry> = self
+                .state_data
+                .range(..epoch)
+                .rev()
+                .take(n)
+                .map(|e| *e.1)
+                .collect();
+            states.reverse();
+            states
+        };
         let next_states = self
             .state_data
             .range(epoch..)
@@ -539,6 +542,11 @@ mod ut_oem {
         assert!(
             (summary.end_epoch() - ephem.end_epoch().unwrap()).abs() < Unit::Microsecond * 0.05
         );
+
+        // Build without specifying the data type, which causes the builder to default to using a Lagrange interpolation.
+        ephem
+            .write_spice_bsp_spk(-159, "../data/tests/naif/spk/meo_lagrange.bsp", None)
+            .unwrap();
     }
 
     #[test]

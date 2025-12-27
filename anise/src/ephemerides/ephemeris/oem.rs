@@ -165,10 +165,15 @@ impl Ephemeris {
             } else if line.starts_with("COMMENT") {
                 // Ignore
             } else if in_state_data {
+                let center_name_str =
+                    center_name
+                        .as_ref()
+                        .ok_or_else(|| EphemerisError::OEMParsingError {
+                            lno,
+                            details: "CENTER_NAME not found in metadata".to_string(),
+                        })?;
                 // Capitalize the center name
-                let center_name = center_name
-                    .as_ref()
-                    .unwrap()
+                let center_name = center_name_str
                     .split_whitespace()
                     .map(|word| {
                         let word = word.to_lowercase();
@@ -183,11 +188,20 @@ impl Ephemeris {
                     .collect::<Vec<String>>()
                     .join(" ");
 
+                let orient_name_str =
+                    orient_name
+                        .as_ref()
+                        .ok_or_else(|| EphemerisError::OEMParsingError {
+                            lno,
+                            details: "REF_FRAME not found in metadata".to_string(),
+                        })?;
+
                 let frame =
-                    Frame::from_name(center_name.as_str(), orient_name.clone().unwrap().as_str())
-                        .map_err(|e| EphemerisError::OEMParsingError {
-                        lno,
-                        details: format!("frame error `{center_name:?} {orient_name:?}`: {e}"),
+                    Frame::from_name(center_name.as_str(), orient_name_str).map_err(|e| {
+                        EphemerisError::OEMParsingError {
+                            lno,
+                            details: format!("frame error `{center_name:?} {orient_name:?}`: {e}"),
+                        }
                     })?;
 
                 // Split the line into components

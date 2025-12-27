@@ -9,15 +9,18 @@
  */
 
 use crate::{
-    ephemerides::EphemerisError,
+    ephemerides::{EphemerisError, SPKWritingSnafu},
     naif::{
-        daf::{DafDataType, FileRecord, NameRecord, SummaryRecord, RCRD_LEN},
+        daf::{data_types::DataType, FileRecord, NameRecord, SummaryRecord, RCRD_LEN},
         spk::summary::SPKSummaryRecord,
         SPK,
     },
     NaifId, DBL_SIZE,
 };
 use bytes::BytesMut;
+use log::warn;
+use snafu::ensure;
+use std::{fs::File, io::Write};
 use zerocopy::IntoBytes;
 
 use super::Ephemeris;
@@ -26,13 +29,31 @@ impl Ephemeris {
     pub fn to_spice_bsp_spk(
         &self,
         naif_id: NaifId,
-        data_type: Option<DafDataType>,
+        data_type: Option<DataType>,
     ) -> Result<SPK, EphemerisError> {
         if self.state_data.is_empty() {
-            return Err(EphemerisError::OEMParsingError {
-                lno: 0,
+            return Err(EphemerisError::SPKWritingError {
                 details: "ephemeris file contains no state data".to_string(),
             });
+        }
+
+        if let Some(data_type) = data_type {
+            ensure!(
+                [
+                    DataType::Type13HermiteUnequalStep,
+                    DataType::Type9LagrangeUnequalStep
+                ]
+                .contains(&data_type),
+                SPKWritingSnafu {
+                    details:
+                        ("provided data type must be either Type 13 Hermite or Type 9 Lagrange")
+                            .to_string()
+                }
+            );
+        }
+
+        if self.includes_covariance() {
+            warn!("ephemeris contains covariance, which is NOT copied to the SPICE BSP file");
         }
 
         let mut bytes = vec![];
@@ -78,37 +99,32 @@ impl Ephemeris {
             num_summaries: 1.0,
         };
 
-        // Build the data records
-        match interpolation {
-            DafDataType::Type13HermiteUnequalStep => {
-                let mut state_data = Vec::with_capacity(self.state_data.len() * 7);
-                let mut epoch_data = Vec::with_capacity(self.state_data.len());
-                let mut epoch_registry = Vec::with_capacity(self.state_data.len() % 100 + 1);
-                for (idx, (_, entry)) in self.state_data.iter().enumerate() {
-                    let orbit = entry.orbit;
-                    state_data.extend_from_slice(&[
-                        orbit.radius_km.x.to_ne_bytes(),
-                        orbit.radius_km.y.to_ne_bytes(),
-                        orbit.radius_km.z.to_ne_bytes(),
-                        orbit.velocity_km_s.x.to_ne_bytes(),
-                        orbit.velocity_km_s.y.to_ne_bytes(),
-                        orbit.velocity_km_s.z.to_ne_bytes(),
-                    ]);
-                    epoch_data.push(orbit.epoch.to_et_seconds().to_ne_bytes());
-                    if idx % 100 == 0 {
-                        epoch_registry.push(orbit.epoch.to_et_seconds().to_ne_bytes());
-                    }
-                }
-
-                // Now, manually build the HermiteSetType13 since we have nearly everything in the correct order and format.
-                statedata_bytes.extend_from_slice(&state_data);
-                statedata_bytes.extend_from_slice(&epoch_data);
-                statedata_bytes.extend_from_slice(&epoch_registry);
-                statedata_bytes.push((self.degree as f64).to_ne_bytes());
-                statedata_bytes.push(((self.state_data.len() - 1) as f64).to_ne_bytes());
+        // Build the data records. Both Lagrange and Hermite use the same structure.
+        let mut state_data = Vec::with_capacity(self.state_data.len() * 7);
+        let mut epoch_data = Vec::with_capacity(self.state_data.len());
+        let mut epoch_registry = Vec::with_capacity(self.state_data.len() % 100 + 1);
+        for (idx, (_, entry)) in self.state_data.iter().enumerate() {
+            let orbit = entry.orbit;
+            state_data.extend_from_slice(&[
+                orbit.radius_km.x.to_ne_bytes(),
+                orbit.radius_km.y.to_ne_bytes(),
+                orbit.radius_km.z.to_ne_bytes(),
+                orbit.velocity_km_s.x.to_ne_bytes(),
+                orbit.velocity_km_s.y.to_ne_bytes(),
+                orbit.velocity_km_s.z.to_ne_bytes(),
+            ]);
+            epoch_data.push(orbit.epoch.to_et_seconds().to_ne_bytes());
+            if idx % 100 == 0 {
+                epoch_registry.push(orbit.epoch.to_et_seconds().to_ne_bytes());
             }
-            _ => unreachable!(),
-        };
+        }
+
+        // Now, manually build the HermiteSetType13 since we have nearly everything in the correct order and format.
+        statedata_bytes.extend_from_slice(&state_data);
+        statedata_bytes.extend_from_slice(&epoch_data);
+        statedata_bytes.extend_from_slice(&epoch_registry);
+        statedata_bytes.push((self.degree as f64).to_ne_bytes());
+        statedata_bytes.push(((self.state_data.len() - 1) as f64).to_ne_bytes());
 
         // Update the file record
         file_rcrd.free_addr = statedata_bytes.len() as u32;
@@ -131,6 +147,33 @@ impl Ephemeris {
         };
         spk.set_crc32();
         Ok(spk)
+    }
+
+    /// Converts this ephemeris to SPICE BSP/SPK file in the provided data type, saved to the provided output_fname.
+    pub fn write_spice_bsp_spk(
+        &self,
+        naif_id: NaifId,
+        output_fname: &str,
+        data_type: Option<DataType>,
+    ) -> Result<(), EphemerisError> {
+        let spk = self.to_spice_bsp_spk(naif_id, data_type)?;
+
+        match File::create(output_fname) {
+            Ok(mut file) => {
+                if let Err(e) = file.write_all(&spk.bytes) {
+                    return Err(EphemerisError::SPKWritingError {
+                        details: format!("{e}"),
+                    });
+                };
+            }
+            Err(e) => {
+                return Err(EphemerisError::SPKWritingError {
+                    details: format!("{e}"),
+                })
+            }
+        };
+
+        Ok(())
     }
 }
 

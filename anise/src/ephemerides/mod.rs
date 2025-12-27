@@ -79,4 +79,6 @@ pub enum EphemerisError {
     },
     #[snafu(display("CCSDS OEM writing error: {details}"))]
     OEMWritingError { details: String },
+    #[snafu(display("SPICE BSP/SPK writing error: {details}"))]
+    SPKWritingError { details: String },
 }

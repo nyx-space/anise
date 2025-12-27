@@ -11,6 +11,7 @@
 use super::{Almanac, Covariance, EphemEntry, Ephemeris, EphemerisError, LocalFrame, Orbit};
 use crate::naif::daf::data_types::DataType;
 use crate::naif::daf::DafDataType;
+use crate::NaifId;
 use hifitime::Epoch;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
@@ -64,6 +65,7 @@ impl Ephemeris {
     /// :type path: str
     /// :type originator: str, optional
     /// :type object_name: str, optional
+    #[pyo3(name = "to_ccsds_oem_file", signature=(path, originator=None, object_name=None))]
     fn py_to_ccsds_oem_file(
         &self,
         path: &str,
@@ -76,6 +78,7 @@ impl Ephemeris {
     /// Returns the time domain of this ephemeris.
     ///
     /// :rtype: tuple
+    #[pyo3(name = "domain")]
     pub fn py_domain(&self) -> Result<(Epoch, Epoch), EphemerisError> {
         self.domain()
     }
@@ -83,6 +86,7 @@ impl Ephemeris {
     /// Returns whether all of the data in this ephemeris includes the covariance.
     ///
     /// :rtype: bool
+    #[pyo3(name = "includes_covariance")]
     pub fn py_includes_covariance(&self) -> bool {
         self.includes_covariance()
     }
@@ -90,6 +94,7 @@ impl Ephemeris {
     /// Inserts a new ephemeris entry to this ephemeris (it is automatically sorted chronologically).
     ///
     /// :type entry: EphemEntry
+    #[pyo3(name = "insert")]
     pub fn py_insert(&mut self, entry: EphemEntry) {
         self.insert(entry);
     }
@@ -97,6 +102,7 @@ impl Ephemeris {
     /// Inserts a new orbit (without covariance) to this ephemeris (it is automatically sorted chronologically).
     ///
     /// :type orbit: Orbit
+    #[pyo3(name = "insert_orbit")]
     pub fn py_insert_orbit(&mut self, orbit: Orbit) {
         self.insert_orbit(orbit);
     }
@@ -106,6 +112,7 @@ impl Ephemeris {
     /// :type epoch: Epoch
     /// :type almanac: Almanac
     /// :rtype: EphemEntry
+    #[pyo3(name = "nearest_before")]
     pub fn py_nearest_before(
         &self,
         epoch: Epoch,
@@ -119,6 +126,7 @@ impl Ephemeris {
     /// :type epoch: Epoch
     /// :type almanac: Almanac
     /// :rtype: EphemEntry
+    #[pyo3(name = "nearest_after")]
     pub fn py_nearest_after(
         &self,
         epoch: Epoch,
@@ -132,6 +140,7 @@ impl Ephemeris {
     /// :type epoch: Epoch
     /// :type almanac: Almanac
     /// :rtype: Orbit
+    #[pyo3(name = "nearest_orbit_before")]
     pub fn py_nearest_orbit_before(
         &self,
         epoch: Epoch,
@@ -145,6 +154,7 @@ impl Ephemeris {
     /// :type epoch: Epoch
     /// :type almanac: Almanac
     /// :rtype: Orbit
+    #[pyo3(name = "nearest_orbit_after")]
     pub fn py_nearest_orbit_after(
         &self,
         epoch: Epoch,
@@ -158,6 +168,7 @@ impl Ephemeris {
     /// :type epoch: Epoch
     /// :type almanac: Almanac
     /// :rtype: tuple
+    #[pyo3(name = "nearest_covar_before")]
     pub fn py_nearest_covar_before(
         &self,
         epoch: Epoch,
@@ -171,6 +182,7 @@ impl Ephemeris {
     /// :type epoch: Epoch
     /// :type almanac: Almanac
     /// :rtype: tuple
+    #[pyo3(name = "nearest_covar_after")]
     pub fn py_nearest_covar_after(
         &self,
         epoch: Epoch,
@@ -208,6 +220,7 @@ impl Ephemeris {
     /// :type epoch: Epoch
     /// :type almanac: Almanac
     /// :rtype: EphemEntry
+    #[pyo3(name = "at")]
     pub fn py_at(&self, epoch: Epoch, almanac: &Almanac) -> Result<EphemEntry, EphemerisError> {
         self.at(epoch, almanac)
     }
@@ -217,6 +230,7 @@ impl Ephemeris {
     /// :type epoch: Epoch
     /// :type almanac: Almanac
     /// :rtype: Orbit
+    #[pyo3(name = "orbit_at")]
     pub fn py_orbit_at(&self, epoch: Epoch, almanac: &Almanac) -> Result<Orbit, EphemerisError> {
         self.orbit_at(epoch, almanac)
     }
@@ -226,6 +240,7 @@ impl Ephemeris {
     /// :type epoch: Epoch
     /// :type almanac: Almanac
     /// :rtype: Covariance
+    #[pyo3(name = "covar_at")]
     pub fn py_covar_at(
         &self,
         epoch: Epoch,
@@ -233,5 +248,20 @@ impl Ephemeris {
         almanac: &Almanac,
     ) -> Result<Option<Covariance>, EphemerisError> {
         self.covar_at(epoch, local_frame, almanac)
+    }
+
+    /// Converts this ephemeris to SPICE BSP/SPK file in the provided data type, saved to the provided output_fname.
+    ///
+    /// :type naif_id: int
+    /// :type output_fname: str
+    /// :type data_type: DataType
+    #[pyo3(name = "write_spice_bsp_spk")]
+    pub fn py_write_spice_bsp_spk(
+        &self,
+        naif_id: NaifId,
+        output_fname: &str,
+        data_type: Option<DataType>,
+    ) -> Result<(), EphemerisError> {
+        self.write_spice_bsp_spk(naif_id, output_fname, data_type)
     }
 }

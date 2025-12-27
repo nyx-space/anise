@@ -369,6 +369,11 @@ def test_version():
 
     assert __version__ is not None
 
+def test_oem():
+    # 1. Load an OEM to Ephem
+    # 2. Load OEM to new Almanac
+    # 3. Load OEM to existing almanac
+    pass
 
 if __name__ == "__main__":
     # test_meta_load()
