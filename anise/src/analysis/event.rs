@@ -156,71 +156,53 @@ impl Event {
     /// :type almanac: Almanac
     /// :rtype: float
     pub fn eval(&self, orbit: Orbit, almanac: &Almanac) -> Result<f64, AnalysisError> {
-        let current_val = self.scalar.evaluate(orbit, self.ab_corr, almanac)?;
+        let mut current_val = self.scalar.evaluate(orbit, self.ab_corr, almanac)?;
+        let mut desired_val = match self.condition {
+            Condition::Equals(val) => val,
+            _ => {
+                return Err(AnalysisError::InvalidEventEval {
+                    err: format!(
+                        "cannot call Eval on {:?}, it must be an Equals condition",
+                        self.condition
+                    ),
+                })
+            }
+        };
 
-        // Special handling for angular values when we need to find a root.
-        if let Condition::Equals(desired_val) = self.condition {
-            let use_trig = self.scalar.is_angle()
-                || self.scalar.is_local_time()
-                || matches!(self.scalar, ScalarExpr::Modulo { .. });
-
-            if use_trig {
-                let mut current_val_scaled = current_val;
-                let mut desired_val_scaled = desired_val;
-
-                // Scale to be akin to a full circle.
-                if self.scalar.is_local_time() {
-                    current_val_scaled *= 360.0 / 24.0;
-                    desired_val_scaled *= 360.0 / 24.0;
-                } else if let ScalarExpr::Modulo { v: _, ref m } = self.scalar {
-                    let modmax = m.evaluate(orbit, self.ab_corr, almanac)?;
-                    if modmax >= 1e-12 {
-                        current_val_scaled *= 360.0 / modmax;
-                        desired_val_scaled *= 360.0 / modmax;
-                    }
-                }
-
-                // Use the arctan function because it's smooth around zero, but convert back to degrees for the comparison.
-                let current_rad = current_val_scaled.to_radians();
-                let desired_rad = desired_val_scaled.to_radians();
-
-                // Convert the angles to points on a unit circle
-                let (cur_sin, cur_cos) = current_rad.sin_cos();
-                let (des_sin, des_cos) = desired_rad.sin_cos();
-
-                // Calculate the difference vector and find its angle with atan2.
-                // This will be zero only when the angles are identical.
-                let y = cur_sin * des_cos - cur_cos * des_sin; // sin(current - desired)
-                let x = cur_cos * des_cos + cur_sin * des_sin; // cos(current - desired)
-
-                return Ok(y.atan2(x).to_degrees());
+        // Scale to be akin to a full circle.
+        if self.scalar.is_local_time() {
+            current_val *= 360.0 / 24.0;
+            desired_val *= 360.0 / 24.0;
+        } else if let ScalarExpr::Modulo { v: _, ref m } = self.scalar {
+            let modmax = m.evaluate(orbit, self.ab_corr, almanac)?;
+            if modmax >= 1e-12 {
+                current_val *= 360.0 / modmax;
+                desired_val *= 360.0 / modmax;
             }
         }
 
-        // For all non-angular scalars, or for conditions other than Equals.
-        match self.condition {
-            Condition::Equals(val) => Ok(current_val - val),
-            Condition::Between(min_val, max_val) => {
-                // Return positive if inside, negative if outside.
-                // Smallest of the two distances to the boundaries.
-                let dist_to_min = current_val - min_val;
-                let dist_to_max = max_val - current_val;
-                if dist_to_min >= 0.0 && dist_to_max >= 0.0 {
-                    // Inside, return smallest distance to boundary
-                    Ok(dist_to_min.min(dist_to_max))
-                } else {
-                    // Outside, return negative distance to closest boundary
-                    Ok(dist_to_min.min(dist_to_max))
-                }
-            }
-            Condition::LessThan(val) => Ok(val - current_val), // Positive if current_val < val
-            Condition::GreaterThan(val) => Ok(current_val - val), // Positive if current_val > val
-            Condition::Minimum() | Condition::Maximum() => Err(AnalysisError::InvalidEventEval {
-                err: format!(
-                    "cannot call Eval on {:?}, it must be handled by finding the derivative of the scalar",
-                    self.condition
-                ),
-            }),
+        let use_trig = self.scalar.is_angle()
+            || self.scalar.is_local_time()
+            || matches!(self.scalar, ScalarExpr::Modulo { .. });
+
+        if use_trig {
+            // Use the arctan function because it's smooth around zero, but convert back to degrees for the comparison.
+            let current_rad = current_val.to_radians();
+            let desired_rad = desired_val.to_radians();
+
+            // Convert the angles to points on a unit circle
+            let (cur_sin, cur_cos) = current_rad.sin_cos();
+            let (des_sin, des_cos) = desired_rad.sin_cos();
+
+            // Calculate the difference vector and find its angle with atan2.
+            // This will be zero only when the angles are identical.
+            let y = cur_sin * des_cos - cur_cos * des_sin; // sin(current - desired)
+            let x = cur_cos * des_cos + cur_sin * des_sin; // cos(current - desired)
+
+            Ok(y.atan2(x).to_degrees())
+        } else {
+            // For all non-angular scalars, use the original logic
+            Ok(current_val - desired_val)
         }
     }
 
@@ -230,35 +212,31 @@ impl Event {
     /// :type almanac: Almanac
     /// :rtype: str
     pub fn eval_string(&self, orbit: Orbit, almanac: &Almanac) -> Result<String, AnalysisError> {
-        if let Condition::Equals(desired_val) = self.condition {
-            let val = self.eval(orbit, almanac)?;
-            if desired_val.abs() > 1e3 {
-                Ok(format!(
-                    "|{} - {desired_val:e}| = {val:e} on {}",
-                    self.scalar, orbit.epoch
-                ))
-            } else if desired_val.abs() > 1e-2 {
-                Ok(format!(
-                    "|{} - {desired_val:.3}| = {val:.3} on {}",
-                    self.scalar, orbit.epoch
-                ))
-            } else {
-                Ok(format!("|{}| = {val:.3} on {}", self.scalar, orbit.epoch))
+        let val = self.eval(orbit, almanac)?;
+
+        let desired_val = match self.condition {
+            Condition::Equals(val) => val,
+            _ => {
+                return Err(AnalysisError::InvalidEventEval {
+                    err: format!(
+                        "cannot call Eval on {:?}, it must be an Equals condition",
+                        self.condition
+                    ),
+                })
             }
+        };
+        if desired_val.abs() > 1e3 {
+            Ok(format!(
+                "|{} - {desired_val:e}| = {val:e} on {}",
+                self.scalar, orbit.epoch
+            ))
+        } else if desired_val > 1e-2 {
+            Ok(format!(
+                "|{} - {desired_val:.3}| = {val:.3} on {}",
+                self.scalar, orbit.epoch
+            ))
         } else {
-            let current_val = self.scalar.evaluate(orbit, self.ab_corr, almanac)?;
-            // For other conditions, just show the current value of the scalar.
-            if current_val.abs() > 1e3 || (current_val.abs() < 1e-2 && current_val != 0.0) {
-                Ok(format!(
-                    "{} = {current_val:e} on {}",
-                    self.scalar, orbit.epoch
-                ))
-            } else {
-                Ok(format!(
-                    "{} = {current_val:.3} on {}",
-                    self.scalar, orbit.epoch
-                ))
-            }
+            Ok(format!("|{}| = {val:.3} on {}", self.scalar, orbit.epoch))
         }
     }
 }
