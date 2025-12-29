@@ -34,7 +34,7 @@ pub use covariance::{Covariance, LocalFrame};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
-#[cfg_attr(feature = "python", pyo3(module = "anise.ephemeris", get_all))]
+#[cfg_attr(feature = "python", pyo3(module = "anise.astro", get_all))]
 pub struct EphemEntry {
     /// Orbit of this ephemeris entry
     pub orbit: Orbit,
@@ -51,7 +51,7 @@ pub struct EphemEntry {
 /// :type object_id: str
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
-#[cfg_attr(feature = "python", pyo3(module = "anise.ephemeris"))]
+#[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Ephemeris {
     object_id: String,
     interpolation: DataType,

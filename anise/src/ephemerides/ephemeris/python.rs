@@ -27,6 +27,7 @@ impl Ephemeris {
         self.object_id.clone()
     }
 
+    /// :rtype: str
     #[getter]
     fn get_interpolation(&self) -> String {
         match self.interpolation {
@@ -294,10 +295,12 @@ impl Covariance {
         Ok(pt_state_dcm)
     }
 
+    /// :rtype: str
     fn __str__(&self) -> String {
         format!("{self}")
     }
 
+    /// :rtype: str
     fn __repr__(&self) -> String {
         format!("{self}@{self:p}")
     }
