@@ -108,6 +108,8 @@ pub enum AnalysisError {
         #[snafu(source(from(AlmanacError, Box::new)))]
         source: Box<AlmanacError>,
     },
+    #[snafu(display("{err}"))]
+    GenericAnalysisError { err: String },
 }
 
 pub type AnalysisResult<T> = Result<T, AnalysisError>;

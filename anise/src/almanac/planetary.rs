@@ -60,7 +60,7 @@ impl Almanac {
     }
 
     /// Returns the plantary from its ID, searching through all loaded planetary datasets in reverse order.
-    pub(crate) fn planetary_data_from_id(
+    pub fn get_planetary_data_from_id(
         &self,
         id: NaifId,
     ) -> Result<PlanetaryData, PlanetaryDataError> {
@@ -79,7 +79,29 @@ impl Almanac {
         })
     }
 
+    /// Returns the plantary from its ID, searching through all loaded planetary datasets in reverse order.
+    pub fn set_planetary_data_from_id(
+        &mut self,
+        id: NaifId,
+        planetary_data: PlanetaryData,
+    ) -> Result<(), PlanetaryDataError> {
+        for data in self.planetary_data.values_mut().rev() {
+            if data.set_by_id(id, planetary_data).is_ok() {
+                // This dataset contained the ID, and we've set it correctly.
+                return Ok(());
+            }
+        }
+
+        Err(PlanetaryDataError::PlanetaryDataSet {
+            action: "fetching planetary data via its id",
+            source: DataSetError::DataSetLut {
+                action: "fetching by ID",
+                source: LutError::UnknownId { id },
+            },
+        })
+    }
     /// Loads the provided planetary data.
+
     pub fn with_planetary_data(self, planetary_data: PlanetaryDataSet) -> Self {
         self.with_planetary_data_as(planetary_data, None)
     }
