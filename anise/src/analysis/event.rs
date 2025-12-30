@@ -202,13 +202,7 @@ impl Event {
                 // Smallest of the two distances to the boundaries.
                 let dist_to_min = current_val - min_val;
                 let dist_to_max = max_val - current_val;
-                if dist_to_min >= 0.0 && dist_to_max >= 0.0 {
-                    // Inside, return smallest distance to boundary
-                    Ok(dist_to_min.min(dist_to_max))
-                } else {
-                    // Outside, return negative distance to closest boundary
-                    Ok(dist_to_min.min(dist_to_max))
-                }
+                Ok(dist_to_min.min(dist_to_max))
             }
             Condition::LessThan(val) => Ok(val - current_val), // Positive if current_val < val
             Condition::GreaterThan(val) => Ok(current_val - val), // Positive if current_val > val
