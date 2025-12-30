@@ -308,22 +308,13 @@ impl Almanac {
                 if crossings.is_empty() {
                     // We never cross the boundary, so check if we're in the boundary at the start or not.
                     let start_orbit = state_spec.evaluate(start_epoch, self)?;
-                    let start_eval = boundary_event.eval(start_orbit, self)?;
+                    // Here we must use the event itself, NOT the boundary event, to check if we are inside.
+                    let start_eval = event.eval(start_orbit, self)?;
                     let end_orbit = state_spec.evaluate(end_epoch, self)?;
-                    let end_eval = boundary_event.eval(end_orbit, self)?;
-                    let start_inside = start_eval >= 0.0;
-                    // In the case of both angles and other scalars, the evaluation will be negative if the current
-                    // value is less the desired value; positive otherwise.
-                    // If the user is seeking when the event is LessThan X, and start_eval >= 0.0, it means that there
-                    // are NO event windows that match the desired value.
-                    let no_events = (matches!(event.condition, Condition::LessThan(..))
-                        && start_inside)
-                        || (matches!(event.condition, Condition::GreaterThan(..)) && !start_inside);
+                    let end_eval = event.eval(end_orbit, self)?;
 
-                    if no_events {
-                        return Ok(Vec::new());
-                    } else {
-                        // We're less than the desired value the whole time.
+                    if start_eval >= 0.0 {
+                        // The condition is met for the entire duration.
                         let rise = EventDetails::new(
                             start_orbit,
                             start_eval,
@@ -341,6 +332,9 @@ impl Almanac {
                             self,
                         )?;
                         return Ok(vec![EventArc { rise, fall }]);
+                    } else {
+                        // The condition is never met.
+                        return Ok(Vec::new());
                     }
                 }
 
