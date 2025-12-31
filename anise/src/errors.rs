@@ -219,6 +219,10 @@ pub enum PhysicsError {
     VelocityError { action: &'static str },
     #[snafu(display("invalid aberration: {action}"))]
     AberrationError { action: &'static str },
+    #[snafu(display("cannot {action} when the record does not define a covariance"))]
+    NoCovariance { action: &'static str },
+    #[snafu(display("partials are not yet defined for this orbital element"))]
+    PartialsNotYetDefined,
 }
 
 impl From<IOErrorKind> for InputOutputError {

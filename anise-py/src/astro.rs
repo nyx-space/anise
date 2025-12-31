@@ -9,7 +9,7 @@
  */
 
 use anise::astro::{AzElRange, Location, Occultation, TerrainMask};
-use anise::ephemerides::ephemeris::{Covariance, EphemEntry, Ephemeris, LocalFrame};
+use anise::ephemerides::ephemeris::{Covariance, Ephemeris, EphemerisRecord, LocalFrame};
 use anise::frames::FrameUid;
 use anise::naif::daf::DafDataType;
 use anise::structure::planetocentric::ellipsoid::Ellipsoid;
@@ -30,7 +30,7 @@ pub(crate) fn astro(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
     sm.add_class::<Location>()?;
     sm.add_class::<TerrainMask>()?;
     sm.add_class::<Ephemeris>()?;
-    sm.add_class::<EphemEntry>()?;
+    sm.add_class::<EphemerisRecord>()?;
     sm.add_class::<Covariance>()?;
     sm.add_class::<LocalFrame>()?;
     sm.add_class::<DafDataType>()?;
