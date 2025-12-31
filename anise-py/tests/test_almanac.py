@@ -11,6 +11,7 @@ from anise import (
     LocationDhallSet,
     LocationDhallSetEntry,
 )
+from anise.analysis import OrbitalElement
 from anise.astro import *
 from anise.constants import Frames
 from anise.rotation import DCM, Quaternion
@@ -400,6 +401,9 @@ def test_oem():
     assert start2 == start3
     assert end2 == end3
     print(end3.to_et_seconds())
+    # Compute the standard deviation for the covariance
+    sigma_sma_km = ephem.at(end, almanac).sigma_for(OrbitalElement.SemiMajorAxis)
+    print(f"SMA 1-sigma = {sigma_sma_km:.3} km")
 
 if __name__ == "__main__":
     # test_meta_load()

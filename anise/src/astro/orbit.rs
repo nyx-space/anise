@@ -806,7 +806,7 @@ impl Orbit {
         Ok(me)
     }
 
-    /// Returns the period in seconds
+    /// Returns the period
     ///
     /// :rtype: Duration
     pub fn period(&self) -> PhysicsResult<Duration> {
@@ -1305,7 +1305,7 @@ impl Orbit {
     /// :rtype: float
     pub fn semi_minor_axis_km(&self) -> PhysicsResult<f64> {
         if self.ecc()? <= 1.0 {
-            Ok(((self.sma_km()? * self.ecc()?).powi(2) - self.sma_km()?.powi(2)).sqrt())
+            Ok(self.sma_km()? * (1.0 - self.ecc()?.powi(2)).sqrt())
         } else {
             Ok(self.hmag()?.powi(2)
                 / (self.frame.mu_km3_s2()? * (self.ecc()?.powi(2) - 1.0).sqrt()))

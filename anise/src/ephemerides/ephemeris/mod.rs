@@ -28,19 +28,11 @@ mod covariance;
 mod oem;
 #[cfg(feature = "python")]
 mod python;
+mod record;
 mod spk;
 
 pub use covariance::{Covariance, LocalFrame};
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "python", pyclass)]
-#[cfg_attr(feature = "python", pyo3(module = "anise.astro", get_all))]
-pub struct EphemEntry {
-    /// Orbit of this ephemeris entry
-    pub orbit: Orbit,
-    /// Optional covariance associated with this orbit
-    pub covar: Option<Covariance>,
-}
+pub use record::EphemerisRecord;
 
 /// Initializes a new Ephemeris from the list of Orbit instances and a given object ID.
 ///
@@ -56,7 +48,7 @@ pub struct Ephemeris {
     object_id: String,
     interpolation: DataType,
     degree: usize,
-    state_data: BTreeMap<Epoch, EphemEntry>,
+    state_data: BTreeMap<Epoch, EphemerisRecord>,
 }
 
 impl Ephemeris {
@@ -89,30 +81,30 @@ impl Ephemeris {
     }
 
     /// Inserts a new ephemeris entry to this ephemeris (it is automatically sorted chronologically).
-    pub fn insert(&mut self, entry: EphemEntry) {
-        self.state_data.insert(entry.orbit.epoch, entry);
+    pub fn insert(&mut self, record: EphemerisRecord) {
+        self.state_data.insert(record.orbit.epoch, record);
     }
 
     /// Inserts a new orbit (without covariance) to this ephemeris (it is automatically sorted chronologically).
     pub fn insert_orbit(&mut self, orbit: Orbit) {
         self.state_data
-            .insert(orbit.epoch, EphemEntry { orbit, covar: None });
+            .insert(orbit.epoch, EphemerisRecord { orbit, covar: None });
     }
 
     pub fn nearest_before(
         &self,
         epoch: Epoch,
         almanac: &Almanac,
-    ) -> Result<EphemEntry, EphemerisError> {
+    ) -> Result<EphemerisRecord, EphemerisError> {
         self.state_data
             .range(..=epoch)
             .next_back()
             .map(|e| {
-                let mut entry = *e.1;
-                if let Ok(frame) = almanac.frame_info(entry.orbit.frame) {
-                    entry.orbit.frame = frame;
+                let mut record = *e.1;
+                if let Ok(frame) = almanac.frame_info(record.orbit.frame) {
+                    record.orbit.frame = frame;
                 }
-                entry
+                record
             })
             .ok_or(EphemerisError::EphemInterpolation {
                 source: crate::math::interpolation::InterpolationError::EmptyInterpolationData {},
@@ -123,16 +115,16 @@ impl Ephemeris {
         &self,
         epoch: Epoch,
         almanac: &Almanac,
-    ) -> Result<EphemEntry, EphemerisError> {
+    ) -> Result<EphemerisRecord, EphemerisError> {
         self.state_data
             .range(epoch..)
             .next()
             .map(|e| {
-                let mut entry = *e.1;
-                if let Ok(frame) = almanac.frame_info(entry.orbit.frame) {
-                    entry.orbit.frame = frame;
+                let mut record = *e.1;
+                if let Ok(frame) = almanac.frame_info(record.orbit.frame) {
+                    record.orbit.frame = frame;
                 }
-                entry
+                record
             })
             .ok_or(EphemerisError::EphemInterpolation {
                 source: crate::math::interpolation::InterpolationError::EmptyInterpolationData {},
@@ -160,8 +152,8 @@ impl Ephemeris {
         epoch: Epoch,
         almanac: &Almanac,
     ) -> Result<Option<(Epoch, Covariance)>, EphemerisError> {
-        let entry = self.nearest_before(epoch, almanac)?;
-        Ok(entry.covar.map(|c| (entry.orbit.epoch, c)))
+        let record = self.nearest_before(epoch, almanac)?;
+        Ok(record.covar.map(|c| (record.orbit.epoch, c)))
     }
 
     pub fn nearest_covar_after(
@@ -169,8 +161,8 @@ impl Ephemeris {
         epoch: Epoch,
         almanac: &Almanac,
     ) -> Result<Option<(Epoch, Covariance)>, EphemerisError> {
-        let entry = self.nearest_after(epoch, almanac)?;
-        Ok(entry.covar.map(|c| (entry.orbit.epoch, c)))
+        let record = self.nearest_after(epoch, almanac)?;
+        Ok(record.covar.map(|c| (record.orbit.epoch, c)))
     }
 
     /// Interpolates the ephemeris state and covariance at the provided epoch.
@@ -198,9 +190,9 @@ impl Ephemeris {
     ///    of uncertainty that occurs when linearly interpolating between two valid matrices.
     ///    The interpolation follows the "geodesic" (shortest path) on the curved surface of
     ///    covariance matrices.
-    pub fn at(&self, epoch: Epoch, almanac: &Almanac) -> Result<EphemEntry, EphemerisError> {
+    pub fn at(&self, epoch: Epoch, almanac: &Almanac) -> Result<EphemerisRecord, EphemerisError> {
         let (start, end) = self.domain()?;
-        if !(start..end).contains(&epoch) {
+        if !(start..=end).contains(&epoch) {
             return Err(EphemerisError::EphemInterpolation {
                 source: crate::math::interpolation::InterpolationError::NoInterpolationData {
                     req: epoch,
@@ -211,8 +203,8 @@ impl Ephemeris {
         }
         // Grab the N/2 previous states
         let n = self.degree / 2;
-        let prev_states: Vec<EphemEntry> = {
-            let mut states: Vec<EphemEntry> = self
+        let prev_states: Vec<EphemerisRecord> = {
+            let mut states: Vec<EphemerisRecord> = self
                 .state_data
                 .range(..epoch)
                 .rev()
@@ -227,13 +219,13 @@ impl Ephemeris {
             .range(epoch..)
             .take(n)
             .map(|e| *e.1)
-            .collect::<Vec<EphemEntry>>();
+            .collect::<Vec<EphemerisRecord>>();
 
         let states = prev_states.iter().chain(next_states.iter());
 
         let xs = states
             .clone()
-            .map(|entry| entry.orbit.epoch.to_tdb_seconds())
+            .map(|record| record.orbit.epoch.to_tdb_seconds())
             .collect::<Vec<f64>>();
         let mut orbit_data = Vector6::zeros();
 
@@ -242,7 +234,7 @@ impl Ephemeris {
                 for i in 0..6 {
                     let ys = states
                         .clone()
-                        .map(|entry| entry.orbit.to_cartesian_pos_vel()[i])
+                        .map(|record| record.orbit.to_cartesian_pos_vel()[i])
                         .collect::<Vec<f64>>();
 
                     let (val, _) = lagrange_eval(&xs, &ys, epoch.to_tdb_seconds())
@@ -254,11 +246,11 @@ impl Ephemeris {
                 for i in 0..3 {
                     let ys = states
                         .clone()
-                        .map(|entry| entry.orbit.to_cartesian_pos_vel()[i])
+                        .map(|record| record.orbit.to_cartesian_pos_vel()[i])
                         .collect::<Vec<f64>>();
                     let ydots = states
                         .clone()
-                        .map(|entry| entry.orbit.to_cartesian_pos_vel()[i + 3])
+                        .map(|record| record.orbit.to_cartesian_pos_vel()[i + 3])
                         .collect::<Vec<f64>>();
 
                     let (val, valdot) = hermite_eval(&xs, &ys, &ydots, epoch.to_tdb_seconds())
@@ -277,12 +269,12 @@ impl Ephemeris {
             orbit.frame = frame;
         }
 
-        let entry = EphemEntry {
+        let record = EphemerisRecord {
             orbit,
             covar: self.covar_at(epoch, LocalFrame::Inertial, almanac)?,
         };
 
-        Ok(entry)
+        Ok(record)
     }
 
     /// Interpolate the ephemeris at the provided epoch, returning only the orbit.
@@ -307,60 +299,32 @@ impl Ephemeris {
         // 1. Retrieve the bounding covariance records
         // Note: We ignore the Orbit interpolation here because we only need the
         // Orbits at the ENDPOINTS to compute the rotation DCMs.
-        let prev_entry = self.nearest_before(epoch, almanac)?;
-        let next_entry = self.nearest_after(epoch, almanac)?;
+        let prev_record = self.nearest_before(epoch, almanac)?;
+        let next_record = self.nearest_after(epoch, almanac)?;
 
         // If we have no covariance data at the endpoints, we can't do anything.
-        if prev_entry.covar.is_none() || next_entry.covar.is_none() {
+        if prev_record.covar.is_none() || next_record.covar.is_none() {
             return Ok(None);
         }
 
-        // 2. Define a helper to rotate a specific entry's covariance into the target frame.
-        // We capture 'almanac' and 'local_frame' from the environment.
-        let rotate_to_target = |entry: EphemEntry| -> Result<Covariance, EphemerisError> {
-            let mut covar = entry.covar.unwrap();
-            let orbit = entry.orbit;
+        // Rotate endpoints to the STABLE frame.
+        // We safely unwrap the option since it's only None if the covariance was none, but we checked that before.
+        let prev_covar = prev_record
+            .covar_in_frame(local_frame)
+            .context(EphemerisPhysicsSnafu {
+                action: "rotating covariance",
+            })?
+            .unwrap();
+        let next_covar = next_record
+            .covar_in_frame(local_frame)
+            .context(EphemerisPhysicsSnafu {
+                action: "rotating covariance",
+            })?
+            .unwrap();
 
-            // If it's already in the right frame, no-op
-            if covar.local_frame == local_frame {
-                return Ok(covar);
-            }
-
-            // Calculate Target Frame -> Inertial
-            let desired_frame_to_inertial =
-                orbit
-                    .dcm_to_inertial(local_frame)
-                    .context(EphemerisPhysicsSnafu {
-                        action: "rotating desired covariance to Inertial",
-                    })?;
-
-            // Calculate Current Covar Frame -> Inertial
-            let cur_frame_to_inertial =
-                orbit
-                    .dcm_to_inertial(covar.local_frame)
-                    .context(EphemerisPhysicsSnafu {
-                        action: "rotating source covariance to Inertial",
-                    })?;
-
-            // M = R_target_to_inertial * (R_source_to_inertial)^T
-            // M maps Source -> Target
-            let dcm = (desired_frame_to_inertial * cur_frame_to_inertial.transpose())
-                .expect("internal error: DCM multiplication failed");
-
-            // Apply 6x6 Rotation: P_new = M * P_old * M^T
-            covar.matrix = dcm.state_dcm() * covar.matrix * dcm.state_dcm().transpose();
-            covar.local_frame = local_frame;
-
-            Ok(covar)
-        };
-
-        // 3. Rotate endpoints to the STABLE frame
-        let prev_covar = rotate_to_target(prev_entry)?;
-        let next_covar = rotate_to_target(next_entry)?;
-
-        // 4. Calculate Alpha
-        let t0 = prev_entry.orbit.epoch;
-        let t1 = next_entry.orbit.epoch;
+        // Calculate Alpha
+        let t0 = prev_record.orbit.epoch;
+        let t1 = next_record.orbit.epoch;
         let total_dt = (t1 - t0).to_seconds();
 
         // Handle exact match or zero-duration step
@@ -405,9 +369,9 @@ impl fmt::Display for Ephemeris {
 
 #[cfg(test)]
 mod ut_oem {
-    use crate::prelude::NAIFSummaryRecord;
-
     use super::{Almanac, DataType, Ephemeris, LocalFrame};
+    use crate::analysis::prelude::OrbitalElement;
+    use crate::prelude::NAIFSummaryRecord;
     use hifitime::{Epoch, TimeSeries, Unit};
     use nalgebra::{Matrix6, SymmetricEigen, Vector6};
     use std::{fs::File, io::Write};
@@ -711,5 +675,48 @@ mod ut_oem {
         let ric_vel_km_s_err = ric_err.fixed_rows::<3>(3);
         assert!(ric_pos_km_err.norm() < 0.06);
         assert!(ric_vel_km_s_err.norm() < 1e-3);
+    }
+
+    #[rstest]
+    fn test_oem_covar_orbital_element_uncertainty(almanac: Almanac) {
+        let ephem = Ephemeris::from_ccsds_oem_file("../data/tests/ccsds/oem/LRO_Nyx.oem")
+            .expect("could not parse");
+
+        let start = Epoch::from_gregorian_utc_at_midnight(2024, 1, 1);
+        let end = start + Unit::Minute * 3;
+
+        assert_eq!(ephem.state_data.len(), 4);
+        assert_eq!(ephem.domain().unwrap(), (start, end));
+        assert_eq!(ephem.interpolation, DataType::Type13HermiteUnequalStep);
+        assert_eq!(ephem.degree, 7);
+
+        // We have data from Nyx showing the proper covariance in between the data in the OEM.
+        // So we'll check that the interpolator somewhat matches that data.
+        let offset = Unit::Minute * 1 + Unit::Second * 24.696597;
+
+        let epoch = start + offset;
+
+        let rcrd1 = ephem.at(start, &almanac).unwrap();
+        let rcrd2 = ephem.at(epoch, &almanac).unwrap();
+        let rcrd3 = ephem.at(end, &almanac).unwrap();
+
+        for oe in [
+            OrbitalElement::Rmag,
+            OrbitalElement::SemiMajorAxis,
+            OrbitalElement::Hmag,
+        ] {
+            // Test that the covariance interpolation follows the manifold and does not swell.
+            let sigma1 = rcrd1.sigma_for(oe).unwrap();
+            let sigma2 = rcrd2.sigma_for(oe).unwrap();
+            let sigma3 = rcrd3.sigma_for(oe).unwrap();
+
+            dbg!(oe, sigma1, sigma2, sigma3);
+
+            // The range is empty if start > end, so we check both options.
+            assert!(
+                (sigma1..=sigma3).contains(&sigma2) || (sigma3..=sigma1).contains(&sigma2),
+                "failed on {oe:?}"
+            );
+        }
     }
 }

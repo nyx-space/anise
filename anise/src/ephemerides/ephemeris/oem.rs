@@ -25,7 +25,7 @@ use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
 use std::str::FromStr;
 
-use super::{Covariance, EphemEntry, Ephemeris, LocalFrame};
+use super::{Covariance, Ephemeris, EphemerisRecord, LocalFrame};
 
 impl Ephemeris {
     /// Initialize a new ephemeris from the path to a CCSDS OEM file.
@@ -250,7 +250,7 @@ impl Ephemeris {
 
                 // We only reach this point if the state data is fully parsed.
                 let orbit = Orbit::from_cartesian_pos_vel(state_vec, epoch, frame);
-                state_data.insert(epoch, EphemEntry { orbit, covar: None });
+                state_data.insert(epoch, EphemerisRecord { orbit, covar: None });
             } else if in_cov_data {
                 if line.starts_with("EPOCH") {
                     let state_epoch = parse_one_val(lno, line, "no `=` sign for covariance epoch")?;

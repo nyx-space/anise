@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::{Almanac, Covariance, EphemEntry, Ephemeris, EphemerisError, LocalFrame, Orbit};
+use super::{Almanac, Covariance, Ephemeris, EphemerisError, EphemerisRecord, LocalFrame, Orbit};
 use crate::naif::daf::data_types::DataType;
 use crate::naif::daf::DafDataType;
 use crate::NaifId;
@@ -42,7 +42,7 @@ impl Ephemeris {
         let mut state_data = BTreeMap::new();
 
         for orbit in orbit_list {
-            state_data.insert(orbit.epoch, EphemEntry { orbit, covar: None });
+            state_data.insert(orbit.epoch, EphemerisRecord { orbit, covar: None });
         }
 
         Self {
@@ -98,7 +98,7 @@ impl Ephemeris {
     ///
     /// :type entry: EphemEntry
     #[pyo3(name = "insert")]
-    pub fn py_insert(&mut self, entry: EphemEntry) {
+    pub fn py_insert(&mut self, entry: EphemerisRecord) {
         self.insert(entry);
     }
 
@@ -120,7 +120,7 @@ impl Ephemeris {
         &self,
         epoch: Epoch,
         almanac: &Almanac,
-    ) -> Result<EphemEntry, EphemerisError> {
+    ) -> Result<EphemerisRecord, EphemerisError> {
         self.nearest_before(epoch, almanac)
     }
 
@@ -134,7 +134,7 @@ impl Ephemeris {
         &self,
         epoch: Epoch,
         almanac: &Almanac,
-    ) -> Result<EphemEntry, EphemerisError> {
+    ) -> Result<EphemerisRecord, EphemerisError> {
         self.nearest_after(epoch, almanac)
     }
 
@@ -224,7 +224,11 @@ impl Ephemeris {
     /// :type almanac: Almanac
     /// :rtype: EphemEntry
     #[pyo3(name = "at")]
-    pub fn py_at(&self, epoch: Epoch, almanac: &Almanac) -> Result<EphemEntry, EphemerisError> {
+    pub fn py_at(
+        &self,
+        epoch: Epoch,
+        almanac: &Almanac,
+    ) -> Result<EphemerisRecord, EphemerisError> {
         self.at(epoch, almanac)
     }
 
