@@ -93,15 +93,15 @@ impl Almanac {
         }
 
         Err(PlanetaryDataError::PlanetaryDataSet {
-            action: "fetching planetary data via its id",
+            action: "setting planetary data via its id",
             source: DataSetError::DataSetLut {
-                action: "fetching by ID",
+                action: "setting by ID",
                 source: LutError::UnknownId { id },
             },
         })
     }
-    /// Loads the provided planetary data.
 
+    /// Loads the provided planetary data.
     pub fn with_planetary_data(self, planetary_data: PlanetaryDataSet) -> Self {
         self.with_planetary_data_as(planetary_data, None)
     }
