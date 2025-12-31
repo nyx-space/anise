@@ -30,6 +30,7 @@ mod oem;
 mod python;
 mod record;
 mod spk;
+mod stk;
 
 pub use covariance::{Covariance, LocalFrame};
 pub use record::EphemerisRecord;
@@ -71,6 +72,14 @@ impl Ephemeris {
 
     pub fn end_epoch(&self) -> Result<Epoch, EphemerisError> {
         Ok(self.domain()?.1)
+    }
+
+    pub fn object_id(&self) -> &str {
+        &self.object_id
+    }
+
+    pub fn interpolation(&self) -> DataType {
+        self.interpolation
     }
 
     /// Returns true if all of the data in this ephemeris includes covariance.
