@@ -96,24 +96,24 @@ impl fmt::Display for OrbitalElementPartials {
 
 impl OrbitGrad {
     /// Returns the radius vector of this Orbit in [km, km, km]
-    pub(crate) fn radius(&self) -> Vector3<OHyperdual<f64, U7>> {
+    pub(crate) fn radius_km(&self) -> Vector3<OHyperdual<f64, U7>> {
         Vector3::new(self.x_km, self.y_km, self.z_km)
     }
 
     /// Returns the velocity vector of this Orbit in [km/s, km/s, km/s]
-    pub(crate) fn velocity(&self) -> Vector3<OHyperdual<f64, U7>> {
+    pub(crate) fn velocity_km_s(&self) -> Vector3<OHyperdual<f64, U7>> {
         Vector3::new(self.vx_km_s, self.vy_km_s, self.vz_km_s)
     }
 
     /// Returns the orbital momentum vector
     pub(crate) fn hvec(&self) -> Vector3<OHyperdual<f64, U7>> {
-        self.radius().cross(&self.velocity())
+        self.radius_km().cross(&self.velocity_km_s())
     }
 
     /// Returns the eccentricity vector (no unit)
     pub(crate) fn evec(&self) -> PhysicsResult<Vector3<OHyperdual<f64, U7>>> {
-        let r = self.radius();
-        let v = self.velocity();
+        let r = self.radius_km();
+        let v = self.velocity_km_s();
         let hgm = OHyperdual::from(self.frame.mu_km3_s2()?);
         // Split up this operation because it doesn't seem to be implemented
         // ((norm(&v).powi(2) - hgm / norm(&r)) * r - (r.dot(&v)) * v) / hgm
@@ -332,10 +332,17 @@ impl OrbitGrad {
                 self.ecc()?
             );
         }
-        let cos_nu = self.evec()?.dot(&self.radius()) / (self.ecc()?.dual * self.rmag_km().dual);
-        if (cos_nu.real().abs() - 1.0).abs() < f64::EPSILON {
-            // This bug drove me crazy when writing SMD in Go in 2017.
-            if cos_nu > 1.0 {
+
+        // Compute cosine of true anomaly
+        let cos_nu = self.evec()?.dot(&self.radius_km()) / (self.ecc()?.dual * self.rmag_km().dual);
+
+        // Align with orbit.rs: Try acos() first.
+        // If cos_nu is slightly > 1.0 or < -1.0 due to noise, acos returns NaN.
+        let ta = cos_nu.acos();
+
+        if ta.real().is_nan() {
+            // Handle the numerical noise edge cases
+            if cos_nu.real() > 1.0 {
                 Ok(OrbitalElementPartials {
                     dual: OHyperdual::from(180.0),
                     param: OrbitalElement::TrueAnomaly,
@@ -346,25 +353,17 @@ impl OrbitGrad {
                     param: OrbitalElement::TrueAnomaly,
                 })
             }
+        } else if self.radius_km().dot(&self.velocity_km_s()).real() < 0.0 {
+            // Quadrant check
+            Ok(OrbitalElementPartials {
+                dual: (OHyperdual::from(TAU) - ta).to_degrees(),
+                param: OrbitalElement::TrueAnomaly,
+            })
         } else {
-            let ta = cos_nu.acos();
-            if ta.is_nan() {
-                warn!("TA is NaN");
-                Ok(OrbitalElementPartials {
-                    dual: OHyperdual::from(0.0),
-                    param: OrbitalElement::TrueAnomaly,
-                })
-            } else if self.radius().dot(&self.velocity()) < 0.0 {
-                Ok(OrbitalElementPartials {
-                    dual: (OHyperdual::from(TAU) - ta).to_degrees(),
-                    param: OrbitalElement::TrueAnomaly,
-                })
-            } else {
-                Ok(OrbitalElementPartials {
-                    dual: ta.to_degrees(),
-                    param: OrbitalElement::TrueAnomaly,
-                })
-            }
+            Ok(OrbitalElementPartials {
+                dual: ta.to_degrees(),
+                param: OrbitalElement::TrueAnomaly,
+            })
         }
     }
 
