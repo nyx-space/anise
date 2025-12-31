@@ -91,24 +91,17 @@ impl EphemerisRecord {
         let covar = self.covar_in_frame(LocalFrame::Inertial)?.unwrap().matrix;
 
         // Build the rotation matrix using Orbit gradient.
-        let mut rotmat = SMatrix::<f64, 1, 6>::zeros();
-
         let orbit_dual = OrbitGrad::from(self.orbit);
-
         let xf_partial = orbit_dual.partial_for(oe)?;
-        for (cno, &val) in [
+
+        let rotmat = SMatrix::<f64, 1, 6>::new(
             xf_partial.wtr_x(),
             xf_partial.wtr_y(),
             xf_partial.wtr_z(),
             xf_partial.wtr_vx(),
             xf_partial.wtr_vy(),
             xf_partial.wtr_vz(),
-        ]
-        .iter()
-        .enumerate()
-        {
-            rotmat[(0, cno)] = val;
-        }
+        );
 
         Ok((rotmat * covar * rotmat.transpose())[(0, 0)].sqrt())
     }

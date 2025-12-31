@@ -165,6 +165,8 @@ impl OrbitGrad {
             OrbitalElement::RAAN => Ok(self.raan_deg()),
             OrbitalElement::PeriapsisRadius => self.periapsis_km(),
             OrbitalElement::ApoapsisRadius => self.apoapsis_km(),
+            OrbitalElement::PeriapsisAltitude => self.periapsis_altitude_km(),
+            OrbitalElement::ApoapsisAltitude => self.apoapsis_altitude_km(),
             OrbitalElement::TrueLongitude => self.tlong_deg(),
             OrbitalElement::FlightPathAngle => self.fpa_deg(),
             OrbitalElement::MeanAnomaly => self.ma_deg(),
@@ -179,6 +181,7 @@ impl OrbitGrad {
             OrbitalElement::SemiParameter => self.semi_parameter_km(),
             OrbitalElement::SemiMinorAxis => self.semi_minor_axis_km(),
             OrbitalElement::TrueAnomaly => self.ta_deg(),
+            OrbitalElement::Period => self.period_s(),
             _ => Err(PhysicsError::PartialsNotYetDefined),
         }
     }
@@ -440,14 +443,16 @@ impl OrbitGrad {
 
     /// Returns the mean anomaly in degrees
     pub fn ma_deg(&self) -> PhysicsResult<OrbitalElementPartials> {
-        if self.ecc()?.real() < 1.0 {
+        if self.ecc()?.real().abs() < ECC_EPSILON {
+            Err(PhysicsError::ParabolicEccentricity { limit: ECC_EPSILON })
+        } else if self.ecc()?.real() < 1.0 {
             Ok(OrbitalElementPartials {
                 dual: (self.ea_deg()?.dual.to_radians()
                     - self.ecc()?.dual * self.ea_deg()?.dual.to_radians().sin())
                 .to_degrees(),
                 param: OrbitalElement::MeanAnomaly,
             })
-        } else if self.ecc()?.real() > 1.0 {
+        } else {
             debug!("computing the hyperbolic anomaly");
             // From GMAT's TrueToHyperbolicAnomaly
             Ok(OrbitalElementPartials {
@@ -458,12 +463,6 @@ impl OrbitGrad {
                         + self.ecc()?.dual * self.ta_deg()?.dual.to_radians().cos()))
                 .asinh()
                 .to_degrees(),
-                param: OrbitalElement::MeanAnomaly,
-            })
-        } else {
-            error!("parabolic orbit: setting mean anomaly to 0.0");
-            Ok(OrbitalElementPartials {
-                dual: OHyperdual::from(0.0),
                 param: OrbitalElement::MeanAnomaly,
             })
         }
@@ -574,8 +573,8 @@ impl OrbitGrad {
     pub fn semi_minor_axis_km(&self) -> PhysicsResult<OrbitalElementPartials> {
         if self.ecc()?.real() <= 1.0 {
             Ok(OrbitalElementPartials {
-                dual: ((self.sma_km()?.dual * self.ecc()?.dual).powi(2)
-                    - self.sma_km()?.dual.powi(2))
+                dual: (self.sma_km()?.dual.powi(2)
+                    - (self.sma_km()?.dual * self.ecc()?.dual).powi(2))
                 .sqrt(),
                 param: OrbitalElement::SemiMinorAxis,
             })
@@ -619,5 +618,32 @@ impl OrbitGrad {
                 param: OrbitalElement::HyperbolicAnomaly,
             })
         }
+    }
+
+    /// Returns the altitude of periapsis (or perigee around Earth), in kilometers.
+    pub fn periapsis_altitude_km(&self) -> PhysicsResult<OrbitalElementPartials> {
+        Ok(OrbitalElementPartials {
+            dual: self.sma_km()?.dual * (OHyperdual::from(1.0) - self.ecc()?.dual)
+                - OHyperdual::from(self.frame.mean_equatorial_radius_km()?),
+            param: OrbitalElement::PeriapsisRadius,
+        })
+    }
+
+    /// Returns the altitude of apoapsis (or apogee around Earth), in kilometers.
+    pub fn apoapsis_altitude_km(&self) -> PhysicsResult<OrbitalElementPartials> {
+        Ok(OrbitalElementPartials {
+            dual: self.sma_km()?.dual * (OHyperdual::from(1.0) + self.ecc()?.dual)
+                - OHyperdual::from(self.frame.mean_equatorial_radius_km()?),
+            param: OrbitalElement::ApoapsisRadius,
+        })
+    }
+
+    /// Returns the period in seconds
+    pub fn period_s(&self) -> PhysicsResult<OrbitalElementPartials> {
+        Ok(OrbitalElementPartials {
+            dual: OHyperdual::from(TAU)
+                * (self.sma_km()?.dual.powi(3) / OHyperdual::from(self.frame.mu_km3_s2()?)).sqrt(),
+            param: OrbitalElement::ApoapsisRadius,
+        })
     }
 }
