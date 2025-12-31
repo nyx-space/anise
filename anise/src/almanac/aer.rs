@@ -193,10 +193,11 @@ impl Almanac {
         self.azimuth_elevation_range_sez_from_location(rx, location, obstructing_body, ab_corr)
     }
 
-    /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
+    /// Computes the azimuth (in degrees), elevation (in degrees), range (in kilometers), and range-rate (in km/s) of the
     /// receiver state (`rx`) seen from the provided location (as transmitter state, once converted into the SEZ frame of the transmitter.
     /// Refer to [azimuth_elevation_range_sez] for algorithm details.
-    /// Location terrain masks are always applied, i.e. if the terrain masks the object, all data is set to f64::NAN, unless specified otherwise in the Location.
+    /// Location terrain masks are always applied, i.e. if the terrain masks the object, unless specified otherwise in the Location.
+    /// Use the elevation_above_mask_deg() method to check if the object is obstructed by the terrain.
     pub fn azimuth_elevation_range_sez_from_location(
         &self,
         rx: Orbit,
