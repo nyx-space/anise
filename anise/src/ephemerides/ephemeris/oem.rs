@@ -9,7 +9,6 @@
  */
 
 use super::{EphemerisError, OEMTimeParsingSnafu};
-use crate::constants::orientations::J2000;
 use crate::math::{Matrix6, Vector6};
 use crate::naif::daf::data_types::DataType;
 use crate::prelude::{Frame, Orbit};
@@ -396,7 +395,7 @@ impl Ephemeris {
         };
 
         // Epoch formmatter.
-        let iso8601_no_ts = Format::from_str("%Y-%m-%dT%H:%M:%S.%f").unwrap();
+        let iso8601_no_ts = Format::from_str("%Y-%m-%dT%H:%M:%S").unwrap();
 
         // Write mandatory metadata
         writeln!(writer, "CCSDS_OEM_VERS = 2.0\n").map_err(err_hdlr)?;
@@ -436,21 +435,13 @@ impl Ephemeris {
         let first_frame = first_orbit.frame;
         let last_orbit = self.state_data.last_key_value().unwrap().1.orbit;
 
-        let frame_str = format!(
-            "{first_frame:e} {}",
-            match first_frame.orientation_id {
-                J2000 => "ICRF".to_string(),
-                _ => format!("{first_frame:o}"),
-            }
-        );
-        let splt: Vec<&str> = frame_str.split(' ').collect();
-        let center = splt[0];
-        let ref_frame = frame_str.replace(center, " ");
+        let center = format!("{first_frame:e}");
+        let ref_frame = format!("{first_frame:o}");
         writeln!(
             writer,
             "\tREF_FRAME = {}",
             match ref_frame.trim() {
-                "J2000" => "ICRF",
+                "J2000" => "EME2000",
                 _ => ref_frame.trim(),
             }
         )
@@ -473,26 +464,30 @@ impl Ephemeris {
 
         writeln!(
             writer,
-            "\tSTART_TIME = {}",
-            Formatter::new(first_orbit.epoch, iso8601_no_ts)
+            "\tSTART_TIME = {}.{:0<3}",
+            Formatter::new(first_orbit.epoch, iso8601_no_ts),
+            first_orbit.epoch.seconds()
         )
         .map_err(err_hdlr)?;
         writeln!(
             writer,
-            "\tUSEABLE_START_TIME = {}",
-            Formatter::new(first_orbit.epoch, iso8601_no_ts)
+            "\tUSEABLE_START_TIME = {}.{:0<3}",
+            Formatter::new(first_orbit.epoch, iso8601_no_ts),
+            first_orbit.epoch.seconds()
         )
         .map_err(err_hdlr)?;
         writeln!(
             writer,
-            "\tUSEABLE_STOP_TIME = {}",
-            Formatter::new(last_orbit.epoch, iso8601_no_ts)
+            "\tUSEABLE_STOP_TIME = {}.{:0<3}",
+            Formatter::new(last_orbit.epoch, iso8601_no_ts),
+            last_orbit.epoch.seconds()
         )
         .map_err(err_hdlr)?;
         writeln!(
             writer,
-            "\tSTOP_TIME = {}",
-            Formatter::new(last_orbit.epoch, iso8601_no_ts)
+            "\tSTOP_TIME = {}.{:0<3}",
+            Formatter::new(last_orbit.epoch, iso8601_no_ts),
+            last_orbit.epoch.seconds()
         )
         .map_err(err_hdlr)?;
 
@@ -502,8 +497,9 @@ impl Ephemeris {
             let orbit = entry.orbit;
             writeln!(
                 writer,
-                "{} {:E} {:E} {:E} {:E} {:E} {:E}",
+                "{}.{:0<3} {:E} {:E} {:E} {:E} {:E} {:E}",
                 Formatter::new(*epoch, iso8601_no_ts),
+                epoch.seconds(),
                 orbit.radius_km.x,
                 orbit.radius_km.y,
                 orbit.radius_km.z,
@@ -517,8 +513,59 @@ impl Ephemeris {
         #[allow(clippy::writeln_empty_string)]
         writeln!(writer, "").map_err(err_hdlr)?;
 
-        // TODO: Add covariance
+        // Add covariance if available
+        let mut cov_started = false;
+        for (epoch, entry) in self.state_data.iter() {
+            if let Some(covar) = &entry.covar {
+                if !cov_started {
+                    writeln!(writer, "COVARIANCE_START").map_err(err_hdlr)?;
+                    cov_started = true;
+                }
+                writeln!(
+                    writer,
+                    "EPOCH = {}.{:0<3}",
+                    Formatter::new(*epoch, iso8601_no_ts),
+                    epoch.seconds()
+                )
+                .map_err(err_hdlr)?;
 
+                writeln!(
+                    writer,
+                    "COV_REF_FRAME = {}",
+                    match covar.local_frame {
+                        LocalFrame::Inertial => "EME2000",
+                        LocalFrame::RIC => "RTN",
+                        LocalFrame::VNC => "TNW",
+                        LocalFrame::RCN =>
+                            return Err(EphemerisError::OEMWritingError {
+                                details: "RCN frame is not supported for OEM covariance export"
+                                    .to_string(),
+                            }),
+                    }
+                )
+                .map_err(err_hdlr)?;
+
+                // Write the matrix
+                // 1
+                // 2 3
+                // 4 5 6
+                // ...
+                for row in 0..6 {
+                    let mut line = String::new();
+                    for col in 0..row + 1 {
+                        line.push_str(&format!("{:E} ", covar.matrix[(col, row)]));
+                    }
+                    writeln!(writer, "{}", line.trim()).map_err(err_hdlr)?;
+                }
+
+                #[allow(clippy::writeln_empty_string)]
+                writeln!(writer, "").map_err(err_hdlr)?;
+            }
+        }
+
+        if cov_started {
+            writeln!(writer, "COVARIANCE_STOP").map_err(err_hdlr)?;
+        }
         Ok(())
     }
 }

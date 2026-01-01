@@ -71,6 +71,8 @@ pub enum EphemerisError {
     NameToId { name: String },
     #[snafu(display("CCSDS OEM parsing error on line {lno}: {details}"))]
     OEMParsingError { lno: usize, details: String },
+    #[snafu(display("STK Ephemeris parsing error on line {lno}: {details}"))]
+    STKEParsingError { lno: usize, details: String },
     #[snafu(display("CCSDS OEM epoch parsing error on line {line}: {details}"))]
     OEMTimeParsingError {
         line: usize,
