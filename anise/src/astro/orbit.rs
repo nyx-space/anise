@@ -464,7 +464,7 @@ impl Orbit {
     pub fn dcm3x3_from_ric_to_inertial(&self) -> PhysicsResult<DCM> {
         let r_hat = self.r_hat();
         let c_hat = self.hvec()? / self.hmag()?;
-        let i_hat = r_hat.cross(&c_hat);
+        let i_hat = c_hat.cross(&r_hat);
 
         let rot_mat = Matrix3::from_columns(&[r_hat, i_hat, c_hat]);
 

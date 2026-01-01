@@ -114,6 +114,30 @@ impl CartesianState {
         }
     }
 
+    /// radius vector in km
+    ///
+    /// :rtype: np.array
+    #[pyo3(name = "radius_km")]
+    fn py_radius_km<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        let data: Vec<f64> = self.radius_km.transpose().iter().copied().collect();
+
+        let arr = Array1::from_shape_vec((3,), data).unwrap();
+
+        PyArray1::<f64>::from_owned_array(py, arr)
+    }
+
+    /// velocity vector in km/s
+    ///
+    /// :rtype: np.array
+    #[pyo3(name = "velocity_km_s")]
+    fn py_velocity_km_s<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        let data: Vec<f64> = self.velocity_km_s.transpose().iter().copied().collect();
+
+        let arr = Array1::from_shape_vec((3,), data).unwrap();
+
+        PyArray1::<f64>::from_owned_array(py, arr)
+    }
+
     /// :rtype: float
     #[getter]
     fn get_x_km(&self) -> PyResult<f64> {
@@ -202,6 +226,20 @@ impl CartesianState {
     #[getter]
     fn get_frame(&self) -> PyResult<Frame> {
         Ok(self.frame)
+    }
+
+    /// :type epoch: Epoch
+    #[setter]
+    fn set_epoch(&mut self, epoch: Epoch) -> PyResult<()> {
+        self.epoch = epoch;
+        Ok(())
+    }
+
+    /// :type frame: Frame
+    #[setter]
+    fn set_frame(&mut self, frame: Frame) -> PyResult<()> {
+        self.frame = frame;
+        Ok(())
     }
 
     /// Returns this state as a Cartesian vector of size 6 in [km, km, km, km/s, km/s, km/s]

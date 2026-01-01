@@ -13,11 +13,11 @@ use crate::NaifId;
 
 use super::DCM;
 
-use nalgebra::Matrix3;
+use nalgebra::{Matrix3, Vector3};
 use ndarray::{Array1, Array2};
-use numpy::{PyArray1, PyArray2, PyReadonlyArray2, PyUntypedArrayMethods};
+use numpy::{PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2, PyUntypedArrayMethods};
 use pyo3::basic::CompareOp;
-use pyo3::exceptions::PyTypeError;
+use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyType;
 
@@ -120,6 +120,62 @@ impl DCM {
     #[classmethod]
     pub fn from_identity(_cls: &Bound<'_, PyType>, from_id: i32, to_id: i32) -> Self {
         Self::identity(from_id, to_id)
+    }
+
+    /// Constructs a DCM using the "Align and Clock" (Two-Vector Targeting / TRIAD) method.
+    ///
+    /// This defines a rotation based on two geometric constraints:
+    /// 1. **Align**: The `primary_body_axis` is aligned exactly with the `primary_inertial_vec`.
+    /// 2. **Clock**: The `secondary_body_axis` is aligned as closely as possible with the `secondary_inertial_vec`.
+    ///
+    /// This constructs the rotation matrix $R_{from \to to}$.
+    ///
+    /// # Arguments
+    /// * `primary_body_axis` - The axis in the "from" frame to align (e.g. Sensor Boresight).
+    /// * `primary_inertial_vec` - The target vector in the "to" frame (e.g. Vector to Earth).
+    /// * `secondary_body_axis` - The axis in the "from" frame to clock (e.g. Solar Panel Normal).
+    /// * `secondary_inertial_vec` - The target vector in the "to" frame (e.g. Vector to Sun).
+    /// * `from` - The ID of the source frame.
+    /// * `to` - The ID of the destination frame.
+    ///
+    /// :type primary_body_axis: np.array
+    /// :type primary_inertial_vec: np.array
+    /// :type secondary_body_axis: np.array
+    /// :type secondary_inertial_vec: np.array
+    /// :type from_id: int
+    /// :type to_id: int
+    /// :rtype: DCM
+    #[classmethod]
+    pub fn from_align_and_clock<'py>(
+        _cls: &Bound<'_, PyType>,
+        primary_body_axis: PyReadonlyArray1<'py, f64>,
+        primary_inertial_vec: PyReadonlyArray1<'py, f64>,
+        secondary_body_axis: PyReadonlyArray1<'py, f64>,
+        secondary_inertial_vec: PyReadonlyArray1<'py, f64>,
+        from_id: i32,
+        to_id: i32,
+    ) -> PyResult<Self> {
+        // Helper to safely convert numpy array to Vector3
+        let to_vec3 = |arr: PyReadonlyArray1<'py, f64>, name: &str| -> PyResult<Vector3<f64>> {
+            let view = arr.as_array();
+            if view.len() != 3 {
+                return Err(PyValueError::new_err(format!(
+                    "{} must be a length-3 vector, got length {}",
+                    name,
+                    view.len()
+                )));
+            }
+            // This is safe because we checked the length
+            Ok(Vector3::new(view[0], view[1], view[2]))
+        };
+
+        let p_body = to_vec3(primary_body_axis, "primary_body_axis")?;
+        let p_inertial = to_vec3(primary_inertial_vec, "primary_inertial_vec")?;
+        let s_body = to_vec3(secondary_body_axis, "secondary_body_axis")?;
+        let s_inertial = to_vec3(secondary_inertial_vec, "secondary_inertial_vec")?;
+
+        Self::align_and_clock(p_body, p_inertial, s_body, s_inertial, from_id, to_id)
+            .map_err(Into::into)
     }
 
     /// Return the position DCM (3x3 matrix)

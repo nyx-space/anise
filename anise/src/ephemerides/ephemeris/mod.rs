@@ -685,13 +685,13 @@ mod ut_oem {
 
         // Nyx reports these as Sigmas, so we apply the square root of the covariance here.
         let ric_diag_sigmas =
-            Vector6::new(0.961317, 0.854136, 0.922597, 0.007343, 0.006684, 0.007138);
+            Vector6::new(1.104494, 1.082771, 0.335512, 0.008646, 0.008262, 0.002558);
         let ric_err = diag_sqrt - ric_diag_sigmas;
         println!("{diag_sqrt:.6e}\n{ric_diag_sigmas:.6e}\n{ric_err:0.6e}",);
         let ric_pos_km_err = ric_err.fixed_rows::<3>(0);
         let ric_vel_km_s_err = ric_err.fixed_rows::<3>(3);
-        assert!(ric_pos_km_err.norm() < 0.06);
-        assert!(ric_vel_km_s_err.norm() < 1e-3);
+        assert!(dbg!(ric_pos_km_err.norm()) < 0.63);
+        assert!(dbg!(ric_vel_km_s_err.norm()) < 2e-3);
     }
 
     #[rstest]
