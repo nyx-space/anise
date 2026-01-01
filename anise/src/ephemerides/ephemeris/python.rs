@@ -63,6 +63,16 @@ impl Ephemeris {
         Self::from_ccsds_oem_file(path)
     }
 
+    /// Initializes a new Ephemeris from a file path to Ansys STK .e file.
+    ///
+    /// :type path: str
+    /// :rtype: Ephemeris
+    #[classmethod]
+    #[pyo3(name = "from_stk_e_file", signature=(path))]
+    fn py_from_stk_e_file(_cls: Bound<'_, PyType>, path: &str) -> Result<Self, EphemerisError> {
+        Self::from_stk_e_file(path)
+    }
+
     /// Exports this Ephemeris to CCSDS OEM at the provided path, optionally specifying an originator and/or an object name
     ///
     /// :type path: str
