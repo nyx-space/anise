@@ -569,6 +569,14 @@ mod ut_oem {
         ) {
             assert!(ephem.at(epoch, &almanac).is_ok());
         }
+
+        // Re-export with covariance
+        let rebuilt_path = "../data/tests/ccsds/oem/JPL_MGS_cov_rebuilt.oem";
+        ephem.to_ccsds_oem_file(rebuilt_path, None, None).unwrap();
+        let ephem2 =
+            Ephemeris::from_ccsds_oem_file(rebuilt_path).expect("could not parse rebuilt OEM");
+
+        assert!(ephem2.nearest_covar_after(epoch, &almanac).is_ok());
     }
 
     #[rstest]
