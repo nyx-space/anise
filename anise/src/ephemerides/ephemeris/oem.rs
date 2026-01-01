@@ -487,7 +487,7 @@ impl Ephemeris {
             writer,
             "\tSTOP_TIME = {}.{:0<3}",
             Formatter::new(last_orbit.epoch, iso8601_no_ts),
-            first_orbit.epoch.seconds()
+            last_orbit.epoch.seconds()
         )
         .map_err(err_hdlr)?;
 
@@ -536,7 +536,11 @@ impl Ephemeris {
                         LocalFrame::Inertial => "EME2000",
                         LocalFrame::RIC => "RTN",
                         LocalFrame::VNC => "TNW",
-                        LocalFrame::RCN => unreachable!(),
+                        LocalFrame::RCN =>
+                            return Err(EphemerisError::OEMWritingError {
+                                details: "RCN frame is not supported for OEM covariance export"
+                                    .to_string(),
+                            }),
                     }
                 )
                 .map_err(err_hdlr)?;

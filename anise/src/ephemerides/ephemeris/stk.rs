@@ -25,7 +25,7 @@ impl Ephemeris {
     /// Initialize a new ephemeris from the path to an Ansys STK .e file.
     pub fn from_stk_e_file<P: AsRef<Path>>(path: P) -> Result<Self, EphemerisError> {
         // Open the file
-        let file = File::open(path).map_err(|e| EphemerisError::STKEParsingError {
+        let file = File::open(&path).map_err(|e| EphemerisError::STKEParsingError {
             lno: 0,
             details: format!("could not open file: {e}"),
         })?;
@@ -40,9 +40,12 @@ impl Ephemeris {
         let mut orient_name = None;
         let mut interpolation = DataType::Type13HermiteUnequalStep;
         let mut degree = 5;
-        // There is no object ID in STK files, so we default to "STK_Object" or derive from filename?
-        // Let's use "STK_Object" for now.
-        let object_id: String = "STK_Object".to_string();
+        let object_id: String = path
+            .as_ref()
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("STK_Object")
+            .to_string();
         let mut scenario_epoch: Option<Epoch> = None;
 
         // Store the temporary data in a BTreeMap so we have O(1) access when adding the covariance information
@@ -152,7 +155,7 @@ impl Ephemeris {
                 // If specific handling is needed later, add here.
                 let time_system = parse_one_val(lno, line, "no value for TimeSystem")?;
                 if !time_system.eq_ignore_ascii_case("UTC") {
-                    return Err(EphemerisError::OEMParsingError {
+                    return Err(EphemerisError::STKEParsingError {
                         lno,
                         details: format!(
                             "unsupported TimeSystem `{time_system}`: only 'UTC' is supported"

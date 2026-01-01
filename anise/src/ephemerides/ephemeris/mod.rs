@@ -773,7 +773,6 @@ mod ut_oem {
             expected_end
         );
 
-        println!("{:x}", ephem.at(scenario_epoch, &almanac).unwrap().orbit);
         assert_eq!(ephem.state_data.len(), 34);
     }
 }
