@@ -12,7 +12,7 @@ use super::EphemerisError;
 use crate::math::Vector6;
 use crate::naif::daf::data_types::DataType;
 use crate::prelude::{Frame, Orbit};
-use hifitime::Epoch;
+use hifitime::{Epoch, Unit};
 use log::warn;
 use std::collections::BTreeMap;
 use std::fs::File;
@@ -25,7 +25,7 @@ impl Ephemeris {
     /// Initialize a new ephemeris from the path to an Ansys STK .e file.
     pub fn from_stk_e_file<P: AsRef<Path>>(path: P) -> Result<Self, EphemerisError> {
         // Open the file
-        let file = File::open(path).map_err(|e| EphemerisError::OEMParsingError {
+        let file = File::open(path).map_err(|e| EphemerisError::STKEParsingError {
             lno: 0,
             details: format!("could not open file: {e}"),
         })?;
@@ -55,7 +55,7 @@ impl Ephemeris {
                 // Join the rest of the parts as the value, just in case (e.g. date time with spaces)
                 Ok(parts[1..].join(" "))
             } else {
-                Err(EphemerisError::OEMParsingError {
+                Err(EphemerisError::STKEParsingError {
                     lno,
                     details: err.to_string(),
                 })
@@ -63,7 +63,7 @@ impl Ephemeris {
         };
 
         for (lno, line_res) in reader.lines().enumerate() {
-            let line_orig = line_res.map_err(|e| EphemerisError::OEMParsingError {
+            let line_orig = line_res.map_err(|e| EphemerisError::STKEParsingError {
                 lno,
                 details: format!("could not read line: {e}"),
             })?;
@@ -91,7 +91,7 @@ impl Ephemeris {
             // But they might be indented. line is trimmed.
 
             if line.starts_with("stk.v") {
-               // Version check if needed, for now ignore
+                // Version check if needed, for now ignore
             } else if line.eq_ignore_ascii_case("BEGIN Ephemeris") {
                 // Start of ephemeris block
             } else if line.eq_ignore_ascii_case("END Ephemeris") {
@@ -105,12 +105,13 @@ impl Ephemeris {
                 // Assuming UTC as per instructions.
                 match Epoch::from_format_str(&epoch_str, "%d %b %Y %H:%M:%S.%f") {
                     Ok(e) => scenario_epoch = Some(e),
-                    Err(e) => return Err(EphemerisError::OEMParsingError {
-                        lno,
-                        details: format!("could not parse ScenarioEpoch `{}`: {}", epoch_str, e),
-                    }),
+                    Err(e) => {
+                        return Err(EphemerisError::STKEParsingError {
+                            lno,
+                            details: format!("could not parse ScenarioEpoch `{epoch_str}`: {e}"),
+                        })
+                    }
                 }
-
             } else if line.starts_with("InterpolationMethod") {
                 let method = parse_one_val(lno, line, "no value for InterpolationMethod")?;
                 if method.eq_ignore_ascii_case("Lagrange") {
@@ -118,14 +119,21 @@ impl Ephemeris {
                 } else if method.eq_ignore_ascii_case("Hermite") {
                     interpolation = DataType::Type13HermiteUnequalStep;
                 } else {
-                    warn!("unsupported interpolation `{}` using Hermite", method);
+                    warn!("unsupported interpolation `{method}` using Hermite");
                 }
-            } else if line.starts_with("InterpolationOrder") || line.starts_with("InterpolationSamplesM1") {
-                 let val = parse_one_val(lno, line, "no value for InterpolationOrder/SamplesM1")?;
-                 match val.parse::<usize>() {
+            } else if line.starts_with("InterpolationOrder")
+                || line.starts_with("InterpolationSamples")
+            {
+                let val = parse_one_val(lno, line, "no value for InterpolationOrder/Samples")?;
+                match val.parse::<usize>() {
                     Ok(d) => degree = d,
-                    Err(_) => return Err(EphemerisError::OEMParsingError { lno, details: format!("invalid InterpolationOrder/SamplesM1 {}", val) }),
-                 }
+                    Err(_) => {
+                        return Err(EphemerisError::STKEParsingError {
+                            lno,
+                            details: format!("invalid InterpolationOrder/Samples {val}"),
+                        })
+                    }
+                }
             } else if line.starts_with("CentralBody") {
                 center_name = Some(parse_one_val(lno, line, "no value for CentralBody")?);
             } else if line.starts_with("CoordinateSystem") {
@@ -134,12 +142,26 @@ impl Ephemeris {
                 // Assume Kilometers for now, check if it is something else
                 let unit = parse_one_val(lno, line, "no value for DistanceUnit")?;
                 if !unit.eq_ignore_ascii_case("Kilometers") {
-                     warn!("DistanceUnit is {}, expected Kilometers. Assuming Kilometers.", unit);
+                    return Err(EphemerisError::STKEParsingError {
+                        lno,
+                        details: format!("DistanceUnit is {unit}, only Kilometers supported"),
+                    });
                 }
             } else if line.starts_with("TimeSystem") {
-                 // We ignore TimeSystem because we assume UTC based on instructions for ScenarioEpoch
-                 // If specific handling is needed later, add here.
-            } else if line.eq_ignore_ascii_case("BEGIN EphemerisTimePosVel") || line.eq_ignore_ascii_case("EphemerisTimePosVel") {
+                // We ignore TimeSystem because we assume UTC based on instructions for ScenarioEpoch
+                // If specific handling is needed later, add here.
+                let time_system = parse_one_val(lno, line, "no value for TimeSystem")?;
+                if !time_system.eq_ignore_ascii_case("UTC") {
+                    return Err(EphemerisError::OEMParsingError {
+                        lno,
+                        details: format!(
+                            "unsupported TimeSystem `{time_system}`: only 'UTC' is supported"
+                        ),
+                    });
+                }
+            } else if line.eq_ignore_ascii_case("BEGIN EphemerisTimePosVel")
+                || line.eq_ignore_ascii_case("EphemerisTimePosVel")
+            {
                 in_state_data = true;
                 continue;
             } else if line.eq_ignore_ascii_case("END EphemerisTimePosVel") {
@@ -149,22 +171,37 @@ impl Ephemeris {
                 // Format: Time X Y Z Vx Vy Vz
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if parts.len() < 7 {
-                    return Err(EphemerisError::OEMParsingError {
+                    return Err(EphemerisError::STKEParsingError {
                         lno,
                         details: format!("expected at least 7 columns, found {}", parts.len()),
                     });
                 }
 
-                let time_offset: f64 = parts[0].parse().map_err(|_| EphemerisError::OEMParsingError { lno, details: format!("invalid time offset {}", parts[0]) })?;
+                let time_offset: f64 =
+                    parts[0]
+                        .parse()
+                        .map_err(|_| EphemerisError::STKEParsingError {
+                            lno,
+                            details: format!("invalid time offset {}", parts[0]),
+                        })?;
 
-                let start_epoch = scenario_epoch.ok_or(EphemerisError::OEMParsingError { lno, details: "ScenarioEpoch not found before data".to_string() })?;
+                let start_epoch = scenario_epoch.ok_or(EphemerisError::STKEParsingError {
+                    lno,
+                    details: "ScenarioEpoch not found before data".to_string(),
+                })?;
 
                 // STK .e time is seconds from ScenarioEpoch
-                let epoch = start_epoch + hifitime::Unit::Second * time_offset;
+                let epoch = start_epoch + Unit::Second * time_offset;
 
                 let mut state_vec = Vector6::zeros();
                 for i in 0..6 {
-                    state_vec[i] = parts[i+1].parse().map_err(|_| EphemerisError::OEMParsingError { lno, details: format!("invalid state value {}", parts[i+1]) })?;
+                    state_vec[i] =
+                        parts[i + 1]
+                            .parse()
+                            .map_err(|_| EphemerisError::STKEParsingError {
+                                lno,
+                                details: format!("invalid state value {}", parts[i + 1]),
+                            })?;
                 }
 
                 let center_name_str = center_name.as_deref().unwrap_or("Earth");
@@ -185,12 +222,15 @@ impl Ephemeris {
                     .join(" ");
 
                 let orient_name_str = orient_name.as_deref().unwrap_or("J2000"); // Default to J2000 if not specified? Or ICRF?
-                // STK often uses "ICRF" or "J2000".
+                                                                                 // STK often uses "ICRF" or "J2000".
 
-                let frame = Frame::from_name(&center_name_str_cap, orient_name_str).map_err(|e| {
-                        EphemerisError::OEMParsingError {
+                let frame =
+                    Frame::from_name(&center_name_str_cap, orient_name_str).map_err(|e| {
+                        EphemerisError::STKEParsingError {
                             lno,
-                            details: format!("frame error `{center_name_str_cap:?} {orient_name_str:?}`: {e}"),
+                            details: format!(
+                                "frame error `{center_name_str_cap:?} {orient_name_str:?}`: {e}"
+                            ),
                         }
                     })?;
 
@@ -200,7 +240,7 @@ impl Ephemeris {
         }
 
         if state_data.is_empty() {
-             return Err(EphemerisError::OEMParsingError {
+            return Err(EphemerisError::STKEParsingError {
                 lno: 0,
                 details: "ephemeris file contains no state data".to_string(),
             });
