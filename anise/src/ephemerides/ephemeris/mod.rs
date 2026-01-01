@@ -747,7 +747,7 @@ mod ut_oem {
             format!("{:?}", ephem.interpolation()),
             "Type9LagrangeUnequalStep"
         );
-        assert_eq!(ephem.object_id(), "STK_Object");
+        assert_eq!(ephem.object_id(), "test_v12");
 
         // Check domain
         let (start, end) = ephem.domain().expect("Could not get domain");
@@ -774,5 +774,9 @@ mod ut_oem {
         );
 
         assert_eq!(ephem.state_data.len(), 34);
+
+        let record = ephem.at(expected_end, &almanac).unwrap();
+        assert!(record.covar.is_none());
+        assert_eq!(record.orbit.epoch, expected_end);
     }
 }
