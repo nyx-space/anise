@@ -177,6 +177,23 @@ impl Almanac {
         Ok(self.clone().with_spk(spk))
     }
 
+    /// Converts the provided Ansys STK .e file to SPICE SPK/BSP and loads it in the Almanac.
+    ///
+    /// :type path: str
+    /// :type naif_id: int
+    /// :rtype: Almanac
+    #[pyo3(name = "load_stk_e_file")]
+    fn py_load_stk_e_file(&self, path: &str, naif_id: NaifId) -> AlmanacResult<Self> {
+        let ephem = Ephemeris::from_stk_e_file(path).context(EphemerisSnafu {
+            action: "loading STK .e",
+        })?;
+        // Convert to BSP
+        let spk = ephem.to_spice_bsp(naif_id, None).context(EphemerisSnafu {
+            action: "converting STK .e to SPICE BSP",
+        })?;
+        Ok(self.clone().with_spk(spk))
+    }
+
     /// Unloads (in-place) the SPK with the provided alias.
     /// **WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded.
     ///
