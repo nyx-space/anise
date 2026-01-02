@@ -55,6 +55,7 @@ pub struct Instrument {
     pub fov: FovShape,
 }
 
+#[cfg_attr(feature = "python", pymethods)]
 impl Instrument {
     /// Computes the state (orientation + Cartesian state) of the instrument
     /// at a specific instant, given the spacecraft's state.
@@ -188,12 +189,10 @@ impl Instrument {
         //    q_i2s: Inertial -> Instrument
         //    pos_s_i: Instrument Position in Inertial
         let (q_i2s, pos_s_i) = self.transform_state(sc_attitude_to_body, sc_state)?;
-        dbg!(pos_s_i, target_state);
 
         // 2. Compute Relative Position in Target Body-Fixed Frame
         //    r_rel_i = Pos_Instrument_Inertial - Pos_Target_Inertial
         let r_rel_i = (pos_s_i - target_state)?.radius_km;
-        dbg!("b");
 
         //    Transform to Target Body-Fixed Frame
         //    r_rel_b = q_i2b * r_rel_i
@@ -207,7 +206,6 @@ impl Instrument {
         let dcm_i2s = DCM::from(q_i2s);
         //    R_s2fixed = R_i2fixed * R_s2i = R_i2fixed * R_i2s^T
         let dcm_s2fixed = (dcm_i2fixed * dcm_i2s.transpose())?;
-        dbg!("c");
 
         // 4. Generate Rays in Instrument Frame (Z-forward)
         let rays_sensor = self.generate_fov_boundary_vectors(resolution);
@@ -233,7 +231,9 @@ impl Instrument {
 
         Ok(footprint)
     }
+}
 
+impl Instrument {
     /// Helper to generate unit vectors defining the boundary of the FOV in the Instrument Frame.
     fn generate_fov_boundary_vectors(&self, resolution: usize) -> Vec<Vector3> {
         let mut rays = Vec::with_capacity(resolution);

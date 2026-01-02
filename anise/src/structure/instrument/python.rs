@@ -10,8 +10,6 @@
 
 use pyo3::prelude::*;
 
-use crate::astro::PhysicsResult;
-use crate::math::cartesian::CartesianState;
 use crate::math::rotation::EulerParameter;
 
 use super::{FovShape, Instrument};
@@ -57,25 +55,6 @@ impl Instrument {
             mounting_translation: translation,
             fov,
         })
-    }
-
-    #[pyo3(name = "inertial_state")]
-    fn py_inertial_state(
-        &self,
-        sc_attitude_to_body: EulerParameter,
-        sc_state: CartesianState,
-    ) -> PhysicsResult<(EulerParameter, CartesianState)> {
-        self.transform_state(sc_attitude_to_body, sc_state)
-    }
-
-    #[pyo3(name = "fov_marign_deg")]
-    fn py_fov_margin_deg(
-        &self,
-        sc_attitude_to_body: EulerParameter,
-        sc_state: CartesianState,
-        target_state: CartesianState,
-    ) -> PhysicsResult<f64> {
-        self.fov_margin_deg(sc_attitude_to_body, sc_state, target_state)
     }
 
     // getters

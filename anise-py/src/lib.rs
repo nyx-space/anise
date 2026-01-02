@@ -43,6 +43,7 @@ fn anise(m: &Bound<'_, PyModule>) -> PyResult<()> {
     pyo3_log::init();
     m.add_wrapped(wrap_pymodule!(time))?;
     m.add_wrapped(wrap_pymodule!(analysis))?;
+    m.add_wrapped(wrap_pymodule!(instrument))?;
     m.add_wrapped(wrap_pymodule!(astro::astro))?;
     m.add_wrapped(wrap_pymodule!(constants::constants))?;
     m.add_wrapped(wrap_pymodule!(utils::utils))?;
