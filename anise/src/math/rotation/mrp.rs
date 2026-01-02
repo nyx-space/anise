@@ -239,7 +239,7 @@ impl TryFrom<Quaternion> for MRP {
         ensure!(
             (1.0 + q.w).abs() >= f64::EPSILON,
             DivisionByZeroSnafu {
-                action: "quaternion represents a zero rotation, which is a singular MRP"
+                action: "quaternion represents a 360 deg rotation, which is a singular MRP"
             }
         );
 

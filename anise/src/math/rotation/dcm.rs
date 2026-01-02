@@ -232,9 +232,9 @@ impl DCM {
             // omega_z = (m21 - m12) / 2
             // This averaging of opposite elements is more robust to floating-point errors.
             Vector3::new(
-                (omega_skew_symmetric.m32 - omega_skew_symmetric.m23) / 2.0,
-                (omega_skew_symmetric.m13 - omega_skew_symmetric.m31) / 2.0,
-                (omega_skew_symmetric.m21 - omega_skew_symmetric.m12) / 2.0,
+                -(omega_skew_symmetric.m32 - omega_skew_symmetric.m23) / 2.0,
+                -(omega_skew_symmetric.m13 - omega_skew_symmetric.m31) / 2.0,
+                -(omega_skew_symmetric.m21 - omega_skew_symmetric.m12) / 2.0,
             )
         })
     }

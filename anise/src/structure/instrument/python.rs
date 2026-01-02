@@ -48,16 +48,13 @@ impl Instrument {
     fn py_new<'py>(
         mounting_rotation: EulerParameter,
         mounting_translation: PyReadonlyArray1<'py, f64>,
-        boresight_axis: PyReadonlyArray1<'py, f64>,
         fov: FovShape,
     ) -> PyResult<Instrument> {
         let translation = to_vec3(mounting_translation, "mounting_translation")?;
-        let boresight = to_vec3(boresight_axis, "boresight_axis")?;
 
         Ok(Self {
             mounting_rotation,
             mounting_translation: translation,
-            boresight_axis: boresight,
             fov,
         })
     }
@@ -68,7 +65,7 @@ impl Instrument {
         sc_attitude_to_body: EulerParameter,
         sc_state: CartesianState,
     ) -> PhysicsResult<(EulerParameter, CartesianState)> {
-        self.inertial_state(sc_attitude_to_body, sc_state)
+        self.transform_state(sc_attitude_to_body, sc_state)
     }
 
     #[pyo3(name = "fov_marign_deg")]
@@ -94,19 +91,7 @@ impl Instrument {
     fn get_mounting_translation<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         to_numpy_array(self.mounting_translation, py)
     }
-    #[getter]
-    fn get_boresight_axis<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        to_numpy_array(self.boresight_axis, py)
-    }
     // setters
-    #[setter]
-    fn set_boresight_axis<'py>(
-        &mut self,
-        boresight_axis: PyReadonlyArray1<'py, f64>,
-    ) -> PyResult<()> {
-        self.boresight_axis = to_vec3(boresight_axis, "boresight_axis")?;
-        Ok(())
-    }
 
     #[setter]
     fn set_mounting_translation<'py>(

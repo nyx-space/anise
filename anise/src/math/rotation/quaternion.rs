@@ -200,7 +200,7 @@ impl EulerParameter {
 
     /// Returns the data of this Euler Parameter as a vector, simplifies lots of computations
     /// but at the cost of losing frame information.
-    pub(crate) fn as_vector(&self) -> Vector4 {
+    pub fn as_vector(&self) -> Vector4 {
         Vector4::new(self.w, self.x, self.y, self.z)
     }
 }
@@ -320,13 +320,16 @@ impl Mul<Vector3> for Quaternion {
     type Output = Vector3;
 
     fn mul(self, rhs: Vector3) -> Self::Output {
-        let rhs_q = Self::new(0.0, rhs.x, rhs.y, rhs.z, self.from, self.to);
+        // Efficient implementation of v' = q* v q
+        // This is equivalent to rotating by the conjugate (-x, -y, -z).
+        // Formula: v' = v + 2 * r_conj x (r_conj x v + w * v)
+        // where r_conj = -r
 
-        let q_rot = ((self.conjugate() * rhs_q).unwrap() * self)
-            .unwrap()
-            .as_vector();
+        let r = Vector3::new(self.x, self.y, self.z);
+        let t = 2.0 * r.cross(&rhs);
 
-        Vector3::new(q_rot[1], q_rot[2], q_rot[3])
+        // The difference from Active is the subtraction of (w * t) instead of addition
+        rhs - (self.w * t) + r.cross(&t)
     }
 }
 
