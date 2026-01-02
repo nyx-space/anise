@@ -29,7 +29,7 @@ use crate::structure::dataset::{DataSetError, DataSetType};
 use crate::structure::lookuptable::LutError;
 use crate::structure::metadata::Metadata;
 use crate::structure::{
-    EulerParameterDataSet, LocationDataSet, PlanetaryDataSet, SpacecraftDataSet,
+    EulerParameterDataSet, InstrumentDataSet, LocationDataSet, PlanetaryDataSet, SpacecraftDataSet,
 };
 use crate::NaifId;
 use core::fmt;
@@ -37,6 +37,7 @@ use core::fmt;
 pub mod aer;
 pub mod bpc;
 pub mod eclipse;
+pub mod instrument;
 pub mod planetary;
 pub mod solar;
 pub mod spk;
@@ -75,6 +76,8 @@ pub struct Almanac {
     pub euler_param_data: IndexMap<String, EulerParameterDataSet>,
     /// Dataset of locations
     pub location_data: IndexMap<String, LocationDataSet>,
+    /// Dataset of instruments
+    pub instrument_data: IndexMap<String, InstrumentDataSet>,
 }
 
 impl fmt::Display for Almanac {

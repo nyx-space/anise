@@ -13,6 +13,7 @@ use crate::errors::PhysicsError;
 use crate::math::cartesian::CartesianState;
 use crate::math::rotation::{EulerParameter, DCM};
 use crate::math::Vector3;
+use crate::structure::dataset::DataSetT;
 use core::f64::consts::TAU;
 
 #[cfg(feature = "python")]
@@ -20,6 +21,8 @@ use pyo3::prelude::*;
 
 #[cfg(feature = "python")]
 mod python;
+
+mod enc_dec;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
@@ -39,9 +42,17 @@ pub enum FovShape {
     },
 }
 
+impl Default for FovShape {
+    fn default() -> Self {
+        Self::Conical {
+            half_angle_deg: 0.0,
+        }
+    }
+}
+
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.instrument"))]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Instrument {
     /// The static rotation from the Parent Frame to the instrument Frame.
     /// (How the camera is bolted onto the bus).
@@ -289,6 +300,10 @@ impl Instrument {
         }
         rays
     }
+}
+
+impl DataSetT for Instrument {
+    const NAME: &'static str = "Instrument";
 }
 
 #[cfg(test)]
