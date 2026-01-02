@@ -7,6 +7,7 @@
  *
  * Documentation: https://nyxspace.com/
  */
+
 use crate::{
     astro::PhysicsResult,
     errors::{InvalidRotationSnafu, InvalidStateRotationSnafu, PhysicsError},

@@ -293,7 +293,9 @@ def test_analysis_event():
             is_in_eclipse = eclipse_val >= 0.0
 
             if arc.start_epoch() <= epoch < arc.end_epoch():
-                assert is_in_eclipse, f"Epoch {epoch} should be in eclipse: {eclipse_val}: {arc}"
+                assert is_in_eclipse, (
+                    f"Epoch {epoch} should be in eclipse: {eclipse_val}: {arc}"
+                )
             else:
                 # Outside the arc, it should not be in eclipse, or it's a falling value
                 assert not is_in_eclipse or eclipse_val < 0.0
@@ -370,7 +372,9 @@ def test_location_accesses():
         )
         for epoch in series:
             orbit = lro_state_spec.evaluate(epoch, almanac)
-            aer = almanac.azimuth_elevation_range_sez_from_location_name(orbit, "My Alias")
+            aer = almanac.azimuth_elevation_range_sez_from_location_name(
+                orbit, "My Alias"
+            )
             is_visible = aer.elevation_deg > 0.0
 
             if arc.start_epoch() <= epoch < arc.end_epoch():
@@ -379,13 +383,22 @@ def test_location_accesses():
                 assert not is_visible
 
     # Check visibility arc function
-    visibility_arcs = almanac.report_visibility_arcs(lro_state_spec, 1, start_epoch, start_epoch + Unit.Day*3, Unit.Minute*10, None)
+    visibility_arcs = almanac.report_visibility_arcs(
+        lro_state_spec,
+        1,
+        start_epoch,
+        start_epoch + Unit.Day * 3,
+        Unit.Minute * 10,
+        None,
+    )
     first_pass = visibility_arcs[0]
-    assert first_pass.duration().round(Unit.Second*1) == Duration("8 h 56 min 55 s")
+    assert first_pass.duration().round(Unit.Second * 1) == Duration("8 h 56 min 55 s")
     # Visibility Arc contains the location reference info for pretty printing
     print(first_pass.location_ref)
     # And the location data itself
     print(first_pass.location, first_pass.location.height_km)
     # AER data is a list of AzElRange objects
     assert len(first_pass.aer_data) == 54
-    assert abs(first_pass.aer_data[0].elevation_deg - 1e-11) < 1e-11, "elevation should be nearly zero"
+    assert abs(first_pass.aer_data[0].elevation_deg - 1e-11) < 1e-11, (
+        "elevation should be nearly zero"
+    )
