@@ -41,6 +41,12 @@ pub enum AlmanacError {
         #[snafu(source(from(OrientationError, Box::new)))]
         source: Box<OrientationError>,
     },
+    #[snafu(display("{action} encountered an error {source}"))]
+    AlmanacPhysics {
+        action: &'static str,
+        #[snafu(source(from(PhysicsError, Box::new)))]
+        source: Box<PhysicsError>,
+    },
     #[snafu(display("{source} encountered when loading {path}"))]
     Loading {
         path: String,

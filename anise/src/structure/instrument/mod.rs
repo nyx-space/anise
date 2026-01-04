@@ -79,17 +79,23 @@ impl Instrument {
         sc_attitude_to_body: EulerParameter,
         mut sc_state: CartesianState,
     ) -> PhysicsResult<(EulerParameter, CartesianState)> {
-        let q_inertial_to_instrument = (self.mounting_rotation * sc_attitude_to_body)?;
+        let q_inertial_to_instrument =
+            (DCM::from(self.mounting_rotation) * DCM::from(sc_attitude_to_body))?;
 
         let offset_inertial = sc_attitude_to_body.conjugate() * self.mounting_translation;
 
         // Usurp the sc_state as the position of the instrument in the inertial frame
         sc_state.radius_km += offset_inertial;
 
-        Ok((q_inertial_to_instrument, sc_state))
+        Ok((q_inertial_to_instrument.into(), sc_state))
     }
 
-    /// Calculates the angular margin to the FOV boundary in radians.
+    /// Calculates the angular margin to the FOV boundary in degrees.
+    ///
+    /// # Arguments
+    /// * sc_attitude_to_body: rotation from the sc_state frame to the body frame in which is expressed the instrument rotation.
+    /// * sc_state: state of the spacecraft, typically in an inertial frame
+    /// * target_state: state of the target object in the same frame as the sc_state, e.g. IAU Moon if sc_state is in IAU Moon
     ///
     /// This is a continuous function suitable for event detection (root finding).
     /// * `> 0.0`: Target is INSIDE.
@@ -117,8 +123,7 @@ impl Instrument {
             return Ok(-1.0); // Fail-safe: consider "inside the camera" as obscured/invalid
         }
 
-        let dcm_i2s = DCM::from(q_i2s);
-        let vec_instrument = dcm_i2s * vec_inertial;
+        let vec_instrument = q_i2s * vec_inertial;
 
         match self.fov {
             FovShape::Conical { half_angle_deg } => {
@@ -168,10 +173,10 @@ impl Instrument {
     /// This function projects the edges of the Field of View onto the provided target ellipsoid.
     ///
     /// # Arguments
-    /// * `sc_attitude_inertial_to_body` - The orientation of the spacecraft body relative to Inertial.
+    /// * `sc_attitude_to_body` - The orientation of the spacecraft body relative to Inertial.
     /// * `sc_state` - The inertial state (position/velocity) of the spacecraft.
     /// * `target_state` - The inertial state of the target body center.
-    /// * `target_orientation_inertial_to_fixed` - The orientation of the target body frame relative to Inertial.
+    /// * `target_orientation_to_fixed` - The orientation of the target body frame relative to Inertial.
     /// * `resolution` - The number of points to generate along the FOV boundary.
     ///
     /// # Returns
@@ -355,7 +360,7 @@ mod ut_instrument {
             },
         };
 
-        let sc_att = EulerParameter::identity(1, 0);
+        let sc_att = EulerParameter::identity(0, 1);
         let sc_state = state_at_origin(0);
 
         // CASE 1: Target straight ahead (+Z) -> Should be INSIDE
@@ -401,7 +406,7 @@ mod ut_instrument {
             },
         };
 
-        let sc_att = EulerParameter::identity(1, 0);
+        let sc_att = EulerParameter::identity(0, 1);
         let sc_state = state_at_origin(0);
 
         // CASE 1: Target is at 10 deg azimuth (X), 0 deg elevation (Y).
@@ -450,7 +455,7 @@ mod ut_instrument {
 
         // Rotation Body->Instrument: 90 deg about Y.
         // Body X maps to Instrument Z (Boresight).
-        let mounting_rot = EulerParameter::about_y(90.0_f64.to_radians(), 2, 1);
+        let mounting_rot = EulerParameter::about_y(90.0_f64.to_radians(), 1, 2);
 
         let instrument = Instrument {
             mounting_rotation: mounting_rot,
@@ -460,7 +465,7 @@ mod ut_instrument {
             },
         };
 
-        let sc_att = EulerParameter::identity(1, 0);
+        let sc_att = EulerParameter::identity(0, 1);
         let sc_state = state_at_pos(0, sc_pos_inertial);
 
         // 1. Verify Inertial State Calculation
@@ -539,7 +544,7 @@ mod ut_instrument {
         };
 
         // SC Attitude: 180 deg about X so Z_body -> -Z_inertial
-        let sc_att = EulerParameter::about_x(core::f64::consts::PI, 1, 0);
+        let sc_att = EulerParameter::about_x(core::f64::consts::PI, 0, 1);
         let sc_state = state_at_pos(0, Vector3::new(0.0, 0.0, 10000.0));
         let mut target_state = state_at_origin(0);
         target_state.frame = target_frame;
@@ -592,7 +597,7 @@ mod ut_instrument {
 
         let instrument = Instrument {
             // Rotated 90 deg about Z: Inst X -> Body Y
-            mounting_rotation: EulerParameter::about_z(core::f64::consts::FRAC_PI_2, 2, 1),
+            mounting_rotation: EulerParameter::about_z(core::f64::consts::FRAC_PI_2, 1, 2),
             mounting_translation: Vector3::zeros(),
             fov: FovShape::Rectangular {
                 x_half_angle_deg: 20.0, // Wide
@@ -600,7 +605,7 @@ mod ut_instrument {
             },
         };
 
-        let sc_att = EulerParameter::about_x(core::f64::consts::PI, 1, 0); // Nadir Pointing
+        let sc_att = EulerParameter::about_x(core::f64::consts::PI, 0, 1); // Nadir Pointing
         let sc_state = state_at_pos(0, Vector3::new(0.0, 0.0, 10000.0));
         let mut target_state = state_at_origin(0);
         target_state.frame = target_frame;
@@ -657,7 +662,7 @@ mod ut_instrument {
             },
         };
 
-        let sc_att = EulerParameter::identity(1, 0); // Z -> Z (Away)
+        let sc_att = EulerParameter::identity(0, 1); // Z -> Z (Away)
         let sc_state = state_at_pos(0, Vector3::new(0.0, 0.0, 10000.0));
         let mut target_state = state_at_origin(0);
         target_state.frame = target_frame;

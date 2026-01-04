@@ -175,6 +175,25 @@ impl Almanac {
         self
     }
 
+    /// Loads the provided instrument data.
+    pub fn with_instrument_data(self, dataset: InstrumentDataSet) -> Self {
+        self.with_instrument_data_as(dataset, None)
+    }
+
+    /// Loads the provided instrument data.
+    pub fn with_instrument_data_as(
+        mut self,
+        dataset: InstrumentDataSet,
+        alias: Option<String>,
+    ) -> Self {
+        let alias = alias.unwrap_or(Epoch::now().unwrap_or_default().to_string());
+        let msg = format!("unloading instrument data `{alias}`");
+        if self.instrument_data.insert(alias, dataset).is_some() {
+            warn!("{msg}");
+        }
+        self
+    }
+
     /// Loads the provides bytes as one of the data types supported in ANISE.
     pub fn load_from_bytes(self, bytes: BytesMut) -> AlmanacResult<Self> {
         self._load_from_bytes(bytes, None)

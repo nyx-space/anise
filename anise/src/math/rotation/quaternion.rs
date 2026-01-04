@@ -24,30 +24,99 @@ use pyo3::prelude::*;
 
 use super::EPSILON_RAD;
 
-/// Quaternion will always be a unit quaternion in ANISE, cf. EulerParameter.
+/// Represents the orientation of a rigid body or a coordinate frame transformation in three-dimensional space using Euler parameters.
 ///
-/// In ANISE, Quaternions use exclusively the Hamiltonian convenstion.
-pub type Quaternion = EulerParameter;
-
-/// Represents the orientation of a rigid body in three-dimensional space using Euler parameters.
+/// Euler parameters, also known as unit quaternions, are a set of four parameters `w`, `x`, `y`, `z`.
+/// They are particularly useful because they avoid gimbal lock, are more compact than rotation matrices,
+/// and allow for smooth interpolation (SLERP).
 ///
-/// Euler parameters, also known as unit quaternions, are a set of four parameters `b0`, `b1`, `b2`, and `b3`.
-/// For clarity, in ANISE, these are denoted `w`, `x`, `y`, `z`.
-/// They are an extension of the concept of using Euler angles for representing orientations and are
-/// particularly useful because they avoid gimbal lock and are more compact than rotation matrices.
+/// # Conventions
+///
+/// ANISE strictly adheres to the following conventions to ensure consistency with `DCM` and standard
+/// Guidance, Navigation, and Control (GNC) mathematics:
+///
+/// 1. **Hamiltonian Algebra:** The quaternion multiplication follows the right-handed rule where \
+///    `i * j = k`. This is the standard in robotics and computer graphics, but distinct from the
+///    "JPL/Shuster" convention (`i * j = -k`) sometimes found in legacy aerospace software.
+///
+/// 2. **Passive Rotation (Coordinate Transformation):** A quaternion defined with `from: A` and `to: B`
+///    represents the transformation of **coordinates** from Frame A to Frame B.
+///    * The rotation of a vector `v` is computed as: `v_B = q.conjugate() * v_A * q`.
+///    * This matches the behavior of a Direction Cosine Matrix (DCM): `v_B = [DCM_A->B] * v_A`.
+///
+/// 3. **Operator Composition (Backward Chaining):** Rotations are composed in "Operator Order",
+///    matching matrix multiplication rules.
+///    * To compute the rotation A -> C, you multiply B->C by A->B.
+///    * `q_A_to_C = q_B_to_C * q_A_to_B`
+///    * ANISE enforces strict frame checking: `LHS.from` must equal `RHS.to`.
 ///
 /// # Definitions
 ///
-/// Euler parameters are defined in terms of the axis of rotation and the angle of rotation. If a body
-/// rotates by an angle `θ` about an axis defined by the unit vector `e = [e1, e2, e3]`, the Euler parameters
-/// are defined as:
+/// Euler parameters are defined in terms of the principal rotation vector. If a frame is rotated
+/// by an angle `θ` about a unit axis `e = [e1, e2, e3]`:
 ///
-/// b0 = cos(θ / 2)
-/// b1 = e1 * sin(θ / 2)
-/// b2 = e2 * sin(θ / 2)
-/// b3 = e3 * sin(θ / 2)
+/// * `w = cos(θ / 2)`
+/// * `x = e1 * sin(θ / 2)`
+/// * `y = e2 * sin(θ / 2)`
+/// * `z = e3 * sin(θ / 2)`
 ///
-/// These parameters have the property that `b0^2 + b1^2 + b2^2 + b3^2 = 1`, which means they represent
+/// These parameters satisfy `w^2 + x^2 + y^2 + z^2 = 1`, which means they represent
+/// a rotation in SO(3) and can be used to interpolate rotations smoothly.
+///
+/// # Applications
+///
+/// In the context of spacecraft mechanics, Euler parameters are often used because they provide a
+/// numerically stable way to represent the attitude of a spacecraft without the singularities that
+/// are present with Euler angles.
+///
+/// # Usage
+/// Importantly, ANISE prevents the composition of two Euler Parameters if the frames do not match.
+///
+/// :type w: float
+/// :type x: float
+/// :type y: float
+/// :type z: float
+/// :type from_id: int
+/// :type to_id: int
+pub type Quaternion = EulerParameter;
+
+/// Represents the orientation of a rigid body or a coordinate frame transformation in three-dimensional space using Euler parameters.
+///
+/// Euler parameters, also known as unit quaternions, are a set of four parameters `w`, `x`, `y`, `z`.
+/// They are particularly useful because they avoid gimbal lock, are more compact than rotation matrices,
+/// and allow for smooth interpolation (SLERP).
+///
+/// # Conventions
+///
+/// ANISE strictly adheres to the following conventions to ensure consistency with `DCM` and standard
+/// Guidance, Navigation, and Control (GNC) mathematics:
+///
+/// 1. **Hamiltonian Algebra:** The quaternion multiplication follows the right-handed rule where \
+///    `i * j = k`. This is the standard in robotics and computer graphics, but distinct from the
+///    "JPL/Shuster" convention (`i * j = -k`) sometimes found in legacy aerospace software.
+///
+/// 2. **Passive Rotation (Coordinate Transformation):** A quaternion defined with `from: A` and `to: B`
+///    represents the transformation of **coordinates** from Frame A to Frame B.
+///    * The rotation of a vector `v` is computed as: `v_B = q.conjugate() * v_A * q`.
+///    * This matches the behavior of a Direction Cosine Matrix (DCM): `v_B = [DCM_A->B] * v_A`.
+///
+/// 3. **Operator Composition (Backward Chaining):** Rotations are composed in "Operator Order",
+///    matching matrix multiplication rules.
+///    * To compute the rotation A -> C, you multiply B->C by A->B.
+///    * `q_A_to_C = q_B_to_C * q_A_to_B`
+///    * ANISE enforces strict frame checking: `LHS.from` must equal `RHS.to`.
+///
+/// # Definitions
+///
+/// Euler parameters are defined in terms of the principal rotation vector. If a frame is rotated
+/// by an angle `θ` about a unit axis `e = [e1, e2, e3]`:
+///
+/// * `w = cos(θ / 2)`
+/// * `x = e1 * sin(θ / 2)`
+/// * `y = e2 * sin(θ / 2)`
+/// * `z = e3 * sin(θ / 2)`
+///
+/// These parameters satisfy `w^2 + x^2 + y^2 + z^2 = 1`, which means they represent
 /// a rotation in SO(3) and can be used to interpolate rotations smoothly.
 ///
 /// # Applications
@@ -275,7 +344,7 @@ impl Mul for Quaternion {
 
     fn mul(self, rhs: Quaternion) -> Self::Output {
         ensure!(
-            self.to == rhs.from,
+            self.from == rhs.to,
             InvalidRotationSnafu {
                 action: "multiply quaternions",
                 from1: self.from,
@@ -290,20 +359,13 @@ impl Mul for Quaternion {
         let j = self.w * rhs.y - self.x * rhs.z + self.y * rhs.w + self.z * rhs.x;
         let k = self.w * rhs.z + self.x * rhs.y - self.y * rhs.x + self.z * rhs.w;
 
-        let (from, to) = if self.to == rhs.from && self.from == rhs.to {
-            // Then we don't change the frames
-            (self.from, self.to)
-        } else {
-            (self.from, rhs.to)
-        };
-
         Ok(Quaternion {
             w: s,
             x: i,
             y: j,
             z: k,
-            from,
-            to,
+            from: rhs.from, // Source comes from the Right-Hand Side
+            to: self.to,    // Destination comes from the Left-Hand Side
         })
     }
 }
@@ -439,7 +501,7 @@ mod ut_quaternion {
                 assert!((q * &q.conjugate()).is_ok());
                 assert_eq!(
                     (q * &q.conjugate()).unwrap(),
-                    Quaternion::identity(0, 1),
+                    Quaternion::identity(1, 1),
                     "axis {i} and {angle}"
                 );
                 // Check that the PRV is entirely in the appropriate direction
@@ -462,8 +524,9 @@ mod ut_quaternion {
             let q1 = Quaternion::about_x(angle, 0, 1);
             let (uvec_q1, _angle_rad) = q1.uvec_angle_rad();
             let q2 = Quaternion::about_x(angle, 1, 2);
-
-            let q1_to_q2 = (q1 * q2).unwrap();
+            // Correct Passive Chaining:
+            // q(0->2) = q(1->2) * q(0->1)
+            let q1_to_q2 = (q2 * q1).unwrap();
             assert_eq!(q1_to_q2.from, 0, "{angle}");
             assert_eq!(q1_to_q2.to, 2, "{angle}");
 
@@ -484,7 +547,7 @@ mod ut_quaternion {
 
             // Check the conjugate
 
-            let q2_to_q1 = (q2.conjugate() * q1.conjugate()).unwrap();
+            let q2_to_q1 = (q1.conjugate() * q2.conjugate()).unwrap();
             assert_eq!(q2_to_q1.from, 2, "{angle}");
             assert_eq!(q2_to_q1.to, 0, "{angle}");
 

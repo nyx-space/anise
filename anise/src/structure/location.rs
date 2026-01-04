@@ -231,11 +231,11 @@ pub struct TerrainMask {
 
 impl TerrainMask {
     /// Initializes a new flat terrain mask.
-    pub fn from_flat_terrain(elevation_mask_deg: f64) -> Self {
-        Self {
+    pub fn from_flat_terrain(elevation_mask_deg: f64) -> Vec<Self> {
+        vec![Self {
             azimuth_deg: 0.0,
             elevation_mask_deg,
-        }
+        }]
     }
 }
 

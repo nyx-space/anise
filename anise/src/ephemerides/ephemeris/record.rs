@@ -58,7 +58,7 @@ impl EphemerisRecord {
 
                 // M = R_target_to_inertial * (R_source_to_inertial)^T
                 // M maps Source -> Target
-                let dcm = (desired_frame_to_inertial * cur_frame_to_inertial.transpose())?;
+                let dcm = (desired_frame_to_inertial.transpose() * cur_frame_to_inertial)?;
 
                 // Apply 6x6 Rotation: P_new = M * P_old * M^T
                 covar.matrix = dcm.state_dcm() * covar.matrix * dcm.state_dcm().transpose();

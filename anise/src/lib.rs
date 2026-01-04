@@ -55,6 +55,7 @@ pub mod prelude {
     pub use crate::math::units::*;
     pub use crate::naif::daf::NAIFSummaryRecord;
     pub use crate::naif::{BPC, SPK};
+    pub use crate::structure::instrument::{FovShape, Instrument};
     pub use crate::time::*;
     pub use std::fs::File;
 }

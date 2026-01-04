@@ -310,6 +310,16 @@ impl Mul for DCM {
     type Output = Result<Self, PhysicsError>;
 
     fn mul(self, rhs: Self) -> Self::Output {
+        ensure!(
+            self.from == rhs.to,
+            InvalidRotationSnafu {
+                action: "multiply DCMs",
+                from1: self.from,
+                to1: self.to,
+                from2: rhs.from,
+                to2: rhs.to
+            }
+        );
         if self.is_identity() {
             let mut rslt = rhs;
             rslt.from = rhs.from;
@@ -320,19 +330,7 @@ impl Mul for DCM {
             rslt.from = rhs.from;
             rslt.to = self.to;
             Ok(rslt)
-            // Ok(self)
         } else {
-            ensure!(
-                self.from == rhs.to,
-                InvalidRotationSnafu {
-                    action: "multiply DCMs",
-                    from1: self.from,
-                    to1: self.to,
-                    from2: rhs.from,
-                    to2: rhs.to
-                }
-            );
-
             Ok(self.mul_unchecked(rhs))
         }
     }
