@@ -145,7 +145,7 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
     // Camera Y_Half_Angle = 10.0 deg.
     // In the nominal setup (-90 Y rot), Camera Y aligns with Body Y.
     // To shift the target along Camera Y, we must rotate around Camera X.
-    // Camera X aligns with Body Z (verify via Right Hand Rule or trial).
+    // Camera X aligns with Body Z.
     // Let's rotate the mounting 12 deg about Body Z (Cross-track).
 
     // We compose rotations: First the Base (-90 Y), THEN a tilt (12 Z).

@@ -11,24 +11,13 @@
 use super::Almanac;
 use crate::errors::{AlmanacPhysicsSnafu, AlmanacResult};
 use crate::{
-    astro::{Aberration, AzElRange},
-    constants::SPEED_OF_LIGHT_KM_S,
-    ephemerides::{EphemerisError, EphemerisPhysicsSnafu},
-    errors::{AlmanacError, EphemerisSnafu, PhysicsError},
+    astro::Aberration,
+    errors::AlmanacError,
     frames::Frame,
-    math::{
-        angles::{between_0_360, between_pm_180},
-        rotation::Quaternion,
-    },
+    math::rotation::Quaternion,
     prelude::Orbit,
-    structure::{
-        dataset::DataSetError, instrument::Instrument, location::Location, lookuptable::LutError,
-    },
+    structure::{dataset::DataSetError, instrument::Instrument, lookuptable::LutError},
 };
-use hifitime::Epoch;
-
-use hifitime::TimeUnits;
-use log::warn;
 
 use snafu::ResultExt;
 
