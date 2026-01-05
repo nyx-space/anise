@@ -382,8 +382,8 @@ impl Mul<Vector3> for Quaternion {
     type Output = Vector3;
 
     fn mul(self, rhs: Vector3) -> Self::Output {
-        // Efficient implementation of v' = q* v q
-        // This is equivalent to rotating by the conjugate (-x, -y, -z).
+        // Efficient implementation of a passive rotation (coordinate transformation) using the formula for v' = q_conj * v * q.
+        // This transforms the coordinates of the right hand side from the `from` frame to the `to` frame.
         // Formula: v' = v + 2 * r_conj x (r_conj x v + w * v)
         // where r_conj = -r
 

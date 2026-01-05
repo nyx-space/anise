@@ -3,7 +3,7 @@ use anise::constants::celestial_objects::MOON;
 use anise::constants::frames::{
     EME2000, IAU_EARTH_FRAME, IAU_MOON_FRAME, MOON_J2000, SUN_J2000, VENUS_J2000,
 };
-use anise::constants::orientations::J2000;
+use anise::constants::orientations::{IAU_MOON, J2000};
 use anise::math::rotation::EulerParameter;
 use anise::math::Vector3;
 use anise::prelude::{Almanac, Frame, Orbit};
@@ -100,7 +100,7 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
     assert!((fov_margin_to_center - 10.0).abs() < 1e-12);
 
     // Check that we can see nadir.
-    let (lat, long, _alt) = almanac
+    let (lat, long, alt) = almanac
         .transform_to(lro_state, IAU_MOON_FRAME, None)
         .unwrap()
         .latlongalt()
@@ -120,6 +120,55 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
         .fov_margin_deg(sc_attitude_to_body, lro_state, below)
         .unwrap();
     assert!((fov_margin_to_nadir - 10.0).abs() < 1e-12);
+
+    // IMPORTANT: In this test case, we've grabbed the LRO state in the IAU Moon frame.
+    // We're also seeking the footprint in the IAU Moon frame. So the target_orientation_to_fixed
+    // quaternion is actually identity.
+    // Proof: if we pass in the rotation matrix J2000 to IAU, the footprint computation will raise an error.
+
+    // Grab the rotation of the target.
+    let dcm = almanac.rotate(MOON_J2000, IAU_MOON_FRAME, epoch).unwrap();
+    let target_orientation_to_fixed = EulerParameter::from(dcm);
+    assert!(instrument
+        .compute_footprint(
+            sc_attitude_to_body,
+            lro_state,
+            target_orientation_to_fixed,
+            36,
+        )
+        .is_err());
+
+    // But if we pass in identity, then the footprint is correctly computed.
+    let footprint = instrument
+        .compute_footprint(
+            sc_attitude_to_body,
+            lro_state,
+            EulerParameter::identity(IAU_MOON, IAU_MOON),
+            36,
+        )
+        .unwrap();
+    println!("{below}");
+
+    let mut min_lat_deg = f64::MAX;
+    let mut max_lat_deg = f64::MIN;
+    let mut min_long_deg = f64::MAX;
+    let mut max_long_deg = f64::MIN;
+    for ray in footprint {
+        // Compute the lat/long
+        let (lat_deg, long_deg, _alt_km) = ray.latlongalt().unwrap();
+        min_lat_deg = min_lat_deg.min(lat_deg);
+        min_long_deg = min_long_deg.min(long_deg);
+        max_lat_deg = max_lat_deg.max(lat_deg);
+        max_long_deg = max_long_deg.max(long_deg);
+    }
+
+    println!("LRO lat/long/alt: {lat:.2} deg, {long:.2} deg, {alt:.2} km");
+    println!("Camera: {instrument}");
+    println!("Latitude footprint span: {min_lat_deg:.2} - {max_lat_deg:.2}");
+    println!("Longitude footprint span: {min_long_deg:.2} - {max_long_deg:.2}");
+
+    // TODO: Move the compute footprint function to the almanac and
+    // ensure that the quaternion is the rotation from the sc state to the body frame.
 
     // --- TEST CASE 1: EDGE OF WIDTH (X-Axis) ---
     // Camera is defined with X_Half_Angle = 15.0 deg.

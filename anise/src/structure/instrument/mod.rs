@@ -15,6 +15,7 @@ use crate::math::rotation::{EulerParameter, DCM};
 use crate::math::Vector3;
 use crate::structure::dataset::DataSetT;
 use core::f64::consts::TAU;
+use core::fmt;
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
@@ -47,6 +48,12 @@ impl Default for FovShape {
         Self::Conical {
             half_angle_deg: 0.0,
         }
+    }
+}
+
+impl fmt::Display for FovShape {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
     }
 }
 
@@ -175,7 +182,6 @@ impl Instrument {
     /// # Arguments
     /// * `sc_attitude_to_body` - The orientation of the spacecraft body relative to Inertial.
     /// * `sc_state` - The inertial state (position/velocity) of the spacecraft.
-    /// * `target_state` - The inertial state of the target body center.
     /// * `target_orientation_to_fixed` - The orientation of the target body frame relative to Inertial.
     /// * `resolution` - The number of points to generate along the FOV boundary.
     ///
@@ -185,18 +191,17 @@ impl Instrument {
     pub fn compute_footprint(
         &self,
         sc_attitude_to_body: EulerParameter,
-        sc_state: CartesianState,
-        target_state: CartesianState,
+        sc_state_fixed: CartesianState,
         target_orientation_to_fixed: EulerParameter,
         resolution: usize,
     ) -> PhysicsResult<Vec<CartesianState>> {
-        let target_shape = target_state
+        let target_shape = sc_state_fixed
             .frame
             .shape
             .ok_or(PhysicsError::MissingFrameData {
                 action: "retrieving ellipsoid shape",
                 data: "shape",
-                frame: target_state.frame.into(),
+                frame: sc_state_fixed.frame.into(),
             })?;
 
         let mut footprint = Vec::with_capacity(resolution);
@@ -204,22 +209,23 @@ impl Instrument {
         // 1. Get Instrument Inertial State (Position & Orientation)
         //    q_i2s: Inertial -> Instrument
         //    pos_s_i: Instrument Position in Inertial
-        let (q_i2s, pos_s_i) = self.transform_state(sc_attitude_to_body, sc_state)?;
+        let (q_f2s, pos_s_f) = self.transform_state(sc_attitude_to_body, sc_state_fixed)?; // TODO: Check this.
 
         // 2. Compute Relative Position in Target Body-Fixed Frame
         //    r_rel_i = Pos_Instrument_Inertial - Pos_Target_Inertial
-        let r_rel_i = (pos_s_i - target_state)?.radius_km;
+        let r_rel = pos_s_f.radius_km;
 
         //    Transform to Target Body-Fixed Frame
         //    r_rel_b = q_i2b * r_rel_i
         let dcm_i2fixed = DCM::from(target_orientation_to_fixed);
-        let pos_sensor_fixed = dcm_i2fixed * r_rel_i;
+        // XXX: Is the footprint is computed for the frame that the sc_state_fixed is in, what are we trying to rotate here?
+        let pos_sensor_fixed = dcm_i2fixed * r_rel;
 
         // 3. Compute Rotation from Instrument to Target Body-Fixed Frame
         //    q_s2fixed = q_i2fixed * q_s2i
         //              = q_i2fixed * q_i2s.conjugate()
         //    Note: We rely on ANISE frame chaining checks, or manual composition if IDs differ.
-        let dcm_i2s = DCM::from(q_i2s);
+        let dcm_i2s = DCM::from(q_f2s);
         //    R_s2fixed = R_i2fixed * R_s2i = R_i2fixed * R_i2s^T
         let dcm_s2fixed = (dcm_i2fixed * dcm_i2s.transpose())?;
 
@@ -238,8 +244,8 @@ impl Instrument {
                 let orbit = CartesianState {
                     radius_km: surface_point,
                     velocity_km_s: Vector3::zeros(),
-                    epoch: sc_state.epoch,
-                    frame: target_state.frame,
+                    epoch: sc_state_fixed.epoch,
+                    frame: sc_state_fixed.frame,
                 };
                 footprint.push(orbit);
             }
@@ -309,6 +315,24 @@ impl Instrument {
 
 impl DataSetT for Instrument {
     const NAME: &'static str = "Instrument";
+}
+
+impl fmt::Display for Instrument {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.mounting_translation.norm_squared() < f64::EPSILON {
+            write!(
+                f,
+                "FOV of {}\tRotation: {}",
+                self.fov, self.mounting_rotation
+            )
+        } else {
+            write!(
+                f,
+                "FOV of {}\tRotation: {}\tTranslation: {}",
+                self.fov, self.mounting_rotation, self.mounting_translation
+            )
+        }
+    }
 }
 
 #[cfg(test)]
@@ -545,9 +569,8 @@ mod ut_instrument {
 
         // SC Attitude: 180 deg about X so Z_body -> -Z_inertial
         let sc_att = EulerParameter::about_x(core::f64::consts::PI, 0, 1);
-        let sc_state = state_at_pos(0, Vector3::new(0.0, 0.0, 10000.0));
-        let mut target_state = state_at_origin(0);
-        target_state.frame = target_frame;
+        let mut sc_state = state_at_pos(0, Vector3::new(0.0, 0.0, 10000.0));
+        sc_state.frame = target_frame;
         let target_orient = EulerParameter::identity(0, 10); // Target fixed aligned with Inertial
 
         // ACT
@@ -555,7 +578,6 @@ mod ut_instrument {
             .compute_footprint(
                 sc_att,
                 sc_state,
-                target_state,
                 target_orient,
                 36, // resolution
             )
@@ -606,15 +628,14 @@ mod ut_instrument {
         };
 
         let sc_att = EulerParameter::about_x(core::f64::consts::PI, 0, 1); // Nadir Pointing
-        let sc_state = state_at_pos(0, Vector3::new(0.0, 0.0, 10000.0));
-        let mut target_state = state_at_origin(0);
-        target_state.frame = target_frame;
+        let mut sc_state = state_at_pos(0, Vector3::new(0.0, 0.0, 10000.0));
+        sc_state.frame = target_frame;
         let target_orient = EulerParameter::identity(0, 10);
 
         // ACT
         // Resolution 40 -> 10 points per side
         let footprint = instrument
-            .compute_footprint(sc_att, sc_state, target_state, target_orient, 40)
+            .compute_footprint(sc_att, sc_state, target_orient, 40)
             .expect("Computation failed");
 
         // ASSERT
@@ -663,18 +684,11 @@ mod ut_instrument {
         };
 
         let sc_att = EulerParameter::identity(0, 1); // Z -> Z (Away)
-        let sc_state = state_at_pos(0, Vector3::new(0.0, 0.0, 10000.0));
-        let mut target_state = state_at_origin(0);
-        target_state.frame = target_frame;
+        let mut sc_state = state_at_pos(0, Vector3::new(0.0, 0.0, 10000.0));
+        sc_state.frame = target_frame;
 
         let footprint = instrument
-            .compute_footprint(
-                sc_att,
-                sc_state,
-                target_state,
-                EulerParameter::identity(0, 10),
-                10,
-            )
+            .compute_footprint(sc_att, sc_state, EulerParameter::identity(0, 10), 10)
             .unwrap();
 
         // ASSERT

@@ -259,8 +259,8 @@ def test_numpy_constructor():
     with np.testing.assert_raises(ValueError):
         Orbit(np.array([1.0, 2.0, 3.0]), epoch, eme2k)
 
-    assert np.all(orbit.radius_km() == np.array([8_191.93, 0.0, 0.0]))
-    assert np.all(orbit.velocity_km_s() == np.array([0.0, 7.6, 0.0]))
+    assert np.all(orbit_from_npy.radius_km() == np.array([8_191.93, 0.0, 0.0]))
+    assert np.all(orbit_from_npy.velocity_km_s() == np.array([0.0, 7.6, 0.0]))
 
 
 def test_convert_tpc():

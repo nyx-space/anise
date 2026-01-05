@@ -912,7 +912,7 @@ impl Orbit {
     /// Returns a copy of the state with a provided INC added to the current one
     ///
     /// :type delta_inc_deg: float
-    /// :rtype: None
+    /// :rtype: Orbit
     pub fn add_inc_deg(&self, delta_inc_deg: f64) -> PhysicsResult<Self> {
         let mut me = *self;
         me.set_inc_deg(me.inc_deg()? + delta_inc_deg)?;
