@@ -57,17 +57,19 @@ impl fmt::Display for FovShape {
     }
 }
 
+/// Instrument is defined by a mounting Euler Parameter, a mounting translation ("level arm"), and a field of view of the instrument.
+/// Notations: frame N is inertial; frame B is body; frame I is instrument.
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.instrument"))]
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Instrument {
     /// The static rotation from the Parent Frame to the instrument Frame.
     /// (How the camera is bolted onto the bus).
-    pub mounting_rotation: EulerParameter,
+    pub q_to_i: EulerParameter,
 
     /// The translation offset from the Parent Frame origin (CoM) to the instrument origin.
     /// (The "Lever Arm").
-    pub mounting_translation: Vector3,
+    pub offset_i: Vector3,
 
     /// The geometric definition of the field of view.
     pub fov: FovShape,
@@ -86,15 +88,15 @@ impl Instrument {
         sc_attitude_to_body: EulerParameter,
         mut sc_state: CartesianState,
     ) -> PhysicsResult<(EulerParameter, CartesianState)> {
-        let q_inertial_to_instrument =
-            (DCM::from(self.mounting_rotation) * DCM::from(sc_attitude_to_body))?;
+        // Quaternion to rotate from the sc_state orientation to instrument.
+        let q_n_to_i = (DCM::from(self.q_to_i) * DCM::from(sc_attitude_to_body))?;
 
-        let offset_inertial = sc_attitude_to_body.conjugate() * self.mounting_translation;
+        let offset_i = sc_attitude_to_body.conjugate() * self.offset_i;
 
         // Usurp the sc_state as the position of the instrument in the inertial frame
-        sc_state.radius_km += offset_inertial;
+        sc_state.radius_km += offset_i;
 
-        Ok((q_inertial_to_instrument.into(), sc_state))
+        Ok((q_n_to_i.into(), sc_state))
     }
 
     /// Calculates the angular margin to the FOV boundary in degrees.
@@ -190,9 +192,9 @@ impl Instrument {
     /// expressed in the `target_frame` (Fixed).
     pub fn compute_footprint(
         &self,
-        sc_attitude_n_to_b: EulerParameter,
-        sc_state_target_fixed: CartesianState,
-        q_n_to_fixed: EulerParameter,
+        sc_q_n_to_b: EulerParameter,
+        sc_state_target: CartesianState,
+        q_n_to_target: EulerParameter,
         resolution: usize,
     ) -> PhysicsResult<Vec<CartesianState>> {
         // Therefore, we should compute the instrument in the target frame as:
@@ -200,38 +202,37 @@ impl Instrument {
         // 2. Rotate that instrument to the inertial (n) frame using sc_attitude_n_to_b
         // 3. Rotate instrument to the body fixed frame using q_n_to_fixed
         // TODO: Implement
-        let target_shape =
-            sc_state_target_fixed
-                .frame
-                .shape
-                .ok_or(PhysicsError::MissingFrameData {
-                    action: "retrieving ellipsoid shape",
-                    data: "shape",
-                    frame: sc_state_target_fixed.frame.into(),
-                })?;
+        let target_shape = sc_state_target
+            .frame
+            .shape
+            .ok_or(PhysicsError::MissingFrameData {
+                action: "retrieving ellipsoid shape",
+                data: "shape",
+                frame: sc_state_target.frame.into(),
+            })?;
 
         let mut footprint = Vec::with_capacity(resolution);
 
         // 1. Get Instrument State in Body Fixed frame (Position & Orientation)
-        //    q_i2s: Inertial -> Instrument
+        //    q_n_to_i: Inertial -> Instrument
         //    pos_s_i: Instrument Position in Inertial
-        let (q_f2s, pos_s_f) = self.transform_state(sc_attitude_n_to_b, sc_state_target_fixed)?;
+        let (q_n_to_i, pos_i_n) = self.transform_state(sc_q_n_to_b, sc_state_target)?;
 
         // 2. Compute Relative Position in Target Body-Fixed Frame, which is just the radius because we're already in the fixed frame.
-        //    r_rel_i = Pos_Instrument_Inertial - Pos_Target_Inertial
-        let r_rel = pos_s_f.radius_km;
+        //    r_rel = Pos_Instrument_Inertial - Pos_Target_Inertial
+        // let r_rel = pos_i_n.radius_km;
+        let r_rel = sc_state_target.radius_km;
 
         //    Transform to Target Body-Fixed Frame
         //    r_rel_b = q_i2b * r_rel_i
-        let dcm_i2fixed = DCM::from(q_n_to_fixed);
-        // XXX: Is the footprint is computed for the frame that the sc_state_fixed is in, what are we trying to rotate here?
+        let dcm_i2fixed = DCM::from(q_n_to_target);
         let pos_sensor_fixed = dcm_i2fixed * r_rel;
 
         // 3. Compute Rotation from Instrument to Target Body-Fixed Frame
         //    q_s2fixed = q_i2fixed * q_s2i
         //              = q_i2fixed * q_i2s.conjugate()
         //    Note: We rely on ANISE frame chaining checks, or manual composition if IDs differ.
-        let dcm_i2s = DCM::from(q_f2s);
+        let dcm_i2s = DCM::from(q_n_to_i);
         //    R_s2fixed = R_i2fixed * R_s2i = R_i2fixed * R_i2s^T
         let dcm_s2fixed = (dcm_i2fixed * dcm_i2s.transpose())?;
 
@@ -250,8 +251,8 @@ impl Instrument {
                 let orbit = CartesianState {
                     radius_km: surface_point,
                     velocity_km_s: Vector3::zeros(),
-                    epoch: sc_state_target_fixed.epoch,
-                    frame: sc_state_target_fixed.frame,
+                    epoch: sc_state_target.epoch,
+                    frame: sc_state_target.frame,
                 };
                 footprint.push(orbit);
             }
@@ -325,17 +326,13 @@ impl DataSetT for Instrument {
 
 impl fmt::Display for Instrument {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.mounting_translation.norm_squared() < f64::EPSILON {
-            write!(
-                f,
-                "FOV of {}\tRotation: {}",
-                self.fov, self.mounting_rotation
-            )
+        if self.offset_i.norm_squared() < f64::EPSILON {
+            write!(f, "FOV of {}\tRotation: {}", self.fov, self.q_to_i)
         } else {
             write!(
                 f,
                 "FOV of {}\tRotation: {}\tTranslation: {}",
-                self.fov, self.mounting_rotation, self.mounting_translation
+                self.fov, self.q_to_i, self.offset_i
             )
         }
     }
@@ -383,8 +380,8 @@ mod ut_instrument {
         // SETUP: Simple Conical Instrument looking down +Z
         // Frames: 0=Inertial, 1=Body.
         let instrument = Instrument {
-            mounting_rotation: EulerParameter::identity(1, 1),
-            mounting_translation: Vector3::zeros(),
+            q_to_i: EulerParameter::identity(1, 1),
+            offset_i: Vector3::zeros(),
             fov: FovShape::Conical {
                 half_angle_deg: 10.0,
             },
@@ -428,8 +425,8 @@ mod ut_instrument {
         // SETUP: Rectangular Instrument (Wide Width, Narrow Height)
         // X_Half = 20 deg, Y_Half = 5 deg.
         let instrument = Instrument {
-            mounting_rotation: EulerParameter::identity(1, 1),
-            mounting_translation: Vector3::zeros(),
+            q_to_i: EulerParameter::identity(1, 1),
+            offset_i: Vector3::zeros(),
             fov: FovShape::Rectangular {
                 x_half_angle_deg: 20.0,
                 y_half_angle_deg: 5.0,
@@ -488,8 +485,8 @@ mod ut_instrument {
         let mounting_rot = EulerParameter::about_y(90.0_f64.to_radians(), 1, 2);
 
         let instrument = Instrument {
-            mounting_rotation: mounting_rot,
-            mounting_translation: lever_arm_body,
+            q_to_i: mounting_rot,
+            offset_i: lever_arm_body,
             fov: FovShape::Conical {
                 half_angle_deg: 5.0,
             },
@@ -535,8 +532,8 @@ mod ut_instrument {
     fn test_frame_mismatch_error() {
         // Ensure error is returned if frames don't chain
         let instrument = Instrument {
-            mounting_rotation: EulerParameter::identity(1, 2), // Body(1) -> Inst(2)
-            mounting_translation: Vector3::zeros(),
+            q_to_i: EulerParameter::identity(1, 2), // Body(1) -> Inst(2)
+            offset_i: Vector3::zeros(),
             fov: FovShape::Conical {
                 half_angle_deg: 1.0,
             },
@@ -566,8 +563,8 @@ mod ut_instrument {
         let target_frame = mock_target_frame(0, shape);
 
         let instrument = Instrument {
-            mounting_rotation: EulerParameter::identity(1, 1),
-            mounting_translation: Vector3::zeros(),
+            q_to_i: EulerParameter::identity(1, 1),
+            offset_i: Vector3::zeros(),
             fov: FovShape::Conical {
                 half_angle_deg: 10.0,
             },
@@ -625,8 +622,8 @@ mod ut_instrument {
 
         let instrument = Instrument {
             // Rotated 90 deg about Z: Inst X -> Body Y
-            mounting_rotation: EulerParameter::about_z(core::f64::consts::FRAC_PI_2, 1, 2),
-            mounting_translation: Vector3::zeros(),
+            q_to_i: EulerParameter::about_z(core::f64::consts::FRAC_PI_2, 1, 2),
+            offset_i: Vector3::zeros(),
             fov: FovShape::Rectangular {
                 x_half_angle_deg: 20.0, // Wide
                 y_half_angle_deg: 5.0,  // Narrow
@@ -682,8 +679,8 @@ mod ut_instrument {
         let target_frame = mock_target_frame(0, shape);
 
         let instrument = Instrument {
-            mounting_rotation: EulerParameter::identity(1, 1),
-            mounting_translation: Vector3::zeros(),
+            q_to_i: EulerParameter::identity(1, 1),
+            offset_i: Vector3::zeros(),
             fov: FovShape::Conical {
                 half_angle_deg: 10.0,
             },
