@@ -683,9 +683,9 @@ impl fmt::Display for EventArc {
         write!(
             f,
             "{} until {} (lasts {})",
-            self.rise.orbit.epoch,
-            self.fall.orbit.epoch,
-            self.fall.orbit.epoch - self.rise.orbit.epoch
+            self.start_epoch(),
+            self.end_epoch(),
+            self.duration()
         )
     }
 }

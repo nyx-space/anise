@@ -190,34 +190,40 @@ impl Instrument {
     /// expressed in the `target_frame` (Fixed).
     pub fn compute_footprint(
         &self,
-        sc_attitude_to_body: EulerParameter,
-        sc_state_fixed: CartesianState,
-        target_orientation_to_fixed: EulerParameter,
+        sc_attitude_n_to_b: EulerParameter,
+        sc_state_target_fixed: CartesianState,
+        q_n_to_fixed: EulerParameter,
         resolution: usize,
     ) -> PhysicsResult<Vec<CartesianState>> {
-        let target_shape = sc_state_fixed
-            .frame
-            .shape
-            .ok_or(PhysicsError::MissingFrameData {
-                action: "retrieving ellipsoid shape",
-                data: "shape",
-                frame: sc_state_fixed.frame.into(),
-            })?;
+        // Therefore, we should compute the instrument in the target frame as:
+        // 1. Grab the instrument in the body frame
+        // 2. Rotate that instrument to the inertial (n) frame using sc_attitude_n_to_b
+        // 3. Rotate instrument to the body fixed frame using q_n_to_fixed
+        // TODO: Implement
+        let target_shape =
+            sc_state_target_fixed
+                .frame
+                .shape
+                .ok_or(PhysicsError::MissingFrameData {
+                    action: "retrieving ellipsoid shape",
+                    data: "shape",
+                    frame: sc_state_target_fixed.frame.into(),
+                })?;
 
         let mut footprint = Vec::with_capacity(resolution);
 
-        // 1. Get Instrument Inertial State (Position & Orientation)
+        // 1. Get Instrument State in Body Fixed frame (Position & Orientation)
         //    q_i2s: Inertial -> Instrument
         //    pos_s_i: Instrument Position in Inertial
-        let (q_f2s, pos_s_f) = self.transform_state(sc_attitude_to_body, sc_state_fixed)?; // TODO: Check this.
+        let (q_f2s, pos_s_f) = self.transform_state(sc_attitude_n_to_b, sc_state_target_fixed)?;
 
-        // 2. Compute Relative Position in Target Body-Fixed Frame
+        // 2. Compute Relative Position in Target Body-Fixed Frame, which is just the radius because we're already in the fixed frame.
         //    r_rel_i = Pos_Instrument_Inertial - Pos_Target_Inertial
         let r_rel = pos_s_f.radius_km;
 
         //    Transform to Target Body-Fixed Frame
         //    r_rel_b = q_i2b * r_rel_i
-        let dcm_i2fixed = DCM::from(target_orientation_to_fixed);
+        let dcm_i2fixed = DCM::from(q_n_to_fixed);
         // XXX: Is the footprint is computed for the frame that the sc_state_fixed is in, what are we trying to rotate here?
         let pos_sensor_fixed = dcm_i2fixed * r_rel;
 
@@ -244,8 +250,8 @@ impl Instrument {
                 let orbit = CartesianState {
                     radius_km: surface_point,
                     velocity_km_s: Vector3::zeros(),
-                    epoch: sc_state_fixed.epoch,
-                    frame: sc_state_fixed.frame,
+                    epoch: sc_state_target_fixed.epoch,
+                    frame: sc_state_target_fixed.frame,
                 };
                 footprint.push(orbit);
             }

@@ -95,12 +95,12 @@ impl EphemerisRecord {
         let xf_partial = orbit_dual.partial_for(oe)?;
 
         let rotmat = SMatrix::<f64, 1, 6>::new(
-            xf_partial.wtr_x(),
-            xf_partial.wtr_y(),
-            xf_partial.wtr_z(),
-            xf_partial.wtr_vx(),
-            xf_partial.wtr_vy(),
-            xf_partial.wtr_vz(),
+            xf_partial.wrt_x(),
+            xf_partial.wrt_y(),
+            xf_partial.wrt_z(),
+            xf_partial.wrt_vx(),
+            xf_partial.wrt_vy(),
+            xf_partial.wrt_vz(),
         );
 
         Ok((rotmat * covar * rotmat.transpose())[(0, 0)].sqrt())
