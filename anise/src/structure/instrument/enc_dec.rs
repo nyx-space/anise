@@ -80,33 +80,33 @@ impl<'a> Decode<'a> for FovShape {
 
 impl Encode for Instrument {
     fn encoded_len(&self) -> der::Result<der::Length> {
-        self.mounting_rotation.encoded_len()?
-            + self.mounting_translation.x.encoded_len()?
-            + self.mounting_translation.y.encoded_len()?
-            + self.mounting_translation.z.encoded_len()?
+        self.q_to_i.encoded_len()?
+            + self.offset_i.x.encoded_len()?
+            + self.offset_i.y.encoded_len()?
+            + self.offset_i.z.encoded_len()?
             + self.fov.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
-        self.mounting_rotation.encode(encoder)?;
-        self.mounting_translation.x.encode(encoder)?;
-        self.mounting_translation.y.encode(encoder)?;
-        self.mounting_translation.z.encode(encoder)?;
+        self.q_to_i.encode(encoder)?;
+        self.offset_i.x.encode(encoder)?;
+        self.offset_i.y.encode(encoder)?;
+        self.offset_i.z.encode(encoder)?;
         self.fov.encode(encoder)
     }
 }
 
 impl<'a> Decode<'a> for Instrument {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
-        let mounting_rotation = decoder.decode()?;
+        let q_to_i = decoder.decode()?;
         let x = decoder.decode()?;
         let y = decoder.decode()?;
         let z = decoder.decode()?;
         let fov = decoder.decode()?;
 
         Ok(Self {
-            mounting_rotation,
-            mounting_translation: Vector3::new(x, y, z),
+            q_to_i,
+            offset_i: Vector3::new(x, y, z),
             fov,
         })
     }
@@ -121,8 +121,8 @@ mod instrument_encdec {
     #[test]
     fn conical() {
         let repr = Instrument {
-            mounting_rotation: EulerParameter::about_x(core::f64::consts::FRAC_2_SQRT_PI, 1, 2),
-            mounting_translation: Vector3::new(1.0, 2.0, 3.0),
+            q_to_i: EulerParameter::about_x(core::f64::consts::FRAC_2_SQRT_PI, 1, 2),
+            offset_i: Vector3::new(1.0, 2.0, 3.0),
             fov: FovShape::Conical {
                 half_angle_deg: 12.3,
             },
@@ -139,8 +139,8 @@ mod instrument_encdec {
     #[test]
     fn rect() {
         let repr = Instrument {
-            mounting_rotation: EulerParameter::about_x(core::f64::consts::FRAC_2_SQRT_PI, 1, 2),
-            mounting_translation: Vector3::new(1.0, 2.0, 3.0),
+            q_to_i: EulerParameter::about_x(core::f64::consts::FRAC_2_SQRT_PI, 1, 2),
+            offset_i: Vector3::new(1.0, 2.0, 3.0),
             fov: FovShape::Rectangular {
                 x_half_angle_deg: 12.3,
                 y_half_angle_deg: 13.9,

@@ -44,15 +44,15 @@ fn to_vec3<'py>(arr: PyReadonlyArray1<'py, f64>, name: &str) -> PyResult<Vector3
 impl Instrument {
     #[new]
     fn py_new<'py>(
-        mounting_rotation: EulerParameter,
-        mounting_translation: PyReadonlyArray1<'py, f64>,
+        q_to_i: EulerParameter,
+        offset: PyReadonlyArray1<'py, f64>,
         fov: FovShape,
     ) -> PyResult<Instrument> {
-        let translation = to_vec3(mounting_translation, "mounting_translation")?;
+        let translation = to_vec3(offset, "mounting_translation")?;
 
         Ok(Self {
-            mounting_rotation,
-            mounting_translation: translation,
+            q_to_i,
+            offset_i: translation,
             fov,
         })
     }
@@ -63,27 +63,24 @@ impl Instrument {
         self.fov
     }
     #[getter]
-    fn get_mounting_rotation(&self) -> EulerParameter {
-        self.mounting_rotation
+    fn get_q_to_i(&self) -> EulerParameter {
+        self.q_to_i
     }
     #[getter]
-    fn get_mounting_translation<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        to_numpy_array(self.mounting_translation, py)
+    fn get_offset_i<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        to_numpy_array(self.offset_i, py)
     }
     // setters
 
     #[setter]
-    fn set_mounting_translation<'py>(
-        &mut self,
-        mounting_translation: PyReadonlyArray1<'py, f64>,
-    ) -> PyResult<()> {
-        self.mounting_translation = to_vec3(mounting_translation, "mounting_translation")?;
+    fn set_offset_i<'py>(&mut self, offset_i: PyReadonlyArray1<'py, f64>) -> PyResult<()> {
+        self.offset_i = to_vec3(offset_i, "mounting_translation")?;
         Ok(())
     }
 
     #[setter]
-    fn set_mounting_rotation(&mut self, mounting_rotation: EulerParameter) {
-        self.mounting_rotation = mounting_rotation;
+    fn set_q_to_i(&mut self, q_to_i: EulerParameter) {
+        self.q_to_i = q_to_i;
     }
 
     #[setter]

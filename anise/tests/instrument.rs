@@ -22,14 +22,14 @@ fn almanac() -> Almanac {
     // We want Camera +X (Width) to point along RIC +Z (Cross-track/East?).
     // Rotation: -90 degrees about Y axis.
     // Arbitrarily specify that the body frame is ID -30100 and the instrument is -30101
-    let mounting_rotation = EulerParameter::about_y(-core::f64::consts::FRAC_PI_2, -30100, -30101);
+    let q_to_i = EulerParameter::about_y(-core::f64::consts::FRAC_PI_2, -30100, -30101);
 
     let lro_camera = Instrument {
         // The camera is rigidly mounted to the spacecraft body (which we assume aligns with RIC)
-        mounting_rotation,
+        q_to_i,
 
         // Assume camera is at the center of mass for the test
-        mounting_translation: Vector3::zeros(),
+        offset_i: Vector3::zeros(),
 
         // A reasonable "Wide Angle" Nav Cam FOV
         fov: FovShape::Rectangular {
@@ -179,7 +179,7 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
     let mounting_edge = EulerParameter::about_y((-90.0 - 15.0_f64).to_radians(), -30100, -30101);
 
     let cam_edge = Instrument {
-        mounting_rotation: mounting_edge,
+        q_to_i: mounting_edge,
         ..instrument.clone() // Keep other fields same
     };
 
@@ -211,7 +211,7 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
     mounting_outside_fixed.to = -30101;
 
     let cam_outside = Instrument {
-        mounting_rotation: mounting_outside_fixed,
+        q_to_i: mounting_outside_fixed,
         ..instrument.clone()
     };
 
@@ -227,7 +227,7 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
     let mounting_zenith = EulerParameter::about_y(FRAC_PI_2, -30100, -30101);
 
     let cam_zenith = Instrument {
-        mounting_rotation: mounting_zenith,
+        q_to_i: mounting_zenith,
         ..instrument.clone()
     };
 
