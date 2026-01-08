@@ -606,4 +606,116 @@ mod ut_quaternion {
 
         assert_eq!(repr, repr_dec);
     }
+
+    #[test]
+    fn test_derivative_values() {
+        // q = identity
+        let q = EulerParameter::identity(0, 1);
+        // w = [1, 0, 0] (rotate around x)
+        let w = Vector3::new(1.0, 0.0, 0.0);
+        // dq/dt = 0.5 * q * w
+        // q = (1, 0, 0, 0)
+        // w = (0, 1, 0, 0) as quat
+        // q * w = (0, 1, 0, 0)
+        // dq/dt = (0, 0.5, 0, 0)
+        let dq = q.derivative(w);
+        assert!((dq.w - 0.0).abs() < EPSILON);
+        assert!((dq.x - 0.5).abs() < EPSILON);
+        assert!((dq.y - 0.0).abs() < EPSILON);
+        assert!((dq.z - 0.0).abs() < EPSILON);
+
+        // q = 180 deg around Z (0, 0, 0, 1)
+        let q = Quaternion::about_z(PI, 0, 1);
+        // w = [0, 0, 1]
+        let w = Vector3::new(0.0, 0.0, 1.0);
+        // dq/dt = 0.5 * q * w
+        // q = (0, 0, 0, 1)
+        // w = (0, 0, 0, 1)
+        // q * w = (-1, 0, 0, 0) (k * k = -1)
+        // dq/dt = (-0.5, 0, 0, 0)
+        let dq = q.derivative(w);
+        assert!((dq.w + 0.5).abs() < EPSILON);
+        assert!((dq.x - 0.0).abs() < EPSILON);
+        assert!((dq.y - 0.0).abs() < EPSILON);
+        assert!((dq.z - 0.0).abs() < EPSILON);
+    }
+
+    #[test]
+    fn test_short_rotation() {
+        let q = Quaternion::about_x(3.0 * FRAC_PI_2, 0, 1); // 270 deg
+        // 270 deg = -90 deg.
+        // cos(135) < 0. So w < 0.
+        assert!(q.w < 0.0);
+
+        let q_short = q.short();
+        assert!(q_short.w > 0.0);
+
+        // Check they represent same rotation on a vector
+        let v = Vector3::new(0.0, 1.0, 0.0);
+        let v1 = q * v;
+        let v2 = q_short * v;
+        assert!((v1 - v2).norm() < EPSILON);
+    }
+
+    #[test]
+    fn test_normalization_explicit() {
+        let q = EulerParameter {
+            w: 10.0,
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+            from: 0,
+            to: 1,
+        };
+        let q_norm = q.normalize();
+        assert!((q_norm.w - 1.0).abs() < EPSILON);
+        assert!((q_norm.scalar_norm() - 1.0).abs() < EPSILON);
+
+        let q = EulerParameter {
+            w: 1.0,
+            x: 1.0,
+            y: 1.0,
+            z: 1.0,
+            from: 0,
+            to: 1,
+        }; // Norm is 2
+        let q_norm = q.normalize();
+        assert!((q_norm.scalar_norm() - 1.0).abs() < EPSILON);
+        assert!((q_norm.w - 0.5).abs() < EPSILON);
+    }
+
+    #[test]
+    fn test_vector_rotation_arbitrary() {
+        // Rotate X by 90 deg around Z -> Y
+        // Note: The operator `q * v` performs `q* . v . q`, so it rotates the vector in the passive sense (frame rotation).
+        // If q rotates frame A to B by 90 deg Z.
+        // A vector v_A = [1, 0, 0].
+        // v_B = q * v_A.
+        // If frame B is rotated 90 deg Z wrt A, then X_B corresponds to Y_A. Y_B corresponds to -X_A.
+        // So a vector pointing along X_A (v_A) will have components in B:
+        // X_A = -Y_B? No.
+        // Rotation matrix R_BA (from A to B) = [0 1 0; -1 0 0; 0 0 1].
+        // v_B = R_BA * v_A = [0; -1; 0]. i.e. -Y.
+        // Let's check the implementation of Mul<Vector3>.
+        // It does `self.conjugate() * rhs_q * self`.
+        // This is the standard "active" rotation of a vector by the INVERSE quaternion?
+        // Or passive rotation?
+        // Usually, active rotation of vector v by q is `q * v * q*`.
+        // Here it is `q* * v * q`.
+        // This corresponds to rotation by q*.
+        // If q is "about Z by 90", q* is "about Z by -90".
+        // Rotating X by -90 deg Z gives -Y.
+
+        let q = Quaternion::about_z(FRAC_PI_2, 0, 1);
+        let v = Vector3::x();
+        let rotated = q * v;
+        // q* * v * q rotates v by -90 deg around Z.
+        // X -> -Y.
+        assert!((rotated + Vector3::y()).norm() < EPSILON);
+
+        // Rotate Y by -90 deg around Z -> X
+        let v = Vector3::y();
+        let rotated = q * v;
+        assert!((rotated - Vector3::x()).norm() < EPSILON);
+    }
 }
