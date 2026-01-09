@@ -18,7 +18,7 @@ pretty_env_logger = { workspace = true }
 eframe = { version = "0.33" }
 egui = { version = "0.33" }
 egui_extras = { version = "0.33", features = ["datepicker", "http", "image"] }
-rfd = { version = "0.16.0" }
+rfd = { version = "0.17.1" }
 egui_logger = "0.9.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
