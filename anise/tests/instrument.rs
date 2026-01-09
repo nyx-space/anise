@@ -167,6 +167,9 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
     println!("Latitude footprint span: {min_lat_deg:.2} - {max_lat_deg:.2}");
     println!("Longitude footprint span: {min_long_deg:.2} - {max_long_deg:.2}");
 
+    assert!((min_lat_deg..max_lat_deg).contains(&lat) && (min_lat_deg - 55.0).abs() < 1.0);
+    assert!((min_long_deg..max_long_deg).contains(&long) && (min_long_deg - 190.0).abs() < 1.0);
+
     // TODO: Move the compute footprint function to the almanac and
     // ensure that the quaternion is the rotation from the sc state to the body frame.
 
@@ -201,7 +204,7 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
     // q_tilt = q_z(12) * q_y(-90)
     let base_rot = EulerParameter::about_y(-FRAC_PI_2, -30100, -30101);
     // Note: Temporary frame IDs used for composition logic
-    let tilt = EulerParameter::about_z(12.0_f64.to_radians(), -30101, -30102);
+    let tilt = EulerParameter::about_x(12.0_f64.to_radians(), -30101, -30102);
 
     // We manually construct the combined rotation for the instrument struct
     // effectively: q_body_to_new_inst

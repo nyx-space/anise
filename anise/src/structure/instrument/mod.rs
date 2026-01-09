@@ -182,9 +182,9 @@ impl Instrument {
     /// This function projects the edges of the Field of View onto the provided target ellipsoid.
     ///
     /// # Arguments
-    /// * `sc_attitude_to_body` - The orientation of the spacecraft body relative to Inertial.
-    /// * `sc_state` - The inertial state (position/velocity) of the spacecraft.
-    /// * `target_orientation_to_fixed` - The orientation of the target body frame relative to Inertial.
+    /// * `sc_q_n_to_b` - The orientation of the spacecraft body relative to Inertial.
+    /// * `sc_state_target` - The inertial state (position/velocity) of the spacecraft.
+    /// * `q_n_to_target` - The orientation of the target body frame relative to Inertial.
     /// * `resolution` - The number of points to generate along the FOV boundary.
     ///
     /// # Returns
@@ -197,11 +197,6 @@ impl Instrument {
         q_n_to_target: EulerParameter,
         resolution: usize,
     ) -> PhysicsResult<Vec<CartesianState>> {
-        // Therefore, we should compute the instrument in the target frame as:
-        // 1. Grab the instrument in the body frame
-        // 2. Rotate that instrument to the inertial (n) frame using sc_attitude_n_to_b
-        // 3. Rotate instrument to the body fixed frame using q_n_to_fixed
-        // TODO: Implement
         let target_shape = sc_state_target
             .frame
             .shape
@@ -213,28 +208,19 @@ impl Instrument {
 
         let mut footprint = Vec::with_capacity(resolution);
 
-        // 1. Get Instrument State in Body Fixed frame (Position & Orientation)
-        //    q_n_to_i: Inertial -> Instrument
-        //    pos_s_i: Instrument Position in Inertial
-        let (q_n_to_i, pos_i_n) = self.transform_state(sc_q_n_to_b, sc_state_target)?;
+        // Get Instrument State in Body Fixed frame (Position & Orientation)
+        // q_n_to_i: Inertial -> Instrument
+        let q_n_to_i = (self.q_to_i * sc_q_n_to_b)?;
 
-        // 2. Compute Relative Position in Target Body-Fixed Frame, which is just the radius because we're already in the fixed frame.
-        //    r_rel = Pos_Instrument_Inertial - Pos_Target_Inertial
-        // let r_rel = pos_i_n.radius_km;
+        // Compute Relative Position in Target Body-Fixed Frame, which is just the radius because we're already in the fixed frame.
         let r_rel = sc_state_target.radius_km;
 
-        //    Transform to Target Body-Fixed Frame
-        //    r_rel_b = q_i2b * r_rel_i
-        let dcm_i2fixed = DCM::from(q_n_to_target);
-        let pos_sensor_fixed = dcm_i2fixed * r_rel;
+        // Transform to Target Body-Fixed Frame
+        let pos_sensor_fixed = q_n_to_target * r_rel;
 
-        // 3. Compute Rotation from Instrument to Target Body-Fixed Frame
-        //    q_s2fixed = q_i2fixed * q_s2i
-        //              = q_i2fixed * q_i2s.conjugate()
-        //    Note: We rely on ANISE frame chaining checks, or manual composition if IDs differ.
-        let dcm_i2s = DCM::from(q_n_to_i);
-        //    R_s2fixed = R_i2fixed * R_s2i = R_i2fixed * R_i2s^T
-        let dcm_s2fixed = (dcm_i2fixed * dcm_i2s.transpose())?;
+        // Compute Rotation from Instrument to Target Body-Fixed Frame
+        // We rely on ANISE frame chaining checks, or manual composition if IDs differ.
+        let q_i_to_target = (q_n_to_target * q_n_to_i.conjugate())?;
 
         // 4. Generate Rays in Instrument Frame (Z-forward)
         let rays_sensor = self.generate_fov_boundary_vectors(resolution);
@@ -242,7 +228,7 @@ impl Instrument {
         // 5. Intersect each ray
         for ray_s in rays_sensor {
             // Rotate ray to Target Fixed Frame
-            let ray_fixed = dcm_s2fixed * ray_s;
+            let ray_fixed = q_i_to_target * ray_s;
 
             // Perform Intersection
             if let Some(surface_point) = target_shape.intersect(pos_sensor_fixed, ray_fixed) {

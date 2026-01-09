@@ -354,10 +354,13 @@ impl Mul for Quaternion {
             }
         );
 
-        let s = self.w * rhs.w - self.x * rhs.x - self.y * rhs.y - self.z * rhs.z;
-        let i = self.w * rhs.x + self.x * rhs.w + self.y * rhs.z - self.z * rhs.y;
-        let j = self.w * rhs.y - self.x * rhs.z + self.y * rhs.w + self.z * rhs.x;
-        let k = self.w * rhs.z + self.x * rhs.y - self.y * rhs.x + self.z * rhs.w;
+        let p = rhs; // A -> B
+        let q = self; // B -> C
+
+        let s = p.w * q.w - p.x * q.x - p.y * q.y - p.z * q.z;
+        let i = p.w * q.x + p.x * q.w + p.y * q.z - p.z * q.y;
+        let j = p.w * q.y - p.x * q.z + p.y * q.w + p.z * q.x;
+        let k = p.w * q.z + p.x * q.y - p.y * q.x + p.z * q.w;
 
         Ok(Quaternion {
             w: s,
