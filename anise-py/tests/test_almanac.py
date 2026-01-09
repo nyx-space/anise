@@ -114,7 +114,7 @@ def test_state_transformation():
     assert all(rtn_uvec == orig_uvec)
     assert rtn_angle_rad == orig_angle_rad
 
-    topo_dcm = orig_state.dcm_from_topocentric_to_body_fixed(123)
+    topo_dcm = orig_state.dcm_from_topocentric_to_body_fixed()
     assert topo_dcm.get_state_dcm().shape == (6, 6)
     assert topo_dcm.rot_mat.shape == (3, 3)
     assert (

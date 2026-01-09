@@ -96,7 +96,7 @@ impl Instrument {
         // Usurp the sc_state as the position of the instrument in the inertial frame
         sc_state.radius_km += offset_i;
 
-        Ok((q_n_to_i.into(), sc_state))
+        Ok((q_n_to_i, sc_state))
     }
 
     /// Calculates the angular margin to the FOV boundary in degrees.

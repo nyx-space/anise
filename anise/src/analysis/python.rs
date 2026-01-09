@@ -674,7 +674,7 @@ impl Clone for PyOrthogonalFrame {
 }
 
 #[pyclass]
-#[pyo3(module = "anise.analysis", name = "DcmExpr ", get_all, set_all)]
+#[pyo3(module = "anise.analysis", name = "DcmExpr", get_all, set_all)]
 pub enum PyDcmExpr {
     Identity {
         from: i32,
@@ -1175,19 +1175,19 @@ impl TryFrom<DcmExpr> for PyDcmExpr {
                 } => Ok(PyDcmExpr::Triad {
                     primary_axis: Py::new(
                         py,
-                        <VectorExpr as TryInto<PyVectorExpr>>::try_into(primary_axis)?,
+                        <VectorExpr as TryInto<PyVectorExpr>>::try_into(*primary_axis)?,
                     )?,
                     primary_vec: Py::new(
                         py,
-                        <VectorExpr as TryInto<PyVectorExpr>>::try_into(primary_vec)?,
+                        <VectorExpr as TryInto<PyVectorExpr>>::try_into(*primary_vec)?,
                     )?,
                     secondary_axis: Py::new(
                         py,
-                        <VectorExpr as TryInto<PyVectorExpr>>::try_into(secondary_axis)?,
+                        <VectorExpr as TryInto<PyVectorExpr>>::try_into(*secondary_axis)?,
                     )?,
                     secondary_vec: Py::new(
                         py,
-                        <VectorExpr as TryInto<PyVectorExpr>>::try_into(secondary_vec)?,
+                        <VectorExpr as TryInto<PyVectorExpr>>::try_into(*secondary_vec)?,
                     )?,
                     from,
                     to,
@@ -1486,10 +1486,10 @@ impl From<PyDcmExpr> for DcmExpr {
                 from,
                 to,
             } => DcmExpr::Triad {
-                primary_axis: primary_axis.borrow(py).clone().into(),
-                primary_vec: primary_vec.borrow(py).clone().into(),
-                secondary_axis: secondary_axis.borrow(py).clone().into(),
-                secondary_vec: secondary_vec.borrow(py).clone().into(),
+                primary_axis: Box::new(primary_axis.borrow(py).clone().into()),
+                primary_vec: Box::new(primary_vec.borrow(py).clone().into()),
+                secondary_axis: Box::new(secondary_axis.borrow(py).clone().into()),
+                secondary_vec: Box::new(secondary_vec.borrow(py).clone().into()),
                 from,
                 to,
             },

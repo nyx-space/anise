@@ -403,3 +403,4 @@ def test_location_accesses():
     )
 
 # TODO: Add FOV Margin check with LRO data
+# TODO: Add minimum RIC diff analysis
