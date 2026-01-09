@@ -1,16 +1,13 @@
-use anise::astro::{Aberration, Location, TerrainMask};
 use anise::constants::celestial_objects::MOON;
-use anise::constants::frames::{
-    EME2000, IAU_EARTH_FRAME, IAU_MOON_FRAME, MOON_J2000, SUN_J2000, VENUS_J2000,
-};
+use anise::constants::frames::{IAU_MOON_FRAME, MOON_J2000};
 use anise::constants::orientations::{IAU_MOON, J2000};
 use anise::math::rotation::EulerParameter;
 use anise::math::Vector3;
 use anise::prelude::{Almanac, Frame, Orbit};
 use anise::prelude::{FovShape, Instrument};
-use anise::structure::{InstrumentDataSet, LocationDataSet};
+use anise::structure::InstrumentDataSet;
 use core::f64::consts::FRAC_PI_2;
-use hifitime::{Duration, Epoch, TimeSeries, Unit};
+use hifitime::Unit;
 use rstest::*;
 
 #[fixture]
@@ -90,8 +87,7 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
     // For the sake of the test, we are setting the RIC frame as the body frame, which the camera frame references.
     dcm_ric_to_inertial.from = -30100;
 
-    let sc_attitude: EulerParameter = dcm_ric_to_inertial.into();
-    let sc_attitude_to_body = sc_attitude.conjugate();
+    let sc_attitude_to_body = EulerParameter::from(dcm_ric_to_inertial).conjugate();
 
     let moon_center = almanac.state_of(MOON, IAU_MOON_FRAME, epoch, None).unwrap();
     let fov_margin_to_center = instrument
@@ -120,6 +116,13 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
         .fov_margin_deg(sc_attitude_to_body, lro_state, below)
         .unwrap();
     assert!((fov_margin_to_nadir - 10.0).abs() < 1e-12);
+
+    // Ensure that the same call from the almanac returns the same data.
+    let fov_margin_deg2 = almanac
+        .instrument_field_of_view_margin(1, sc_attitude_to_body, lro_frame, below, None)
+        .unwrap();
+
+    assert_eq!(fov_margin_deg2, fov_margin_to_nadir);
 
     // IMPORTANT: In this test case, we've grabbed the LRO state in the IAU Moon frame.
     // We're also seeking the footprint in the IAU Moon frame. So the target_orientation_to_fixed
@@ -169,9 +172,6 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
 
     assert!((min_lat_deg..max_lat_deg).contains(&lat) && (min_lat_deg - 55.0).abs() < 1.0);
     assert!((min_long_deg..max_long_deg).contains(&long) && (min_long_deg - 190.0).abs() < 1.0);
-
-    // TODO: Move the compute footprint function to the almanac and
-    // ensure that the quaternion is the rotation from the sc state to the body frame.
 
     // --- TEST CASE 1: EDGE OF WIDTH (X-Axis) ---
     // Camera is defined with X_Half_Angle = 15.0 deg.

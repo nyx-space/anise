@@ -11,7 +11,7 @@
 use crate::astro::PhysicsResult;
 use crate::errors::PhysicsError;
 use crate::math::cartesian::CartesianState;
-use crate::math::rotation::{EulerParameter, DCM};
+use crate::math::rotation::EulerParameter;
 use crate::math::Vector3;
 use crate::structure::dataset::DataSetT;
 use core::f64::consts::TAU;
@@ -82,16 +82,16 @@ impl Instrument {
     ///
     /// NOTE: This call will return an error if the reference frames are not adequate.
     /// Example:
-    /// - If the mounting rotation "from" frame does not match in sc_attitude_to_body "to" frame IDs
+    /// - If the mounting quaterion (q_to_i) frame does not match in sc_attitude_to_body "to" frame IDs
     pub fn transform_state(
         &self,
-        sc_attitude_to_body: EulerParameter,
+        q_sc_to_b: EulerParameter,
         mut sc_state: CartesianState,
     ) -> PhysicsResult<(EulerParameter, CartesianState)> {
         // Quaternion to rotate from the sc_state orientation to instrument.
-        let q_n_to_i = (DCM::from(self.q_to_i) * DCM::from(sc_attitude_to_body))?;
+        let q_n_to_i = (self.q_to_i * q_sc_to_b)?;
 
-        let offset_i = sc_attitude_to_body.conjugate() * self.offset_i;
+        let offset_i = q_sc_to_b.conjugate() * self.offset_i;
 
         // Usurp the sc_state as the position of the instrument in the inertial frame
         sc_state.radius_km += offset_i;
@@ -102,7 +102,7 @@ impl Instrument {
     /// Calculates the angular margin to the FOV boundary in degrees.
     ///
     /// # Arguments
-    /// * sc_attitude_to_body: rotation from the sc_state frame to the body frame in which is expressed the instrument rotation.
+    /// * sc_q_to_b: rotation from the sc_state frame to the body frame in which is expressed the instrument rotation.
     /// * sc_state: state of the spacecraft, typically in an inertial frame
     /// * target_state: state of the target object in the same frame as the sc_state, e.g. IAU Moon if sc_state is in IAU Moon
     ///
@@ -117,29 +117,30 @@ impl Instrument {
     /// - If the target state frame ID is not identical to the instrument's inertial state given the sc_attitude Euler Parameter.
     pub fn fov_margin_deg(
         &self,
-        sc_attitude_to_body: EulerParameter,
+        sc_q_to_b: EulerParameter,
         sc_state: CartesianState,
         target_state: CartesianState,
     ) -> PhysicsResult<f64> {
         // 1. Get the instrument Frame State
-        let (q_i2s, state_s) = self.transform_state(sc_attitude_to_body, sc_state)?;
+        let (q_i_to_s, instrument_state_s) = self.transform_state(sc_q_to_b, sc_state)?;
 
         // 2. Compute the vector to the target in the instrument Frame
-        let vec_inertial = (target_state - state_s)?.radius_km;
+        let r_rel_km = (target_state - instrument_state_s)?.radius_km;
 
         // Robustness: If target is coincident with instrument, margin is undefined (or handle gracefully)
-        if vec_inertial.norm() < 1e-9 {
+        if r_rel_km.norm() < 1e-9 {
             return Ok(-1.0); // Fail-safe: consider "inside the camera" as obscured/invalid
         }
 
-        let vec_instrument = q_i2s * vec_inertial;
+        // Relative state of instrument to target in the target orientation (claimed here to be inertial but does not need to be).
+        let r_rel_n_km = q_i_to_s * r_rel_km;
 
         match self.fov {
             FovShape::Conical { half_angle_deg } => {
                 let half_angle = half_angle_deg.to_radians();
 
                 // Angle between the target vector and the defined boresight axis
-                let angle_off_boresight = vec_instrument.angle(&Vector3::z());
+                let angle_off_boresight = r_rel_n_km.angle(&Vector3::z());
 
                 // Margin = Limit - Current
                 Ok((half_angle - angle_off_boresight).to_degrees())
@@ -152,10 +153,10 @@ impl Instrument {
                 // Project into XZ and YZ planes.
 
                 // Angle in the X-Z plane (Width)
-                let angle_x = vec_instrument.x.atan2(vec_instrument.z).abs();
+                let angle_x = r_rel_n_km.x.atan2(r_rel_n_km.z).abs();
 
                 // Angle in the Y-Z plane (Height)
-                let angle_y = vec_instrument.y.atan2(vec_instrument.z).abs();
+                let angle_y = r_rel_n_km.y.atan2(r_rel_n_km.z).abs();
 
                 let margin_x = x_half_angle_deg.to_radians() - angle_x;
                 let margin_y = y_half_angle_deg.to_radians() - angle_y;

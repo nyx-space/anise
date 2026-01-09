@@ -24,6 +24,7 @@ use crate::{
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
+pub use super::DcmExpr;
 use super::VectorExpr;
 
 /// FrameSpec allows defining a frame that can be computed from another set of loaded frames, which include a center.

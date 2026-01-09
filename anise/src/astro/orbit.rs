@@ -24,7 +24,6 @@ use crate::{
         Matrix3, Vector3, Vector6,
     },
     prelude::{uuid_from_epoch, Frame},
-    NaifId,
 };
 
 #[cfg(feature = "analysis")]
@@ -345,9 +344,8 @@ impl Orbit {
     /// In the GMAT MathSpec notation, R_{IF} is the DCM from body fixed to inertial. Similarly, R{FT} is from topocentric
     /// to body fixed.
     ///
-    /// :type _from: int
     /// :rtype: DCM
-    pub fn dcm_from_topocentric_to_body_fixed(&self, _from: NaifId) -> PhysicsResult<DCM> {
+    pub fn dcm_from_topocentric_to_body_fixed(&self) -> PhysicsResult<DCM> {
         let rot_mat_dt = if let Ok(pre) = self.at_epoch(self.epoch - Unit::Second * 1) {
             if let Ok(post) = self.at_epoch(self.epoch + Unit::Second * 1) {
                 let dcm_pre = pre.dcm3x3_from_topocentric_to_body_fixed()?;

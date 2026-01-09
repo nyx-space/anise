@@ -127,17 +127,17 @@ impl DCM {
     /// * `to` - The ID of the destination frame.
     pub fn align_and_clock(
         primary_body_axis: Vector3,
-        primary_inertial_vec: Vector3,
+        primary_vec: Vector3,
         secondary_body_axis: Vector3,
-        secondary_inertial_vec: Vector3,
+        secondary_vec: Vector3,
         from: i32,
         to: i32,
     ) -> Result<Self, PhysicsError> {
         // 1. Normalize inputs and check for zero length
         let u_b = primary_body_axis.normalize();
         let v_b = secondary_body_axis.normalize();
-        let u_n = primary_inertial_vec.normalize();
-        let v_n = secondary_inertial_vec.normalize();
+        let u_n = primary_vec.normalize();
+        let v_n = secondary_vec.normalize();
 
         // 2. Build the "Body" Triad (From Frame)
         // t1_b is the primary axis

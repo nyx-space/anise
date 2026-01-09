@@ -109,7 +109,7 @@ impl Almanac {
         // Compute the SEZ DCM
         // SEZ DCM is topo to fixed
         let sez_dcm = tx
-            .dcm_from_topocentric_to_body_fixed(-1)
+            .dcm_from_topocentric_to_body_fixed()
             .context(EphemerisPhysicsSnafu { action: "" })
             .context(EphemerisSnafu {
                 action: "computing SEZ DCM for AER",

@@ -13,10 +13,12 @@ use snafu::ResultExt;
 use std::fmt;
 
 use crate::almanac::Almanac;
+use crate::analysis::dcm_expr::DcmExpr;
 use crate::analysis::AlmanacExprSnafu;
 use crate::astro::Aberration;
 use crate::errors::EphemerisSnafu;
 use crate::frames::Frame;
+use crate::math::rotation::EulerParameter;
 use crate::prelude::Orbit;
 use crate::NaifId;
 
@@ -136,6 +138,12 @@ pub enum ScalarExpr {
     RangeRateFromLocation {
         location_id: i32,
         obstructing_body: Option<Frame>,
+    },
+    /// FovMargin requires the spacecraft frame in sc_observer_frame and the StateSpec **must** be the target location on target obdy (e.g. IAU Moon).
+    FovMargin {
+        instrument_id: i32,
+        sc_dcm_to_body: DcmExpr,
+        sc_observer_frame: Frame,
     },
 }
 
@@ -396,6 +404,27 @@ impl ScalarExpr {
                     state: orbit,
                 })?
                 .range_rate_km_s),
+            Self::FovMargin {
+                instrument_id,
+                sc_dcm_to_body,
+                sc_observer_frame,
+            } => {
+                let sc_q_to_b =
+                    EulerParameter::from(sc_dcm_to_body.evaluate(orbit.epoch, almanac)?);
+
+                almanac
+                    .instrument_field_of_view_margin(
+                        *instrument_id,
+                        sc_q_to_b,
+                        *sc_observer_frame,
+                        orbit,
+                        ab_corr,
+                    )
+                    .context(AlmanacExprSnafu {
+                        expr: Box::new(self.clone()),
+                        state: orbit,
+                    })
+            }
         }
     }
 
@@ -519,6 +548,14 @@ impl fmt::Display for ScalarExpr {
             Self::Sin(v) => write!(f, "sin({v})"),
             Self::Tan(v) => write!(f, "tan({v})"),
             Self::Modulo { v, m } => write!(f, "{v} % {m}"),
+            Self::FovMargin {
+                instrument_id,
+                sc_dcm_to_body,
+                sc_observer_frame: _,
+            } => write!(
+                f,
+                "field of view of instrument {instrument_id} where body frame is {sc_dcm_to_body}"
+            ),
         }
     }
 }

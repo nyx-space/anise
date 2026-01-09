@@ -3,7 +3,6 @@ from anise import (
     Aberration,
     LocationDhallSet,
     LocationDhallSetEntry,
-    LocationDataSet,
 )
 from anise.astro import Location, TerrainMask, FrameUid
 from anise.analysis import Event, Condition
@@ -402,3 +401,5 @@ def test_location_accesses():
     assert abs(first_pass.aer_data[0].elevation_deg - 1e-11) < 1e-11, (
         "elevation should be nearly zero"
     )
+
+# TODO: Add FOV Margin check with LRO data

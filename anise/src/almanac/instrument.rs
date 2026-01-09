@@ -61,7 +61,7 @@ impl Almanac {
     pub fn instrument_field_of_view_margin(
         &self,
         instrument_id: i32,
-        sc_attitude_to_body: Quaternion,
+        sc_q_to_b: Quaternion,
         sc_observer_frame: Frame,
         target_state: Orbit,
         ab_corr: Option<Aberration>,
@@ -69,14 +69,14 @@ impl Almanac {
         let instrument = self.instrument_from_id(instrument_id)?;
         // Compute the spacecraft state in the target state's frame
         let sc_state = self.transform(
-            target_state.frame,
             sc_observer_frame,
+            target_state.frame,
             target_state.epoch,
             ab_corr,
         )?;
 
         instrument
-            .fov_margin_deg(sc_attitude_to_body, sc_state, target_state)
+            .fov_margin_deg(sc_q_to_b, sc_state, target_state)
             .context(AlmanacPhysicsSnafu {
                 action: "instrument FOV",
             })

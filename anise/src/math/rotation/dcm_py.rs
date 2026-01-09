@@ -283,6 +283,20 @@ impl DCM {
         })
     }
 
+    /// Sets the "from frame" ID
+    /// :type from_id: int
+    #[setter]
+    fn set_from_id(&mut self, from_id: i32) {
+        self.from = from_id;
+    }
+
+    /// Sets the "to frame" ID
+    /// :type to_id: int
+    #[setter]
+    fn set_to_id(&mut self, to_id: i32) {
+        self.to = to_id;
+    }
+
     /// :rtype: Quaternion
     fn to_quaternion(&self) -> Quaternion {
         Quaternion::from(*self)

@@ -20,6 +20,7 @@ use rayon::prelude::*;
 use snafu::prelude::*;
 use std::collections::HashMap;
 
+pub mod dcm_expr;
 pub mod elements;
 pub mod event;
 pub mod event_ops;
@@ -32,6 +33,7 @@ pub mod vector_expr;
 mod utils;
 pub use utils::{adaptive_step_scanner, brent_solver};
 
+pub use dcm_expr::DcmExpr;
 use event::Event;
 use expr::ScalarExpr;
 use specs::{StateSpec, StateSpecTrait};
@@ -41,6 +43,7 @@ use vector_expr::VectorExpr;
 pub mod python;
 
 pub mod prelude {
+    pub use super::dcm_expr::DcmExpr;
     pub use super::elements::OrbitalElement;
     pub use super::event::{Condition, Event, EventArc, EventDetails, EventEdge, VisibilityArc};
     pub use super::event_ops::find_arc_intersections;
@@ -80,6 +83,13 @@ pub enum AnalysisError {
     #[snafu(display("computing {expr:?} at {epoch} encountered a physics error {source}"))]
     PhysicsVecExpr {
         expr: Box<VectorExpr>,
+        epoch: Epoch,
+        #[snafu(source(from(PhysicsError, Box::new)))]
+        source: Box<PhysicsError>,
+    },
+    #[snafu(display("computing {expr:?} at {epoch} encountered a physics error {source}"))]
+    PhysicsDcmExpr {
+        expr: Box<DcmExpr>,
         epoch: Epoch,
         #[snafu(source(from(PhysicsError, Box::new)))]
         source: Box<PhysicsError>,
