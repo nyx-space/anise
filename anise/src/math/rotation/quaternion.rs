@@ -712,6 +712,7 @@ mod ut_quaternion {
     #[test]
     fn test_short_rotation() {
         let q = Quaternion::about_x(3.0 * FRAC_PI_2, 0, 1); // 270 deg
+
         // 270 deg = -90 deg.
         // cos(135) < 0. So w < 0.
         assert!(q.w < 0.0);
