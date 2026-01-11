@@ -651,8 +651,6 @@ mod ut_quaternion {
         assert_eq!(d * Vector3::x(), q_z * Vector3::x());
     }
 
-    // TODO: Add useful tests
-
     use der::{Decode, Encode};
 
     #[test]

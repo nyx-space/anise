@@ -12,7 +12,7 @@ use super::{Almanac, Covariance, Ephemeris, EphemerisError, EphemerisRecord, Loc
 use crate::naif::daf::data_types::DataType;
 use crate::naif::daf::DafDataType;
 use crate::NaifId;
-use hifitime::Epoch;
+use hifitime::{Epoch, TimeSeries};
 use ndarray::Array2;
 use numpy::PyArray2;
 use pyo3::prelude::*;
@@ -265,6 +265,16 @@ impl Ephemeris {
         almanac: &Almanac,
     ) -> Result<Option<Covariance>, EphemerisError> {
         self.covar_at(epoch, local_frame, almanac)
+    }
+
+    /// Resample this ephemeris, with covariance, at the provided time series
+    ///
+    /// :type ts: TimeSeries
+    /// :type almanac: Almanac
+    /// :rtype: Ephemeris
+    #[pyo3(name = "resample")]
+    pub fn py_resample(&self, ts: TimeSeries, almanac: &Almanac) -> Result<Self, EphemerisError> {
+        self.resample(ts, almanac)
     }
 
     /// Converts this ephemeris to SPICE BSP/SPK file in the provided data type, saved to the provided output_fname.

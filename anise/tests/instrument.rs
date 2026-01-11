@@ -1,5 +1,8 @@
+use anise::analysis::prelude::{
+    Condition, DcmExpr, Event, FrameSpec, ScalarExpr, StateSpec, VectorExpr,
+};
 use anise::constants::celestial_objects::MOON;
-use anise::constants::frames::{IAU_MOON_FRAME, MOON_J2000};
+use anise::constants::frames::{EARTH_J2000, IAU_MOON_FRAME, MOON_J2000, SUN_J2000};
 use anise::constants::orientations::{IAU_MOON, J2000};
 use anise::math::rotation::EulerParameter;
 use anise::math::Vector3;
@@ -133,7 +136,7 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
     let dcm = almanac.rotate(MOON_J2000, IAU_MOON_FRAME, epoch).unwrap();
     let target_orientation_to_fixed = EulerParameter::from(dcm);
     assert!(instrument
-        .compute_footprint(
+        .footprint(
             sc_attitude_to_body,
             lro_state,
             target_orientation_to_fixed,
@@ -143,7 +146,7 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
 
     // But if we pass in identity, then the footprint is correctly computed.
     let footprint = instrument
-        .compute_footprint(
+        .footprint(
             sc_attitude_to_body,
             lro_state,
             EulerParameter::identity(IAU_MOON, IAU_MOON),
@@ -179,18 +182,18 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
     // If we rotate -105 deg (-90 - 15), the Nadir point should shift 15 deg
     // to the edge of the Camera X-axis.
 
-    let mounting_edge = EulerParameter::about_y((-90.0 - 15.0_f64).to_radians(), -30100, -30101);
+    let q_to_i_edge = EulerParameter::about_y((-90.0 - 15.0_f64).to_radians(), -30100, -30101);
 
     let cam_edge = Instrument {
-        q_to_i: mounting_edge,
-        ..instrument.clone() // Keep other fields same
+        q_to_i: q_to_i_edge,
+        ..instrument // Keep other fields same
     };
 
     let margin_edge = cam_edge
         .fov_margin_deg(sc_attitude_to_body, lro_state, below)
         .unwrap();
 
-    println!("Edge Margin (Expected ~0.0): {:.4}", margin_edge);
+    println!("Edge Margin (Expected ~0.0): {margin_edge:.4}");
     assert!((margin_edge).abs() < 1e-3);
 
     // --- TEST CASE 2: OUTSIDE HEIGHT (Y-Axis) ---
@@ -215,14 +218,14 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
 
     let cam_outside = Instrument {
         q_to_i: mounting_outside_fixed,
-        ..instrument.clone()
+        ..instrument
     };
 
     let margin_outside = cam_outside
         .fov_margin_deg(sc_attitude_to_body, lro_state, below)
         .unwrap();
 
-    println!("Outside Margin (Expected ~ -2.0): {:.4}", margin_outside);
+    println!("Outside Margin (Expected ~ -2.0): {margin_outside:.4}");
     assert!((margin_outside - -2.0).abs() < 1e-3);
 
     // --- TEST CASE 3: ZENITH (Looking Away) ---
@@ -231,19 +234,96 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
 
     let cam_zenith = Instrument {
         q_to_i: mounting_zenith,
-        ..instrument.clone()
+        ..instrument
     };
 
     let margin_zenith = cam_zenith
         .fov_margin_deg(sc_attitude_to_body, lro_state, below)
         .unwrap();
 
-    println!(
-        "Zenith Margin (Expected negative large): {:.4}",
-        margin_zenith
-    );
+    println!("Zenith Margin (Expected negative large): {margin_zenith:.4}",);
     assert!(margin_zenith < -100.0);
     assert!(!cam_zenith
         .is_target_in_fov(sc_attitude_to_body, lro_state, below)
         .unwrap());
+}
+
+#[rstest]
+fn lro_camera_fov_from_analysis(almanac: Almanac) {
+    let iau_moon = almanac.frame_info(IAU_MOON_FRAME).unwrap();
+
+    let lro_frame = Frame::new(-85, J2000);
+    let start = almanac.spk_domain(-85).unwrap().0;
+    let epoch = start + Unit::Day * 15;
+
+    // let landmark_vikram3 = Orbit::try_latlongalt(-69.373, -32.319, 0.5, epoch, iau_moon).unwrap();
+
+    // Assume that the vehicle is pointing X toward the V of the VNC frame.
+    let sc_dcm_to_body = DcmExpr::RIC {
+        state: Box::new(StateSpec {
+            target_frame: FrameSpec::Loaded(lro_frame),
+            observer_frame: FrameSpec::Loaded(iau_moon),
+            ab_corr: None,
+        }),
+        to: -30100,
+        from: 1,
+    };
+
+    let sc_vel_align_rad_clock = DcmExpr::Triad {
+        primary_axis: Box::new(VectorExpr::Fixed {
+            x: 1.0,
+            y: 0.0,
+            z: 0.0,
+        }),
+        primary_vec: Box::new(VectorExpr::Velocity(StateSpec {
+            target_frame: FrameSpec::Loaded(lro_frame),
+            observer_frame: FrameSpec::Loaded(MOON_J2000),
+            ab_corr: None,
+        })),
+        secondary_axis: Box::new(VectorExpr::Fixed {
+            x: 0.0,
+            y: 1.0,
+            z: 0.0,
+        }),
+        secondary_vec: Box::new(VectorExpr::Radius(StateSpec {
+            target_frame: FrameSpec::Loaded(lro_frame),
+            observer_frame: FrameSpec::Loaded(MOON_J2000),
+            ab_corr: None,
+        })),
+
+        to: -30100,
+        from: 1,
+    };
+
+    let instrument_fov_from_lro = Event {
+        scalar: ScalarExpr::FovMargin {
+            instrument_id: 1,
+            sc_dcm_to_body: sc_vel_align_rad_clock,
+            sc_observer_frame: lro_frame,
+        },
+        condition: Condition::GreaterThan(0.0),
+        ab_corr: None,
+        epoch_precision: Unit::Millisecond * 10,
+    };
+
+    // Cannot define the state spec of a location on the Moon ... that's a shame!
+    // Might need a location kind? But then there is no need for the state spec, which is confusing!
+    // Cannot use the spec in the DCM either since not all DcmExpr need a state (and others like Triad need many).
+
+    // Find the events when the Sun as seen from LRO is visible in the FOV of the camera
+    let events = almanac
+        .report_event_arcs(
+            &StateSpec {
+                target_frame: FrameSpec::Loaded(MOON_J2000),
+                observer_frame: FrameSpec::Loaded(iau_moon),
+                ab_corr: None,
+            },
+            &instrument_fov_from_lro,
+            start,
+            epoch,
+        )
+        .unwrap();
+    println!("{}", events[0]);
+    println!("{}", events[1]);
+    println!("{}", events[2]);
 }

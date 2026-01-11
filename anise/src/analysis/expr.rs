@@ -23,6 +23,7 @@ use crate::prelude::Orbit;
 use crate::NaifId;
 
 use super::elements::OrbitalElement;
+use super::specs::{StateSpec, StateSpecTrait};
 use super::{AnalysisError, VectorExpr};
 
 /// ScalarExpr defines a scalar computation from a (set of) vector expression(s).
@@ -139,7 +140,9 @@ pub enum ScalarExpr {
         location_id: i32,
         obstructing_body: Option<Frame>,
     },
-    /// FovMargin requires the spacecraft frame in sc_observer_frame and the StateSpec **must** be the target location on target obdy (e.g. IAU Moon).
+    /// Compute the RIC diff with the provided state spec
+    RicDiff(StateSpec),
+    /// FovMargin requires the spacecraft frame in sc_observer_frame and the StateSpec **must** be the target location on target body (e.g. IAU Moon).
     FovMargin {
         instrument_id: i32,
         sc_dcm_to_body: DcmExpr,
@@ -404,6 +407,16 @@ impl ScalarExpr {
                     state: orbit,
                 })?
                 .range_rate_km_s),
+            Self::RicDiff(spec) => {
+                let other = spec.evaluate(orbit.epoch, almanac)?;
+
+                Ok(orbit
+                    .ric_difference(&other)
+                    .map_err(|e| AnalysisError::GenericAnalysisError {
+                        err: format!("{e}"),
+                    })?
+                    .rmag_km())
+            }
             Self::FovMargin {
                 instrument_id,
                 sc_dcm_to_body,
@@ -548,6 +561,7 @@ impl fmt::Display for ScalarExpr {
             Self::Sin(v) => write!(f, "sin({v})"),
             Self::Tan(v) => write!(f, "tan({v})"),
             Self::Modulo { v, m } => write!(f, "{v} % {m}"),
+            Self::RicDiff(s) => write!(f, "RIC diff with {s}"),
             Self::FovMargin {
                 instrument_id,
                 sc_dcm_to_body,

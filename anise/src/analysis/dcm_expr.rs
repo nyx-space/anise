@@ -61,18 +61,22 @@ pub enum DcmExpr {
     RIC {
         state: Box<StateSpec>,
         from: i32,
+        to: i32,
     },
     VNC {
         state: Box<StateSpec>,
         from: i32,
+        to: i32,
     },
     RCN {
         state: Box<StateSpec>,
         from: i32,
+        to: i32,
     },
     SEZ {
         state: Box<StateSpec>,
         from: i32,
+        to: i32,
     },
 }
 
@@ -130,10 +134,26 @@ impl fmt::Display for DcmExpr {
                 };
                 write!(f, "{q}")
             }
-            Self::RIC { state, from: _ } => write!(f, "RIC of {state}"),
-            Self::RCN { state, from: _ } => write!(f, "RCN of {state}"),
-            Self::VNC { state, from: _ } => write!(f, "VNC of {state}"),
-            Self::SEZ { state, from: _ } => write!(f, "SEZ of {state}"),
+            Self::RIC {
+                state,
+                from: _,
+                to: _,
+            } => write!(f, "RIC of {state}"),
+            Self::RCN {
+                state,
+                from: _,
+                to: _,
+            } => write!(f, "RCN of {state}"),
+            Self::VNC {
+                state,
+                from: _,
+                to: _,
+            } => write!(f, "VNC of {state}"),
+            Self::SEZ {
+                state,
+                from: _,
+                to: _,
+            } => write!(f, "SEZ of {state}"),
         }
     }
 }
@@ -163,7 +183,7 @@ impl DcmExpr {
 
             Self::Identity { from, to } => Ok(DCM::identity(*from, *to)),
 
-            Self::RIC { state, from } => {
+            Self::RIC { state, from, to } => {
                 let state = state.evaluate(epoch, almanac)?;
 
                 let mut dcm = state
@@ -171,13 +191,15 @@ impl DcmExpr {
                     .context(PhysicsDcmExprSnafu {
                         expr: Box::new(self.clone()),
                         epoch,
-                    })?;
+                    })?
+                    .transpose();
                 dcm.from = *from;
+                dcm.to = *to;
 
                 Ok(dcm)
             }
 
-            Self::RCN { state, from } => {
+            Self::RCN { state, from, to } => {
                 let state = state.evaluate(epoch, almanac)?;
 
                 let mut dcm = state
@@ -185,13 +207,15 @@ impl DcmExpr {
                     .context(PhysicsDcmExprSnafu {
                         expr: Box::new(self.clone()),
                         epoch,
-                    })?;
+                    })?
+                    .transpose();
                 dcm.from = *from;
+                dcm.to = *to;
 
                 Ok(dcm)
             }
 
-            Self::VNC { state, from } => {
+            Self::VNC { state, from, to } => {
                 let state = state.evaluate(epoch, almanac)?;
 
                 let mut dcm = state
@@ -199,23 +223,26 @@ impl DcmExpr {
                     .context(PhysicsDcmExprSnafu {
                         expr: Box::new(self.clone()),
                         epoch,
-                    })?;
+                    })?
+                    .transpose();
                 dcm.from = *from;
+                dcm.to = *to;
 
                 Ok(dcm)
             }
 
-            Self::SEZ { state, from } => {
+            Self::SEZ { state, from, to } => {
                 let state = state.evaluate(epoch, almanac)?;
 
-                let mut dcm =
-                    state
-                        .dcm_from_topocentric_to_body_fixed()
-                        .context(PhysicsDcmExprSnafu {
-                            expr: Box::new(self.clone()),
-                            epoch,
-                        })?;
+                let mut dcm = state
+                    .dcm_from_topocentric_to_body_fixed()
+                    .context(PhysicsDcmExprSnafu {
+                        expr: Box::new(self.clone()),
+                        epoch,
+                    })?
+                    .transpose();
                 dcm.from = *from;
+                dcm.to = *to;
 
                 Ok(dcm)
             }

@@ -235,7 +235,8 @@ mod ut_analysis {
     use crate::analysis::specs::{OrthogonalFrame, Plane};
     use crate::astro::{Aberration, Location, TerrainMask};
     use crate::constants::frames::{EME2000, IAU_EARTH_FRAME, MOON_J2000, SUN_J2000, VENUS_J2000};
-    use crate::prelude::{Almanac, Frame};
+    use crate::ephemerides::ephemeris::Ephemeris;
+    use crate::prelude::{Almanac, Frame, Orbit};
     use crate::structure::LocationDataSet;
     use hifitime::{Duration, Epoch, TimeSeries, Unit};
     use rstest::*;
@@ -1002,5 +1003,167 @@ mod ut_analysis {
             start_epoch + Unit::Day * 1,
             "arc should end at the end of the search interval"
         );
+    }
+    #[rstest]
+    fn test_analysis_ric_bsp_diff(mut almanac: Almanac) {
+        let eme2k = almanac.frame_info(EME2000).unwrap();
+        let epoch = Epoch::from_gregorian_tai_at_midnight(2026, 1, 10);
+        // Create ephemeris data from an arbitrary Earth orbit.
+        let mut ephem1 = Ephemeris::new("sc1".to_string());
+        let mut ephem2 = Ephemeris::new("sc2".to_string());
+
+        let orbit0 =
+            Orbit::try_keplerian_altitude(500.0, 1e-3, 32.0, 75.0, 85.0, 95.0, epoch, eme2k)
+                .unwrap();
+        let orbit1 = orbit0.add_inc_deg(0.5).unwrap();
+
+        // Build the ephems
+        let duration = Unit::Day * 1.5;
+
+        let mut min_angle_deg = 180.0_f64;
+        let mut min_epoch = epoch;
+        let mut min_r_km = 10_000.0_f64;
+
+        for epoch in TimeSeries::exclusive(epoch, epoch + duration, Unit::Minute * 1) {
+            let new_orbit0 = orbit0.at_epoch(epoch).unwrap();
+            let new_orbit1 = orbit1.at_epoch(epoch).unwrap();
+            ephem1.insert_orbit(new_orbit0);
+            ephem2.insert_orbit(new_orbit1);
+
+            let new_orbit0_ric0 = new_orbit0
+                .dcm3x3_from_ric_to_inertial()
+                .unwrap()
+                .transpose()
+                * new_orbit0.radius_km;
+
+            let new_orbit1_ric0 = new_orbit0
+                .dcm3x3_from_ric_to_inertial()
+                .unwrap()
+                .transpose()
+                * new_orbit1.radius_km;
+            let angle_deg = new_orbit0_ric0.angle(&new_orbit1_ric0).to_degrees();
+            if angle_deg < min_angle_deg {
+                min_angle_deg = angle_deg;
+                min_epoch = epoch;
+            }
+            min_r_km = min_r_km.min(new_orbit0.ric_difference(&new_orbit1).unwrap().rmag_km());
+        }
+
+        println!("{min_angle_deg} @ {min_epoch}");
+        dbg!(min_r_km);
+
+        // Build the BSPs
+        almanac = almanac
+            .with_spk(ephem1.to_spice_bsp(-10, None).unwrap())
+            .with_spk(ephem2.to_spice_bsp(-11, None).unwrap());
+
+        let (start1, end1) = almanac.spk_domain(-10).unwrap();
+        let (start2, end2) = almanac.spk_domain(-11).unwrap();
+
+        assert!(((start1 - ephem1.start_epoch().unwrap()).abs()) < Unit::Microsecond * 1);
+        assert!(((end1 - ephem1.end_epoch().unwrap()).abs()) < Unit::Microsecond * 1);
+        assert!(((start2 - ephem2.start_epoch().unwrap()).abs()) < Unit::Microsecond * 1);
+        assert!(((end2 - ephem2.end_epoch().unwrap()).abs()) < Unit::Microsecond * 1);
+
+        let state_spec_ephem1 = StateSpec {
+            target_frame: FrameSpec::Loaded(Frame::new(-10, 1)),
+            observer_frame: FrameSpec::Loaded(EME2000),
+            ab_corr: None,
+        };
+
+        // Define the state specs for both trajectories and find when they're close, using an angular separation
+        // after rotating both the A and B vectors into the RIC of the A vector.
+        let e_ric_angle = Event {
+            scalar: ScalarExpr::AngleBetween {
+                a: VectorExpr::Rotate {
+                    v: Box::new(VectorExpr::Radius(state_spec_ephem1.clone())),
+                    dcm: Box::new(DcmExpr::RIC {
+                        state: Box::new(state_spec_ephem1.clone()),
+                        from: -1,
+                        to: 1,
+                    }),
+                },
+                b: VectorExpr::Rotate {
+                    v: Box::new(VectorExpr::Radius(StateSpec {
+                        target_frame: FrameSpec::Loaded(Frame::new(-11, 1)),
+                        observer_frame: FrameSpec::Loaded(EME2000),
+                        ab_corr: None,
+                    })),
+                    dcm: Box::new(DcmExpr::RIC {
+                        state: Box::new(state_spec_ephem1.clone()),
+                        from: -1,
+                        to: 1,
+                    }),
+                },
+            },
+            condition: Condition::Maximum(),
+            epoch_precision: Unit::Second * 0.1,
+            ab_corr: None,
+        };
+
+        let events = almanac
+            .report_events(&state_spec_ephem1, &e_ric_angle, epoch, end1)
+            .unwrap();
+        for e in &events {
+            assert!(
+                (e.value - 0.5).abs() < 1e-3,
+                "expect max to be the inclination difference"
+            );
+            println!("{e}");
+        }
+
+        // We can find the minimums of the closest RIC difference with the shortcut.
+        let e_ric = Event {
+            scalar: ScalarExpr::RicDiff(StateSpec {
+                target_frame: FrameSpec::Loaded(Frame::new(-11, 1)),
+                observer_frame: FrameSpec::Loaded(EME2000),
+                ab_corr: None,
+            }),
+            condition: Condition::Minimum(),
+            epoch_precision: Unit::Second * 0.1,
+            ab_corr: None,
+        };
+        let events = almanac
+            .report_events(&state_spec_ephem1, &e_ric, epoch, end1)
+            .unwrap();
+        for e in &events {
+            println!("{e}");
+        }
+
+        let dcm = Box::new(DcmExpr::RIC {
+            state: Box::new(state_spec_ephem1.clone()),
+            from: -1,
+            to: 1,
+        });
+
+        let e_ric_manual = Event {
+            scalar: ScalarExpr::Norm(VectorExpr::Add {
+                a: Box::new(VectorExpr::Negate(Box::new(VectorExpr::Rotate {
+                    v: Box::new(VectorExpr::Radius(state_spec_ephem1.clone())),
+                    dcm: dcm.clone(),
+                }))),
+                b: Box::new(VectorExpr::Rotate {
+                    v: Box::new(VectorExpr::Radius(StateSpec {
+                        target_frame: FrameSpec::Loaded(Frame::new(-11, 1)),
+                        observer_frame: FrameSpec::Loaded(EME2000),
+                        ab_corr: None,
+                    })),
+                    dcm: dcm.clone(),
+                }),
+            }),
+            condition: Condition::Minimum(),
+            epoch_precision: Unit::Second * 0.1,
+            ab_corr: None,
+        };
+        let events_ric2 = almanac
+            .report_events(&state_spec_ephem1, &e_ric_manual, epoch, end1)
+            .unwrap();
+
+        assert_eq!(events_ric2.len(), events.len());
+        for (shortcut, manual) in events.iter().zip(events_ric2.iter()).take(3) {
+            assert_eq!(shortcut.orbit.epoch, manual.orbit.epoch);
+        }
+
+        // assert_eq!(events_ric2, events);
     }
 }

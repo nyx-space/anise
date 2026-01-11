@@ -191,7 +191,7 @@ impl Instrument {
     /// # Returns
     /// A vector of `Orbit` objects, each representing a point on the surface of the target
     /// expressed in the `target_frame` (Fixed).
-    pub fn compute_footprint(
+    pub fn footprint(
         &self,
         sc_q_n_to_b: EulerParameter,
         sc_state_target: CartesianState,
@@ -565,7 +565,7 @@ mod ut_instrument {
 
         // ACT
         let footprint = instrument
-            .compute_footprint(
+            .footprint(
                 sc_att,
                 sc_state,
                 target_orient,
@@ -625,7 +625,7 @@ mod ut_instrument {
         // ACT
         // Resolution 40 -> 10 points per side
         let footprint = instrument
-            .compute_footprint(sc_att, sc_state, target_orient, 40)
+            .footprint(sc_att, sc_state, target_orient, 40)
             .expect("Computation failed");
 
         // ASSERT
@@ -678,7 +678,7 @@ mod ut_instrument {
         sc_state.frame = target_frame;
 
         let footprint = instrument
-            .compute_footprint(sc_att, sc_state, EulerParameter::identity(0, 10), 10)
+            .footprint(sc_att, sc_state, EulerParameter::identity(0, 10), 10)
             .unwrap();
 
         // ASSERT
