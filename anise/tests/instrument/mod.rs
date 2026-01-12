@@ -1,6 +1,7 @@
 use anise::analysis::prelude::{
     Condition, DcmExpr, Event, FrameSpec, ScalarExpr, StateSpec, VectorExpr,
 };
+use anise::astro::Location;
 use anise::constants::celestial_objects::MOON;
 use anise::constants::frames::{IAU_MOON_FRAME, MOON_J2000};
 use anise::constants::orientations::{IAU_MOON, J2000};
@@ -8,7 +9,7 @@ use anise::math::rotation::EulerParameter;
 use anise::math::Vector3;
 use anise::prelude::{Almanac, Frame, Orbit};
 use anise::prelude::{FovShape, Instrument};
-use anise::structure::InstrumentDataSet;
+use anise::structure::{InstrumentDataSet, LocationDataSet};
 use core::f64::consts::FRAC_PI_2;
 use hifitime::Unit;
 use rstest::*;
@@ -122,7 +123,7 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
 
     // Ensure that the same call from the almanac returns the same data.
     let fov_margin_deg2 = almanac
-        .instrument_field_of_view_margin(1, sc_attitude_to_body, lro_frame, below, None)
+        .instrument_field_of_view_margin(1, sc_attitude_to_body, lro_state, below)
         .unwrap();
 
     assert_eq!(fov_margin_deg2, fov_margin_to_nadir);
@@ -249,45 +250,48 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
 }
 
 #[rstest]
-fn lro_camera_fov_from_analysis(almanac: Almanac) {
+fn lro_camera_fov_from_analysis(mut almanac: Almanac) {
     let iau_moon = almanac.frame_info(IAU_MOON_FRAME).unwrap();
 
     let lro_frame = Frame::new(-85, J2000);
     let start = almanac.spk_domain(-85).unwrap().0;
     let epoch = start + Unit::Day * 15;
 
-    // let landmark_vikram3 = Orbit::try_latlongalt(-69.373, -32.319, 0.5, epoch, iau_moon).unwrap();
-
-    // Assume that the vehicle is pointing X toward the V of the VNC frame.
-    let sc_dcm_to_body = DcmExpr::RIC {
-        state: Box::new(StateSpec {
-            target_frame: FrameSpec::Loaded(lro_frame),
-            observer_frame: FrameSpec::Loaded(iau_moon),
-            ab_corr: None,
-        }),
-        to: -30100,
-        from: 1,
+    // Define a location on the Moon
+    let vikram = Location {
+        latitude_deg: -69.373,
+        longitude_deg: -32.319,
+        height_km: 0.5,
+        frame: iau_moon.into(),
+        terrain_mask: vec![],
+        terrain_mask_ignored: true,
     };
+
+    let mut dataset = LocationDataSet::default();
+    dataset.push(vikram.clone(), Some(1), None).unwrap();
+    almanac = almanac.with_location_data(dataset);
+
+    // let landmark_vikram3 = Orbit::try_latlongalt(-69.373, -32.319, 0.5, epoch, iau_moon).unwrap();
 
     let sc_vel_align_rad_clock = DcmExpr::Triad {
         primary_axis: Box::new(VectorExpr::Fixed {
-            x: 1.0,
-            y: 0.0,
-            z: 0.0,
-        }),
-        primary_vec: Box::new(VectorExpr::Velocity(StateSpec {
-            target_frame: FrameSpec::Loaded(lro_frame),
-            observer_frame: FrameSpec::Loaded(MOON_J2000),
-            ab_corr: None,
-        })),
-        secondary_axis: Box::new(VectorExpr::Fixed {
             x: 0.0,
             y: 1.0,
             z: 0.0,
         }),
+        primary_vec: Box::new(VectorExpr::Velocity(StateSpec {
+            target_frame: FrameSpec::Loaded(MOON_J2000),
+            observer_frame: FrameSpec::Loaded(lro_frame),
+            ab_corr: None,
+        })),
+        secondary_axis: Box::new(VectorExpr::Fixed {
+            x: 0.0,
+            y: 0.0,
+            z: -1.0,
+        }),
         secondary_vec: Box::new(VectorExpr::Radius(StateSpec {
-            target_frame: FrameSpec::Loaded(lro_frame),
-            observer_frame: FrameSpec::Loaded(MOON_J2000),
+            target_frame: FrameSpec::Loaded(MOON_J2000),
+            observer_frame: FrameSpec::Loaded(lro_frame),
             ab_corr: None,
         })),
 
@@ -296,25 +300,20 @@ fn lro_camera_fov_from_analysis(almanac: Almanac) {
     };
 
     let instrument_fov_from_lro = Event {
-        scalar: ScalarExpr::FovMargin {
+        scalar: ScalarExpr::FovMarginToLocation {
             instrument_id: 1,
             sc_dcm_to_body: sc_vel_align_rad_clock,
-            sc_observer_frame: lro_frame,
+            location_id: 1,
         },
         condition: Condition::GreaterThan(0.0),
         ab_corr: None,
         epoch_precision: Unit::Millisecond * 10,
     };
 
-    // Cannot define the state spec of a location on the Moon ... that's a shame!
-    // Might need a location kind? But then there is no need for the state spec, which is confusing!
-    // Cannot use the spec in the DCM either since not all DcmExpr need a state (and others like Triad need many).
-
-    // Find the events when the Sun as seen from LRO is visible in the FOV of the camera
     let events = almanac
         .report_event_arcs(
             &StateSpec {
-                target_frame: FrameSpec::Loaded(MOON_J2000),
+                target_frame: FrameSpec::Loaded(lro_frame),
                 observer_frame: FrameSpec::Loaded(iau_moon),
                 ab_corr: None,
             },
@@ -326,4 +325,12 @@ fn lro_camera_fov_from_analysis(almanac: Almanac) {
     println!("{}", events[0]);
     println!("{}", events[1]);
     println!("{}", events[2]);
+
+    // Check that at the midpoint, we're roughly above the location
+    let lro_mid = almanac
+        .state_of(-85, iau_moon, events[0].midpoint_epoch(), None)
+        .unwrap();
+    let (lat, long, _) = lro_mid.latlongalt().unwrap();
+
+    println!("LRO state = {lat} deg, {long} deg");
 }

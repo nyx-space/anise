@@ -267,7 +267,12 @@ pub enum PyScalarExpr {
     FovMargin {
         instrument_id: i32,
         sc_dcm_to_body: Py<PyDcmExpr>,
-        sc_observer_frame: Frame,
+        target: PyStateSpec,
+    },
+    FovMarginToLocation {
+        instrument_id: i32,
+        sc_dcm_to_body: Py<PyDcmExpr>,
+        location_id: i32,
     },
 }
 
@@ -394,11 +399,20 @@ impl Clone for PyScalarExpr {
                 Self::FovMargin {
                     instrument_id,
                     sc_dcm_to_body,
-                    sc_observer_frame,
+                    target,
                 } => Self::FovMargin {
                     instrument_id: *instrument_id,
                     sc_dcm_to_body: sc_dcm_to_body.clone_ref(py),
-                    sc_observer_frame: *sc_observer_frame,
+                    target: target.clone(),
+                },
+                Self::FovMarginToLocation {
+                    instrument_id,
+                    sc_dcm_to_body,
+                    location_id,
+                } => Self::FovMarginToLocation {
+                    instrument_id: *instrument_id,
+                    sc_dcm_to_body: sc_dcm_to_body.clone_ref(py),
+                    location_id: *location_id,
                 },
             }
         })
@@ -1050,14 +1064,26 @@ impl TryFrom<ScalarExpr> for PyScalarExpr {
                 ScalarExpr::FovMargin {
                     instrument_id,
                     sc_dcm_to_body,
-                    sc_observer_frame,
+                    target,
                 } => Ok(Self::FovMargin {
                     instrument_id,
                     sc_dcm_to_body: Py::new(
                         py,
                         <DcmExpr as TryInto<PyDcmExpr>>::try_into(sc_dcm_to_body)?,
                     )?,
-                    sc_observer_frame,
+                    target: <StateSpec as TryInto<PyStateSpec>>::try_into(target)?,
+                }),
+                ScalarExpr::FovMarginToLocation {
+                    instrument_id,
+                    sc_dcm_to_body,
+                    location_id,
+                } => Ok(Self::FovMarginToLocation {
+                    instrument_id,
+                    sc_dcm_to_body: Py::new(
+                        py,
+                        <DcmExpr as TryInto<PyDcmExpr>>::try_into(sc_dcm_to_body)?,
+                    )?,
+                    location_id,
                 }),
             }
         })
@@ -1394,11 +1420,20 @@ impl From<PyScalarExpr> for ScalarExpr {
             PyScalarExpr::FovMargin {
                 instrument_id,
                 sc_dcm_to_body,
-                sc_observer_frame,
+                target,
             } => ScalarExpr::FovMargin {
                 instrument_id,
                 sc_dcm_to_body: sc_dcm_to_body.borrow(py).clone().into(),
-                sc_observer_frame,
+                target: target.into(),
+            },
+            PyScalarExpr::FovMarginToLocation {
+                instrument_id,
+                sc_dcm_to_body,
+                location_id,
+            } => ScalarExpr::FovMarginToLocation {
+                instrument_id,
+                sc_dcm_to_body: sc_dcm_to_body.borrow(py).clone().into(),
+                location_id,
             },
         })
     }

@@ -142,11 +142,16 @@ pub enum ScalarExpr {
     },
     /// Compute the RIC diff with the provided state spec
     RicDiff(StateSpec),
-    /// FovMargin requires the spacecraft frame in sc_observer_frame and the StateSpec **must** be the target location on target body (e.g. IAU Moon).
     FovMargin {
         instrument_id: i32,
         sc_dcm_to_body: DcmExpr,
-        sc_observer_frame: Frame,
+        target: StateSpec,
+    },
+    /// Use the FOV Margint to Location for FOV of a given body fixed location
+    FovMarginToLocation {
+        instrument_id: i32,
+        sc_dcm_to_body: DcmExpr,
+        location_id: i32,
     },
 }
 
@@ -420,8 +425,53 @@ impl ScalarExpr {
             Self::FovMargin {
                 instrument_id,
                 sc_dcm_to_body,
-                sc_observer_frame,
+                target,
             } => {
+                let sc_q_to_b =
+                    EulerParameter::from(sc_dcm_to_body.evaluate(orbit.epoch, almanac)?);
+
+                let target_state = target.evaluate(orbit.epoch, almanac)?;
+
+                almanac
+                    .instrument_field_of_view_margin(*instrument_id, sc_q_to_b, orbit, target_state)
+                    .context(AlmanacExprSnafu {
+                        expr: Box::new(self.clone()),
+                        state: orbit,
+                    })
+            }
+            Self::FovMarginToLocation {
+                instrument_id,
+                sc_dcm_to_body,
+                location_id,
+            } => {
+                let location =
+                    almanac
+                        .location_from_id(*location_id)
+                        .context(AlmanacExprSnafu {
+                            expr: Box::new(self.clone()),
+                            state: orbit,
+                        })?;
+
+                let epoch = orbit.epoch;
+                // If loading the frame data fails, stop here because the flatenning ratio must be defined.
+                let from_frame = almanac.frame_info(location.frame).map_err(|e| {
+                    AnalysisError::GenericAnalysisError {
+                        err: format!("{e} when fetching {} frame data", location.frame),
+                    }
+                })?;
+
+                // Build the state of this orbit
+                let location_state = Orbit::try_latlongalt(
+                    location.latitude_deg,
+                    location.longitude_deg,
+                    location.height_km,
+                    epoch,
+                    from_frame,
+                )
+                .map_err(|e| AnalysisError::GenericAnalysisError {
+                    err: format!("{e}"),
+                })?;
+
                 let sc_q_to_b =
                     EulerParameter::from(sc_dcm_to_body.evaluate(orbit.epoch, almanac)?);
 
@@ -429,9 +479,8 @@ impl ScalarExpr {
                     .instrument_field_of_view_margin(
                         *instrument_id,
                         sc_q_to_b,
-                        *sc_observer_frame,
                         orbit,
-                        ab_corr,
+                        location_state,
                     )
                     .context(AlmanacExprSnafu {
                         expr: Box::new(self.clone()),
@@ -565,11 +614,21 @@ impl fmt::Display for ScalarExpr {
             Self::FovMargin {
                 instrument_id,
                 sc_dcm_to_body,
-                sc_observer_frame: _,
+                target,
             } => write!(
                 f,
-                "field of view of instrument {instrument_id} where body frame is {sc_dcm_to_body}"
+                "FOV of {instrument_id} where body frame is {sc_dcm_to_body} and observing {target}"
             ),
+            Self::FovMarginToLocation {
+                instrument_id,
+                sc_dcm_to_body,
+                location_id,
+            } => {
+                write!(
+                f,
+                "FOV of {instrument_id} when body frame is {sc_dcm_to_body} and observing location #{location_id}"
+            )
+            }
         }
     }
 }

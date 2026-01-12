@@ -11,9 +11,7 @@
 use super::Almanac;
 use crate::errors::{AlmanacPhysicsSnafu, AlmanacResult};
 use crate::{
-    astro::Aberration,
     errors::AlmanacError,
-    frames::Frame,
     math::rotation::Quaternion,
     prelude::Orbit,
     structure::{dataset::DataSetError, instrument::Instrument, lookuptable::LutError},
@@ -62,18 +60,10 @@ impl Almanac {
         &self,
         instrument_id: i32,
         sc_q_to_b: Quaternion,
-        sc_observer_frame: Frame,
+        sc_state: Orbit,
         target_state: Orbit,
-        ab_corr: Option<Aberration>,
     ) -> AlmanacResult<f64> {
         let instrument = self.instrument_from_id(instrument_id)?;
-        // Compute the spacecraft state in the target state's frame
-        let sc_state = self.transform(
-            sc_observer_frame,
-            target_state.frame,
-            target_state.epoch,
-            ab_corr,
-        )?;
 
         instrument
             .fov_margin_deg(sc_q_to_b, sc_state, target_state)
