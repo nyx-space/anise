@@ -389,7 +389,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 })?;
 
         // Grab the data in native endianness
-        if self.file_record()?.is_empty() {
+        if self.file_record()?.is_empty() || this_summary.is_empty() {
             return Err(DAFError::FileRecord {
                 kind: R::NAME,
                 source: FileRecordError::EmptyRecord,

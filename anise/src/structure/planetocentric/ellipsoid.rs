@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+use crate::math::Vector3;
 use core::fmt;
 use der::{Decode, Encode, Reader, Writer};
 use serde_derive::{Deserialize, Serialize};
@@ -64,6 +65,114 @@ impl Ellipsoid {
             semi_minor_equatorial_radius_km: equatorial_radius_km,
             polar_radius_km,
         }
+    }
+
+    /// Computes the intersection of a ray defined by `view_point` and `view_direction` with the ellipsoid.
+    ///
+    /// This is functionally equivalent to the SPICE routine `surfpt_c`.
+    ///
+    /// # Arguments
+    /// * `view_point` - The origin of the ray (e.g. spacecraft position in Body Fixed frame).
+    /// * `view_direction` - The direction vector of the ray (e.g. instrument boresight in Body Fixed frame).
+    ///
+    /// # Returns
+    /// * `Some(Vector3)` - The Cartesian coordinates of the first intersection point on the surface.
+    /// * `None` - If the ray does not intersect the ellipsoid.
+    pub fn intersect(&self, view_point: Vector3, view_direction: Vector3) -> Option<Vector3> {
+        let a = self.semi_major_equatorial_radius_km;
+        let b = self.semi_minor_equatorial_radius_km;
+        let c = self.polar_radius_km;
+
+        // 1. Scale to Unit Sphere Space: P' = [x/a, y/b, z/c]
+        // We do this manually to avoid constructing a scaling matrix
+        let origin = Vector3::new(view_point.x / a, view_point.y / b, view_point.z / c);
+        let direction = Vector3::new(
+            view_direction.x / a,
+            view_direction.y / b,
+            view_direction.z / c,
+        );
+
+        // 2. Quadratic Equation: |O' + t*D'|^2 = 1
+        // (D' . D')t^2 + 2(O' . D')t + (O' . O' - 1) = 0
+        let a_coeff = direction.dot(&direction);
+        let b_coeff = 2.0 * origin.dot(&direction);
+        let c_coeff = origin.dot(&origin) - 1.0;
+
+        let discriminant = b_coeff * b_coeff - 4.0 * a_coeff * c_coeff;
+
+        if discriminant < 0.0 {
+            return None; // Ray misses
+        }
+
+        // 3. Solve for t
+        let sqrt_disc = discriminant.sqrt();
+        let t1 = (-b_coeff - sqrt_disc) / (2.0 * a_coeff);
+        let t2 = (-b_coeff + sqrt_disc) / (2.0 * a_coeff);
+
+        // 4. Select closest positive t
+        // Use a small epsilon to avoid finding the "origin" if we are already on the surface
+        let t = if t1 > 1e-9 {
+            t1
+        } else if t2 > 1e-9 {
+            t2
+        } else {
+            return None; // Intersection is behind
+        };
+
+        // 5. Unscale
+        Some(view_point + view_direction * t)
+    }
+
+    /// Computes the unit normal vector at a specific point on the surface of the ellipsoid.
+    ///
+    /// The input `surface_point` must be in the same frame as the ellipsoid definition
+    /// (typically the Body-Fixed frame).
+    ///
+    /// # Math
+    /// For an ellipsoid (x/a)^2 + (y/b)^2 + (z/c)^2 = 1, the gradient vector is:
+    /// ∇f = [ 2x/a^2, 2y/b^2, 2z/c^2 ]
+    pub fn surface_normal(&self, surface_point: Vector3) -> Vector3 {
+        Vector3::new(
+            surface_point.x / self.semi_major_equatorial_radius_km.powi(2),
+            surface_point.y / self.semi_minor_equatorial_radius_km.powi(2),
+            surface_point.z / self.polar_radius_km.powi(2),
+        )
+        .normalize()
+    }
+
+    /// Computes the emission angle (epsilon) at a surface point.
+    ///
+    /// This is the angle between the surface normal and the vector from the surface point
+    /// to the observer (spacecraft).
+    ///
+    /// * 0.0 degrees means the observer is looking straight down (Nadir).
+    /// * 90.0 degrees means the observer is looking from the horizon (grazing).
+    /// * > 90.0 degrees means the point is not visible (on the back side).
+    pub fn emission_angle_deg(&self, surface_point: Vector3, observer_pos_body: Vector3) -> f64 {
+        let normal = self.surface_normal(surface_point);
+        let vec_to_observer = (observer_pos_body - surface_point).normalize();
+
+        // Clamp dot product to [-1.0, 1.0] to avoid NaN from acos due to float errors
+        normal
+            .dot(&vec_to_observer)
+            .clamp(-1.0, 1.0)
+            .acos()
+            .to_degrees()
+    }
+
+    /// Computes the solar incidence angle (iota) at a surface point.
+    ///
+    /// This is the angle between the surface normal and the vector from the surface point
+    /// to the Sun.
+    ///
+    /// * 0.0 degrees means the Sun is directly overhead (Noon).
+    /// * 90.0 degrees means the Sun is at the horizon (Terminator).
+    /// * > 90.0 degrees means the point is in shadow (Night).
+    pub fn solar_incidence_angle_deg(&self, surface_point: Vector3, sun_pos_body: Vector3) -> f64 {
+        let normal = self.surface_normal(surface_point);
+        let vec_to_sun = (sun_pos_body - surface_point).normalize();
+
+        normal.dot(&vec_to_sun).clamp(-1.0, 1.0).acos().to_degrees()
     }
 }
 

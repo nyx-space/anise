@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+use core::fmt;
 use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
 
@@ -125,6 +126,7 @@ pub enum OrbitalElement {
     VY,
     /// Z component of the velocity (km/s)
     VZ,
+    Custom,
 }
 
 impl OrbitalElement {
@@ -250,6 +252,9 @@ impl OrbitalElement {
             Self::X => Ok(orbit.radius_km.x),
             Self::Y => Ok(orbit.radius_km.y),
             Self::Z => Ok(orbit.radius_km.z),
+            Self::Custom => Err(AnalysisError::YetUnimplemented {
+                err: "cannot compute value for custom element",
+            }),
         }
     }
 
@@ -330,7 +335,8 @@ impl OrbitalElement {
             | Self::EquinoctialH
             | Self::EquinoctialK
             | Self::EquinoctialP
-            | Self::EquinoctialQ => "unitless",
+            | Self::EquinoctialQ
+            | Self::Custom => "unitless",
             Self::Period => "s",
         }
     }
@@ -355,5 +361,11 @@ impl OrbitalElement {
 
     fn __ne__(&self, other: &Self) -> bool {
         self != other
+    }
+}
+
+impl fmt::Display for OrbitalElement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?} ({})", self.unit())
     }
 }

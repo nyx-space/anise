@@ -18,10 +18,8 @@ from anise.rotation import DCM, Quaternion
 from anise.time import Duration, Epoch, TimeSeries, Unit
 from anise.utils import convert_tpc
 
+import numpy as np
 from os import environ
-
-# For compatibility with version 0.6.x, check we can import the constants from anise.astro as well
-from anise.astro.constants import Frames
 
 
 def test_state_transformation():
@@ -113,7 +111,7 @@ def test_state_transformation():
     assert all(rtn_uvec == orig_uvec)
     assert rtn_angle_rad == orig_angle_rad
 
-    topo_dcm = orig_state.dcm_from_topocentric_to_body_fixed(123)
+    topo_dcm = orig_state.dcm_from_topocentric_to_body_fixed()
     assert topo_dcm.get_state_dcm().shape == (6, 6)
     assert topo_dcm.rot_mat.shape == (3, 3)
     assert (
@@ -232,8 +230,6 @@ def test_state_transformation():
 
 
 def test_numpy_constructor():
-    import numpy as np
-
     if environ.get("CI", False):
         # Load from meta kernel to not use Git LFS quota
         data_path = Path(__file__).parent.joinpath(
@@ -244,7 +240,7 @@ def test_numpy_constructor():
     else:
         data_path = Path(__file__).parent.joinpath("..", "..", "data")
         almanac = Almanac(str(data_path.joinpath("pck08.pca")))
-    
+
     epoch = Epoch("2021-10-29 12:34:56 TDB")
     eme2k = almanac.frame_info(Frames.EME2000)
 
@@ -252,15 +248,16 @@ def test_numpy_constructor():
 
     orbit_from_npy = Orbit(state_vector, epoch, eme2k)
 
-    orbit_from_floats = Orbit(
-        8_191.93, 0.0, 0.0, 0.0, 7.6, 0.0, epoch, eme2k
-    )
+    orbit_from_floats = Orbit(8_191.93, 0.0, 0.0, 0.0, 7.6, 0.0, epoch, eme2k)
 
     assert orbit_from_npy == orbit_from_floats
 
     # Test that it fails with a wrong-sized array
     with np.testing.assert_raises(ValueError):
         Orbit(np.array([1.0, 2.0, 3.0]), epoch, eme2k)
+
+    assert np.all(orbit_from_npy.radius_km() == np.array([8_191.93, 0.0, 0.0]))
+    assert np.all(orbit_from_npy.velocity_km_s() == np.array([0.0, 7.6, 0.0]))
 
 
 def test_convert_tpc():
@@ -370,6 +367,7 @@ def test_version():
 
     assert __version__ is not None
 
+
 def test_oem():
     # Load an Almanac for the various frames used here.
     almanac = Almanac("data/pck11.pca")
@@ -378,16 +376,20 @@ def test_oem():
     print(ephem)
     (start, end) = ephem.domain()
     # Query the covariance using the Log Euclidean method
-    covar = ephem.covar_at(start + (end-start)*0.5, LocalFrame.RIC, almanac)
+    covar = ephem.covar_at(start + (end - start) * 0.5, LocalFrame.RIC, almanac)
     print(covar)
-    covar = ephem.covar_at(start + (end-start)*0.5, LocalFrame.Inertial, almanac)
+    covar = ephem.covar_at(start + (end - start) * 0.5, LocalFrame.Inertial, almanac)
     print(covar)
-    covar = ephem.covar_at(start + (end-start)*0.5, LocalFrame.RCN, almanac)
+    covar = ephem.covar_at(start + (end - start) * 0.5, LocalFrame.RCN, almanac)
     print(covar)
-    covar = ephem.covar_at(start + (end-start)*0.5, LocalFrame.VNC, almanac)
+    covar = ephem.covar_at(start + (end - start) * 0.5, LocalFrame.VNC, almanac)
     print(covar)
     # Export to SPICE BSP
-    ephem.write_spice_bsp(-159, "data/tests/naif/spk/ephem_from_python.bsp", DataType.Type13HermiteUnequalStep)
+    ephem.write_spice_bsp(
+        -159,
+        "data/tests/naif/spk/ephem_from_python.bsp",
+        DataType.Type13HermiteUnequalStep,
+    )
 
     # 2. Load OEM to new Almanac, providing an ID to convert this OEM to SPK
     almanac2 = Almanac.from_ccsds_oem_file("data/tests/ccsds/oem/LRO_Nyx.oem", -159)
@@ -404,6 +406,7 @@ def test_oem():
     # Compute the standard deviation for the covariance
     sigma_sma_km = ephem.at(end, almanac).sigma_for(OrbitalElement.SemiMajorAxis)
     print(f"SMA 1-sigma = {sigma_sma_km:.3} km")
+
 
 if __name__ == "__main__":
     # test_meta_load()

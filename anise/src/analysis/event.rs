@@ -668,6 +668,11 @@ impl EventArc {
         self.fall.orbit.epoch
     }
 
+    /// :rtype: Epoch
+    pub fn midpoint_epoch(&self) -> Epoch {
+        self.start_epoch() + 0.5 * self.duration()
+    }
+
     #[cfg(feature = "python")]
     fn __str__(&self) -> String {
         format!("{self}")
@@ -683,9 +688,9 @@ impl fmt::Display for EventArc {
         write!(
             f,
             "{} until {} (lasts {})",
-            self.rise.orbit.epoch,
-            self.fall.orbit.epoch,
-            self.fall.orbit.epoch - self.rise.orbit.epoch
+            self.start_epoch(),
+            self.end_epoch(),
+            self.duration()
         )
     }
 }

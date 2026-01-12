@@ -1,11 +1,6 @@
 import numpy
 import typing
 
-from anise.analysis import Event, StateSpec, ReportScalars
-from anise.rotation import DCM
-from anise.astro import AzElRange, Frame, Occultation, Orbit, Location
-from anise.time import Duration, Epoch, TimeScale, TimeSeries
-
 @typing.final
 class Aberration:
     """Represents the aberration correction options in ANISE.
@@ -95,12 +90,6 @@ This can be used to compute the angular velocity of the Earth ITRF93 frame with 
     def angular_velocity_wrt_j2000_rad_s(self, from_frame: Frame, epoch: Epoch) -> numpy.array:
         """Returns the angular velocity vector in rad/s of the from_frame wrt to the J2000 frame."""
 
-    def angular_velocity_wtr_j2000_deg_s(self, from_frame: Frame, epoch: Epoch) -> numpy.array:
-        """Returns the angular velocity vector in deg/s of the from_frame wrt to the J2000 frame."""
-
-    def angular_velocity_wtr_j2000_rad_s(self, from_frame: Frame, epoch: Epoch) -> numpy.array:
-        """Returns the angular velocity vector in rad/s of the from_frame wrt to the J2000 frame."""
-
     def azimuth_elevation_range_sez(self, rx: Orbit, tx: Orbit, obstructing_body: Frame=None, ab_corr: Aberration=None) -> AzElRange:
         """Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
 receiver state (`rx`) seen from the transmitter state (`tx`), once converted into the SEZ frame of the transmitter.
@@ -168,16 +157,28 @@ This function performs a memory allocation."""
 # Warning
 This function performs a memory allocation."""
 
+    def bpc_swap(self, alias: str, new_bpc_path: str, new_alias: str) -> None:
+        """Load a new DAF/BPC file in place of the one in the provided alias.
+
+This reuses the existing memory buffer, growing it only if the new file
+is larger than the previous capacity. This effectively adopts a
+"high watermark" memory strategy, where the memory usage for this slot
+is determined by the largest file ever loaded into it."""
+
     def bpc_unload(self, alias: str) -> None:
         """Unloads (in-place) the BPC with the provided alias.
 **WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded."""
 
-    def describe(self, spk: bool=None, bpc: bool=None, planetary: bool=None, eulerparams: bool=None, locations: bool=None, time_scale: TimeScale=None, round_time: bool=None) -> None:
+    def describe(self, spk: bool=None, bpc: bool=None, planetary: bool=None, spacecraft: bool=None, eulerparams: bool=None, locations: bool=None, time_scale: TimeScale=None, round_time: bool=None) -> None:
         """Pretty prints the description of this Almanac, showing everything by default. Default time scale is TDB.
 If any parameter is set to true, then nothing other than that will be printed."""
 
     def frame_info(self, uid: Frame) -> Frame:
         """Returns the frame information (gravitational param, shape) as defined in this Almanac from an empty frame"""
+
+    @staticmethod
+    def from_ccsds_oem_file(path: str, naif_id: int) -> Almanac:
+        """Initializes a new Almanac from a file path to CCSDS OEM file, after converting to to SPICE SPK/BSP"""
 
     def line_of_sight_obstructed(self, observer: Orbit, observed: Orbit, obstructing_body: Frame, ab_corr: Aberration=None) -> bool:
         """Computes whether the line of sight between an observer and an observed Cartesian state is obstructed by the obstructing body.
@@ -209,12 +210,27 @@ Algorithm (source: Algorithm 35 of Vallado, 4th edition, page 308.):
 - `tau` is a parameter that determines the intersection point along the line of sight.
 - The condition `(1.0 - tau) * r1sq + r1dotr2 * tau <= ob_mean_eq_radius_km^2` checks if the line of sight is within the obstructing body's radius, indicating an obstruction."""
 
+    def list_kernels(self, spk: bool=None, bpc: bool=None, planetary: bool=None, spacecraft: bool=None, eulerparams: bool=None, locations: bool=None) -> list:
+        """Returns the list of loaded kernels"""
+
     def load(self, path: str) -> Almanac:
         """Generic function that tries to load the provided path guessing to the file type."""
+
+    def load_ccsds_oem_file(self, path: str, naif_id: int) -> Almanac:
+        """Converts the provided CCSDS OEM to SPICE SPK/BSP and loads it in the Almanac."""
 
     def load_from_metafile(self, metafile: MetaFile, autodelete: bool) -> Almanac:
         """Load from the provided MetaFile, downloading it if necessary.
 Set autodelete to true to automatically delete lock files. Lock files are important in multi-threaded loads."""
+
+    def load_stk_e_file(self, path: str, naif_id: int) -> Almanac:
+        """Converts the provided Ansys STK .e file to SPICE SPK/BSP and loads it in the Almanac."""
+
+    def location_from_id(self, id: int) -> Location:
+        """Returns the Location from its ID, searching through all loaded location datasets in reverse order."""
+
+    def location_from_name(self, name: str) -> Location:
+        """Returns the Location from its name, searching through all loaded location datasets in reverse order."""
 
     def occultation(self, back_frame: Frame, front_frame: Frame, observer: Orbit, ab_corr: Aberration=None) -> Occultation:
         """Computes the occultation percentage of the `back_frame` object by the `front_frame` object as seen from the observer, when according for the provided aberration correction.
@@ -225,33 +241,32 @@ A value in between means that the back object is partially hidden from the obser
 Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse/) for modeling details."""
 
     def report_event_arcs(self, state_spec: StateSpec, event: Event, start_epoch: Epoch, end_epoch: Epoch) -> list:
-        """Find all event arcs, i.e. the start and stop time of when a given event occurs. This function
-calls the memory and computationally intensive [report_events_slow] function."""
+        """Report the rising and falling edges/states where the event arc happens.
 
-    def report_events(self, state_spec: StateSpec, event: Event, start_epoch: Epoch, end_epoch: Epoch, heuristic: Duration=None) -> list:
-        """Report all of the states and event details where the provided event occurs.
+For example, for a scalar expression less than X, this will report all of the times when the expression falls below X and rises above X.
+This method uses the report_events function under the hood."""
 
-# Limitations
-This method uses a Brent solver, provides a superlinearity convergence (Golden ratio rate).
-If the function that defines the event is not unimodal, the event finder may not converge correctly.
-After the Brent solver is used, this function will check the median gap between events. Assuming most events are periodic,
-any gap whose median repetition is greater than 125% will be slow searches. This _typically_ finds all of the events ... but it
-may also add duplicates! To prevent reporting duplicate events, the found events are deduplicated if the same event is found
-within 3 times the epoch precision. For example, if the epoch precision is 100 ms, if three events are "found" within 300 ms of each other
-then only one of these three is preserved.
+    def report_events(self, state_spec: StateSpec, event: Event, start_epoch: Epoch, end_epoch: Epoch) -> list:
+        """Report all of the states when the provided event happens.
+This method may only be used for equality events, minimum, and maximum events. For spanned events (e.g. Less Than/Greater Than), use report_event_arcs.
 
-# Heuristic detail
-The initial search step is 1% of the duration requested, if the heuristic is set to None.
-For example, if the trajectory is 100 days long, then we split the trajectory into 100 chunks of 1 day and see whether
-the event is in there. If the event happens twice or more times within 1% of the trajectory duration, only the _one_ of
-such events will be found."""
+# Method
+The report event function starts by lineraly scanning the whole state spec from the start to the end epoch.
+This uses an adaptive step scan modeled on the Runge Kutta adaptive step integrator, but the objective is to ensure that the scalar expression
+of the event is evaluated at steps where it is linearly changing (to within 10% of linearity). This allows finding coarse brackets where
+the expression changes signs exactly once.
+Then, each bracket it sent in parallel to a Brent's method root finder to find the exact time of the event.
 
-    def report_events_slow(self, state_spec: StateSpec, event: Event, start_epoch: Epoch, end_epoch: Epoch) -> list:
-        """Slow approach to finding **all** of the events between two epochs. This will evaluate ALL epochs in between the two bounds.
-This approach is more robust, but more computationally demanding since it's O(N)."""
+# Limitation
+While this approach is both very robust and very fast, if you think the finder may be missing some events, you should _reduce_ the epoch precision
+of the event as a multiplicative factor of that precision is used to scan the trajectory linearly. Alternatively, you may export the scalars at
+a fixed interval using the report_scalars or report_scalars_flat function and manually analyze the results of the scalar expression."""
 
     def report_scalars(self, report: ReportScalars, time_series: TimeSeries) -> dict:
         """Report a set of scalar expressions, optionally with aliases, at a fixed time step defined in the TimeSeries."""
+
+    def report_visibility_arcs(self, state_spec: StateSpec, location_id: int, start_epoch: Epoch, end_epoch: Epoch, sample_rate: Duration, obstructing_body: Frame=None) -> list:
+        """Report the list of visibility arcs for the desired location ID."""
 
     def rotate(self, from_frame: Frame, to_frame: Frame, epoch: Epoch) -> DCM:
         """Returns the 6x6 DCM needed to rotation the `from_frame` to the `to_frame`.
@@ -299,6 +314,15 @@ This function performs a memory allocation."""
 # Warning
 This function performs a memory allocation."""
 
+    def spk_swap(self, alias: str, new_spk_path: str, new_alias: str) -> None:
+        """Load a new DAF/SPK file in place of the one in the provided alias.
+
+This reuses the existing memory buffer, growing it only if the new file
+is larger than the previous capacity. This effectively adopts a
+"high watermark" memory strategy, where the memory usage for this slot
+is determined by the largest file ever loaded into it
+."""
+
     def spk_unload(self, alias: str) -> None:
         """Unloads (in-place) the SPK with the provided alias.
 **WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded."""
@@ -310,11 +334,18 @@ This function performs a memory allocation."""
 The units will be those of the underlying ephemeris data (typically km and km/s)"""
 
     def sun_angle_deg(self, target_id: int, observer_id: int, epoch: Epoch, ab_corr: Aberration) -> float:
-        """Returns the angle (between 0 and 180 degrees) between the observer and the Sun, and the observer and the target body ID.
+        """Returns the angular separation (between 0 and 180 degrees) between the observer and the Sun, and the observer and the target body ID.
+This is formally known as the "solar elongation".
 This computes the Sun Probe Earth angle (SPE) if the probe is in a loaded SPK, its ID is the "observer_id", and the target is set to its central body.
 
 # Geometry
 If the SPE is greater than 90 degrees, then the celestial object below the probe is in sunlight.
+
+This angle determines the illumination phase of the target as seen by the observer:
+* **~0° (Conjunction):** The Target is in the same direction as the Sun. The observer sees the unlit side ("New Moon").
+* **~180° (Opposition):** The Target is in the opposite direction of the Sun. The observer sees the fully lit side ("Full Moon").
+* **> 90°:** The observer is generally on the "day" side of the target.
+
 
 ## Sunrise at nadir
 ```text
@@ -349,6 +380,13 @@ Obs. -- Target
 
     def sun_angle_deg_from_frame(self, target: Frame, observer: Frame, epoch: Epoch, ab_corr: Aberration) -> float:
         """Convenience function that calls `sun_angle_deg` with the provided frames instead of the ephemeris ID."""
+
+    def to_metaalmanac(self) -> MetaAlmanac:
+        """Saves the current configuration to a MetaAlmanac for future reloading from the local file system.
+
+WARNING: If data was loaded from its raw bytes, or if a custom alias was used, then the MetaFile produced will not be usable.
+The alias used for each data type is expected to be a path. Further, all paths are ASSUMED to be loaded from the same directory.
+The Almanac does not resolve directories for you."""
 
     def transform(self, target_frame: Frame, observer_frame: Frame, epoch: Epoch, ab_corr: Aberration=None) -> Orbit:
         """Returns the Cartesian state needed to transform the `from_frame` to the `to_frame`.

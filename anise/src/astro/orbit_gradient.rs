@@ -53,7 +53,7 @@ impl From<Orbit> for OrbitGrad {
 /// A type which stores the partial of an element
 #[derive(Copy, Clone, Debug)]
 pub struct OrbitalElementPartials {
-    pub param: OrbitalElement,
+    pub oe: OrbitalElement,
     pub dual: OHyperdual<f64, U7>,
 }
 
@@ -63,55 +63,55 @@ impl OrbitalElementPartials {
         self.dual[0]
     }
     /// The partial of this parameter with respect to X
-    pub fn wtr_x(&self) -> f64 {
+    pub fn wrt_x(&self) -> f64 {
         self.dual[1]
     }
     /// The partial of this parameter with respect to Y
-    pub fn wtr_y(&self) -> f64 {
+    pub fn wrt_y(&self) -> f64 {
         self.dual[2]
     }
     /// The partial of this parameter with respect to Z
-    pub fn wtr_z(&self) -> f64 {
+    pub fn wrt_z(&self) -> f64 {
         self.dual[3]
     }
     /// The partial of this parameter with respect to VX
-    pub fn wtr_vx(&self) -> f64 {
+    pub fn wrt_vx(&self) -> f64 {
         self.dual[4]
     }
     /// The partial of this parameter with respect to VY
-    pub fn wtr_vy(&self) -> f64 {
+    pub fn wrt_vy(&self) -> f64 {
         self.dual[5]
     }
     /// The partial of this parameter with respect to VZ
-    pub fn wtr_vz(&self) -> f64 {
+    pub fn wrt_vz(&self) -> f64 {
         self.dual[6]
     }
 }
 
 impl fmt::Display for OrbitalElementPartials {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?} {}", self.param, self.dual)
+        write!(f, "{:?} {}", self.oe, self.dual)
     }
 }
 
 impl OrbitGrad {
     /// Returns the radius vector of this Orbit in [km, km, km]
-    pub(crate) fn radius_km(&self) -> Vector3<OHyperdual<f64, U7>> {
+    pub fn radius_km(&self) -> Vector3<OHyperdual<f64, U7>> {
         Vector3::new(self.x_km, self.y_km, self.z_km)
     }
 
     /// Returns the velocity vector of this Orbit in [km/s, km/s, km/s]
-    pub(crate) fn velocity_km_s(&self) -> Vector3<OHyperdual<f64, U7>> {
+    pub fn velocity_km_s(&self) -> Vector3<OHyperdual<f64, U7>> {
         Vector3::new(self.vx_km_s, self.vy_km_s, self.vz_km_s)
     }
 
     /// Returns the orbital momentum vector
-    pub(crate) fn hvec(&self) -> Vector3<OHyperdual<f64, U7>> {
+    pub fn hvec(&self) -> Vector3<OHyperdual<f64, U7>> {
         self.radius_km().cross(&self.velocity_km_s())
     }
 
     /// Returns the eccentricity vector (no unit)
-    pub(crate) fn evec(&self) -> PhysicsResult<Vector3<OHyperdual<f64, U7>>> {
+    pub fn evec(&self) -> PhysicsResult<Vector3<OHyperdual<f64, U7>>> {
         let r = self.radius_km();
         let v = self.velocity_km_s();
         let hgm = OHyperdual::from(self.frame.mu_km3_s2()?);
@@ -128,27 +128,27 @@ impl OrbitGrad {
         match param {
             OrbitalElement::X => Ok(OrbitalElementPartials {
                 dual: self.x_km,
-                param: OrbitalElement::X,
+                oe: OrbitalElement::X,
             }),
             OrbitalElement::Y => Ok(OrbitalElementPartials {
                 dual: self.y_km,
-                param: OrbitalElement::Y,
+                oe: OrbitalElement::Y,
             }),
             OrbitalElement::Z => Ok(OrbitalElementPartials {
                 dual: self.z_km,
-                param: OrbitalElement::Z,
+                oe: OrbitalElement::Z,
             }),
             OrbitalElement::VX => Ok(OrbitalElementPartials {
                 dual: self.vx_km_s,
-                param: OrbitalElement::VX,
+                oe: OrbitalElement::VX,
             }),
             OrbitalElement::VY => Ok(OrbitalElementPartials {
                 dual: self.vy_km_s,
-                param: OrbitalElement::VY,
+                oe: OrbitalElement::VY,
             }),
             OrbitalElement::VZ => Ok(OrbitalElementPartials {
                 dual: self.vz_km_s,
-                param: OrbitalElement::VZ,
+                oe: OrbitalElement::VZ,
             }),
             OrbitalElement::Rmag => Ok(self.rmag_km()),
             OrbitalElement::Vmag => Ok(self.vmag_km_s()),
@@ -189,7 +189,7 @@ impl OrbitGrad {
     /// Returns the magnitude of the radius vector in km
     pub fn rmag_km(&self) -> OrbitalElementPartials {
         OrbitalElementPartials {
-            param: OrbitalElement::Rmag,
+            oe: OrbitalElement::Rmag,
             dual: (self.x_km.powi(2) + self.y_km.powi(2) + self.z_km.powi(2)).sqrt(),
         }
     }
@@ -197,7 +197,7 @@ impl OrbitGrad {
     /// Returns the magnitude of the velocity vector in km/s
     pub fn vmag_km_s(&self) -> OrbitalElementPartials {
         OrbitalElementPartials {
-            param: OrbitalElement::Vmag,
+            oe: OrbitalElement::Vmag,
             dual: (self.vx_km_s.powi(2) + self.vy_km_s.powi(2) + self.vz_km_s.powi(2)).sqrt(),
         }
     }
@@ -206,7 +206,7 @@ impl OrbitGrad {
     pub fn hx(&self) -> OrbitalElementPartials {
         OrbitalElementPartials {
             dual: self.hvec()[0],
-            param: OrbitalElement::HX,
+            oe: OrbitalElement::HX,
         }
     }
 
@@ -214,7 +214,7 @@ impl OrbitGrad {
     pub fn hy(&self) -> OrbitalElementPartials {
         OrbitalElementPartials {
             dual: self.hvec()[1],
-            param: OrbitalElement::HY,
+            oe: OrbitalElement::HY,
         }
     }
 
@@ -222,7 +222,7 @@ impl OrbitGrad {
     pub fn hz(&self) -> OrbitalElementPartials {
         OrbitalElementPartials {
             dual: self.hvec()[2],
-            param: OrbitalElement::HZ,
+            oe: OrbitalElement::HZ,
         }
     }
 
@@ -230,7 +230,7 @@ impl OrbitGrad {
     pub fn hmag(&self) -> OrbitalElementPartials {
         OrbitalElementPartials {
             dual: norm(&self.hvec()),
-            param: OrbitalElement::Hmag,
+            oe: OrbitalElement::Hmag,
         }
     }
 
@@ -239,7 +239,7 @@ impl OrbitGrad {
         Ok(OrbitalElementPartials {
             dual: self.vmag_km_s().dual.powi(2) / OHyperdual::from(2.0)
                 - OHyperdual::from(self.frame.mu_km3_s2()?) / self.rmag_km().dual,
-            param: OrbitalElement::Energy,
+            oe: OrbitalElement::Energy,
         })
     }
 
@@ -248,7 +248,7 @@ impl OrbitGrad {
         Ok(OrbitalElementPartials {
             dual: -OHyperdual::from(self.frame.mu_km3_s2()?)
                 / (OHyperdual::from(2.0) * self.energy_km2_s2()?.dual),
-            param: OrbitalElement::SemiMajorAxis,
+            oe: OrbitalElement::SemiMajorAxis,
         })
     }
 
@@ -256,7 +256,7 @@ impl OrbitGrad {
     pub fn ecc(&self) -> PhysicsResult<OrbitalElementPartials> {
         Ok(OrbitalElementPartials {
             dual: norm(&self.evec()?),
-            param: OrbitalElement::Eccentricity,
+            oe: OrbitalElement::Eccentricity,
         })
     }
 
@@ -264,7 +264,7 @@ impl OrbitGrad {
     pub fn inc_deg(&self) -> OrbitalElementPartials {
         OrbitalElementPartials {
             dual: (self.hvec()[(2, 0)] / self.hmag().dual).acos().to_degrees(),
-            param: OrbitalElement::Inclination,
+            oe: OrbitalElement::Inclination,
         }
     }
 
@@ -281,17 +281,17 @@ impl OrbitGrad {
             warn!("AoP is NaN");
             Ok(OrbitalElementPartials {
                 dual: OHyperdual::from(0.0),
-                param: OrbitalElement::AoP,
+                oe: OrbitalElement::AoP,
             })
         } else if self.evec()?[2].real() < 0.0 {
             Ok(OrbitalElementPartials {
                 dual: (OHyperdual::from(TAU) - aop).to_degrees(),
-                param: OrbitalElement::AoP,
+                oe: OrbitalElement::AoP,
             })
         } else {
             Ok(OrbitalElementPartials {
                 dual: aop.to_degrees(),
-                param: OrbitalElement::AoP,
+                oe: OrbitalElement::AoP,
             })
         }
     }
@@ -309,17 +309,17 @@ impl OrbitGrad {
             warn!("RAAN is NaN");
             OrbitalElementPartials {
                 dual: OHyperdual::from(0.0),
-                param: OrbitalElement::RAAN,
+                oe: OrbitalElement::RAAN,
             }
         } else if n[(1, 0)] < 0.0 {
             OrbitalElementPartials {
                 dual: (OHyperdual::from(TAU) - raan).to_degrees(),
-                param: OrbitalElement::RAAN,
+                oe: OrbitalElement::RAAN,
             }
         } else {
             OrbitalElementPartials {
                 dual: raan.to_degrees(),
-                param: OrbitalElement::RAAN,
+                oe: OrbitalElement::RAAN,
             }
         }
     }
@@ -345,24 +345,24 @@ impl OrbitGrad {
             if cos_nu.real() > 1.0 {
                 Ok(OrbitalElementPartials {
                     dual: OHyperdual::from(180.0),
-                    param: OrbitalElement::TrueAnomaly,
+                    oe: OrbitalElement::TrueAnomaly,
                 })
             } else {
                 Ok(OrbitalElementPartials {
                     dual: OHyperdual::from(0.0),
-                    param: OrbitalElement::TrueAnomaly,
+                    oe: OrbitalElement::TrueAnomaly,
                 })
             }
         } else if self.radius_km().dot(&self.velocity_km_s()).real() < 0.0 {
             // Quadrant check
             Ok(OrbitalElementPartials {
                 dual: (OHyperdual::from(TAU) - ta).to_degrees(),
-                param: OrbitalElement::TrueAnomaly,
+                oe: OrbitalElement::TrueAnomaly,
             })
         } else {
             Ok(OrbitalElementPartials {
                 dual: ta.to_degrees(),
-                param: OrbitalElement::TrueAnomaly,
+                oe: OrbitalElement::TrueAnomaly,
             })
         }
     }
@@ -372,7 +372,7 @@ impl OrbitGrad {
         // Angles already in degrees
         Ok(OrbitalElementPartials {
             dual: self.aop_deg()?.dual + self.raan_deg().dual + self.ta_deg()?.dual,
-            param: OrbitalElement::TrueLongitude,
+            oe: OrbitalElement::TrueLongitude,
         })
     }
 
@@ -384,12 +384,12 @@ impl OrbitGrad {
         if self.ecc()?.real() < ECC_EPSILON {
             Ok(OrbitalElementPartials {
                 dual: self.tlong_deg()?.dual - self.raan_deg().dual,
-                param: OrbitalElement::AoL,
+                oe: OrbitalElement::AoL,
             })
         } else {
             Ok(OrbitalElementPartials {
                 dual: self.aop_deg()?.dual + self.ta_deg()?.dual,
-                param: OrbitalElement::AoL,
+                oe: OrbitalElement::AoL,
             })
         }
     }
@@ -398,7 +398,7 @@ impl OrbitGrad {
     pub fn periapsis_km(&self) -> PhysicsResult<OrbitalElementPartials> {
         Ok(OrbitalElementPartials {
             dual: self.sma_km()?.dual * (OHyperdual::from(1.0) - self.ecc()?.dual),
-            param: OrbitalElement::PeriapsisRadius,
+            oe: OrbitalElement::PeriapsisRadius,
         })
     }
 
@@ -406,7 +406,7 @@ impl OrbitGrad {
     pub fn apoapsis_km(&self) -> PhysicsResult<OrbitalElementPartials> {
         Ok(OrbitalElementPartials {
             dual: self.sma_km()?.dual * (OHyperdual::from(1.0) + self.ecc()?.dual),
-            param: OrbitalElement::ApoapsisRadius,
+            oe: OrbitalElement::ApoapsisRadius,
         })
     }
 
@@ -422,7 +422,7 @@ impl OrbitGrad {
         // The atan2 function is a bit confusing: https://doc.rust-lang.org/std/primitive.f64.html#method.atan2 .
         Ok(OrbitalElementPartials {
             dual: sin_ea.atan2(cos_ea).to_degrees(),
-            param: OrbitalElement::EccentricAnomaly,
+            oe: OrbitalElement::EccentricAnomaly,
         })
     }
 
@@ -436,7 +436,7 @@ impl OrbitGrad {
         let cos_fpa = OHyperdual::from(1.0) + ecc * nu.cos() / denom;
         Ok(OrbitalElementPartials {
             dual: sin_fpa.atan2(cos_fpa).to_degrees(),
-            param: OrbitalElement::FlightPathAngle,
+            oe: OrbitalElement::FlightPathAngle,
         })
     }
 
@@ -449,7 +449,7 @@ impl OrbitGrad {
                 dual: (self.ea_deg()?.dual.to_radians()
                     - self.ecc()?.dual * self.ea_deg()?.dual.to_radians().sin())
                 .to_degrees(),
-                param: OrbitalElement::MeanAnomaly,
+                oe: OrbitalElement::MeanAnomaly,
             })
         } else {
             debug!("computing the hyperbolic anomaly");
@@ -462,7 +462,7 @@ impl OrbitGrad {
                         + self.ecc()?.dual * self.ta_deg()?.dual.to_radians().cos()))
                 .asinh()
                 .to_degrees(),
-                param: OrbitalElement::MeanAnomaly,
+                oe: OrbitalElement::MeanAnomaly,
             })
         }
     }
@@ -471,7 +471,7 @@ impl OrbitGrad {
     pub fn semi_parameter_km(&self) -> PhysicsResult<OrbitalElementPartials> {
         Ok(OrbitalElementPartials {
             dual: self.sma_km()?.dual * (OHyperdual::from(1.0) - self.ecc()?.dual.powi(2)),
-            param: OrbitalElement::SemiParameter,
+            oe: OrbitalElement::SemiParameter,
         })
     }
 
@@ -482,7 +482,7 @@ impl OrbitGrad {
     pub fn longitude_deg(&self) -> OrbitalElementPartials {
         OrbitalElementPartials {
             dual: self.y_km.atan2(self.x_km).to_degrees(),
-            param: OrbitalElement::Longitude,
+            oe: OrbitalElement::Longitude,
         }
     }
 
@@ -505,7 +505,7 @@ impl OrbitGrad {
             if (latitude - new_latitude).abs() < eps {
                 return Ok(OrbitalElementPartials {
                     dual: new_latitude.to_degrees(),
-                    param: OrbitalElement::Latitude,
+                    oe: OrbitalElement::Latitude,
                 });
             } else if attempt_no >= max_attempts {
                 error!(
@@ -514,7 +514,7 @@ impl OrbitGrad {
                 );
                 return Ok(OrbitalElementPartials {
                     dual: new_latitude.to_degrees(),
-                    param: OrbitalElement::Latitude,
+                    oe: OrbitalElement::Latitude,
                 });
             }
             latitude = new_latitude;
@@ -537,7 +537,7 @@ impl OrbitGrad {
                 / ((OHyperdual::from(1.0) - e2 * sin_lat.powi(2)).sqrt());
             Ok(OrbitalElementPartials {
                 dual: self.z_km / latitude.sin() - s_earth,
-                param: OrbitalElement::Height,
+                oe: OrbitalElement::Height,
             })
         } else {
             let c_earth = OHyperdual::from(semi_major_radius)
@@ -545,7 +545,7 @@ impl OrbitGrad {
             let r_delta = (self.x_km.powi(2) + self.y_km.powi(2)).sqrt();
             Ok(OrbitalElementPartials {
                 dual: r_delta / latitude.cos() - c_earth,
-                param: OrbitalElement::Height,
+                oe: OrbitalElement::Height,
             })
         }
     }
@@ -555,7 +555,7 @@ impl OrbitGrad {
     pub fn right_ascension_deg(&self) -> OrbitalElementPartials {
         OrbitalElementPartials {
             dual: (self.y_km.atan2(self.x_km)).to_degrees(),
-            param: OrbitalElement::RightAscension,
+            oe: OrbitalElement::RightAscension,
         }
     }
 
@@ -564,7 +564,7 @@ impl OrbitGrad {
     pub fn declination_deg(&self) -> OrbitalElementPartials {
         OrbitalElementPartials {
             dual: (self.z_km / self.rmag_km().dual).asin().to_degrees(),
-            param: OrbitalElement::Declination,
+            oe: OrbitalElement::Declination,
         }
     }
 
@@ -575,14 +575,14 @@ impl OrbitGrad {
                 dual: (self.sma_km()?.dual.powi(2)
                     - (self.sma_km()?.dual * self.ecc()?.dual).powi(2))
                 .sqrt(),
-                param: OrbitalElement::SemiMinorAxis,
+                oe: OrbitalElement::SemiMinorAxis,
             })
         } else {
             Ok(OrbitalElementPartials {
                 dual: self.hmag().dual.powi(2)
                     / (OHyperdual::from(self.frame.mu_km3_s2()?)
                         * (self.ecc()?.dual.powi(2) - OHyperdual::from(1.0)).sqrt()),
-                param: OrbitalElement::SemiMinorAxis,
+                oe: OrbitalElement::SemiMinorAxis,
             })
         }
     }
@@ -591,7 +591,7 @@ impl OrbitGrad {
     pub fn velocity_declination(&self) -> OrbitalElementPartials {
         OrbitalElementPartials {
             dual: (self.vz_km_s / self.vmag_km_s().dual).asin().to_degrees(),
-            param: OrbitalElement::VelocityDeclination,
+            oe: OrbitalElement::VelocityDeclination,
         }
     }
 
@@ -599,7 +599,7 @@ impl OrbitGrad {
     pub fn c3(&self) -> PhysicsResult<OrbitalElementPartials> {
         Ok(OrbitalElementPartials {
             dual: -OHyperdual::from(self.frame.mu_km3_s2()?) / self.sma_km()?.dual,
-            param: OrbitalElement::C3,
+            oe: OrbitalElement::C3,
         })
     }
 
@@ -614,7 +614,7 @@ impl OrbitGrad {
                 / (OHyperdual::from(1.0) + ecc.dual * cos_ta);
             Ok(OrbitalElementPartials {
                 dual: sinh_h.asinh().to_degrees(),
-                param: OrbitalElement::HyperbolicAnomaly,
+                oe: OrbitalElement::HyperbolicAnomaly,
             })
         }
     }
@@ -624,7 +624,7 @@ impl OrbitGrad {
         Ok(OrbitalElementPartials {
             dual: self.sma_km()?.dual * (OHyperdual::from(1.0) - self.ecc()?.dual)
                 - OHyperdual::from(self.frame.mean_equatorial_radius_km()?),
-            param: OrbitalElement::PeriapsisRadius,
+            oe: OrbitalElement::PeriapsisRadius,
         })
     }
 
@@ -633,7 +633,7 @@ impl OrbitGrad {
         Ok(OrbitalElementPartials {
             dual: self.sma_km()?.dual * (OHyperdual::from(1.0) + self.ecc()?.dual)
                 - OHyperdual::from(self.frame.mean_equatorial_radius_km()?),
-            param: OrbitalElement::ApoapsisRadius,
+            oe: OrbitalElement::ApoapsisRadius,
         })
     }
 
@@ -642,7 +642,7 @@ impl OrbitGrad {
         Ok(OrbitalElementPartials {
             dual: OHyperdual::from(TAU)
                 * (self.sma_km()?.dual.powi(3) / OHyperdual::from(self.frame.mu_km3_s2()?)).sqrt(),
-            param: OrbitalElement::ApoapsisRadius,
+            oe: OrbitalElement::ApoapsisRadius,
         })
     }
 }

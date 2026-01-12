@@ -73,6 +73,11 @@ impl CartesianState {
     /// Creates a new Cartesian state from a numpy array, an epoch, and a frame.
     ///
     /// **Units:** km, km, km, km/s, km/s, km/s
+    ///
+    /// :type pos_vel: np.array
+    /// :type epoch: Epoch
+    /// :type frame: Frame
+    /// :rtype: Orbit
     #[classmethod]
     pub fn from_cartesian_npy(
         _cls: &Bound<'_, PyType>,
@@ -112,6 +117,30 @@ impl CartesianState {
                 "Orbit constructor takes either 6 floats, an epoch, and a frame, or a 6-element numpy array, an epoch, and a frame.",
             ))
         }
+    }
+
+    /// radius vector in km
+    ///
+    /// :rtype: np.array
+    #[pyo3(name = "radius_km")]
+    fn py_radius_km<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        let data: Vec<f64> = self.radius_km.transpose().iter().copied().collect();
+
+        let arr = Array1::from_shape_vec((3,), data).unwrap();
+
+        PyArray1::<f64>::from_owned_array(py, arr)
+    }
+
+    /// velocity vector in km/s
+    ///
+    /// :rtype: np.array
+    #[pyo3(name = "velocity_km_s")]
+    fn py_velocity_km_s<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        let data: Vec<f64> = self.velocity_km_s.transpose().iter().copied().collect();
+
+        let arr = Array1::from_shape_vec((3,), data).unwrap();
+
+        PyArray1::<f64>::from_owned_array(py, arr)
     }
 
     /// :rtype: float
@@ -202,6 +231,20 @@ impl CartesianState {
     #[getter]
     fn get_frame(&self) -> PyResult<Frame> {
         Ok(self.frame)
+    }
+
+    /// :type epoch: Epoch
+    #[setter]
+    fn set_epoch(&mut self, epoch: Epoch) -> PyResult<()> {
+        self.epoch = epoch;
+        Ok(())
+    }
+
+    /// :type frame: Frame
+    #[setter]
+    fn set_frame(&mut self, frame: Frame) -> PyResult<()> {
+        self.frame = frame;
+        Ok(())
     }
 
     /// Returns this state as a Cartesian vector of size 6 in [km, km, km, km/s, km/s, km/s]

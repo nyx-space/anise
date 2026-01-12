@@ -12,7 +12,7 @@ use super::{Almanac, Covariance, Ephemeris, EphemerisError, EphemerisRecord, Loc
 use crate::naif::daf::data_types::DataType;
 use crate::naif::daf::DafDataType;
 use crate::NaifId;
-use hifitime::Epoch;
+use hifitime::{Epoch, TimeSeries};
 use ndarray::Array2;
 use numpy::PyArray2;
 use pyo3::prelude::*;
@@ -78,6 +78,7 @@ impl Ephemeris {
     /// :type path: str
     /// :type originator: str, optional
     /// :type object_name: str, optional
+    /// :rtype: None
     #[pyo3(name = "to_ccsds_oem_file", signature=(path, originator=None, object_name=None))]
     fn py_to_ccsds_oem_file(
         &self,
@@ -106,7 +107,8 @@ impl Ephemeris {
 
     /// Inserts a new ephemeris entry to this ephemeris (it is automatically sorted chronologically).
     ///
-    /// :type entry: EphemEntry
+    /// :type entry: EphemerisRecord
+    /// :rtype: None
     #[pyo3(name = "insert")]
     pub fn py_insert(&mut self, entry: EphemerisRecord) {
         self.insert(entry);
@@ -115,6 +117,7 @@ impl Ephemeris {
     /// Inserts a new orbit (without covariance) to this ephemeris (it is automatically sorted chronologically).
     ///
     /// :type orbit: Orbit
+    /// :rtype: None
     #[pyo3(name = "insert_orbit")]
     pub fn py_insert_orbit(&mut self, orbit: Orbit) {
         self.insert_orbit(orbit);
@@ -124,7 +127,7 @@ impl Ephemeris {
     ///
     /// :type epoch: Epoch
     /// :type almanac: Almanac
-    /// :rtype: EphemEntry
+    /// :rtype: EphemerisRecord
     #[pyo3(name = "nearest_before")]
     pub fn py_nearest_before(
         &self,
@@ -138,7 +141,7 @@ impl Ephemeris {
     ///
     /// :type epoch: Epoch
     /// :type almanac: Almanac
-    /// :rtype: EphemEntry
+    /// :rtype: EphemerisRecord
     #[pyo3(name = "nearest_after")]
     pub fn py_nearest_after(
         &self,
@@ -232,7 +235,7 @@ impl Ephemeris {
     ///
     /// :type epoch: Epoch
     /// :type almanac: Almanac
-    /// :rtype: EphemEntry
+    /// :rtype: EphemerisRecord
     #[pyo3(name = "at")]
     pub fn py_at(
         &self,
@@ -255,6 +258,7 @@ impl Ephemeris {
     /// Interpolate the ephemeris at the provided epoch, returning only the covariance.
     ///
     /// :type epoch: Epoch
+    /// :type local_frame: LocalFrame
     /// :type almanac: Almanac
     /// :rtype: Covariance
     #[pyo3(name = "covar_at")]
@@ -267,11 +271,22 @@ impl Ephemeris {
         self.covar_at(epoch, local_frame, almanac)
     }
 
+    /// Resample this ephemeris, with covariance, at the provided time series
+    ///
+    /// :type ts: TimeSeries
+    /// :type almanac: Almanac
+    /// :rtype: Ephemeris
+    #[pyo3(name = "resample")]
+    pub fn py_resample(&self, ts: TimeSeries, almanac: &Almanac) -> Result<Self, EphemerisError> {
+        self.resample(ts, almanac)
+    }
+
     /// Converts this ephemeris to SPICE BSP/SPK file in the provided data type, saved to the provided output_fname.
     ///
     /// :type naif_id: int
     /// :type output_fname: str
     /// :type data_type: DataType
+    /// :rtype: None
     #[pyo3(name = "write_spice_bsp")]
     pub fn py_write_spice_bsp(
         &self,

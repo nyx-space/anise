@@ -7,6 +7,7 @@
  *
  * Documentation: https://nyxspace.com/
  */
+
 use crate::{
     astro::PhysicsResult,
     errors::{InvalidRotationSnafu, InvalidStateRotationSnafu, PhysicsError},
@@ -97,6 +98,106 @@ impl DCM {
         }
     }
 
+    /// Builds an identity rotation
+    pub fn identity(from: i32, to: i32) -> Self {
+        let rot_mat = Matrix3::identity();
+
+        Self {
+            rot_mat,
+            from,
+            to,
+            rot_mat_dt: None,
+        }
+    }
+
+    /// Constructs a DCM using the "Align and Clock" (Two-Vector Targeting / TRIAD) method.
+    ///
+    /// This defines a rotation based on two geometric constraints:
+    /// 1. **Align**: The `primary_body_axis` is aligned exactly with the `primary_inertial_vec`.
+    /// 2. **Clock**: The `secondary_body_axis` is aligned as closely as possible with the `secondary_inertial_vec`.
+    ///
+    /// This constructs the rotation matrix $R_{from \to to}$.
+    ///
+    /// # Arguments
+    /// * `primary_body_axis` - The axis in the "from" frame to align (e.g. Sensor Boresight).
+    /// * `primary_inertial_vec` - The target vector in the "to" frame (e.g. Vector to Earth).
+    /// * `secondary_body_axis` - The axis in the "from" frame to clock (e.g. Solar Panel Normal).
+    /// * `secondary_inertial_vec` - The target vector in the "to" frame (e.g. Vector to Sun).
+    /// * `from` - The ID of the source frame.
+    /// * `to` - The ID of the destination frame.
+    pub fn align_and_clock(
+        primary_body_axis: Vector3,
+        primary_vec: Vector3,
+        secondary_body_axis: Vector3,
+        secondary_vec: Vector3,
+        from: i32,
+        to: i32,
+    ) -> Result<Self, PhysicsError> {
+        // 1. Normalize inputs and check for zero length
+        let u_b = primary_body_axis.normalize();
+        let v_b = secondary_body_axis.normalize();
+        let u_n = primary_vec.normalize();
+        let v_n = secondary_vec.normalize();
+
+        // 2. Build the "Body" Triad (From Frame)
+        // t1_b is the primary axis
+        let t1_b = u_b;
+        // t2_b is the normal to the plane defined by primary and secondary
+        let t2_b_raw = u_b.cross(&v_b);
+        ensure!(
+            t2_b_raw.norm() > f64::EPSILON,
+            InvalidRotationSnafu {
+                action: "align_and_clock: primary and secondary body axes are collinear",
+                from1: from,
+                to1: from,
+                from2: from,
+                to2: from
+            }
+        );
+        let t2_b = t2_b_raw.normalize();
+        // t3_b completes the right-handed set
+        let t3_b = t1_b.cross(&t2_b);
+
+        // 3. Build the "Inertial" Triad (To Frame)
+        // t1_n is the primary target
+        let t1_n = u_n;
+        // t2_n is the normal to the plane defined by primary and secondary targets
+        let t2_n_raw = u_n.cross(&v_n);
+        ensure!(
+            t2_n_raw.norm() > f64::EPSILON,
+            InvalidRotationSnafu {
+                action: "align_and_clock: primary and secondary inertial vectors are collinear",
+                from1: to,
+                to1: to,
+                from2: to,
+                to2: to
+            }
+        );
+        let t2_n = t2_n_raw.normalize();
+        let t3_n = t1_n.cross(&t2_n);
+
+        // 4. Construct Rotation Matrix
+        // We want R_{from->to}.
+        // The triad matrices M_b = [t1_b, t2_b, t3_b] and M_n = [t1_n, t2_n, t3_n]
+        // map the "Triad Frame" to the "Body" and "Inertial" frames respectively.
+        // R_{triad->body} = M_b
+        // R_{triad->inertial} = M_n
+        // We want R_{body->inertial} = R_{triad->inertial} * R_{body->triad}
+        //                            = M_n * M_b^T
+
+        let m_b = Matrix3::from_columns(&[t1_b, t2_b, t3_b]);
+        let m_n = Matrix3::from_columns(&[t1_n, t2_n, t3_n]);
+
+        let rot_mat = m_n * m_b.transpose();
+
+        Ok(Self {
+            rot_mat,
+            rot_mat_dt: None, // This is an instantaneous geometric definition
+            from,
+            to,
+        })
+    }
+
     /// Returns the 6x6 DCM to rotate a state. If the time derivative of this DCM is defined, this 6x6 accounts for the transport theorem.
     pub fn state_dcm(&self) -> Matrix6 {
         let mut full_dcm = Matrix6::zeros();
@@ -116,18 +217,6 @@ impl DCM {
         full_dcm
     }
 
-    /// Builds an identity rotation
-    pub fn identity(from: i32, to: i32) -> Self {
-        let rot_mat = Matrix3::identity();
-
-        Self {
-            rot_mat,
-            from,
-            to,
-            rot_mat_dt: None,
-        }
-    }
-
     /// Returns the skew symmetric matrix if this DCM defines a rotation rate.
     pub fn skew_symmetric(&self) -> Option<Matrix3> {
         self.rot_mat_dt
@@ -143,9 +232,9 @@ impl DCM {
             // omega_z = (m21 - m12) / 2
             // This averaging of opposite elements is more robust to floating-point errors.
             Vector3::new(
-                (omega_skew_symmetric.m32 - omega_skew_symmetric.m23) / 2.0,
-                (omega_skew_symmetric.m13 - omega_skew_symmetric.m31) / 2.0,
-                (omega_skew_symmetric.m21 - omega_skew_symmetric.m12) / 2.0,
+                -(omega_skew_symmetric.m32 - omega_skew_symmetric.m23) / 2.0,
+                -(omega_skew_symmetric.m13 - omega_skew_symmetric.m31) / 2.0,
+                -(omega_skew_symmetric.m21 - omega_skew_symmetric.m12) / 2.0,
             )
         })
     }
@@ -221,6 +310,16 @@ impl Mul for DCM {
     type Output = Result<Self, PhysicsError>;
 
     fn mul(self, rhs: Self) -> Self::Output {
+        ensure!(
+            self.from == rhs.to,
+            InvalidRotationSnafu {
+                action: "multiply DCMs",
+                from1: self.from,
+                to1: self.to,
+                from2: rhs.from,
+                to2: rhs.to
+            }
+        );
         if self.is_identity() {
             let mut rslt = rhs;
             rslt.from = rhs.from;
@@ -231,19 +330,7 @@ impl Mul for DCM {
             rslt.from = rhs.from;
             rslt.to = self.to;
             Ok(rslt)
-            // Ok(self)
         } else {
-            ensure!(
-                self.from == rhs.to,
-                InvalidRotationSnafu {
-                    action: "multiply DCMs",
-                    from1: self.from,
-                    to1: self.to,
-                    from2: rhs.from,
-                    to2: rhs.to
-                }
-            );
-
             Ok(self.mul_unchecked(rhs))
         }
     }
@@ -538,5 +625,73 @@ mod ut_dcm {
             (r3.rot_mat - Matrix3::new(0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0)).norm()
                 < f64::EPSILON
         );
+    }
+
+    #[test]
+    fn test_align_and_clock_ric() {
+        // SCENARIO: Replicate the creation of an RIC (Radial-Intrack-Crosstrack) Frame.
+        // We want to construct the rotation FROM RIC TO Inertial.
+
+        // 1. Define "Inertial" vectors (Mock data)
+        // R (Position) is along Inertial Y
+        let r_inertial = Vector3::y();
+        // V (Velocity) is along Inertial -X
+        let v_inertial = -Vector3::x();
+
+        // Compute the basis vectors expected for RIC (Right-Handed)
+        // Radial (R) = r / |r| = +Y
+        // Cross-track (C) = (r x v) / |r x v| = (Y x -X) = Z
+        // In-track (I) = C x R = (Z x Y) = -X (Matches velocity direction)
+        let r_hat = r_inertial.normalize();
+        let c_hat = r_inertial.cross(&v_inertial).normalize();
+        let i_hat = c_hat.cross(&r_hat); // Right-handed definition
+
+        // Build the Expected DCM (RIC -> Inertial)
+        // Columns are the basis vectors expressed in Inertial
+        let expected_rot = Matrix3::from_columns(&[r_hat, i_hat, c_hat]);
+        let expected_dcm = DCM {
+            rot_mat: expected_rot,
+            rot_mat_dt: None,
+            from: 10, // RIC
+            to: 20,   // Inertial
+        };
+
+        // 2. Use align_and_clock to generate this DCM
+        // We want R_{RIC->Inertial}.
+        // Primary Constraint: RIC Radial (+X) aligns with Inertial Position (r_hat)
+        let primary_body = Vector3::x();
+        let primary_inertial = r_inertial;
+
+        // Secondary Constraint: RIC Cross-track (+Z) aligns with Inertial Angular Momentum (c_hat)
+        // (This clocks the Y axis to be In-track)
+        let secondary_body = Vector3::z();
+        let secondary_inertial = r_inertial.cross(&v_inertial);
+
+        let dcm = DCM::align_and_clock(
+            primary_body,
+            primary_inertial,
+            secondary_body,
+            secondary_inertial,
+            10, // from RIC
+            20, // to Inertial
+        )
+        .expect("Alignment should succeed");
+
+        // 3. Compare
+        assert!(
+            (dcm.rot_mat - expected_dcm.rot_mat).norm() < 1e-12,
+            "Align/Clock DCM did not match constructed RIC frame.\nGot:\n{}\nExpected:\n{}",
+            dcm.rot_mat,
+            expected_dcm.rot_mat
+        );
+
+        // Verify individual vector mappings
+        // 1. X_RIC (Radial) should map to +Y_Inertial
+        let x_mapped = dcm * Vector3::x();
+        assert!((x_mapped - Vector3::y()).norm() < 1e-12);
+
+        // 2. Z_RIC (Cross-track) should map to +Z_Inertial (since Y x -X = Z)
+        let z_mapped = dcm * Vector3::z();
+        assert!((z_mapped - Vector3::z()).norm() < 1e-12);
     }
 }

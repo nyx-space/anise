@@ -29,7 +29,7 @@ use crate::structure::dataset::{DataSetError, DataSetType};
 use crate::structure::lookuptable::LutError;
 use crate::structure::metadata::Metadata;
 use crate::structure::{
-    EulerParameterDataSet, LocationDataSet, PlanetaryDataSet, SpacecraftDataSet,
+    EulerParameterDataSet, InstrumentDataSet, LocationDataSet, PlanetaryDataSet, SpacecraftDataSet,
 };
 use crate::NaifId;
 use core::fmt;
@@ -37,6 +37,7 @@ use core::fmt;
 pub mod aer;
 pub mod bpc;
 pub mod eclipse;
+pub mod instrument;
 pub mod planetary;
 pub mod solar;
 pub mod spk;
@@ -75,6 +76,8 @@ pub struct Almanac {
     pub euler_param_data: IndexMap<String, EulerParameterDataSet>,
     /// Dataset of locations
     pub location_data: IndexMap<String, LocationDataSet>,
+    /// Dataset of instruments
+    pub instrument_data: IndexMap<String, InstrumentDataSet>,
 }
 
 impl fmt::Display for Almanac {
@@ -167,6 +170,25 @@ impl Almanac {
         let alias = alias.unwrap_or(Epoch::now().unwrap_or_default().to_string());
         let msg = format!("unloading location data `{alias}`");
         if self.location_data.insert(alias, loc_dataset).is_some() {
+            warn!("{msg}");
+        }
+        self
+    }
+
+    /// Loads the provided instrument data.
+    pub fn with_instrument_data(self, dataset: InstrumentDataSet) -> Self {
+        self.with_instrument_data_as(dataset, None)
+    }
+
+    /// Loads the provided instrument data.
+    pub fn with_instrument_data_as(
+        mut self,
+        dataset: InstrumentDataSet,
+        alias: Option<String>,
+    ) -> Self {
+        let alias = alias.unwrap_or(Epoch::now().unwrap_or_default().to_string());
+        let msg = format!("unloading instrument data `{alias}`");
+        if self.instrument_data.insert(alias, dataset).is_some() {
             warn!("{msg}");
         }
         self

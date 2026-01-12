@@ -18,7 +18,7 @@ use crate::math::Vector3;
 use crate::prelude::Epoch;
 
 use super::specs::{OrthogonalFrame, Plane, StateSpec, StateSpecTrait};
-use super::AnalysisError;
+use super::{AnalysisError, DcmExpr};
 
 /// VectorExpr defines a vector expression, which can either be computed from a state, or from a fixed definition.
 ///
@@ -47,8 +47,12 @@ pub enum VectorExpr {
     },
     /// Unit vector of this vector expression, returns zero vector if norm less than 1e-12
     Unit(Box<Self>),
+    /// Adds two vectors together
+    Add {
+        a: Box<Self>,
+        b: Box<Self>,
+    },
     /// Negate a vector
-    /// /// Negate a vector.
     Negate(Box<Self>),
     /// Vector projection of a onto b
     VecProjection {
@@ -66,6 +70,11 @@ pub enum VectorExpr {
         frame: Box<OrthogonalFrame>,
         plane: Option<Plane>,
     },
+    /// Allows rotating a given VectorExpr by the provided DCM Expression, returning another VectorExpr
+    Rotate {
+        v: Box<Self>,
+        dcm: Box<DcmExpr>,
+    },
 }
 
 impl fmt::Display for VectorExpr {
@@ -78,6 +87,7 @@ impl fmt::Display for VectorExpr {
             Self::EccentricityVector(state) => write!(f, "EccentricityVector({state})"),
             Self::CrossProduct { a, b } => write!(f, "{a} ⨯ {b}"),
             Self::Unit(v) => write!(f, "unit({v})"),
+            Self::Add { a, b } => write!(f, "{a} + {b}"),
             Self::Negate(v) => write!(f, "-{v}"),
             Self::VecProjection { a, b } => write!(f, "proj {a} onto {b}"),
             Self::Project { v, frame, plane } => {
@@ -87,6 +97,7 @@ impl fmt::Display for VectorExpr {
                     write!(f, "{v} dot {frame}")
                 }
             }
+            Self::Rotate { v, dcm } => write!(f, "{v} rotated by {dcm}"),
         }
     }
 }
@@ -123,6 +134,11 @@ impl VectorExpr {
                 .evaluate(epoch, almanac)?
                 .try_normalize(1e-12)
                 .unwrap_or(Vector3::zeros())),
+            Self::Add { a, b } => {
+                let vec_a = a.evaluate(epoch, almanac)?;
+                let vec_b = b.evaluate(epoch, almanac)?;
+                Ok(vec_a + vec_b)
+            }
             Self::Negate(v) => Ok(-v.evaluate(epoch, almanac)?),
             Self::VecProjection { a, b } => {
                 let vec_a = a.evaluate(epoch, almanac)?;
@@ -140,6 +156,13 @@ impl VectorExpr {
                 } else {
                     Ok(dcm * vector)
                 }
+            }
+            Self::Rotate { v, dcm } => {
+                let dcm = dcm.evaluate(epoch, almanac)?;
+
+                let vector = v.evaluate(epoch, almanac)?;
+
+                Ok(dcm * vector)
             }
         }
     }

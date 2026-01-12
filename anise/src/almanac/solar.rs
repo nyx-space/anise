@@ -22,11 +22,18 @@ use pyo3::prelude::*;
 
 #[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
-    /// Returns the angle (between 0 and 180 degrees) between the observer and the Sun, and the observer and the target body ID.
+    /// Returns the angular separation (between 0 and 180 degrees) between the observer and the Sun, and the observer and the target body ID.
+    /// This is formally known as the "solar elongation".
     /// This computes the Sun Probe Earth angle (SPE) if the probe is in a loaded SPK, its ID is the "observer_id", and the target is set to its central body.
     ///
     /// # Geometry
     /// If the SPE is greater than 90 degrees, then the celestial object below the probe is in sunlight.
+    ///
+    /// This angle determines the illumination phase of the target as seen by the observer:
+    /// * **~0° (Conjunction):** The Target is in the same direction as the Sun. The observer sees the unlit side ("New Moon").
+    /// * **~180° (Opposition):** The Target is in the opposite direction of the Sun. The observer sees the fully lit side ("Full Moon").
+    /// * **> 90°:** The observer is generally on the "day" side of the target.
+    ///
     ///
     /// ## Sunrise at nadir
     /// ```text

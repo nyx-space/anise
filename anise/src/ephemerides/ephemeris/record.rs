@@ -27,8 +27,10 @@ pub use super::{Covariance, LocalFrame};
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro", get_all))]
 pub struct EphemerisRecord {
     /// Orbit of this ephemeris entry
+    /// :rtype: Orbit
     pub orbit: Orbit,
     /// Optional covariance associated with this orbit
+    /// :rtype: Covariance
     pub covar: Option<Covariance>,
 }
 
@@ -58,7 +60,7 @@ impl EphemerisRecord {
 
                 // M = R_target_to_inertial * (R_source_to_inertial)^T
                 // M maps Source -> Target
-                let dcm = (desired_frame_to_inertial * cur_frame_to_inertial.transpose())?;
+                let dcm = (desired_frame_to_inertial.transpose() * cur_frame_to_inertial)?;
 
                 // Apply 6x6 Rotation: P_new = M * P_old * M^T
                 covar.matrix = dcm.state_dcm() * covar.matrix * dcm.state_dcm().transpose();
@@ -95,12 +97,12 @@ impl EphemerisRecord {
         let xf_partial = orbit_dual.partial_for(oe)?;
 
         let rotmat = SMatrix::<f64, 1, 6>::new(
-            xf_partial.wtr_x(),
-            xf_partial.wtr_y(),
-            xf_partial.wtr_z(),
-            xf_partial.wtr_vx(),
-            xf_partial.wtr_vy(),
-            xf_partial.wtr_vz(),
+            xf_partial.wrt_x(),
+            xf_partial.wrt_y(),
+            xf_partial.wrt_z(),
+            xf_partial.wrt_vx(),
+            xf_partial.wrt_vy(),
+            xf_partial.wrt_vz(),
         );
 
         Ok((rotmat * covar * rotmat.transpose())[(0, 0)].sqrt())

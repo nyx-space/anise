@@ -18,11 +18,12 @@ use crate::NaifId;
 
 pub use crate::analysis::elements::OrbitalElement;
 use crate::analysis::specs::{OrthogonalFrame, Plane};
+use crate::math::rotation::DCM;
 
 use super::event::{Event, EventArc, EventDetails, VisibilityArc};
 use super::prelude::{ScalarExpr, VectorExpr};
 use super::report::PyReportScalars;
-use super::specs::{FrameSpec, StateSpec, StateSpecTrait};
+use super::specs::{DcmExpr, FrameSpec, StateSpec, StateSpecTrait};
 use super::AnalysisError;
 
 #[pymethods]
@@ -122,7 +123,7 @@ impl Almanac {
     /// :type obstructing_body: Frame, optional
     /// :rtype: list
     #[pyo3(name = "report_visibility_arcs", signature=(state_spec, location_id, start_epoch, end_epoch, sample_rate, obstructing_body=None))]
-    #[allow(clippy::identity_op)]
+    #[allow(clippy::too_many_arguments)]
     fn py_report_visibility_arcs(
         &self,
         py: Python,
@@ -261,6 +262,18 @@ pub enum PyScalarExpr {
         location_id: i32,
         obstructing_body: Option<Frame>,
     },
+    RicDiff(PyStateSpec),
+    /// FovMargin requires the spacecraft frame in sc_observer_frame and the StateSpec **must** be the target location on target obdy (e.g. IAU Moon).
+    FovMargin {
+        instrument_id: i32,
+        sc_dcm_to_body: Py<PyDcmExpr>,
+        target: PyStateSpec,
+    },
+    FovMarginToLocation {
+        instrument_id: i32,
+        sc_dcm_to_body: Py<PyDcmExpr>,
+        location_id: i32,
+    },
 }
 
 impl Clone for PyScalarExpr {
@@ -382,6 +395,25 @@ impl Clone for PyScalarExpr {
                     location_id: *location_id,
                     obstructing_body: *obstructing_body,
                 },
+                Self::RicDiff(s) => Self::RicDiff(s.clone()),
+                Self::FovMargin {
+                    instrument_id,
+                    sc_dcm_to_body,
+                    target,
+                } => Self::FovMargin {
+                    instrument_id: *instrument_id,
+                    sc_dcm_to_body: sc_dcm_to_body.clone_ref(py),
+                    target: target.clone(),
+                },
+                Self::FovMarginToLocation {
+                    instrument_id,
+                    sc_dcm_to_body,
+                    location_id,
+                } => Self::FovMarginToLocation {
+                    instrument_id: *instrument_id,
+                    sc_dcm_to_body: sc_dcm_to_body.clone_ref(py),
+                    location_id: *location_id,
+                },
             }
         })
     }
@@ -456,7 +488,10 @@ pub enum PyVectorExpr {
     },
     /// Unit vector of this vector expression, returns zero vector if norm less than 1e-12
     Unit(Py<PyVectorExpr>),
-    /// Negate a vector
+    Add {
+        a: Py<PyVectorExpr>,
+        b: Py<PyVectorExpr>,
+    },
     /// Negate a vector.
     Negate(Py<PyVectorExpr>),
     /// Vector projection of a onto b
@@ -474,6 +509,10 @@ pub enum PyVectorExpr {
         v: Py<PyVectorExpr>,
         frame: Py<PyOrthogonalFrame>,
         plane: Option<Plane>,
+    },
+    Rotate {
+        v: Py<PyVectorExpr>,
+        dcm: Py<PyDcmExpr>,
     },
 }
 
@@ -496,6 +535,10 @@ impl Clone for PyVectorExpr {
                     b: b.clone_ref(py),
                 },
                 Self::Unit(v) => Self::Unit(v.clone_ref(py)),
+                Self::Add { a, b } => Self::Add {
+                    a: a.clone_ref(py),
+                    b: b.clone_ref(py),
+                },
                 Self::Negate(v) => Self::Negate(v.clone_ref(py)),
                 Self::VecProjection { a, b } => Self::VecProjection {
                     a: a.clone_ref(py),
@@ -505,6 +548,10 @@ impl Clone for PyVectorExpr {
                     v: v.clone_ref(py),
                     frame: frame.clone_ref(py),
                     plane: *plane,
+                },
+                Self::Rotate { v, dcm } => Self::Rotate {
+                    v: v.clone_ref(py),
+                    dcm: dcm.clone_ref(py),
                 },
             }
         })
@@ -636,7 +683,6 @@ pub enum PyOrthogonalFrame {
     },
 }
 
-// TODO: Implement clones manually for eveyrthing
 impl Clone for PyOrthogonalFrame {
     fn clone(&self) -> Self {
         Python::attach(|py| -> PyOrthogonalFrame {
@@ -655,6 +701,196 @@ impl Clone for PyOrthogonalFrame {
                 },
             }
         })
+    }
+}
+
+#[pyclass]
+#[pyo3(module = "anise.analysis", name = "DcmExpr", get_all, set_all)]
+pub enum PyDcmExpr {
+    Identity {
+        from_id: i32,
+        to_id: i32,
+    },
+    R1 {
+        angle_rad: f64,
+        from_id: i32,
+        to_id: i32,
+    },
+    R2 {
+        angle_rad: f64,
+        from_id: i32,
+        to_id: i32,
+    },
+    R3 {
+        angle_rad: f64,
+        from_id: i32,
+        to_id: i32,
+    },
+    /// Builds a DCM from TRIAD/Align-Clock vectors
+    Triad {
+        primary_axis: Py<PyVectorExpr>,
+        primary_vec: Py<PyVectorExpr>,
+        secondary_axis: Py<PyVectorExpr>,
+        secondary_vec: Py<PyVectorExpr>,
+        from_id: i32,
+        to_id: i32,
+    },
+    Quaternion {
+        x: f64,
+        y: f64,
+        z: f64,
+        w: f64,
+        from_id: i32,
+        to_id: i32,
+    },
+    RIC {
+        state: Py<PyStateSpec>,
+        from_id: i32,
+        to_id: i32,
+    },
+    VNC {
+        state: Py<PyStateSpec>,
+        from_id: i32,
+        to_id: i32,
+    },
+    RCN {
+        state: Py<PyStateSpec>,
+        from_id: i32,
+        to_id: i32,
+    },
+    SEZ {
+        state: Py<PyStateSpec>,
+        from_id: i32,
+        to_id: i32,
+    },
+}
+
+impl Clone for PyDcmExpr {
+    fn clone(&self) -> Self {
+        // We must acquire the GIL to safely clone the Py<T> references.
+        Python::attach(|py| -> PyDcmExpr {
+            match self {
+                Self::Identity {
+                    from_id: from,
+                    to_id: to,
+                } => Self::Identity {
+                    from_id: *from,
+                    to_id: *to,
+                },
+                Self::R1 {
+                    angle_rad,
+                    from_id: from,
+                    to_id: to,
+                } => Self::R1 {
+                    angle_rad: *angle_rad,
+                    from_id: *from,
+                    to_id: *to,
+                },
+                Self::R2 {
+                    angle_rad,
+                    from_id: from,
+                    to_id: to,
+                } => Self::R2 {
+                    angle_rad: *angle_rad,
+                    from_id: *from,
+                    to_id: *to,
+                },
+                Self::R3 {
+                    angle_rad,
+                    from_id: from,
+                    to_id: to,
+                } => Self::R3 {
+                    angle_rad: *angle_rad,
+                    from_id: *from,
+                    to_id: *to,
+                },
+                Self::Quaternion {
+                    x,
+                    y,
+                    z,
+                    w,
+                    from_id: from,
+                    to_id: to,
+                } => Self::Quaternion {
+                    x: *x,
+                    y: *y,
+                    z: *z,
+                    w: *w,
+                    from_id: *from,
+                    to_id: *to,
+                },
+                Self::RIC {
+                    state,
+                    from_id: from,
+                    to_id: to,
+                } => Self::RIC {
+                    state: state.clone_ref(py),
+                    from_id: *from,
+                    to_id: *to,
+                },
+                Self::RCN {
+                    state,
+                    from_id: from,
+                    to_id: to,
+                } => Self::RCN {
+                    state: state.clone_ref(py),
+                    from_id: *from,
+                    to_id: *to,
+                },
+                Self::VNC {
+                    state,
+                    from_id: from,
+                    to_id: to,
+                } => Self::VNC {
+                    state: state.clone_ref(py),
+                    from_id: *from,
+                    to_id: *to,
+                },
+                Self::SEZ {
+                    state,
+                    from_id: from,
+                    to_id: to,
+                } => Self::SEZ {
+                    state: state.clone_ref(py),
+                    from_id: *from,
+                    to_id: *to,
+                },
+                Self::Triad {
+                    primary_axis,
+                    primary_vec,
+                    secondary_axis,
+                    secondary_vec,
+                    from_id: from,
+                    to_id: to,
+                } => Self::Triad {
+                    primary_axis: primary_axis.clone_ref(py),
+                    primary_vec: primary_vec.clone_ref(py),
+                    secondary_axis: secondary_axis.clone_ref(py),
+                    secondary_vec: secondary_vec.clone_ref(py),
+                    from_id: *from,
+                    to_id: *to,
+                },
+            }
+        })
+    }
+}
+
+#[pymethods]
+impl PyDcmExpr {
+    /// Compute this ScalarExpr for the provided Orbit
+    ///
+    /// :type epoch: Epoch
+    /// :type almanac: Almanac
+    /// :type ab_corr: Aberration, optional
+    /// :rtype: DCM
+    #[pyo3(signature=(epoch, almanac))]
+    fn evaluate(&self, epoch: Epoch, almanac: &Almanac) -> Result<DCM, PyErr> {
+        let py_dcm = self.clone();
+        let dcm_expr = DcmExpr::from(py_dcm);
+
+        dcm_expr
+            .evaluate(epoch, almanac)
+            .map_err(|e| PyException::new_err(e.to_string()))
     }
 }
 // *** Implement the From<RustType> for PythonType to convert the LISP representation *** //
@@ -822,6 +1058,33 @@ impl TryFrom<ScalarExpr> for PyScalarExpr {
                     v: Py::new(py, <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*v)?)?,
                     m: Py::new(py, <ScalarExpr as TryInto<PyScalarExpr>>::try_into(*m)?)?,
                 }),
+                ScalarExpr::RicDiff(s) => Ok(Self::RicDiff(
+                    <StateSpec as TryInto<PyStateSpec>>::try_into(s.clone())?,
+                )),
+                ScalarExpr::FovMargin {
+                    instrument_id,
+                    sc_dcm_to_body,
+                    target,
+                } => Ok(Self::FovMargin {
+                    instrument_id,
+                    sc_dcm_to_body: Py::new(
+                        py,
+                        <DcmExpr as TryInto<PyDcmExpr>>::try_into(sc_dcm_to_body)?,
+                    )?,
+                    target: <StateSpec as TryInto<PyStateSpec>>::try_into(target)?,
+                }),
+                ScalarExpr::FovMarginToLocation {
+                    instrument_id,
+                    sc_dcm_to_body,
+                    location_id,
+                } => Ok(Self::FovMarginToLocation {
+                    instrument_id,
+                    sc_dcm_to_body: Py::new(
+                        py,
+                        <DcmExpr as TryInto<PyDcmExpr>>::try_into(sc_dcm_to_body)?,
+                    )?,
+                    location_id,
+                }),
             }
         })
     }
@@ -867,6 +1130,10 @@ impl TryFrom<VectorExpr> for PyVectorExpr {
                     py,
                     <VectorExpr as TryInto<PyVectorExpr>>::try_into(*v)?,
                 )?)),
+                VectorExpr::Add { a, b } => Ok(Self::Add {
+                    a: Py::new(py, <VectorExpr as TryInto<PyVectorExpr>>::try_into(*a)?)?,
+                    b: Py::new(py, <VectorExpr as TryInto<PyVectorExpr>>::try_into(*b)?)?,
+                }),
                 VectorExpr::Negate(v) => Ok(Self::Negate(Py::new(
                     py,
                     <VectorExpr as TryInto<PyVectorExpr>>::try_into(*v)?,
@@ -878,6 +1145,10 @@ impl TryFrom<VectorExpr> for PyVectorExpr {
                         <OrthogonalFrame as TryInto<PyOrthogonalFrame>>::try_into(*frame)?,
                     )?,
                     plane,
+                }),
+                VectorExpr::Rotate { v, dcm } => Ok(Self::Rotate {
+                    v: Py::new(py, <VectorExpr as TryInto<PyVectorExpr>>::try_into(*v)?)?,
+                    dcm: Py::new(py, <DcmExpr as TryInto<PyDcmExpr>>::try_into(*dcm)?)?,
                 }),
                 VectorExpr::Radius(spec) => Ok(Self::Radius(Py::new(
                     py,
@@ -927,7 +1198,108 @@ impl TryFrom<FrameSpec> for PyFrameSpec {
     }
 }
 
-// *** Converse *** //
+impl TryFrom<DcmExpr> for PyDcmExpr {
+    type Error = PyErr;
+    fn try_from(value: DcmExpr) -> Result<Self, PyErr> {
+        Python::attach(|py| -> Result<Self, PyErr> {
+            match value {
+                DcmExpr::Identity { from, to } => Ok(PyDcmExpr::Identity {
+                    from_id: from,
+                    to_id: to,
+                }),
+                DcmExpr::R1 {
+                    angle_rad,
+                    from,
+                    to,
+                } => Ok(PyDcmExpr::R1 {
+                    angle_rad,
+                    from_id: from,
+                    to_id: to,
+                }),
+                DcmExpr::R2 {
+                    angle_rad,
+                    from,
+                    to,
+                } => Ok(PyDcmExpr::R2 {
+                    angle_rad,
+                    from_id: from,
+                    to_id: to,
+                }),
+                DcmExpr::R3 {
+                    angle_rad,
+                    from,
+                    to,
+                } => Ok(PyDcmExpr::R3 {
+                    angle_rad,
+                    from_id: from,
+                    to_id: to,
+                }),
+                DcmExpr::Quaternion {
+                    x,
+                    y,
+                    z,
+                    w,
+                    from,
+                    to,
+                } => Ok(PyDcmExpr::Quaternion {
+                    x,
+                    y,
+                    z,
+                    w,
+                    from_id: from,
+                    to_id: to,
+                }),
+                DcmExpr::Triad {
+                    primary_axis,
+                    primary_vec,
+                    secondary_axis,
+                    secondary_vec,
+                    from,
+                    to,
+                } => Ok(PyDcmExpr::Triad {
+                    primary_axis: Py::new(
+                        py,
+                        <VectorExpr as TryInto<PyVectorExpr>>::try_into(*primary_axis)?,
+                    )?,
+                    primary_vec: Py::new(
+                        py,
+                        <VectorExpr as TryInto<PyVectorExpr>>::try_into(*primary_vec)?,
+                    )?,
+                    secondary_axis: Py::new(
+                        py,
+                        <VectorExpr as TryInto<PyVectorExpr>>::try_into(*secondary_axis)?,
+                    )?,
+                    secondary_vec: Py::new(
+                        py,
+                        <VectorExpr as TryInto<PyVectorExpr>>::try_into(*secondary_vec)?,
+                    )?,
+                    from_id: from,
+                    to_id: to,
+                }),
+                DcmExpr::RIC { state, from, to } => Ok(PyDcmExpr::RIC {
+                    state: Py::new(py, <StateSpec as TryInto<PyStateSpec>>::try_into(*state)?)?,
+                    from_id: from,
+                    to_id: to,
+                }),
+                DcmExpr::RCN { state, from, to } => Ok(PyDcmExpr::RCN {
+                    state: Py::new(py, <StateSpec as TryInto<PyStateSpec>>::try_into(*state)?)?,
+                    from_id: from,
+                    to_id: to,
+                }),
+                DcmExpr::VNC { state, from, to } => Ok(PyDcmExpr::VNC {
+                    state: Py::new(py, <StateSpec as TryInto<PyStateSpec>>::try_into(*state)?)?,
+                    from_id: from,
+                    to_id: to,
+                }),
+                DcmExpr::SEZ { state, from, to } => Ok(PyDcmExpr::SEZ {
+                    state: Py::new(py, <StateSpec as TryInto<PyStateSpec>>::try_into(*state)?)?,
+                    from_id: from,
+                    to_id: to,
+                }),
+            }
+        })
+    }
+} // *** Converse *** //
 
 impl From<PyScalarExpr> for ScalarExpr {
     fn from(value: PyScalarExpr) -> Self {
@@ -1044,6 +1416,25 @@ impl From<PyScalarExpr> for ScalarExpr {
             PyScalarExpr::VectorX(v) => ScalarExpr::VectorX(v.borrow(py).clone().into()),
             PyScalarExpr::VectorY(v) => ScalarExpr::VectorY(v.borrow(py).clone().into()),
             PyScalarExpr::VectorZ(v) => ScalarExpr::VectorZ(v.borrow(py).clone().into()),
+            PyScalarExpr::RicDiff(s) => ScalarExpr::RicDiff(s.clone().into()),
+            PyScalarExpr::FovMargin {
+                instrument_id,
+                sc_dcm_to_body,
+                target,
+            } => ScalarExpr::FovMargin {
+                instrument_id,
+                sc_dcm_to_body: sc_dcm_to_body.borrow(py).clone().into(),
+                target: target.into(),
+            },
+            PyScalarExpr::FovMarginToLocation {
+                instrument_id,
+                sc_dcm_to_body,
+                location_id,
+            } => ScalarExpr::FovMarginToLocation {
+                instrument_id,
+                sc_dcm_to_body: sc_dcm_to_body.borrow(py).clone().into(),
+                location_id,
+            },
         })
     }
 }
@@ -1067,12 +1458,20 @@ impl From<PyVectorExpr> for VectorExpr {
                 a: Box::new(a.borrow(py).clone().into()),
                 b: Box::new(b.borrow(py).clone().into()),
             },
+            PyVectorExpr::Add { a, b } => VectorExpr::Add {
+                a: Box::new(a.borrow(py).clone().into()),
+                b: Box::new(b.borrow(py).clone().into()),
+            },
             PyVectorExpr::Unit(v) => VectorExpr::Unit(Box::new(v.borrow(py).clone().into())),
             PyVectorExpr::Negate(v) => VectorExpr::Negate(Box::new(v.borrow(py).clone().into())),
             PyVectorExpr::Project { v, frame, plane } => VectorExpr::Project {
                 v: Box::new(v.borrow(py).clone().into()),
                 frame: Box::new(frame.borrow(py).clone().into()),
                 plane,
+            },
+            PyVectorExpr::Rotate { v, dcm } => VectorExpr::Rotate {
+                v: Box::new(v.borrow(py).clone().into()),
+                dcm: Box::new(dcm.borrow(py).clone().into()),
             },
         })
     }
@@ -1120,5 +1519,109 @@ impl From<PyFrameSpec> for FrameSpec {
                 }
             }),
         }
+    }
+}
+
+impl From<PyDcmExpr> for DcmExpr {
+    fn from(value: PyDcmExpr) -> Self {
+        Python::attach(|py| match value {
+            PyDcmExpr::Identity {
+                from_id: from,
+                to_id: to,
+            } => DcmExpr::Identity { from, to },
+            PyDcmExpr::R1 {
+                angle_rad,
+                from_id: from,
+                to_id: to,
+            } => DcmExpr::R1 {
+                angle_rad,
+                from,
+                to,
+            },
+            PyDcmExpr::R2 {
+                angle_rad,
+                from_id: from,
+                to_id: to,
+            } => DcmExpr::R2 {
+                angle_rad,
+                from,
+                to,
+            },
+            PyDcmExpr::R3 {
+                angle_rad,
+                from_id: from,
+                to_id: to,
+            } => DcmExpr::R3 {
+                angle_rad,
+                from,
+                to,
+            },
+            PyDcmExpr::Quaternion {
+                x,
+                y,
+                z,
+                w,
+                from_id: from,
+                to_id: to,
+            } => DcmExpr::Quaternion {
+                x,
+                y,
+                z,
+                w,
+                from,
+                to,
+            },
+            PyDcmExpr::RIC {
+                state,
+                from_id: from,
+                to_id: to,
+            } => DcmExpr::RIC {
+                state: Box::new(state.borrow(py).clone().into()),
+                from,
+                to,
+            },
+            PyDcmExpr::RCN {
+                state,
+                from_id: from,
+                to_id: to,
+            } => DcmExpr::RCN {
+                state: Box::new(state.borrow(py).clone().into()),
+                from,
+                to,
+            },
+            PyDcmExpr::VNC {
+                state,
+                from_id: from,
+                to_id: to,
+            } => DcmExpr::VNC {
+                state: Box::new(state.borrow(py).clone().into()),
+                from,
+                to,
+            },
+            PyDcmExpr::SEZ {
+                state,
+                from_id: from,
+                to_id: to,
+            } => DcmExpr::SEZ {
+                state: Box::new(state.borrow(py).clone().into()),
+                from,
+                to,
+            },
+            PyDcmExpr::Triad {
+                primary_axis,
+                primary_vec,
+                secondary_axis,
+                secondary_vec,
+                from_id: from,
+                to_id: to,
+            } => DcmExpr::Triad {
+                primary_axis: Box::new(primary_axis.borrow(py).clone().into()),
+                primary_vec: Box::new(primary_vec.borrow(py).clone().into()),
+                secondary_axis: Box::new(secondary_axis.borrow(py).clone().into()),
+                secondary_vec: Box::new(secondary_vec.borrow(py).clone().into()),
+                from,
+                to,
+            },
+        })
     }
 }

@@ -13,6 +13,7 @@
  * All other computations are at a higher level module.
  */
 pub mod dataset;
+pub mod instrument;
 pub mod location;
 pub mod lookuptable;
 pub mod metadata;
@@ -20,6 +21,7 @@ pub mod planetocentric;
 pub mod semver;
 pub mod spacecraft;
 
+use instrument::Instrument;
 use location::Location;
 
 use self::{
@@ -42,3 +44,5 @@ pub type PlanetaryDataSet = DataSet<PlanetaryData>;
 pub type EulerParameterDataSet = DataSet<Quaternion>;
 /// Location Data Set allow mapping an ID and/or name to a Location.
 pub type LocationDataSet = DataSet<Location>;
+/// Instrument Data Set allow mapping an ID and/or name to a Instrument.
+pub type InstrumentDataSet = DataSet<Instrument>;

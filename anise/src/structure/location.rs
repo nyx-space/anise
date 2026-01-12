@@ -231,17 +231,28 @@ pub struct TerrainMask {
 
 impl TerrainMask {
     /// Initializes a new flat terrain mask.
-    pub fn from_flat_terrain(elevation_mask_deg: f64) -> Self {
-        Self {
+    pub fn from_flat_terrain(elevation_mask_deg: f64) -> Vec<Self> {
+        vec![Self {
             azimuth_deg: 0.0,
             elevation_mask_deg,
-        }
+        }]
     }
 }
 
 #[cfg(feature = "python")]
 #[cfg_attr(feature = "python", pymethods)]
 impl TerrainMask {
+    /// Creates a flat terrain mask with the provided elevation mask in degrees
+    ///
+    /// :type elevation_mask_deg: float
+    /// :rtype: list
+    #[cfg(feature = "python")]
+    #[classmethod]
+    #[pyo3(name = "from_flat_terrain")]
+    fn py_from_flat_terrain(_cls: Bound<'_, PyType>, elevation_mask_deg: f64) -> Vec<Self> {
+        Self::from_flat_terrain(elevation_mask_deg)
+    }
+
     /// :rtype: float
     #[getter]
     fn get_azimuth_deg(&self) -> f64 {

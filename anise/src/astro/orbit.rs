@@ -24,7 +24,6 @@ use crate::{
         Matrix3, Vector3, Vector6,
     },
     prelude::{uuid_from_epoch, Frame},
-    NaifId,
 };
 
 #[cfg(feature = "analysis")]
@@ -345,9 +344,8 @@ impl Orbit {
     /// In the GMAT MathSpec notation, R_{IF} is the DCM from body fixed to inertial. Similarly, R{FT} is from topocentric
     /// to body fixed.
     ///
-    /// :type _from: int
     /// :rtype: DCM
-    pub fn dcm_from_topocentric_to_body_fixed(&self, _from: NaifId) -> PhysicsResult<DCM> {
+    pub fn dcm_from_topocentric_to_body_fixed(&self) -> PhysicsResult<DCM> {
         let rot_mat_dt = if let Ok(pre) = self.at_epoch(self.epoch - Unit::Second * 1) {
             if let Ok(post) = self.at_epoch(self.epoch + Unit::Second * 1) {
                 let dcm_pre = pre.dcm3x3_from_topocentric_to_body_fixed()?;
@@ -464,7 +462,7 @@ impl Orbit {
     pub fn dcm3x3_from_ric_to_inertial(&self) -> PhysicsResult<DCM> {
         let r_hat = self.r_hat();
         let c_hat = self.hvec()? / self.hmag()?;
-        let i_hat = r_hat.cross(&c_hat);
+        let i_hat = c_hat.cross(&r_hat);
 
         let rot_mat = Matrix3::from_columns(&[r_hat, i_hat, c_hat]);
 
@@ -605,6 +603,10 @@ impl Orbit {
         })
     }
 
+    /// Returns the DCM to rotate this orbit from the provided local frame to the inertial frame.
+    ///
+    /// :type local_frame: LocalFrame
+    /// :rtype: DCM
     #[cfg(feature = "analysis")]
     pub fn dcm_to_inertial(&self, local_frame: LocalFrame) -> PhysicsResult<DCM> {
         match local_frame {
@@ -912,7 +914,7 @@ impl Orbit {
     /// Returns a copy of the state with a provided INC added to the current one
     ///
     /// :type delta_inc_deg: float
-    /// :rtype: None
+    /// :rtype: Orbit
     pub fn add_inc_deg(&self, delta_inc_deg: f64) -> PhysicsResult<Self> {
         let mut me = *self;
         me.set_inc_deg(me.inc_deg()? + delta_inc_deg)?;

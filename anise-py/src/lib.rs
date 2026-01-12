@@ -21,6 +21,8 @@ use ::anise::analysis::report::PyReportScalars;
 use ::anise::astro::Aberration;
 use ::anise::structure::dataset::location_dhall::PyLocationDataSet;
 use ::anise::structure::dataset::location_dhall::{LocationDhallSet, LocationDhallSetEntry};
+use ::anise::structure::instrument::{FovShape, Instrument};
+use ::anise::structure::planetocentric::ellipsoid::Ellipsoid;
 use hifitime::leap_seconds::{LatestLeapSeconds, LeapSecondsFile};
 use hifitime::python::{PyDurationError, PyHifitimeError, PyParsingError};
 use hifitime::ut1::Ut1Provider;
@@ -41,6 +43,7 @@ fn anise(m: &Bound<'_, PyModule>) -> PyResult<()> {
     pyo3_log::init();
     m.add_wrapped(wrap_pymodule!(time))?;
     m.add_wrapped(wrap_pymodule!(analysis))?;
+    m.add_wrapped(wrap_pymodule!(instrument))?;
     m.add_wrapped(wrap_pymodule!(astro::astro))?;
     m.add_wrapped(wrap_pymodule!(constants::constants))?;
     m.add_wrapped(wrap_pymodule!(utils::utils))?;
@@ -79,6 +82,14 @@ fn analysis(_py: Python, sm: &Bound<PyModule>) -> PyResult<()> {
     sm.add_class::<VisibilityArc>()?;
     sm.add_class::<PyReportScalars>()?;
     sm.add_wrapped(wrap_pyfunction!(find_arc_intersections))?;
+    Ok(())
+}
+
+#[pymodule]
+fn instrument(_py: Python, sm: &Bound<PyModule>) -> PyResult<()> {
+    sm.add_class::<Instrument>()?;
+    sm.add_class::<FovShape>()?;
+    sm.add_class::<Ellipsoid>()?;
     Ok(())
 }
 
