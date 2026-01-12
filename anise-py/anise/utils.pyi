@@ -1,3 +1,5 @@
+import typing
+
 def convert_fk(fk_file_path: str, anise_output_path: str, show_comments: bool=None, overwrite: bool=None) -> None:
     """Converts a KPL/FK file, that defines frame constants like fixed rotations, and frame name to ID mappings into the EulerParameterDataSet equivalent ANISE file.
 KPL/FK files must be converted into "PCA" (Planetary Constant ANISE) files before being loaded into ANISE."""

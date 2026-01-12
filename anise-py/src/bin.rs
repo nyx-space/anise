@@ -21,13 +21,13 @@ use std::process::Command;
 pub(crate) fn exec_gui() -> Result<(), MetaAlmanacError> {
     if ["windows", "linux"].contains(&OS) {
         let crc32 = match OS {
-            "linux" => Some(0x2046a9b7),
-            "windows" => Some(0xac191672),
+            "linux" => Some(3895648976),
+            "windows" => Some(3386110664),
             _ => unreachable!(),
         };
         // Attempt to download from the public site.
         let mut gui = MetaFile {
-            uri: format!("http://public-data.nyxspace.com/anise/v0.6/anise-gui-{OS}.exe"),
+            uri: format!("http://public-data.nyxspace.com/anise/v0.9/anise-gui-{OS}.exe"),
             crc32,
         };
         gui.process(true)?;
@@ -40,7 +40,7 @@ pub(crate) fn exec_gui() -> Result<(), MetaAlmanacError> {
     } else {
         Err(MetaAlmanacError::FetchError {
             error: format!("{OS} not supported by ANISE GUI"),
-            uri: format!("http://public-data.nyxspace.com/anise/v0.6/anise-gui-{OS}.exe"),
+            uri: format!("http://public-data.nyxspace.com/anise/v0.9/anise-gui-{OS}.exe"),
         })
     }
 }

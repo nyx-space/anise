@@ -603,6 +603,10 @@ impl Orbit {
         })
     }
 
+    /// Returns the DCM to rotate this orbit from the provided local frame to the inertial frame.
+    ///
+    /// :type local_frame: LocalFrame
+    /// :rtype: DCM
     #[cfg(feature = "analysis")]
     pub fn dcm_to_inertial(&self, local_frame: LocalFrame) -> PhysicsResult<DCM> {
         match local_frame {

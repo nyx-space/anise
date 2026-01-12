@@ -397,7 +397,7 @@ impl Ephemeris {
                 covar: orig_record.covar,
             };
 
-            if let Some(mut covar) = &mut new_record.covar {
+            if let Some(covar) = &mut new_record.covar {
                 if orig_frame.orientation_id != new_frame.orientation_id {
                     // Query the rotation matrix
                     let dcm = almanac.rotate(orig_frame, new_frame, *epoch).context(

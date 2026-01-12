@@ -27,8 +27,10 @@ pub use super::{Covariance, LocalFrame};
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro", get_all))]
 pub struct EphemerisRecord {
     /// Orbit of this ephemeris entry
+    /// :rtype: Orbit
     pub orbit: Orbit,
     /// Optional covariance associated with this orbit
+    /// :rtype: Covariance
     pub covar: Option<Covariance>,
 }
 

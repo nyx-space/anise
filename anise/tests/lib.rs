@@ -14,4 +14,6 @@ mod almanac;
 mod astro;
 mod ephemerides;
 mod frames;
+#[cfg(feature = "analysis")]
+mod instrument;
 mod orientations;

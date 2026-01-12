@@ -73,6 +73,11 @@ impl CartesianState {
     /// Creates a new Cartesian state from a numpy array, an epoch, and a frame.
     ///
     /// **Units:** km, km, km, km/s, km/s, km/s
+    ///
+    /// :type pos_vel: np.array
+    /// :type epoch: Epoch
+    /// :type frame: Frame
+    /// :rtype: Orbit
     #[classmethod]
     pub fn from_cartesian_npy(
         _cls: &Bound<'_, PyType>,

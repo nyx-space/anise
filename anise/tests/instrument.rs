@@ -2,7 +2,7 @@ use anise::analysis::prelude::{
     Condition, DcmExpr, Event, FrameSpec, ScalarExpr, StateSpec, VectorExpr,
 };
 use anise::constants::celestial_objects::MOON;
-use anise::constants::frames::{EARTH_J2000, IAU_MOON_FRAME, MOON_J2000, SUN_J2000};
+use anise::constants::frames::{IAU_MOON_FRAME, MOON_J2000};
 use anise::constants::orientations::{IAU_MOON, J2000};
 use anise::math::rotation::EulerParameter;
 use anise::math::Vector3;

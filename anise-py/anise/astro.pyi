@@ -1,9 +1,6 @@
-import numpy as np
+import np
 import numpy
 import typing
-
-from anise.rotation import DCM
-from anise.time import Duration, Epoch
 
 @typing.final
 class AzElRange:
@@ -56,6 +53,63 @@ If the terrain mask was zero at this azimuth, then the elevation above mask is e
 
     def __str__(self) -> str:
         """Return str(self)."""
+
+@typing.final
+class Covariance:
+    matrix: numpy.array
+
+    def __init__(self):...
+
+    def __repr__(self) -> str:
+        """Return repr(self)."""
+
+    def __str__(self) -> str:
+        """Return str(self)."""
+
+@typing.final
+class DataType:
+
+    def __init__(self):...
+
+    def __eq__(self, value: typing.Any) -> bool:
+        """Return self==value."""
+
+    def __ge__(self, value: typing.Any) -> bool:
+        """Return self>=value."""
+
+    def __gt__(self, value: typing.Any) -> bool:
+        """Return self>value."""
+
+    def __int__(self) -> None:
+        """int(self)"""
+
+    def __le__(self, value: typing.Any) -> bool:
+        """Return self<=value."""
+
+    def __lt__(self, value: typing.Any) -> bool:
+        """Return self<value."""
+
+    def __ne__(self, value: typing.Any) -> bool:
+        """Return self!=value."""
+
+    def __repr__(self) -> str:
+        """Return repr(self)."""
+    Type10SpaceCommandTLE: DataType = ...
+    Type12HermiteEqualStep: DataType = ...
+    Type13HermiteUnequalStep: DataType = ...
+    Type14ChebyshevUnequalStep: DataType = ...
+    Type15PrecessingConics: DataType = ...
+    Type17Equinoctial: DataType = ...
+    Type18ESOCHermiteLagrange: DataType = ...
+    Type19ESOCPiecewise: DataType = ...
+    Type1ModifiedDifferenceArray: DataType = ...
+    Type20ChebyshevDerivative: DataType = ...
+    Type21ExtendedModifiedDifferenceArray: DataType = ...
+    Type2ChebyshevTriplet: DataType = ...
+    Type3ChebyshevSextuplet: DataType = ...
+    Type5DiscreteStates: DataType = ...
+    Type8LagrangeEqualStep: DataType = ...
+    Type9LagrangeUnequalStep: DataType = ...
 
 @typing.final
 class Ellipsoid:
@@ -123,6 +177,126 @@ BODY399_RADII     = ( 6378.1366   6378.1366   6356.7519 )"""
 
     def __str__(self) -> str:
         """Return str(self)."""
+
+@typing.final
+class Ephemeris:
+    """Initializes a new Ephemeris from the list of Orbit instances and a given object ID.
+
+In Python if you need to build an ephemeris with covariance, initialize with an empty list of
+orbit instances and then insert each EphemEntry with covariance."""
+    interpolation: str
+    object_id: str
+
+    def __init__(self, orbit_list: list, object_id: str) -> None:
+        """Initializes a new Ephemeris from the list of Orbit instances and a given object ID.
+
+In Python if you need to build an ephemeris with covariance, initialize with an empty list of
+orbit instances and then insert each EphemEntry with covariance."""
+
+    def at(self, epoch: Epoch, almanac: Almanac) -> EphemerisRecord:
+        """Interpolates the ephemeris state and covariance at the provided epoch.
+
+# Orbit Interpolation
+The orbital state is interpolated using high-fidelity numeric methods consistent
+with SPICE standards:
+* **Type 9 (Lagrange):** Uses an Nth-order Lagrange polynomial interpolation on
+unequal time steps. It interpolates each of the 6 state components (position
+and velocity) independently.
+* **Type 13 (Hermite):** Uses an Nth-order Hermite interpolation. This method
+explicitly uses the velocity data (derivatives) to constrain the interpolation
+of the position, ensuring that the resulting position curve is smooth and
+dynamically consistent with the velocity.
+
+# Covariance Interpolation (Log-Euclidean)
+If covariance data is available, this method performs **Log-Euclidean Riemannian
+Interpolation**. Unlike standard linear element-wise interpolation, this approach
+respects the geometric manifold of Symmetric Positive Definite (SPD) matrices.
+
+This guarantees that:
+1. **Positive Definiteness:** The interpolated covariance matrix is always mathematically
+valid (all eigenvalues are strictly positive), preventing numerical crashes in downstream filters.
+2. **Volume Preservation:** It prevents the artificial "swelling" (determinant increase)
+of uncertainty that occurs when linearly interpolating between two valid matrices.
+The interpolation follows the "geodesic" (shortest path) on the curved surface of
+covariance matrices."""
+
+    def covar_at(self, epoch: Epoch, local_frame: LocalFrame, almanac: Almanac) -> Covariance:
+        """Interpolate the ephemeris at the provided epoch, returning only the covariance."""
+
+    def domain(self) -> tuple:
+        """Returns the time domain of this ephemeris."""
+
+    @staticmethod
+    def from_ccsds_oem_file(path: str) -> Ephemeris:
+        """Initializes a new Ephemeris from a file path to CCSDS OEM file."""
+
+    @staticmethod
+    def from_stk_e_file(path: str) -> Ephemeris:
+        """Initializes a new Ephemeris from a file path to Ansys STK .e file."""
+
+    def includes_covariance(self) -> bool:
+        """Returns whether all of the data in this ephemeris includes the covariance."""
+
+    def insert(self, entry: EphemerisRecord) -> None:
+        """Inserts a new ephemeris entry to this ephemeris (it is automatically sorted chronologically)."""
+
+    def insert_orbit(self, orbit: Orbit) -> None:
+        """Inserts a new orbit (without covariance) to this ephemeris (it is automatically sorted chronologically)."""
+
+    def nearest_after(self, epoch: Epoch, almanac: Almanac) -> EphemerisRecord:
+        """Returns the nearest entry after the provided time"""
+
+    def nearest_before(self, epoch: Epoch, almanac: Almanac) -> EphemerisRecord:
+        """Returns the nearest entry before the provided time"""
+
+    def nearest_covar_after(self, epoch: Epoch, almanac: Almanac) -> tuple:
+        """Returns the nearest covariance after the provided epoch as a tuple (Epoch, Covariance)"""
+
+    def nearest_covar_before(self, epoch: Epoch, almanac: Almanac) -> tuple:
+        """Returns the nearest covariance before the provided epoch as a tuple (Epoch, Covariance)"""
+
+    def nearest_orbit_after(self, epoch: Epoch, almanac: Almanac) -> Orbit:
+        """Returns the nearest orbit after the provided time"""
+
+    def nearest_orbit_before(self, epoch: Epoch, almanac: Almanac) -> Orbit:
+        """Returns the nearest orbit before the provided time"""
+
+    def orbit_at(self, epoch: Epoch, almanac: Almanac) -> Orbit:
+        """Interpolate the ephemeris at the provided epoch, returning only the orbit."""
+
+    def resample(self, ts: TimeSeries, almanac: Almanac) -> Ephemeris:
+        """Resample this ephemeris, with covariance, at the provided time series"""
+
+    def to_ccsds_oem_file(self, path: str, originator: str=None, object_name: str=None) -> None:
+        """Exports this Ephemeris to CCSDS OEM at the provided path, optionally specifying an originator and/or an object name"""
+
+    def write_spice_bsp(self, naif_id: int, output_fname: str, data_type: DataType) -> None:
+        """Converts this ephemeris to SPICE BSP/SPK file in the provided data type, saved to the provided output_fname."""
+
+    def __repr__(self) -> str:
+        """Return repr(self)."""
+
+    def __str__(self) -> str:
+        """Return str(self)."""
+
+@typing.final
+class EphemerisRecord:
+    covar: Covariance
+    orbit: Orbit
+
+    def __init__(self):...
+
+    def covar_in_frame(self, local_frame: LocalFrame) -> Covariance:
+        """Returns the covariance in the desired orbit local frame, or None if this record does not define a covariance."""
+
+    def sigma_for(self, oe: OrbitalElement) -> float:
+        """Returns the 1-sigma uncertainty (Standard Deviation) for a given orbital element.
+
+The result is in the unit of the parameter (e.g., km for SMA, degrees for angles).
+
+This method uses the [OrbitGrad] structure (Hyperdual numbers) to compute the
+Jacobian of the element with respect to the inertial Cartesian state, and then
+rotates the covariance into that hyperdual dual space: J * P * J^T."""
 
 @typing.final
 class Frame:
@@ -217,6 +391,21 @@ It cannot be used for any computations, is it be used in any structure apart fro
 It cannot be used for any computations, is it be used in any structure apart from error structures."""
 
 @typing.final
+class LocalFrame:
+
+    def __init__(self):...
+
+    def __int__(self) -> None:
+        """int(self)"""
+
+    def __repr__(self) -> str:
+        """Return repr(self)."""
+    Inertial: LocalFrame = ...
+    RCN: LocalFrame = ...
+    RIC: LocalFrame = ...
+    VNC: LocalFrame = ...
+
+@typing.final
 class Location:
     """Location is defined by its latitude, longitude, height above the geoid, mean angular rotation of the geoid, and a frame UID.
 If the location includes a terrain mask, it will be used for obstruction checks when computing azimuth and elevation.
@@ -241,6 +430,9 @@ If the location includes a terrain mask, it will be used for obstruction checks 
 
     def to_dhall(self) -> str:
         """Returns the Dhall representation of this Location"""
+
+    def __repr__(self) -> str:
+        """Return repr(self)."""
 
     def __str__(self) -> str:
         """Return str(self)."""
@@ -295,7 +487,7 @@ Unless noted otherwise, algorithms are from GMAT 2016a [StateConversionUtil.cpp]
     y_km: float
     z_km: float
 
-    def __init__(self, x_km: float, y_km: float, z_km: float, vx_km_s: float, vy_km_s: float, vz_km_s: float, epoch: Epoch, frame: Frame) -> Orbit:
+    def __init__(self, *args: tuples) -> Orbit:
         """Defines a Cartesian state in a given frame at a given epoch in a given time scale. Radius data is expressed in kilometers. Velocity data is expressed in kilometers per second.
 Regardless of the constructor used, this struct stores all the state information in Cartesian coordinates as these are always non singular.
 
@@ -322,7 +514,7 @@ Raises an error if the frames do not match (epochs do not need to match)."""
     def add_ecc(self, delta_ecc: float) -> Orbit:
         """Returns a copy of the state with a provided ECC added to the current one"""
 
-    def add_inc_deg(self, delta_inc_deg: float) -> None:
+    def add_inc_deg(self, delta_inc_deg: float) -> Orbit:
         """Returns a copy of the state with a provided INC added to the current one"""
 
     def add_raan_deg(self, delta_raan_deg: float) -> Orbit:
@@ -453,7 +645,7 @@ If the state is NOT in an inertial frame, then this computation is INVALID.
 If the pre or post states cannot be computed, then the time derivative of the DCM will _not_ be set.
 Further note that most astrodynamics tools do *not* account for the time derivative in the RIC frame."""
 
-    def dcm_from_topocentric_to_body_fixed(self, _from: int) -> DCM:
+    def dcm_from_topocentric_to_body_fixed(self) -> DCM:
         """Builds the rotation matrix that rotates from the topocentric frame (SEZ) into the body fixed frame of this state.
 
 # Frame warnings
@@ -485,6 +677,9 @@ If the stattion is NOT in an inertial frame, then this computation is INVALID.
 # Note on the time derivative
 If the pre or post states cannot be computed, then the time derivative of the DCM will _not_ be set.
 Further note that most astrodynamics tools do *not* account for the time derivative in the RIC frame."""
+
+    def dcm_to_inertial(self, local_frame: LocalFrame) -> DCM:
+        """Returns the DCM to rotate this orbit from the provided local frame to the inertial frame."""
 
     def declination_deg(self) -> float:
         """Returns the declination of this orbit in degrees"""
@@ -553,6 +748,12 @@ This is a conversion from GMAT's StateConversionUtil::TrueToEccentricAnomaly"""
     @staticmethod
     def from_cartesian(x_km: float, y_km: float, z_km: float, vx_km_s: float, vy_km_s: float, vz_km_s: float, epoch: Epoch, frame: Frame) -> Orbit:
         """Creates a new Cartesian state in the provided frame at the provided Epoch.
+
+**Units:** km, km, km, km/s, km/s, km/s"""
+
+    @staticmethod
+    def from_cartesian_npy(pos_vel: np.array, epoch: Epoch, frame: Frame) -> Orbit:
+        """Creates a new Cartesian state from a numpy array, an epoch, and a frame.
 
 **Units:** km, km, km, km/s, km/s, km/s"""
 
@@ -692,13 +893,16 @@ This is a conversion from GMAT's StateConversionUtil::TrueToMeanAnomaly"""
         """Returns the radius of periapsis (or perigee around Earth), in kilometers."""
 
     def period(self) -> Duration:
-        """Returns the period in seconds"""
+        """Returns the period"""
 
     def raan_brouwer_short_deg(self) -> float:
         """Returns the Brouwer-short mean Right Ascension of the Ascending Node in degrees."""
 
     def raan_deg(self) -> float:
         """Returns the right ascension of the ascending node in degrees"""
+
+    def radius_km(self) -> np.array:
+        """radius vector in km"""
 
     def rel_difference(self, other: Orbit) -> typing.Tuple:
         """Returns the relative difference between this orbit and another for the position and velocity, respectively the first and second return values.
@@ -796,6 +1000,9 @@ to determine whether the true anomaly should be 0.0 or 180.0. **In other words**
     def velocity_declination_deg(self) -> float:
         """Returns the velocity declination of this orbit in degrees"""
 
+    def velocity_km_s(self) -> np.array:
+        """velocity vector in km/s"""
+
     def vinf_periapsis_km(self, turn_angle_degrees: float) -> float:
         """Returns the radius of periapse in kilometers for the provided turn angle of this hyperbolic orbit.
 Returns an error if the orbit is not hyperbolic."""
@@ -873,6 +1080,10 @@ class TerrainMask:
 
     def __init__(self, azimuth_deg: float, elevation_mask_deg: float) -> None:
         """TerrainMask is used to compute obstructions during AER calculations."""
+
+    @staticmethod
+    def from_flat_terrain(elevation_mask_deg: float) -> list:
+        """Creates a flat terrain mask with the provided elevation mask in degrees"""
 
     def __repr__(self) -> str:
         """Return repr(self)."""

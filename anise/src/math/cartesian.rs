@@ -31,14 +31,7 @@ use pyo3::prelude::*;
 ///
 /// Unless noted otherwise, algorithms are from GMAT 2016a [StateConversionUtil.cpp](https://github.com/ChristopherRabotin/GMAT/blob/37201a6290e7f7b941bc98ee973a527a5857104b/src/base/util/StateConversionUtil.cpp).
 ///
-/// :type x_km: float
-/// :type y_km: float
-/// :type z_km: float
-/// :type vx_km_s: float
-/// :type vy_km_s: float
-/// :type vz_km_s: float
-/// :type epoch: Epoch
-/// :type frame: Frame
+/// :type args: tuples
 /// :rtype: Orbit
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "python", pyclass(name = "Orbit"))]
