@@ -38,11 +38,11 @@ impl Ephemeris {
     }
 
     #[new]
-    fn py_new(orbit_list: Vec<Orbit>, object_id: String) -> Self {
+    fn py_new(records: Vec<EphemerisRecord>, object_id: String) -> Self {
         let mut state_data = BTreeMap::new();
 
-        for orbit in orbit_list {
-            state_data.insert(orbit.epoch, EphemerisRecord { orbit, covar: None });
+        for record in records {
+            state_data.insert(record.orbit.epoch, record);
         }
 
         Self {

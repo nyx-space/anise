@@ -36,6 +36,11 @@ pub struct EphemerisRecord {
 
 #[cfg_attr(feature = "python", pymethods)]
 impl EphemerisRecord {
+    #[new]
+    fn py_new(orbit: Orbit, covar: Option<Covariance>) -> Self {
+        Self { orbit, covar }
+    }
+
     /// Returns the covariance in the desired orbit local frame, or None if this record does not define a covariance.
     ///
     /// :type local_frame: LocalFrame

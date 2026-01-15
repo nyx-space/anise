@@ -408,6 +408,51 @@ def test_oem():
     print(f"SMA 1-sigma = {sigma_sma_km:.3} km")
 
 
+def test_ephem_constructor():
+    if environ.get("CI", False):
+        # Load from meta kernel to not use Git LFS quota
+        data_path = Path(__file__).parent.joinpath(
+            "..", "..", "data", "ci_config.dhall"
+        )
+        meta = MetaAlmanac(str(data_path))
+        print(meta)
+        # Process the files to be loaded
+        try:
+            almanac = meta.process()
+        except Exception as e:
+            if "lfs" in str(e):
+                # Must be some LFS error in the CI again
+                return
+            raise  # Otherwise, raise the error!
+    else:
+        data_path = Path(__file__).parent.joinpath("..", "..", "data")
+        # Must ensure that the path is a string
+        almanac = Almanac(str(data_path.joinpath("de440s.bsp")))
+
+    eme2k = almanac.frame_info(Frames.EARTH_J2000)
+    epoch = Epoch("2024-02-29T12:34:56")
+
+    orbit1 = Orbit.from_keplerian_altitude(
+        567.8, 1e-4, 28.5, 75.0, 115.0, 0.0, epoch, eme2k
+    )
+    orbit2 = orbit1.add_inc_deg(10.0)
+
+    ts = TimeSeries(epoch, epoch + Unit.Day * 1, Unit.Minute * 1, True)
+
+    records1 = []
+
+    for tickytack in ts:
+        orbit1_t = orbit1.at_epoch(tickytack)
+        # XXX Cannot initialize an ephemeris record
+        records1 += [EphemerisRecord(orbit1_t, None)]
+
+    ephem1 = Ephemeris(records1, "orbit1")
+    ephem1.insert_orbit(orbit2)
+    cov = Covariance(np.diag([1e3] * 6), LocalFrame.RIC)
+    record = EphemerisRecord(orbit2, cov)
+    ephem1.insert(record)
+
+
 if __name__ == "__main__":
     # test_meta_load()
     # test_exports()
