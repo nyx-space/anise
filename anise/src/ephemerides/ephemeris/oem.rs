@@ -372,7 +372,7 @@ impl Ephemeris {
     }
 
     /// Export this Ephemeris to CCSDS OEM format
-    pub fn to_ccsds_oem_file<P: AsRef<Path>>(
+    pub fn write_ccsds_oem<P: AsRef<Path>>(
         &self,
         path: P,
         originator: Option<String>,

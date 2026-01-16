@@ -80,14 +80,14 @@ impl Ephemeris {
     /// :type originator: str, optional
     /// :type object_name: str, optional
     /// :rtype: None
-    #[pyo3(name = "to_ccsds_oem_file", signature=(path, originator=None, object_name=None))]
-    fn py_to_ccsds_oem_file(
+    #[pyo3(name = "write_ccsds_oem", signature=(path, originator=None, object_name=None))]
+    fn py_write_ccsds_oem(
         &self,
         path: &str,
         originator: Option<String>,
         object_name: Option<String>,
     ) -> Result<(), EphemerisError> {
-        self.to_ccsds_oem_file(path, originator, object_name)
+        self.write_ccsds_oem(path, originator, object_name)
     }
 
     /// Converts this ephemeris to SPICE BSP/SPK file in the provided data type, saved to the provided output_fname.

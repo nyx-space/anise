@@ -390,6 +390,16 @@ def test_oem():
         "data/tests/naif/spk/ephem_from_python.bsp",
         DataType.Type13HermiteUnequalStep,
     )
+    # Export to CCSDS OEM
+    ephem.write_ccsds_oem(
+        "data/tests/naif/spk/ephem_from_python.oem",
+        "My Originator",
+        "OBJECT_NAME"
+    )
+    # Ensure we can read what we wrote
+    ephem_reread = Ephemeris.from_ccsds_oem_file("data/tests/naif/spk/ephem_from_python.oem")
+    assert ephem_reread.start_epoch() == ephem.start_epoch()
+    assert ephem_reread.end_epoch() == ephem.end_epoch()
 
     # 2. Load OEM to new Almanac, providing an ID to convert this OEM to SPK
     almanac2 = Almanac.from_ccsds_oem_file("data/tests/ccsds/oem/LRO_Nyx.oem", -159)
@@ -426,8 +436,12 @@ def test_oem():
         record = EphemerisRecord(orbit_t, cov)
         records += [record]
         ephem_from_empty.insert_orbit(orbit_t)
+    # Add an entry one tiny step later
+    final_orbit = orbit.at_epoch(records[-1].orbit.epoch + Unit.Nanosecond * 4)
+    ephem_from_empty.insert_orbit(final_orbit)
 
     ephem_from_list = Ephemeris([rcrd.orbit for rcrd in records], "My Spacecraft Too!")
+    ephem_from_list.insert_orbit(final_orbit)
 
     assert ephem_from_list.start_epoch() == ephem_from_empty.start_epoch()
     assert ephem_from_list.end_epoch() == ephem_from_empty.end_epoch()

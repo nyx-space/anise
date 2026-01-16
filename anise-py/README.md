@@ -2,8 +2,6 @@
 
 ANISE is a modern rewrite of the core functionalities of the NAIF SPICE toolkit with enhanced features and ease of use, leveraging Rust's safety and speed.
 
-[**Please fill out our user survey**](https://7ug5imdtt8v.typeform.com/to/qYDB14Hj)
-
 ## Introduction
 
 In the realm of space exploration, navigation, and astrophysics, precise and efficient computation of spacecraft position, orientation, and time is critical. ANISE, standing for "Attitude, Navigation, Instrument, Spacecraft, Ephemeris," offers a Rust-native approach to these challenges. This toolkit provides a suite of functionalities including but not limited to:
@@ -14,6 +12,7 @@ In the realm of space exploration, navigation, and astrophysics, precise and eff
   + **Declarative Analysis**: Build complex mathematical vector and scalar expressions (e.g., angles, projections, orbital elements) and evaluate them efficiently over time series.
   + **Event Finding**: High-precision search for eclipses, AOS/LOS, and orbital events (periapsis/apoapsis).
   + **Hifitime Integration**: Comprehensive time system conversions using the `hifitime` library (TT, TAI, ET, TDB, UTC, GPS, etc.).
+  + **CCSDS OEM**: ANISE supports reading, writing, and interpolating CCSDS OEM files, including their covariance, in the inertial, RIC, RCN, and VNC frames.
 
 ANISE stands validated against the traditional SPICE toolkit, ensuring accuracy and reliability, with translations achieving machine precision (2e-16) and rotations presenting minimal error.
 
