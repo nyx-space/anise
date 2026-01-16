@@ -407,6 +407,32 @@ def test_oem():
     sigma_sma_km = ephem.at(end, almanac).sigma_for(OrbitalElement.SemiMajorAxis)
     print(f"SMA 1-sigma = {sigma_sma_km:.3} km")
 
+    # Build an Ephemeris
+    eme2k = almanac.frame_info(Frames.EARTH_J2000)
+    epoch = Epoch("2024-02-29T12:34:56")
+
+    orbit = Orbit.from_keplerian_altitude(
+        567.8, 1e-4, 28.5, 75.0, 115.0, 0.0, epoch, eme2k
+    )
+
+    ts = TimeSeries(epoch, epoch + Unit.Day * 1, Unit.Minute * 1, True)
+
+    records = []
+    ephem_from_empty = Ephemeris([], "My Spacecraft")
+
+    for tickytack in ts:
+        orbit_t = orbit.at_epoch(tickytack)
+        cov = Covariance(np.diag([1e3] * 6), LocalFrame.RIC)
+        record = EphemerisRecord(orbit_t, cov)
+        records += [record]
+        ephem_from_empty.insert_orbit(orbit_t)
+
+    ephem_from_list = Ephemeris([rcrd.orbit for rcrd in records], "My Spacecraft Too!")
+
+    assert ephem_from_list.start_epoch() == ephem_from_empty.start_epoch()
+    assert ephem_from_list.end_epoch() == ephem_from_empty.end_epoch()
+    assert ephem_from_list.len() == ephem_from_empty.len()
+
 
 if __name__ == "__main__":
     # test_meta_load()
