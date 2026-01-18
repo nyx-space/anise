@@ -589,7 +589,7 @@ mod ut_oem {
         // Ensure that we can build an OEM, re-parse it, and it should match
         let outpath = "../data/tests/ccsds/oem/MEO_60s_rebuilt.oem";
         ephem
-            .to_ccsds_oem_file(outpath, Some("My Originator".to_string()), None)
+            .write_ccsds_oem(outpath, Some("My Originator".to_string()), None)
             .unwrap();
 
         let ephem2 = Ephemeris::from_ccsds_oem_file(outpath).unwrap();
@@ -702,7 +702,7 @@ mod ut_oem {
 
         // Re-export with covariance
         let rebuilt_path = "../data/tests/ccsds/oem/JPL_MGS_cov_rebuilt.oem";
-        ephem.to_ccsds_oem_file(rebuilt_path, None, None).unwrap();
+        ephem.write_ccsds_oem(rebuilt_path, None, None).unwrap();
         let ephem2 =
             Ephemeris::from_ccsds_oem_file(rebuilt_path).expect("could not parse rebuilt OEM");
 
