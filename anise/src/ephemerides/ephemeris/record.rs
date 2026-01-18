@@ -22,6 +22,10 @@ use pyo3::prelude::*;
 
 pub use super::{Covariance, LocalFrame};
 
+/// An ephemeris record which can be inserted into an Ephemeris for export to SPICE BSP or CCSDS OEM.
+///
+/// :type orbit: Orbit
+/// :type covar: Covariance
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro", get_all))]
@@ -36,6 +40,12 @@ pub struct EphemerisRecord {
 
 #[cfg_attr(feature = "python", pymethods)]
 impl EphemerisRecord {
+    #[cfg(feature = "python")]
+    #[new]
+    fn py_new(orbit: Orbit, covar: Option<Covariance>) -> Self {
+        Self { orbit, covar }
+    }
+
     /// Returns the covariance in the desired orbit local frame, or None if this record does not define a covariance.
     ///
     /// :type local_frame: LocalFrame

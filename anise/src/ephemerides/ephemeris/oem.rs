@@ -372,7 +372,7 @@ impl Ephemeris {
     }
 
     /// Export this Ephemeris to CCSDS OEM format
-    pub fn to_ccsds_oem_file<P: AsRef<Path>>(
+    pub fn write_ccsds_oem<P: AsRef<Path>>(
         &self,
         path: P,
         originator: Option<String>,
@@ -395,7 +395,7 @@ impl Ephemeris {
         };
 
         // Epoch formmatter.
-        let iso8601_no_ts = Format::from_str("%Y-%m-%dT%H:%M:%S").unwrap();
+        let iso8601_no_ts = Format::from_str("%Y-%m-%dT%H:%M:%S.%f").unwrap();
 
         // Write mandatory metadata
         writeln!(writer, "CCSDS_OEM_VERS = 2.0\n").map_err(err_hdlr)?;
@@ -464,30 +464,26 @@ impl Ephemeris {
 
         writeln!(
             writer,
-            "\tSTART_TIME = {}.{:0<3}",
+            "\tSTART_TIME = {}",
             Formatter::new(first_orbit.epoch, iso8601_no_ts),
-            first_orbit.epoch.seconds()
         )
         .map_err(err_hdlr)?;
         writeln!(
             writer,
-            "\tUSEABLE_START_TIME = {}.{:0<3}",
+            "\tUSEABLE_START_TIME = {}",
             Formatter::new(first_orbit.epoch, iso8601_no_ts),
-            first_orbit.epoch.seconds()
         )
         .map_err(err_hdlr)?;
         writeln!(
             writer,
-            "\tUSEABLE_STOP_TIME = {}.{:0<3}",
+            "\tUSEABLE_STOP_TIME = {}",
             Formatter::new(last_orbit.epoch, iso8601_no_ts),
-            last_orbit.epoch.seconds()
         )
         .map_err(err_hdlr)?;
         writeln!(
             writer,
-            "\tSTOP_TIME = {}.{:0<3}",
+            "\tSTOP_TIME = {}",
             Formatter::new(last_orbit.epoch, iso8601_no_ts),
-            last_orbit.epoch.seconds()
         )
         .map_err(err_hdlr)?;
 
@@ -497,9 +493,8 @@ impl Ephemeris {
             let orbit = entry.orbit;
             writeln!(
                 writer,
-                "{}.{:0<3} {:E} {:E} {:E} {:E} {:E} {:E}",
+                "{} {:E} {:E} {:E} {:E} {:E} {:E}",
                 Formatter::new(*epoch, iso8601_no_ts),
-                epoch.seconds(),
                 orbit.radius_km.x,
                 orbit.radius_km.y,
                 orbit.radius_km.z,
@@ -521,13 +516,8 @@ impl Ephemeris {
                     writeln!(writer, "COVARIANCE_START").map_err(err_hdlr)?;
                     cov_started = true;
                 }
-                writeln!(
-                    writer,
-                    "EPOCH = {}.{:0<3}",
-                    Formatter::new(*epoch, iso8601_no_ts),
-                    epoch.seconds()
-                )
-                .map_err(err_hdlr)?;
+                writeln!(writer, "EPOCH = {}", Formatter::new(*epoch, iso8601_no_ts),)
+                    .map_err(err_hdlr)?;
 
                 writeln!(
                     writer,

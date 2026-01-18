@@ -64,6 +64,17 @@ impl Ephemeris {
         }
     }
 
+    /// Returns the interpolation used
+    pub fn interpolation(&self) -> DataType {
+        self.interpolation
+    }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl Ephemeris {
+    //     /// Returns the time domain of this ephemeris.
+    //     ///
+    //     /// :rtype: tuple
     pub fn domain(&self) -> Result<(Epoch, Epoch), EphemerisError> {
         if self.state_data.is_empty() {
             Err(EphemerisError::EphemInterpolation {
@@ -77,40 +88,50 @@ impl Ephemeris {
         }
     }
 
+    /// :rtype: Epoch
     pub fn start_epoch(&self) -> Result<Epoch, EphemerisError> {
         Ok(self.domain()?.0)
     }
 
+    /// :rtype: Epoch
     pub fn end_epoch(&self) -> Result<Epoch, EphemerisError> {
         Ok(self.domain()?.1)
     }
 
+    /// :rtype: str
     pub fn object_id(&self) -> &str {
         &self.object_id
-    }
-
-    pub fn interpolation(&self) -> DataType {
-        self.interpolation
     }
 
     /// Returns true if all of the data in this ephemeris includes covariance.
     ///
     /// This is a helper function which isn't used in other functions.
+    ///
+    /// :rtype: bool
     pub fn includes_covariance(&self) -> bool {
         !self.state_data.is_empty() && self.state_data.values().all(|entry| entry.covar.is_some())
     }
 
     /// Inserts a new ephemeris entry to this ephemeris (it is automatically sorted chronologically).
+    /// :type entry: EphemerisRecord
+    /// :rtype: None
     pub fn insert(&mut self, record: EphemerisRecord) {
         self.state_data.insert(record.orbit.epoch, record);
     }
 
     /// Inserts a new orbit (without covariance) to this ephemeris (it is automatically sorted chronologically).
+    /// :type orbit: Orbit
+    /// :rtype: None
     pub fn insert_orbit(&mut self, orbit: Orbit) {
         self.state_data
             .insert(orbit.epoch, EphemerisRecord { orbit, covar: None });
     }
 
+    /// Returns the nearest entry before the provided time
+    ///
+    /// :type epoch: Epoch
+    /// :type almanac: Almanac
+    /// :rtype: EphemerisRecord
     pub fn nearest_before(
         &self,
         epoch: Epoch,
@@ -131,6 +152,11 @@ impl Ephemeris {
             })
     }
 
+    /// Returns the nearest entry after the provided time
+    ///
+    /// :type epoch: Epoch
+    /// :type almanac: Almanac
+    /// :rtype: EphemerisRecord
     pub fn nearest_after(
         &self,
         epoch: Epoch,
@@ -151,6 +177,11 @@ impl Ephemeris {
             })
     }
 
+    /// Returns the nearest orbit before the provided time
+    ///
+    /// :type epoch: Epoch
+    /// :type almanac: Almanac
+    /// :rtype: Orbit
     pub fn nearest_orbit_before(
         &self,
         epoch: Epoch,
@@ -159,6 +190,11 @@ impl Ephemeris {
         Ok(self.nearest_before(epoch, almanac)?.orbit)
     }
 
+    /// Returns the nearest orbit after the provided time
+    ///
+    /// :type epoch: Epoch
+    /// :type almanac: Almanac
+    /// :rtype: Orbit
     pub fn nearest_orbit_after(
         &self,
         epoch: Epoch,
@@ -167,6 +203,11 @@ impl Ephemeris {
         Ok(self.nearest_after(epoch, almanac)?.orbit)
     }
 
+    /// Returns the nearest covariance before the provided epoch as a tuple (Epoch, Covariance)
+    ///
+    /// :type epoch: Epoch
+    /// :type almanac: Almanac
+    /// :rtype: tuple
     pub fn nearest_covar_before(
         &self,
         epoch: Epoch,
@@ -176,6 +217,11 @@ impl Ephemeris {
         Ok(record.covar.map(|c| (record.orbit.epoch, c)))
     }
 
+    /// Returns the nearest covariance after the provided epoch as a tuple (Epoch, Covariance)
+    ///
+    /// :type epoch: Epoch
+    /// :type almanac: Almanac
+    /// :rtype: tuple
     pub fn nearest_covar_after(
         &self,
         epoch: Epoch,
@@ -210,6 +256,10 @@ impl Ephemeris {
     ///    of uncertainty that occurs when linearly interpolating between two valid matrices.
     ///    The interpolation follows the "geodesic" (shortest path) on the curved surface of
     ///    covariance matrices.
+    ///
+    /// :type epoch: Epoch
+    /// :type almanac: Almanac
+    /// :rtype: EphemerisRecord
     pub fn at(&self, epoch: Epoch, almanac: &Almanac) -> Result<EphemerisRecord, EphemerisError> {
         let (start, end) = self.domain()?;
         if !(start..=end).contains(&epoch) {
@@ -298,6 +348,10 @@ impl Ephemeris {
     }
 
     /// Interpolate the ephemeris at the provided epoch, returning only the orbit.
+    ///
+    /// :type epoch: Epoch
+    /// :type almanac: Almanac
+    /// :rtype: Orbit
     pub fn orbit_at(&self, epoch: Epoch, almanac: &Almanac) -> Result<Orbit, EphemerisError> {
         Ok(self.at(epoch, almanac)?.orbit)
     }
@@ -310,6 +364,11 @@ impl Ephemeris {
     /// 1. Finds the nearest covariance before and after the requested epoch.
     /// 2. Rotates BOTH endpoints into the requested `local_frame`.
     /// 3. Interpolates between the two stable matrices using Log-Euclidean Riemannian interpolation.
+    ///
+    /// :type epoch: Epoch
+    /// :type local_frame: LocalFrame
+    /// :type almanac: Almanac
+    /// :rtype: Covariance
     pub fn covar_at(
         &self,
         epoch: Epoch,
@@ -369,7 +428,11 @@ impl Ephemeris {
         }
     }
 
-    /// Resample this ephemeris, with covariance, with the provided time series
+    /// Resample this ephemeris, with covariance, at the provided time series
+    ///
+    /// :type ts: TimeSeries
+    /// :type almanac: Almanac
+    /// :rtype: Ephemeris
     pub fn resample(&self, ts: TimeSeries, almanac: &Almanac) -> Result<Self, EphemerisError> {
         // NOTE: We clone ourselves because we still need our state data.
         let mut me = self.clone();
@@ -526,7 +589,7 @@ mod ut_oem {
         // Ensure that we can build an OEM, re-parse it, and it should match
         let outpath = "../data/tests/ccsds/oem/MEO_60s_rebuilt.oem";
         ephem
-            .to_ccsds_oem_file(outpath, Some("My Originator".to_string()), None)
+            .write_ccsds_oem(outpath, Some("My Originator".to_string()), None)
             .unwrap();
 
         let ephem2 = Ephemeris::from_ccsds_oem_file(outpath).unwrap();
@@ -639,7 +702,7 @@ mod ut_oem {
 
         // Re-export with covariance
         let rebuilt_path = "../data/tests/ccsds/oem/JPL_MGS_cov_rebuilt.oem";
-        ephem.to_ccsds_oem_file(rebuilt_path, None, None).unwrap();
+        ephem.write_ccsds_oem(rebuilt_path, None, None).unwrap();
         let ephem2 =
             Ephemeris::from_ccsds_oem_file(rebuilt_path).expect("could not parse rebuilt OEM");
 
