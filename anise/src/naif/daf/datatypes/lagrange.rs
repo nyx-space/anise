@@ -213,11 +213,10 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
         _: &S,
     ) -> Result<Self::StateKind, InterpolationError> {
         // Start by doing a binary search on the epoch registry to limit the search space in the total number of epochs.
-        // TODO: use the epoch registry to reduce the search space
-        // Check that we even have interpolation data for that time
         if self.epoch_data.is_empty() {
             return Err(InterpolationError::MissingInterpolationData { epoch });
         }
+        // Check that we even have interpolation data for that time
         if epoch.to_et_seconds() < self.epoch_data[0] - 1e-7
             || epoch.to_et_seconds() > *self.epoch_data.last().unwrap() + 1e-7
         {
@@ -227,26 +226,64 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
                 end: Epoch::from_et_seconds(*self.epoch_data.last().unwrap()),
             });
         }
+
+        // Search through a reduced data slice if available
+        let (search_data_slice, slice_offset) = if self.epoch_registry.is_empty() {
+            // No registry, search the entire epoch_data
+            (self.epoch_data, 0)
+        } else {
+            // Use epoch_registry to narrow down the search space.
+            // dir_idx is the index of the first registry epoch such that epoch_registry[dir_idx] >= et_target.
+            let dir_idx = self
+                .epoch_registry
+                .partition_point(|&reg_epoch| reg_epoch < epoch.to_et_seconds());
+
+            let sub_array_start_idx = if dir_idx == 0 {
+                // et_target <= self.epoch_registry[0] (i.e., et_target is before or at the first directory epoch, E_100).
+                // Search in the first block of epoch_data (indices 0-99, or up to num_records-1).
+                0
+            } else {
+                // self.epoch_registry[dir_idx - 1] < et_target.
+                // The block of 100 epochs in epoch_data starts with the epoch corresponding to
+                // the (dir_idx-1)-th entry in epoch_registry. This is E_(dir_idx * 100).
+                // Its 0-based index in epoch_data is (dir_idx * 100) - 1.
+                (dir_idx * 100) - 1
+            };
+
+            // The block is at most 100 records long, or fewer if at the end of epoch_data.
+            // Ensure end index does not exceed total number of records.
+            let sub_array_end_idx = (sub_array_start_idx + 99).min(self.num_records - 1);
+
+            // It's possible num_records is small enough that sub_array_start_idx is already past sub_array_end_idx if not careful,
+            // however, epoch_registry is non-empty only if num_records >= 100 (approx), so sub_array_start_idx should be valid.
+            // The slice must be valid, e.g. start <= end.
+            (
+                &self.epoch_data[sub_array_start_idx..=sub_array_end_idx.max(sub_array_start_idx)],
+                sub_array_start_idx,
+            )
+        };
+
         // Now, perform a binary search on the epochs themselves.
-        match self.epoch_data.binary_search_by(|epoch_et| {
+        match search_data_slice.binary_search_by(|epoch_et| {
             epoch_et
                 .partial_cmp(&epoch.to_et_seconds())
-                .expect("epochs in Hermite data is now NaN or infinite but was not before")
+                .expect("epochs in Lagrange data is now NaN or infinite but was not before")
         }) {
             Ok(idx) => {
                 // Oh wow, this state actually exists, no interpolation needed!
                 Ok(self
-                    .nth_record(idx)
+                    .nth_record(idx + slice_offset)
                     .context(InterpDecodingSnafu)?
                     .to_pos_vel())
             }
             Err(idx) => {
                 // We didn't find it, so let's build an interpolation here.
+                let absolute_insertion_idx = idx + slice_offset;
                 let group_size = self.degree + 1;
                 let num_left = group_size / 2;
 
                 // Ensure that we aren't fetching out of the window
-                let mut first_idx = idx.saturating_sub(num_left);
+                let mut first_idx = absolute_insertion_idx.saturating_sub(num_left);
                 let last_idx = self.num_records.min(first_idx + group_size);
 
                 // Check that we have enough samples
@@ -353,5 +390,87 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::naif::spk::summary::SPKSummaryRecord;
+    use hifitime::Epoch;
+
+    #[test]
+    fn test_lagrange_optimization() {
+        // Construct a synthetic LagrangeSetType9
+        let num_records = 250;
+        let degree = 1; // Linear interpolation
+        let mut epoch_data = Vec::with_capacity(num_records);
+        let mut state_data = Vec::with_capacity(num_records * 6);
+        let mut epoch_registry = Vec::new();
+
+        for i in 0..num_records {
+            let t = i as f64;
+            epoch_data.push(t);
+            // Linear motion: x = t, y = 2*t, z = 3*t
+            state_data.push(t); // x
+            state_data.push(2.0 * t); // y
+            state_data.push(3.0 * t); // z
+            state_data.push(1.0); // vx
+            state_data.push(2.0); // vy
+            state_data.push(3.0); // vz
+
+            // Build registry every 100 records (indices 99, 199, ...)
+            if (i + 1) % 100 == 0 {
+                epoch_registry.push(t);
+            }
+        }
+
+        let dataset = LagrangeSetType9 {
+            degree,
+            num_records,
+            state_data: &state_data,
+            epoch_data: &epoch_data,
+            epoch_registry: &epoch_registry,
+        };
+
+        let summary = SPKSummaryRecord::default();
+
+        // Test exact match
+        let epoch = Epoch::from_et_seconds(10.0);
+        let result = dataset.evaluate(epoch, &summary).unwrap();
+        assert_eq!(result.0.x, 10.0);
+
+        // Test interpolation
+        let epoch = Epoch::from_et_seconds(10.5);
+        let result = dataset.evaluate(epoch, &summary).unwrap();
+        assert_eq!(result.0.x, 10.5);
+        assert_eq!(result.0.y, 21.0);
+
+        // Test boundary of registry block
+
+        // Target: 99.5.
+        // partition_point(|x| x < 99.5): returns 1.
+        // sub_array_start_idx = 99.
+        // Slice: 99..=198.
+        // 99.5 is > epoch_data[99] (99.0).
+        let epoch = Epoch::from_et_seconds(99.5);
+        let result = dataset.evaluate(epoch, &summary).unwrap();
+        assert_eq!(result.0.x, 99.5);
+
+        // Target: 100.5.
+        // partition_point(|x| x < 100.5): 1.
+        // Same slice. 100.5 is in 99..=198.
+        let epoch = Epoch::from_et_seconds(100.5);
+        let result = dataset.evaluate(epoch, &summary).unwrap();
+        assert_eq!(result.0.x, 100.5);
+
+        // Target: 200.5
+        // partition_point(|x| x < 200.5): 2.
+        // dir_idx = 2.
+        // start = 199.
+        // Slice 199..=249.
+        let epoch = Epoch::from_et_seconds(200.5);
+        let result = dataset.evaluate(epoch, &summary).unwrap();
+        assert_eq!(result.0.x, 200.5);
     }
 }
