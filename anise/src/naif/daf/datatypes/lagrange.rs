@@ -267,7 +267,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
         match search_data_slice.binary_search_by(|epoch_et| {
             epoch_et
                 .partial_cmp(&epoch.to_et_seconds())
-                .expect("epochs in Hermite data is now NaN or infinite but was not before")
+                .expect("epochs in Lagrange data is now NaN or infinite but was not before")
         }) {
             Ok(idx) => {
                 // Oh wow, this state actually exists, no interpolation needed!
