@@ -731,7 +731,10 @@ mod daf_ut {
         let comments = daf.comments().unwrap();
 
         if let Some(c) = comments {
-            assert_eq!(c, "Hello World", "Comments included summary record content!");
+            assert_eq!(
+                c, "Hello World",
+                "Comments included summary record content!"
+            );
         } else {
             panic!("No comments found!");
         }
