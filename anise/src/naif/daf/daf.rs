@@ -426,37 +426,68 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     pub fn comments(&self) -> Result<Option<String>, DAFError> {
-        // TODO: This can be cleaned up to avoid allocating a string. In my initial tests there were a bunch of additional spaces, so I canceled those changes.
         let mut rslt = String::new();
         // FWRD has the initial record of the summary. So we assume that all records between the second record and that one are comments
-        for rid in 1..self.file_record()?.fwrd_idx() {
-            match core::str::from_utf8(
-                match self
-                    .bytes
-                    .get(rid * RCRD_LEN..(rid + 1) * RCRD_LEN)
-                    .ok_or_else(|| DecodingError::InaccessibleBytes {
-                        start: rid * RCRD_LEN,
-                        end: (rid + 1) * RCRD_LEN,
-                        size: self.bytes.len(),
-                    }) {
-                    Ok(it) => it,
-                    Err(source) => {
-                        return Err(DAFError::DecodingComments {
-                            kind: R::NAME,
-                            source,
-                        })
-                    }
-                },
-            ) {
-                Ok(s) => rslt += s.replace('\u{0}', "\n").trim(),
+        // Note: fwrd_idx is 1-based index of the first summary record. So records < fwrd_idx (starting at 2) are comments.
+        // In 0-based indexing (where Rec 1 is index 0), comments are at indices 1 .. fwrd_idx-1.
+        // We iterate `rid` from 1 up to fwrd_idx-1.
+        // Since `fwrd_idx` returns `usize` (the 1-based index), subtracting 1 gives the count of records before summary.
+        // Rec 1 is File Record. Rec 2..fwrd_idx-1 are comments.
+        // If fwrd_idx is 2 (minimum), range 1..1 is empty. Correct.
+        let end_idx = self.file_record()?.fwrd_idx();
+        let loop_end = if end_idx > 1 { end_idx - 1 } else { 1 };
+
+        for rid in 1..loop_end {
+            let bytes_slice = match self
+                .bytes
+                .get(rid * RCRD_LEN..(rid + 1) * RCRD_LEN)
+                .ok_or_else(|| DecodingError::InaccessibleBytes {
+                    start: rid * RCRD_LEN,
+                    end: (rid + 1) * RCRD_LEN,
+                    size: self.bytes.len(),
+                }) {
+                Ok(it) => it,
+                Err(source) => {
+                    return Err(DAFError::DecodingComments {
+                        kind: R::NAME,
+                        source,
+                    })
+                }
+            };
+
+            let s = match core::str::from_utf8(bytes_slice) {
+                Ok(s) => s,
                 Err(e) => {
                     // At this point, we know that the bytes are accessible because the embedded `match`
                     // did not fail, so we can perform a direct access.
-                    let valid_s = core::str::from_utf8(
-                        &self.bytes[rid * RCRD_LEN..(rid * RCRD_LEN + e.valid_up_to())],
-                    )
+                    core::str::from_utf8(&bytes_slice[..e.valid_up_to()]).unwrap()
+                }
+            };
+
+            // Optimization: Avoid allocating intermediate strings.
+            // Identify the start and end of meaningful content (skipping whitespace and nulls).
+            // Then append the content, replacing nulls with newlines.
+
+            // Find first non-padding char
+            if let Some((start, _)) = s
+                .char_indices()
+                .find(|(_, c)| !c.is_whitespace() && *c != '\0')
+            {
+                // Find last non-padding char
+                // safe to unwrap because we found at least one char above
+                let (end_idx, end_char) = s
+                    .char_indices()
+                    .rev()
+                    .find(|(_, c)| !c.is_whitespace() && *c != '\0')
                     .unwrap();
-                    rslt += valid_s.replace('\u{0}', "\n").trim()
+                let end = end_idx + end_char.len_utf8();
+
+                for c in s[start..end].chars() {
+                    if c == '\0' {
+                        rslt.push('\n');
+                    } else {
+                        rslt.push(c);
+                    }
                 }
             }
         }
@@ -656,6 +687,56 @@ mod daf_ut {
                 format!("{e}"),
                 "DAF/BPCSummaryRecord: file record issue: endian of file does not match the endian order of the machine".to_string()
             );
+        }
+    }
+
+    #[test]
+    fn test_comments_allocation_and_range() {
+        use crate::naif::daf::FileRecord;
+        use crate::naif::spk::summary::SPKSummaryRecord;
+        use zerocopy::IntoBytes;
+
+        // Construct a DAF file in memory
+        // Record 1: File Record
+        // Record 2: Comment "Hello World"
+        // Record 3: Summary Record (should not be read as comment)
+
+        let mut file_record = FileRecord::spk("TEST");
+        file_record.forward = 3; // Summary starts at Record 3
+        file_record.nd = 2;
+        file_record.ni = 6;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(file_record.as_bytes());
+        bytes.resize(1024, 0);
+
+        // Record 2: Comment
+        let comment = "Hello World";
+        let mut comment_record = vec![0u8; 1024];
+        comment_record[..comment.len()].copy_from_slice(comment.as_bytes());
+        bytes.extend(comment_record);
+
+        // Record 3: Summary (simulate with some data that looks like text to confuse it, or binary)
+        // "BADBEEF"
+        let mut summary_record = vec![0u8; 1024];
+        let fake_summary = "SHOULD_NOT_SEE_THIS";
+        summary_record[..fake_summary.len()].copy_from_slice(fake_summary.as_bytes());
+        bytes.extend(summary_record);
+
+        // Add Name Record (Rec 4) just in case
+        bytes.extend(vec![0u8; 1024]);
+
+        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+
+        let comments = daf.comments().unwrap();
+
+        if let Some(c) = comments {
+            assert_eq!(
+                c, "Hello World",
+                "Comments included summary record content!"
+            );
+        } else {
+            panic!("No comments found!");
         }
     }
 }
