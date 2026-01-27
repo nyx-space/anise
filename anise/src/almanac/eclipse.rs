@@ -206,11 +206,7 @@ impl Almanac {
         // Compute the apparent separation of both circles
         let d_prime = (-(r_ls.dot(&r_eb)) / (r_eb.norm() * r_ls.norm())).acos();
 
-        let percentage = compute_occultation_percentage(
-            d_prime,
-            r_ls_prime,
-            r_fobj_prime,
-        )?;
+        let percentage = compute_occultation_percentage(d_prime, r_ls_prime, r_fobj_prime)?;
 
         Ok(Occultation {
             epoch,
@@ -341,7 +337,9 @@ fn compute_occultation_percentage(
 
         let shadow_area = circ_seg_area(r_fobj_prime, d1) + circ_seg_area(r_ls_prime, d2);
         if shadow_area.is_nan() {
-            error!("Shadow area is NaN! Please file a bug with initial states, eclipsing bodies, etc.");
+            error!(
+                "Shadow area is NaN! Please file a bug with initial states, eclipsing bodies, etc."
+            );
             return Ok(100.0);
         }
         // Compute the nominal area of the back object
@@ -559,12 +557,7 @@ mod ut_los {
         // Compute apparent separation
         let d_prime = (-(r_ls.dot(&r_eb)) / (r_eb.norm() * r_ls.norm())).acos();
 
-        let pct = compute_occultation_percentage(
-            d_prime,
-            r_ls_prime,
-            r_fobj_prime,
-        )
-        .unwrap();
+        let pct = compute_occultation_percentage(d_prime, r_ls_prime, r_fobj_prime).unwrap();
 
         println!("External Tangency Percentage: {}", pct);
         assert!(pct <= 0.001);
@@ -601,12 +594,7 @@ mod ut_los {
         // Compute apparent separation
         let d_prime = (-(r_ls.dot(&r_eb)) / (r_eb.norm() * r_ls.norm())).acos();
 
-        let pct_inside = compute_occultation_percentage(
-            d_prime,
-            r_ls_prime,
-            r_fobj_prime,
-        )
-        .unwrap();
+        let pct_inside = compute_occultation_percentage(d_prime, r_ls_prime, r_fobj_prime).unwrap();
 
         println!("Inside Small Body Percentage: {}", pct_inside);
         assert!(pct_inside >= 99.999);
