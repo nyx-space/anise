@@ -28,6 +28,20 @@ A quick comparison with the traditional CSPICE toolkit:
 | **API Style** | Procedural (Integer IDs) | **Object-Oriented / Pythonic** |
 | **Serialization** | None | **S-Expressions (Cloud Native)** |
 
+ANISE supports many SPICE kernels. Binary kernels are supported as-is, while text kernels must be transformed into their ANISE equivalent (usually `.pca` or `.lka` files).
+
+| Kernel Type | Supported | Note |
+| :--- | :---: | :--- |
+| **BSP / SPK** | ✅ | Supported as-is |
+| **BPC** | ✅ | Supported as-is |
+| **TK (Text)** | 🔄 | Supported after transformation |
+| **LSK** | 🔄 | Supported after transformation |
+| **GM** | 🔄 | Supported after transformation |
+| **CK** | ❌ | Yet to be supported |
+| **SCLK** | ❌ | Yet to be supported |
+| **DSK** | ❌ | Yet to be supported |
+| **IK / EK** | ❌ | Yet to be supported |
+
 ## Features
 
   + **High Precision**: Matches SPICE to machine precision in translations and minimal errors in rotations.
@@ -56,6 +70,11 @@ graph TD
 - [02 - Loading remote and local files (MetaAlmanac)](./tutorials/Tutorial%2002%20-%20Loading%20remote%20SPICE%20and%20ANISE%20files%20(meta%20almanac).ipynb)
 - [03 - Defining and working with the orbit structure](./tutorials/Tutorial%2003%20-%20Defining%20and%20working%20with%20the%20Orbit%20structure.ipynb)
 - [04 - Computing azimuth, elevation, and range data (AER)](./tutorials/Tutorial%2004%20-%20Computing%20Azimuth%20Elevation%20and%20Range%20data.ipynb)
+- [05 - Using frame kernels and text planetary kernels](./tutorials/Tutorial%2005%20-%20Using%20frame%20kernels%20and%20text%20planetary%20kernels.ipynb)
+- [06 - Sun probe Earth angle](./tutorials/Tutorial%2006%20-%20Sun%20probe%20Earth%20angle.ipynb)
+- [07 - Analysis](./tutorials/Tutorial%2007%20-%20Analysis.ipynb)
+- [08 - OEM and Covariance](./tutorials/Tutorial%2008%20-%20OEM%20and%20Covariance.ipynb)
+
 
 *Note: The tutorials can be viewed in read-only form on [the Github repo](https://github.com/nyx-space/anise/tree/master/anise-py/tutorials).*
 
