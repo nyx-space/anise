@@ -1563,18 +1563,15 @@ impl Orbit {
     /// Refer to dcm_from_ric_to_inertial for details on the RIC frame.
     ///
     /// # Algorithm
-    /// 1. Compute the RIC DCM of self
-    /// 2. Rotate self into the RIC frame
-    /// 3. Rotation other into the RIC frame
-    /// 4. Compute the difference between these two states
-    /// 5. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`
+    /// 1. Compute the difference between `other` and `self`
+    /// 2. Compute the RIC DCM of `self`
+    /// 3. Rotate the difference into the RIC frame of `self`
+    /// 4. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`
     ///
     /// :type other: Orbit
     /// :rtype: Orbit
     pub fn ric_difference(&self, other: &Self) -> PhysicsResult<Self> {
-        let self_in_ric = (self.dcm_from_ric_to_inertial()?.transpose() * self)?;
-        let other_in_ric = (self.dcm_from_ric_to_inertial()?.transpose() * other)?;
-        let mut rslt = (self_in_ric - other_in_ric)?;
+        let mut rslt = (self.dcm_from_ric_to_inertial()?.transpose() * (*other - *self)?)?;
         rslt.frame.strip();
         Ok(rslt)
     }
@@ -1583,18 +1580,15 @@ impl Orbit {
     /// Refer to dcm_from_vnc_to_inertial for details on the VNC frame.
     ///
     /// # Algorithm
-    /// 1. Compute the VNC DCM of self
-    /// 2. Rotate self into the VNC frame
-    /// 3. Rotation other into the VNC frame
-    /// 4. Compute the difference between these two states
-    /// 5. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`
+    /// 1. Compute the difference between `other` and `self`
+    /// 2. Compute the VNC DCM of `self`
+    /// 3. Rotate the difference into the VNC frame of `self`
+    /// 4. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`
     ///
     /// :type other: Orbit
     /// :rtype: Orbit
     pub fn vnc_difference(&self, other: &Self) -> PhysicsResult<Self> {
-        let self_in_vnc = (self.dcm_from_vnc_to_inertial()?.transpose() * self)?;
-        let other_in_vnc = (self.dcm_from_vnc_to_inertial()?.transpose() * other)?;
-        let mut rslt = (self_in_vnc - other_in_vnc)?;
+        let mut rslt = (self.dcm_from_vnc_to_inertial()?.transpose() * (*other - *self)?)?;
         rslt.frame.strip();
         Ok(rslt)
     }

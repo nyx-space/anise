@@ -29,6 +29,20 @@ Space missions demand precision, but modern engineering demands efficiency and s
 | **API Style** | Procedural (Integer IDs) | **Object-Oriented / Pythonic** |
 | **Serialization** | None | **S-Expressions (Cloud Native)** |
 
+ANISE supports many SPICE kernels. Binary kernels are supported as-is, while text kernels must be transformed into their ANISE equivalent (usually `.pca` or `.lka` files).
+
+| Kernel Type | Supported | Note |
+| :--- | :---: | :--- |
+| **BSP / SPK** | ✅ | Supported as-is |
+| **BPC** | ✅ | Supported as-is |
+| **TK (Text)** | 🔄 | Supported after transformation |
+| **LSK** | 🔄 | Supported after transformation |
+| **GM** | 🔄 | Supported after transformation |
+| **CK** | ❌ | Yet to be supported |
+| **SCLK** | ❌ | Yet to be supported |
+| **DSK** | ❌ | Yet to be supported |
+| **IK / EK** | ❌ | Yet to be supported |
+
 ## Architecture
 
 ANISE is a "Core + Bindings" ecosystem. The heavy lifting is done in Rust, ensuring maximum performance and safety, which is then exposed to your language or tool of choice.

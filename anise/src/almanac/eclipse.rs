@@ -183,7 +183,7 @@ impl Almanac {
 
         // Compute the apparent radii of the back object and front object (preventing any NaN)
         let r_ls_prime = if bobj_mean_eq_radius_km >= r_ls.norm() {
-            bobj_mean_eq_radius_km
+            core::f64::consts::FRAC_PI_2
         } else {
             (bobj_mean_eq_radius_km / r_ls.norm()).asin()
         };
@@ -198,7 +198,7 @@ impl Almanac {
             })?;
 
         let r_fobj_prime = if fobj_mean_eq_radius_km >= r_eb.norm() {
-            fobj_mean_eq_radius_km
+            core::f64::consts::FRAC_PI_2
         } else {
             (fobj_mean_eq_radius_km / r_eb.norm()).asin()
         };
@@ -206,72 +206,18 @@ impl Almanac {
         // Compute the apparent separation of both circles
         let d_prime = (-(r_ls.dot(&r_eb)) / (r_eb.norm() * r_ls.norm())).acos();
 
-        if d_prime - r_ls_prime > r_fobj_prime {
-            // If the closest point where the apparent radius of the back object _starts_ is further
-            // away than the furthest point where the front object's shadow can reach, then the light
-            // source is totally visible.
-            Ok(Occultation {
-                epoch,
-                percentage: 0.0,
-                back_frame,
-                front_frame,
-            })
-        } else if r_fobj_prime > d_prime + r_ls_prime {
-            // The back object is fully hidden by the front object, hence we're in total eclipse.
-            Ok(Occultation {
-                epoch,
-                percentage: 100.0,
-                back_frame,
-                front_frame,
-            })
-        } else if (r_ls_prime - r_fobj_prime).abs() < d_prime && d_prime < r_ls_prime + r_fobj_prime
-        {
-            // If we have reached this point, we're in penumbra.
-            // Both circles, which represent the back object projected onto the plane and the eclipsing geoid,
-            // now overlap creating an asymmetrial lens.
-            // The following math comes from http://mathworld.wolfram.com/Circle-CircleIntersection.html
-            // and https://stackoverflow.com/questions/3349125/circle-circle-intersection-points .
+        let percentage = compute_occultation_percentage(
+            d_prime,
+            r_ls_prime,
+            r_fobj_prime,
+        )?;
 
-            // Compute the distances between the center of the eclipsing geoid and the line crossing the intersection
-            // points of both circles.
-            let d1 =
-                (d_prime.powi(2) - r_ls_prime.powi(2) + r_fobj_prime.powi(2)) / (2.0 * d_prime);
-            let d2 =
-                (d_prime.powi(2) + r_ls_prime.powi(2) - r_fobj_prime.powi(2)) / (2.0 * d_prime);
-
-            let shadow_area = circ_seg_area(r_fobj_prime, d1) + circ_seg_area(r_ls_prime, d2);
-            if shadow_area.is_nan() {
-                error!(
-                "Shadow area is NaN! Please file a bug with initial states, eclipsing bodies, etc."
-                );
-                return Ok(Occultation {
-                    epoch,
-                    percentage: 100.0,
-                    back_frame,
-                    front_frame,
-                });
-            }
-            // Compute the nominal area of the back object
-            let nominal_area = core::f64::consts::PI * r_ls_prime.powi(2);
-            // And return the percentage (between 0 and 1) of the eclipse.
-            let percentage = 100.0 * shadow_area / nominal_area;
-            Ok(Occultation {
-                epoch,
-                percentage,
-                back_frame,
-                front_frame,
-            })
-        } else {
-            // Annular eclipse.
-            // If r_fobj_prime is very small, then the fraction is very small: however, we note a penumbra close to 1.0 as near full back object visibility, so let's subtract one from this.
-            let percentage = 100.0 * r_fobj_prime.powi(2) / r_ls_prime.powi(2);
-            Ok(Occultation {
-                epoch,
-                percentage,
-                back_frame,
-                front_frame,
-            })
-        }
+        Ok(Occultation {
+            epoch,
+            percentage,
+            back_frame,
+            front_frame,
+        })
     }
 
     /// Computes the solar eclipsing of the observer due to the eclipsing_frame.
@@ -367,6 +313,48 @@ impl Almanac {
     }
 }
 
+/// Compute the occultation percentage
+fn compute_occultation_percentage(
+    d_prime: f64,
+    r_ls_prime: f64,
+    r_fobj_prime: f64,
+) -> AlmanacResult<f64> {
+    if d_prime - r_ls_prime > r_fobj_prime {
+        // If the closest point where the apparent radius of the back object _starts_ is further
+        // away than the furthest point where the front object's shadow can reach, then the light
+        // source is totally visible.
+        Ok(0.0)
+    } else if r_fobj_prime > d_prime + r_ls_prime {
+        // The back object is fully hidden by the front object, hence we're in total eclipse.
+        Ok(100.0)
+    } else if (r_ls_prime - r_fobj_prime).abs() < d_prime && d_prime < r_ls_prime + r_fobj_prime {
+        // If we have reached this point, we're in penumbra.
+        // Both circles, which represent the back object projected onto the plane and the eclipsing geoid,
+        // now overlap creating an asymmetrial lens.
+        // The following math comes from http://mathworld.wolfram.com/Circle-CircleIntersection.html
+        // and https://stackoverflow.com/questions/3349125/circle-circle-intersection-points .
+
+        // Compute the distances between the center of the eclipsing geoid and the line crossing the intersection
+        // points of both circles.
+        let d1 = (d_prime.powi(2) - r_ls_prime.powi(2) + r_fobj_prime.powi(2)) / (2.0 * d_prime);
+        let d2 = (d_prime.powi(2) + r_ls_prime.powi(2) - r_fobj_prime.powi(2)) / (2.0 * d_prime);
+
+        let shadow_area = circ_seg_area(r_fobj_prime, d1) + circ_seg_area(r_ls_prime, d2);
+        if shadow_area.is_nan() {
+            error!("Shadow area is NaN! Please file a bug with initial states, eclipsing bodies, etc.");
+            return Ok(100.0);
+        }
+        // Compute the nominal area of the back object
+        let nominal_area = core::f64::consts::PI * r_ls_prime.powi(2);
+        // And return the percentage (between 0 and 1) of the eclipse.
+        Ok(100.0 * shadow_area / nominal_area)
+    } else {
+        // Annular eclipse.
+        // If r_fobj_prime is very small, then the fraction is very small: however, we note a penumbra close to 1.0 as near full back object visibility, so let's subtract one from this.
+        Ok(100.0 * r_fobj_prime.powi(2) / r_ls_prime.powi(2))
+    }
+}
+
 /// Compute the area of the circular segment of radius r and chord length d
 fn circ_seg_area(r: f64, d: f64) -> f64 {
     r.powi(2) * (d / r).acos() - d * (r.powi(2) - d.powi(2)).sqrt()
@@ -377,6 +365,7 @@ mod ut_los {
     use crate::constants::frames::{EARTH_J2000, MOON_J2000};
 
     use super::*;
+    use crate::math::Vector3;
     use hifitime::Epoch;
     use rstest::*;
 
@@ -529,5 +518,97 @@ mod ut_los {
             almanac.line_of_sight_obstructed(sc1, sc2, eme2k, None),
             Ok(false)
         );
+    }
+
+    #[test]
+    fn test_compute_occultation() {
+        // Case 1: External Tangency (d = rf + rb)
+        // Front object at 200 km. Radius 100 km. Apparent radius ~30 deg.
+        // Back object at 200 km. Radius 100 km. Apparent radius ~30 deg.
+        // Separation 60 deg.
+
+        let d1 = 200.0;
+        let r1 = 100.0; // Front
+        let d2 = 200.0;
+        let r2 = 100.0; // Back
+
+        let sep = PI / 3.0;
+
+        let r_obs_to_front = Vector3::new(d1, 0.0, 0.0);
+        let r_back_to_obs = Vector3::new(-d2 * sep.cos(), -d2 * sep.sin(), 0.0);
+
+        let r_ls = r_back_to_obs;
+        let r_eb = r_obs_to_front;
+
+        let bobj_mean_eq_radius_km = r2;
+        let fobj_mean_eq_radius_km = r1;
+
+        // Compute apparent radii
+        let r_ls_prime = if bobj_mean_eq_radius_km >= r_ls.norm() {
+            core::f64::consts::FRAC_PI_2
+        } else {
+            (bobj_mean_eq_radius_km / r_ls.norm()).asin()
+        };
+
+        let r_fobj_prime = if fobj_mean_eq_radius_km >= r_eb.norm() {
+            core::f64::consts::FRAC_PI_2
+        } else {
+            (fobj_mean_eq_radius_km / r_eb.norm()).asin()
+        };
+
+        // Compute apparent separation
+        let d_prime = (-(r_ls.dot(&r_eb)) / (r_eb.norm() * r_ls.norm())).acos();
+
+        let pct = compute_occultation_percentage(
+            d_prime,
+            r_ls_prime,
+            r_fobj_prime,
+        )
+        .unwrap();
+
+        println!("External Tangency Percentage: {}", pct);
+        assert!(pct <= 0.001);
+
+        // Case 2: Inside Body Unit Mismatch
+        // Obs inside Front object.
+        // Front object radius 1000 km. Dist 100 km.
+        // Back object radius 10 km. Dist 10000 km.
+
+        let d_inside = 0.0005; // 0.5 m
+        let r_front_small = 0.001; // 1 m
+        let r_obs_to_front_small = Vector3::new(d_inside, 0.0, 0.0);
+        let r_back_to_obs_far = Vector3::new(-10000.0 * sep.cos(), -10000.0 * sep.sin(), 0.0); // sep 60 deg
+        let r_back_small = 10.0;
+
+        let r_ls = r_back_to_obs_far;
+        let r_eb = r_obs_to_front_small;
+
+        let bobj_mean_eq_radius_km = r_back_small;
+        let fobj_mean_eq_radius_km = r_front_small;
+
+        let r_ls_prime = if bobj_mean_eq_radius_km >= r_ls.norm() {
+            core::f64::consts::FRAC_PI_2
+        } else {
+            (bobj_mean_eq_radius_km / r_ls.norm()).asin()
+        };
+
+        let r_fobj_prime = if fobj_mean_eq_radius_km >= r_eb.norm() {
+            core::f64::consts::FRAC_PI_2
+        } else {
+            (fobj_mean_eq_radius_km / r_eb.norm()).asin()
+        };
+
+        // Compute apparent separation
+        let d_prime = (-(r_ls.dot(&r_eb)) / (r_eb.norm() * r_ls.norm())).acos();
+
+        let pct_inside = compute_occultation_percentage(
+            d_prime,
+            r_ls_prime,
+            r_fobj_prime,
+        )
+        .unwrap();
+
+        println!("Inside Small Body Percentage: {}", pct_inside);
+        assert!(pct_inside >= 99.999);
     }
 }
