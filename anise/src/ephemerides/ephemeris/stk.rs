@@ -174,7 +174,7 @@ impl Ephemeris {
                         ),
                     });
                 }
-            } else if line.starts_with("CovarianceFormat") {
+            } else if line.split_whitespace().next().map_or(false, |w| w.eq_ignore_ascii_case("CovarianceFormat")) {
                 let fmt = parse_one_val(lno, line, "no value for CovarianceFormat")?;
                 if fmt.eq_ignore_ascii_case("LowerTriangular") || fmt.eq_ignore_ascii_case("LT") {
                     cov_format = CovarianceFormat::LowerTriangular;
