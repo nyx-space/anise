@@ -921,24 +921,32 @@ mod ut_oem {
 
         let (start, _) = ephem.domain().expect("Could not get domain");
 
-        // Check first point (Time 0.0) -> Identity diagonals
+        // Check first point (Time 0.0) -> Sequence 1.0 to 21.0
+        // LowerTriangular Order:
+        // C[0][0] = 1
+        // C[1][0] = 2, C[1][1] = 3
+        // C[2][0] = 4, C[2][1] = 5, C[2][2] = 6
+        // ...
+        // C[5][5] = 21
         let rec0 = ephem.at(start, &almanac).unwrap();
         assert!(rec0.covar.is_some());
         let mat0 = rec0.covar.unwrap().matrix;
+
         assert!((mat0[(0, 0)] - 1.0).abs() < 1e-9);
-        assert!((mat0[(1, 1)] - 1.0).abs() < 1e-9);
-        assert!((mat0[(5, 5)] - 1.0).abs() < 1e-9);
-        assert!((mat0[(0, 1)]).abs() < 1e-9); // Off-diagonal
+        assert!((mat0[(1, 0)] - 2.0).abs() < 1e-9);
+        assert!((mat0[(1, 1)] - 3.0).abs() < 1e-9);
+        assert!((mat0[(2, 0)] - 4.0).abs() < 1e-9);
+        assert!((mat0[(2, 2)] - 6.0).abs() < 1e-9);
 
-        // Check second point (Time 60.0) -> Diagonals = 2.0
-        let epoch1 = start + Unit::Second * 60.0;
-        // We use nearest_after because interpolation of covariance requires valid previous and next,
-        // and at exact points it might use interpolation logic or exact lookup.
-        // Ephemeris::at uses interpolation.
-        let rec1 = ephem.at(epoch1, &almanac).unwrap();
-        let mat1 = rec1.covar.unwrap().matrix;
+        // Check last element C[5][5]
+        // Row 3: 7, 8, 9, 10
+        // Row 4: 11, 12, 13, 14, 15
+        // Row 5: 16, 17, 18, 19, 20, 21
+        assert!((mat0[(5, 0)] - 16.0).abs() < 1e-9);
+        assert!((mat0[(5, 5)] - 21.0).abs() < 1e-9);
 
-        assert!((mat1[(0, 0)] - 2.0).abs() < 1e-9);
-        assert!((mat1[(5, 5)] - 2.0).abs() < 1e-9);
+        // Verify Symmetry
+        assert!((mat0[(0, 1)] - 2.0).abs() < 1e-9);
+        assert!((mat0[(5, 2)] - 18.0).abs() < 1e-9); // C[2][5] symmetric to C[5][2] (value 18)
     }
 }
