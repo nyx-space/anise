@@ -61,6 +61,9 @@ impl Ephemeris {
         let mut state_data = BTreeMap::new();
         let mut state_cov = BTreeMap::new();
 
+        // Buffer to accumulate tokens across lines for covariance parsing
+        let mut cov_token_buffer: Vec<f64> = Vec::with_capacity(22);
+
         let parse_one_val = |lno: usize, line: &str, err: &str| -> Result<String, EphemerisError> {
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() >= 2 {
@@ -174,7 +177,11 @@ impl Ephemeris {
                         ),
                     });
                 }
-            } else if line.split_whitespace().next().map_or(false, |w| w.eq_ignore_ascii_case("CovarianceFormat")) {
+            } else if line
+                .split_whitespace()
+                .next()
+                .map_or(false, |w| w.eq_ignore_ascii_case("CovarianceFormat"))
+            {
                 let fmt = parse_one_val(lno, line, "no value for CovarianceFormat")?;
                 if fmt.eq_ignore_ascii_case("LowerTriangular") || fmt.eq_ignore_ascii_case("LT") {
                     cov_format = CovarianceFormat::LowerTriangular;
@@ -199,9 +206,13 @@ impl Ephemeris {
                 || line.eq_ignore_ascii_case("CovarianceTimePosVel")
             {
                 in_cov_data = true;
+                cov_token_buffer.clear();
                 continue;
             } else if line.eq_ignore_ascii_case("END CovarianceTimePosVel") {
                 in_cov_data = false;
+                if !cov_token_buffer.is_empty() {
+                    warn!("Parsing ended with incomplete covariance data (buffer not empty)");
+                }
             } else if in_state_data {
                 // Parse data line
                 // Format: Time X Y Z Vx Vy Vz
@@ -273,76 +284,69 @@ impl Ephemeris {
                 let orbit = Orbit::from_cartesian_pos_vel(state_vec, epoch, frame);
                 state_data.insert(epoch, EphemerisRecord { orbit, covar: None });
             } else if in_cov_data {
-                // Parse covariance data line
-                // Format: Time + 21 values
-                let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() < 22 {
-                    return Err(EphemerisError::STKEParsingError {
-                        lno,
-                        details: format!("expected at least 22 columns for covariance, found {}", parts.len()),
-                    });
-                }
-
-                let time_offset: f64 = parts[0].parse().map_err(|_| EphemerisError::STKEParsingError {
-                    lno,
-                    details: format!("invalid time offset {}", parts[0]),
-                })?;
-
-                let start_epoch = scenario_epoch.ok_or(EphemerisError::STKEParsingError {
-                    lno,
-                    details: "ScenarioEpoch not found before data".to_string(),
-                })?;
-
-                let epoch = start_epoch + Unit::Second * time_offset;
-
-                let mut vals = [0.0; 21];
-                for (i, part) in parts.iter().skip(1).enumerate().take(21) {
-                    vals[i] = part.parse().map_err(|_| EphemerisError::STKEParsingError {
-                        lno,
-                        details: format!("invalid covariance value {}", part),
+                // Parse covariance tokens
+                // Format: Time + 21 values, spread across lines/whitespace
+                let tokens = line.split_whitespace();
+                for token in tokens {
+                    let val = token.parse::<f64>().map_err(|_| {
+                        EphemerisError::STKEParsingError {
+                            lno,
+                            details: format!("invalid covariance value {}", token),
+                        }
                     })?;
+                    cov_token_buffer.push(val);
                 }
 
-                let mut matrix = Matrix6::zeros();
-                let mut idx = 0;
+                // Process buffer as long as we have full records (22 tokens)
+                while cov_token_buffer.len() >= 22 {
+                    // Extract one record
+                    let record_vals: Vec<f64> = cov_token_buffer.drain(0..22).collect();
 
-                match cov_format {
-                    CovarianceFormat::LowerTriangular => {
-                        // C[0][0]
-                        // C[1][0] C[1][1]
-                        // ...
-                        for r in 0..6 {
-                            for c in 0..=r {
-                                matrix[(r, c)] = vals[idx];
-                                matrix[(c, r)] = vals[idx]; // Symmetric
-                                idx += 1;
+                    let time_offset = record_vals[0];
+                    let start_epoch = scenario_epoch.ok_or(EphemerisError::STKEParsingError {
+                        lno,
+                        details: "ScenarioEpoch not found before data".to_string(),
+                    })?;
+                    let epoch = start_epoch + Unit::Second * time_offset;
+
+                    // Remaining 21 values are covariance
+                    let mut matrix = Matrix6::zeros();
+                    let mut idx = 1; // Start from index 1 in record_vals
+
+                    match cov_format {
+                        CovarianceFormat::LowerTriangular => {
+                            // C[0][0]
+                            // C[1][0] C[1][1]
+                            // ...
+                            for r in 0..6 {
+                                for c in 0..=r {
+                                    matrix[(r, c)] = record_vals[idx];
+                                    matrix[(c, r)] = record_vals[idx]; // Symmetric
+                                    idx += 1;
+                                }
+                            }
+                        }
+                        CovarianceFormat::UpperTriangular => {
+                            // C[0][0] C[0][1] ...
+                            //         C[1][1] ...
+                            for r in 0..6 {
+                                for c in r..6 {
+                                    matrix[(r, c)] = record_vals[idx];
+                                    matrix[(c, r)] = record_vals[idx]; // Symmetric
+                                    idx += 1;
+                                }
                             }
                         }
                     }
-                    CovarianceFormat::UpperTriangular => {
-                        // C[0][0] C[0][1] ...
-                        //         C[1][1] ...
-                        for r in 0..6 {
-                            for c in r..6 {
-                                matrix[(r, c)] = vals[idx];
-                                matrix[(c, r)] = vals[idx]; // Symmetric
-                                idx += 1;
-                            }
-                        }
-                    }
+
+                    state_cov.insert(
+                        epoch,
+                        Covariance {
+                            matrix,
+                            local_frame: LocalFrame::Inertial,
+                        },
+                    );
                 }
-
-                // If DistanceUnit is Kilometers, values are km^2, km^2/s, km^2/s^2.
-                // Anise uses km, km/s. So no conversion needed if input is in km.
-                // The parser enforces "DistanceUnit Kilometers" above, so we are safe assuming KM units.
-
-                state_cov.insert(
-                    epoch,
-                    Covariance {
-                        matrix,
-                        local_frame: LocalFrame::Inertial, // STK usually in the same frame as ephemeris
-                    },
-                );
             }
         }
 
