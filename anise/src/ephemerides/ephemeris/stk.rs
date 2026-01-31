@@ -9,7 +9,7 @@
  */
 
 use super::EphemerisError;
-use crate::math::Vector6;
+use crate::math::{Matrix6, Vector6};
 use crate::naif::daf::data_types::DataType;
 use crate::prelude::{Frame, Orbit};
 use hifitime::{Epoch, Unit};
@@ -19,7 +19,13 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use super::{Ephemeris, EphemerisRecord};
+use super::{Covariance, Ephemeris, EphemerisRecord, LocalFrame};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CovarianceFormat {
+    LowerTriangular,
+    UpperTriangular,
+}
 
 impl Ephemeris {
     /// Initialize a new ephemeris from the path to an Ansys STK .e file.
@@ -33,6 +39,7 @@ impl Ephemeris {
         let reader = BufReader::new(file);
 
         let mut in_state_data = false;
+        let mut in_cov_data = false;
         let mut ignore_block = false;
 
         // Define header variables we care about.
@@ -47,10 +54,12 @@ impl Ephemeris {
             .unwrap_or("STK_Object")
             .to_string();
         let mut scenario_epoch: Option<Epoch> = None;
+        let mut cov_format = CovarianceFormat::LowerTriangular; // Default for CovarianceTimePosVel
 
         // Store the temporary data in a BTreeMap so we have O(1) access when adding the covariance information
         // and we can iterate in order when building the vector.
         let mut state_data = BTreeMap::new();
+        let mut state_cov = BTreeMap::new();
 
         let parse_one_val = |lno: usize, line: &str, err: &str| -> Result<String, EphemerisError> {
             let parts: Vec<&str> = line.split_whitespace().collect();
@@ -101,6 +110,8 @@ impl Ephemeris {
                 // End of ephemeris block
             } else if line.starts_with("NumberOfEphemerisPoints") {
                 // Ignore for now, we just read lines
+            } else if line.starts_with("NumberOfCovariancePoints") {
+                // Ignore for now, we just read lines
             } else if line.starts_with("ScenarioEpoch") {
                 let epoch_str = parse_one_val(lno, line, "no value for ScenarioEpoch")?;
                 // Parse using hifitime's from_format_str
@@ -129,7 +140,8 @@ impl Ephemeris {
             {
                 let val = parse_one_val(lno, line, "no value for InterpolationOrder/Samples")?;
                 match val.parse::<usize>() {
-                    Ok(d) => degree = d,
+                    // Ephemeris.degree is the number of samples. STK provides order (samples - 1).
+                    Ok(d) => degree = d + 1,
                     Err(_) => {
                         return Err(EphemerisError::STKEParsingError {
                             lno,
@@ -162,6 +174,20 @@ impl Ephemeris {
                         ),
                     });
                 }
+            } else if line.starts_with("CovarianceFormat") {
+                let fmt = parse_one_val(lno, line, "no value for CovarianceFormat")?;
+                if fmt.eq_ignore_ascii_case("LowerTriangular") || fmt.eq_ignore_ascii_case("LT") {
+                    cov_format = CovarianceFormat::LowerTriangular;
+                } else if fmt.eq_ignore_ascii_case("UpperTriangular")
+                    || fmt.eq_ignore_ascii_case("UT")
+                {
+                    cov_format = CovarianceFormat::UpperTriangular;
+                } else {
+                    return Err(EphemerisError::STKEParsingError {
+                        lno,
+                        details: format!("invalid CovarianceFormat `{fmt}`"),
+                    });
+                }
             } else if line.eq_ignore_ascii_case("BEGIN EphemerisTimePosVel")
                 || line.eq_ignore_ascii_case("EphemerisTimePosVel")
             {
@@ -169,6 +195,13 @@ impl Ephemeris {
                 continue;
             } else if line.eq_ignore_ascii_case("END EphemerisTimePosVel") {
                 in_state_data = false;
+            } else if line.eq_ignore_ascii_case("BEGIN CovarianceTimePosVel")
+                || line.eq_ignore_ascii_case("CovarianceTimePosVel")
+            {
+                in_cov_data = true;
+                continue;
+            } else if line.eq_ignore_ascii_case("END CovarianceTimePosVel") {
+                in_cov_data = false;
             } else if in_state_data {
                 // Parse data line
                 // Format: Time X Y Z Vx Vy Vz
@@ -239,6 +272,77 @@ impl Ephemeris {
 
                 let orbit = Orbit::from_cartesian_pos_vel(state_vec, epoch, frame);
                 state_data.insert(epoch, EphemerisRecord { orbit, covar: None });
+            } else if in_cov_data {
+                // Parse covariance data line
+                // Format: Time + 21 values
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() < 22 {
+                    return Err(EphemerisError::STKEParsingError {
+                        lno,
+                        details: format!("expected at least 22 columns for covariance, found {}", parts.len()),
+                    });
+                }
+
+                let time_offset: f64 = parts[0].parse().map_err(|_| EphemerisError::STKEParsingError {
+                    lno,
+                    details: format!("invalid time offset {}", parts[0]),
+                })?;
+
+                let start_epoch = scenario_epoch.ok_or(EphemerisError::STKEParsingError {
+                    lno,
+                    details: "ScenarioEpoch not found before data".to_string(),
+                })?;
+
+                let epoch = start_epoch + Unit::Second * time_offset;
+
+                let mut vals = [0.0; 21];
+                for (i, part) in parts.iter().skip(1).enumerate().take(21) {
+                    vals[i] = part.parse().map_err(|_| EphemerisError::STKEParsingError {
+                        lno,
+                        details: format!("invalid covariance value {}", part),
+                    })?;
+                }
+
+                let mut matrix = Matrix6::zeros();
+                let mut idx = 0;
+
+                match cov_format {
+                    CovarianceFormat::LowerTriangular => {
+                        // C[0][0]
+                        // C[1][0] C[1][1]
+                        // ...
+                        for r in 0..6 {
+                            for c in 0..=r {
+                                matrix[(r, c)] = vals[idx];
+                                matrix[(c, r)] = vals[idx]; // Symmetric
+                                idx += 1;
+                            }
+                        }
+                    }
+                    CovarianceFormat::UpperTriangular => {
+                        // C[0][0] C[0][1] ...
+                        //         C[1][1] ...
+                        for r in 0..6 {
+                            for c in r..6 {
+                                matrix[(r, c)] = vals[idx];
+                                matrix[(c, r)] = vals[idx]; // Symmetric
+                                idx += 1;
+                            }
+                        }
+                    }
+                }
+
+                // If DistanceUnit is Kilometers, values are km^2, km^2/s, km^2/s^2.
+                // Anise uses km, km/s. So no conversion needed if input is in km.
+                // The parser enforces "DistanceUnit Kilometers" above, so we are safe assuming KM units.
+
+                state_cov.insert(
+                    epoch,
+                    Covariance {
+                        matrix,
+                        local_frame: LocalFrame::Inertial, // STK usually in the same frame as ephemeris
+                    },
+                );
             }
         }
 
@@ -247,6 +351,15 @@ impl Ephemeris {
                 lno: 0,
                 details: "ephemeris file contains no state data".to_string(),
             });
+        }
+
+        // Merge covariance into state_data
+        for (epoch, covar) in state_cov {
+            if let Some(record) = state_data.get_mut(&epoch) {
+                record.covar = Some(covar);
+            } else {
+                warn!("covariance at {epoch} has no corresponding state data, ignoring");
+            }
         }
 
         Ok(Ephemeris {

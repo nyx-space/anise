@@ -905,4 +905,40 @@ mod ut_oem {
         assert!(record.covar.is_none());
         assert_eq!(record.orbit.epoch, expected_end);
     }
+
+    #[rstest]
+    fn test_parse_stk_e_with_covariance(almanac: Almanac) {
+        let path = "../data/tests/ansys-stk/stk_cov.e";
+        let ephem = Ephemeris::from_stk_e_file(path).expect("Could not parse STK file");
+
+        // Check metadata
+        assert_eq!(
+            format!("{:?}", ephem.interpolation()),
+            "Type9LagrangeUnequalStep"
+        );
+
+        assert!(ephem.includes_covariance(), "Ephemeris should have covariance");
+
+        let (start, _) = ephem.domain().expect("Could not get domain");
+
+        // Check first point (Time 0.0) -> Identity diagonals
+        let rec0 = ephem.at(start, &almanac).unwrap();
+        assert!(rec0.covar.is_some());
+        let mat0 = rec0.covar.unwrap().matrix;
+        assert!((mat0[(0, 0)] - 1.0).abs() < 1e-9);
+        assert!((mat0[(1, 1)] - 1.0).abs() < 1e-9);
+        assert!((mat0[(5, 5)] - 1.0).abs() < 1e-9);
+        assert!((mat0[(0, 1)]).abs() < 1e-9); // Off-diagonal
+
+        // Check second point (Time 60.0) -> Diagonals = 2.0
+        let epoch1 = start + Unit::Second * 60.0;
+        // We use nearest_after because interpolation of covariance requires valid previous and next,
+        // and at exact points it might use interpolation logic or exact lookup.
+        // Ephemeris::at uses interpolation.
+        let rec1 = ephem.at(epoch1, &almanac).unwrap();
+        let mat1 = rec1.covar.unwrap().matrix;
+
+        assert!((mat1[(0, 0)] - 2.0).abs() < 1e-9);
+        assert!((mat1[(5, 5)] - 2.0).abs() < 1e-9);
+    }
 }
