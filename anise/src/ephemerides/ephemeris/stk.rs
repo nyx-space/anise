@@ -111,9 +111,9 @@ impl Ephemeris {
                 // Start of ephemeris block
             } else if line.eq_ignore_ascii_case("END Ephemeris") {
                 // End of ephemeris block
-            } else if line.starts_with("NumberOfEphemerisPoints") {
-                // Ignore for now, we just read lines
-            } else if line.starts_with("NumberOfCovariancePoints") {
+            } else if line.starts_with("NumberOfEphemerisPoints")
+                || line.starts_with("NumberOfCovariancePoints")
+            {
                 // Ignore for now, we just read lines
             } else if line.starts_with("ScenarioEpoch") {
                 let epoch_str = parse_one_val(lno, line, "no value for ScenarioEpoch")?;
@@ -180,7 +180,7 @@ impl Ephemeris {
             } else if line
                 .split_whitespace()
                 .next()
-                .map_or(false, |w| w.eq_ignore_ascii_case("CovarianceFormat"))
+                .is_some_and(|w| w.eq_ignore_ascii_case("CovarianceFormat"))
             {
                 let fmt = parse_one_val(lno, line, "no value for CovarianceFormat")?;
                 cov_format = match fmt.to_ascii_lowercase().as_str() {
