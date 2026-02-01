@@ -183,18 +183,16 @@ impl Ephemeris {
                 .map_or(false, |w| w.eq_ignore_ascii_case("CovarianceFormat"))
             {
                 let fmt = parse_one_val(lno, line, "no value for CovarianceFormat")?;
-                if fmt.eq_ignore_ascii_case("LowerTriangular") || fmt.eq_ignore_ascii_case("LT") {
-                    cov_format = CovarianceFormat::LowerTriangular;
-                } else if fmt.eq_ignore_ascii_case("UpperTriangular")
-                    || fmt.eq_ignore_ascii_case("UT")
-                {
-                    cov_format = CovarianceFormat::UpperTriangular;
-                } else {
-                    return Err(EphemerisError::STKEParsingError {
-                        lno,
-                        details: format!("invalid CovarianceFormat `{fmt}`"),
-                    });
-                }
+                cov_format = match fmt.to_ascii_lowercase().as_str() {
+                    "lowertriangular" | "lt" => CovarianceFormat::LowerTriangular,
+                    "uppertriangular" | "ut" => CovarianceFormat::UpperTriangular,
+                    _ => {
+                        return Err(EphemerisError::STKEParsingError {
+                            lno,
+                            details: format!("invalid CovarianceFormat `{fmt}`"),
+                        });
+                    }
+                };
             } else if line.eq_ignore_ascii_case("BEGIN EphemerisTimePosVel")
                 || line.eq_ignore_ascii_case("EphemerisTimePosVel")
             {
@@ -288,12 +286,13 @@ impl Ephemeris {
                 // Format: Time + 21 values, spread across lines/whitespace
                 let tokens = line.split_whitespace();
                 for token in tokens {
-                    let val = token.parse::<f64>().map_err(|_| {
-                        EphemerisError::STKEParsingError {
-                            lno,
-                            details: format!("invalid covariance value {}", token),
-                        }
-                    })?;
+                    let val =
+                        token
+                            .parse::<f64>()
+                            .map_err(|_| EphemerisError::STKEParsingError {
+                                lno,
+                                details: format!("invalid covariance value {}", token),
+                            })?;
                     cov_token_buffer.push(val);
                 }
 
