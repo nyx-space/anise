@@ -905,4 +905,51 @@ mod ut_oem {
         assert!(record.covar.is_none());
         assert_eq!(record.orbit.epoch, expected_end);
     }
+
+    #[rstest]
+    fn test_parse_stk_e_with_covariance(almanac: Almanac) {
+        let path = "../data/tests/ansys-stk/stk_cov.e";
+        let ephem = Ephemeris::from_stk_e_file(path).expect("Could not parse STK file");
+
+        // Check metadata
+        assert_eq!(
+            format!("{:?}", ephem.interpolation()),
+            "Type9LagrangeUnequalStep"
+        );
+
+        assert!(
+            ephem.includes_covariance(),
+            "Ephemeris should have covariance"
+        );
+
+        let (start, _) = ephem.domain().expect("Could not get domain");
+
+        // Check first point (Time 0.0) -> Sequence 1.0 to 21.0
+        // LowerTriangular Order:
+        // C[0][0] = 1
+        // C[1][0] = 2, C[1][1] = 3
+        // C[2][0] = 4, C[2][1] = 5, C[2][2] = 6
+        // ...
+        // C[5][5] = 21
+        let rec0 = ephem.at(start, &almanac).unwrap();
+        assert!(rec0.covar.is_some());
+        let mat0 = rec0.covar.unwrap().matrix;
+
+        assert!((mat0[(0, 0)] - 1.0).abs() < 1e-9);
+        assert!((mat0[(1, 0)] - 2.0).abs() < 1e-9);
+        assert!((mat0[(1, 1)] - 3.0).abs() < 1e-9);
+        assert!((mat0[(2, 0)] - 4.0).abs() < 1e-9);
+        assert!((mat0[(2, 2)] - 6.0).abs() < 1e-9);
+
+        // Check last element C[5][5]
+        // Row 3: 7, 8, 9, 10
+        // Row 4: 11, 12, 13, 14, 15
+        // Row 5: 16, 17, 18, 19, 20, 21
+        assert!((mat0[(5, 0)] - 16.0).abs() < 1e-9);
+        assert!((mat0[(5, 5)] - 21.0).abs() < 1e-9);
+
+        // Verify Symmetry
+        assert!((mat0[(0, 1)] - 2.0).abs() < 1e-9);
+        assert!((mat0[(5, 2)] - 18.0).abs() < 1e-9); // C[2][5] symmetric to C[5][2] (value 18)
+    }
 }
