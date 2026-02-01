@@ -917,7 +917,10 @@ mod ut_oem {
             "Type9LagrangeUnequalStep"
         );
 
-        assert!(ephem.includes_covariance(), "Ephemeris should have covariance");
+        assert!(
+            ephem.includes_covariance(),
+            "Ephemeris should have covariance"
+        );
 
         let (start, _) = ephem.domain().expect("Could not get domain");
 
