@@ -204,6 +204,7 @@ impl Ephemeris {
                 || line.eq_ignore_ascii_case("CovarianceTimePosVel")
             {
                 in_cov_data = true;
+                in_state_data = false;
                 cov_token_buffer.clear();
                 continue;
             } else if line.eq_ignore_ascii_case("END CovarianceTimePosVel") {
@@ -291,7 +292,7 @@ impl Ephemeris {
                             .parse::<f64>()
                             .map_err(|_| EphemerisError::STKEParsingError {
                                 lno,
-                                details: format!("invalid covariance value {}", token),
+                                details: format!("invalid covariance value {token}"),
                             })?;
                     cov_token_buffer.push(val);
                 }
