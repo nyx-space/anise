@@ -226,20 +226,3 @@ jobs:
           env:
             UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    if: github.ref_type == 'tag'
-    needs: [linux, windows, macos-14, macos-15, sdist]
-    steps:
-      - uses: actions/download-artifact@v4 # No `name` to download all artifacts.
-        with:
-            pattern: wheels-*
-            merge-multiple: true
-
-      - name: Publish to PyPI
-        env:
-          UV_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          pip install uv
-          uv publish
