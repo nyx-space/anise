@@ -55,6 +55,7 @@ impl Ephemeris {
             .to_string();
         let mut scenario_epoch: Option<Epoch> = None;
         let mut cov_format = CovarianceFormat::LowerTriangular; // Default for CovarianceTimePosVel
+        let mut is_kilometers = false;
 
         // Store the temporary data in a BTreeMap so we have O(1) access when adding the covariance information
         // and we can iterate in order when building the vector.
@@ -157,12 +158,17 @@ impl Ephemeris {
             } else if line.starts_with("CoordinateSystem") {
                 orient_name = Some(parse_one_val(lno, line, "no value for CoordinateSystem")?);
             } else if line.starts_with("DistanceUnit") {
-                // Assume Kilometers for now, check if it is something else
                 let unit = parse_one_val(lno, line, "no value for DistanceUnit")?;
-                if !unit.eq_ignore_ascii_case("Kilometers") {
+                if unit.eq_ignore_ascii_case("Kilometers") {
+                    is_kilometers = true;
+                } else if unit.eq_ignore_ascii_case("Meters") {
+                    is_kilometers = false;
+                } else {
                     return Err(EphemerisError::STKEParsingError {
                         lno,
-                        details: format!("DistanceUnit is {unit}, only Kilometers supported"),
+                        details: format!(
+                            "DistanceUnit is {unit}, only Kilometers and Meters supported"
+                        ),
                     });
                 }
             } else if line.starts_with("TimeSystem") {
@@ -241,13 +247,17 @@ impl Ephemeris {
 
                 let mut state_vec = Vector6::zeros();
                 for i in 0..6 {
-                    state_vec[i] =
+                    let mut val: f64 =
                         parts[i + 1]
                             .parse()
                             .map_err(|_| EphemerisError::STKEParsingError {
                                 lno,
                                 details: format!("invalid state value {}", parts[i + 1]),
                             })?;
+                    if !is_kilometers {
+                        val *= 1e-3;
+                    }
+                    state_vec[i] = val;
                 }
 
                 let center_name_str = center_name.as_deref().unwrap_or("Earth");
@@ -300,7 +310,13 @@ impl Ephemeris {
                 // Process buffer as long as we have full records (22 tokens)
                 while cov_token_buffer.len() >= 22 {
                     // Extract one record
-                    let record_vals: Vec<f64> = cov_token_buffer.drain(0..22).collect();
+                    let mut record_vals: Vec<f64> = cov_token_buffer.drain(0..22).collect();
+
+                    if !is_kilometers {
+                        for val in record_vals.iter_mut().skip(1) {
+                            *val *= 1e-6;
+                        }
+                    }
 
                     let time_offset = record_vals[0];
                     let start_epoch = scenario_epoch.ok_or(EphemerisError::STKEParsingError {
