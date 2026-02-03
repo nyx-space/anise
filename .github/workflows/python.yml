@@ -165,6 +165,7 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          working-directory: anise-py
       - name: Upload wheels
         uses: actions/upload-artifact@v5
         with:
