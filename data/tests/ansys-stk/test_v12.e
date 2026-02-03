@@ -21,6 +21,8 @@ BEGIN Ephemeris
 
     CoordinateSystem		 ICRF
 
+    DistanceUnit Kilometers
+
     BEGIN SegmentBoundaryTimes
 
          0.0

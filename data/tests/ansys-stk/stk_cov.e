@@ -17,6 +17,8 @@ BEGIN Ephemeris
 
     CoordinateSystem		 ICRF
 
+    DistanceUnit Kilometers
+
     CovarianceFormat LowerTriangular
 
     EphemerisTimePosVel
