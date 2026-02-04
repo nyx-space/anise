@@ -216,7 +216,7 @@ impl CartesianState {
     /// :type vz_km_s: float
     /// :rtype: None
     #[setter]
-    fn set_vz_km(&mut self, vz_km_s: f64) -> PyResult<()> {
+    fn set_vz_km_s(&mut self, vz_km_s: f64) -> PyResult<()> {
         self.velocity_km_s[2] = vz_km_s;
         Ok(())
     }

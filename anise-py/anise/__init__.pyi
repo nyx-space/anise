@@ -24,7 +24,7 @@ More specifically, the 99th percentile of error is less than 5 meters, the 75th 
     stellar: bool
     transmit_mode: bool
 
-    def __init__(self, name: str) -> Aberration:
+    def __new__(name: str) -> Aberration:
         """Represents the aberration correction options in ANISE.
 
 In space science and engineering, accurately pointing instruments (like optical cameras or radio antennas) at a target is crucial. This task is complicated by the finite speed of light, necessitating corrections for the apparent position of the target.
@@ -71,7 +71,7 @@ More specifically, the 99th percentile of error is less than 5 meters, the 75th 
 class Almanac:
     """An Almanac contains all of the loaded SPICE and ANISE data. It is the context for all computations."""
 
-    def __init__(self, path: str) -> Almanac:
+    def __new__(path: str) -> Almanac:
         """An Almanac contains all of the loaded SPICE and ANISE data. It is the context for all computations."""
 
     def angular_velocity_deg_s(self, from_frame: Frame, to_frame: Frame, epoch: Epoch) -> numpy.array:
@@ -457,10 +457,6 @@ class LocationDataSet:
     """A wrapper around a location dataset kernel (PyO3 does not handle type aliases).
 Use this class to load and unload kernels. Manipulate using its LocationDhallSet representation."""
 
-    def __init__(self) -> None:
-        """A wrapper around a location dataset kernel (PyO3 does not handle type aliases).
-Use this class to load and unload kernels. Manipulate using its LocationDhallSet representation."""
-
     @staticmethod
     def load(path: str) -> LocationDataSet:
         """Loads a Location Dataset kernel from the provided path"""
@@ -475,9 +471,6 @@ Use this class to load and unload kernels. Manipulate using its LocationDhallSet
 class LocationDhallSet:
     """A Dhall-serializable Location DataSet that serves as an optional intermediate to the LocationDataSet kernels."""
     data: list
-
-    def __init__(self, data: list) -> None:
-        """A Dhall-serializable Location DataSet that serves as an optional intermediate to the LocationDataSet kernels."""
 
     def dumps(self) -> str:
         """Returns the Dhall representation of this LocationDhallSet. Equivalent to to_dhall."""
@@ -503,9 +496,6 @@ class LocationDhallSetEntry:
     id: int
     value: Location
 
-    def __init__(self, value: Location, id: int=None, alias: str=None) -> None:
-        """Entry of a Location Dhall set"""
-
 @typing.final
 class MetaAlmanac:
     """A structure to set up an Almanac, with automatic downloading, local storage, checksum checking, and more.
@@ -517,7 +507,7 @@ If it does not match, the file will be downloaded again. If no CRC32 is provided
 The downloaded path will be stored in the "AppData" folder."""
     files: typing.List
 
-    def __init__(self, maybe_path: str=None) -> MetaAlmanac:
+    def __new__(maybe_path: str=None) -> MetaAlmanac:
         """A structure to set up an Almanac, with automatic downloading, local storage, checksum checking, and more.
 
 # Behavior
@@ -599,7 +589,7 @@ then the file will not be downloaded a second time."""
     crc32: int
     uri: str
 
-    def __init__(self, uri: str, crc32: int=None) -> MetaFile:
+    def __new__(uri: str, crc32: int=None) -> MetaFile:
         """MetaFile allows downloading a remote file from a URL (http, https only), and interpolation of paths in environment variable using the Dhall syntax `env:MY_ENV_VAR`.
 
 The data is stored in the user's local temp directory (i.e. `~/.local/share/nyx-space/anise/` on Linux and `AppData/Local/nyx-space/anise/` on Windows).
@@ -636,3 +626,5 @@ This function modified `self` and changes the URI to be the path to the download
         """Return str(self)."""
 
 def exec_gui():...
+__author__: str = 'Christopher Rabotin <christopher.rabotin@gmail.com>'
+__version__: str = '0.9.3'

@@ -3,9 +3,6 @@ import typing
 @typing.final
 class Condition:
     """Defines an event condition"""
-
-    def __init__(self) -> None:
-        """Defines an event condition"""
     Between: type = ...
     Equals: type = ...
     GreaterThan: type = ...
@@ -20,9 +17,6 @@ class Event:
     condition: Condition
     epoch_precision: Duration
     scalar: ScalarExpr
-
-    def __init__(self, scalar: ScalarExpr, condition: Condition, epoch_precision: Duration, ab_corr: Aberration=None) -> None:
-        """Defines a state parameter event finder from the desired value of the scalar expression to compute, precision on timing and value, and the aberration."""
 
     @staticmethod
     def apoapsis() -> Event:
@@ -91,7 +85,7 @@ class EventArc:
     fall: EventDetails
     rise: EventDetails
 
-    def __init__(self):...
+    def __new__():...
 
     def duration(self) -> Duration:...
 
@@ -119,11 +113,6 @@ class EventDetails:
     prev_value: float
     repr: str
     value: float
-
-    def __init__(self) -> None:
-        """Represents the details of an event occurring along a trajectory.
-
-`EventDetails` encapsulates the state at which a particular event occurs in a trajectory, along with additional information about the nature of the event. This struct is particularly useful for understanding the dynamics of the event, such as whether it represents a rising or falling edge, or if the edge is unclear."""
 
     def describe(self) -> str:...
 
@@ -154,11 +143,6 @@ class EventDetails:
 @typing.final
 class EventEdge:
     """Enumerates the possible edges of an event in a trajectory.
-
-`EventEdge` is used to describe the nature of a trajectory event, particularly in terms of its temporal dynamics relative to a specified condition or threshold. This enum helps in distinguishing whether the event is occurring at a rising edge, a falling edge, or if the edge is unclear due to insufficient data or ambiguous conditions."""
-
-    def __init__(self) -> None:
-        """Enumerates the possible edges of an event in a trajectory.
 
 `EventEdge` is used to describe the nature of a trajectory event, particularly in terms of its temporal dynamics relative to a specified condition or threshold. This enum helps in distinguishing whether the event is occurring at a rising edge, a falling edge, or if the edge is unclear due to insufficient data or ambiguous conditions."""
 
@@ -194,18 +178,12 @@ class EventEdge:
 @typing.final
 class FrameSpec:
     """FrameSpec allows defining a frame that can be computed from another set of loaded frames, which include a center."""
-
-    def __init__(self) -> None:
-        """FrameSpec allows defining a frame that can be computed from another set of loaded frames, which include a center."""
     Loaded: type = ...
     Manual: type = ...
 
 @typing.final
 class OrbitalElement:
     """Orbital element defines all of the supported orbital elements in ANISE, which are all built from a State."""
-
-    def __init__(self) -> None:
-        """Orbital element defines all of the supported orbital elements in ANISE, which are all built from a State."""
 
     def evaluate(self, orbit: Orbit) -> float:
         """Evaluate the orbital element enum variant for the provided orbit"""
@@ -288,7 +266,7 @@ class OrbitalElement:
 @typing.final
 class OrthogonalFrame:
 
-    def __init__(self):...
+    def __new__():...
     XY: type = ...
     XZ: type = ...
     YZ: type = ...
@@ -296,10 +274,6 @@ class OrthogonalFrame:
 @typing.final
 class Plane:
     """Plane selector, sets the missing component to zero.
-For example, Plane::YZ will multiply the DCM by [[1, 0. 0], [0, 1, 0], [0, 0, 0]]"""
-
-    def __init__(self) -> None:
-        """Plane selector, sets the missing component to zero.
 For example, Plane::YZ will multiply the DCM by [[1, 0. 0], [0, 1, 0], [0, 0, 0]]"""
 
     def __int__(self) -> None:
@@ -316,7 +290,7 @@ class ReportScalars:
     """A basic report builder that can be serialized seperately from the execution.
 The scalars must be a tuple of (ScalarExpr, String) where the String is the alias (optional)."""
 
-    def __init__(self, scalars: list, state_spec: StateSpec) -> ReportScalars:
+    def __new__(scalars: list, state_spec: StateSpec) -> ReportScalars:
         """A basic report builder that can be serialized seperately from the execution.
 The scalars must be a tuple of (ScalarExpr, String) where the String is the alias (optional)."""
 
@@ -330,9 +304,6 @@ The scalars must be a tuple of (ScalarExpr, String) where the String is the alia
 @typing.final
 class ScalarExpr:
     """ScalarExpr defines a scalar computation from a (set of) vector expression(s)."""
-
-    def __init__(self) -> None:
-        """ScalarExpr defines a scalar computation from a (set of) vector expression(s)."""
 
     def evaluate(self, orbit: Orbit, almanac: Almanac, ab_corr: Aberration=None) -> float:
         """Compute this ScalarExpr for the provided Orbit"""
@@ -395,7 +366,7 @@ class StateSpec:
     observer_frame: FrameSpec
     target_frame: FrameSpec
 
-    def __init__(self, target_frame: FrameSpec, observer_frame: FrameSpec, ab_corr: Aberration=None) -> None:
+    def __new__(target_frame: FrameSpec, observer_frame: FrameSpec, ab_corr: Aberration=None) -> None:
         """StateSpec allows defining a state from the target to the observer"""
 
     def evaluate(self, epoch: Epoch, almanac: Almanac) -> Orbit:
@@ -429,7 +400,7 @@ class StateSpec:
 @typing.final
 class VectorExpr:
 
-    def __init__(self):...
+    def __new__():...
     Add: type = ...
     CrossProduct: type = ...
     EccentricityVector: type = ...
@@ -452,7 +423,7 @@ class VisibilityArc:
     rise: EventDetails
     sample_rate: Duration
 
-    def __init__(self):...
+    def __new__():...
 
     def duration(self) -> Duration:...
 

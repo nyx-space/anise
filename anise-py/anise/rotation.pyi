@@ -11,7 +11,7 @@ It provides a number of run-time checks that prevent invalid rotations."""
     rot_mat_dt: numpy.array
     to_id: int
 
-    def __init__(self, np_rot_mat: numpy.array, from_id: int, to_id: int, np_rot_mat_dt: numpy.array=None) -> DCM:
+    def __new__(np_rot_mat: numpy.array, from_id: int, to_id: int, np_rot_mat_dt: numpy.array=None) -> DCM:
         """Defines a direction cosine matrix from one frame ID to another frame ID, optionally with its time derivative.
 It provides a number of run-time checks that prevent invalid rotations."""
 
@@ -162,55 +162,6 @@ Importantly, ANISE prevents the composition of two Euler Parameters if the frame
     x: float
     y: float
     z: float
-
-    def __init__(self, w: float, x: float, y: float, z: float, from_id: int, to_id: int) -> None:
-        """Represents the orientation of a rigid body or a coordinate frame transformation in three-dimensional space using Euler parameters.
-
-Euler parameters, also known as unit quaternions, are a set of four parameters `w`, `x`, `y`, `z`.
-They are particularly useful because they avoid gimbal lock, are more compact than rotation matrices,
-and allow for smooth interpolation (SLERP).
-
-# Conventions
-
-ANISE strictly adheres to the following conventions to ensure consistency with `DCM` and standard
-Guidance, Navigation, and Control (GNC) mathematics:
-
-1. **Hamiltonian Algebra:** The quaternion multiplication follows the right-handed rule where \\
-`i * j = k`. This is the standard in robotics and computer graphics, but distinct from the
-"JPL/Shuster" convention (`i * j = -k`) sometimes found in legacy aerospace software.
-
-2. **Passive Rotation (Coordinate Transformation):** A quaternion defined with `from: A` and `to: B`
-represents the transformation of **coordinates** from Frame A to Frame B.
-* The rotation of a vector `v` is computed as: `v_B = q.conjugate() * v_A * q`.
-* This matches the behavior of a Direction Cosine Matrix (DCM): `v_B = [DCM_A->B] * v_A`.
-
-3. **Operator Composition (Backward Chaining):** Rotations are composed in "Operator Order",
-matching matrix multiplication rules.
-* To compute the rotation A -> C, you multiply B->C by A->B.
-* `q_A_to_C = q_B_to_C * q_A_to_B`
-* ANISE enforces strict frame checking: `LHS.from` must equal `RHS.to`.
-
-# Definitions
-
-Euler parameters are defined in terms of the principal rotation vector. If a frame is rotated
-by an angle `θ` about a unit axis `e = [e1, e2, e3]`:
-
-* `w = cos(θ / 2)`
-* `x = e1 * sin(θ / 2)`
-* `y = e2 * sin(θ / 2)`
-* `z = e3 * sin(θ / 2)`
-
-These parameters satisfy `w^2 + x^2 + y^2 + z^2 = 1`, which means they represent
-a rotation in SO(3) and can be used to interpolate rotations smoothly.
-
-# Applications
-
-In the context of spacecraft mechanics, Euler parameters are often used because they provide a
-numerically stable way to represent the attitude of a spacecraft without the singularities that
-are present with Euler angles.
-
-# Usage
-Importantly, ANISE prevents the composition of two Euler Parameters if the frames do not match."""
 
     @staticmethod
     def about_x(angle_rad: float, from_id: int, to_id: int) -> Quaternion:

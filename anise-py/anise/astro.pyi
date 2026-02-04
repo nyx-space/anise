@@ -14,7 +14,7 @@ class AzElRange:
     range_km: float
     range_rate_km_s: float
 
-    def __init__(self, epoch: Epoch, azimuth_deg: float, elevation_deg: float, range_km: float, range_rate_km_s: float, obstructed_by: Frame=None, mask_deg: float=None) -> AzElRange:
+    def __new__(epoch: Epoch, azimuth_deg: float, elevation_deg: float, range_km: float, range_rate_km_s: float, obstructed_by: Frame=None, mask_deg: float=None) -> AzElRange:
         """A structure that stores the result of Azimuth, Elevation, Range, Range rate calculation."""
 
     def elevation_above_mask_deg(self) -> float:
@@ -58,8 +58,6 @@ If the terrain mask was zero at this azimuth, then the elevation above mask is e
 class Covariance:
     matrix: numpy.array
 
-    def __init__(self):...
-
     def __repr__(self) -> str:
         """Return repr(self)."""
 
@@ -69,7 +67,7 @@ class Covariance:
 @typing.final
 class DataType:
 
-    def __init__(self):...
+    def __new__():...
 
     def __eq__(self, value: typing.Any) -> bool:
         """Return self==value."""
@@ -127,7 +125,7 @@ BODY399_RADII     = ( 6378.1366   6378.1366   6356.7519 )"""
     semi_major_equatorial_radius_km: float
     semi_minor_equatorial_radius_km: float
 
-    def __init__(self, semi_major_equatorial_radius_km: float, polar_radius_km: float=None, semi_minor_equatorial_radius_km: float=None) -> Ellipsoid:
+    def __new__(semi_major_equatorial_radius_km: float, polar_radius_km: float=None, semi_minor_equatorial_radius_km: float=None) -> Ellipsoid:
         """Only the tri-axial Ellipsoid shape model is currently supported by ANISE.
 This is directly inspired from SPICE PCK.
 > For each body, three radii are listed: The first number is
@@ -184,14 +182,8 @@ class Ephemeris:
 
 In Python if you need to build an ephemeris with covariance, initialize with an empty list of
 orbit instances and then insert each EphemEntry with covariance."""
+    degree: int
     interpolation: str
-    object_id: str
-
-    def __init__(self, orbit_list: list, object_id: str) -> None:
-        """Initializes a new Ephemeris from the list of Orbit instances and a given object ID.
-
-In Python if you need to build an ephemeris with covariance, initialize with an empty list of
-orbit instances and then insert each EphemEntry with covariance."""
 
     def at(self, epoch: Epoch, almanac: Almanac) -> EphemerisRecord:
         """Interpolates the ephemeris state and covariance at the provided epoch.
@@ -221,10 +213,19 @@ The interpolation follows the "geodesic" (shortest path) on the curved surface o
 covariance matrices."""
 
     def covar_at(self, epoch: Epoch, local_frame: LocalFrame, almanac: Almanac) -> Covariance:
-        """Interpolate the ephemeris at the provided epoch, returning only the covariance."""
+        """Interpolate the ephemeris covariance at the provided epoch.
+
+This method implements a "Rotate-Then-Interpolate" strategy to avoid physical
+artifacts when interpolating rotating covariances.
+
+1. Finds the nearest covariance before and after the requested epoch.
+2. Rotates BOTH endpoints into the requested `local_frame`.
+3. Interpolates between the two stable matrices using Log-Euclidean Riemannian interpolation."""
 
     def domain(self) -> tuple:
         """Returns the time domain of this ephemeris."""
+
+    def end_epoch(self) -> Epoch:...
 
     @staticmethod
     def from_ccsds_oem_file(path: str) -> Ephemeris:
@@ -235,13 +236,18 @@ covariance matrices."""
         """Initializes a new Ephemeris from a file path to Ansys STK .e file."""
 
     def includes_covariance(self) -> bool:
-        """Returns whether all of the data in this ephemeris includes the covariance."""
+        """Returns true if all of the data in this ephemeris includes covariance.
 
-    def insert(self, entry: EphemerisRecord) -> None:
+This is a helper function which isn't used in other functions."""
+
+    def insert(self, record: EphemerisRecord) -> None:
         """Inserts a new ephemeris entry to this ephemeris (it is automatically sorted chronologically)."""
 
     def insert_orbit(self, orbit: Orbit) -> None:
         """Inserts a new orbit (without covariance) to this ephemeris (it is automatically sorted chronologically)."""
+
+    def len(self) -> int:
+        """Returns the number of states"""
 
     def nearest_after(self, epoch: Epoch, almanac: Almanac) -> EphemerisRecord:
         """Returns the nearest entry after the provided time"""
@@ -261,13 +267,22 @@ covariance matrices."""
     def nearest_orbit_before(self, epoch: Epoch, almanac: Almanac) -> Orbit:
         """Returns the nearest orbit before the provided time"""
 
+    def object_id(self) -> str:...
+
     def orbit_at(self, epoch: Epoch, almanac: Almanac) -> Orbit:
         """Interpolate the ephemeris at the provided epoch, returning only the orbit."""
 
     def resample(self, ts: TimeSeries, almanac: Almanac) -> Ephemeris:
         """Resample this ephemeris, with covariance, at the provided time series"""
 
-    def to_ccsds_oem_file(self, path: str, originator: str=None, object_name: str=None) -> None:
+    def start_epoch(self) -> Epoch:...
+
+    def transform(self, new_frame: Frame, almanac: Almanac) -> Ephemeris:
+        """Transforms this ephemeris into another frame, and rotates the covariance to that frame if the orientations are different.
+NOTE: The Nyquist-Shannon theorem is NOT applied here, so the new ephemeris may not be as precise as the original one.
+NOTE: If the orientations are different, the covariance will always be in the Inertial frame of the new frame."""
+
+    def write_ccsds_oem(self, path: str, originator: str=None, object_name: str=None) -> None:
         """Exports this Ephemeris to CCSDS OEM at the provided path, optionally specifying an originator and/or an object name"""
 
     def write_spice_bsp(self, naif_id: int, output_fname: str, data_type: DataType) -> None:
@@ -281,10 +296,9 @@ covariance matrices."""
 
 @typing.final
 class EphemerisRecord:
+    """An ephemeris record which can be inserted into an Ephemeris for export to SPICE BSP or CCSDS OEM."""
     covar: Covariance
     orbit: Orbit
-
-    def __init__(self):...
 
     def covar_in_frame(self, local_frame: LocalFrame) -> Covariance:
         """Returns the covariance in the desired orbit local frame, or None if this record does not define a covariance."""
@@ -305,7 +319,7 @@ class Frame:
     orientation_id: int
     shape: Ellipsoid
 
-    def __init__(self, ephemeris_id: int, orientation_id: int, mu_km3_s2: float=None, shape: Ellipsoid=None) -> Frame:
+    def __new__(ephemeris_id: int, orientation_id: int, mu_km3_s2: float=None, shape: Ellipsoid=None) -> Frame:
         """A Frame uniquely defined by its ephemeris center and orientation. Refer to FrameDetail for frames combined with parameters."""
 
     def ephem_origin_id_match(self, other_id: int) -> bool:
@@ -386,14 +400,10 @@ class FrameUid:
     """A unique frame reference that only contains enough information to build the actual Frame object.
 It cannot be used for any computations, is it be used in any structure apart from error structures."""
 
-    def __init__(self, ephemeris_id: int, orientation_id: int) -> None:
-        """A unique frame reference that only contains enough information to build the actual Frame object.
-It cannot be used for any computations, is it be used in any structure apart from error structures."""
-
 @typing.final
 class LocalFrame:
 
-    def __init__(self):...
+    def __new__():...
 
     def __int__(self) -> None:
         """int(self)"""
@@ -415,11 +425,6 @@ If the location includes a terrain mask, it will be used for obstruction checks 
     longitude_deg: float
     terrain_mask: list
     terrain_mask_ignored: bool
-
-    def __init__(self, latitude_deg: float, longitude_deg: float, height_km: float, frame: FrameUid, terrain_mask: list, terrain_mask_ignored: bool) -> None:
-        """Location is defined by its latitude, longitude, height above the geoid, mean angular rotation of the geoid, and a frame UID.
-If the location includes a terrain mask, it will be used for obstruction checks when computing azimuth and elevation.
-**Note:** The mean Earth angular velocity is `0.004178079012116429` deg/s."""
 
     def elevation_mask_at_azimuth_deg(self, azimuth_deg: float) -> float:
         """Returns the elevation mask at the provided azimuth, does NOT account for whether the mask is ignored or not."""
@@ -445,10 +450,6 @@ Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse
     epoch: Epoch
     front_frame: Frame
     percentage: float
-
-    def __init__(self) -> None:
-        """Stores the result of an occultation computation with the occultation percentage
-Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse/) for modeling details."""
 
     def factor(self) -> float:
         """Returns the percentage as a factor between 0 and 1"""
@@ -481,13 +482,12 @@ Unless noted otherwise, algorithms are from GMAT 2016a [StateConversionUtil.cpp]
     frame: Frame
     vx_km_s: float
     vy_km_s: float
-    vz_km: None
     vz_km_s: float
     x_km: float
     y_km: float
     z_km: float
 
-    def __init__(self, *args: tuples) -> Orbit:
+    def __new__(*args: tuples) -> Orbit:
         """Defines a Cartesian state in a given frame at a given epoch in a given time scale. Radius data is expressed in kilometers. Velocity data is expressed in kilometers per second.
 Regardless of the constructor used, this struct stores all the state information in Cartesian coordinates as these are always non singular.
 
@@ -924,11 +924,10 @@ Raises an error if the frames do not match (epochs do not need to match)."""
 Refer to dcm_from_ric_to_inertial for details on the RIC frame.
 
 # Algorithm
-1. Compute the RIC DCM of self
-2. Rotate self into the RIC frame
-3. Rotation other into the RIC frame
-4. Compute the difference between these two states
-5. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`"""
+1. Compute the difference between `other` and `self`
+2. Compute the RIC DCM of `self`
+3. Rotate the difference into the RIC frame of `self`
+4. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`"""
 
     def right_ascension_deg(self) -> float:
         """Returns the right ascension of this orbit in degrees"""
@@ -1019,11 +1018,10 @@ Returns an error if the orbit is not hyperbolic."""
 Refer to dcm_from_vnc_to_inertial for details on the VNC frame.
 
 # Algorithm
-1. Compute the VNC DCM of self
-2. Rotate self into the VNC frame
-3. Rotation other into the VNC frame
-4. Compute the difference between these two states
-5. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`"""
+1. Compute the difference between `other` and `self`
+2. Compute the VNC DCM of `self`
+3. Rotate the difference into the VNC frame of `self`
+4. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`"""
 
     def with_aop_deg(self, new_aop_deg: float) -> Orbit:
         """Returns a copy of the state with a new AOP"""
@@ -1077,9 +1075,6 @@ class TerrainMask:
     """TerrainMask is used to compute obstructions during AER calculations."""
     azimuth_deg: float
     elevation_mask_deg: float
-
-    def __init__(self, azimuth_deg: float, elevation_mask_deg: float) -> None:
-        """TerrainMask is used to compute obstructions during AER calculations."""
 
     @staticmethod
     def from_flat_terrain(elevation_mask_deg: float) -> list:

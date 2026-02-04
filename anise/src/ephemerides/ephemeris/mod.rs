@@ -113,7 +113,7 @@ impl Ephemeris {
     }
 
     /// Inserts a new ephemeris entry to this ephemeris (it is automatically sorted chronologically).
-    /// :type entry: EphemerisRecord
+    /// :type record: EphemerisRecord
     /// :rtype: None
     pub fn insert(&mut self, record: EphemerisRecord) {
         self.state_data.insert(record.orbit.epoch, record);
@@ -448,6 +448,10 @@ impl Ephemeris {
     /// Transforms this ephemeris into another frame, and rotates the covariance to that frame if the orientations are different.
     /// NOTE: The Nyquist-Shannon theorem is NOT applied here, so the new ephemeris may not be as precise as the original one.
     /// NOTE: If the orientations are different, the covariance will always be in the Inertial frame of the new frame.
+    ///
+    /// :type new_frame: Frame
+    /// :type almanac: Almanac
+    /// :rtype: Ephemeris
     pub fn transform(&self, new_frame: Frame, almanac: &Almanac) -> Result<Self, AlmanacError> {
         // NOTE: We clone ourselves because we still need our state data.
         let mut me = self.clone();

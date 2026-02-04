@@ -58,31 +58,37 @@ impl Instrument {
     }
 
     // getters
+    /// :rtype: FovShape
     #[getter]
     fn get_fov(&self) -> FovShape {
         self.fov
     }
+    /// :rtype: Quaternion
     #[getter]
     fn get_q_to_i(&self) -> EulerParameter {
         self.q_to_i
     }
+    /// :rtype: np.array
     #[getter]
     fn get_offset_i<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         to_numpy_array(self.offset_i, py)
     }
     // setters
 
+    /// :type offset_i: np.array
     #[setter]
     fn set_offset_i<'py>(&mut self, offset_i: PyReadonlyArray1<'py, f64>) -> PyResult<()> {
         self.offset_i = to_vec3(offset_i, "mounting_translation")?;
         Ok(())
     }
 
+    /// :type q_to_i: Quaternion
     #[setter]
     fn set_q_to_i(&mut self, q_to_i: EulerParameter) {
         self.q_to_i = q_to_i;
     }
 
+    /// :type fov: FovShape
     #[setter]
     fn set_fov(&mut self, fov: FovShape) {
         self.fov = fov;
