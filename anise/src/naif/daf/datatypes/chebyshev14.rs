@@ -64,8 +64,10 @@ impl<'a> NAIFDataSet<'a> for ChebyshevSetType14<'a> {
         let rsize = 2 + 6 * (degree + 1);
 
         // Check total expected size to avoid panics
-        let num_directories = (num_records.saturating_sub(1)) / 100;
-        let expected_min_len = 1 + num_records * rsize + num_records + 2 * num_directories + 2;
+        let num_directories = num_records / 100;
+        let num_constants = slice[0] as usize;
+        let expected_min_len =
+            1 + num_constants + num_records * rsize + num_records + 2 * num_directories + 2;
         ensure!(
             slice.len() >= expected_min_len,
             TooFewDoublesSnafu {
@@ -75,7 +77,7 @@ impl<'a> NAIFDataSet<'a> for ChebyshevSetType14<'a> {
             }
         );
 
-        let packet_data_start = 1;
+        let packet_data_start = 1 + num_constants;
         let packet_data_end = packet_data_start + num_records * rsize;
         let packet_data = &slice[packet_data_start..packet_data_end];
 
@@ -220,7 +222,7 @@ mod tests {
         let num_records = 1;
         // rsize = 2 + 6 * (1 + 1) = 14
         let mut slice = vec![0.0; 1 + 14 + 1 + 0 + 2];
-        slice[0] = degree as f64;
+        slice[0] = 0.0; // M=0
 
         // Packet 1
         slice[1] = 10.0; // Midpoint
@@ -268,7 +270,7 @@ mod tests {
         // rsize = 14
         // Total = 1 + 2*14 + 2 + 0 + 2 = 33
         let mut slice = vec![0.0; 33];
-        slice[0] = degree as f64;
+        slice[0] = 0.0; // M=0
 
         // Packet 1 (t in [0, 10], midpoint 5, radius 5)
         slice[1] = 5.0;
@@ -320,5 +322,23 @@ mod tests {
         // x = 15 + 10 * (10.1 - 20) / 10 = 15 + (10.1 - 20) = 5.1
         assert!((pos.x - 5.1).abs() < 1e-12);
         assert!((vel.x - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn test_chebyshev14_directory_100() {
+        // Test that N=100 gives 1 directory entry
+        let degree = 1;
+        let num_records = 100;
+        let num_dirs = 1; // 100 / 100 = 1
+        let rsize = 14;
+        // 1 (M_count) + 0 (M) + 100*14 (Packets) + 100 (Epochs) + 2*1 (Dirs) + 2 (Meta) = 1505
+        let len = 1 + 100 * rsize + 100 + 2 * num_dirs + 2;
+        let mut slice = vec![0.0; len];
+        slice[0] = 0.0;
+        slice[len - 2] = degree as f64;
+        slice[len - 1] = num_records as f64;
+
+        let dataset = ChebyshevSetType14::from_f64_slice(&slice).unwrap();
+        assert_eq!(dataset.epoch_directory.len(), 1);
     }
 }
