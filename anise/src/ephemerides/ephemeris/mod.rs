@@ -72,9 +72,9 @@ impl Ephemeris {
 
 #[cfg_attr(feature = "python", pymethods)]
 impl Ephemeris {
-    //     /// Returns the time domain of this ephemeris.
-    //     ///
-    //     /// :rtype: tuple
+    /// Returns the time domain of this ephemeris.
+    ///
+    /// :rtype: tuple
     pub fn domain(&self) -> Result<(Epoch, Epoch), EphemerisError> {
         if self.state_data.is_empty() {
             Err(EphemerisError::EphemInterpolation {
