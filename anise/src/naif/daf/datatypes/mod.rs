@@ -9,6 +9,7 @@
  */
 
 pub mod chebyshev;
+pub mod chebyshev14;
 pub mod chebyshev3;
 pub mod hermite;
 pub mod lagrange;
@@ -16,6 +17,7 @@ pub mod modified_diff;
 pub mod posvel;
 
 pub use chebyshev::*;
+pub use chebyshev14::*;
 pub use chebyshev3::*;
 pub use hermite::*;
 pub use lagrange::*;

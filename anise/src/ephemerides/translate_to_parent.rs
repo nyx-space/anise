@@ -19,7 +19,7 @@ use crate::math::cartesian::CartesianState;
 use crate::math::Vector3;
 use crate::naif::daf::datatypes::modified_diff::ModifiedDiffType1;
 use crate::naif::daf::datatypes::{
-    HermiteSetType13, LagrangeSetType9, Type2ChebyshevSet, Type3ChebyshevSet,
+    ChebyshevSetType14, HermiteSetType13, LagrangeSetType9, Type2ChebyshevSet, Type3ChebyshevSet,
 };
 use crate::naif::daf::{DAFError, DafDataType, NAIFDataSet, NAIFSummaryRecord};
 use crate::prelude::Frame;
@@ -61,6 +61,15 @@ impl Almanac {
             DafDataType::Type1ModifiedDifferenceArray => {
                 let data = spk_data
                     .nth_data::<ModifiedDiffType1>(daf_idx, idx_in_spk)
+                    .context(SPKSnafu {
+                        action: "fetching data for interpolation",
+                    })?;
+                data.evaluate(epoch, summary)
+                    .context(EphemInterpolationSnafu)?
+            }
+            DafDataType::Type14ChebyshevUnequalStep => {
+                let data = spk_data
+                    .nth_data::<ChebyshevSetType14>(daf_idx, idx_in_spk)
                     .context(SPKSnafu {
                         action: "fetching data for interpolation",
                     })?;
