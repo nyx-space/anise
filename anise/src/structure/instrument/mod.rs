@@ -83,6 +83,10 @@ impl Instrument {
     /// NOTE: This call will return an error if the reference frames are not adequate.
     /// Example:
     /// - If the mounting quaterion (q_to_i) frame does not match in sc_attitude_to_body "to" frame IDs
+    ///
+    /// :type q_sc_to_b: Quaternion
+    /// :type sc_state: Orbit
+    /// :rtype: tuple[Quaternion, Orbit]
     pub fn transform_state(
         &self,
         q_sc_to_b: EulerParameter,
@@ -115,6 +119,12 @@ impl Instrument {
     /// Example:
     /// - If the mounting rotation "from" frame does not match in sc_attitude_to_body "to" frame IDs
     /// - If the target state frame ID is not identical to the instrument's inertial state given the sc_attitude Euler Parameter.
+    ///
+    ///
+    /// :type sc_q_to_b: Quaternion
+    /// :type sc_state: Orbit
+    /// :type target_state: Orbit
+    /// :rtype: float
     pub fn fov_margin_deg(
         &self,
         sc_q_to_b: EulerParameter,
@@ -169,6 +179,11 @@ impl Instrument {
     }
 
     /// Checks if a target is visible within the Field of View.
+    ///
+    /// :type sc_attitude_inertial_to_body: Quaternion
+    /// :type sc_state: Orbit
+    /// :type target_state: Orbit
+    /// :rtype: bool
     pub fn is_target_in_fov(
         &self,
         sc_attitude_inertial_to_body: EulerParameter,
@@ -191,6 +206,12 @@ impl Instrument {
     /// # Returns
     /// A vector of `Orbit` objects, each representing a point on the surface of the target
     /// expressed in the `target_frame` (Fixed).
+    ///
+    /// :type sc_q_n_to_b: Quaternion
+    /// :type sc_state_target: Orbit
+    /// :type q_n_to_target: Quaternion
+    /// :type resolution: int
+    /// :rtype: list[Orbit]
     pub fn footprint(
         &self,
         sc_q_n_to_b: EulerParameter,

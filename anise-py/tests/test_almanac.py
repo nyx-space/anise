@@ -374,6 +374,7 @@ def test_oem():
     # 1. Load an OEM to Ephem
     ephem = Ephemeris.from_ccsds_oem_file("data/tests/ccsds/oem/LRO_Nyx.oem")
     print(ephem)
+    assert ephem.degree == 7, f"Expected degree 7, got {ephem.degree}"
     (start, end) = ephem.domain()
     # Query the covariance using the Log Euclidean method
     covar = ephem.covar_at(start + (end - start) * 0.5, LocalFrame.RIC, almanac)
@@ -392,12 +393,12 @@ def test_oem():
     )
     # Export to CCSDS OEM
     ephem.write_ccsds_oem(
-        "data/tests/naif/spk/ephem_from_python.oem",
-        "My Originator",
-        "OBJECT_NAME"
+        "data/tests/naif/spk/ephem_from_python.oem", "My Originator", "OBJECT_NAME"
     )
     # Ensure we can read what we wrote
-    ephem_reread = Ephemeris.from_ccsds_oem_file("data/tests/naif/spk/ephem_from_python.oem")
+    ephem_reread = Ephemeris.from_ccsds_oem_file(
+        "data/tests/naif/spk/ephem_from_python.oem"
+    )
     assert ephem_reread.start_epoch() == ephem.start_epoch()
     assert ephem_reread.end_epoch() == ephem.end_epoch()
 
