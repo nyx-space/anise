@@ -18,7 +18,7 @@ use crate::math::interpolation::{
 };
 use crate::naif::daf::NAIFSummaryRecord;
 use crate::{
-    math::{cartesian::CartesianState, Vector3},
+    math::Vector3,
     naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord},
     DBL_SIZE,
 };
@@ -29,7 +29,7 @@ use super::posvel::PositionVelocityRecord;
 pub struct HermiteSetType12<'a> {
     pub first_state_epoch: Epoch,
     pub step_size: Duration,
-    pub window_size: usize,
+    pub samples: usize,
     pub num_records: usize,
     pub record_data: &'a [f64],
 }
@@ -38,10 +38,10 @@ impl fmt::Display for HermiteSetType12<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Hermite Type 12: start: {:E}\tstep: {}\twindow size: {}\tnum records: {}\tlen data: {}",
+            "Hermite Type 12: start: {:E}\tstep: {}\tsamples: {}\tnum records: {}\tlen data: {}",
             self.first_state_epoch,
             self.step_size,
-            self.window_size,
+            self.samples,
             self.num_records,
             self.record_data.len()
         )
@@ -49,7 +49,7 @@ impl fmt::Display for HermiteSetType12<'_> {
 }
 
 impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
-    type StateKind = CartesianState;
+    type StateKind = (Vector3, Vector3);
     type RecordKind = PositionVelocityRecord;
     const DATASET_NAME: &'static str = "Hermite Type 12";
 
@@ -85,13 +85,24 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
         }
 
         let step_size = step_size_s.seconds();
-        let window_size = slice[slice.len() - 2] as usize;
+        // NOTE: The Type 12 and 13 specify that the windows size minus one is stored!
+        let samples = slice[slice.len() - 2] as usize + 1;
+        if samples > MAX_SAMPLES {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::InvalidValue {
+                    dataset: Self::DATASET_NAME,
+                    variable: "number of interpolation samples",
+                    value: samples as f64,
+                    reason: "must be less than or equal to MAX_SAMPLES (32)",
+                },
+            });
+        }
         let num_records = slice[slice.len() - 1] as usize;
 
         Ok(Self {
             first_state_epoch,
             step_size,
-            window_size,
+            samples,
             num_records,
             record_data: &slice[0..slice.len() - 4],
         })
@@ -112,13 +123,84 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
 
     fn evaluate<S: NAIFSummaryRecord>(
         &self,
-        _epoch: Epoch,
-        _: &S,
-    ) -> Result<CartesianState, InterpolationError> {
-        Err(InterpolationError::UnimplementedType {
-            dataset: Self::DATASET_NAME,
-            issue: 14,
-        })
+        epoch: Epoch,
+        summary: &S,
+    ) -> Result<Self::StateKind, InterpolationError> {
+        if epoch < summary.start_epoch() - 1e-7.seconds()
+            || epoch > summary.end_epoch() + 1e-7.seconds()
+        {
+            return Err(InterpolationError::NoInterpolationData {
+                req: epoch,
+                start: summary.start_epoch(),
+                end: summary.end_epoch(),
+            });
+        }
+
+        let delta_t_s = (epoch - self.first_state_epoch).to_seconds();
+        let step_size_s = self.step_size.to_seconds();
+        let float_index = delta_t_s / step_size_s;
+
+        let mut first_idx = if self.samples % 2 == 0 {
+            // Even window size
+            let i = float_index.floor() as usize;
+            i.saturating_sub(self.samples / 2 - 1)
+        } else {
+            // Odd window size
+            let nearest_i = float_index.round() as usize;
+            nearest_i.saturating_sub((self.samples - 1) / 2)
+        };
+
+        // Ensure we don't go past the end of the records
+        if first_idx + self.samples > self.num_records {
+            first_idx = self.num_records.saturating_sub(self.samples);
+        }
+
+        // Statically allocated arrays of the maximum number of samples
+        let mut epochs = [0.0; MAX_SAMPLES];
+        let mut xs = [0.0; MAX_SAMPLES];
+        let mut ys = [0.0; MAX_SAMPLES];
+        let mut zs = [0.0; MAX_SAMPLES];
+        let mut vxs = [0.0; MAX_SAMPLES];
+        let mut vys = [0.0; MAX_SAMPLES];
+        let mut vzs = [0.0; MAX_SAMPLES];
+        for (cno, idx) in (first_idx..first_idx + self.samples).enumerate() {
+            let record = self.nth_record(idx).context(InterpDecodingSnafu)?;
+            xs[cno] = record.x_km;
+            ys[cno] = record.y_km;
+            zs[cno] = record.z_km;
+            vxs[cno] = record.vx_km_s;
+            vys[cno] = record.vy_km_s;
+            vzs[cno] = record.vz_km_s;
+            epochs[cno] = (self.first_state_epoch + (idx as f64) * self.step_size).to_et_seconds();
+        }
+
+        // Build the interpolation polynomials making sure to limit the slices to exactly the number of items we actually used
+        let (x_km, vx_km_s) = hermite_eval(
+            &epochs[..self.samples],
+            &xs[..self.samples],
+            &vxs[..self.samples],
+            epoch.to_et_seconds(),
+        )?;
+
+        let (y_km, vy_km_s) = hermite_eval(
+            &epochs[..self.samples],
+            &ys[..self.samples],
+            &vys[..self.samples],
+            epoch.to_et_seconds(),
+        )?;
+
+        let (z_km, vz_km_s) = hermite_eval(
+            &epochs[..self.samples],
+            &zs[..self.samples],
+            &vzs[..self.samples],
+            epoch.to_et_seconds(),
+        )?;
+
+        // And build the result
+        let pos_km = Vector3::new(x_km, y_km, z_km);
+        let vel_km_s = Vector3::new(vx_km_s, vy_km_s, vz_km_s);
+
+        Ok((pos_km, vel_km_s))
     }
 
     fn check_integrity(&self) -> Result<(), IntegrityError> {
@@ -528,5 +610,69 @@ mod hermite_ut {
                 );
             }
         }
+    }
+
+    #[test]
+    fn test_hermite_type12() {
+        use super::HermiteSetType12;
+        use crate::naif::spk::summary::SPKSummaryRecord;
+        use hifitime::Epoch;
+
+        // Construct a synthetic HermiteSetType12
+        let num_records = 10;
+        let samples = 4; // Window size 4, degree 7
+        let step_size_s = 10.0;
+        let first_epoch_s = 100.0;
+
+        let mut record_data = Vec::with_capacity(num_records * 6);
+        for i in 0..num_records {
+            let t = first_epoch_s + (i as f64) * step_size_s;
+            // Linear motion: x = t, y = 2*t, z = 3*t
+            record_data.push(t); // x
+            record_data.push(2.0 * t); // y
+            record_data.push(3.0 * t); // z
+            record_data.push(1.0); // vx
+            record_data.push(2.0); // vy
+            record_data.push(3.0); // vz
+        }
+
+        // Add metadata at the end
+        let mut slice_data = record_data.clone();
+        slice_data.push(first_epoch_s);
+        slice_data.push(step_size_s);
+        slice_data.push((samples - 1) as f64); // stores window size - 1
+        slice_data.push(num_records as f64);
+
+        let dataset = HermiteSetType12::from_f64_slice(&slice_data).unwrap();
+        assert_eq!(dataset.samples, samples);
+        assert_eq!(dataset.num_records, num_records);
+
+        let mut summary = SPKSummaryRecord::default();
+        summary.start_epoch_et_s = first_epoch_s;
+        summary.end_epoch_et_s = first_epoch_s + (num_records as f64 - 1.0) * step_size_s;
+
+        // Test exact match
+        let epoch = Epoch::from_et_seconds(120.0);
+        let result = dataset.evaluate(epoch, &summary).unwrap();
+        assert!((result.0.x - 120.0).abs() < 1e-12);
+        assert!((result.0.y - 240.0).abs() < 1e-12);
+        assert!((result.1.x - 1.0).abs() < 1e-12);
+
+        // Test interpolation
+        let epoch = Epoch::from_et_seconds(125.0);
+        let result = dataset.evaluate(epoch, &summary).unwrap();
+        assert!((result.0.x - 125.0).abs() < 1e-12);
+        assert!((result.0.y - 250.0).abs() < 1e-12);
+        assert!((result.1.x - 1.0).abs() < 1e-12);
+
+        // Test boundary case: near start
+        let epoch = Epoch::from_et_seconds(105.0);
+        let result = dataset.evaluate(epoch, &summary).unwrap();
+        assert!((result.0.x - 105.0).abs() < 1e-12);
+
+        // Test boundary case: near end
+        let epoch = Epoch::from_et_seconds(185.0);
+        let result = dataset.evaluate(epoch, &summary).unwrap();
+        assert!((result.0.x - 185.0).abs() < 1e-12);
     }
 }
