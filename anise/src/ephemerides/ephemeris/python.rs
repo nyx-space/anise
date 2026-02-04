@@ -38,6 +38,12 @@ impl Ephemeris {
         }
     }
 
+    /// :rtype: int
+    #[getter]
+    fn get_degree(&self) -> usize {
+        self.degree
+    }
+
     #[new]
     fn py_new(orbit_list: Vec<Orbit>, object_id: String) -> Self {
         let mut state_data = BTreeMap::new();
