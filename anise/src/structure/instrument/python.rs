@@ -75,7 +75,7 @@ impl Instrument {
     }
     // setters
 
-    /// :type offset_i: np.array
+    /// :type offset_i: numpy.array
     #[setter]
     fn set_offset_i<'py>(&mut self, offset_i: PyReadonlyArray1<'py, f64>) -> PyResult<()> {
         self.offset_i = to_vec3(offset_i, "mounting_translation")?;
