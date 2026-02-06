@@ -20,4 +20,4 @@ jobs:
 
       - name: Build and Test
         run: |
-          bazel build --noenable_bzlmod //anise-cpp:anise_cpp_tests
+          bazel test //...

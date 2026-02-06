@@ -4,7 +4,12 @@ exports_files(["Cargo.toml", "Cargo.lock"])
 
 filegroup(
     name = "all_srcs",
-    srcs = glob(["**"], exclude = ["bazel-*/**", "target/**"]),
+    srcs = glob(["**/*"], exclude = [
+        "bazel-*/**",
+        "target/**",
+    ]) + [
+        "//anise-cpp:srcs",
+    ],
     visibility = ["//visibility:public"],
 )
 
@@ -18,4 +23,10 @@ cmake(
     working_directory = "anise-cpp",
     out_binaries = ["test_time"],
     visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "cpp_test",
+    srcs = ["run_cpp_tests.sh"],
+    data = [":anise_cpp_tests"],
 )

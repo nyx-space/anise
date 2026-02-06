@@ -1,19 +1,25 @@
-/target
+# Rust
+target/
 Cargo.lock
-*.anis*
-cspice
-*.parquet
-*.svg
-perf.data*
-analysis/.venv
-cspice.tar.Z
-.venv
-*.pca
-*.sca
-*.epa
-anise-gui/dist/
-anise-py/notebooks/.ipynb_checkpoints/ANISE Tutorial for querying SPK files-checkpoint.ipynb
-data/lro.bsp
-data/mro.bsp
-*.csv
-data/tests/naif
+
+# Bazel
+bazel-*
+
+# C++
+anise-cpp/build_local/
+test_time
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+anise-py/dist/
+anise-py/build/
+anise-py/anise.egg-info/
+anise-py/anise/_anise.*
+
+# Misc
+.DS_Store
+.vscode/
+*.swp
+*.lka

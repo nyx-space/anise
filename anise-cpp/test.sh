@@ -1,24 +1,13 @@
 #!/bin/bash
 set -e
 
-# Build the Rust library
-cargo build --package anise-cpp --release
+# Use absolute paths where possible
+REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+BUILD_DIR="$REPO_ROOT/anise-cpp/build_local"
 
-# Find the generated header and library
-HEADER_PATH=$(find target/release/build -name "lib.rs.h" | head -n 1)
-INCLUDE_DIR=$(dirname $(dirname $(dirname $(dirname $HEADER_PATH))))
-LIB_DIR="target/release"
+mkdir -p "$BUILD_DIR"
+cd "$BUILD_DIR"
 
-# Find cxx.h as well
-CXX_H_PATH=$(find target/release/build -name "cxx.h" | head -n 1)
-CXX_INCLUDE_DIR=$(dirname $(dirname $CXX_H_PATH))
-
-# Compile the C++ test
-g++ anise-cpp/tests/main.cpp \
-    target/release/build/*/out/cxxbridge/sources/anise-cpp/src/lib.rs.cc \
-    -I $INCLUDE_DIR \
-    -I $CXX_INCLUDE_DIR \
-    -L $LIB_DIR -lanise_cpp -lpthread -ldl -o test_time
-
-# Run the test
+cmake .. -DBUILD_RUST=ON
+make
 ./test_time
