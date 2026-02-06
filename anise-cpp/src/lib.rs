@@ -12,6 +12,7 @@ mod ffi {
         TT,
         GPST,
         GST,
+        BDT,
     }
 
     #[derive(Debug)]
@@ -39,6 +40,8 @@ mod ffi {
         fn to_unit(self: &CxxDuration, unit: Unit) -> f64;
         fn duration_add(self: &CxxDuration, other: &CxxDuration) -> Box<CxxDuration>;
         fn duration_sub(self: &CxxDuration, other: &CxxDuration) -> Box<CxxDuration>;
+        fn duration_neg(self: &CxxDuration) -> Box<CxxDuration>;
+        fn duration_abs(self: &CxxDuration) -> Box<CxxDuration>;
 
         // Epoch methods
         fn epoch_from_str(s: &str) -> Result<Box<CxxEpoch>>;
@@ -47,6 +50,8 @@ mod ffi {
         fn epoch_from_seconds(seconds: f64, ts: TimeScale) -> Box<CxxEpoch>;
         fn tai_seconds(self: &CxxEpoch) -> f64;
         fn tai_days(self: &CxxEpoch) -> f64;
+        fn to_seconds(self: &CxxEpoch, ts: TimeScale) -> f64;
+        fn to_days(self: &CxxEpoch, ts: TimeScale) -> f64;
         fn to_string(self: &CxxEpoch) -> String;
         fn epoch_add_duration(self: &CxxEpoch, duration: &CxxDuration) -> Box<CxxEpoch>;
         fn epoch_sub_duration(self: &CxxEpoch, duration: &CxxDuration) -> Box<CxxEpoch>;
@@ -54,7 +59,7 @@ mod ffi {
 
         // TimeSeries methods
         fn time_series_new(start: &CxxEpoch, end: &CxxEpoch, step: &CxxDuration) -> Box<CxxTimeSeries>;
-        fn next(self: &mut CxxTimeSeries) -> Box<CxxEpoch>;
+        fn next(self: &mut CxxTimeSeries) -> Result<Box<CxxEpoch>>;
         fn has_next(self: &CxxTimeSeries) -> bool;
     }
 }
@@ -74,6 +79,12 @@ impl CxxDuration {
     fn duration_sub(&self, other: &CxxDuration) -> Box<CxxDuration> {
         Box::new(CxxDuration(self.0 - other.0))
     }
+    fn duration_neg(&self) -> Box<CxxDuration> {
+        Box::new(CxxDuration(-self.0))
+    }
+    fn duration_abs(&self) -> Box<CxxDuration> {
+        Box::new(CxxDuration(self.0.abs()))
+    }
 }
 
 pub struct CxxEpoch(pub Epoch);
@@ -84,6 +95,34 @@ impl CxxEpoch {
     }
     fn tai_days(&self) -> f64 {
         self.0.to_tai_days()
+    }
+    fn to_seconds(&self, ts: ffi::TimeScale) -> f64 {
+        let ts = TimeScale::from(ts);
+        match ts {
+            TimeScale::TAI => self.0.to_tai_seconds(),
+            TimeScale::TDB => self.0.to_tdb_seconds(),
+            TimeScale::UTC => self.0.to_utc_seconds(),
+            TimeScale::ET => self.0.to_et_seconds(),
+            TimeScale::TT => self.0.to_tt_seconds(),
+            TimeScale::GPST => self.0.to_gpst_seconds(),
+            TimeScale::GST => self.0.to_gst_seconds(),
+            TimeScale::BDT => self.0.to_bdt_seconds(),
+            _ => self.0.to_tai_seconds(),
+        }
+    }
+    fn to_days(&self, ts: ffi::TimeScale) -> f64 {
+        let ts = TimeScale::from(ts);
+        match ts {
+            TimeScale::TAI => self.0.to_tai_days(),
+            TimeScale::TDB => self.0.to_jde_tdb_days(),
+            TimeScale::UTC => self.0.to_utc_days(),
+            TimeScale::ET => self.0.to_tt_days(),
+            TimeScale::TT => self.0.to_tt_days(),
+            TimeScale::GPST => self.0.to_gpst_days(),
+            TimeScale::GST => self.0.to_gst_days(),
+            TimeScale::BDT => self.0.to_bdt_days(),
+            _ => self.0.to_tai_days(),
+        }
     }
     fn to_string(&self) -> String {
         format!("{}", self.0)
@@ -105,10 +144,13 @@ pub struct CxxTimeSeries {
 }
 
 impl CxxTimeSeries {
-    fn next(&mut self) -> Box<CxxEpoch> {
-        let next_val = self.current.unwrap_or_else(|| Epoch::from_tai_seconds(0.0));
-        self.current = self.iter.next();
-        Box::new(CxxEpoch(next_val))
+    fn next(&mut self) -> Result<Box<CxxEpoch>, String> {
+        if let Some(val) = self.current {
+            self.current = self.iter.next();
+            Ok(Box::new(CxxEpoch(val)))
+        } else {
+            Err("TimeSeries exhausted".to_string())
+        }
     }
 
     fn has_next(&self) -> bool {
@@ -143,6 +185,7 @@ impl From<ffi::TimeScale> for TimeScale {
             ffi::TimeScale::TT => TimeScale::TT,
             ffi::TimeScale::GPST => TimeScale::GPST,
             ffi::TimeScale::GST => TimeScale::GST,
+            ffi::TimeScale::BDT => TimeScale::BDT,
             _ => TimeScale::TAI,
         }
     }
@@ -180,6 +223,7 @@ fn epoch_from_seconds(seconds: f64, ts: ffi::TimeScale) -> Box<CxxEpoch> {
         TimeScale::TT => Epoch::from_tt_seconds(seconds),
         TimeScale::GPST => Epoch::from_gpst_seconds(seconds),
         TimeScale::GST => Epoch::from_gst_seconds(seconds),
+        TimeScale::BDT => Epoch::from_bdt_seconds(seconds),
         _ => Epoch::from_tai_seconds(seconds),
     }))
 }
