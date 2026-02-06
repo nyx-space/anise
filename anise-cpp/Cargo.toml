@@ -1,0 +1,20 @@
+[package]
+name = "anise-cpp"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = "C++ bindings for ANISE"
+
+[lib]
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[dependencies]
+anise = { workspace = true }
+hifitime = { workspace = true }
+cxx = { workspace = true }
+
+[build-dependencies]
+cxx-build = "1.0"
