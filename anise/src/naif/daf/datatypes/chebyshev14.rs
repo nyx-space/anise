@@ -18,8 +18,8 @@ use crate::{
         interpolation::{chebyshev_eval_poly, InterpDecodingSnafu, InterpolationError},
         Vector3,
     },
-    naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFSummaryRecord},
     naif::daf::datatypes::chebyshev3::Type3ChebyshevRecord,
+    naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFSummaryRecord},
 };
 
 #[derive(PartialEq, Debug)]
@@ -106,13 +106,13 @@ impl<'a> NAIFDataSet<'a> for ChebyshevSetType14<'a> {
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError> {
         let rsize = 2 + 6 * (self.degree + 1);
         Ok(Self::RecordKind::from_slice_f64(
-            self.packet_data
-                .get(n * rsize..(n + 1) * rsize)
-                .ok_or(DecodingError::InaccessibleBytes {
+            self.packet_data.get(n * rsize..(n + 1) * rsize).ok_or(
+                DecodingError::InaccessibleBytes {
                     start: n * rsize,
                     end: (n + 1) * rsize,
                     size: self.packet_data.len(),
-                })?,
+                },
+            )?,
         ))
     }
 
@@ -122,7 +122,7 @@ impl<'a> NAIFDataSet<'a> for ChebyshevSetType14<'a> {
         _: &S,
     ) -> Result<Self::StateKind, InterpolationError> {
         if self.epoch_data.is_empty() {
-             return Err(InterpolationError::MissingInterpolationData { epoch });
+            return Err(InterpolationError::MissingInterpolationData { epoch });
         }
 
         let et = epoch.to_et_seconds();
@@ -135,16 +135,14 @@ impl<'a> NAIFDataSet<'a> for ChebyshevSetType14<'a> {
                 .epoch_directory
                 .partition_point(|&reg_epoch| reg_epoch < et);
 
-            let sub_array_start_idx = if dir_idx == 0 {
-                0
-            } else {
-                (dir_idx * 100) - 1
-            };
+            let sub_array_start_idx = if dir_idx == 0 { 0 } else { (dir_idx * 100) - 1 };
 
             let sub_array_end_idx = (sub_array_start_idx + 99).min(self.num_records - 1);
 
-            (&self.epoch_data[sub_array_start_idx..=sub_array_end_idx.max(sub_array_start_idx)],
-             sub_array_start_idx)
+            (
+                &self.epoch_data[sub_array_start_idx..=sub_array_end_idx.max(sub_array_start_idx)],
+                sub_array_start_idx,
+            )
         };
 
         let idx = match search_data_slice.binary_search_by(|e| e.partial_cmp(&et).unwrap()) {
@@ -227,9 +225,9 @@ mod tests {
         // Packet 1
         slice[1] = 10.0; // Midpoint
         slice[2] = 10.0; // Radius
-        slice[3] = 5.0;  // X coeff 0
-        slice[4] = 5.0;  // X coeff 1
-        slice[9] = 0.5;  // VX coeff 0 (constant velocity)
+        slice[3] = 5.0; // X coeff 0
+        slice[4] = 5.0; // X coeff 1
+        slice[9] = 0.5; // VX coeff 0 (constant velocity)
 
         // Epoch data
         slice[15] = 20.0; // T1
