@@ -58,7 +58,11 @@ mod ffi {
         fn epoch_sub_epoch(self: &CxxEpoch, other: &CxxEpoch) -> Box<CxxDuration>;
 
         // TimeSeries methods
-        fn time_series_new(start: &CxxEpoch, end: &CxxEpoch, step: &CxxDuration) -> Box<CxxTimeSeries>;
+        fn time_series_new(
+            start: &CxxEpoch,
+            end: &CxxEpoch,
+            step: &CxxDuration,
+        ) -> Box<CxxTimeSeries>;
         fn next(self: &mut CxxTimeSeries) -> Result<Box<CxxEpoch>>;
         fn has_next(self: &CxxTimeSeries) -> bool;
     }
@@ -202,7 +206,9 @@ fn duration_from_unit(value: f64, unit: ffi::Unit) -> Box<CxxDuration> {
 
 // Epoch implementations
 fn epoch_from_str(s: &str) -> Result<Box<CxxEpoch>, String> {
-    Epoch::from_str(s).map(|e| Box::new(CxxEpoch(e))).map_err(|e| e.to_string())
+    Epoch::from_str(s)
+        .map(|e| Box::new(CxxEpoch(e)))
+        .map_err(|e| e.to_string())
 }
 
 fn epoch_from_tai_seconds(seconds: f64) -> Box<CxxEpoch> {
