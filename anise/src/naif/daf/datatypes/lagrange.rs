@@ -15,7 +15,6 @@ use snafu::{ensure, ResultExt};
 use crate::{
     errors::{DecodingError, IntegrityError, TooFewDoublesSnafu},
     math::{
-        cartesian::CartesianState,
         interpolation::{lagrange_eval, InterpDecodingSnafu, InterpolationError, MAX_SAMPLES},
         Vector3,
     },
@@ -49,7 +48,7 @@ impl fmt::Display for LagrangeSetType8<'_> {
 }
 
 impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
-    type StateKind = CartesianState;
+    type StateKind = (Vector3, Vector3);
     type RecordKind = PositionVelocityRecord;
     const DATASET_NAME: &'static str = "Lagrange Type 8";
 
@@ -79,7 +78,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
         if !step_size_s.is_finite() {
             return Err(DecodingError::Integrity {
                 source: IntegrityError::SubNormal {
-                    dataset: "Hermite Type 12",
+                    dataset: Self::DATASET_NAME,
                     variable: "step size in seconds",
                 },
             });
@@ -89,17 +88,27 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
         let degree = slice[slice.len() - 2] as usize;
         let num_records = slice[slice.len() - 1] as usize;
 
+        let record_data = &slice[0..slice.len() - 4];
+        ensure!(
+            record_data.len() == 6 * num_records,
+            TooFewDoublesSnafu {
+                dataset: Self::DATASET_NAME,
+                need: 6 * num_records,
+                got: record_data.len(),
+            }
+        );
+
         Ok(Self {
             first_state_epoch,
             step_size,
             degree,
             num_records,
-            record_data: &slice[0..slice.len() - 4],
+            record_data,
         })
     }
 
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError> {
-        let rcrd_len = self.record_data.len() / self.num_records;
+        let rcrd_len = 6;
         Ok(Self::RecordKind::from_slice_f64(
             self.record_data
                 .get(n * rcrd_len..(n + 1) * rcrd_len)
@@ -113,13 +122,81 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
 
     fn evaluate<S: NAIFSummaryRecord>(
         &self,
-        _epoch: Epoch,
+        epoch: Epoch,
         _: &S,
-    ) -> Result<CartesianState, InterpolationError> {
-        Err(InterpolationError::UnimplementedType {
-            dataset: Self::DATASET_NAME,
-            issue: 12,
-        })
+    ) -> Result<Self::StateKind, InterpolationError> {
+        let et = epoch.to_et_seconds();
+        let t0 = self.first_state_epoch.to_et_seconds();
+        let h = self.step_size.to_seconds();
+
+        if h.abs() < f64::EPSILON {
+            return Err(InterpolationError::CorruptedData {
+                what: "step size is zero",
+            });
+        }
+
+        // Find the index such that t0 + idx * h <= et < t0 + (idx + 1) * h
+        let idx_f = (et - t0) / h;
+
+        // Exact match check
+        if (idx_f - idx_f.round()).abs() < 1e-12 {
+            let idx = idx_f.round() as isize;
+            if idx >= 0 && idx < self.num_records as isize {
+                return Ok(self
+                    .nth_record(idx as usize)
+                    .context(InterpDecodingSnafu)?
+                    .to_pos_vel());
+            }
+        }
+
+        let group_size = self.degree + 1;
+        let idx = idx_f.floor() as isize;
+
+        // Selection logic from SPICE: centered as closely as possible.
+        // For N points, if target is in [t_i, t_{i+1}], we use i - (N-1)/2 as the first index.
+        let first_idx = (idx - ((group_size as isize - 1) / 2))
+            .max(0)
+            .min((self.num_records as isize - group_size as isize).max(0));
+
+        let last_idx = (first_idx + group_size as isize).min(self.num_records as isize);
+        let actual_group_size = (last_idx - first_idx) as usize;
+
+        // Statically allocated arrays of the maximum number of samples
+        let mut epochs = [0.0; MAX_SAMPLES];
+        let mut xs = [0.0; MAX_SAMPLES];
+        let mut ys = [0.0; MAX_SAMPLES];
+        let mut zs = [0.0; MAX_SAMPLES];
+        let mut vxs = [0.0; MAX_SAMPLES];
+        let mut vys = [0.0; MAX_SAMPLES];
+        let mut vzs = [0.0; MAX_SAMPLES];
+
+        for (cno, cur_idx) in (first_idx..last_idx).enumerate() {
+            let record = self
+                .nth_record(cur_idx as usize)
+                .context(InterpDecodingSnafu)?;
+            xs[cno] = record.x_km;
+            ys[cno] = record.y_km;
+            zs[cno] = record.z_km;
+            vxs[cno] = record.vx_km_s;
+            vys[cno] = record.vy_km_s;
+            vzs[cno] = record.vz_km_s;
+            epochs[cno] = t0 + (cur_idx as f64) * h;
+        }
+
+        let (x_km, _) = lagrange_eval(&epochs[..actual_group_size], &xs[..actual_group_size], et)?;
+        let (y_km, _) = lagrange_eval(&epochs[..actual_group_size], &ys[..actual_group_size], et)?;
+        let (z_km, _) = lagrange_eval(&epochs[..actual_group_size], &zs[..actual_group_size], et)?;
+        let (vx_km_s, _) =
+            lagrange_eval(&epochs[..actual_group_size], &vxs[..actual_group_size], et)?;
+        let (vy_km_s, _) =
+            lagrange_eval(&epochs[..actual_group_size], &vys[..actual_group_size], et)?;
+        let (vz_km_s, _) =
+            lagrange_eval(&epochs[..actual_group_size], &vzs[..actual_group_size], et)?;
+
+        Ok((
+            Vector3::new(x_km, y_km, z_km),
+            Vector3::new(vx_km_s, vy_km_s, vz_km_s),
+        ))
     }
 
     fn check_integrity(&self) -> Result<(), IntegrityError> {
@@ -394,10 +471,64 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
 }
 
 #[cfg(test)]
-mod tests {
+mod ut_lagrange {
     use super::*;
     use crate::naif::spk::summary::SPKSummaryRecord;
     use hifitime::Epoch;
+
+    #[test]
+    fn test_lagrange_type8() {
+        let num_records = 100;
+        let degree = 3;
+        let h = 60.0;
+        let t0 = Epoch::from_et_seconds(0.0);
+
+        let mut record_data = Vec::with_capacity(num_records * 6);
+        for i in 0..num_records {
+            let t = (i as f64) * h;
+            // Quadratic motion: x = t^2 + t + 1, vx = 2t + 1
+            record_data.push(t * t + t + 1.0); // x
+            record_data.push(0.0); // y
+            record_data.push(0.0); // z
+            record_data.push(2.0 * t + 1.0); // vx
+            record_data.push(0.0); // vy
+            record_data.push(0.0); // vz
+        }
+
+        let dataset = LagrangeSetType8 {
+            first_state_epoch: t0,
+            step_size: h.seconds(),
+            degree,
+            num_records,
+            record_data: &record_data,
+        };
+
+        let summary = SPKSummaryRecord::default();
+
+        // Test exact match
+        let epoch = Epoch::from_et_seconds(60.0);
+        let result = dataset.evaluate(epoch, &summary).unwrap();
+        assert!((result.0.x - (60.0 * 60.0 + 60.0 + 1.0)).abs() < 1e-12);
+        assert!((result.1.x - (2.0 * 60.0 + 1.0)).abs() < 1e-12);
+
+        // Test interpolation (mid-point of an interval)
+        let epoch = Epoch::from_et_seconds(90.0);
+        let result = dataset.evaluate(epoch, &summary).unwrap();
+        // Since motion is quadratic and degree is 3, Lagrange should be exact.
+        assert!((result.0.x - (90.0 * 90.0 + 90.0 + 1.0)).abs() < 1e-12);
+        assert!((result.1.x - (2.0 * 90.0 + 1.0)).abs() < 1e-12);
+
+        // Test near start
+        let epoch = Epoch::from_et_seconds(10.0);
+        let result = dataset.evaluate(epoch, &summary).unwrap();
+        assert!((result.0.x - (10.0 * 10.0 + 10.0 + 1.0)).abs() < 1e-12);
+
+        // Test near end
+        let epoch = Epoch::from_et_seconds((num_records as f64 - 1.5) * h);
+        let result = dataset.evaluate(epoch, &summary).unwrap();
+        let et = (num_records as f64 - 1.5) * h;
+        assert!((result.0.x - (et * et + et + 1.0)).abs() < 1e-12);
+    }
 
     #[test]
     fn test_lagrange_optimization() {

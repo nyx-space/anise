@@ -19,7 +19,8 @@ use crate::math::cartesian::CartesianState;
 use crate::math::Vector3;
 use crate::naif::daf::datatypes::modified_diff::ModifiedDiffType1;
 use crate::naif::daf::datatypes::{
-    ChebyshevSetType14, HermiteSetType13, LagrangeSetType9, Type2ChebyshevSet, Type3ChebyshevSet,
+    ChebyshevSetType14, HermiteSetType12, HermiteSetType13, LagrangeSetType8, LagrangeSetType9,
+    Type2ChebyshevSet, Type3ChebyshevSet,
 };
 use crate::naif::daf::{DAFError, DafDataType, NAIFDataSet, NAIFSummaryRecord};
 use crate::prelude::Frame;
@@ -94,9 +95,27 @@ impl Almanac {
                 data.evaluate(epoch, summary)
                     .context(EphemInterpolationSnafu)?
             }
+            DafDataType::Type8LagrangeEqualStep => {
+                let data = spk_data
+                    .nth_data::<LagrangeSetType8>(daf_idx, idx_in_spk)
+                    .context(SPKSnafu {
+                        action: "fetching data for interpolation",
+                    })?;
+                data.evaluate(epoch, summary)
+                    .context(EphemInterpolationSnafu)?
+            }
             DafDataType::Type9LagrangeUnequalStep => {
                 let data = spk_data
                     .nth_data::<LagrangeSetType9>(daf_idx, idx_in_spk)
+                    .context(SPKSnafu {
+                        action: "fetching data for interpolation",
+                    })?;
+                data.evaluate(epoch, summary)
+                    .context(EphemInterpolationSnafu)?
+            }
+            DafDataType::Type12HermiteEqualStep => {
+                let data = spk_data
+                    .nth_data::<HermiteSetType12>(daf_idx, idx_in_spk)
                     .context(SPKSnafu {
                         action: "fetching data for interpolation",
                     })?;
