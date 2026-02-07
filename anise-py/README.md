@@ -65,6 +65,7 @@ For more details on SPK types, refer to the [NAIF SPK Required Reading](https://
 | **Type 20** | Chebyshev Triplet (velocity only) | ✅ | ❌ | [NAIF docs](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/spk.html#Type%2020:%20Chebyshev%20velocity%20only) |
 | **Type 21** | Extended Modified Difference Arrays | ✅ | ❌ | [NAIF docs](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/spk.html#Type%2021:%20Extended%20Modified%20Difference%20Arrays) |
 
+
 _Note:_ 🧪 means the SPK type is supported but no public SPK of that type could be found to validate the implementation. Please provide one if you have one!
 
 ## Features
