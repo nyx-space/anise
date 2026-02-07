@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["anise", "anise-cli", "anise-gui", "anise-py", "anise/fuzz"]
+members = ["anise", "anise-cli", "anise-gui", "anise-py", "anise/fuzz", "anise-cpp"]
 
 [workspace.package]
 version = "0.9.3"
@@ -46,6 +46,7 @@ pyo3-log = "0.13"
 numpy = "0.27"
 ndarray = ">= 0.17, < 0.18"
 rayon = "1.10.0"
+cxx = "1.0"
 
 anise = { path = "anise", default-features = false }
 
