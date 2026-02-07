@@ -43,6 +43,20 @@ ANISE supports many SPICE kernels. Binary kernels are supported as-is, while tex
 | **DSK** | ❌ | Yet to be supported |
 | **IK / EK** | ❌ | Yet to be supported |
 
+### Supported SPK Types
+
+For more details on SPK types, refer to the [NAIF SPK Required Reading](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/spk.html). The following table summarizes the types supported by ANISE.
+
+| SPK Type | Interpolation | NAIF SPICE | ANISE | Typically used in |
+| :--- | :--- | :---: | :---: | :--- |
+| **Type 1** | Modified Differences | ✅ | ✅ | NASA internal trajectory tools (e.g. DPTRAJ) |
+| **Type 2** | Chebyshev Triplet | ✅ | ✅ | Planetary ephemerides (e.g., JPL DE series) |
+| **Type 3** | Chebyshev Sextuplet | ✅ | ✅ | Planetary ephemerides (e.g., JPL DE series) |
+| **Type 8** | Lagrange (Equal Step) | ✅ | 🧪 | Uncommon spacecraft trajectories from numerical integration |
+| **Type 9** | Lagrange (Unequal Step) | ✅ | ✅ | Spacecraft trajectories from numerical integration |
+| **Type 12** | Hermite (Equal Step) | ✅ | 🧪 | Uncommon spacecraft trajectories from numerical integration |
+| **Type 13** | Hermite (Unequal Step) | ✅ | ✅ | Spacecraft trajectories from numerical integration |
+
 ## Architecture
 
 ANISE is a "Core + Bindings" ecosystem. The heavy lifting is done in Rust, ensuring maximum performance and safety, which is then exposed to your language or tool of choice.
