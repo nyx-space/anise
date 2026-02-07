@@ -312,7 +312,7 @@ impl Ephemeris {
                     orbit_data[i] = val;
                 }
             }
-            DataType::Type13HermiteUnequalStep | DataType::Type12HermiteEqualStep => {
+            DataType::Type13HermiteUnequalStep => {
                 for i in 0..3 {
                     let ys = states
                         .clone()
