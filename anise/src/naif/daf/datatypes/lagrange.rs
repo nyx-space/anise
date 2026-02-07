@@ -171,7 +171,9 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
         let mut vzs = [0.0; MAX_SAMPLES];
 
         for (cno, cur_idx) in (first_idx..last_idx).enumerate() {
-            let record = self.nth_record(cur_idx as usize).context(InterpDecodingSnafu)?;
+            let record = self
+                .nth_record(cur_idx as usize)
+                .context(InterpDecodingSnafu)?;
             xs[cno] = record.x_km;
             ys[cno] = record.y_km;
             zs[cno] = record.z_km;
@@ -181,36 +183,15 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
             epochs[cno] = t0 + (cur_idx as f64) * h;
         }
 
-        let (x_km, _) = lagrange_eval(
-            &epochs[..actual_group_size],
-            &xs[..actual_group_size],
-            et,
-        )?;
-        let (y_km, _) = lagrange_eval(
-            &epochs[..actual_group_size],
-            &ys[..actual_group_size],
-            et,
-        )?;
-        let (z_km, _) = lagrange_eval(
-            &epochs[..actual_group_size],
-            &zs[..actual_group_size],
-            et,
-        )?;
-        let (vx_km_s, _) = lagrange_eval(
-            &epochs[..actual_group_size],
-            &vxs[..actual_group_size],
-            et,
-        )?;
-        let (vy_km_s, _) = lagrange_eval(
-            &epochs[..actual_group_size],
-            &vys[..actual_group_size],
-            et,
-        )?;
-        let (vz_km_s, _) = lagrange_eval(
-            &epochs[..actual_group_size],
-            &vzs[..actual_group_size],
-            et,
-        )?;
+        let (x_km, _) = lagrange_eval(&epochs[..actual_group_size], &xs[..actual_group_size], et)?;
+        let (y_km, _) = lagrange_eval(&epochs[..actual_group_size], &ys[..actual_group_size], et)?;
+        let (z_km, _) = lagrange_eval(&epochs[..actual_group_size], &zs[..actual_group_size], et)?;
+        let (vx_km_s, _) =
+            lagrange_eval(&epochs[..actual_group_size], &vxs[..actual_group_size], et)?;
+        let (vy_km_s, _) =
+            lagrange_eval(&epochs[..actual_group_size], &vys[..actual_group_size], et)?;
+        let (vz_km_s, _) =
+            lagrange_eval(&epochs[..actual_group_size], &vzs[..actual_group_size], et)?;
 
         Ok((
             Vector3::new(x_km, y_km, z_km),
@@ -490,7 +471,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
 }
 
 #[cfg(test)]
-mod tests {
+mod ut_lagrange {
     use super::*;
     use crate::naif::spk::summary::SPKSummaryRecord;
     use hifitime::Epoch;

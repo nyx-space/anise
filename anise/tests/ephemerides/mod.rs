@@ -10,7 +10,6 @@
 
 mod parent_translation_verif;
 mod paths;
-mod spk_type8;
 mod transform;
 mod translation;
 #[cfg(feature = "validation")]

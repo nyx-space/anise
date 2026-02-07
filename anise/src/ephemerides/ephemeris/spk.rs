@@ -41,13 +41,12 @@ impl Ephemeris {
             ensure!(
                 [
                     DataType::Type13HermiteUnequalStep,
-                    DataType::Type9LagrangeUnequalStep,
-                    DataType::Type8LagrangeEqualStep,
+                    DataType::Type9LagrangeUnequalStep
                 ]
                 .contains(&data_type),
                 SPKWritingSnafu {
                     details:
-                        ("provided data type must be Type 13 Hermite, Type 9 Lagrange, or Type 8 Lagrange (equal steps)")
+                        ("provided data type must be either Type 13 Hermite or Type 9 Lagrange")
                             .to_string()
                 }
             );
@@ -100,68 +99,32 @@ impl Ephemeris {
             num_summaries: 1.0,
         };
 
-        match interpolation {
-            DataType::Type8LagrangeEqualStep => {
-                let mut it = self.state_data.keys();
-                let first = *it.next().unwrap();
-                let second = it.next().ok_or(EphemerisError::SPKWritingError {
-                    details: "Type 8 requires at least two states".to_string(),
-                })?;
-                let step = *second - first;
-                for (prev, curr) in self.state_data.keys().zip(self.state_data.keys().skip(1)) {
-                    if ((*curr - *prev).to_seconds() - step.to_seconds()).abs() > 1e-6 {
-                        return Err(EphemerisError::SPKWritingError {
-                            details: "Type 8 requires equal time steps".to_string(),
-                        });
-                    }
-                }
-
-                for entry in self.state_data.values() {
-                    let orbit = entry.orbit;
-                    statedata_bytes.extend_from_slice(&[
-                        orbit.radius_km.x.to_ne_bytes(),
-                        orbit.radius_km.y.to_ne_bytes(),
-                        orbit.radius_km.z.to_ne_bytes(),
-                        orbit.velocity_km_s.x.to_ne_bytes(),
-                        orbit.velocity_km_s.y.to_ne_bytes(),
-                        orbit.velocity_km_s.z.to_ne_bytes(),
-                    ]);
-                }
-                statedata_bytes.push(first.to_et_seconds().to_ne_bytes());
-                statedata_bytes.push(step.to_seconds().to_ne_bytes());
-                statedata_bytes.push((self.degree as f64).to_ne_bytes());
-                statedata_bytes.push((self.state_data.len() as f64).to_ne_bytes());
+        // Build the data records. Both Lagrange and Hermite use the same structure.
+        let mut state_data = Vec::with_capacity(self.state_data.len() * 7);
+        let mut epoch_data = Vec::with_capacity(self.state_data.len());
+        let mut epoch_registry = Vec::with_capacity(self.state_data.len() / 100);
+        for (idx, (_, entry)) in self.state_data.iter().enumerate() {
+            let orbit = entry.orbit;
+            state_data.extend_from_slice(&[
+                orbit.radius_km.x.to_ne_bytes(),
+                orbit.radius_km.y.to_ne_bytes(),
+                orbit.radius_km.z.to_ne_bytes(),
+                orbit.velocity_km_s.x.to_ne_bytes(),
+                orbit.velocity_km_s.y.to_ne_bytes(),
+                orbit.velocity_km_s.z.to_ne_bytes(),
+            ]);
+            epoch_data.push(orbit.epoch.to_et_seconds().to_ne_bytes());
+            if idx > 0 && (idx + 1) % 100 == 0 {
+                epoch_registry.push(orbit.epoch.to_et_seconds().to_ne_bytes());
             }
-            DataType::Type9LagrangeUnequalStep | DataType::Type13HermiteUnequalStep => {
-                // Build the data records. Both Lagrange and Hermite use the same structure.
-                let mut state_data = Vec::with_capacity(self.state_data.len() * 6);
-                let mut epoch_data = Vec::with_capacity(self.state_data.len());
-                let mut epoch_registry = Vec::with_capacity(self.state_data.len() / 100);
-                for (idx, (_, entry)) in self.state_data.iter().enumerate() {
-                    let orbit = entry.orbit;
-                    state_data.extend_from_slice(&[
-                        orbit.radius_km.x.to_ne_bytes(),
-                        orbit.radius_km.y.to_ne_bytes(),
-                        orbit.radius_km.z.to_ne_bytes(),
-                        orbit.velocity_km_s.x.to_ne_bytes(),
-                        orbit.velocity_km_s.y.to_ne_bytes(),
-                        orbit.velocity_km_s.z.to_ne_bytes(),
-                    ]);
-                    epoch_data.push(orbit.epoch.to_et_seconds().to_ne_bytes());
-                    if idx > 0 && (idx + 1) % 100 == 0 {
-                        epoch_registry.push(orbit.epoch.to_et_seconds().to_ne_bytes());
-                    }
-                }
-
-                // Now, manually build the HermiteSetType13 since we have nearly everything in the correct order and format.
-                statedata_bytes.extend_from_slice(&state_data);
-                statedata_bytes.extend_from_slice(&epoch_data);
-                statedata_bytes.extend_from_slice(&epoch_registry);
-                statedata_bytes.push((self.degree as f64).to_ne_bytes());
-                statedata_bytes.push((self.state_data.len() as f64).to_ne_bytes());
-            }
-            _ => unreachable!(),
         }
+
+        // Now, manually build the HermiteSetType13 since we have nearly everything in the correct order and format.
+        statedata_bytes.extend_from_slice(&state_data);
+        statedata_bytes.extend_from_slice(&epoch_data);
+        statedata_bytes.extend_from_slice(&epoch_registry);
+        statedata_bytes.push((self.degree as f64).to_ne_bytes());
+        statedata_bytes.push((self.state_data.len() as f64).to_ne_bytes());
 
         // Update the indices. DAF indices are 1-based word counts.
         // We write 3 blocks of 1024 bytes (128 words each) before the data.
