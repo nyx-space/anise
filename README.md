@@ -59,7 +59,7 @@ For more details on SPK types, refer to the [NAIF SPK Required Reading](https://
 | **Type 12** | Hermite (Equal Step) | ✅ | 🧪 | Uncommon spacecraft trajectories from numerical integration |
 | **Type 13** | Hermite (Unequal Step) | ✅ | ✅ | Spacecraft trajectories from numerical integration |
 | **Type 14** | Chebyshev Sextuplet (Unequal Step) | ✅ | ❌ | Never seen in the wild, probably good for slow-moving objects |
-| **Type 15** | Precessing Conic Propagation | ✅ | ❌ | Please don't use TLEs, a punch-card format (no joke) |
+| **Type 15** | Precessing Conic Propagation | ✅ | ❌ | Precessing conic elements |
 | **Type 17** | Equinoctial Elements | ✅ | ❌ | [NAIF docs](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/spk.html#Type%2017:%20Equinoctial%20Elements) |
 | **Type 18** | ESOC/DDID Hermite/Lagrange Interpolation | ✅ | ❌ | [NAIF docs](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/spk.html#Type%2018:%20ESOC/DDID%20Hermite/Lagrange%20Interpolation) |
 | **Type 19** | ESOC/DDID Piecewise Interpolation | ✅ | ❌ | [NAIF docs](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/spk.html#Type%2019:%20ESOC/DDID%20Piecewise%20Interpolation) |
