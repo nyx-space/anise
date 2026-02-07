@@ -140,7 +140,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
         let step_size_s = self.step_size.to_seconds();
         let float_index = delta_t_s / step_size_s;
 
-        let mut first_idx = if self.samples % 2 == 0 {
+        let mut first_idx = if self.samples.is_multiple_of(2) {
             // Even window size
             let i = float_index.floor() as usize;
             i.saturating_sub(self.samples / 2 - 1)
