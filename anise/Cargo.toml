@@ -61,7 +61,7 @@ approx = "0.5.1"
 polars = { version = "0.51.0", features = ["lazy", "parquet"] }
 rayon = "1.7"
 serde_yml = "0.0.12"
-rand_pcg = "0.9.0"
+rand_pcg = "0.10.1"
 rand = "0.9.1"
 
 [build-dependencies]
