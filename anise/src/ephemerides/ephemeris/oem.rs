@@ -126,13 +126,7 @@ impl Ephemeris {
                     parse_one_val(lno, line, "no value for INTERPOLATION_DEGREE")?.to_lowercase();
 
                 match interp_str.parse::<usize>() {
-                    Ok(ideg) => {
-                        degree = if interpolation == DataType::Type9LagrangeUnequalStep {
-                            ideg + 1
-                        } else {
-                            ideg
-                        };
-                    }
+                    Ok(ideg) => degree = ideg,
                     Err(_) => {
                         return Err(EphemerisError::OEMParsingError {
                             lno,
@@ -466,11 +460,7 @@ impl Ephemeris {
         )
         .map_err(err_hdlr)?;
 
-        let oem_degree = match self.interpolation {
-            DataType::Type9LagrangeUnequalStep => self.degree - 1,
-            _ => self.degree,
-        };
-        writeln!(writer, "\tINTERPOLATION_DEGREE = {}", oem_degree).map_err(err_hdlr)?;
+        writeln!(writer, "\tINTERPOLATION_DEGREE = {}", self.degree).map_err(err_hdlr)?;
 
         writeln!(
             writer,
