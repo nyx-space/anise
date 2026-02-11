@@ -272,7 +272,13 @@ impl Ephemeris {
             });
         }
         // Grab the N/2 previous states
-        let n = self.degree / 2;
+        let n = match self.interpolation {
+            DataType::Type9LagrangeUnequalStep => (self.degree + 1) / 2,
+            DataType::Type13HermiteUnequalStep | DataType::Type12HermiteEqualStep => {
+                (self.degree + 1) / 4
+            }
+            _ => self.degree / 2,
+        };
         let prev_states: Vec<EphemerisRecord> = {
             let mut states: Vec<EphemerisRecord> = self
                 .state_data
@@ -556,7 +562,7 @@ mod ut_oem {
             (start, Epoch::from_gregorian_utc_hms(2020, 6, 1, 13, 0, 0))
         );
         assert_eq!(ephem.interpolation, DataType::Type9LagrangeUnequalStep);
-        assert_eq!(ephem.degree, 7);
+        assert_eq!(ephem.degree, 8);
 
         println!("{ephem}");
 
@@ -586,7 +592,7 @@ mod ut_oem {
             )
         );
         assert_eq!(ephem.interpolation, DataType::Type9LagrangeUnequalStep);
-        assert_eq!(ephem.degree, 5);
+        assert_eq!(ephem.degree, 6);
 
         println!("{ephem}");
 

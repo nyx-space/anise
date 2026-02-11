@@ -46,7 +46,7 @@ impl Ephemeris {
         let mut center_name = None;
         let mut orient_name = None;
         let mut interpolation = DataType::Type13HermiteUnequalStep;
-        let mut degree = 5;
+        let mut samples_m1 = 5;
         let object_id: String = path
             .as_ref()
             .file_stem()
@@ -140,16 +140,27 @@ impl Ephemeris {
                     warn!("unsupported interpolation `{method}` using Hermite");
                 }
             } else if line.starts_with("InterpolationOrder")
-                || line.starts_with("InterpolationSamples")
+                || line.starts_with("InterpolationSamplesM1")
             {
-                let val = parse_one_val(lno, line, "no value for InterpolationOrder/Samples")?;
+                let val = parse_one_val(lno, line, "no value for InterpolationOrder/SamplesM1")?;
                 match val.parse::<usize>() {
-                    // Ephemeris.degree is the number of samples. STK provides order (samples - 1).
-                    Ok(d) => degree = d + 1,
+                    Ok(d) => samples_m1 = d,
                     Err(_) => {
                         return Err(EphemerisError::STKEParsingError {
                             lno,
-                            details: format!("invalid InterpolationOrder/Samples {val}"),
+                            details: format!("invalid InterpolationOrder/SamplesM1 {val}"),
+                        })
+                    }
+                }
+            } else if line.starts_with("InterpolationSamples") {
+                let val = parse_one_val(lno, line, "no value for InterpolationSamples")?;
+                match val.parse::<usize>() {
+                    // Ephemeris.degree is the number of samples. STK provides order (samples - 1).
+                    Ok(d) => samples_m1 = d.saturating_sub(1),
+                    Err(_) => {
+                        return Err(EphemerisError::STKEParsingError {
+                            lno,
+                            details: format!("invalid InterpolationSamples {val}"),
                         })
                     }
                 }
@@ -381,6 +392,13 @@ impl Ephemeris {
                 warn!("covariance at {epoch} has no corresponding state data, ignoring");
             }
         }
+
+        // Finalize degree
+        let degree = if interpolation == DataType::Type9LagrangeUnequalStep {
+            samples_m1 + 1
+        } else {
+            2 * samples_m1 + 1
+        };
 
         Ok(Ephemeris {
             object_id,
