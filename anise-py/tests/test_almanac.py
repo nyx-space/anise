@@ -101,7 +101,7 @@ def test_state_transformation():
     conj_q = q.conjugate()
     assert (conj_q * q).is_zero()
 
-    conj_dcm = conq_q.to_dcm()
+    conj_dcm = conj_q.to_dcm()
     assert (conj_dcm * dcm).is_identity()
 
     uvec, angle = q.uvec_angle_rad()
