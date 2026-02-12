@@ -41,6 +41,7 @@ impl Ephemeris {
             ensure!(
                 [
                     DataType::Type13HermiteUnequalStep,
+                    DataType::Type12HermiteEqualStep,
                     DataType::Type9LagrangeUnequalStep
                 ]
                 .contains(&data_type),
@@ -125,7 +126,7 @@ impl Ephemeris {
         statedata_bytes.extend_from_slice(&epoch_registry);
         // The SPK Type 9 and 13 store the samples minus one in this slot.
         let samples_m1 = match interpolation {
-            DataType::Type9LagrangeUnequalStep => self.degree - 1,
+            DataType::Type9LagrangeUnequalStep => self.degree,
             DataType::Type13HermiteUnequalStep | DataType::Type12HermiteEqualStep => {
                 (self.degree - 1) / 2
             }

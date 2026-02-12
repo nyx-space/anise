@@ -395,9 +395,9 @@ impl Ephemeris {
 
         // Finalize degree
         let degree = if interpolation == DataType::Type9LagrangeUnequalStep {
-            samples_m1 + 1
+            samples_m1.saturating_add(1)
         } else {
-            2 * samples_m1 + 1
+            samples_m1.saturating_mul(2).saturating_add(1)
         };
 
         Ok(Ephemeris {
