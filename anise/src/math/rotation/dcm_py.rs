@@ -8,10 +8,10 @@
  * Documentation: https://nyxspace.com/
  */
 
+use super::DCM;
+use crate::astro::PhysicsResult;
 use crate::math::rotation::Quaternion;
 use crate::NaifId;
-
-use super::DCM;
 
 use nalgebra::{Matrix3, Vector3};
 use ndarray::{Array1, Array2};
@@ -318,5 +318,9 @@ impl DCM {
                 "{op:?} not available"
             ))),
         }
+    }
+
+    fn __mul__(&self, dcm: Self) -> PhysicsResult<Self> {
+        *self * dcm
     }
 }
