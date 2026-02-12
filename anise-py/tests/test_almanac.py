@@ -97,6 +97,12 @@ def test_state_transformation():
     # Check that we can convert a DCM to a quaternion and back
     q = dcm.to_quaternion()
     q_rebuilt = Quaternion(q.w, q.x, q.y, q.z, q.from_id, q.to_id)
+    # Test quaternion multiplication
+    conj_q = q.conjugate()
+    assert (conj_q * q).is_zero()
+
+    conj_dcm = conj_q.to_dcm()
+    assert (conj_dcm * dcm).is_identity()
 
     uvec, angle = q.uvec_angle_rad()
     prv = q.prv()
@@ -454,6 +460,6 @@ if __name__ == "__main__":
     # test_exports()
     # test_frame_defs()
     # test_convert_tpc()
-    # test_state_transformation()
+    test_state_transformation()
     # test_location()
-    test_oem()
+    # test_oem()

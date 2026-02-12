@@ -9,6 +9,7 @@
  */
 
 use super::{EulerParameter, DCM};
+use crate::astro::PhysicsResult;
 use crate::NaifId;
 
 use nalgebra::Vector3;
@@ -226,5 +227,9 @@ impl EulerParameter {
                 "{op:?} not available"
             ))),
         }
+    }
+
+    fn __mul__(&self, q: Self) -> PhysicsResult<Self> {
+        *self * q
     }
 }
