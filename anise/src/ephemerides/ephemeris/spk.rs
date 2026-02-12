@@ -41,6 +41,7 @@ impl Ephemeris {
             ensure!(
                 [
                     DataType::Type13HermiteUnequalStep,
+                    DataType::Type12HermiteEqualStep,
                     DataType::Type9LagrangeUnequalStep
                 ]
                 .contains(&data_type),
@@ -123,7 +124,15 @@ impl Ephemeris {
         statedata_bytes.extend_from_slice(&state_data);
         statedata_bytes.extend_from_slice(&epoch_data);
         statedata_bytes.extend_from_slice(&epoch_registry);
-        statedata_bytes.push((self.degree as f64).to_ne_bytes());
+        // The SPK Type 9 and 13 store the samples minus one in this slot.
+        let samples_m1 = match interpolation {
+            DataType::Type9LagrangeUnequalStep => self.degree,
+            DataType::Type13HermiteUnequalStep | DataType::Type12HermiteEqualStep => {
+                (self.degree - 1) / 2
+            }
+            _ => self.degree,
+        };
+        statedata_bytes.push((samples_m1 as f64).to_ne_bytes());
         statedata_bytes.push((self.state_data.len() as f64).to_ne_bytes());
 
         // Update the indices. DAF indices are 1-based word counts.

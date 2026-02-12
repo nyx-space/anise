@@ -272,7 +272,7 @@ impl Ephemeris {
             });
         }
         // Grab the N/2 previous states
-        let n = self.degree / 2;
+        let n = self.degree;
         let prev_states: Vec<EphemerisRecord> = {
             let mut states: Vec<EphemerisRecord> = self
                 .state_data
