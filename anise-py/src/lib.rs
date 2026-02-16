@@ -30,6 +30,7 @@ use anise::structure::dataset::location_dhall::PyLocationDataSet;
 use anise::structure::dataset::location_dhall::{LocationDhallSet, LocationDhallSetEntry};
 use anise::structure::instrument::{FovShape, Instrument};
 use anise::structure::planetocentric::ellipsoid::Ellipsoid;
+use anise::structure::spacecraft::{DragData, Mass, SRPData};
 use hifitime::leap_seconds::{LatestLeapSeconds, LeapSecondsFile};
 use hifitime::python::{PyDurationError, PyHifitimeError, PyParsingError};
 use hifitime::ut1::Ut1Provider;
@@ -85,6 +86,9 @@ pub(crate) fn astro(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
     sm.add_class::<Covariance>()?;
     sm.add_class::<LocalFrame>()?;
     sm.add_class::<DafDataType>()?;
+    sm.add_class::<Mass>()?;
+    sm.add_class::<DragData>()?;
+    sm.add_class::<SRPData>()?;
 
     // Also add the constants as a submodule to astro for backward compatibility
     sm.add_wrapped(wrap_pymodule!(crate::constants::constants))?;

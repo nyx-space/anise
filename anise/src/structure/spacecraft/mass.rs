@@ -11,7 +11,13 @@ use der::{Decode, Encode, Reader, Writer};
 use serde_derive::{Deserialize, Serialize};
 use std::ops::Sub;
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+#[cfg(feature = "python")]
+use pyo3::types::PyType;
+
 /// Defines a spacecraft mass a the sum of the dry (structural) mass and the propellant mass, both in kilogram
+#[cfg_attr(feature = "python", pyclass(get_all, set_all, module = "anise.astro"))]
 #[derive(Copy, Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Mass {
     /// Structural mass of the spacecraft, in kg
@@ -39,6 +45,10 @@ impl Mass {
             extra_mass_kg: 0.0,
         }
     }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl Mass {
     /// Returns the total mass in kg
     pub fn total_mass_kg(&self) -> f64 {
         self.dry_mass_kg + self.prop_mass_kg + self.extra_mass_kg
@@ -50,9 +60,9 @@ impl Mass {
     }
 
     /// Returns a Mass structure that is guaranteed to be physically correct
-    pub fn abs(self) -> Self {
+    pub fn abs(&self) -> Self {
         if self.is_valid() {
-            self
+            *self
         } else {
             Self {
                 dry_mass_kg: self.dry_mass_kg.abs(),
@@ -60,6 +70,41 @@ impl Mass {
                 extra_mass_kg: self.extra_mass_kg.abs(),
             }
         }
+    }
+}
+
+#[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pymethods)]
+impl Mass {
+    #[new]
+    fn py_new(dry_mass_kg: f64, prop_mass_kg: f64, extra_mass_kg: f64) -> Self {
+        Self {
+            dry_mass_kg,
+            prop_mass_kg,
+            extra_mass_kg,
+        }
+    }
+    #[pyo3(name = "from_dry_mass")]
+    #[classmethod]
+    fn init_from_dry_mass(_cls: &Bound<'_, PyType>, dry_mass_kg: f64) -> Self {
+        Self::from_dry_mass(dry_mass_kg)
+    }
+    #[pyo3(name = "from_dry_and_prop_masses")]
+    #[classmethod]
+    fn init_from_dry_and_prop_masses(
+        _cls: &Bound<'_, PyType>,
+        dry_mass_kg: f64,
+        prop_mass_kg: f64,
+    ) -> Self {
+        Self::from_dry_and_prop_masses(dry_mass_kg, prop_mass_kg)
+    }
+
+    fn __str__(&self) -> String {
+        format!("{self:?}")
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{self:?} @ {self:p}")
     }
 }
 
