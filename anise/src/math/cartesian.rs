@@ -13,12 +13,14 @@ use crate::{
     astro::PhysicsResult,
     constants::SPEED_OF_LIGHT_KM_S,
     errors::{EpochMismatchSnafu, FrameMismatchSnafu, MathError, PhysicsError},
+    frames::FrameUid,
     prelude::Frame,
 };
 
 use core::fmt;
 use core::ops::{Add, Neg, Sub};
-use hifitime::{Duration, Epoch, TimeUnits};
+use der::{Decode, Encode, Reader, Writer};
+use hifitime::{Duration, Epoch, TimeScale, TimeUnits};
 use nalgebra::Vector6;
 use serde_derive::{Deserialize, Serialize};
 use snafu::ensure;
@@ -513,6 +515,73 @@ impl Neg for CartesianState {
     }
 }
 
+impl Encode for CartesianState {
+    fn encoded_len(&self) -> der::Result<der::Length> {
+        let ts_u8: u8 = self.epoch.time_scale.into();
+        let (centuries, nanoseconds) = self.epoch.duration.to_parts();
+        let frame_uid: FrameUid = self.frame.into();
+
+        self.radius_km.x.encoded_len()?
+            + self.radius_km.y.encoded_len()?
+            + self.radius_km.z.encoded_len()?
+            + self.velocity_km_s.x.encoded_len()?
+            + self.velocity_km_s.y.encoded_len()?
+            + self.velocity_km_s.z.encoded_len()?
+            + ts_u8.encoded_len()?
+            + centuries.encoded_len()?
+            + nanoseconds.encoded_len()?
+            + frame_uid.encoded_len()?
+    }
+
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
+        let ts_u8: u8 = self.epoch.time_scale.into();
+        let (centuries, nanoseconds) = self.epoch.duration.to_parts();
+        let frame_uid: FrameUid = self.frame.into();
+
+        self.radius_km.x.encode(encoder)?;
+        self.radius_km.y.encode(encoder)?;
+        self.radius_km.z.encode(encoder)?;
+        self.velocity_km_s.x.encode(encoder)?;
+        self.velocity_km_s.y.encode(encoder)?;
+        self.velocity_km_s.z.encode(encoder)?;
+        ts_u8.encode(encoder)?;
+        centuries.encode(encoder)?;
+        nanoseconds.encode(encoder)?;
+        frame_uid.encode(encoder)
+    }
+}
+
+impl<'a> Decode<'a> for CartesianState {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
+        let x_km: f64 = decoder.decode()?;
+        let y_km: f64 = decoder.decode()?;
+        let z_km: f64 = decoder.decode()?;
+        let vx_km_s: f64 = decoder.decode()?;
+        let vy_km_s: f64 = decoder.decode()?;
+        let vz_km_s: f64 = decoder.decode()?;
+
+        let ts_u8: u8 = decoder.decode()?;
+        let centuries: i16 = decoder.decode()?;
+        let nanoseconds: u64 = decoder.decode()?;
+
+        let frame_uid: FrameUid = decoder.decode()?;
+
+        let time_scale = TimeScale::from(ts_u8);
+        let duration = Duration::from_parts(centuries, nanoseconds);
+
+        let epoch = Epoch {
+            duration,
+            time_scale,
+        };
+
+        let frame = Frame::from(frame_uid);
+
+        Ok(Self::new(
+            x_km, y_km, z_km, vx_km_s, vy_km_s, vz_km_s, epoch, frame,
+        ))
+    }
+}
+
 #[allow(clippy::format_in_format_args)]
 impl fmt::Display for CartesianState {
     // Prints as Cartesian in floating point with units
@@ -555,7 +624,7 @@ impl fmt::LowerExp for CartesianState {
 
 #[cfg(test)]
 mod cartesian_state_ut {
-
+    use der::{Decode, Encode};
     use hifitime::{Duration, Epoch, TimeUnits};
 
     use crate::constants::frames::{EARTH_J2000, VENUS_J2000};
@@ -563,6 +632,20 @@ mod cartesian_state_ut {
     use crate::math::Vector6;
 
     use super::CartesianState;
+
+    #[test]
+    fn test_der_encoding() {
+        let e = Epoch::now().unwrap();
+        let frame = EARTH_J2000;
+        let state = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
+
+        let mut buf = vec![];
+        state.encode_to_vec(&mut buf).unwrap();
+
+        let state_dec = CartesianState::from_der(&buf).unwrap();
+
+        assert_eq!(state, state_dec);
+    }
 
     #[test]
     fn add_wrong_epoch() {
