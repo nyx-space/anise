@@ -10,6 +10,7 @@
 
 use core::fmt;
 use core::fmt::Debug;
+use der::{Decode, Encode, Reader, Writer};
 use serde_derive::{Deserialize, Serialize};
 use snafu::ResultExt;
 
@@ -347,6 +348,74 @@ impl Frame {
                 frame: self.into(),
             })?
             .polar_radius_km)
+    }
+}
+
+impl Encode for Frame {
+    fn encoded_len(&self) -> der::Result<der::Length> {
+        let mut len = (self.ephemeris_id.encoded_len()? + self.orientation_id.encoded_len()?)?;
+        if let Some(mu) = self.mu_km3_s2 {
+            len = (len + true.encoded_len()?)?;
+            len = (len + mu.encoded_len()?)?;
+        } else {
+            len = (len + false.encoded_len()?)?;
+        }
+
+        if let Some(shape) = self.shape {
+            len = (len + true.encoded_len()?)?;
+            len = (len + shape.encoded_len()?)?;
+        } else {
+            len = (len + false.encoded_len()?)?;
+        }
+        Ok(len)
+    }
+
+    fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
+        self.ephemeris_id.encode(encoder)?;
+        self.orientation_id.encode(encoder)?;
+
+        if let Some(mu) = self.mu_km3_s2 {
+            true.encode(encoder)?;
+            mu.encode(encoder)?;
+        } else {
+            false.encode(encoder)?;
+        }
+
+        if let Some(shape) = self.shape {
+            true.encode(encoder)?;
+            shape.encode(encoder)?;
+        } else {
+            false.encode(encoder)?;
+        }
+        Ok(())
+    }
+}
+
+impl<'a> Decode<'a> for Frame {
+    fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
+        let ephemeris_id: NaifId = decoder.decode()?;
+        let orientation_id: NaifId = decoder.decode()?;
+
+        let mu_present: bool = decoder.decode()?;
+        let mu_km3_s2 = if mu_present {
+            Some(decoder.decode()?)
+        } else {
+            None
+        };
+
+        let shape_present: bool = decoder.decode()?;
+        let shape = if shape_present {
+            Some(decoder.decode()?)
+        } else {
+            None
+        };
+
+        Ok(Self {
+            ephemeris_id,
+            orientation_id,
+            mu_km3_s2,
+            shape,
+        })
     }
 }
 
