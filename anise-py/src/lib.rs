@@ -8,21 +8,29 @@
  * Documentation: https://nyxspace.com/
  */
 
-use ::anise::almanac::metaload::{MetaAlmanac, MetaFile};
-use ::anise::almanac::Almanac;
-use ::anise::analysis::prelude::{
+use anise::almanac::metaload::{MetaAlmanac, MetaFile};
+use anise::almanac::Almanac;
+use anise::analysis::prelude::{
     find_arc_intersections, Condition, Event, EventArc, EventDetails, EventEdge, OrbitalElement,
     Plane, VisibilityArc,
 };
-use ::anise::analysis::python::{
+use anise::analysis::python::{
     PyFrameSpec, PyOrthogonalFrame, PyScalarExpr, PyStateSpec, PyVectorExpr,
 };
-use ::anise::analysis::report::PyReportScalars;
-use ::anise::astro::Aberration;
-use ::anise::structure::dataset::location_dhall::PyLocationDataSet;
-use ::anise::structure::dataset::location_dhall::{LocationDhallSet, LocationDhallSetEntry};
-use ::anise::structure::instrument::{FovShape, Instrument};
-use ::anise::structure::planetocentric::ellipsoid::Ellipsoid;
+use anise::analysis::report::PyReportScalars;
+use anise::astro::orbit::Orbit;
+use anise::astro::Aberration;
+use anise::astro::{AzElRange, Location, Occultation, TerrainMask};
+use anise::ephemerides::ephemeris::{Covariance, Ephemeris, EphemerisRecord, LocalFrame};
+use anise::frames::Frame;
+use anise::frames::FrameUid;
+use anise::math::rotation::{Quaternion, DCM};
+use anise::naif::daf::DafDataType;
+use anise::structure::dataset::location_dhall::PyLocationDataSet;
+use anise::structure::dataset::location_dhall::{LocationDhallSet, LocationDhallSetEntry};
+use anise::structure::instrument::{FovShape, Instrument};
+use anise::structure::planetocentric::ellipsoid::Ellipsoid;
+use anise::structure::spacecraft::{DragData, Mass, SRPData};
 use hifitime::leap_seconds::{LatestLeapSeconds, LeapSecondsFile};
 use hifitime::python::{PyDurationError, PyHifitimeError, PyParsingError};
 use hifitime::ut1::Ut1Provider;
@@ -30,24 +38,22 @@ use hifitime::{prelude::*, MonthName, Polynomial};
 
 use pyo3::{prelude::*, wrap_pyfunction, wrap_pymodule};
 
-mod astro;
 mod bin;
 mod constants;
-mod rotation;
 mod utils;
 
 /// A Python module implemented in Rust.
 #[pymodule]
 #[pyo3(name = "_anise")]
-fn anise(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn pyanise(m: &Bound<'_, PyModule>) -> PyResult<()> {
     pyo3_log::init();
     m.add_wrapped(wrap_pymodule!(time))?;
     m.add_wrapped(wrap_pymodule!(analysis))?;
     m.add_wrapped(wrap_pymodule!(instrument))?;
-    m.add_wrapped(wrap_pymodule!(astro::astro))?;
+    m.add_wrapped(wrap_pymodule!(astro))?;
     m.add_wrapped(wrap_pymodule!(constants::constants))?;
     m.add_wrapped(wrap_pymodule!(utils::utils))?;
-    m.add_wrapped(wrap_pymodule!(rotation::rotation))?;
+    m.add_wrapped(wrap_pymodule!(rotation))?;
     m.add_wrapped(wrap_pyfunction!(bin::exec_gui))?;
 
     m.add_class::<Almanac>()?;
@@ -61,6 +67,39 @@ fn anise(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add("__doc__", env!("CARGO_PKG_DESCRIPTION"))?;
     m.add("__author__", env!("CARGO_PKG_AUTHORS"))?;
+
+    Ok(())
+}
+
+#[pymodule]
+pub(crate) fn astro(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
+    sm.add_class::<Ellipsoid>()?;
+    sm.add_class::<Frame>()?;
+    sm.add_class::<FrameUid>()?;
+    sm.add_class::<Orbit>()?;
+    sm.add_class::<AzElRange>()?;
+    sm.add_class::<Occultation>()?;
+    sm.add_class::<Location>()?;
+    sm.add_class::<TerrainMask>()?;
+    sm.add_class::<Ephemeris>()?;
+    sm.add_class::<EphemerisRecord>()?;
+    sm.add_class::<Covariance>()?;
+    sm.add_class::<LocalFrame>()?;
+    sm.add_class::<DafDataType>()?;
+    sm.add_class::<Mass>()?;
+    sm.add_class::<DragData>()?;
+    sm.add_class::<SRPData>()?;
+
+    // Also add the constants as a submodule to astro for backward compatibility
+    sm.add_wrapped(wrap_pymodule!(crate::constants::constants))?;
+
+    Ok(())
+}
+
+#[pymodule]
+pub(crate) fn rotation(_py: Python, sm: &Bound<PyModule>) -> PyResult<()> {
+    sm.add_class::<DCM>()?;
+    sm.add_class::<Quaternion>()?;
 
     Ok(())
 }

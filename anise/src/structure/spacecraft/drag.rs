@@ -10,6 +10,10 @@
 use der::{Decode, Encode, Reader, Writer};
 use serde_derive::{Deserialize, Serialize};
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
+#[cfg_attr(feature = "python", pyclass(get_all, set_all, module = "anise.astro"))]
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DragData {
     /// Atmospheric drag area in m^2 -- default 0.0
@@ -24,6 +28,27 @@ impl DragData {
             area_m2,
             ..Default::default()
         }
+    }
+}
+
+#[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pymethods)]
+impl DragData {
+    #[new]
+    #[pyo3(signature = (area_m2, coeff_drag = None))]
+    fn py_new(area_m2: f64, coeff_drag: Option<f64>) -> Self {
+        Self {
+            area_m2,
+            coeff_drag: coeff_drag.unwrap_or(Self::default().coeff_drag),
+        }
+    }
+
+    fn __str__(&self) -> String {
+        format!("{self:?}")
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{self:?} @ {self:p}")
     }
 }
 

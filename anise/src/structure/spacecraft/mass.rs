@@ -11,7 +11,11 @@ use der::{Decode, Encode, Reader, Writer};
 use serde_derive::{Deserialize, Serialize};
 use std::ops::Sub;
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 /// Defines a spacecraft mass a the sum of the dry (structural) mass and the propellant mass, both in kilogram
+#[cfg_attr(feature = "python", pyclass(get_all, set_all, module = "anise.astro"))]
 #[derive(Copy, Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Mass {
     /// Structural mass of the spacecraft, in kg
@@ -39,6 +43,10 @@ impl Mass {
             extra_mass_kg: 0.0,
         }
     }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl Mass {
     /// Returns the total mass in kg
     pub fn total_mass_kg(&self) -> f64 {
         self.dry_mass_kg + self.prop_mass_kg + self.extra_mass_kg
@@ -50,9 +58,9 @@ impl Mass {
     }
 
     /// Returns a Mass structure that is guaranteed to be physically correct
-    pub fn abs(self) -> Self {
+    pub fn abs(&self) -> Self {
         if self.is_valid() {
-            self
+            *self
         } else {
             Self {
                 dry_mass_kg: self.dry_mass_kg.abs(),
@@ -60,6 +68,28 @@ impl Mass {
                 extra_mass_kg: self.extra_mass_kg.abs(),
             }
         }
+    }
+}
+
+#[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pymethods)]
+impl Mass {
+    #[new]
+    #[pyo3(signature = (dry_mass_kg, prop_mass_kg = None, extra_mass_kg = None))]
+    fn py_new(dry_mass_kg: f64, prop_mass_kg: Option<f64>, extra_mass_kg: Option<f64>) -> Self {
+        Self {
+            dry_mass_kg,
+            prop_mass_kg: prop_mass_kg.unwrap_or(0.0),
+            extra_mass_kg: extra_mass_kg.unwrap_or(0.0),
+        }
+    }
+
+    fn __str__(&self) -> String {
+        format!("{self:?}")
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{self:?} @ {self:p}")
     }
 }
 
