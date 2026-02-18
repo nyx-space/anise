@@ -1,17 +1,17 @@
+from pathlib import Path
+from sys import platform
+
+import anise.analysis as analysis
 from anise import (
-    Almanac,
     Aberration,
+    Almanac,
     LocationDhallSet,
     LocationDhallSetEntry,
 )
-from anise.astro import Location, TerrainMask, FrameUid
-from anise.analysis import Event, Condition
-import anise.analysis as analysis
-from anise.time import Duration, Epoch, TimeSeries, Unit
+from anise.analysis import Condition, Event
+from anise.astro import Frame, FrameUid, Location, TerrainMask
 from anise.constants import Frames
-from anise.astro import Frame
-from pathlib import Path
-from sys import platform
+from anise.time import Duration, Epoch, TimeSeries, Unit
 
 
 def test_analysis_gen_report():

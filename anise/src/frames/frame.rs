@@ -28,11 +28,13 @@ use crate::structure::planetocentric::ellipsoid::Ellipsoid;
 use crate::NaifId;
 
 #[cfg(feature = "python")]
-use pyo3::exceptions::PyTypeError;
+use pyo3::exceptions::{PyTypeError, PyValueError};
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 #[cfg(feature = "python")]
 use pyo3::pyclass::CompareOp;
+#[cfg(feature = "python")]
+use pyo3::types::{PyBytes, PyType};
 
 /// A Frame uniquely defined by its ephemeris center and orientation. Refer to FrameDetail for frames combined with parameters.
 ///
@@ -214,6 +216,29 @@ impl Frame {
     fn set_shape(&mut self, shape: Option<Ellipsoid>) -> PyResult<()> {
         self.shape = shape;
         Ok(())
+    }
+
+    /// Decodes an ASN.1 DER encoded byte array into a Frame.
+    ///
+    /// :type data: bytes
+    /// :rtype: Frame
+    #[classmethod]
+    pub fn from_asn1(_cls: &Bound<'_, PyType>, data: &[u8]) -> PyResult<Self> {
+        match Self::from_der(data) {
+            Ok(obj) => Ok(obj),
+            Err(e) => Err(PyValueError::new_err(format!("ASN.1 decoding error: {e}"))),
+        }
+    }
+
+    /// Encodes this Frame into an ASN.1 DER encoded byte array.
+    ///
+    /// :rtype: bytes
+    pub fn to_asn1<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyBytes>> {
+        let mut buf = Vec::new();
+        match self.encode_to_vec(&mut buf) {
+            Ok(_) => Ok(PyBytes::new(py, &buf)),
+            Err(e) => Err(PyValueError::new_err(format!("ASN.1 encoding error: {e}"))),
+        }
     }
 }
 

@@ -11,7 +11,11 @@ use der::{Decode, Encode, Reader, Writer};
 use serde_derive::{Deserialize, Serialize};
 
 #[cfg(feature = "python")]
+use pyo3::exceptions::PyValueError;
+#[cfg(feature = "python")]
 use pyo3::prelude::*;
+#[cfg(feature = "python")]
+use pyo3::types::{PyBytes, PyType};
 
 #[cfg_attr(feature = "python", pyclass(get_all, set_all, module = "anise.astro"))]
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -49,6 +53,29 @@ impl DragData {
 
     fn __repr__(&self) -> String {
         format!("{self:?} @ {self:p}")
+    }
+
+    /// Decodes an ASN.1 DER encoded byte array into a DragData object.
+    ///
+    /// :type data: bytes
+    /// :rtype: DragData
+    #[classmethod]
+    pub fn from_asn1(_cls: &Bound<'_, PyType>, data: &[u8]) -> PyResult<Self> {
+        match Self::from_der(data) {
+            Ok(obj) => Ok(obj),
+            Err(e) => Err(PyValueError::new_err(format!("ASN.1 decoding error: {e}"))),
+        }
+    }
+
+    /// Encodes this DragData object into an ASN.1 DER encoded byte array.
+    ///
+    /// :rtype: bytes
+    pub fn to_asn1<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyBytes>> {
+        let mut buf = Vec::new();
+        match self.encode_to_vec(&mut buf) {
+            Ok(_) => Ok(PyBytes::new(py, &buf)),
+            Err(e) => Err(PyValueError::new_err(format!("ASN.1 encoding error: {e}"))),
+        }
     }
 }
 
