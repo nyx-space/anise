@@ -12,8 +12,6 @@ use serde_derive::{Deserialize, Serialize};
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
-#[cfg(feature = "python")]
-use pyo3::types::PyType;
 
 #[cfg_attr(feature = "python", pyclass(get_all, set_all, module = "anise.astro"))]
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -38,7 +36,7 @@ impl SRPData {
 impl SRPData {
     #[new]
     #[pyo3(signature = (area_m2, coeff_reflectivity = None))]
-    fn py_new(area_m2: f66, coeff_reflectivity: Option<f64>) -> Self {
+    fn py_new(area_m2: f64, coeff_reflectivity: Option<f64>) -> Self {
         Self {
             area_m2,
             coeff_reflectivity: coeff_reflectivity.unwrap_or(Self::default().coeff_reflectivity),

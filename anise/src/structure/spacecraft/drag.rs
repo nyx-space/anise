@@ -12,8 +12,6 @@ use serde_derive::{Deserialize, Serialize};
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
-#[cfg(feature = "python")]
-use pyo3::types::PyType;
 
 #[cfg_attr(feature = "python", pyclass(get_all, set_all, module = "anise.astro"))]
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]

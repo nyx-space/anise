@@ -13,8 +13,6 @@ use std::ops::Sub;
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
-#[cfg(feature = "python")]
-use pyo3::types::PyType;
 
 /// Defines a spacecraft mass a the sum of the dry (structural) mass and the propellant mass, both in kilogram
 #[cfg_attr(feature = "python", pyclass(get_all, set_all, module = "anise.astro"))]
