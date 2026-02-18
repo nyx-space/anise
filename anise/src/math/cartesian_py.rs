@@ -12,11 +12,11 @@
 
 use super::cartesian::CartesianState;
 use crate::prelude::Frame;
+use der::{Decode, Encode};
 use hifitime::Epoch;
 use ndarray::Array1;
 use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::{PyTypeError, PyValueError};
-use der::{Decode, Encode};
 use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
 use pyo3::types::{PyBytes, PyTuple, PyType};

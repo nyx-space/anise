@@ -1,4 +1,7 @@
+from os import environ
 from pathlib import Path
+
+import numpy as np
 
 from anise import (
     Almanac,
@@ -6,13 +9,10 @@ from anise import (
 )
 from anise.astro import Orbit
 from anise.constants import Frames
+from anise.instrument import Ellipsoid, FovShape, Instrument
 from anise.rotation import DCM, Quaternion
 from anise.time import Duration, Epoch, TimeSeries, Unit
 from anise.utils import convert_tpc
-from anise.instrument import Instrument, FovShape, Ellipsoid
-
-import numpy as np
-from os import environ
 
 
 def almanac_fixture():
