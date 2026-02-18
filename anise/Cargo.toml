@@ -71,7 +71,7 @@ ureq = { version = "3.0.10", default-features = false, optional = true, features
 
 [features]
 default = ["metaload", "analysis"]
-python = ["pyo3", "pyo3-log", "numpy", "ndarray", "rayon"]
+python = ["pyo3", "pyo3-log", "numpy", "ndarray", "rayon", "hifitime/python"]
 metaload = ["url", "ureq", "platform-dirs", "regex", "serde_dhall"]
 embed_ephem = ["rust-embed", "ureq"]
 analysis = ["rayon", "serde-lexpr", "csv", "hyperdual"]

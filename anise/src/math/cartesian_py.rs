@@ -16,9 +16,10 @@ use hifitime::Epoch;
 use ndarray::Array1;
 use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::{PyTypeError, PyValueError};
+use der::{Decode, Encode};
 use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
-use pyo3::types::{PyTuple, PyType};
+use pyo3::types::{PyBytes, PyTuple, PyType};
 
 fn from_npy_slice(pos_vel_na: &[f64], epoch: Epoch, frame: Frame) -> PyResult<CartesianState> {
     if pos_vel_na.len() != 6 {
@@ -86,6 +87,29 @@ impl CartesianState {
         frame: Frame,
     ) -> PyResult<Self> {
         from_npy_slice(pos_vel.as_slice()?, epoch, frame)
+    }
+
+    /// Decodes an ASN.1 DER encoded byte array into a CartesianState (Orbit).
+    ///
+    /// :type data: bytes
+    /// :rtype: Orbit
+    #[classmethod]
+    pub fn from_asn1(_cls: &Bound<'_, PyType>, data: &[u8]) -> PyResult<Self> {
+        match Self::from_der(data) {
+            Ok(obj) => Ok(obj),
+            Err(e) => Err(PyValueError::new_err(format!("ASN.1 decoding error: {e}"))),
+        }
+    }
+
+    /// Encodes this CartesianState (Orbit) into an ASN.1 DER encoded byte array.
+    ///
+    /// :rtype: bytes
+    pub fn to_asn1<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyBytes>> {
+        let mut buf = Vec::new();
+        match self.encode_to_vec(&mut buf) {
+            Ok(_) => Ok(PyBytes::new(py, &buf)),
+            Err(e) => Err(PyValueError::new_err(format!("ASN.1 encoding error: {e}"))),
+        }
     }
 
     /// Creates a new Cartesian state in the provided frame at the provided Epoch (calls from_cartesian).
