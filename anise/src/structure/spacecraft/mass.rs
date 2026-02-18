@@ -77,26 +77,13 @@ impl Mass {
 #[cfg_attr(feature = "python", pymethods)]
 impl Mass {
     #[new]
-    fn py_new(dry_mass_kg: f64, prop_mass_kg: f64, extra_mass_kg: f64) -> Self {
+    #[pyo3(signature = (dry_mass_kg, prop_mass_kg = None, extra_mass_kg = None))]
+    fn py_new(dry_mass_kg: f64, prop_mass_kg: Option<f64>, extra_mass_kg: Option<f64>) -> Self {
         Self {
             dry_mass_kg,
-            prop_mass_kg,
-            extra_mass_kg,
+            prop_mass_kg: prop_mass_kg.unwrap_or(0.0),
+            extra_mass_kg: extra_mass_kg.unwrap_or(0.0),
         }
-    }
-    #[pyo3(name = "from_dry_mass")]
-    #[classmethod]
-    fn init_from_dry_mass(_cls: &Bound<'_, PyType>, dry_mass_kg: f64) -> Self {
-        Self::from_dry_mass(dry_mass_kg)
-    }
-    #[pyo3(name = "from_dry_and_prop_masses")]
-    #[classmethod]
-    fn init_from_dry_and_prop_masses(
-        _cls: &Bound<'_, PyType>,
-        dry_mass_kg: f64,
-        prop_mass_kg: f64,
-    ) -> Self {
-        Self::from_dry_and_prop_masses(dry_mass_kg, prop_mass_kg)
     }
 
     fn __str__(&self) -> String {

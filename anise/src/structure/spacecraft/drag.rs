@@ -37,16 +37,12 @@ impl DragData {
 #[cfg_attr(feature = "python", pymethods)]
 impl DragData {
     #[new]
-    fn py_new(area_m2: f64, coeff_drag: f64) -> Self {
+    #[pyo3(signature = (area_m2, coeff_drag = None))]
+    fn py_new(area_m2: f64, coeff_drag: Option<f64>) -> Self {
         Self {
             area_m2,
-            coeff_drag,
+            coeff_drag: coeff_drag.unwrap_or(Self::default().coeff_drag),
         }
-    }
-    #[pyo3(name = "from_area_m2")]
-    #[classmethod]
-    fn init_from_area_m2(_cls: &Bound<'_, PyType>, area_m2: f64) -> Self {
-        Self::from_area(area_m2)
     }
 
     fn __str__(&self) -> String {

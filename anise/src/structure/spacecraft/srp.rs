@@ -37,16 +37,12 @@ impl SRPData {
 #[cfg_attr(feature = "python", pymethods)]
 impl SRPData {
     #[new]
-    fn py_new(area_m2: f64, coeff_reflectivity: f64) -> Self {
+    #[pyo3(signature = (area_m2, coeff_reflectivity = None))]
+    fn py_new(area_m2: f66, coeff_reflectivity: Option<f64>) -> Self {
         Self {
             area_m2,
-            coeff_reflectivity,
+            coeff_reflectivity: coeff_reflectivity.unwrap_or(Self::default().coeff_reflectivity),
         }
-    }
-    #[pyo3(name = "from_area_m2")]
-    #[classmethod]
-    fn init_from_area_m2(_cls: &Bound<'_, PyType>, area_m2: f64) -> Self {
-        Self::from_area(area_m2)
     }
 
     fn __str__(&self) -> String {
