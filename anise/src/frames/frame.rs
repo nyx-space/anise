@@ -101,6 +101,24 @@ impl Frame {
         self.strip();
         self
     }
+
+    /// Specifies what data is available in this structure.
+    ///
+    /// Returns:
+    /// + Bit 0 is set if `mu_km3_s2` is available
+    /// + Bit 1 is set if `shape` is available
+    fn available_data(&self) -> u8 {
+        let mut bits: u8 = 0;
+
+        if self.mu_km3_s2.is_some() {
+            bits |= 1 << 0;
+        }
+        if self.shape.is_some() {
+            bits |= 1 << 1;
+        }
+
+        bits
+    }
 }
 
 #[cfg(feature = "python")]
@@ -353,41 +371,21 @@ impl Frame {
 
 impl Encode for Frame {
     fn encoded_len(&self) -> der::Result<der::Length> {
-        let mut len = (self.ephemeris_id.encoded_len()? + self.orientation_id.encoded_len()?)?;
-        if let Some(mu) = self.mu_km3_s2 {
-            len = (len + true.encoded_len()?)?;
-            len = (len + mu.encoded_len()?)?;
-        } else {
-            len = (len + false.encoded_len()?)?;
-        }
+        let available_flags = self.available_data();
 
-        if let Some(shape) = self.shape {
-            len = (len + true.encoded_len()?)?;
-            len = (len + shape.encoded_len()?)?;
-        } else {
-            len = (len + false.encoded_len()?)?;
-        }
-        Ok(len)
+        self.ephemeris_id.encoded_len()?
+            + self.orientation_id.encoded_len()?
+            + available_flags.encoded_len()?
+            + self.mu_km3_s2.encoded_len()?
+            + self.shape.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         self.ephemeris_id.encode(encoder)?;
         self.orientation_id.encode(encoder)?;
-
-        if let Some(mu) = self.mu_km3_s2 {
-            true.encode(encoder)?;
-            mu.encode(encoder)?;
-        } else {
-            false.encode(encoder)?;
-        }
-
-        if let Some(shape) = self.shape {
-            true.encode(encoder)?;
-            shape.encode(encoder)?;
-        } else {
-            false.encode(encoder)?;
-        }
-        Ok(())
+        self.available_data().encode(encoder)?;
+        self.mu_km3_s2.encode(encoder)?;
+        self.shape.encode(encoder)
     }
 }
 
@@ -396,15 +394,15 @@ impl<'a> Decode<'a> for Frame {
         let ephemeris_id: NaifId = decoder.decode()?;
         let orientation_id: NaifId = decoder.decode()?;
 
-        let mu_present: bool = decoder.decode()?;
-        let mu_km3_s2 = if mu_present {
+        let data_flags: u8 = decoder.decode()?;
+
+        let mu_km3_s2 = if data_flags & (1 << 0) != 0 {
             Some(decoder.decode()?)
         } else {
             None
         };
 
-        let shape_present: bool = decoder.decode()?;
-        let shape = if shape_present {
+        let shape = if data_flags & (1 << 1) != 0 {
             Some(decoder.decode()?)
         } else {
             None
