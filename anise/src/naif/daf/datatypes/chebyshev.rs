@@ -53,7 +53,9 @@ impl Type2ChebyshevSet<'_> {
 
         let window_duration_s = self.interval_length.to_seconds();
 
-        let ephem_start_delta_s = epoch.to_et_seconds() - summary.start_epoch_et_s();
+        // For trimmed kernels, the summary bounds may no longer align exactly with the
+        // dataset footer epoch. Use the dataset init epoch for record selection.
+        let ephem_start_delta_s = epoch.to_et_seconds() - self.init_epoch.to_et_seconds();
 
         Ok(((ephem_start_delta_s / window_duration_s) as usize + 1).min(self.num_records))
     }
@@ -275,8 +277,9 @@ impl<'a> NAIFDataRecord<'a> for Type2ChebyshevRecord<'a> {
 mod chebyshev_ut {
     use crate::{
         errors::{DecodingError, IntegrityError},
-        naif::daf::NAIFDataSet,
+        naif::{daf::NAIFDataSet, spk::summary::SPKSummaryRecord},
     };
+    use hifitime::Epoch;
 
     use super::Type2ChebyshevSet;
 
@@ -357,5 +360,36 @@ mod chebyshev_ut {
                 );
             }
         }
+    }
+
+    #[test]
+    fn evaluate_uses_init_epoch_for_record_selection() {
+        // Three degree-0 records with unique constants per record.
+        let dataset = Type2ChebyshevSet::from_f64_slice(&[
+            5.0, 5.0, 1.0, 10.0, 100.0, //
+            15.0, 5.0, 2.0, 20.0, 200.0, //
+            25.0, 5.0, 3.0, 30.0, 300.0, //
+            0.0, 10.0, 5.0, 3.0,
+        ])
+        .unwrap();
+
+        let shifted_summary = SPKSummaryRecord {
+            start_epoch_et_s: 4.0,
+            end_epoch_et_s: 30.0,
+            target_id: 301,
+            center_id: 3,
+            frame_id: 1,
+            data_type_i: 2,
+            start_idx: 1,
+            end_idx: 19,
+        };
+
+        let epoch = Epoch::from_et_seconds(12.0);
+        assert_eq!(dataset.spline_idx(epoch, &shifted_summary).unwrap(), 2);
+
+        let (state, _) = dataset.evaluate(epoch, &shifted_summary).unwrap();
+        assert_eq!(state[0], 2.0);
+        assert_eq!(state[1], 20.0);
+        assert_eq!(state[2], 200.0);
     }
 }
