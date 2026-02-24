@@ -15,9 +15,9 @@
     - [ ] Rerun `generate_stubs.py` and `mypy` iteratively until all errors are resolved.
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Stub Update and Error Resolution' (Protocol in workflow.md)
 
-## Phase 3: Final Verification
+## Phase 3: Final Verification [checkpoint: 55d05d5]
 - [x] Task: Perform final quality checks [202391b]
     - [ ] Rebuild the package one last time with `maturin develop`.
     - [ ] Run `mypy` to ensure a clean report.
     - [ ] Verify that the generated stubs match the intended documentation style.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Final Verification' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Final Verification' (Protocol in workflow.md)
