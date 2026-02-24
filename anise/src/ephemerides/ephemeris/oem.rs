@@ -44,7 +44,7 @@ impl Ephemeris {
         let mut time_system = String::new();
         let mut center_name = None;
         let mut orient_name = None;
-        let mut interpolation = DataType::Type13HermiteUnequalStep;
+        let mut interpolation = DataType::Type9LagrangeUnequalStep;
         let mut degree = 5;
         let mut object_id: Option<String> = None;
         let mut cov_epoch = None;
