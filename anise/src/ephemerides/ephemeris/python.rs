@@ -126,6 +126,20 @@ impl Ephemeris {
     fn __repr__(&self) -> String {
         format!("{self}@{self:p}")
     }
+
+    fn __iter__(slf: Bound<'_, Self>) -> PyResult<EphemerisIterator> {
+        let items: Vec<EphemerisRecord> = slf.borrow().state_data.values().copied().collect();
+        Ok(EphemerisIterator {
+            items: items.into_iter(),
+        })
+    }
+
+    fn __reversed__(slf: Bound<'_, Self>) -> PyResult<EphemerisIterator> {
+        let items: Vec<EphemerisRecord> = slf.borrow().state_data.values().rev().copied().collect();
+        Ok(EphemerisIterator {
+            items: items.into_iter(),
+        })
+    }
 }
 
 #[pymethods]
@@ -167,5 +181,21 @@ impl Covariance {
     /// :rtype: str
     fn __repr__(&self) -> String {
         format!("{self}@{self:p}")
+    }
+}
+
+#[pyclass]
+struct EphemerisIterator {
+    items: std::vec::IntoIter<EphemerisRecord>,
+}
+
+#[pymethods]
+impl EphemerisIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<EphemerisRecord> {
+        slf.items.next()
     }
 }

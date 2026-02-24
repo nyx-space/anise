@@ -195,7 +195,7 @@ class Ephemeris:
     """Initializes a new Ephemeris from the list of Orbit instances and a given object ID.
 
     In Python if you need to build an ephemeris with covariance, initialize with an empty list of
-    orbit instances and then insert each EphemEntry with covariance."""
+    orbit instances and then insert each EphemerisRecord with covariance."""
 
     degree: int
     interpolation: str
