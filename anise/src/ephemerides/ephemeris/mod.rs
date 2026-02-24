@@ -20,7 +20,10 @@ use core::fmt;
 use covariance::interpolate_covar_log_euclidean;
 use hifitime::{Epoch, TimeSeries};
 use snafu::ResultExt;
-use std::collections::BTreeMap;
+use std::collections::{
+    btree_map::{IntoValues, Values},
+    BTreeMap,
+};
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
@@ -40,7 +43,7 @@ pub use record::EphemerisRecord;
 /// Initializes a new Ephemeris from the list of Orbit instances and a given object ID.
 ///
 /// In Python if you need to build an ephemeris with covariance, initialize with an empty list of
-/// orbit instances and then insert each EphemEntry with covariance.
+/// orbit instances and then insert each EphemerisRecord with covariance.
 ///
 /// :type orbit_list: list
 /// :type object_id: str
@@ -510,6 +513,24 @@ impl fmt::Display for Ephemeris {
     }
 }
 
+impl<'a> IntoIterator for &'a Ephemeris {
+    type Item = &'a EphemerisRecord;
+    type IntoIter = Values<'a, Epoch, EphemerisRecord>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.state_data.values()
+    }
+}
+
+impl IntoIterator for Ephemeris {
+    type Item = EphemerisRecord;
+    type IntoIter = IntoValues<Epoch, EphemerisRecord>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.state_data.into_values()
+    }
+}
+
 #[cfg(test)]
 mod ut_oem {
     use super::{Almanac, DataType, Ephemeris, LocalFrame};
@@ -559,6 +580,8 @@ mod ut_oem {
         assert_eq!(ephem.degree, 7);
 
         println!("{ephem}");
+
+        assert_eq!((&ephem).into_iter().count(), ephem.state_data.len());
 
         // Check that we can interpolate
         let epoch = start + Unit::Second * 5;

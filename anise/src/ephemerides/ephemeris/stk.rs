@@ -45,7 +45,7 @@ impl Ephemeris {
         // Define header variables we care about.
         let mut center_name = None;
         let mut orient_name = None;
-        let mut interpolation = DataType::Type13HermiteUnequalStep;
+        let mut interpolation = DataType::Type9LagrangeUnequalStep;
         let mut samples_m1 = 5;
         let object_id: String = path
             .as_ref()

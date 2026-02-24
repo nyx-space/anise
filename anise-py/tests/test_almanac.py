@@ -471,12 +471,19 @@ def test_oem():
     assert ephem_from_list.end_epoch() == ephem_from_empty.end_epoch()
     assert ephem_from_list.len() == ephem_from_empty.len()
 
+    # Check that we can iterate over an ephem entry by entry
+    entry_count = 0
+    for entry in ephem:
+        entry_count += 1
+        assert isinstance(entry, EphemerisRecord)
+    assert entry_count == ephem.len()
+
 
 if __name__ == "__main__":
     # test_meta_load()
     # test_exports()
     # test_frame_defs()
     # test_convert_tpc()
-    test_state_transformation()
+    # test_state_transformation()
     # test_location()
-    # test_oem()
+    test_oem()
