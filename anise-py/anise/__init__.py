@@ -17,6 +17,8 @@ from anise._anise import (
     __doc__,
     __author__,
 )
+from .analysis import ReportScalars as PyReportScalars
+from . import analysis, astro, rotation, time
 
 __all__ = [
     # modules
@@ -34,6 +36,7 @@ __all__ = [
     "LocationDhallSet",
     "LocationDhallSetEntry",
     "LocationDataSet",
+    "PyReportScalars",
     # functions
     "exec_gui",
     "__version__",

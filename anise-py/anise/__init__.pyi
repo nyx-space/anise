@@ -1,3 +1,8 @@
+from __future__ import annotations
+from anise import analysis
+from anise import astro
+from anise import rotation
+from anise import time
 import numpy
 import typing
 
@@ -24,6 +29,9 @@ class Aberration:
     converged: bool
     stellar: bool
     transmit_mode: bool
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
 
     def __new__(cls, name: str) -> Aberration:
         """Represents the aberration correction options in ANISE.
@@ -72,40 +80,43 @@ class Aberration:
 class Almanac:
     """An Almanac contains all of the loaded SPICE and ANISE data. It is the context for all computations."""
 
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
     def __new__(cls, path: str) -> Almanac:
         """An Almanac contains all of the loaded SPICE and ANISE data. It is the context for all computations."""
 
     def angular_velocity_deg_s(
-        self, from_frame: Frame, to_frame: Frame, epoch: Epoch
-    ) -> numpy.array:
+        self, from_frame: astro.Frame, to_frame: astro.Frame, epoch: time.Epoch
+    ) -> numpy.ndarray:
         """Returns the angular velocity vector in deg/s of the from_frame wrt to the to_frame.
 
         This can be used to compute the angular velocity of the Earth ITRF93 frame with respect to the J2000 frame for example."""
 
     def angular_velocity_rad_s(
-        self, from_frame: Frame, to_frame: Frame, epoch: Epoch
-    ) -> numpy.array:
+        self, from_frame: astro.Frame, to_frame: astro.Frame, epoch: time.Epoch
+    ) -> numpy.ndarray:
         """Returns the angular velocity vector in rad/s of the from_frame wrt to the to_frame.
 
         This can be used to compute the angular velocity of the Earth ITRF93 frame with respect to the J2000 frame for example."""
 
     def angular_velocity_wrt_j2000_deg_s(
-        self, from_frame: Frame, epoch: Epoch
-    ) -> numpy.array:
+        self, from_frame: astro.Frame, epoch: time.Epoch
+    ) -> numpy.ndarray:
         """Returns the angular velocity vector in deg/s of the from_frame wrt to the J2000 frame."""
 
     def angular_velocity_wrt_j2000_rad_s(
-        self, from_frame: Frame, epoch: Epoch
-    ) -> numpy.array:
+        self, from_frame: astro.Frame, epoch: time.Epoch
+    ) -> numpy.ndarray:
         """Returns the angular velocity vector in rad/s of the from_frame wrt to the J2000 frame."""
 
     def azimuth_elevation_range_sez(
         self,
-        rx: Orbit,
-        tx: Orbit,
-        obstructing_body: Frame = None,
-        ab_corr: Aberration = None,
-    ) -> AzElRange:
+        rx: astro.Orbit,
+        tx: astro.Orbit,
+        obstructing_body: typing.Optional[astro.Frame] = None,
+        ab_corr: typing.Optional[Aberration] = None,
+    ) -> astro.AzElRange:
         """Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
         receiver state (`rx`) seen from the transmitter state (`tx`), once converted into the SEZ frame of the transmitter.
 
@@ -123,11 +134,11 @@ class Almanac:
 
     def azimuth_elevation_range_sez_from_location(
         self,
-        rx: Orbit,
-        location: Location,
-        obstructing_body: Frame = None,
-        ab_corr: Aberration = None,
-    ) -> AzElRange:
+        rx: astro.Orbit,
+        location: astro.Location,
+        obstructing_body: typing.Optional[astro.Frame] = None,
+        ab_corr: typing.Optional[Aberration] = None,
+    ) -> astro.AzElRange:
         """Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
         receiver state (`rx`) seen from the provided location (as transmitter state, once converted into the SEZ frame of the transmitter.
         Refer to [azimuth_elevation_range_sez] for algorithm details.
@@ -135,32 +146,32 @@ class Almanac:
 
     def azimuth_elevation_range_sez_from_location_id(
         self,
-        rx: Orbit,
+        rx: astro.Orbit,
         location_id: int,
-        obstructing_body: Frame = None,
-        ab_corr: Aberration = None,
-    ) -> AzElRange:
+        obstructing_body: typing.Optional[astro.Frame] = None,
+        ab_corr: typing.Optional[Aberration] = None,
+    ) -> astro.AzElRange:
         """Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
         receiver state (`rx`) seen from the location ID (as transmitter state, once converted into the SEZ frame of the transmitter.
         Refer to [azimuth_elevation_range_sez] for algorithm details."""
 
     def azimuth_elevation_range_sez_from_location_name(
         self,
-        rx: Orbit,
+        rx: astro.Orbit,
         location_name: str,
-        obstructing_body: Frame = None,
-        ab_corr: Aberration = None,
-    ) -> AzElRange:
+        obstructing_body: typing.Optional[astro.Frame] = None,
+        ab_corr: typing.Optional[Aberration] = None,
+    ) -> astro.AzElRange:
         """Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
         receiver state (`rx`) seen from the location ID (as transmitter state, once converted into the SEZ frame of the transmitter.
         Refer to [azimuth_elevation_range_sez] for algorithm details."""
 
     def azimuth_elevation_range_sez_many(
         self,
-        rx_tx_states: typing.List[Orbit],
-        obstructing_body: Frame = None,
-        ab_corr: Aberration = None,
-    ) -> typing.List[AzElRange]:
+        rx_tx_states: typing.List[astro.Orbit],
+        obstructing_body: typing.Optional[astro.Frame] = None,
+        ab_corr: typing.Optional[Aberration] = None,
+    ) -> typing.List[astro.AzElRange]:
         """Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
         receiver states (first item in tuple) seen from the transmitter state (second item in states tuple), once converted into the SEZ frame of the transmitter.
 
@@ -169,7 +180,9 @@ class Almanac:
 
         Refer to [azimuth_elevation_range_sez] for details."""
 
-    def beta_angle_deg(self, state: Orbit, ab_corr: Aberration = None) -> float:
+    def beta_angle_deg(
+        self, state: astro.Orbit, ab_corr: typing.Optional[Aberration] = None
+    ) -> float:
         """Computes the Beta angle (β) for a given orbital state, in degrees. A Beta angle of 0° indicates that the orbit plane is edge-on to the Sun, leading to maximum eclipse time. Conversely, a Beta angle of +90° or -90° means the orbit plane is face-on to the Sun, resulting in continuous sunlight exposure and no eclipses.
 
         The Beta angle (β) is defined as the angle between the orbit plane of a spacecraft and the vector from the central body (e.g., Earth) to the Sun. In simpler terms, it measures how much of the time a satellite in orbit is exposed to direct sunlight.
@@ -209,19 +222,19 @@ class Almanac:
 
     def describe(
         self,
-        spk: bool = None,
-        bpc: bool = None,
-        planetary: bool = None,
-        spacecraft: bool = None,
-        eulerparams: bool = None,
-        locations: bool = None,
-        time_scale: TimeScale = None,
-        round_time: bool = None,
+        spk: typing.Optional[bool] = None,
+        bpc: typing.Optional[bool] = None,
+        planetary: typing.Optional[bool] = None,
+        spacecraft: typing.Optional[bool] = None,
+        eulerparams: typing.Optional[bool] = None,
+        locations: typing.Optional[bool] = None,
+        time_scale: typing.Optional[time.TimeScale] = None,
+        round_time: typing.Optional[bool] = None,
     ) -> None:
         """Pretty prints the description of this Almanac, showing everything by default. Default time scale is TDB.
         If any parameter is set to true, then nothing other than that will be printed."""
 
-    def frame_info(self, uid: Frame) -> Frame:
+    def frame_info(self, uid: astro.Frame) -> astro.Frame:
         """Returns the frame information (gravitational param, shape) as defined in this Almanac from an empty frame"""
 
     @staticmethod
@@ -230,10 +243,10 @@ class Almanac:
 
     def line_of_sight_obstructed(
         self,
-        observer: Orbit,
-        observed: Orbit,
-        obstructing_body: Frame,
-        ab_corr: Aberration = None,
+        observer: astro.Orbit,
+        observed: astro.Orbit,
+        obstructing_body: astro.Frame,
+        ab_corr: typing.Optional[Aberration] = None,
     ) -> bool:
         """Computes whether the line of sight between an observer and an observed Cartesian state is obstructed by the obstructing body.
         Returns true if the obstructing body is in the way, false otherwise.
@@ -266,12 +279,12 @@ class Almanac:
 
     def list_kernels(
         self,
-        spk: bool = None,
-        bpc: bool = None,
-        planetary: bool = None,
-        spacecraft: bool = None,
-        eulerparams: bool = None,
-        locations: bool = None,
+        spk: typing.Optional[bool] = None,
+        bpc: typing.Optional[bool] = None,
+        planetary: typing.Optional[bool] = None,
+        spacecraft: typing.Optional[bool] = None,
+        eulerparams: typing.Optional[bool] = None,
+        locations: typing.Optional[bool] = None,
     ) -> list:
         """Returns the list of loaded kernels"""
 
@@ -288,19 +301,19 @@ class Almanac:
     def load_stk_e_file(self, path: str, naif_id: int) -> Almanac:
         """Converts the provided Ansys STK .e file to SPICE SPK/BSP and loads it in the Almanac."""
 
-    def location_from_id(self, id: int) -> Location:
+    def location_from_id(self, id: int) -> astro.Location:
         """Returns the Location from its ID, searching through all loaded location datasets in reverse order."""
 
-    def location_from_name(self, name: str) -> Location:
+    def location_from_name(self, name: str) -> astro.Location:
         """Returns the Location from its name, searching through all loaded location datasets in reverse order."""
 
     def occultation(
         self,
-        back_frame: Frame,
-        front_frame: Frame,
-        observer: Orbit,
-        ab_corr: Aberration = None,
-    ) -> Occultation:
+        back_frame: astro.Frame,
+        front_frame: astro.Frame,
+        observer: astro.Orbit,
+        ab_corr: typing.Optional[Aberration] = None,
+    ) -> astro.Occultation:
         """Computes the occultation percentage of the `back_frame` object by the `front_frame` object as seen from the observer, when according for the provided aberration correction.
 
         A zero percent occultation means that the back object is fully visible from the observer.
@@ -309,7 +322,11 @@ class Almanac:
         Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse/) for modeling details."""
 
     def report_event_arcs(
-        self, state_spec: StateSpec, event: Event, start_epoch: Epoch, end_epoch: Epoch
+        self,
+        state_spec: analysis.StateSpec,
+        event: analysis.Event,
+        start_epoch: time.Epoch,
+        end_epoch: time.Epoch,
     ) -> list:
         """Report the rising and falling edges/states where the event arc happens.
 
@@ -317,7 +334,11 @@ class Almanac:
         This method uses the report_events function under the hood."""
 
     def report_events(
-        self, state_spec: StateSpec, event: Event, start_epoch: Epoch, end_epoch: Epoch
+        self,
+        state_spec: analysis.StateSpec,
+        event: analysis.Event,
+        start_epoch: time.Epoch,
+        end_epoch: time.Epoch,
     ) -> list:
         """Report all of the states when the provided event happens.
         This method may only be used for equality events, minimum, and maximum events. For spanned events (e.g. Less Than/Greater Than), use report_event_arcs.
@@ -334,21 +355,25 @@ class Almanac:
         of the event as a multiplicative factor of that precision is used to scan the trajectory linearly. Alternatively, you may export the scalars at
         a fixed interval using the report_scalars or report_scalars_flat function and manually analyze the results of the scalar expression."""
 
-    def report_scalars(self, report: ReportScalars, time_series: TimeSeries) -> dict:
+    def report_scalars(
+        self, report: analysis.ReportScalars, time_series: time.TimeSeries
+    ) -> dict:
         """Report a set of scalar expressions, optionally with aliases, at a fixed time step defined in the TimeSeries."""
 
     def report_visibility_arcs(
         self,
-        state_spec: StateSpec,
+        state_spec: analysis.StateSpec,
         location_id: int,
-        start_epoch: Epoch,
-        end_epoch: Epoch,
-        sample_rate: Duration,
-        obstructing_body: Frame = None,
+        start_epoch: time.Epoch,
+        end_epoch: time.Epoch,
+        sample_rate: time.Duration,
+        obstructing_body: typing.Optional[astro.Frame] = None,
     ) -> list:
         """Report the list of visibility arcs for the desired location ID."""
 
-    def rotate(self, from_frame: Frame, to_frame: Frame, epoch: Epoch) -> DCM:
+    def rotate(
+        self, from_frame: astro.Frame, to_frame: astro.Frame, epoch: time.Epoch
+    ) -> rotation.DCM:
         """Returns the 6x6 DCM needed to rotation the `from_frame` to the `to_frame`.
 
         # Warning
@@ -357,14 +382,17 @@ class Almanac:
         # Note
         This function performs a recursion of no more than twice the MAX_TREE_DEPTH."""
 
-    def rotate_to(self, state: Orbit, observer_frame: Frame) -> Orbit:
+    def rotate_to(self, state: astro.Orbit, observer_frame: astro.Frame) -> astro.Orbit:
         """Rotates the provided Cartesian state into the requested observer frame
 
         **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_to` function instead to include rotations."""
 
     def solar_eclipsing(
-        self, eclipsing_frame: Frame, observer: Orbit, ab_corr: Aberration = None
-    ) -> Occultation:
+        self,
+        eclipsing_frame: astro.Frame,
+        observer: astro.Orbit,
+        ab_corr: typing.Optional[Aberration] = None,
+    ) -> astro.Occultation:
         """Computes the solar eclipsing of the observer due to the eclipsing_frame.
 
         This function calls `occultation` where the back object is the Sun in the J2000 frame, and the front object
@@ -372,10 +400,10 @@ class Almanac:
 
     def solar_eclipsing_many(
         self,
-        eclipsing_frame: Frame,
-        observers: typing.List[Orbit],
-        ab_corr: Aberration = None,
-    ) -> typing.List[Occultation]:
+        eclipsing_frame: astro.Frame,
+        observers: typing.List[astro.Orbit],
+        ab_corr: typing.Optional[Aberration] = None,
+    ) -> typing.List[astro.Occultation]:
         """Computes the solar eclipsing of all the observers due to the eclipsing_frame, computed in parallel under the hood.
 
         Note: if any computation fails, the error will be printed to the stderr.
@@ -395,11 +423,11 @@ class Almanac:
     def spk_ezr(
         self,
         target: int,
-        epoch: Epoch,
+        epoch: time.Epoch,
         frame: int,
         observer: int,
-        ab_corr: Aberration = None,
-    ) -> Orbit:
+        ab_corr: typing.Optional[Aberration] = None,
+    ) -> astro.Orbit:
         """Alias fo SPICE's `spkezr` where the inputs must be the NAIF IDs of the objects and frames with the caveat that the aberration is moved to the last positional argument."""
 
     def spk_summaries(self, id: int) -> typing.List:
@@ -422,15 +450,19 @@ class Almanac:
         **WARNING:** This causes the order of the loaded files to be perturbed, which may be an issue if several SPKs with the same IDs are loaded."""
 
     def state_of(
-        self, object_id: int, observer: Frame, epoch: Epoch, ab_corr: Aberration = None
-    ) -> Orbit:
+        self,
+        object_id: int,
+        observer: astro.Frame,
+        epoch: time.Epoch,
+        ab_corr: typing.Optional[Aberration] = None,
+    ) -> astro.Orbit:
         """Returns the Cartesian state of the object as seen from the provided observer frame (essentially `spkezr`).
 
         # Note
         The units will be those of the underlying ephemeris data (typically km and km/s)"""
 
     def sun_angle_deg(
-        self, target_id: int, observer_id: int, epoch: Epoch, ab_corr: Aberration
+        self, target_id: int, observer_id: int, epoch: time.Epoch, ab_corr: Aberration
     ) -> float:
         """Returns the angular separation (between 0 and 180 degrees) between the observer and the Sun, and the observer and the target body ID.
 This is formally known as the "solar elongation".
@@ -477,7 +509,11 @@ Obs. -- Target
 3. Return the arccosine of the dot product of the norms of these vectors."""
 
     def sun_angle_deg_from_frame(
-        self, target: Frame, observer: Frame, epoch: Epoch, ab_corr: Aberration
+        self,
+        target: astro.Frame,
+        observer: astro.Frame,
+        epoch: time.Epoch,
+        ab_corr: Aberration,
     ) -> float:
         """Convenience function that calls `sun_angle_deg` with the provided frames instead of the ephemeris ID."""
 
@@ -490,11 +526,11 @@ Obs. -- Target
 
     def transform(
         self,
-        target_frame: Frame,
-        observer_frame: Frame,
-        epoch: Epoch,
-        ab_corr: Aberration = None,
-    ) -> Orbit:
+        target_frame: astro.Frame,
+        observer_frame: astro.Frame,
+        epoch: time.Epoch,
+        ab_corr: typing.Optional[Aberration] = None,
+    ) -> astro.Orbit:
         """Returns the Cartesian state needed to transform the `from_frame` to the `to_frame`.
 
         # SPICE Compatibility
@@ -510,11 +546,11 @@ Obs. -- Target
 
     def transform_many(
         self,
-        target_frame: Frame,
-        observer_frame: Frame,
-        time_series: TimeSeries,
-        ab_corr: Aberration = None,
-    ) -> typing.List[Orbit]:
+        target_frame: astro.Frame,
+        observer_frame: astro.Frame,
+        time_series: time.TimeSeries,
+        ab_corr: typing.Optional[Aberration] = None,
+    ) -> typing.List[astro.Orbit]:
         """Returns a chronologically sorted list of the Cartesian states that transform the `from_frame` to the `to_frame` for each epoch of the time series, computed in parallel under the hood.
         Note: if any transformation fails, the error will be printed to the stderr.
 
@@ -522,10 +558,10 @@ Obs. -- Target
 
     def transform_many_to(
         self,
-        states: typing.List[Orbit],
-        observer_frame: Frame,
-        ab_corr: Aberration = None,
-    ) -> typing.List[Orbit]:
+        states: typing.List[astro.Orbit],
+        observer_frame: astro.Frame,
+        ab_corr: typing.Optional[Aberration] = None,
+    ) -> typing.List[astro.Orbit]:
         """Returns a chronologically sorted list of the provided states as seen from the observer frame, given the aberration.
         Note: if any transformation fails, the error will be printed to the stderr.
         Note: the input ordering is lost: the output states will not be in the same order as the input states if these are not chronologically sorted!
@@ -533,17 +569,20 @@ Obs. -- Target
         Refer to [transform_to] for details."""
 
     def transform_to(
-        self, state: Orbit, observer_frame: Frame, ab_corr: Aberration = None
-    ) -> Orbit:
+        self,
+        state: astro.Orbit,
+        observer_frame: astro.Frame,
+        ab_corr: typing.Optional[Aberration] = None,
+    ) -> astro.Orbit:
         """Returns the provided state as seen from the observer frame, given the aberration."""
 
     def translate(
         self,
-        target_frame: Frame,
-        observer_frame: Frame,
-        epoch: Epoch,
-        ab_corr: Aberration = None,
-    ) -> Orbit:
+        target_frame: astro.Frame,
+        observer_frame: astro.Frame,
+        epoch: time.Epoch,
+        ab_corr: typing.Optional[Aberration] = None,
+    ) -> astro.Orbit:
         """Returns the Cartesian state of the target frame as seen from the observer frame at the provided epoch, and optionally given the aberration correction.
 
         # SPICE Compatibility
@@ -561,18 +600,23 @@ Obs. -- Target
         This function performs a recursion of no more than twice the [MAX_TREE_DEPTH]."""
 
     def translate_geometric(
-        self, target_frame: Frame, observer_frame: Frame, epoch: Epoch
-    ) -> Orbit:
+        self, target_frame: astro.Frame, observer_frame: astro.Frame, epoch: time.Epoch
+    ) -> astro.Orbit:
         """Returns the geometric position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in km, the velocity in km/s, and the acceleration in km/s^2."""
 
     def translate_to(
-        self, state: Orbit, observer_frame: Frame, ab_corr: Aberration = None
-    ) -> Orbit:
+        self,
+        state: astro.Orbit,
+        observer_frame: astro.Frame,
+        ab_corr: typing.Optional[Aberration] = None,
+    ) -> astro.Orbit:
         """Translates the provided Cartesian state into the requested observer frame
 
         **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_to` function instead to include rotations."""
 
-    def translate_to_parent(self, source: Frame, epoch: Epoch) -> Orbit:
+    def translate_to_parent(
+        self, source: astro.Frame, epoch: time.Epoch
+    ) -> astro.Orbit:
         """Performs the GEOMETRIC translation to the parent. Use translate_from_to for aberration."""
 
     def __repr__(self) -> str:
@@ -586,11 +630,18 @@ class LocationDataSet:
     """A wrapper around a location dataset kernel (PyO3 does not handle type aliases).
     Use this class to load and unload kernels. Manipulate using its LocationDhallSet representation."""
 
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls) -> LocationDataSet:
+        """A wrapper around a location dataset kernel (PyO3 does not handle type aliases).
+        Use this class to load and unload kernels. Manipulate using its LocationDhallSet representation."""
+
     @staticmethod
     def load(path: str) -> LocationDataSet:
         """Loads a Location Dataset kernel from the provided path"""
 
-    def save_as(self, path: str, overwrite: bool = False) -> None:
+    def save_as(self, path: str, overwrite: typing.Optional[bool] = False) -> None:
         """Save this dataset as a kernel, optionally specifying whether to overwrite the existing file."""
 
     def to_dhallset(self) -> LocationDhallSet:
@@ -601,6 +652,12 @@ class LocationDhallSet:
     """A Dhall-serializable Location DataSet that serves as an optional intermediate to the LocationDataSet kernels."""
 
     data: list
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls, data: list) -> LocationDhallSet:
+        """A Dhall-serializable Location DataSet that serves as an optional intermediate to the LocationDataSet kernels."""
 
     def dumps(self) -> str:
         """Returns the Dhall representation of this LocationDhallSet. Equivalent to to_dhall."""
@@ -625,7 +682,18 @@ class LocationDhallSetEntry:
 
     alias: str
     id: int
-    value: Location
+    value: astro.Location
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(
+        cls,
+        value: astro.Location,
+        id: typing.Optional[int] = None,
+        alias: typing.Optional[str] = None,
+    ) -> LocationDhallSetEntry:
+        """Entry of a Location Dhall set"""
 
 @typing.final
 class MetaAlmanac:
@@ -639,7 +707,10 @@ class MetaAlmanac:
 
     files: typing.List
 
-    def __new__(cls, maybe_path: str = None) -> MetaAlmanac:
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls, maybe_path: typing.Optional[str] = None) -> MetaAlmanac:
         """A structure to set up an Almanac, with automatic downloading, local storage, checksum checking, and more.
 
         # Behavior
@@ -656,7 +727,7 @@ class MetaAlmanac:
         """Loads this Meta Almanac from its Dhall string representation"""
 
     @staticmethod
-    def latest(autodelete: bool = None) -> Almanac:
+    def latest(autodelete: typing.Optional[bool] = None) -> Almanac:
         """Returns an Almanac loaded from the latest NAIF data via the `default` MetaAlmanac.
         The MetaAlmanac will download the DE440s.bsp file, the PCK0008.PCA, the full Moon Principal Axis BPC (moon_pa_de440_200625) and the latest high precision Earth kernel from JPL.
 
@@ -677,7 +748,7 @@ class MetaAlmanac:
     def loads(s: str) -> MetaAlmanac:
         """Loads the provided string as a Dhall configuration to build a MetaAlmanac"""
 
-    def process(self, autodelete: bool = None) -> Almanac:
+    def process(self, autodelete: typing.Optional[bool] = None) -> Almanac:
         """Fetch all of the URIs and return a loaded Almanac.
         When downloading the data, ANISE will create a temporarily lock file to prevent race conditions
         where multiple processes download the data at the same time. Set `autodelete` to true to delete
@@ -722,14 +793,17 @@ class MetaFile:
     crc32: int
     uri: str
 
-    def __new__(cls, uri: str, crc32: int = None) -> MetaFile:
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls, uri: str, crc32: typing.Optional[int] = None) -> MetaFile:
         """MetaFile allows downloading a remote file from a URL (http, https only), and interpolation of paths in environment variable using the Dhall syntax `env:MY_ENV_VAR`.
 
         The data is stored in the user's local temp directory (i.e. `~/.local/share/nyx-space/anise/` on Linux and `AppData/Local/nyx-space/anise/` on Windows).
         Prior to loading a remote resource, if the local resource exists, its CRC32 will be computed: if it matches the CRC32 of this instance of MetaFile,
         then the file will not be downloaded a second time."""
 
-    def process(self, autodelete: bool = None) -> None:
+    def process(self, autodelete: typing.Optional[bool] = None) -> None:
         """Processes this MetaFile by downloading it if it's a URL.
 
         This function modified `self` and changes the URI to be the path to the downloaded file."""
@@ -758,7 +832,26 @@ class MetaFile:
     def __str__(self) -> str:
         """Return str(self)."""
 
+@typing.final
+class PyReportScalars:
+    """A basic report builder that can be serialized seperately from the execution.
+    The scalars must be a tuple of (ScalarExpr, String) where the String is the alias (optional)."""
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls, scalars: list, state_spec: analysis.StateSpec) -> PyReportScalars:
+        """A basic report builder that can be serialized seperately from the execution.
+        The scalars must be a tuple of (ScalarExpr, String) where the String is the alias (optional)."""
+
+    @staticmethod
+    def from_s_expr(expr: str) -> analysis.ReportScalars:
+        """Convert the S-Expression to a report builder"""
+
+    def to_s_expr(self) -> str:
+        """Converts this report builder to its S-Expression"""
+
 def exec_gui(): ...
 
 __author__: str = "Christopher Rabotin <christopher.rabotin@gmail.com>"
-__version__: str = "0.9.3"
+__version__: str = "0.9.5"

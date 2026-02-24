@@ -1,4 +1,8 @@
-import np
+from __future__ import annotations
+from anise import Almanac
+from anise import analysis
+from anise import rotation
+from anise import time
 import numpy
 import typing
 
@@ -8,22 +12,25 @@ class AzElRange:
 
     azimuth_deg: float
     elevation_deg: float
-    epoch: Epoch
-    light_time: Duration
+    epoch: time.Epoch
+    light_time: time.Duration
     mask_deg: float
     obstructed_by: Frame
     range_km: float
     range_rate_km_s: float
 
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
     def __new__(
         cls,
-        epoch: Epoch,
+        epoch: time.Epoch,
         azimuth_deg: float,
         elevation_deg: float,
         range_km: float,
         range_rate_km_s: float,
-        obstructed_by: Frame = None,
-        mask_deg: float = None,
+        obstructed_by: typing.Optional[Frame] = None,
+        mask_deg: typing.Optional[float] = None,
     ) -> AzElRange:
         """A structure that stores the result of Azimuth, Elevation, Range, Range rate calculation."""
 
@@ -66,8 +73,12 @@ class AzElRange:
 
 @typing.final
 class Covariance:
-    matrix: numpy.array
+    matrix: numpy.ndarray
 
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls, covar: typing.Any, local_frame: typing.Any): ...
     def __repr__(self) -> str:
         """Return repr(self)."""
 
@@ -76,7 +87,10 @@ class Covariance:
 
 @typing.final
 class DataType:
-    def __new__(): ...
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls): ...
     def __eq__(self, value: typing.Any) -> bool:
         """Return self==value."""
 
@@ -118,6 +132,28 @@ class DataType:
     Type9LagrangeUnequalStep: DataType = ...
 
 @typing.final
+class DragData:
+    area_m2: float
+    coeff_drag: float
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls, area_m2: typing.Any, coeff_drag: typing.Any = None): ...
+    @staticmethod
+    def from_asn1(data: bytes) -> DragData:
+        """Decodes an ASN.1 DER encoded byte array into a DragData object."""
+
+    def to_asn1(self) -> bytes:
+        """Encodes this DragData object into an ASN.1 DER encoded byte array."""
+
+    def __repr__(self) -> str:
+        """Return repr(self)."""
+
+    def __str__(self) -> str:
+        """Return str(self)."""
+
+@typing.final
 class Ellipsoid:
     """Only the tri-axial Ellipsoid shape model is currently supported by ANISE.
     This is directly inspired from SPICE PCK.
@@ -134,11 +170,14 @@ class Ellipsoid:
     semi_major_equatorial_radius_km: float
     semi_minor_equatorial_radius_km: float
 
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
     def __new__(
         cls,
         semi_major_equatorial_radius_km: float,
-        polar_radius_km: float = None,
-        semi_minor_equatorial_radius_km: float = None,
+        polar_radius_km: typing.Optional[float] = None,
+        semi_minor_equatorial_radius_km: typing.Optional[float] = None,
     ) -> Ellipsoid:
         """Only the tri-axial Ellipsoid shape model is currently supported by ANISE.
         This is directly inspired from SPICE PCK.
@@ -200,7 +239,16 @@ class Ephemeris:
     degree: int
     interpolation: str
 
-    def at(self, epoch: Epoch, almanac: Almanac) -> EphemerisRecord:
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls, orbit_list: list, object_id: str) -> Ephemeris:
+        """Initializes a new Ephemeris from the list of Orbit instances and a given object ID.
+
+        In Python if you need to build an ephemeris with covariance, initialize with an empty list of
+        orbit instances and then insert each EphemerisRecord with covariance."""
+
+    def at(self, epoch: time.Epoch, almanac: Almanac) -> EphemerisRecord:
         """Interpolates the ephemeris state and covariance at the provided epoch.
 
         # Orbit Interpolation
@@ -228,7 +276,7 @@ class Ephemeris:
         covariance matrices."""
 
     def covar_at(
-        self, epoch: Epoch, local_frame: LocalFrame, almanac: Almanac
+        self, epoch: time.Epoch, local_frame: LocalFrame, almanac: Almanac
     ) -> Covariance:
         """Interpolate the ephemeris covariance at the provided epoch.
 
@@ -242,7 +290,7 @@ class Ephemeris:
     def domain(self) -> tuple:
         """Returns the time domain of this ephemeris."""
 
-    def end_epoch(self) -> Epoch: ...
+    def end_epoch(self) -> time.Epoch: ...
     @staticmethod
     def from_ccsds_oem_file(path: str) -> Ephemeris:
         """Initializes a new Ephemeris from a file path to CCSDS OEM file."""
@@ -265,39 +313,42 @@ class Ephemeris:
     def len(self) -> int:
         """Returns the number of states"""
 
-    def nearest_after(self, epoch: Epoch, almanac: Almanac) -> EphemerisRecord:
+    def nearest_after(self, epoch: time.Epoch, almanac: Almanac) -> EphemerisRecord:
         """Returns the nearest entry after the provided time"""
 
-    def nearest_before(self, epoch: Epoch, almanac: Almanac) -> EphemerisRecord:
+    def nearest_before(self, epoch: time.Epoch, almanac: Almanac) -> EphemerisRecord:
         """Returns the nearest entry before the provided time"""
 
-    def nearest_covar_after(self, epoch: Epoch, almanac: Almanac) -> tuple:
+    def nearest_covar_after(self, epoch: time.Epoch, almanac: Almanac) -> tuple:
         """Returns the nearest covariance after the provided epoch as a tuple (Epoch, Covariance)"""
 
-    def nearest_covar_before(self, epoch: Epoch, almanac: Almanac) -> tuple:
+    def nearest_covar_before(self, epoch: time.Epoch, almanac: Almanac) -> tuple:
         """Returns the nearest covariance before the provided epoch as a tuple (Epoch, Covariance)"""
 
-    def nearest_orbit_after(self, epoch: Epoch, almanac: Almanac) -> Orbit:
+    def nearest_orbit_after(self, epoch: time.Epoch, almanac: Almanac) -> Orbit:
         """Returns the nearest orbit after the provided time"""
 
-    def nearest_orbit_before(self, epoch: Epoch, almanac: Almanac) -> Orbit:
+    def nearest_orbit_before(self, epoch: time.Epoch, almanac: Almanac) -> Orbit:
         """Returns the nearest orbit before the provided time"""
 
     def object_id(self) -> str: ...
-    def orbit_at(self, epoch: Epoch, almanac: Almanac) -> Orbit:
+    def orbit_at(self, epoch: time.Epoch, almanac: Almanac) -> Orbit:
         """Interpolate the ephemeris at the provided epoch, returning only the orbit."""
 
-    def resample(self, ts: TimeSeries, almanac: Almanac) -> Ephemeris:
+    def resample(self, ts: time.TimeSeries, almanac: Almanac) -> Ephemeris:
         """Resample this ephemeris, with covariance, at the provided time series"""
 
-    def start_epoch(self) -> Epoch: ...
+    def start_epoch(self) -> time.Epoch: ...
     def transform(self, new_frame: Frame, almanac: Almanac) -> Ephemeris:
         """Transforms this ephemeris into another frame, and rotates the covariance to that frame if the orientations are different.
         NOTE: The Nyquist-Shannon theorem is NOT applied here, so the new ephemeris may not be as precise as the original one.
         NOTE: If the orientations are different, the covariance will always be in the Inertial frame of the new frame."""
 
     def write_ccsds_oem(
-        self, path: str, originator: str = None, object_name: str = None
+        self,
+        path: str,
+        originator: typing.Optional[str] = None,
+        object_name: typing.Optional[str] = None,
     ) -> None:
         """Exports this Ephemeris to CCSDS OEM at the provided path, optionally specifying an originator and/or an object name"""
 
@@ -306,9 +357,13 @@ class Ephemeris:
     ) -> None:
         """Converts this ephemeris to SPICE BSP/SPK file in the provided data type, saved to the provided output_fname."""
 
+    def __iter__(self) -> typing.Any:
+        """Implement iter(self)."""
+
     def __repr__(self) -> str:
         """Return repr(self)."""
 
+    def __reversed__(self): ...
     def __str__(self) -> str:
         """Return str(self)."""
 
@@ -319,10 +374,16 @@ class EphemerisRecord:
     covar: Covariance
     orbit: Orbit
 
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls, orbit: Orbit, covar: Covariance) -> EphemerisRecord:
+        """An ephemeris record which can be inserted into an Ephemeris for export to SPICE BSP or CCSDS OEM."""
+
     def covar_in_frame(self, local_frame: LocalFrame) -> Covariance:
         """Returns the covariance in the desired orbit local frame, or None if this record does not define a covariance."""
 
-    def sigma_for(self, oe: OrbitalElement) -> float:
+    def sigma_for(self, oe: analysis.OrbitalElement) -> float:
         """Returns the 1-sigma uncertainty (Standard Deviation) for a given orbital element.
 
         The result is in the unit of the parameter (e.g., km for SMA, degrees for angles).
@@ -339,12 +400,15 @@ class Frame:
     orientation_id: int
     shape: Ellipsoid
 
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
     def __new__(
         cls,
         ephemeris_id: int,
         orientation_id: int,
-        mu_km3_s2: float = None,
-        shape: Ellipsoid = None,
+        mu_km3_s2: typing.Optional[float] = None,
+        shape: typing.Optional[Ellipsoid] = None,
     ) -> Frame:
         """A Frame uniquely defined by its ephemeris center and orientation. Refer to FrameDetail for frames combined with parameters."""
 
@@ -356,6 +420,10 @@ class Frame:
 
     def flattening(self) -> float:
         """Returns the flattening ratio (unitless)"""
+
+    @staticmethod
+    def from_asn1(data: bytes) -> Frame:
+        """Decodes an ASN.1 DER encoded byte array into a Frame."""
 
     def is_celestial(self) -> bool:
         """Returns whether this is a celestial frame"""
@@ -384,6 +452,9 @@ class Frame:
     def strip(self) -> None:
         """Removes the graviational parameter and the shape information from this frame.
         Use this to prevent astrodynamical computations."""
+
+    def to_asn1(self) -> bytes:
+        """Encodes this Frame into an ASN.1 DER encoded byte array."""
 
     def with_ephem(self, new_ephem_id: int) -> Frame:
         """Returns a copy of this Frame whose ephemeris ID is set to the provided ID"""
@@ -426,9 +497,19 @@ class FrameUid:
     """A unique frame reference that only contains enough information to build the actual Frame object.
     It cannot be used for any computations, is it be used in any structure apart from error structures."""
 
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls, ephemeris_id: int, orientation_id: int) -> FrameUid:
+        """A unique frame reference that only contains enough information to build the actual Frame object.
+        It cannot be used for any computations, is it be used in any structure apart from error structures."""
+
 @typing.final
 class LocalFrame:
-    def __new__(): ...
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls): ...
     def __int__(self) -> None:
         """int(self)"""
 
@@ -451,6 +532,22 @@ class Location:
     terrain_mask: list
     terrain_mask_ignored: bool
 
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(
+        cls,
+        latitude_deg: float,
+        longitude_deg: float,
+        height_km: float,
+        frame: FrameUid,
+        terrain_mask: list,
+        terrain_mask_ignored: bool,
+    ) -> Location:
+        """Location is defined by its latitude, longitude, height above the geoid, mean angular rotation of the geoid, and a frame UID.
+        If the location includes a terrain mask, it will be used for obstruction checks when computing azimuth and elevation.
+        **Note:** The mean Earth angular velocity is `0.004178079012116429` deg/s."""
+
     def elevation_mask_at_azimuth_deg(self, azimuth_deg: float) -> float:
         """Returns the elevation mask at the provided azimuth, does NOT account for whether the mask is ignored or not."""
 
@@ -468,14 +565,62 @@ class Location:
         """Return str(self)."""
 
 @typing.final
+class Mass:
+    """Defines a spacecraft mass a the sum of the dry (structural) mass and the propellant mass, both in kilogram"""
+
+    dry_mass_kg: float
+    extra_mass_kg: float
+    prop_mass_kg: float
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(
+        cls,
+        dry_mass_kg: typing.Any,
+        prop_mass_kg: typing.Any = None,
+        extra_mass_kg: typing.Any = None,
+    ) -> Mass:
+        """Defines a spacecraft mass a the sum of the dry (structural) mass and the propellant mass, both in kilogram"""
+
+    def abs(self) -> Mass:
+        """Returns a Mass structure that is guaranteed to be physically correct"""
+
+    @staticmethod
+    def from_asn1(data: bytes) -> Mass:
+        """Decodes an ASN.1 DER encoded byte array into a Mass object."""
+
+    def is_valid(self) -> bool:
+        """Returns true if all the masses are greater or equal to zero"""
+
+    def to_asn1(self) -> bytes:
+        """Encodes this Mass object into an ASN.1 DER encoded byte array."""
+
+    def total_mass_kg(self) -> float:
+        """Returns the total mass in kg"""
+
+    def __repr__(self) -> str:
+        """Return repr(self)."""
+
+    def __str__(self) -> str:
+        """Return str(self)."""
+
+@typing.final
 class Occultation:
     """Stores the result of an occultation computation with the occultation percentage
     Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse/) for modeling details."""
 
     back_frame: Frame
-    epoch: Epoch
+    epoch: time.Epoch
     front_frame: Frame
     percentage: float
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls) -> Occultation:
+        """Stores the result of an occultation computation with the occultation percentage
+        Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse/) for modeling details."""
 
     def factor(self) -> float:
         """Returns the percentage as a factor between 0 and 1"""
@@ -505,7 +650,7 @@ class Orbit:
 
     Unless noted otherwise, algorithms are from GMAT 2016a [StateConversionUtil.cpp](https://github.com/ChristopherRabotin/GMAT/blob/37201a6290e7f7b941bc98ee973a527a5857104b/src/base/util/StateConversionUtil.cpp)."""
 
-    epoch: Epoch
+    epoch: time.Epoch
     frame: Frame
     vx_km_s: float
     vy_km_s: float
@@ -514,7 +659,10 @@ class Orbit:
     y_km: float
     z_km: float
 
-    def __new__(cls, *args: tuples) -> Orbit:
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls, *args: typing.Tuple) -> Orbit:
         """Defines a Cartesian state in a given frame at a given epoch in a given time scale. Radius data is expressed in kilometers. Velocity data is expressed in kilometers per second.
         Regardless of the constructor used, this struct stores all the state information in Cartesian coordinates as these are always non singular.
 
@@ -576,7 +724,7 @@ class Orbit:
     def apoapsis_km(self) -> float:
         """Returns the radius of apoapsis (or apogee around Earth), in kilometers."""
 
-    def at_epoch(self, new_epoch: Epoch) -> Orbit:
+    def at_epoch(self, new_epoch: time.Epoch) -> Orbit:
         """Adjusts the true anomaly of this orbit using the mean anomaly.
 
         # Astrodynamics note
@@ -586,12 +734,12 @@ class Orbit:
     def c3_km2_s2(self) -> float:
         """Returns the $C_3$ of this orbit in km^2/s^2"""
 
-    def cartesian_pos_vel(self) -> numpy.array:
+    def cartesian_pos_vel(self) -> numpy.ndarray:
         """Returns this state as a Cartesian vector of size 6 in [km, km, km, km/s, km/s, km/s]
 
         Note that the time is **not** returned in the vector."""
 
-    def dcm3x3_from_rcn_to_inertial(self) -> DCM:
+    def dcm3x3_from_rcn_to_inertial(self) -> rotation.DCM:
         """Builds the rotation matrix that rotates from this state's inertial frame to this state's RCN frame (radial, cross, normal)
 
         # Frame warning
@@ -603,7 +751,7 @@ class Orbit:
         3. Build the DCM with these unit vectors
         4. Return the DCM structure"""
 
-    def dcm3x3_from_ric_to_inertial(self) -> DCM:
+    def dcm3x3_from_ric_to_inertial(self) -> rotation.DCM:
         """Builds the rotation matrix that rotates from this state's inertial frame to this state's RIC frame
 
         # Frame warning
@@ -615,7 +763,7 @@ class Orbit:
         3. Build the RIC DCM as a 3x3 of the columns [\\hat{r}, \\hat{i}, \\hat{c}]
         4. Return the DCM structure **without** accounting for the transport theorem."""
 
-    def dcm3x3_from_topocentric_to_body_fixed(self) -> DCM:
+    def dcm3x3_from_topocentric_to_body_fixed(self) -> rotation.DCM:
         """Builds the rotation matrix that rotates from the topocentric frame (SEZ) into the body fixed frame of this state.
 
         # Frame warning
@@ -627,7 +775,7 @@ class Orbit:
         In the GMAT MathSpec notation, R_{IF} is the DCM from body fixed to inertial. Similarly, R{FT} is from topocentric
         to body fixed."""
 
-    def dcm3x3_from_vnc_to_inertial(self) -> DCM:
+    def dcm3x3_from_vnc_to_inertial(self) -> rotation.DCM:
         """Builds the rotation matrix that rotates from this state's inertial frame to this state's VNC frame (velocity, normal, cross)
 
         # Frame warning
@@ -639,7 +787,7 @@ class Orbit:
         3. Build the DCM with these unit vectors
         4. Return the DCM structure."""
 
-    def dcm_from_rcn_to_inertial(self) -> DCM:
+    def dcm_from_rcn_to_inertial(self) -> rotation.DCM:
         """Builds the rotation matrix that rotates from this state's inertial frame to this state's RCN frame (radial, cross, normal)
 
         # Frame warning
@@ -655,7 +803,7 @@ class Orbit:
         If the pre or post states cannot be computed, then the time derivative of the DCM will _not_ be set.
         Further note that most astrodynamics tools do *not* account for the time derivative in the RIC frame."""
 
-    def dcm_from_ric_to_inertial(self) -> DCM:
+    def dcm_from_ric_to_inertial(self) -> rotation.DCM:
         """Builds the rotation matrix that rotates from this state's inertial frame to this state's RIC frame
 
         # Frame warning
@@ -674,7 +822,7 @@ class Orbit:
         If the pre or post states cannot be computed, then the time derivative of the DCM will _not_ be set.
         Further note that most astrodynamics tools do *not* account for the time derivative in the RIC frame."""
 
-    def dcm_from_topocentric_to_body_fixed(self) -> DCM:
+    def dcm_from_topocentric_to_body_fixed(self) -> rotation.DCM:
         """Builds the rotation matrix that rotates from the topocentric frame (SEZ) into the body fixed frame of this state.
 
         # Frame warnings
@@ -690,7 +838,7 @@ class Orbit:
         In the GMAT MathSpec notation, R_{IF} is the DCM from body fixed to inertial. Similarly, R{FT} is from topocentric
         to body fixed."""
 
-    def dcm_from_vnc_to_inertial(self) -> DCM:
+    def dcm_from_vnc_to_inertial(self) -> rotation.DCM:
         """Builds the rotation matrix that rotates from this state's inertial frame to this state's VNC frame (velocity, normal, cross)
 
         # Frame warning
@@ -707,7 +855,7 @@ class Orbit:
         If the pre or post states cannot be computed, then the time derivative of the DCM will _not_ be set.
         Further note that most astrodynamics tools do *not* account for the time derivative in the RIC frame."""
 
-    def dcm_to_inertial(self, local_frame: LocalFrame) -> DCM:
+    def dcm_to_inertial(self, local_frame: LocalFrame) -> rotation.DCM:
         """Returns the DCM to rotate this orbit from the provided local frame to the inertial frame."""
 
     def declination_deg(self) -> float:
@@ -716,7 +864,7 @@ class Orbit:
     def distance_to_km(self, other: Orbit) -> float:
         """Returns the distance in kilometers between this state and another state, if both frame match (epoch does not need to match)."""
 
-    def duration_to_radius(self, radius_km: float) -> Duration:
+    def duration_to_radius(self, radius_km: float) -> time.Duration:
         """Calculates the duration to reach a specific radius in the orbit.
 
         This function computes the time it will take for the orbiting body to reach
@@ -777,6 +925,10 @@ class Orbit:
         """Returns the flight path angle in degrees"""
 
     @staticmethod
+    def from_asn1(data: bytes) -> Orbit:
+        """Decodes an ASN.1 DER encoded byte array into a CartesianState (Orbit)."""
+
+    @staticmethod
     def from_cartesian(
         x_km: float,
         y_km: float,
@@ -784,7 +936,7 @@ class Orbit:
         vx_km_s: float,
         vy_km_s: float,
         vz_km_s: float,
-        epoch: Epoch,
+        epoch: time.Epoch,
         frame: Frame,
     ) -> Orbit:
         """Creates a new Cartesian state in the provided frame at the provided Epoch.
@@ -792,7 +944,9 @@ class Orbit:
         **Units:** km, km, km, km/s, km/s, km/s"""
 
     @staticmethod
-    def from_cartesian_npy(pos_vel: np.array, epoch: Epoch, frame: Frame) -> Orbit:
+    def from_cartesian_npy(
+        pos_vel: numpy.ndarray, epoch: time.Epoch, frame: Frame
+    ) -> Orbit:
         """Creates a new Cartesian state from a numpy array, an epoch, and a frame.
 
         **Units:** km, km, km, km/s, km/s, km/s"""
@@ -805,7 +959,7 @@ class Orbit:
         raan_deg: float,
         aop_deg: float,
         ta_deg: float,
-        epoch: Epoch,
+        epoch: time.Epoch,
         frame: Frame,
     ) -> Orbit:
         """Creates a new Orbit around the provided Celestial or Geoid frame from the Keplerian orbital elements.
@@ -824,7 +978,7 @@ class Orbit:
         raan_deg: float,
         aop_deg: float,
         ta_deg: float,
-        epoch: Epoch,
+        epoch: time.Epoch,
         frame: Frame,
     ) -> Orbit:
         """Creates a new Orbit from the provided semi-major axis altitude in kilometers"""
@@ -837,7 +991,7 @@ class Orbit:
         raan_deg: float,
         aop_deg: float,
         ta_deg: float,
-        epoch: Epoch,
+        epoch: time.Epoch,
         frame: Frame,
     ) -> Orbit:
         """Creates a new Orbit from the provided altitudes of apoapsis and periapsis, in kilometers"""
@@ -850,7 +1004,7 @@ class Orbit:
         raan_deg: float,
         aop_deg: float,
         ta_deg: float,
-        epoch: Epoch,
+        epoch: time.Epoch,
         frame: Frame,
     ) -> Orbit:
         """Attempts to create a new Orbit from the provided radii of apoapsis and periapsis, in kilometers"""
@@ -863,7 +1017,7 @@ class Orbit:
         raan_deg: float,
         aop_deg: float,
         ma_deg: float,
-        epoch: Epoch,
+        epoch: time.Epoch,
         frame: Frame,
     ) -> Orbit:
         """Initializes a new orbit from the Keplerian orbital elements using the mean anomaly instead of the true anomaly.
@@ -878,7 +1032,7 @@ class Orbit:
         latitude_deg: float,
         longitude_deg: float,
         height_km: float,
-        epoch: Epoch,
+        epoch: time.Epoch,
         frame: Frame,
     ) -> Orbit:
         """Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid, and with ZERO angular velocity in this frame.
@@ -894,8 +1048,8 @@ class Orbit:
         latitude_deg: float,
         longitude_deg: float,
         height_km: float,
-        angular_velocity_rad_s: np.array,
-        epoch: Epoch,
+        angular_velocity_rad_s: numpy.ndarray,
+        epoch: time.Epoch,
         frame: Frame,
     ) -> Orbit:
         """Creates a new Orbit from the latitude (φ), longitude (λ) and height (in km) with respect to the frame's ellipsoid given the angular velocity vector.
@@ -955,7 +1109,7 @@ class Orbit:
         # Algorithm
         This uses the Heikkinen procedure, which is not iterative. The results match Vallado and GMAT."""
 
-    def light_time(self) -> Duration:
+    def light_time(self) -> time.Duration:
         """Returns the light time duration between this object and the origin of its reference frame."""
 
     def longitude_360_deg(self) -> float:
@@ -990,7 +1144,7 @@ class Orbit:
     def periapsis_km(self) -> float:
         """Returns the radius of periapsis (or perigee around Earth), in kilometers."""
 
-    def period(self) -> Duration:
+    def period(self) -> time.Duration:
         """Returns the period"""
 
     def raan_brouwer_short_deg(self) -> float:
@@ -999,7 +1153,7 @@ class Orbit:
     def raan_deg(self) -> float:
         """Returns the right ascension of the ascending node in degrees"""
 
-    def radius_km(self) -> np.array:
+    def radius_km(self) -> numpy.ndarray:
         """radius vector in km"""
 
     def rel_difference(self, other: Orbit) -> typing.Tuple:
@@ -1094,10 +1248,13 @@ class Orbit:
     def tlong_deg(self) -> float:
         """Returns the true longitude in degrees"""
 
+    def to_asn1(self) -> bytes:
+        """Encodes this CartesianState (Orbit) into an ASN.1 DER encoded byte array."""
+
     def velocity_declination_deg(self) -> float:
         """Returns the velocity declination of this orbit in degrees"""
 
-    def velocity_km_s(self) -> np.array:
+    def velocity_km_s(self) -> numpy.ndarray:
         """velocity vector in km/s"""
 
     def vinf_periapsis_km(self, turn_angle_degrees: float) -> float:
@@ -1168,11 +1325,39 @@ class Orbit:
         """Return str(self)."""
 
 @typing.final
+class SRPData:
+    area_m2: float
+    coeff_reflectivity: float
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls, area_m2: typing.Any, coeff_reflectivity: typing.Any = None): ...
+    @staticmethod
+    def from_asn1(data: bytes) -> SRPData:
+        """Decodes an ASN.1 DER encoded byte array into an SRPData object."""
+
+    def to_asn1(self) -> bytes:
+        """Encodes this SRPData object into an ASN.1 DER encoded byte array."""
+
+    def __repr__(self) -> str:
+        """Return repr(self)."""
+
+    def __str__(self) -> str:
+        """Return str(self)."""
+
+@typing.final
 class TerrainMask:
     """TerrainMask is used to compute obstructions during AER calculations."""
 
     azimuth_deg: float
     elevation_mask_deg: float
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls, azimuth_deg: float, elevation_mask_deg: float) -> TerrainMask:
+        """TerrainMask is used to compute obstructions during AER calculations."""
 
     @staticmethod
     def from_flat_terrain(elevation_mask_deg: float) -> list:
