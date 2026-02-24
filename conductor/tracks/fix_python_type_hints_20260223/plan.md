@@ -6,7 +6,7 @@
     - [ ] Build the package with `maturin develop` in the `anise-py` folder.
     - [ ] Run the `generate_stubs.py` script for each module in `anise-py/anise`.
     - [ ] Execute `mypy` to generate a baseline of errors.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Environment Setup and Baseline Analysis' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification 'Phase 1: Environment Setup and Baseline Analysis' (Protocol in workflow.md)
 
 ## Phase 2: Stub Update and Error Resolution
 - [ ] Task: Fix type hints and resolve mypy errors
