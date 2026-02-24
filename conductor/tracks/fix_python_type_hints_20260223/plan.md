@@ -1,7 +1,7 @@
 # Implementation Plan: Fix Python Type Hints and Mypy Errors
 
 ## Phase 1: Environment Setup and Baseline Analysis
-- [ ] Task: Set up the Python environment and run initial analysis
+- [x] Task: Set up the Python environment and run initial analysis [7094dbf]
     - [ ] Install `mypy` and other dependencies in the `anise-py/.venv` folder using `uv`.
     - [ ] Build the package with `maturin develop` in the `anise-py` folder.
     - [ ] Run the `generate_stubs.py` script for each module in `anise-py/anise`.
