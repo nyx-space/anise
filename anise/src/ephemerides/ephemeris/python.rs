@@ -19,9 +19,47 @@ use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
 use std::collections::BTreeMap;
+use hifitime::Epoch;
+
+#[pyclass]
+struct EphemerisItemIterator {
+    parent: Py<Ephemeris>,
+    keys: std::vec::IntoIter<Epoch>,
+}
+
+#[pymethods]
+impl EphemerisItemIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<EphemerisRecord> {
+        let key = slf.keys.next()?;
+        let parent = slf.parent.borrow(slf.py());
+        parent.state_data.get(&key).copied()
+    }
+}
 
 #[pymethods]
 impl Ephemeris {
+    fn __iter__(slf: Bound<'_, Self>) -> PyResult<EphemerisItemIterator> {
+        let parent = slf.clone().unbind();
+        let keys: Vec<Epoch> = slf.borrow().state_data.keys().copied().collect();
+        Ok(EphemerisItemIterator {
+            parent,
+            keys: keys.into_iter(),
+        })
+    }
+
+    fn __reversed__(slf: Bound<'_, Self>) -> PyResult<EphemerisItemIterator> {
+        let parent = slf.clone().unbind();
+        let keys: Vec<Epoch> = slf.borrow().state_data.keys().rev().copied().collect();
+        Ok(EphemerisItemIterator {
+            parent,
+            keys: keys.into_iter(),
+        })
+    }
+
     /// :rtype: str
     #[getter]
     fn get_object_id(&self) -> String {

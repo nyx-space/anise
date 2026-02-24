@@ -51,7 +51,25 @@ pub struct Ephemeris {
     pub object_id: String,
     pub interpolation: DataType,
     pub degree: usize,
-    state_data: BTreeMap<Epoch, EphemerisRecord>,
+    pub(crate) state_data: BTreeMap<Epoch, EphemerisRecord>,
+}
+
+impl<'a> IntoIterator for &'a Ephemeris {
+    type Item = &'a EphemerisRecord;
+    type IntoIter = std::collections::btree_map::Values<'a, Epoch, EphemerisRecord>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.state_data.values()
+    }
+}
+
+impl IntoIterator for Ephemeris {
+    type Item = EphemerisRecord;
+    type IntoIter = std::collections::btree_map::IntoValues<Epoch, EphemerisRecord>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.state_data.into_values()
+    }
 }
 
 impl Ephemeris {
