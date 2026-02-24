@@ -128,16 +128,18 @@ impl Ephemeris {
     }
 
     fn __iter__(slf: Bound<'_, Self>) -> PyResult<EphemerisIterator> {
-        let items: Vec<EphemerisRecord> = slf.borrow().state_data.values().copied().collect();
+        let keys: Vec<hifitime::Epoch> = slf.borrow().state_data.keys().copied().collect();
         Ok(EphemerisIterator {
-            items: items.into_iter(),
+            ephem: slf.into(),
+            keys: keys.into_iter(),
         })
     }
 
     fn __reversed__(slf: Bound<'_, Self>) -> PyResult<EphemerisIterator> {
-        let items: Vec<EphemerisRecord> = slf.borrow().state_data.values().rev().copied().collect();
+        let keys: Vec<hifitime::Epoch> = slf.borrow().state_data.keys().rev().copied().collect();
         Ok(EphemerisIterator {
-            items: items.into_iter(),
+            ephem: slf.into(),
+            keys: keys.into_iter(),
         })
     }
 }
@@ -186,7 +188,8 @@ impl Covariance {
 
 #[pyclass]
 struct EphemerisIterator {
-    items: std::vec::IntoIter<EphemerisRecord>,
+    ephem: Py<Ephemeris>,
+    keys: std::vec::IntoIter<hifitime::Epoch>,
 }
 
 #[pymethods]
@@ -195,7 +198,11 @@ impl EphemerisIterator {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<EphemerisRecord> {
-        slf.items.next()
+    fn __next__(mut slf: PyRefMut<'_, Self>, py: Python<'_>) -> Option<EphemerisRecord> {
+        if let Some(key) = slf.keys.next() {
+            slf.ephem.borrow(py).state_data.get(&key).copied()
+        } else {
+            None
+        }
     }
 }

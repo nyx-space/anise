@@ -581,12 +581,7 @@ mod ut_oem {
 
         println!("{ephem}");
 
-        let mut num_entries = 0;
-        for _entry in &ephem {
-            num_entries += 1;
-        }
-
-        assert_eq!(num_entries, ephem.state_data.len());
+        assert_eq!((&ephem).into_iter().count(), ephem.state_data.len());
 
         // Check that we can interpolate
         let epoch = start + Unit::Second * 5;
