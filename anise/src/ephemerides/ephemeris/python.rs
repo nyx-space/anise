@@ -161,7 +161,7 @@ impl Covariance {
     }
     /// Returns the 6x6 DCM to rotate a state. If the time derivative of this DCM is defined, this 6x6 accounts for the transport theorem.
     /// Warning: you MUST manually install numpy to call this function.
-    /// :rtype: numpy.array
+    /// :rtype: numpy.ndarray
     #[getter]
     fn get_matrix<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray2<f64>>> {
         // Extract data from SMatrix (column-major order, hence the transpose)

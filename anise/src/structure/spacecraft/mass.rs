@@ -23,10 +23,13 @@ use pyo3::types::{PyBytes, PyType};
 #[derive(Copy, Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Mass {
     /// Structural mass of the spacecraft, in kg
+    /// :rtype: float
     pub dry_mass_kg: f64,
     /// Propellant mass of the spacecraft, in kg
+    /// :rtype: float
     pub prop_mass_kg: f64,
     /// Extra mass like unusable propellant mass of the spacecraft, in kg
+    /// :rtype: float
     pub extra_mass_kg: f64,
 }
 
@@ -52,16 +55,19 @@ impl Mass {
 #[cfg_attr(feature = "python", pymethods)]
 impl Mass {
     /// Returns the total mass in kg
+    /// :rtype: float
     pub fn total_mass_kg(&self) -> f64 {
         self.dry_mass_kg + self.prop_mass_kg + self.extra_mass_kg
     }
 
     /// Returns true if all the masses are greater or equal to zero
+    /// :rtype: bool
     pub fn is_valid(&self) -> bool {
         self.dry_mass_kg >= 0.0 && self.prop_mass_kg >= 0.0 && self.extra_mass_kg >= 0.0
     }
 
     /// Returns a Mass structure that is guaranteed to be physically correct
+    /// :rtype: Mass
     pub fn abs(&self) -> Self {
         if self.is_valid() {
             *self

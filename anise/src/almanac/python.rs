@@ -814,7 +814,7 @@ impl Almanac {
     /// :type from_frame: Frame
     /// :type to_frame: Frame
     /// :type epoch: Epoch
-    /// :rtype: numpy.array
+    /// :rtype: numpy.ndarray
     #[pyo3(name="angular_velocity_rad_s", signature=(from_frame, to_frame, epoch))]
     pub fn py_angular_velocity_rad_s<'py>(
         &self,
@@ -838,7 +838,7 @@ impl Almanac {
     ///
     /// :type from_frame: Frame
     /// :type epoch: Epoch
-    /// :rtype: numpy.array
+    /// :rtype: numpy.ndarray
     #[pyo3(name = "angular_velocity_wrt_j2000_rad_s", signature = (from_frame, epoch))]
     pub fn py_angular_velocity_wrt_j2000_rad_s<'py>(
         &self,
@@ -856,7 +856,7 @@ impl Almanac {
     /// :type from_frame: Frame
     /// :type to_frame: Frame
     /// :type epoch: Epoch
-    /// :rtype: numpy.array
+    /// :rtype: numpy.ndarray
     #[pyo3(name="angular_velocity_deg_s", signature=(from_frame, to_frame, epoch))]
     pub fn py_angular_velocity_deg_s<'py>(
         &self,
@@ -880,7 +880,7 @@ impl Almanac {
     ///
     /// :type from_frame: Frame
     /// :type epoch: Epoch
-    /// :rtype: numpy.array
+    /// :rtype: numpy.ndarray
     #[pyo3(name = "angular_velocity_wrt_j2000_deg_s", signature = (from_frame, epoch))]
     pub fn py_angular_velocity_wrt_j2000_deg_s<'py>(
         &self,

@@ -1,9 +1,19 @@
+from __future__ import annotations
+from anise import Aberration
+from anise import Almanac
+from anise import astro
+from anise import time
 import typing
 
 @typing.final
 class Condition:
     """Defines an event condition"""
 
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls) -> Condition:
+        """Defines an event condition"""
     Between: type = ...
     Equals: type = ...
     GreaterThan: type = ...
@@ -17,22 +27,34 @@ class Event:
 
     ab_corr: Aberration
     condition: Condition
-    epoch_precision: Duration
+    epoch_precision: time.Duration
     scalar: ScalarExpr
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(
+        cls,
+        scalar: ScalarExpr,
+        condition: Condition,
+        epoch_precision: time.Duration,
+        ab_corr: typing.Optional[Aberration] = None,
+    ) -> Event:
+        """Defines a state parameter event finder from the desired value of the scalar expression to compute, precision on timing and value, and the aberration."""
 
     @staticmethod
     def apoapsis() -> Event:
         """Apoapsis event finder, with an epoch precision of 0.1 seconds"""
 
     @staticmethod
-    def eclipse(eclipsing_frame: Frame) -> Event:
+    def eclipse(eclipsing_frame: astro.Frame) -> Event:
         """Eclipse event finder, including penumbras: returns events where the eclipsing percentage is greater than 1%."""
 
-    def eval(self, orbit: Orbit, almanac: Almanac) -> float:
+    def eval(self, orbit: astro.Orbit, almanac: Almanac) -> float:
         """Compute the event finding function of this event provided an Orbit and Almanac.
         If we're "in the event", the evaluation will be greater or equal to zero."""
 
-    def eval_string(self, orbit: Orbit, almanac: Almanac) -> str:
+    def eval_string(self, orbit: astro.Orbit, almanac: Almanac) -> str:
         """Pretty print the evaluation of this event for the provided Orbit and Almanac"""
 
     @staticmethod
@@ -40,7 +62,7 @@ class Event:
         """Convert the S-Expression to a Event"""
 
     @staticmethod
-    def penumbra(eclipsing_frame: Frame) -> Event:
+    def penumbra(eclipsing_frame: astro.Frame) -> Event:
         """Penumbral eclipse event finder: returns events where the eclipsing percentage is greater than 1% and less than 99%."""
 
     @staticmethod
@@ -51,12 +73,12 @@ class Event:
         """Converts this Event to its S-Expression"""
 
     @staticmethod
-    def total_eclipse(eclipsing_frame: Frame) -> Event:
+    def total_eclipse(eclipsing_frame: astro.Frame) -> Event:
         """Total eclipse event finder: returns events where the eclipsing percentage is greater than 98.9%."""
 
     @staticmethod
     def visible_from_location_id(
-        location_id: int, obstructing_body: Frame = None
+        location_id: int, obstructing_body: typing.Optional[astro.Frame] = None
     ) -> Event:
         """Report events where the object is above the terrain (or horizon if terrain is not set) when seen from the provided location ID."""
 
@@ -89,11 +111,14 @@ class EventArc:
     fall: EventDetails
     rise: EventDetails
 
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
     def __new__(cls): ...
-    def duration(self) -> Duration: ...
-    def end_epoch(self) -> Epoch: ...
-    def midpoint_epoch(self) -> Epoch: ...
-    def start_epoch(self) -> Epoch: ...
+    def duration(self) -> time.Duration: ...
+    def end_epoch(self) -> time.Epoch: ...
+    def midpoint_epoch(self) -> time.Epoch: ...
+    def start_epoch(self) -> time.Epoch: ...
     def __repr__(self) -> str:
         """Return repr(self)."""
 
@@ -108,11 +133,19 @@ class EventDetails:
 
     edge: EventEdge
     next_value: float
-    orbit: Orbit
-    pm_duration: Duration
+    orbit: astro.Orbit
+    pm_duration: time.Duration
     prev_value: float
     repr: str
     value: float
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls) -> EventDetails:
+        """Represents the details of an event occurring along a trajectory.
+
+        `EventDetails` encapsulates the state at which a particular event occurs in a trajectory, along with additional information about the nature of the event. This struct is particularly useful for understanding the dynamics of the event, such as whether it represents a rising or falling edge, or if the edge is unclear."""
 
     def describe(self) -> str: ...
     def __eq__(self, value: typing.Any) -> bool:
@@ -144,6 +177,14 @@ class EventEdge:
     """Enumerates the possible edges of an event in a trajectory.
 
     `EventEdge` is used to describe the nature of a trajectory event, particularly in terms of its temporal dynamics relative to a specified condition or threshold. This enum helps in distinguishing whether the event is occurring at a rising edge, a falling edge, or if the edge is unclear due to insufficient data or ambiguous conditions."""
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls) -> EventEdge:
+        """Enumerates the possible edges of an event in a trajectory.
+
+        `EventEdge` is used to describe the nature of a trajectory event, particularly in terms of its temporal dynamics relative to a specified condition or threshold. This enum helps in distinguishing whether the event is occurring at a rising edge, a falling edge, or if the edge is unclear due to insufficient data or ambiguous conditions."""
 
     def __eq__(self, value: typing.Any) -> bool:
         """Return self==value."""
@@ -178,6 +219,11 @@ class EventEdge:
 class FrameSpec:
     """FrameSpec allows defining a frame that can be computed from another set of loaded frames, which include a center."""
 
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls) -> FrameSpec:
+        """FrameSpec allows defining a frame that can be computed from another set of loaded frames, which include a center."""
     Loaded: type = ...
     Manual: type = ...
 
@@ -185,7 +231,13 @@ class FrameSpec:
 class OrbitalElement:
     """Orbital element defines all of the supported orbital elements in ANISE, which are all built from a State."""
 
-    def evaluate(self, orbit: Orbit) -> float:
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls) -> OrbitalElement:
+        """Orbital element defines all of the supported orbital elements in ANISE, which are all built from a State."""
+
+    def evaluate(self, orbit: astro.Orbit) -> float:
         """Evaluate the orbital element enum variant for the provided orbit"""
 
     def __eq__(self, value: typing.Any) -> bool:
@@ -265,6 +317,9 @@ class OrbitalElement:
 
 @typing.final
 class OrthogonalFrame:
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
     def __new__(cls): ...
     XY: type = ...
     XZ: type = ...
@@ -274,6 +329,13 @@ class OrthogonalFrame:
 class Plane:
     """Plane selector, sets the missing component to zero.
     For example, Plane::YZ will multiply the DCM by [[1, 0. 0], [0, 1, 0], [0, 0, 0]]"""
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls) -> Plane:
+        """Plane selector, sets the missing component to zero.
+        For example, Plane::YZ will multiply the DCM by [[1, 0. 0], [0, 1, 0], [0, 0, 0]]"""
 
     def __int__(self) -> None:
         """int(self)"""
@@ -288,6 +350,9 @@ class Plane:
 class ReportScalars:
     """A basic report builder that can be serialized seperately from the execution.
     The scalars must be a tuple of (ScalarExpr, String) where the String is the alias (optional)."""
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
 
     def __new__(cls, scalars: list, state_spec: StateSpec) -> ReportScalars:
         """A basic report builder that can be serialized seperately from the execution.
@@ -304,8 +369,17 @@ class ReportScalars:
 class ScalarExpr:
     """ScalarExpr defines a scalar computation from a (set of) vector expression(s)."""
 
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls) -> ScalarExpr:
+        """ScalarExpr defines a scalar computation from a (set of) vector expression(s)."""
+
     def evaluate(
-        self, orbit: Orbit, almanac: Almanac, ab_corr: Aberration = None
+        self,
+        orbit: astro.Orbit,
+        almanac: Almanac,
+        ab_corr: typing.Optional[Aberration] = None,
     ) -> float:
         """Compute this ScalarExpr for the provided Orbit"""
 
@@ -368,15 +442,18 @@ class StateSpec:
     observer_frame: FrameSpec
     target_frame: FrameSpec
 
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
     def __new__(
         cls,
         target_frame: FrameSpec,
         observer_frame: FrameSpec,
-        ab_corr: Aberration = None,
-    ) -> None:
+        ab_corr: typing.Optional[Aberration] = None,
+    ) -> StateSpec:
         """StateSpec allows defining a state from the target to the observer"""
 
-    def evaluate(self, epoch: Epoch, almanac: Almanac) -> Orbit:
+    def evaluate(self, epoch: time.Epoch, almanac: Almanac) -> astro.Orbit:
         """Evaluate the orbital element enum variant for the provided orbit"""
 
     @staticmethod
@@ -406,6 +483,9 @@ class StateSpec:
 
 @typing.final
 class VectorExpr:
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
     def __new__(cls): ...
     Add: type = ...
     CrossProduct: type = ...
@@ -424,15 +504,18 @@ class VectorExpr:
 class VisibilityArc:
     aer_data: list
     fall: EventDetails
-    location: Location
+    location: astro.Location
     location_ref: str
     rise: EventDetails
-    sample_rate: Duration
+    sample_rate: time.Duration
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
 
     def __new__(cls): ...
-    def duration(self) -> Duration: ...
-    def end_epoch(self) -> Epoch: ...
-    def start_epoch(self) -> Epoch: ...
+    def duration(self) -> time.Duration: ...
+    def end_epoch(self) -> time.Epoch: ...
+    def start_epoch(self) -> time.Epoch: ...
     def __repr__(self) -> str:
         """Return repr(self)."""
 

@@ -21,8 +21,10 @@ use pyo3::types::{PyBytes, PyType};
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SRPData {
     /// Solar radiation pressure area in m^2 -- default 0.0
+    /// :rtype: float
     pub area_m2: f64,
     /// Solar radiation pressure coefficient of reflectivity (C_r) -- default 1.8
+    /// :rtype: float
     pub coeff_reflectivity: f64,
 }
 
