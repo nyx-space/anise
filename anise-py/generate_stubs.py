@@ -189,7 +189,7 @@ def module_stubs(module: Any) -> ast.Module:
         if t == "typing":
             imports.append(ast.Import(names=[ast.alias(name=t)]))
             continue
-        
+
         if t == "numpy":
              imports.append(ast.Import(names=[ast.alias(name="numpy")]))
              continue
@@ -198,7 +198,7 @@ def module_stubs(module: Any) -> ast.Module:
             current_module = module.__name__
             if current_module == t:
                  continue
-            
+
             parts = t.split(".")
             # e.g. from anise import time
             imports.append(ast.ImportFrom(module=parts[0], names=[ast.alias(name=parts[1])], level=0))
@@ -222,7 +222,7 @@ def class_stubs(
     methods: List[ast.AST] = []
     magic_methods: List[ast.AST] = []
     constants: List[ast.AST] = []
-    
+
     for member_name, member_value in inspect.getmembers(cls_def):
         current_element_path = [*element_path, member_name]
         # Inside the loop in class_stubs
@@ -365,7 +365,7 @@ def function_stub(
     decorator_list = []
     is_static = False
     is_class = False
-    
+
     if in_class:
         try:
             # Check if it's explicitly classmethod or staticmethod
@@ -408,7 +408,7 @@ def function_stub(
         body or [ast.Ellipsis()],
         decorator_list=decorator_list,
         returns=(
-            returns_stub(fn_name, doc, element_path, types_to_import, in_class) if doc else None
+            returns_stub(fn_name, doc or "", element_path, types_to_import, in_class)
         ),
         lineno=0,
     )
@@ -442,7 +442,7 @@ def arguments_stub(
                 args.append(ast.arg(arg="cls", annotation=None))
             else:
                 args.append(ast.arg(arg="self", annotation=None))
-        
+
         # If we have a BUILTIN entry, use it for arguments too
         if isinstance(builtin, tuple):
              for i, t in enumerate(builtin[0]):
@@ -600,7 +600,7 @@ def returns_stub(
         "__rmul__",
     ]:
         return
-    
+
     if callable_name == "__new__":
          # Returns the class itself
          if len(element_path) >= 2:
@@ -750,9 +750,9 @@ def concatenated_path_to_type(
          return path_to_type("numpy", "ndarray")
 
     parts = path.split(".")
-    
+
     current_module = element_path[0]
-    
+
     if path.startswith("anise."):
          # Check if it's in our module
          if path.startswith(current_module + "."):
@@ -760,7 +760,7 @@ def concatenated_path_to_type(
               if "." not in remainder:
                    # Local type
                    return path_to_type(remainder)
-         
+
          subparts = path.split(".")
          if len(subparts) >= 2:
               # from anise import time -> time.Epoch
@@ -776,7 +776,7 @@ def concatenated_path_to_type(
                  return path_to_type(*parts)
         else:
             types_to_import.add(".".join(parts[:-1]))
-    
+
     return path_to_type(*parts)
 
 

@@ -320,6 +320,7 @@ impl DCM {
         }
     }
 
+    /// :rtype: DCM
     fn __mul__(&self, dcm: Self) -> PhysicsResult<Self> {
         *self * dcm
     }
