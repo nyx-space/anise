@@ -238,6 +238,7 @@ class Ephemeris:
 
     degree: int
     interpolation: str
+    object_id: str
 
     def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         """Initialize self.  See help(type(self)) for accurate signature."""
@@ -331,7 +332,6 @@ class Ephemeris:
     def nearest_orbit_before(self, epoch: time.Epoch, almanac: Almanac) -> Orbit:
         """Returns the nearest orbit before the provided time"""
 
-    def object_id(self) -> str: ...
     def orbit_at(self, epoch: time.Epoch, almanac: Almanac) -> Orbit:
         """Interpolate the ephemeris at the provided epoch, returning only the orbit."""
 

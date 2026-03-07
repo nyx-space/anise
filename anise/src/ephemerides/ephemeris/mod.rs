@@ -71,6 +71,10 @@ impl Ephemeris {
     pub fn interpolation(&self) -> DataType {
         self.interpolation
     }
+
+    pub fn object_id(&self) -> &str {
+        &self.object_id
+    }
 }
 
 #[cfg_attr(feature = "python", pymethods)]
@@ -101,10 +105,6 @@ impl Ephemeris {
         Ok(self.domain()?.1)
     }
 
-    /// :rtype: str
-    pub fn object_id(&self) -> &str {
-        &self.object_id
-    }
 
     /// Returns true if all of the data in this ephemeris includes covariance.
     ///
