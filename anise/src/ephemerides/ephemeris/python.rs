@@ -24,13 +24,21 @@ use std::collections::BTreeMap;
 impl Ephemeris {
     /// :rtype: str
     #[getter]
-    fn get_object_id(&self) -> String {
+    #[pyo3(name = "object_id")]
+    fn py_get_object_id(&self) -> String {
         self.object_id.clone()
+    }
+
+    #[setter]
+    #[pyo3(name = "object_id")]
+    fn py_set_object_id(&mut self, value: String) {
+        self.object_id = value;
     }
 
     /// :rtype: str
     #[getter]
-    fn get_interpolation(&self) -> String {
+    #[pyo3(name = "interpolation")]
+    fn py_get_interpolation(&self) -> String {
         match self.interpolation {
             DataType::Type9LagrangeUnequalStep => "LAGRANGE".to_string(),
             DataType::Type13HermiteUnequalStep => "HERMITE".to_string(),
@@ -38,10 +46,32 @@ impl Ephemeris {
         }
     }
 
+    #[setter]
+    #[pyo3(name = "interpolation")]
+    fn py_set_interpolation(&mut self, value: String) -> PyResult<()> {
+        match value.to_uppercase().as_str() {
+            "LAGRANGE" => self.interpolation = DataType::Type9LagrangeUnequalStep,
+            "HERMITE" => self.interpolation = DataType::Type13HermiteUnequalStep,
+            _ => {
+                return Err(PyErr::new::<PyTypeError, _>(
+                    "interpolation must be 'LAGRANGE' or 'HERMITE'",
+                ))
+            }
+        }
+        Ok(())
+    }
+
     /// :rtype: int
     #[getter]
-    fn get_degree(&self) -> usize {
+    #[pyo3(name = "degree")]
+    fn py_get_degree(&self) -> usize {
         self.degree
+    }
+
+    #[setter]
+    #[pyo3(name = "degree")]
+    fn py_set_degree(&mut self, value: usize) {
+        self.degree = value;
     }
 
     #[new]
