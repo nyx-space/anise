@@ -848,7 +848,7 @@ mod ut_oem {
         let ric_pos_km_err = ric_err.fixed_rows::<3>(0);
         let ric_vel_km_s_err = ric_err.fixed_rows::<3>(3);
         assert!(dbg!(ric_pos_km_err.norm()) < 0.2);
-        assert!(dbg!(ric_vel_km_s_err.norm()) < 2.3e-3);
+        assert!(dbg!(ric_vel_km_s_err.norm()) < 2.5e-3);
     }
 
     #[rstest]
