@@ -16,7 +16,7 @@ def test_setters():
     try:
         ephem.object_id = "NewID"
         print(f"Set object_id successfully to {ephem.object_id}")
-    except AttributeError as e:
+    except (AttributeError, TypeError) as e:
         print(f"Failed to set object_id: {e}")
 
     try:
@@ -28,7 +28,7 @@ def test_setters():
     try:
         ephem.degree = 11
         print(f"Set degree successfully to {ephem.degree}")
-    except AttributeError as e:
+    except (AttributeError, TypeError) as e:
         print(f"Failed to set degree: {e}")
 
 if __name__ == "__main__":

@@ -328,10 +328,6 @@ class Ephemeris:
 
     def nearest_orbit_after(self, epoch: time.Epoch, almanac: Almanac) -> Orbit:
         """Returns the nearest orbit after the provided time"""
-
-    def nearest_orbit_before(self, epoch: time.Epoch, almanac: Almanac) -> Orbit:
-        """Returns the nearest orbit before the provided time"""
-
     def orbit_at(self, epoch: time.Epoch, almanac: Almanac) -> Orbit:
         """Interpolate the ephemeris at the provided epoch, returning only the orbit."""
 

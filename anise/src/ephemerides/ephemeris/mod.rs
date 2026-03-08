@@ -51,6 +51,7 @@ pub use record::EphemerisRecord;
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Ephemeris {
+    #[cfg_attr(feature = "python", pyo3(get, set))]
     pub object_id: String,
     pub interpolation: DataType,
     pub degree: usize,
@@ -101,10 +102,7 @@ impl Ephemeris {
     }
 
     /// :rtype: Epoch
-    pub fn end_epoch(&self) -> Result<Epoch, EphemerisError> {
-        Ok(self.domain()?.1)
-    }
-
+    pub fn end_epoch(&self) -> Result<Epoch, EphemerisError> { Ok(self.domain()?.1) }
 
     /// Returns true if all of the data in this ephemeris includes covariance.
     ///
