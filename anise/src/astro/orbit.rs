@@ -350,7 +350,7 @@ impl Orbit {
             if let Ok(post) = self.at_epoch(self.epoch + Unit::Second * 1) {
                 let dcm_pre = pre.dcm3x3_from_topocentric_to_body_fixed()?;
                 let dcm_post = post.dcm3x3_from_topocentric_to_body_fixed()?;
-                Some(500.0 * (dcm_post.rot_mat - dcm_pre.rot_mat))
+                Some(0.5 * dcm_post.rot_mat - 0.5 * dcm_pre.rot_mat)
             } else {
                 None
             }
