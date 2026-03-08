@@ -78,7 +78,7 @@ class Covariance:
     def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         """Initialize self.  See help(type(self)) for accurate signature."""
 
-    def __new__(cls, covar: typing.Any, local_frame: typing.Any): ...
+    def __new__(cls, covar: typing.Any, local_frame: typing.Any) -> Covariance: ...
     def __repr__(self) -> str:
         """Return repr(self)."""
 
@@ -90,7 +90,7 @@ class DataType:
     def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         """Initialize self.  See help(type(self)) for accurate signature."""
 
-    def __new__(cls): ...
+    def __new__(cls) -> DataType: ...
     def __eq__(self, value: typing.Any) -> bool:
         """Return self==value."""
 
@@ -139,7 +139,9 @@ class DragData:
     def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         """Initialize self.  See help(type(self)) for accurate signature."""
 
-    def __new__(cls, area_m2: typing.Any, coeff_drag: typing.Any = None): ...
+    def __new__(
+        cls, area_m2: typing.Any, coeff_drag: typing.Any = None
+    ) -> DragData: ...
     @staticmethod
     def from_asn1(data: bytes) -> DragData:
         """Decodes an ASN.1 DER encoded byte array into a DragData object."""
@@ -299,6 +301,7 @@ class Ephemeris:
     def from_stk_e_file(path: str) -> Ephemeris:
         """Initializes a new Ephemeris from a file path to Ansys STK .e file."""
 
+    def get_object_id(self) -> str: ...
     def includes_covariance(self) -> bool:
         """Returns true if all of the data in this ephemeris includes covariance.
 
@@ -338,6 +341,7 @@ class Ephemeris:
     def resample(self, ts: time.TimeSeries, almanac: Almanac) -> Ephemeris:
         """Resample this ephemeris, with covariance, at the provided time series"""
 
+    def set_object_id(self, object_id: str) -> typing.Any: ...
     def start_epoch(self) -> time.Epoch: ...
     def transform(self, new_frame: Frame, almanac: Almanac) -> Ephemeris:
         """Transforms this ephemeris into another frame, and rotates the covariance to that frame if the orientations are different.
@@ -363,7 +367,7 @@ class Ephemeris:
     def __repr__(self) -> str:
         """Return repr(self)."""
 
-    def __reversed__(self): ...
+    def __reversed__(self) -> typing.Any: ...
     def __str__(self) -> str:
         """Return str(self)."""
 
@@ -509,7 +513,7 @@ class LocalFrame:
     def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         """Initialize self.  See help(type(self)) for accurate signature."""
 
-    def __new__(cls): ...
+    def __new__(cls) -> LocalFrame: ...
     def __int__(self) -> None:
         """int(self)"""
 
@@ -1332,7 +1336,9 @@ class SRPData:
     def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         """Initialize self.  See help(type(self)) for accurate signature."""
 
-    def __new__(cls, area_m2: typing.Any, coeff_reflectivity: typing.Any = None): ...
+    def __new__(
+        cls, area_m2: typing.Any, coeff_reflectivity: typing.Any = None
+    ) -> SRPData: ...
     @staticmethod
     def from_asn1(data: bytes) -> SRPData:
         """Decodes an ASN.1 DER encoded byte array into an SRPData object."""
