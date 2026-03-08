@@ -70,8 +70,13 @@ impl Ephemeris {
 
     /// :type degree: int
     #[setter]
-    fn set_degree(&mut self, degree: usize) {
-        self.degree = degree;
+    fn set_degree(&mut self, degree: usize) -> Result<(), PyErr> {
+        if degree < 1 {
+            Err(PyValueError::new_err("degree must be strictly positive"))
+        } else {
+            self.degree = degree;
+            Ok(())
+        }
     }
 
     #[new]
