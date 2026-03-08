@@ -15,7 +15,7 @@ use crate::NaifId;
 use nalgebra::Matrix6;
 use ndarray::Array2;
 use numpy::{PyArray2, PyReadonlyArray2, PyUntypedArrayMethods};
-use pyo3::exceptions::PyTypeError;
+use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyType;
 use std::collections::BTreeMap;
@@ -23,9 +23,13 @@ use std::collections::BTreeMap;
 #[pymethods]
 impl Ephemeris {
     /// :rtype: str
-    #[getter]
     fn get_object_id(&self) -> String {
         self.object_id.clone()
+    }
+
+    /// :type object_id: str
+    fn set_object_id(&mut self, object_id: String) {
+        self.object_id = object_id;
     }
 
     /// :rtype: str
@@ -33,8 +37,28 @@ impl Ephemeris {
     fn get_interpolation(&self) -> String {
         match self.interpolation {
             DataType::Type9LagrangeUnequalStep => "LAGRANGE".to_string(),
-            DataType::Type13HermiteUnequalStep => "HERMITE".to_string(),
+            DataType::Type13HermiteUnequalStep | DataType::Type12HermiteEqualStep => {
+                "HERMITE".to_string()
+            }
             _ => unreachable!(),
+        }
+    }
+
+    /// :type interp: str
+    #[setter]
+    fn set_interpolation(&mut self, interp: &str) -> Result<(), PyErr> {
+        match interp.to_lowercase().as_str() {
+            "lagrange" => {
+                self.interpolation = DataType::Type9LagrangeUnequalStep;
+                Ok(())
+            }
+            "hermite" => {
+                self.interpolation = DataType::Type13HermiteUnequalStep;
+                Ok(())
+            }
+            _ => Err(PyValueError::new_err(
+                "interpolation must be Hermite or Lagrange",
+            )),
         }
     }
 
@@ -42,6 +66,17 @@ impl Ephemeris {
     #[getter]
     fn get_degree(&self) -> usize {
         self.degree
+    }
+
+    /// :type degree: int
+    #[setter]
+    fn set_degree(&mut self, degree: usize) -> Result<(), PyErr> {
+        if degree < 1 {
+            Err(PyValueError::new_err("degree must be strictly positive"))
+        } else {
+            self.degree = degree;
+            Ok(())
+        }
     }
 
     #[new]

@@ -478,6 +478,16 @@ def test_oem():
         assert isinstance(entry, EphemerisRecord)
     assert entry_count == ephem.len()
 
+    # NOTE: Object ID isn't actually a getter/setter (some pyo3 glitch it seems)
+    ephem.set_object_id("Test OBJID")
+    assert ephem.object_id() == "Test OBJID"
+
+    ephem.interpolation = "LagRaNge"
+    assert ephem.interpolation == "LAGRANGE"
+
+    ephem.degree = 159
+    assert ephem.degree == 159
+
 
 if __name__ == "__main__":
     # test_meta_load()
