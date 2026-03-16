@@ -18,6 +18,7 @@ use pyo3::prelude::*;
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
+#[cfg_attr(feature = "metaload", derive(serde_dhall::StaticType))]
 pub enum LocalFrame {
     Inertial,
     RIC,
@@ -28,6 +29,7 @@ pub enum LocalFrame {
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
+
 pub struct Covariance {
     pub matrix: Matrix6,
     pub local_frame: LocalFrame,

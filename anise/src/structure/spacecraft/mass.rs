@@ -21,6 +21,7 @@ use pyo3::types::{PyBytes, PyType};
 /// Defines a spacecraft mass a the sum of the dry (structural) mass and the propellant mass, both in kilogram
 #[cfg_attr(feature = "python", pyclass(get_all, set_all, module = "anise.astro"))]
 #[derive(Copy, Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "metaload", derive(serde_dhall::StaticType))]
 pub struct Mass {
     /// Structural mass of the spacecraft, in kg
     /// :rtype: float
