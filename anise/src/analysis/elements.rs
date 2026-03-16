@@ -25,6 +25,7 @@ use crate::prelude::Orbit;
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.analysis"))]
 #[derive(Copy, Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(feature = "metaload", derive(serde_dhall::StaticType))]
 pub enum OrbitalElement {
     /// Argument of Latitude (deg)
     AoL,
