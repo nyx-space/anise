@@ -29,7 +29,6 @@ pub enum LocalFrame {
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
-
 pub struct Covariance {
     pub matrix: Matrix6,
     pub local_frame: LocalFrame,
