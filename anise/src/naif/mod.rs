@@ -65,6 +65,7 @@ impl Endian {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn daf_endian_str() -> [u8; 8] {
         match Self::f64_native() {
             Endian::Little => *b"LTL-IEEE",
