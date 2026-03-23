@@ -61,3 +61,19 @@ jobs:
                 name: anise-gui-windows
                 path: target\release\anise-gui.exe
                 if-no-files-found: error
+
+    wasm:
+        name: Build WASM GUI
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: dtolnay/rust-toolchain@stable
+              with:
+                targets: wasm32-unknown-unknown
+
+            - name: Install trunk
+              uses: jetli/trunk-action@v0.5.0
+
+            - name: Build anise-gui for WASM
+              run: cd anise-gui && trunk build --release true
