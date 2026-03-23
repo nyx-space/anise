@@ -42,6 +42,8 @@ fn main() {
 // Entrypoint for WebAssembly
 #[cfg(target_arch = "wasm32")]
 fn main() {
+    use eframe::wasm_bindgen::JsCast;
+    use eframe::web_sys;
     use log::info;
 
     eframe::WebLogger::init(log::LevelFilter::Debug).ok();
@@ -49,9 +51,14 @@ fn main() {
 
     info!("Starting ANISE in WebAssembly mode");
     wasm_bindgen_futures::spawn_local(async {
+        let canvas = web_sys::window()
+            .and_then(|w| w.document())
+            .and_then(|d| d.get_element_by_id("anise_canvas"))
+            .and_then(|e| e.dyn_into::<web_sys::HtmlCanvasElement>().ok())
+            .expect("failed to find canvas element");
         eframe::WebRunner::new()
             .start(
-                "anise_canvas",
+                canvas,
                 web_options,
                 Box::new(|cc| Ok(Box::new(UiApp::new(cc)))),
             )
