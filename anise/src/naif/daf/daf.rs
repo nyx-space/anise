@@ -500,7 +500,6 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     /// Writes the contents of this DAF file to a new location.
-    /// WARNING: BUGGY! https://github.com/nyx-space/anise/issues/262
     pub fn persist<P: AsRef<Path>>(&self, path: P) -> IoResult<()> {
         let mut fs = File::create(path)?;
 
@@ -525,7 +524,8 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         name_rcrd.extend(vec![0x0; RCRD_LEN - name_rcrd.len()]);
         fs.write_all(&name_rcrd)?;
 
-        fs.write_all(&self.bytes[self.file_record().unwrap().fwrd_idx() * (2 * RCRD_LEN)..])
+        // Data starts right after the summary and name records in self.bytes
+        fs.write_all(&self.bytes[(self.file_record().unwrap().fwrd_idx() + 1) * RCRD_LEN..])
     }
 
     /// Returns an iterator over all summary data blocks.
