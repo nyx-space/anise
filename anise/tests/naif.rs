@@ -11,7 +11,7 @@
 use std::mem::size_of_val;
 
 use anise::{
-    constants::frames::EARTH_ITRF93,
+    constants::frames::{EARTH_ITRF93, EARTH_MOON_BARYCENTER_J2000, MOON_J2000},
     file2heap,
     math::rotation::Quaternion,
     naif::{
@@ -252,6 +252,17 @@ fn test_spk_truncate_cheby() {
     let reloaded = SPK::load(output_path).unwrap();
     let summary = reloaded.data_summaries(None).unwrap()[idx];
     assert_eq!(summary.start_epoch(), new_start);
+
+    // Verify the persisted file has valid, queryable ephemeris data.
+    let almanac = Almanac::default().with_spk(reloaded);
+    let query_epoch = new_start + Unit::Day * 1;
+    let state = almanac
+        .translate_geometric(MOON_J2000, EARTH_MOON_BARYCENTER_J2000, query_epoch)
+        .unwrap();
+    assert!(
+        state.radius_km.norm() > 0.0,
+        "expected non-zero position from truncated+persisted BSP"
+    );
 
     // Test that we can remove segments all togethet
     let mut my_spk_rm = my_spk.clone();

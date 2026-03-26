@@ -206,14 +206,18 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         };
 
         let end_idx = if let Some(end) = new_end {
-            self.spline_idx(end, summary)?
+            self.spline_idx(end, summary)? - 1
         } else {
             self.num_records - 1
         };
 
         self.record_data = &self.record_data[start_idx * self.rsize..(end_idx + 1) * self.rsize];
-        self.num_records = (self.record_data.len() / self.rsize) - 1;
-        self.init_epoch = self.nth_record(0).unwrap().midpoint_epoch() - 0.5 * self.interval_length;
+        self.num_records = self.record_data.len() / self.rsize;
+        self.init_epoch = self
+            .nth_record(0)
+            .context(InterpDecodingSnafu)?
+            .midpoint_epoch()
+            - 0.5 * self.interval_length;
 
         Ok(self)
     }
