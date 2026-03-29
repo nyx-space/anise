@@ -148,6 +148,7 @@ impl FileRecord {
         self == &Self::default()
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn spk(filename: &str) -> Self {
         let mut internal_filename = [0u8; 60];
         for (dest, src) in internal_filename.iter_mut().zip(filename.as_bytes()) {

@@ -60,10 +60,10 @@ impl UiApp {
                 match self
                     .almanac
                     .clone()
-                    .load_from_bytes(bytes::Bytes::from(data))
+                    .load_from_bytes(bytes::Bytes::from(data).into())
                 {
-                    Ok(almanac) => FileLoadResult::Ok((file_name, almanac)),
-                    Err(e) => FileLoadResult::Error(e),
+                    Ok(almanac) => FileLoadResult::Ok((file_name, Box::new(almanac))),
+                    Err(e) => FileLoadResult::Error(Box::new(e)),
                 }
             } else {
                 FileLoadResult::NoFileSelectedYet
