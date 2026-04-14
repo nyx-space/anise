@@ -161,7 +161,7 @@ fn main() -> Result<(), CliErrors> {
             Ok(())
         }
         Actions::ConvertFk { fkfile, outfile } => {
-            let dataset = convert_fk(fkfile, false).unwrap();
+            let dataset = convert_fk(fkfile, false).context(CliDataSetSnafu)?;
 
             dataset.save_as(&outfile, false).context(CliDataSetSnafu)?;
 
