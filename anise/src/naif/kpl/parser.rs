@@ -84,8 +84,10 @@ pub fn parse_file<P: AsRef<Path> + fmt::Debug, I: KPLItem>(
     file_path: P,
     show_comments: bool,
 ) -> Result<HashMap<i32, I>, DataSetError> {
-    let file =
-        File::open(&file_path).unwrap_or_else(|_| panic!("Failed to open file {file_path:?}"));
+    let file = File::open(&file_path).map_err(|source| DataSetError::IO {
+        action: "opening KPL file",
+        source,
+    })?;
     let mut reader = BufReader::new(file);
     parse_bytes(&mut reader, show_comments)
 }
