@@ -120,7 +120,12 @@ fn main() -> Result<(), CliErrors> {
                 }
             } else {
                 // Load the header only
-                let file_record = FileRecord::read_from_bytes(&bytes[..FileRecord::SIZE]).unwrap();
+                let file_record_bytes = bytes.get(..FileRecord::SIZE).ok_or_else(|| {
+                    CliErrors::ArgumentError {
+                        arg: format!("file too small: expected at least {} bytes", FileRecord::SIZE),
+                    }
+                })?;
+                let file_record = FileRecord::read_from_bytes(file_record_bytes).unwrap();
                 match file_record.identification().context(CliFileRecordSnafu)? {
                     "PCK" => {
                         info!("Loading {path_str:?} as DAF/PCK");
@@ -161,7 +166,7 @@ fn main() -> Result<(), CliErrors> {
             Ok(())
         }
         Actions::ConvertFk { fkfile, outfile } => {
-            let dataset = convert_fk(fkfile, false).unwrap();
+            let dataset = convert_fk(fkfile, false).context(CliDataSetSnafu)?;
 
             dataset.save_as(&outfile, false).context(CliDataSetSnafu)?;
 
@@ -202,7 +207,12 @@ fn main() -> Result<(), CliErrors> {
 fn read_and_record(path_str: PathBuf) -> Result<(bytes::BytesMut, FileRecord), CliErrors> {
     let bytes = file2heap!(path_str).context(AniseSnafu)?;
     // Load the header only
-    let file_record = FileRecord::read_from_bytes(&bytes[..FileRecord::SIZE]).unwrap();
+    let file_record_bytes = bytes.get(..FileRecord::SIZE).ok_or_else(|| {
+        CliErrors::ArgumentError {
+            arg: format!("file too small: expected at least {} bytes", FileRecord::SIZE),
+        }
+    })?;
+    let file_record = FileRecord::read_from_bytes(file_record_bytes).unwrap();
     Ok((bytes, file_record))
 }
 
