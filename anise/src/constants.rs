@@ -273,12 +273,10 @@ pub mod orientations {
     pub const IAU_URANUS: NaifId = 799;
     pub const IAU_NEPTUNE: NaifId = 899;
 
-    /// Angle between J2000 to solar system ecliptic J2000 ([ECLIPJ2000]), in radians (about 23.43929 degrees). Apply this rotation about the X axis (R1).
+    /// Angle between J2000 to solar system ecliptic J2000 ([ECLIPJ2000]), in radians (about 23.43929 degrees). Apply this rotation about the X axis (R1)
     ///
-    /// Also used as SOFA's `EPS0` (obliquity at J2000.0) by the
-    /// J2000→ICRS frame-bias rotation in `orientations/rotate_to_parent.rs`.
-    /// Changing this constant shifts both the ECLIPJ2000 rotation and the
-    /// ICRS frame bias — that is intentional, but be aware of the coupling.
+    /// Also used as SOFA's `EPS0` (obliquity at J2000.0) by J2000→ICRS frame-bias rotation in the rotate_to_parent function.
+    /// Changing this constant shifts both the ECLIPJ2000 rotation and the ICRS frame bias — that is intentional, but be aware of the coupling.
     pub const J2000_TO_ECLIPJ2000_ANGLE_RAD: f64 = 0.40909280422232897;
 
     /// Given the frame ID, try to return a human name
