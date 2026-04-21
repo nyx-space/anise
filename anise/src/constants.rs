@@ -225,6 +225,24 @@ pub mod orientations {
     /// The DE-403 frame is treated as equivalent to the J2000 frame.
     pub const DE143: NaifId = 21;
 
+    /// ICRS orientation axes (International Celestial Reference System).
+    ///
+    /// Related to J2000 (EME2000) by the IERS 2006 frame bias of ~23 mas
+    /// (~0.7 m at Earth's surface). ID 22 is the next sequential ID after
+    /// the SPICE built-in inertial frames (1-21); SPICE itself does not
+    /// define a separate ICRS orientation.
+    pub const ICRS: NaifId = 22;
+
+    /// SOFA `iauBi00` longitude bias, arcseconds.
+    /// Source: Chapront et al. (2002); IERS Conventions 2010 Ch. 5.
+    pub const FRAME_BIAS_DPSIBI_ARCSEC: f64 = -0.041_775;
+    /// SOFA `iauBi00` obliquity bias, arcseconds.
+    /// Source: Chapront et al. (2002); IERS Conventions 2010 Ch. 5.
+    pub const FRAME_BIAS_DEPSBI_ARCSEC: f64 = -0.006_819_2;
+    /// SOFA `iauBi00` right-ascension correction, arcseconds.
+    /// Source: Mathews, Herring & Buffett (2002) MHB2000.
+    pub const FRAME_BIAS_DRA0_ARCSEC: f64 = -0.014_6;
+
     /// Body fixed IAU rotation
     pub const IAU_MERCURY: NaifId = 199;
     pub const IAU_VENUS: NaifId = 299;
@@ -252,7 +270,12 @@ pub mod orientations {
     pub const IAU_URANUS: NaifId = 799;
     pub const IAU_NEPTUNE: NaifId = 899;
 
-    /// Angle between J2000 to solar system ecliptic J2000 ([ECLIPJ2000]), in radians (about 23.43929 degrees). Apply this rotation about the X axis (R1)
+    /// Angle between J2000 to solar system ecliptic J2000 ([ECLIPJ2000]), in radians (about 23.43929 degrees). Apply this rotation about the X axis (R1).
+    ///
+    /// Also used as SOFA's `EPS0` (obliquity at J2000.0) by the
+    /// J2000→ICRS frame-bias rotation in `orientations/rotate_to_parent.rs`.
+    /// Changing this constant shifts both the ECLIPJ2000 rotation and the
+    /// ICRS frame bias — that is intentional, but be aware of the coupling.
     pub const J2000_TO_ECLIPJ2000_ANGLE_RAD: f64 = 0.40909280422232897;
 
     /// Given the frame ID, try to return a human name
