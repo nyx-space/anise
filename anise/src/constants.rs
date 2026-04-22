@@ -366,6 +366,10 @@ pub mod frames {
     pub const EARTH_J2000: Frame = Frame::new(EARTH, J2000);
     pub const EME2000: Frame = Frame::new(EARTH, J2000);
     pub const EARTH_ECLIPJ2000: Frame = Frame::new(EARTH, ECLIPJ2000);
+    /// Geocentric Celestial Reference Frame (Earth-centered, ICRS axes).
+    pub const GCRF: Frame = Frame::new(EARTH, ICRS);
+    /// International Celestial Reference Frame (SSB-centered, ICRS axes).
+    pub const ICRF: Frame = Frame::new(SOLAR_SYSTEM_BARYCENTER, ICRS);
 
     /// Body fixed IAU rotation
     pub const IAU_MERCURY_FRAME: Frame = Frame::new(MERCURY, IAU_MERCURY);
