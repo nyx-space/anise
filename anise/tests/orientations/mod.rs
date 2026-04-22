@@ -600,7 +600,7 @@ fn icrs_chain_to_itrf93_differs_from_j2000_by_bias() {
     use core::str::FromStr;
 
     let almanac = Almanac::default()
-        .load("../data/earth_longterm_000101_251211_250915.bpc")
+        .load("../data/earth_latest_high_prec.bpc")
         .unwrap()
         .load("../data/pck11.pca")
         .unwrap();
