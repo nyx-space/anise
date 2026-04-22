@@ -571,3 +571,27 @@ fn regression_test_issue_431_test() {
 
     assert_eq!(expected, computed);
 }
+
+#[test]
+fn icrs_frame_bias_magnitude_at_earth_surface() {
+    use anise::constants::frames::{EME2000, GCRF};
+    use core::str::FromStr;
+
+    let almanac = Almanac::default()
+        .load("../data/pck11.pca")
+        .unwrap();
+    let epoch = Epoch::from_str("2025-06-15T12:00:00 TDB").unwrap();
+
+    // 6378 km along X in J2000 (Earth equatorial radius).
+    let v_j2000 = Vector3::new(6378.0, 0.0, 0.0);
+    let dcm = almanac.rotate(EME2000, GCRF, epoch).unwrap();
+    let v_icrs = dcm.rot_mat * v_j2000;
+
+    // Frame bias is ~0.04" total (~1.1e-7 rad); at 6378 km the
+    // displacement is ~0.7 m = ~7e-4 km. Use a generous band.
+    let delta_km = (v_icrs - v_j2000).norm();
+    assert!(
+        (1.0e-4..3.0e-3).contains(&delta_km),
+        "expected bias 1e-4..3e-3 km (~0.1..3 m), got {delta_km:.3e} km"
+    );
+}
