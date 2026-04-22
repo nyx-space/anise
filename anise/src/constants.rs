@@ -295,6 +295,7 @@ pub mod orientations {
             IAU_MOON => Some("IAU_MOON"),
             MOON_ME => Some("MOON_ME"),
             MOON_PA => Some("MOON_PA"),
+            ICRS => Some("ICRS"),
             ITRF93 => Some("ITRF93"),
             IAU_MARS => Some("IAU_MARS"),
             IAU_JUPITER => Some("IAU_JUPITER"),
@@ -316,7 +317,8 @@ pub mod orientations {
     /// Converts the provided ID to its human name. Only works for the common celestial bodies. Should be compatible with CCSDS OEM names
     pub fn id_from_orientation_name(name: &str) -> Result<NaifId, OrientationError> {
         match name {
-            "J2000" | "ICRF" | "EME2000" => Ok(J2000),
+            "J2000" | "EME2000" => Ok(J2000),
+            "ICRS" | "GCRF" | "ICRF" => Ok(ICRS),
             "B1950" => Ok(B1950),
             "FK4" => Ok(FK4),
             "Galactic" => Ok(GALACTIC),
@@ -468,5 +470,21 @@ mod constants_ut {
         assert_eq!(celestial_name_from_id(MOON).unwrap(), "Moon");
         assert_eq!(celestial_name_from_id(EARTH).unwrap(), "Earth");
         assert!(celestial_name_from_id(-1).is_none());
+    }
+
+    #[test]
+    fn icrs_orientation_name_round_trip() {
+        use crate::constants::orientations::{
+            id_from_orientation_name, orientation_name_from_id, ICRS, J2000,
+        };
+
+        assert_eq!(orientation_name_from_id(ICRS).unwrap(), "ICRS");
+
+        assert_eq!(id_from_orientation_name("ICRS").unwrap(), ICRS);
+        assert_eq!(id_from_orientation_name("GCRF").unwrap(), ICRS);
+        assert_eq!(id_from_orientation_name("ICRF").unwrap(), ICRS);
+
+        assert_eq!(id_from_orientation_name("J2000").unwrap(), J2000);
+        assert_eq!(id_from_orientation_name("EME2000").unwrap(), J2000);
     }
 }

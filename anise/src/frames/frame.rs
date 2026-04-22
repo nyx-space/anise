@@ -526,6 +526,13 @@ mod frame_ut {
 
     #[test]
     fn ccsds_name_to_frame() {
-        assert_eq!(Frame::from_name("Earth", "ICRF").unwrap(), EARTH_J2000);
+        use crate::constants::celestial_objects::EARTH;
+        use crate::constants::orientations::ICRS;
+        // "ICRF" now correctly resolves to bias-corrected GCRF (EARTH + ICRS),
+        // not EARTH_J2000. See #686.
+        assert_eq!(
+            Frame::from_name("Earth", "ICRF").unwrap(),
+            Frame::new(EARTH, ICRS)
+        );
     }
 }
