@@ -13,7 +13,7 @@ use snafu::ensure;
 
 use super::{NoOrientationsLoadedSnafu, OrientationError};
 use crate::almanac::Almanac;
-use crate::constants::orientations::{ECLIPJ2000, J2000};
+use crate::constants::orientations::{ECLIPJ2000, ICRS, J2000};
 use crate::frames::Frame;
 use crate::naif::daf::{DAFError, NAIFSummaryRecord};
 use crate::NaifId;
@@ -69,8 +69,8 @@ impl Almanac {
             }
         }
 
-        if common_center == ECLIPJ2000 {
-            // Rotation from ecliptic J2000 to J2000 is embedded.
+        if common_center == ECLIPJ2000 || common_center == ICRS {
+            // Rotation from ecliptic J2000 / ICRS to J2000 is embedded.
             common_center = J2000;
         }
 
@@ -95,15 +95,19 @@ impl Almanac {
 
         // Grab the summary data, which we use to find the paths
         // Let's see if this orientation is defined in the loaded BPC files
-        let mut inertial_frame_id = match self.bpc_summary_at_epoch(source.orientation_id, epoch) {
-            Ok((summary, _, _, _)) => summary.inertial_frame_id,
-            Err(_) => {
-                // Not available as a BPC, so let's see if there's planetary data for it.
-                match self.get_planetary_data_from_id(source.orientation_id) {
-                    Ok(planetary_data) => planetary_data.parent_id,
-                    Err(_) => {
-                        // Finally, let's see if it's in the loaded Euler Parameters.
-                        self.euler_param_from_id(source.orientation_id)?.to
+        let mut inertial_frame_id = if source.orient_origin_id_match(ICRS) {
+            J2000
+        } else {
+            match self.bpc_summary_at_epoch(source.orientation_id, epoch) {
+                Ok((summary, _, _, _)) => summary.inertial_frame_id,
+                Err(_) => {
+                    // Not available as a BPC, so let's see if there's planetary data for it.
+                    match self.get_planetary_data_from_id(source.orientation_id) {
+                        Ok(planetary_data) => planetary_data.parent_id,
+                        Err(_) => {
+                            // Finally, let's see if it's in the loaded Euler Parameters.
+                            self.euler_param_from_id(source.orientation_id)?.to
+                        }
                     }
                 }
             }
@@ -112,8 +116,10 @@ impl Almanac {
         of_path[of_path_len] = Some(inertial_frame_id);
         of_path_len += 1;
 
+        // Hop the embedded constant rotations (ECLIPJ2000 → J2000) up to the
+        // common root. Future embedded constant-rotation parents (e.g. an
+        // orientation parented under ICRS) should be added here.
         if inertial_frame_id == ECLIPJ2000 {
-            // Add the hop to J2000
             inertial_frame_id = J2000;
             of_path[of_path_len] = Some(inertial_frame_id);
             of_path_len += 1;

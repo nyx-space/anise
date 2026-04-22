@@ -595,3 +595,32 @@ fn icrs_frame_bias_magnitude_at_earth_surface() {
         "expected bias 1e-4..3e-3 km (~0.1..3 m), got {delta_km:.3e} km"
     );
 }
+
+#[test]
+fn icrs_chain_to_itrf93_differs_from_j2000_by_bias() {
+    use anise::constants::frames::{EARTH_ITRF93, EME2000, GCRF};
+    use core::str::FromStr;
+
+    let almanac = Almanac::default()
+        .load("../data/earth_longterm_000101_251211_250915.bpc")
+        .unwrap()
+        .load("../data/pck11.pca")
+        .unwrap();
+    let epoch = Epoch::from_str("2020-06-15T12:00:00 TDB").unwrap();
+
+    // GEO-altitude vector (~42164 km along X in EME2000).
+    let v = Vector3::new(42_164.0, 0.0, 0.0);
+
+    let dcm_eme = almanac.rotate(EME2000, EARTH_ITRF93, epoch).unwrap();
+    let dcm_gcrf = almanac.rotate(GCRF, EARTH_ITRF93, epoch).unwrap();
+
+    let v_via_eme = dcm_eme.rot_mat * v;
+    let v_via_gcrf = dcm_gcrf.rot_mat * v;
+
+    let delta_km = (v_via_gcrf - v_via_eme).norm();
+    // ~0.04" total bias * 42164 km ≈ 4.7 m = 4.7e-3 km. Use a generous band.
+    assert!(
+        (1.0e-4..2.0e-2).contains(&delta_km),
+        "expected GCRF/EME2000 chain difference 1e-4..2e-2 km, got {delta_km:.3e} km"
+    );
+}
