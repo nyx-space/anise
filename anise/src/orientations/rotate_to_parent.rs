@@ -57,9 +57,7 @@ impl Almanac {
             let depsbi = FRAME_BIAS_DEPSBI_ARCSEC * das2r;
 
             // B = R1(-depsbi) * R2(dpsibi * sin(EPS0)) * R3(dra0)
-            let rot_mat = r1(-depsbi)
-                * r2(dpsibi * J2000_TO_ECLIPJ2000_ANGLE_RAD.sin())
-                * r3(dra0);
+            let rot_mat = r1(-depsbi) * r2(dpsibi * J2000_TO_ECLIPJ2000_ANGLE_RAD.sin()) * r3(dra0);
 
             return Ok(DCM {
                 rot_mat,

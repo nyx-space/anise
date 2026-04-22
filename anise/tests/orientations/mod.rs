@@ -577,9 +577,7 @@ fn icrs_frame_bias_magnitude_at_earth_surface() {
     use anise::constants::frames::{EME2000, GCRF};
     use core::str::FromStr;
 
-    let almanac = Almanac::default()
-        .load("../data/pck11.pca")
-        .unwrap();
+    let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
     let epoch = Epoch::from_str("2025-06-15T12:00:00 TDB").unwrap();
 
     // 6378 km along X in J2000 (Earth equatorial radius).
@@ -631,9 +629,7 @@ fn icrs_matches_sofa_iaubp00() {
     use anise::constants::frames::{EME2000, GCRF};
     use core::str::FromStr;
 
-    let almanac = Almanac::default()
-        .load("../data/pck11.pca")
-        .unwrap();
+    let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
     let epoch = Epoch::from_str("2020-06-15T12:00:00 TDB").unwrap();
 
     // SOFA bp00 returns (rb, rp, rbp). We want rb (the bias-only matrix).
@@ -660,9 +656,7 @@ fn icrs_angular_velocity_matches_eclipj2000_behaviour() {
     use anise::constants::frames::{EARTH_ECLIPJ2000, EME2000, GCRF};
     use core::str::FromStr;
 
-    let almanac = Almanac::default()
-        .load("../data/pck11.pca")
-        .unwrap();
+    let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
     let epoch = Epoch::from_str("2020-06-15T12:00:00 TDB").unwrap();
 
     let eclip_result = almanac.angular_velocity_rad_s(EARTH_ECLIPJ2000, EME2000, epoch);
@@ -675,7 +669,10 @@ fn icrs_angular_velocity_matches_eclipj2000_behaviour() {
          eclip={eclip_result:?}, icrs={icrs_result:?}"
     );
     if let (Ok(ev), Ok(iv)) = (eclip_result.as_ref(), icrs_result.as_ref()) {
-        assert!(ev.norm() < 1e-15, "ECLIPJ2000 angular velocity should be ~0");
+        assert!(
+            ev.norm() < 1e-15,
+            "ECLIPJ2000 angular velocity should be ~0"
+        );
         assert!(iv.norm() < 1e-15, "ICRS angular velocity should be ~0");
     }
 }
