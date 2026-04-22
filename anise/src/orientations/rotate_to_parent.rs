@@ -13,9 +13,12 @@ use snafu::ResultExt;
 
 use super::{OrientationError, OrientationPhysicsSnafu};
 use crate::almanac::Almanac;
-use crate::constants::orientations::{ECLIPJ2000, J2000, J2000_TO_ECLIPJ2000_ANGLE_RAD};
+use crate::constants::orientations::{
+    ECLIPJ2000, FRAME_BIAS_DEPSBI_ARCSEC, FRAME_BIAS_DPSIBI_ARCSEC, FRAME_BIAS_DRA0_ARCSEC, ICRS,
+    J2000, J2000_TO_ECLIPJ2000_ANGLE_RAD,
+};
 use crate::hifitime::Epoch;
-use crate::math::rotation::{r1, r1_dot, r3, r3_dot, DCM};
+use crate::math::rotation::{r1, r1_dot, r2, r3, r3_dot, DCM};
 use crate::naif::daf::datatypes::Type2ChebyshevSet;
 use crate::naif::daf::{DAFError, DafDataType, NAIFDataSet, NAIFSummaryRecord};
 use crate::orientations::{BPCSnafu, OrientationInterpolationSnafu};
@@ -43,6 +46,26 @@ impl Almanac {
                 rot_mat_dt: None,
                 from: J2000,
                 to: ECLIPJ2000,
+            });
+        } else if source.orient_origin_id_match(ICRS) {
+            // SOFA iauBi00 / iauBp00 frame bias matrix.
+            // Reference: IERS Conventions 2010 (TN36) eq. 5.18,
+            // USNO Circular 179 eq. 3.4, SOFA iauBp00.c.
+            let das2r = core::f64::consts::PI / (180.0 * 3600.0);
+            let dra0 = FRAME_BIAS_DRA0_ARCSEC * das2r;
+            let dpsibi = FRAME_BIAS_DPSIBI_ARCSEC * das2r;
+            let depsbi = FRAME_BIAS_DEPSBI_ARCSEC * das2r;
+
+            // B = R1(-depsbi) * R2(dpsibi * sin(EPS0)) * R3(dra0)
+            let rot_mat = r1(-depsbi)
+                * r2(dpsibi * J2000_TO_ECLIPJ2000_ANGLE_RAD.sin())
+                * r3(dra0);
+
+            return Ok(DCM {
+                rot_mat,
+                rot_mat_dt: None,
+                from: J2000,
+                to: ICRS,
             });
         }
         // Let's see if this orientation is defined in the loaded BPC files
