@@ -500,7 +500,7 @@ impl fmt::LowerHex for Frame {
 #[cfg(test)]
 mod frame_ut {
     use super::Frame;
-    use crate::constants::frames::{EARTH_J2000, EME2000};
+    use crate::constants::frames::EME2000;
 
     #[test]
     fn format_frame() {
