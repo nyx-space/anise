@@ -55,6 +55,10 @@ impl Frames {
     #[classattr]
     const EARTH_ECLIPJ2000: Frame = EARTH_ECLIPJ2000;
     #[classattr]
+    const GCRF: Frame = GCRF;
+    #[classattr]
+    const ICRF: Frame = ICRF;
+    #[classattr]
     const IAU_MERCURY_FRAME: Frame = IAU_MERCURY_FRAME;
     #[classattr]
     const IAU_VENUS_FRAME: Frame = IAU_VENUS_FRAME;
@@ -98,6 +102,8 @@ impl Orientations {
     const J2000: i32 = J2000;
     #[classattr]
     const ECLIPJ2000: i32 = ECLIPJ2000;
+    #[classattr]
+    const ICRS: i32 = ICRS;
     #[classattr]
     const IAU_MERCURY: i32 = IAU_MERCURY;
     #[classattr]
