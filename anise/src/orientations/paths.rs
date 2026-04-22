@@ -116,10 +116,9 @@ impl Almanac {
         of_path[of_path_len] = Some(inertial_frame_id);
         of_path_len += 1;
 
-        // Hop the embedded constant rotations (ECLIPJ2000 → J2000) up to the
-        // common root. Future embedded constant-rotation parents (e.g. an
-        // orientation parented under ICRS) should be added here.
-        if inertial_frame_id == ECLIPJ2000 {
+        // Hop the embedded constant rotations up to the common root.
+        // Future embedded constant-rotation parents should be added here.
+        if inertial_frame_id == ECLIPJ2000 || inertial_frame_id == ICRS {
             inertial_frame_id = J2000;
             of_path[of_path_len] = Some(inertial_frame_id);
             of_path_len += 1;
