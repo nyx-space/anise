@@ -11,6 +11,9 @@
 /// Speed of light in kilometers per second (km/s)
 pub const SPEED_OF_LIGHT_KM_S: f64 = 299_792.458;
 
+/// Arcseconds to radians conversion factor (SOFA DAS2R).
+pub const ARCSEC_TO_RAD: f64 = core::f64::consts::PI / (180.0 * 3600.0);
+
 pub mod celestial_objects {
     use crate::{ephemerides::EphemerisError, NaifId};
 

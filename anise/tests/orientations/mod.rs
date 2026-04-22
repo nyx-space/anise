@@ -616,10 +616,10 @@ fn icrs_chain_to_itrf93_differs_from_j2000_by_bias() {
     let v_via_gcrf = dcm_gcrf.rot_mat * v;
 
     let delta_km = (v_via_gcrf - v_via_eme).norm();
-    // ~0.04" total bias * 42164 km ≈ 4.7 m = 4.7e-3 km. Use a generous band.
+    // Frame bias is ~1.1e-7 rad total; at 42164 km the displacement is ~4.5 m.
     assert!(
-        (1.0e-4..2.0e-2).contains(&delta_km),
-        "expected GCRF/EME2000 chain difference 1e-4..2e-2 km, got {delta_km:.3e} km"
+        (1.0e-3..1.0e-2).contains(&delta_km),
+        "expected GCRF/EME2000 chain difference 1e-3..1e-2 km (~1..10 m), got {delta_km:.3e} km"
     );
 }
 
