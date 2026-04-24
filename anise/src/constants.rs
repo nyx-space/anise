@@ -11,6 +11,9 @@
 /// Speed of light in kilometers per second (km/s)
 pub const SPEED_OF_LIGHT_KM_S: f64 = 299_792.458;
 
+/// Arcseconds to radians conversion factor (SOFA DAS2R).
+pub const ARCSEC_TO_RAD: f64 = core::f64::consts::PI / (180.0 * 3600.0);
+
 pub mod celestial_objects {
     use crate::{ephemerides::EphemerisError, NaifId};
 
@@ -225,6 +228,24 @@ pub mod orientations {
     /// The DE-403 frame is treated as equivalent to the J2000 frame.
     pub const DE143: NaifId = 21;
 
+    /// ICRS orientation axes (International Celestial Reference System).
+    ///
+    /// Related to J2000 (EME2000) by the IERS 2006 frame bias of ~23 mas
+    /// (~0.7 m at Earth's surface). ID 22 is the next sequential ID after
+    /// the SPICE built-in inertial frames (1-21); SPICE itself does not
+    /// define a separate ICRS orientation.
+    pub const ICRS: NaifId = 22;
+
+    /// SOFA `iauBi00` longitude bias, arcseconds.
+    /// Source: Chapront et al. (2002); IERS Conventions 2010 Ch. 5.
+    pub const FRAME_BIAS_DPSIBI_ARCSEC: f64 = -0.041_775;
+    /// SOFA `iauBi00` obliquity bias, arcseconds.
+    /// Source: Chapront et al. (2002); IERS Conventions 2010 Ch. 5.
+    pub const FRAME_BIAS_DEPSBI_ARCSEC: f64 = -0.006_819_2;
+    /// SOFA `iauBi00` right-ascension correction, arcseconds.
+    /// Source: Mathews, Herring & Buffett (2002) MHB2000.
+    pub const FRAME_BIAS_DRA0_ARCSEC: f64 = -0.014_6;
+
     /// Body fixed IAU rotation
     pub const IAU_MERCURY: NaifId = 199;
     pub const IAU_VENUS: NaifId = 299;
@@ -252,7 +273,12 @@ pub mod orientations {
     pub const IAU_URANUS: NaifId = 799;
     pub const IAU_NEPTUNE: NaifId = 899;
 
-    /// Angle between J2000 to solar system ecliptic J2000 ([ECLIPJ2000]), in radians (about 23.43929 degrees). Apply this rotation about the X axis (R1)
+    /// Angle between J2000 to solar system ecliptic J2000 ([ECLIPJ2000]), in radians (about 23.43929 degrees). Apply this rotation about the X axis (R1).
+    ///
+    /// Also used as SOFA's `EPS0` (obliquity at J2000.0) by the
+    /// J2000→ICRS frame-bias rotation in `orientations/rotate_to_parent.rs`.
+    /// Changing this constant shifts both the ECLIPJ2000 rotation and the
+    /// ICRS frame bias — that is intentional, but be aware of the coupling.
     pub const J2000_TO_ECLIPJ2000_ANGLE_RAD: f64 = 0.40909280422232897;
 
     /// Given the frame ID, try to return a human name
@@ -272,6 +298,7 @@ pub mod orientations {
             IAU_MOON => Some("IAU_MOON"),
             MOON_ME => Some("MOON_ME"),
             MOON_PA => Some("MOON_PA"),
+            ICRS => Some("ICRS"),
             ITRF93 => Some("ITRF93"),
             IAU_MARS => Some("IAU_MARS"),
             IAU_JUPITER => Some("IAU_JUPITER"),
@@ -293,7 +320,8 @@ pub mod orientations {
     /// Converts the provided ID to its human name. Only works for the common celestial bodies. Should be compatible with CCSDS OEM names
     pub fn id_from_orientation_name(name: &str) -> Result<NaifId, OrientationError> {
         match name {
-            "J2000" | "ICRF" | "EME2000" => Ok(J2000),
+            "J2000" | "EME2000" => Ok(J2000),
+            "ICRS" | "GCRF" | "ICRF" => Ok(ICRS),
             "B1950" => Ok(B1950),
             "FK4" => Ok(FK4),
             "Galactic" => Ok(GALACTIC),
@@ -341,6 +369,10 @@ pub mod frames {
     pub const EARTH_J2000: Frame = Frame::new(EARTH, J2000);
     pub const EME2000: Frame = Frame::new(EARTH, J2000);
     pub const EARTH_ECLIPJ2000: Frame = Frame::new(EARTH, ECLIPJ2000);
+    /// Geocentric Celestial Reference Frame (Earth-centered, ICRS axes).
+    pub const GCRF: Frame = Frame::new(EARTH, ICRS);
+    /// International Celestial Reference Frame (SSB-centered, ICRS axes).
+    pub const ICRF: Frame = Frame::new(SOLAR_SYSTEM_BARYCENTER, ICRS);
 
     /// Body fixed IAU rotation
     pub const IAU_MERCURY_FRAME: Frame = Frame::new(MERCURY, IAU_MERCURY);
@@ -445,5 +477,21 @@ mod constants_ut {
         assert_eq!(celestial_name_from_id(MOON).unwrap(), "Moon");
         assert_eq!(celestial_name_from_id(EARTH).unwrap(), "Earth");
         assert!(celestial_name_from_id(-1).is_none());
+    }
+
+    #[test]
+    fn icrs_orientation_name_round_trip() {
+        use crate::constants::orientations::{
+            id_from_orientation_name, orientation_name_from_id, ICRS, J2000,
+        };
+
+        assert_eq!(orientation_name_from_id(ICRS).unwrap(), "ICRS");
+
+        assert_eq!(id_from_orientation_name("ICRS").unwrap(), ICRS);
+        assert_eq!(id_from_orientation_name("GCRF").unwrap(), ICRS);
+        assert_eq!(id_from_orientation_name("ICRF").unwrap(), ICRS);
+
+        assert_eq!(id_from_orientation_name("J2000").unwrap(), J2000);
+        assert_eq!(id_from_orientation_name("EME2000").unwrap(), J2000);
     }
 }

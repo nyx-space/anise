@@ -571,3 +571,108 @@ fn regression_test_issue_431_test() {
 
     assert_eq!(expected, computed);
 }
+
+#[test]
+fn icrs_frame_bias_magnitude_at_earth_surface() {
+    use anise::constants::frames::{EME2000, GCRF};
+    use core::str::FromStr;
+
+    let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
+    let epoch = Epoch::from_str("2025-06-15T12:00:00 TDB").unwrap();
+
+    // 6378 km along X in J2000 (Earth equatorial radius).
+    let v_j2000 = Vector3::new(6378.0, 0.0, 0.0);
+    let dcm = almanac.rotate(EME2000, GCRF, epoch).unwrap();
+    let v_icrs = dcm.rot_mat * v_j2000;
+
+    // Frame bias is ~0.04" total (~1.1e-7 rad); at 6378 km the
+    // displacement is ~0.7 m = ~7e-4 km. Use a generous band.
+    let delta_km = (v_icrs - v_j2000).norm();
+    assert!(
+        (1.0e-4..3.0e-3).contains(&delta_km),
+        "expected bias 1e-4..3e-3 km (~0.1..3 m), got {delta_km:.3e} km"
+    );
+}
+
+#[test]
+fn icrs_chain_to_itrf93_differs_from_j2000_by_bias() {
+    use anise::constants::frames::{EARTH_ITRF93, EME2000, GCRF};
+    use core::str::FromStr;
+
+    let almanac = Almanac::default()
+        .load("../data/earth_latest_high_prec.bpc")
+        .unwrap()
+        .load("../data/pck11.pca")
+        .unwrap();
+    let epoch = Epoch::from_str("2020-06-15T12:00:00 TDB").unwrap();
+
+    // GEO-altitude vector (~42164 km along X in EME2000).
+    let v = Vector3::new(42_164.0, 0.0, 0.0);
+
+    let dcm_eme = almanac.rotate(EME2000, EARTH_ITRF93, epoch).unwrap();
+    let dcm_gcrf = almanac.rotate(GCRF, EARTH_ITRF93, epoch).unwrap();
+
+    let v_via_eme = dcm_eme.rot_mat * v;
+    let v_via_gcrf = dcm_gcrf.rot_mat * v;
+
+    let delta_km = (v_via_gcrf - v_via_eme).norm();
+    // Frame bias is ~1.1e-7 rad total; at 42164 km the displacement is ~4.5 m.
+    assert!(
+        (1.0e-3..1.0e-2).contains(&delta_km),
+        "expected GCRF/EME2000 chain difference 1e-3..1e-2 km (~1..10 m), got {delta_km:.3e} km"
+    );
+}
+
+#[cfg(feature = "validation")]
+#[test]
+fn icrs_matches_sofa_iaubp00() {
+    use anise::constants::frames::{EME2000, GCRF};
+    use core::str::FromStr;
+
+    let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
+    let epoch = Epoch::from_str("2020-06-15T12:00:00 TDB").unwrap();
+
+    // SOFA bp00 returns (rb, rp, rbp). We want rb (the bias-only matrix).
+    // At J2000.0 TT the bias matrix is time-independent.
+    let (rb, _rp, _rbp) = sofars::pnp::bp00(2451545.0, 0.0);
+
+    let dcm = almanac.rotate(EME2000, GCRF, epoch).unwrap();
+
+    for i in 0..3 {
+        for j in 0..3 {
+            let err = (dcm.rot_mat[(i, j)] - rb[i][j]).abs();
+            assert!(
+                err < 1e-14,
+                "B[{i}][{j}]: anise={a:.18e}, sofa={s:.18e}, err={err:.3e}",
+                a = dcm.rot_mat[(i, j)],
+                s = rb[i][j],
+            );
+        }
+    }
+}
+
+#[test]
+fn icrs_angular_velocity_matches_eclipj2000_behaviour() {
+    use anise::constants::frames::{EARTH_ECLIPJ2000, EME2000, GCRF};
+    use core::str::FromStr;
+
+    let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
+    let epoch = Epoch::from_str("2020-06-15T12:00:00 TDB").unwrap();
+
+    let eclip_result = almanac.angular_velocity_rad_s(EARTH_ECLIPJ2000, EME2000, epoch);
+    let icrs_result = almanac.angular_velocity_rad_s(GCRF, EME2000, epoch);
+
+    assert_eq!(
+        eclip_result.is_ok(),
+        icrs_result.is_ok(),
+        "ICRS angular velocity should match ECLIPJ2000 result kind: \
+         eclip={eclip_result:?}, icrs={icrs_result:?}"
+    );
+    if let (Ok(ev), Ok(iv)) = (eclip_result.as_ref(), icrs_result.as_ref()) {
+        assert!(
+            ev.norm() < 1e-15,
+            "ECLIPJ2000 angular velocity should be ~0"
+        );
+        assert!(iv.norm() < 1e-15, "ICRS angular velocity should be ~0");
+    }
+}
