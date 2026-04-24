@@ -299,8 +299,11 @@ impl Ephemeris {
                         match parts.get(col) {
                             Some(val_str) => match val_str.trim().parse::<f64>() {
                                 Ok(val_f64) => {
-                                    cov_mat.as_mut().unwrap()[(col, cov_row)] = val_f64;
-                                    cov_mat.as_mut().unwrap()[(cov_row, col)] = val_f64;
+                                    let mat = cov_mat
+                                        .as_mut()
+                                        .expect("cov_mat is initialized when cov_epoch is set");
+                                    mat[(col, cov_row)] = val_f64;
+                                    mat[(cov_row, col)] = val_f64;
                                 }
                                 Err(_) => {
                                     return Err(EphemerisError::OEMParsingError {
@@ -395,7 +398,8 @@ impl Ephemeris {
         };
 
         // Epoch formmatter.
-        let iso8601_no_ts = Format::from_str("%Y-%m-%dT%H:%M:%S.%f").unwrap();
+        let iso8601_no_ts =
+            Format::from_str("%Y-%m-%dT%H:%M:%S.%f").expect("static format string is valid");
 
         // Write mandatory metadata
         writeln!(writer, "CCSDS_OEM_VERS = 2.0\n").map_err(err_hdlr)?;
@@ -414,7 +418,12 @@ impl Ephemeris {
         writeln!(
             writer,
             "CREATION_DATE = {}",
-            Formatter::new(Epoch::now().unwrap(), iso8601_no_ts)
+            Formatter::new(
+                Epoch::now().map_err(|e| EphemerisError::OEMWritingError {
+                    details: format!("could not get current epoch: {e}"),
+                })?,
+                iso8601_no_ts,
+            )
         )
         .map_err(err_hdlr)?;
         writeln!(
@@ -431,9 +440,19 @@ impl Ephemeris {
             writeln!(writer, "\tOBJECT_NAME = {object_name}").map_err(err_hdlr)?;
         }
 
-        let first_orbit = self.state_data.first_key_value().unwrap().1.orbit;
+        let first_orbit = self
+            .state_data
+            .first_key_value()
+            .expect("state_data is not empty, checked above")
+            .1
+            .orbit;
         let first_frame = first_orbit.frame;
-        let last_orbit = self.state_data.last_key_value().unwrap().1.orbit;
+        let last_orbit = self
+            .state_data
+            .last_key_value()
+            .expect("state_data is not empty, checked above")
+            .1
+            .orbit;
 
         let center = format!("{first_frame:e}");
         let ref_frame = format!("{first_frame:o}");

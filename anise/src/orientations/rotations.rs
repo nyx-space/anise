@@ -76,7 +76,7 @@ impl Almanac {
 
         // Traverse the orientation tree from both the `from` and `to` frames up to the common ancestor.
         for cur_node_id in path.iter().take(node_count) {
-            let next_parent = cur_node_id.unwrap();
+            let next_parent = cur_node_id.expect("path entry within node_count must be Some");
             if next_parent == J2000 {
                 // The parent rotation of J2000 is itself, so we can skip this.
                 continue;

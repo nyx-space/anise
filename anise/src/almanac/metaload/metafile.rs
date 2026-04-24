@@ -88,7 +88,7 @@ impl MetaFile {
                                             // Create the folders
                                             create_dir_all(&app_dir.data_dir).map_err(|e| {
                                                 MetaAlmanacError::MetaIO {
-                                                    path: app_dir.data_dir.to_str().unwrap().into(),
+                                                    path: app_dir.data_dir.to_string_lossy().into(),
                                                     what: "creating directories for storage",
                                                     source: InputOutputError::IOError {
                                                         kind: e.kind(),
@@ -99,7 +99,7 @@ impl MetaFile {
 
                                         let dest_path = app_dir.data_dir.join(file_name);
                                         let lock_path = dest_path.with_file_name(
-                                            file_name.to_str().unwrap().to_string() + ".lock",
+                                            file_name.to_string_lossy().to_string() + ".lock",
                                         );
 
                                         // Check the existence of the lock file.
@@ -110,7 +110,7 @@ impl MetaFile {
                                                     if autodelete {
                                                         info!(
                                                             "deleting lock file {}",
-                                                            dest_path.to_str().unwrap().to_owned()
+                                                            dest_path.to_string_lossy()
                                                         );
                                                         if let Err(e) = remove_file(&lock_path) {
                                                             warn!("{e} -- ignoring");
@@ -120,9 +120,8 @@ impl MetaFile {
                                                         return Err(
                                                             MetaAlmanacError::PersistentLock {
                                                                 desired: dest_path
-                                                                    .to_str()
-                                                                    .unwrap()
-                                                                    .to_owned(),
+                                                                    .to_string_lossy()
+                                                                    .into_owned(),
                                                             },
                                                         );
                                                     }
@@ -142,7 +141,7 @@ impl MetaFile {
                                                 if let Ok(bytes) = file2heap!(dest_path_c) {
                                                     let computed_crc32 = crc32fast::hash(&bytes);
                                                     let dest_path_s =
-                                                        dest_path.to_str().unwrap().to_string();
+                                                        dest_path.to_string_lossy().to_string();
                                                     if computed_crc32 == crc32 {
                                                         // No need to redownload this, let's just update the uri path
                                                         info!("Using cached {dest_path_s}",);
@@ -162,8 +161,7 @@ impl MetaFile {
                                             return Err(MetaAlmanacError::MetaIO {
                                                 path: dest_path
                                                     .join(".lock")
-                                                    .to_str()
-                                                    .unwrap()
+                                                    .to_string_lossy()
                                                     .into(),
                                                 what: "creating lock file",
                                                 source: InputOutputError::IOError {
@@ -191,8 +189,7 @@ impl MetaFile {
                                                             del_lock_file();
                                                             Err(MetaAlmanacError::MetaIO {
                                                                 path: dest_path
-                                                                    .to_str()
-                                                                    .unwrap()
+                                                                    .to_string_lossy()
                                                                     .into(),
                                                                 what: "creating file for storage",
                                                                 source: InputOutputError::IOError {
@@ -214,17 +211,27 @@ impl MetaFile {
                                                                     }
                                                                 })?;
                                                             let crc32 = crc32fast::hash(&bytes);
-                                                            file.write_all(&bytes).unwrap();
+                                                            file.write_all(&bytes).map_err(
+                                                                |e| MetaAlmanacError::MetaIO {
+                                                                    path: dest_path
+                                                                        .to_string_lossy()
+                                                                        .into(),
+                                                                    what: "writing downloaded data",
+                                                                    source:
+                                                                        InputOutputError::IOError {
+                                                                            kind: e.kind(),
+                                                                        },
+                                                                },
+                                                            )?;
 
                                                             info!(
                                                                  "Saved {url} to {} (CRC32 = 0x{crc32:x})",
-                                                                 dest_path.to_str().unwrap()
+                                                                 dest_path.to_string_lossy()
                                                              );
 
                                                             // Set the URI for loading
                                                             self.uri = dest_path
-                                                                .to_str()
-                                                                .unwrap()
+                                                                .to_string_lossy()
                                                                 .to_string();
 
                                                             // Set the CRC32
@@ -340,7 +347,7 @@ impl MetaFile {
 }
 
 fn replace_env_vars(input: &str) -> String {
-    let re = Regex::new(r"env:([A-Z_][A-Z0-9_]*)").unwrap();
+    let re = Regex::new(r"env:([A-Z_][A-Z0-9_]*)").expect("static regex pattern is valid");
     re.replace_all(input, |caps: &regex::Captures| {
         let var_name = &caps[1];
         env::var(var_name).unwrap_or_else(|_| format!("env:{var_name}"))

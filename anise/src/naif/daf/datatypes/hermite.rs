@@ -353,13 +353,17 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
             return Err(InterpolationError::MissingInterpolationData { epoch });
         }
         // Check that we even have interpolation data for that time
+        let last_epoch = *self
+            .epoch_data
+            .last()
+            .ok_or(InterpolationError::MissingInterpolationData { epoch })?;
         if epoch.to_et_seconds() < self.epoch_data[0] - 1e-7
-            || epoch.to_et_seconds() > *self.epoch_data.last().unwrap() + 1e-7
+            || epoch.to_et_seconds() > last_epoch + 1e-7
         {
             return Err(InterpolationError::NoInterpolationData {
                 req: epoch,
                 start: Epoch::from_et_seconds(self.epoch_data[0]),
-                end: Epoch::from_et_seconds(*self.epoch_data.last().unwrap()),
+                end: Epoch::from_et_seconds(last_epoch),
             });
         }
 

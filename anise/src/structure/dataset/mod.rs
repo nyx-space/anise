@@ -117,12 +117,15 @@ impl<T: DataSetT> DataSet<T> {
     /// Forces to load an Anise file from a pointer of bytes.
     /// **Panics** if the bytes cannot be interpreted as an Anise file.
     pub fn from_bytes<B: Deref<Target = [u8]>>(buf: B) -> Self {
-        Self::try_from_bytes(buf).unwrap()
+        Self::try_from_bytes(buf).expect("failed to load ANISE data from bytes")
     }
 
     /// Compute the CRC32 of the underlying bytes
     pub fn crc32(&self) -> u32 {
-        let bytes = self.build_data_seq().1;
+        let bytes = self
+            .build_data_seq()
+            .expect("failed to encode data for CRC32 computation")
+            .1;
         crc32fast::hash(bytes.as_bytes())
     }
 
@@ -443,24 +446,24 @@ impl<T: DataSetT> DataSet<T> {
     }
 
     /// Returns this data as a data sequence, cloning all of the entries into this sequence.
-    fn build_data_seq(&self) -> (Vec<u32>, OctetString) {
+    fn build_data_seq(&self) -> der::Result<(Vec<u32>, OctetString)> {
         let mut buf = Vec::new();
         let mut meta = Vec::with_capacity(self.data.len() + 1);
         meta.push(self.data.len() as u32);
         for data in &self.data {
             let mut this_buf = vec![];
-            data.encode_to_vec(&mut this_buf).unwrap();
+            data.encode_to_vec(&mut this_buf)?;
             meta.push(this_buf.len() as u32);
             buf.extend_from_slice(&this_buf);
         }
-        let bytes = OctetString::new(buf).unwrap();
-        (meta, bytes)
+        let bytes = OctetString::new(buf)?;
+        Ok((meta, bytes))
     }
 }
 
 impl<T: DataSetT> Encode for DataSet<T> {
     fn encoded_len(&self) -> der::Result<der::Length> {
-        let (bytes_meta, bytes) = self.build_data_seq();
+        let (bytes_meta, bytes) = self.build_data_seq()?;
         self.metadata.encoded_len()?
             + self.lut.encoded_len()?
             + self.data_checksum.encoded_len()?
@@ -476,7 +479,7 @@ impl<T: DataSetT> Encode for DataSet<T> {
         // 4.  bytes_meta: A sequence of u32 integers. The first integer is the number of data items.
         //     The subsequent integers are the encoded lengths of each data item.
         // 5.  bytes: The concatenated DER-encoded data items.
-        let (bytes_meta, bytes) = self.build_data_seq();
+        let (bytes_meta, bytes) = self.build_data_seq()?;
         self.metadata.encode(encoder)?;
         self.lut.encode(encoder)?;
         self.data_checksum.encode(encoder)?;
@@ -500,11 +503,28 @@ impl<'a, T: DataSetT> Decode<'a> for DataSet<T> {
         let mut data = vec![];
         let mut idx = 0;
         // The first element of bytes_meta is the number of data items.
-        for meta_idx in 0..*bytes_meta.first().unwrap() as usize {
+        let num_items = *bytes_meta.first().ok_or_else(|| {
+            der::Error::new(
+                der::ErrorKind::Incomplete {
+                    expected_len: der::Length::new(1),
+                    actual_len: der::Length::ZERO,
+                },
+                der::Length::ZERO,
+            )
+        })? as usize;
+        for meta_idx in 0..num_items {
             // The subsequent elements are the lengths of each data item.
-            let next_len = *bytes_meta.get(meta_idx + 1).unwrap() as usize;
+            let next_len = *bytes_meta.get(meta_idx + 1).ok_or_else(|| {
+                der::Error::new(
+                    der::ErrorKind::Incomplete {
+                        expected_len: der::Length::new((meta_idx + 2) as u16),
+                        actual_len: der::Length::new(bytes_meta.len() as u16),
+                    },
+                    der::Length::ZERO,
+                )
+            })? as usize;
             // Decode each data item from its slice of the bytes.
-            let this_data = T::from_der(&bytes[idx..idx + next_len]).unwrap();
+            let this_data = T::from_der(&bytes[idx..idx + next_len])?;
             data.push(this_data);
             idx += next_len;
         }

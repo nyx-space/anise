@@ -76,7 +76,9 @@ impl LookUpTable {
             if !rtn.contains_key(entry) {
                 rtn.insert(*entry, (None, Some(name.clone())));
             } else {
-                let val = rtn.get_mut(entry).unwrap();
+                let val = rtn
+                    .get_mut(entry)
+                    .expect("entry existence confirmed by contains_key check above");
                 val.1 = Some(name.clone());
             }
         }
@@ -167,7 +169,8 @@ impl LookUpTable {
     }
 
     /// Builds the DER encoding of this look up table.
-    fn der_encoding(&self) -> (Vec<i32>, Vec<u32>, Vec<OctetStringRef<'_>>, Vec<u32>) {
+    #[allow(clippy::type_complexity)]
+    fn der_encoding(&self) -> der::Result<(Vec<i32>, Vec<u32>, Vec<OctetStringRef<'_>>, Vec<u32>)> {
         // Build the list of entries
         let mut id_entries = Vec::<u32>::with_capacity(self.by_id.len());
         let mut name_entries = Vec::<u32>::with_capacity(self.by_name.len());
@@ -181,18 +184,18 @@ impl LookUpTable {
         // Build the list of names
         let mut names = Vec::<OctetStringRef>::with_capacity(self.by_name.len());
         for (name, index) in &self.by_name {
-            names.push(OctetStringRef::new(name.as_bytes()).unwrap());
+            names.push(OctetStringRef::new(name.as_bytes())?);
 
             name_entries.push(*index);
         }
 
-        (ids, id_entries, names, name_entries)
+        Ok((ids, id_entries, names, name_entries))
     }
 }
 
 impl Encode for LookUpTable {
     fn encoded_len(&self) -> der::Result<der::Length> {
-        let (ids, names, id_entries, name_entries) = self.der_encoding();
+        let (ids, names, id_entries, name_entries) = self.der_encoding()?;
         ids.encoded_len()?
             + names.encoded_len()?
             + id_entries.encoded_len()?
@@ -200,7 +203,7 @@ impl Encode for LookUpTable {
     }
 
     fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
-        let (ids, names, id_entries, name_entries) = self.der_encoding();
+        let (ids, names, id_entries, name_entries) = self.der_encoding()?;
         ids.encode(encoder)?;
         names.encode(encoder)?;
         id_entries.encode(encoder)?;

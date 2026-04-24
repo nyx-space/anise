@@ -32,7 +32,6 @@ use zerocopy::{FromBytes, Ref};
 macro_rules! io_imports {
     () => {
         use std::fs::File;
-        use std::io::Result as IoResult;
         use std::io::Write;
         use std::path::Path;
     };
@@ -155,7 +154,11 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                     kind: R::NAME,
                 })?,
         )
-        .unwrap();
+        .map_err(|_| DAFError::DecodingData {
+            kind: R::NAME,
+            idx: 0,
+            source: DecodingError::Casting,
+        })?;
         // Check that the endian-ness is compatible with this platform.
         file_record
             .endianness()
@@ -176,7 +179,10 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 size: self.bytes.len(),
             })
             .context(DecodingNameSnafu { kind: R::NAME })?;
-        Ok(NameRecord::read_from_bytes(rcrd_bytes).unwrap())
+        NameRecord::read_from_bytes(rcrd_bytes).map_err(|_| DAFError::DecodingName {
+            kind: R::NAME,
+            source: DecodingError::Casting,
+        })
     }
 
     /// Reads and parses the DAF summary record, starting at the provided idx (1-index!) or at the file record's forward index if no index provided.
@@ -418,7 +424,11 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                     }
                 },
             )
-            .unwrap(),
+            .map_err(|_| DAFError::DecodingData {
+                kind: R::NAME,
+                idx,
+                source: DecodingError::Casting,
+            })?,
         );
 
         // Convert it
@@ -460,7 +470,8 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 Err(e) => {
                     // At this point, we know that the bytes are accessible because the embedded `match`
                     // did not fail, so we can perform a direct access.
-                    core::str::from_utf8(&bytes_slice[..e.valid_up_to()]).unwrap()
+                    core::str::from_utf8(&bytes_slice[..e.valid_up_to()])
+                        .expect("valid_up_to guarantees valid UTF-8 up to this index")
                 }
             };
 
@@ -479,7 +490,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                     .char_indices()
                     .rev()
                     .find(|(_, c)| !c.is_whitespace() && *c != '\0')
-                    .unwrap();
+                    .expect("at least one non-whitespace/non-null char was found above");
                 let end = end_idx + end_char.len_utf8();
 
                 for c in s[start..end].chars() {
@@ -500,32 +511,48 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     /// Writes the contents of this DAF file to a new location.
-    pub fn persist<P: AsRef<Path>>(&self, path: P) -> IoResult<()> {
-        let mut fs = File::create(path)?;
+    pub fn persist<P: AsRef<Path>>(&self, path: P) -> Result<(), DAFError> {
+        let mut fs = File::create(&path).map_err(|e| DAFError::IO {
+            action: format!("creating file {}", path.as_ref().display()),
+            source: InputOutputError::IOError { kind: e.kind() },
+        })?;
 
-        let mut file_rcrd = Vec::from(self.file_record().unwrap().as_bytes());
+        let file_rec = self.file_record()?;
+        let mut file_rcrd = Vec::from(file_rec.as_bytes());
         file_rcrd.extend(vec![
             0x0;
-            (self.file_record().unwrap().fwrd_idx() - 1) * RCRD_LEN
-                - file_rcrd.len()
+            (file_rec.fwrd_idx() - 1) * RCRD_LEN - file_rcrd.len()
         ]);
-        fs.write_all(&file_rcrd)?;
+        fs.write_all(&file_rcrd).map_err(|e| DAFError::IO {
+            action: "writing file record".to_string(),
+            source: InputOutputError::IOError { kind: e.kind() },
+        })?;
 
-        let mut daf_summary = Vec::from(self.daf_summary(None).unwrap().as_bytes());
+        let mut daf_summary = Vec::from(self.daf_summary(None)?.as_bytes());
         // Extend with the data summaries
-        for data_summary in self.data_summaries(None).unwrap() {
+        for data_summary in self.data_summaries(None)? {
             daf_summary.extend(data_summary.as_bytes());
         }
         // And pad with NULL
         daf_summary.extend(vec![0x0; RCRD_LEN - daf_summary.len()]);
-        fs.write_all(&daf_summary)?;
+        fs.write_all(&daf_summary).map_err(|e| DAFError::IO {
+            action: "writing DAF summary".to_string(),
+            source: InputOutputError::IOError { kind: e.kind() },
+        })?;
 
-        let mut name_rcrd = Vec::from(self.name_record(None).unwrap().as_bytes());
+        let mut name_rcrd = Vec::from(self.name_record(None)?.as_bytes());
         name_rcrd.extend(vec![0x0; RCRD_LEN - name_rcrd.len()]);
-        fs.write_all(&name_rcrd)?;
+        fs.write_all(&name_rcrd).map_err(|e| DAFError::IO {
+            action: "writing name record".to_string(),
+            source: InputOutputError::IOError { kind: e.kind() },
+        })?;
 
         // Data starts right after the summary and name records in self.bytes
-        fs.write_all(&self.bytes[(self.file_record().unwrap().fwrd_idx() + 1) * RCRD_LEN..])
+        fs.write_all(&self.bytes[(file_rec.fwrd_idx() + 1) * RCRD_LEN..])
+            .map_err(|e| DAFError::IO {
+                action: "writing data records".to_string(),
+                source: InputOutputError::IOError { kind: e.kind() },
+            })
     }
 
     /// Returns an iterator over all summary data blocks.

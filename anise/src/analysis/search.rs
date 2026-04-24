@@ -377,7 +377,7 @@ impl Almanac {
                         // We were IN an arc, this crossing is the FALL.
                         // Close the arc.
                         arcs.push(EventArc {
-                            rise: rise.take().unwrap(), // We must have had a rise
+                            rise: rise.take().expect("rise must be set when closing an arc"),
                             fall: crossing,
                         });
                         is_inside_arc = false;
@@ -474,10 +474,18 @@ impl Almanac {
             arcs.push(VisibilityArc {
                 rise: comm.rise,
                 fall: comm.fall,
-                location_ref: location_ref.clone().unwrap(),
+                location_ref: location_ref
+                    .clone()
+                    .ok_or(AnalysisError::GenericAnalysisError {
+                        err: format!("location reference not found for location ID {location_id}"),
+                    })?,
                 aer_data,
                 sample_rate,
-                location: location.clone().unwrap(),
+                location: location
+                    .clone()
+                    .ok_or(AnalysisError::GenericAnalysisError {
+                        err: format!("location data not found for location ID {location_id}"),
+                    })?,
             });
         }
 

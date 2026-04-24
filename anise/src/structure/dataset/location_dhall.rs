@@ -212,7 +212,7 @@ impl LocationDataSet {
                 LocationDhallSetEntry {
                     id: Some(*id),
                     alias: None,
-                    value: self.get_by_id(*id).unwrap(),
+                    value: self.get_by_id(*id).map_err(|e| e.to_string())?,
                 },
             );
         }
@@ -226,7 +226,7 @@ impl LocationDataSet {
                     LocationDhallSetEntry {
                         id: None,
                         alias: Some(name.clone()),
-                        value: self.get_by_name(name).unwrap(),
+                        value: self.get_by_name(name).map_err(|e| e.to_string())?,
                     },
                 );
             }

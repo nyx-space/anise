@@ -247,7 +247,7 @@ where
     my_fmt_mut.delete_nth_data(idx).context(CliDAFSnafu)?;
 
     info!("Saving file to {output:?}");
-    my_fmt_mut.persist(output).unwrap();
+    my_fmt_mut.persist(output).context(CliDAFSnafu)?;
 
     Ok(())
 }
@@ -306,7 +306,7 @@ where
         .is_ok());
 
     info!("Saving file to {output:?}");
-    my_pck_mut.persist(output).context(FilePersistSnafu)?;
+    my_pck_mut.persist(output).context(CliDAFSnafu)?;
 
     Ok(())
 }

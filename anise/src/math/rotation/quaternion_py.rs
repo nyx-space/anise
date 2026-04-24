@@ -106,7 +106,8 @@ impl EulerParameter {
         // Extract data from SMatrix (column-major order, hence the transpose)
         let b: Vec<f64> = self.b_matrix().transpose().iter().copied().collect();
 
-        let b_mat = Array2::from_shape_vec((4, 3), b).unwrap();
+        let b_mat =
+            Array2::from_shape_vec((4, 3), b).expect("b_matrix is always 4x3 = 12 elements");
 
         PyArray2::<f64>::from_owned_array(py, b_mat)
     }
@@ -120,7 +121,7 @@ impl EulerParameter {
 
         let data: Vec<f64> = uvec.iter().copied().collect();
 
-        let vec = Array1::from_shape_vec((3,), data).unwrap();
+        let vec = Array1::from_shape_vec((3,), data).expect("unit vector is always 3 elements");
         (PyArray1::<f64>::from_owned_array(py, vec), angle)
     }
 
@@ -130,7 +131,8 @@ impl EulerParameter {
     fn py_prv<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         let data: Vec<f64> = self.prv().iter().copied().collect();
 
-        let vec = Array1::from_shape_vec((3,), data).unwrap();
+        let vec = Array1::from_shape_vec((3,), data)
+            .expect("principal rotation vector is always 3 elements");
         PyArray1::<f64>::from_owned_array(py, vec)
     }
 
@@ -140,7 +142,7 @@ impl EulerParameter {
     fn py_as_vector<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         let data: Vec<f64> = self.as_vector().iter().copied().collect();
 
-        let vec = Array1::from_shape_vec((3,), data).unwrap();
+        let vec = Array1::from_shape_vec((3,), data).expect("EP vector is always 3 elements");
         PyArray1::<f64>::from_owned_array(py, vec)
     }
 

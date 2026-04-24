@@ -85,8 +85,16 @@ impl Ephemeris {
             })
         } else {
             Ok((
-                *self.state_data.first_key_value().unwrap().0,
-                *self.state_data.last_key_value().unwrap().0,
+                *self
+                    .state_data
+                    .first_key_value()
+                    .expect("state_data is not empty, checked above")
+                    .0,
+                *self
+                    .state_data
+                    .last_key_value()
+                    .expect("state_data is not empty, checked above")
+                    .0,
             ))
         }
     }
@@ -396,13 +404,13 @@ impl Ephemeris {
             .context(EphemerisPhysicsSnafu {
                 action: "rotating covariance",
             })?
-            .unwrap();
+            .expect("prev_record covariance is Some, checked above");
         let next_covar = next_record
             .covar_in_frame(local_frame)
             .context(EphemerisPhysicsSnafu {
                 action: "rotating covariance",
             })?
-            .unwrap();
+            .expect("next_record covariance is Some, checked above");
 
         // Calculate Alpha
         let t0 = prev_record.orbit.epoch;
@@ -483,7 +491,7 @@ impl Ephemeris {
                             .context(AlmanacPhysicsSnafu {
                                 action: "computing covar inertial",
                             })?
-                            .unwrap()
+                            .expect("covariance is Some, inside if-let guard")
                             .matrix
                         * dcm.state_dcm().transpose();
                 }
@@ -501,7 +509,9 @@ impl fmt::Display for Ephemeris {
         if self.state_data.is_empty() {
             write!(f, "empty ephem for {}", self.object_id)
         } else {
-            let (start, stop) = self.domain().unwrap();
+            let (start, stop) = self
+                .domain()
+                .expect("state_data is not empty, checked in if branch above");
             let span = stop - start;
             write!(
                 f,

@@ -106,7 +106,8 @@ impl MRP {
     /// If the norm of this MRP is greater than max_norm then this MRP is set to its shadow set
     pub fn normalize(&self) -> Self {
         if self.scalar_norm() > 1.0 {
-            self.shadow().unwrap()
+            self.shadow()
+                .expect("shadow is safe when scalar_norm > 1.0 (not singular)")
         } else {
             *self
         }
@@ -195,7 +196,9 @@ impl PartialEq for MRP {
             && self.to == other.to
             && self.is_singular() == other.is_singular()
             && ((self.as_vector() - other.as_vector()).norm() < 1e-12
-                || (self.as_vector() - other.shadow().unwrap().as_vector()).norm() < 1e-12)
+                || other
+                    .shadow()
+                    .is_ok_and(|s| (self.as_vector() - s.as_vector()).norm() < 1e-12))
     }
 }
 

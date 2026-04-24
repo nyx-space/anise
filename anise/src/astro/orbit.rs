@@ -211,7 +211,7 @@ impl Orbit {
         Self::try_keplerian(
             sma_km, ecc, inc_deg, raan_deg, aop_deg, ta_deg, epoch, frame,
         )
-        .unwrap()
+        .expect("Keplerian orbital elements are singular; use try_keplerian instead")
     }
 
     /// Creates a new Orbit from the provided radii of apoapsis and periapsis, in kilometers
@@ -229,7 +229,7 @@ impl Orbit {
         Self::try_keplerian_apsis_radii(
             r_a_km, r_p_km, inc_deg, raan_deg, aop_deg, ta_deg, epoch, frame,
         )
-        .unwrap()
+        .expect("Keplerian apsis radii are singular; use try_keplerian_apsis_radii instead")
     }
 
     /// Initializes a new orbit from the Keplerian orbital elements using the mean anomaly instead of the true anomaly.
@@ -269,7 +269,8 @@ impl Orbit {
     /// The state vector **must** be sma, ecc, inc, raan, aop, ta. This function is a shortcut to `cartesian`
     /// and as such it has the same unit requirements.
     pub fn keplerian_vec(state: &Vector6, epoch: Epoch, frame: Frame) -> Self {
-        Self::try_keplerian_vec(state, epoch, frame).unwrap()
+        Self::try_keplerian_vec(state, epoch, frame)
+            .expect("Keplerian vector is singular; use try_keplerian_vec instead")
     }
 
     /// Returns this state as a Keplerian Vector6 in [km, none, degrees, degrees, degrees, degrees]
@@ -1364,9 +1365,7 @@ impl Orbit {
     pub fn vinf_periapsis_km(&self, turn_angle_degrees: f64) -> PhysicsResult<f64> {
         let ecc = self.ecc()?;
         if ecc <= 1.0 {
-            Err(PhysicsError::NotHyperbolic {
-                ecc: self.ecc().unwrap(),
-            })
+            Err(PhysicsError::NotHyperbolic { ecc })
         } else {
             let cos_rho = (0.5 * (PI - turn_angle_degrees.to_radians())).cos();
             Ok((1.0 / cos_rho - 1.0) * self.frame.mu_km3_s2()? / self.vmag_km_s().powi(2))
@@ -1381,9 +1380,7 @@ impl Orbit {
     pub fn vinf_turn_angle_deg(&self, periapsis_km: f64) -> PhysicsResult<f64> {
         let ecc = self.ecc()?;
         if ecc <= 1.0 {
-            Err(PhysicsError::NotHyperbolic {
-                ecc: self.ecc().unwrap(),
-            })
+            Err(PhysicsError::NotHyperbolic { ecc })
         } else {
             let rho = (1.0
                 / (1.0 + self.vmag_km_s().powi(2) * (periapsis_km / self.frame.mu_km3_s2()?)))
@@ -1399,9 +1396,7 @@ impl Orbit {
     pub fn hyperbolic_anomaly_deg(&self) -> PhysicsResult<f64> {
         let ecc = self.ecc()?;
         if ecc <= 1.0 {
-            Err(PhysicsError::NotHyperbolic {
-                ecc: self.ecc().unwrap(),
-            })
+            Err(PhysicsError::NotHyperbolic { ecc })
         } else {
             let (sin_ta, cos_ta) = self.ta_deg()?.to_radians().sin_cos();
             let sinh_h = (sin_ta * (ecc.powi(2) - 1.0).sqrt()) / (1.0 + ecc * cos_ta);
