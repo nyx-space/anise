@@ -192,18 +192,18 @@ impl LookUpTable {
 
 impl Encode for LookUpTable {
     fn encoded_len(&self) -> der::Result<der::Length> {
-        let (ids, names, id_entries, name_entries) = self.der_encoding();
+        let (ids, id_entries, names, name_entries) = self.der_encoding();
         ids.encoded_len()?
-            + names.encoded_len()?
             + id_entries.encoded_len()?
+            + names.encoded_len()?
             + name_entries.encoded_len()?
     }
 
     fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
-        let (ids, names, id_entries, name_entries) = self.der_encoding();
+        let (ids, id_entries, names, name_entries) = self.der_encoding();
         ids.encode(encoder)?;
-        names.encode(encoder)?;
         id_entries.encode(encoder)?;
+        names.encode(encoder)?;
         name_entries.encode(encoder)
     }
 }
