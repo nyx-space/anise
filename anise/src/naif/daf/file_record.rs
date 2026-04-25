@@ -171,7 +171,7 @@ impl FileRecord {
 
 impl fmt::Display for FileRecord {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let id = self.identification().unwrap(); //_or("invalid identifier");
+        let id = self.identification().unwrap_or("invalid identifier");
         let endian = if let Ok(endian) = self.endianness() {
             format!("{endian:?}")
         } else {

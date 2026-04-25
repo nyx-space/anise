@@ -22,13 +22,13 @@ pub struct Semver {
 impl Encode for Semver {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let data: [u8; 3] = [self.major, self.minor, self.patch];
-        let as_octet_string = OctetStringRef::new(&data).unwrap();
+        let as_octet_string = OctetStringRef::new(&data)?;
         as_octet_string.encoded_len()
     }
 
     fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         let data: [u8; 3] = [self.major, self.minor, self.patch];
-        let as_octet_string = OctetStringRef::new(&data).unwrap();
+        let as_octet_string = OctetStringRef::new(&data)?;
         as_octet_string.encode(encoder)
     }
 }

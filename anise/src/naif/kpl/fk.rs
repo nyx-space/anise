@@ -27,7 +27,10 @@ impl KPLItem for FKItem {
     /// Returns -1 on unknown tokens, and 0 on the definition token (e.g. FRAME_MOON_PA).
     fn extract_key(data: &Assignment) -> i32 {
         if data.keyword.starts_with("FRAME_") || data.keyword.starts_with("TKFRAME_") {
-            let onward = &data.keyword[data.keyword.find('_').unwrap() + 1..];
+            let onward = match data.keyword.find('_') {
+                Some(pos) => &data.keyword[pos + 1..],
+                None => return -1,
+            };
             match onward.find('_') {
                 Some(frm_key_pos) => match onward[..frm_key_pos].parse::<i32>() {
                     Ok(frame_id) => frame_id,
@@ -58,7 +61,10 @@ impl KPLItem for FKItem {
                 None => {
                     // The data always starts with the definition of the frame
                     // So if the body isn't set, it'll be the first item to set
-                    let next_ = data.keyword.find('_').unwrap();
+                    let next_ = match data.keyword.find('_') {
+                        Some(pos) => pos,
+                        None => return,
+                    };
                     self.name = Some(data.keyword[next_ + 1..].to_string());
                     if let Ok(parsed_id) = data.value.parse::<i32>() {
                         self.body_id = Some(parsed_id);

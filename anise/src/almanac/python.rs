@@ -829,7 +829,8 @@ impl Almanac {
             .copied()
             .collect();
 
-        let omega = Array1::from_shape_vec((3,), data).unwrap();
+        let omega = Array1::from_shape_vec((3,), data)
+            .expect("angular velocity is always a 3-element vector");
 
         Ok(PyArray1::<f64>::from_owned_array(py, omega))
     }
@@ -871,7 +872,8 @@ impl Almanac {
             .copied()
             .collect();
 
-        let omega = Array1::from_shape_vec((3,), data).unwrap();
+        let omega = Array1::from_shape_vec((3,), data)
+            .expect("angular velocity is always a 3-element vector");
 
         Ok(PyArray1::<f64>::from_owned_array(py, omega))
     }

@@ -143,38 +143,45 @@ impl MetaAlmanac {
 ///
 impl Default for MetaAlmanac {
     fn default() -> Self {
-        let nyx_cloud_stor = Url::parse("http://public-data.nyxspace.com/anise/").unwrap();
-        let jpl_cloud_stor =
-            Url::parse("https://naif.jpl.nasa.gov/pub/naif/generic_kernels/").unwrap();
+        let nyx_cloud_stor =
+            Url::parse("http://public-data.nyxspace.com/anise/").expect("static URL is valid");
+        let jpl_cloud_stor = Url::parse("https://naif.jpl.nasa.gov/pub/naif/generic_kernels/")
+            .expect("static URL is valid");
 
         Self {
             files: vec![
                 MetaFile {
-                    uri: nyx_cloud_stor.join("de440s.bsp").unwrap().to_string(),
+                    uri: nyx_cloud_stor
+                        .join("de440s.bsp")
+                        .expect("static URL join is valid")
+                        .to_string(),
                     crc32: Some(0x7286750a),
                 },
                 MetaFile {
-                    uri: nyx_cloud_stor.join("v0.7/pck11.pca").unwrap().to_string(),
+                    uri: nyx_cloud_stor
+                        .join("v0.7/pck11.pca")
+                        .expect("static URL join is valid")
+                        .to_string(),
                     crc32: Some(0x51f69e46),
                 },
                 MetaFile {
                     uri: nyx_cloud_stor
                         .join("v0.7/moon_fk_de440.epa")
-                        .unwrap()
+                        .expect("static URL join is valid")
                         .to_string(),
                     crc32: Some(0x32c8f9d7),
                 },
                 MetaFile {
                     uri: nyx_cloud_stor
                         .join("moon_pa_de440_200625.bpc")
-                        .unwrap()
+                        .expect("static URL join is valid")
                         .to_string(),
                     crc32: Some(0xcde5ca7d),
                 },
                 MetaFile {
                     uri: jpl_cloud_stor
                         .join("pck/earth_latest_high_prec.bpc")
-                        .unwrap()
+                        .expect("static URL join is valid")
                         .to_string(),
                     crc32: None,
                 },

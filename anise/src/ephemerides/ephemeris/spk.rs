@@ -79,9 +79,19 @@ impl Ephemeris {
         };
 
         // Build the SPK Summary
-        let first_orbit = self.state_data.first_key_value().unwrap().1.orbit;
+        let first_orbit = self
+            .state_data
+            .first_key_value()
+            .expect("state_data is not empty, checked above")
+            .1
+            .orbit;
         let first_frame = first_orbit.frame;
-        let last_orbit = self.state_data.last_key_value().unwrap().1.orbit;
+        let last_orbit = self
+            .state_data
+            .last_key_value()
+            .expect("state_data is not empty, checked above")
+            .1
+            .orbit;
         let mut spk_summary = SPKSummaryRecord {
             start_epoch_et_s: first_orbit.epoch.to_et_seconds(),
             end_epoch_et_s: last_orbit.epoch.to_et_seconds(),

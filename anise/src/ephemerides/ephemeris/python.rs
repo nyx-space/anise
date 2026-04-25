@@ -203,7 +203,8 @@ impl Covariance {
         let data: Vec<f64> = self.matrix.transpose().iter().copied().collect();
 
         // Create an ndarray Array2 (row-major order)
-        let state_dcm = Array2::from_shape_vec((6, 6), data).unwrap();
+        let state_dcm =
+            Array2::from_shape_vec((6, 6), data).expect("6x6 matrix always has 36 elements");
 
         let pt_state_dcm = PyArray2::<f64>::from_owned_array(py, state_dcm);
 

@@ -203,13 +203,13 @@ impl Almanac {
         let start = summaries
             .iter()
             .min_by_key(|summary| summary.start_epoch())
-            .unwrap()
+            .expect("summaries is non-empty, guaranteed by bpc_summaries")
             .start_epoch();
 
         let end = summaries
             .iter()
             .max_by_key(|summary| summary.end_epoch())
-            .unwrap()
+            .expect("summaries is non-empty, guaranteed by bpc_summaries")
             .end_epoch();
 
         Ok((start, end))

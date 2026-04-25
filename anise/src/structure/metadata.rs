@@ -55,7 +55,7 @@ impl Metadata {
     }
 
     pub fn from_bytes(buf: Bytes) -> Self {
-        Self::from_der(&buf).unwrap()
+        Self::from_der(&buf).expect("failed to decode Metadata from bytes")
     }
 }
 
@@ -64,7 +64,7 @@ impl Default for Metadata {
         Self {
             anise_version: ANISE_VERSION,
             dataset_type: DataSetType::NotApplicable,
-            creation_date: Epoch::now().unwrap(),
+            creation_date: Epoch::now().expect("system clock should be available"),
             originator: Default::default(),
         }
     }

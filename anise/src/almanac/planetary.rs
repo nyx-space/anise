@@ -159,9 +159,15 @@ impl PlanetaryDataSet {
 
         for (opt_id, opt_name) in values {
             let data = if let Some(id) = opt_id {
-                self.get_by_id(*id).unwrap()
+                self.get_by_id(*id)
+                    .expect("ID from LUT entries must exist in dataset")
             } else {
-                self.get_by_name(&opt_name.clone().unwrap()).unwrap()
+                self.get_by_name(
+                    opt_name
+                        .as_deref()
+                        .expect("LUT entry must have either an ID or a name"),
+                )
+                .expect("name from LUT entries must exist in dataset")
             };
 
             let mut row = PlanetaryRow {

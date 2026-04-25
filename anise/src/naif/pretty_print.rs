@@ -64,13 +64,28 @@ impl NAIFPrettyPrint for BPC {
 
         // NOTE: Using the explicit loop and index here to we can fetch the name record correctly.
         let mut idx = None;
+        let file_record = match self.file_record() {
+            Ok(fr) => fr,
+            Err(e) => return format!("Error reading file record: {e}"),
+        };
         loop {
-            for (sno, summary) in self.data_summaries(idx).unwrap().iter().enumerate() {
-                let name_rcrd = self.name_record(idx).unwrap();
-                let name = name_rcrd.nth_name(sno, self.file_record().unwrap().summary_size());
+            let summaries = match self.data_summaries(idx) {
+                Ok(s) => s,
+                Err(e) => return format!("Error reading data summaries: {e}"),
+            };
+            let name_rcrd = match self.name_record(idx) {
+                Ok(nr) => nr,
+                Err(e) => return format!("Error reading name record: {e}"),
+            };
+            for (sno, summary) in summaries.iter().enumerate() {
+                let name = name_rcrd.nth_name(sno, file_record.summary_size());
                 if summary.is_empty() {
                     continue;
                 }
+                let interpolation_kind = match summary.data_type() {
+                    Ok(dt) => dt.to_string(),
+                    Err(e) => format!("Unknown({e})"),
+                };
                 rows.push(BpcRow {
                     name: name.to_string(),
                     start_epoch: summary
@@ -79,7 +94,7 @@ impl NAIFPrettyPrint for BPC {
                         .to_string(),
                     end_epoch: summary.end_epoch().to_gregorian_str(time_scale).to_string(),
                     duration: (summary.end_epoch() - summary.start_epoch()).round(round_value),
-                    interpolation_kind: summary.data_type().unwrap().to_string(),
+                    interpolation_kind,
                     frame: format!("{}", summary.frame_id),
                     inertial_frame: format!("{}", summary.inertial_frame_id),
                 });
@@ -114,13 +129,28 @@ impl NAIFPrettyPrint for SPK {
 
         // NOTE: Using the explicit loop and index here to we can fetch the name record correctly.
         let mut idx = None;
+        let file_record = match self.file_record() {
+            Ok(fr) => fr,
+            Err(e) => return format!("Error reading file record: {e}"),
+        };
         loop {
-            for (sno, summary) in self.data_summaries(idx).unwrap().iter().enumerate() {
-                let name_rcrd = self.name_record(idx).unwrap();
-                let name = name_rcrd.nth_name(sno, self.file_record().unwrap().summary_size());
+            let summaries = match self.data_summaries(idx) {
+                Ok(s) => s,
+                Err(e) => return format!("Error reading data summaries: {e}"),
+            };
+            let name_rcrd = match self.name_record(idx) {
+                Ok(nr) => nr,
+                Err(e) => return format!("Error reading name record: {e}"),
+            };
+            for (sno, summary) in summaries.iter().enumerate() {
+                let name = name_rcrd.nth_name(sno, file_record.summary_size());
                 if summary.is_empty() {
                     continue;
                 }
+                let interpolation_kind = match summary.data_type() {
+                    Ok(dt) => dt.to_string(),
+                    Err(e) => format!("Unknown({e})"),
+                };
 
                 rows.push(SpkRow {
                     name: name.to_string(),
@@ -131,7 +161,7 @@ impl NAIFPrettyPrint for SPK {
                         .to_string(),
                     end_epoch: summary.end_epoch().to_gregorian_str(time_scale).to_string(),
                     duration: (summary.end_epoch() - summary.start_epoch()).round(round_value),
-                    interpolation_kind: summary.data_type().unwrap().to_string(),
+                    interpolation_kind,
                     target: summary.target_frame_uid().to_string(),
                 });
             }

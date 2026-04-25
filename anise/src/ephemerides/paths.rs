@@ -171,28 +171,31 @@ impl Almanac {
 
             for to_obj in to_path.iter().take(to_len) {
                 // Check the trivial case of the common node being one of the input frames
-                if to_obj.unwrap() == from_frame.ephemeris_id {
+                let to_id = to_obj.expect("to_path entry within take(to_len) is always Some");
+                if to_id == from_frame.ephemeris_id {
                     common_path[0] = Some(from_frame.ephemeris_id);
                     items = 1;
                     return Ok((items, common_path, from_frame.ephemeris_id));
                 }
 
                 for from_obj in from_path.iter().take(from_len) {
+                    let from_id =
+                        from_obj.expect("from_path entry within take(from_len) is always Some");
                     // Check the trivial case of the common node being one of the input frames
-                    if items == 0 && from_obj.unwrap() == to_frame.ephemeris_id {
+                    if items == 0 && from_id == to_frame.ephemeris_id {
                         common_path[0] = Some(to_frame.ephemeris_id);
                         items = 1;
                         return Ok((items, common_path, to_frame.ephemeris_id));
                     }
 
-                    common_path[items] = Some(from_obj.unwrap());
+                    common_path[items] = Some(from_id);
                     items += 1;
 
                     if from_obj == to_obj {
                         // This is where the paths branch meet, so the root is the parent of the current item.
                         // Recall that the path is _from_ the source to the root of the context, so we're walking them
                         // backward until we find "where" the paths branched out.
-                        return Ok((items, common_path, to_obj.unwrap()));
+                        return Ok((items, common_path, to_id));
                     }
                 }
             }

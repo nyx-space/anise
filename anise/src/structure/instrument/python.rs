@@ -21,7 +21,7 @@ use pyo3::exceptions::PyValueError;
 fn to_numpy_array<'py>(v: Vector3<f64>, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
     let data: Vec<f64> = v.transpose().iter().copied().collect();
 
-    let arr = Array1::from_shape_vec((3,), data).unwrap();
+    let arr = Array1::from_shape_vec((3,), data).expect("Vector3 always has exactly 3 elements");
 
     PyArray1::<f64>::from_owned_array(py, arr)
 }

@@ -227,8 +227,8 @@ impl fmt::Display for LagrangeSetType9<'_> {
         write!(
             f,
             "Lagrange Type 9 from {:E} to {:E} with degree {} ({} items, {} epoch directories)",
-            Epoch::from_et_seconds(*self.epoch_data.first().unwrap()),
-            Epoch::from_et_seconds(*self.epoch_data.last().unwrap()),
+            Epoch::from_et_seconds(*self.epoch_data.first().unwrap_or(&0.0)),
+            Epoch::from_et_seconds(*self.epoch_data.last().unwrap_or(&0.0)),
             self.degree,
             self.epoch_data.len(),
             self.epoch_registry.len()
@@ -256,11 +256,30 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
         let degree = slice[slice.len() - 2] as usize;
         // NOTE: The ::SIZE returns the C representation memory size of this, but we only want the number of doubles.
         let state_data_end_idx = PositionVelocityRecord::SIZE / DBL_SIZE * num_records;
-        let state_data = slice.get(0..state_data_end_idx).unwrap();
+        let state_data =
+            slice
+                .get(0..state_data_end_idx)
+                .ok_or(DecodingError::InaccessibleBytes {
+                    start: 0,
+                    end: state_data_end_idx,
+                    size: slice.len(),
+                })?;
         let epoch_data_end_idx = state_data_end_idx + num_records;
-        let epoch_data = slice.get(state_data_end_idx..epoch_data_end_idx).unwrap();
+        let epoch_data = slice.get(state_data_end_idx..epoch_data_end_idx).ok_or(
+            DecodingError::InaccessibleBytes {
+                start: state_data_end_idx,
+                end: epoch_data_end_idx,
+                size: slice.len(),
+            },
+        )?;
         // And the epoch directory is whatever remains minus the metadata
-        let epoch_registry = slice.get(epoch_data_end_idx..slice.len() - 2).unwrap();
+        let epoch_registry = slice.get(epoch_data_end_idx..slice.len() - 2).ok_or(
+            DecodingError::InaccessibleBytes {
+                start: epoch_data_end_idx,
+                end: slice.len() - 2,
+                size: slice.len(),
+            },
+        )?;
 
         Ok(Self {
             degree,
@@ -294,13 +313,17 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
             return Err(InterpolationError::MissingInterpolationData { epoch });
         }
         // Check that we even have interpolation data for that time
+        let last_epoch = *self
+            .epoch_data
+            .last()
+            .ok_or(InterpolationError::MissingInterpolationData { epoch })?;
         if epoch.to_et_seconds() < self.epoch_data[0] - 1e-7
-            || epoch.to_et_seconds() > *self.epoch_data.last().unwrap() + 1e-7
+            || epoch.to_et_seconds() > last_epoch + 1e-7
         {
             return Err(InterpolationError::NoInterpolationData {
                 req: epoch,
                 start: Epoch::from_et_seconds(self.epoch_data[0]),
-                end: Epoch::from_et_seconds(*self.epoch_data.last().unwrap()),
+                end: Epoch::from_et_seconds(last_epoch),
             });
         }
 

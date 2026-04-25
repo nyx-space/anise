@@ -213,7 +213,8 @@ impl Almanac {
 
         // Load the header only
         if let Some(file_record_bytes) = bytes.get(..FileRecord::SIZE) {
-            let file_record = FileRecord::read_from_bytes(file_record_bytes).unwrap();
+            let file_record = FileRecord::read_from_bytes(file_record_bytes)
+                .expect("FileRecord::SIZE bytes were confirmed available");
             if let Ok(fileid) = file_record.identification() {
                 return match fileid {
                     "PCK" => {

@@ -100,7 +100,10 @@ impl EphemerisRecord {
         );
 
         // We know the covariance is defined now, let's make sure to grab its Inertial form.
-        let covar = self.covar_in_frame(LocalFrame::Inertial)?.unwrap().matrix;
+        let covar = self
+            .covar_in_frame(LocalFrame::Inertial)?
+            .expect("covariance is Some, ensured by the check above")
+            .matrix;
 
         // Build the rotation matrix using Orbit gradient.
         let orbit_dual = OrbitGrad::from(self.orbit);

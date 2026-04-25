@@ -186,7 +186,8 @@ impl DCM {
         let data: Vec<f64> = self.rot_mat.transpose().iter().copied().collect();
 
         // Create an ndarray Array2 (row-major order)
-        let rot_mat = Array2::from_shape_vec((3, 3), data).unwrap();
+        let rot_mat =
+            Array2::from_shape_vec((3, 3), data).expect("rot_mat is always 3x3 = 9 elements");
 
         let py_rot_mat = PyArray2::<f64>::from_owned_array(py, rot_mat);
 
@@ -203,14 +204,15 @@ impl DCM {
         // Extract data from SMatrix (column-major order, hence the transpose)
         let data: Vec<f64> = self
             .rot_mat_dt
-            .unwrap()
+            .expect("rot_mat_dt confirmed Some by earlier is_none() check")
             .transpose()
             .iter()
             .copied()
             .collect();
 
         // Create an ndarray Array2 (row-major order)
-        let rot_mat_dt = Array2::from_shape_vec((3, 3), data).unwrap();
+        let rot_mat_dt =
+            Array2::from_shape_vec((3, 3), data).expect("rot_mat_dt is always 3x3 = 9 elements");
 
         let py_rot_mat_dt = PyArray2::<f64>::from_owned_array(py, rot_mat_dt);
 
@@ -237,7 +239,8 @@ impl DCM {
         let data: Vec<f64> = self.state_dcm().transpose().iter().copied().collect();
 
         // Create an ndarray Array2 (row-major order)
-        let state_dcm = Array2::from_shape_vec((6, 6), data).unwrap();
+        let state_dcm =
+            Array2::from_shape_vec((6, 6), data).expect("state_dcm is always 6x6 = 36 elements");
 
         let pt_state_dcm = PyArray2::<f64>::from_owned_array(py, state_dcm);
 
@@ -251,7 +254,8 @@ impl DCM {
         self.skew_symmetric().map(|tilde| {
             let data: Vec<f64> = tilde.transpose().iter().copied().collect();
 
-            let arr = Array2::from_shape_vec((3, 3), data).unwrap();
+            let arr = Array2::from_shape_vec((3, 3), data)
+                .expect("skew symmetric matrix is always 3x3 = 9 elements");
 
             PyArray2::<f64>::from_owned_array(py, arr)
         })
@@ -264,7 +268,8 @@ impl DCM {
         self.angular_velocity_rad_s().map(|w| {
             let data: Vec<f64> = w.transpose().iter().copied().collect();
 
-            let arr = Array1::from_shape_vec((3,), data).unwrap();
+            let arr = Array1::from_shape_vec((3,), data)
+                .expect("angular velocity vector is always 3 elements");
 
             PyArray1::<f64>::from_owned_array(py, arr)
         })
@@ -277,7 +282,8 @@ impl DCM {
         self.angular_velocity_deg_s().map(|w| {
             let data: Vec<f64> = w.transpose().iter().copied().collect();
 
-            let arr = Array1::from_shape_vec((3,), data).unwrap();
+            let arr = Array1::from_shape_vec((3,), data)
+                .expect("angular velocity vector is always 3 elements");
 
             PyArray1::<f64>::from_owned_array(py, arr)
         })
