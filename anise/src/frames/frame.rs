@@ -27,7 +27,7 @@ use crate::constants::orientations::{id_from_orientation_name, orientation_name_
 use crate::errors::{AlmanacError, EphemerisSnafu, OrientationSnafu, PhysicsError};
 use crate::prelude::FrameUid;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
-use crate::time::Epoch;
+use crate::time::{Epoch, TimeScale, Unit};
 use crate::NaifId;
 
 #[cfg(feature = "python")]
@@ -43,8 +43,10 @@ use pyo3::types::{PyBytes, PyType};
 ///
 /// :type ephemeris_id: int
 /// :type orientation_id: int
+/// :type force_inertial: bool
 /// :type mu_km3_s2: float, optional
 /// :type shape: Ellipsoid, optional
+/// :type frozen_epoch: Epoch, optional
 /// :rtype: Frame
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "python", pyclass)]
@@ -52,14 +54,14 @@ use pyo3::types::{PyBytes, PyType};
 pub struct Frame {
     pub ephemeris_id: NaifId,
     pub orientation_id: NaifId,
-    /// If set, the DCM will always be evaluated at the provided epoch, freezing it in time.
-    pub frozen_eval_epoch: Option<Epoch>,
     /// If true, the DCM of this frame will always force its time derivative to zero, inertially fixing the frame.
     pub force_inertial: bool,
     /// Gravity parameter of this frame, only defined on celestial frames
     pub mu_km3_s2: Option<f64>,
     /// Shape of the geoid of this frame, only defined on geodetic frames
     pub shape: Option<Ellipsoid>,
+    /// If set, the DCM will always be evaluated at the provided epoch, freezing it in time.
+    pub frozen_epoch: Option<Epoch>,
 }
 
 impl Frame {
@@ -68,7 +70,7 @@ impl Frame {
         Self {
             ephemeris_id,
             orientation_id,
-            frozen_eval_epoch: None,
+            frozen_epoch: None,
             force_inertial: false,
             mu_km3_s2: None,
             shape: None,
@@ -118,7 +120,6 @@ impl Frame {
     /// + Bit 0 is set if `mu_km3_s2` is available
     /// + Bit 1 is set if `shape` is available
     /// + Bit 2 is set if `frozen_eval_epoch` is available
-    /// + Bit 3 is set if `force_inertial` is TRUE, ensuring backward compatibility over version 0.10
     fn available_data(&self) -> u8 {
         let mut bits: u8 = 0;
 
@@ -128,11 +129,8 @@ impl Frame {
         if self.shape.is_some() {
             bits |= 1 << 1;
         }
-        if self.frozen_eval_epoch.is_some() {
+        if self.frozen_epoch.is_some() {
             bits |= 1 << 2;
-        }
-        if self.force_inertial {
-            bits |= 1 >> 3;
         }
 
         bits
@@ -154,10 +152,10 @@ impl Frame {
         Self {
             ephemeris_id,
             orientation_id,
-            frozen_eval_epoch: None,
             force_inertial: false,
             mu_km3_s2,
             shape,
+            frozen_epoch: None,
         }
     }
 
@@ -416,14 +414,6 @@ impl Frame {
 impl StaticType for Frame {
     fn static_type() -> serde_dhall::SimpleType {
         use std::collections::HashMap;
-        // pub ephemeris_id: NaifId,
-        // pub orientation_id: NaifId,
-        // pub frozen_epoch: Option<Epoch>,
-        // pub force_inertial: bool,
-        // /// Gravity parameter of this frame, only defined on celestial frames
-        // pub mu_km3_s2: Option<f64>,
-        // /// Shape of the geoid of this frame, only defined on geodetic frames
-        // pub shape: Option<Ellipsoid>,
         let mut repr = HashMap::new();
 
         repr.insert("ephemeris_id".to_string(), SimpleType::Integer);
@@ -432,7 +422,7 @@ impl StaticType for Frame {
             SimpleType::Optional(Box::new(SimpleType::Integer)),
         );
         repr.insert(
-            "frozen_eval_epoch".to_string(),
+            "frozen_epoch".to_string(),
             SimpleType::Optional(Box::new(SimpleType::Text)),
         );
         repr.insert("force_inertial".to_string(), SimpleType::Bool);
@@ -455,17 +445,21 @@ impl Encode for Frame {
 
         self.ephemeris_id.encoded_len()?
             + self.orientation_id.encoded_len()?
+            + self.force_inertial.encoded_len()?
             + available_flags.encoded_len()?
             + self.mu_km3_s2.encoded_len()?
             + self.shape.encoded_len()?
+            + self.frozen_epoch.map(|e| e.to_string()).encoded_len()?
     }
 
     fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
         self.ephemeris_id.encode(encoder)?;
         self.orientation_id.encode(encoder)?;
+        self.force_inertial.encode(encoder)?;
         self.available_data().encode(encoder)?;
         self.mu_km3_s2.encode(encoder)?;
-        self.shape.encode(encoder)
+        self.shape.encode(encoder)?;
+        self.frozen_epoch.map(|e| e.to_string()).encode(encoder)
     }
 }
 
@@ -473,6 +467,7 @@ impl<'a> Decode<'a> for Frame {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         let ephemeris_id: NaifId = decoder.decode()?;
         let orientation_id: NaifId = decoder.decode()?;
+        let force_inertial: bool = decoder.decode()?;
 
         let data_flags: u8 = decoder.decode()?;
 
@@ -488,7 +483,7 @@ impl<'a> Decode<'a> for Frame {
             None
         };
 
-        let frozen_eval_epoch = if data_flags & (1 << 2) != 0 {
+        let frozen_epoch = if data_flags & (1 << 2) != 0 {
             let epoch_str: String = decoder.decode()?;
             match Epoch::from_str(&epoch_str) {
                 Ok(epoch) => Some(epoch),
@@ -501,32 +496,53 @@ impl<'a> Decode<'a> for Frame {
             None
         };
 
-        let force_inertial = data_flags & (1 << 3) != 0;
-
         Ok(Self {
             ephemeris_id,
             orientation_id,
-            frozen_eval_epoch,
             force_inertial,
             mu_km3_s2,
             shape,
+            frozen_epoch,
         })
     }
 }
 
 impl fmt::Display for Frame {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        let body_name = match celestial_name_from_id(self.ephemeris_id) {
-            Some(name) => name.to_string(),
-            None => format!("body {}", self.ephemeris_id),
+        // TODO: Update display
+        match celestial_name_from_id(self.ephemeris_id) {
+            Some(name) => write!(f, "{}", name.to_string())?,
+            None => write!(f, "body {}", self.ephemeris_id)?,
         };
 
-        let orientation_name = match orientation_name_from_id(self.orientation_id) {
-            Some(name) => name.to_string(),
-            None => format!("orientation {}", self.orientation_id),
+        if self.force_inertial {
+            write!(f, " inertial ")?;
+        }
+
+        match orientation_name_from_id(self.orientation_id) {
+            Some(name) => write!(f, "{}", name.to_string())?,
+            None => write!(f, "orientation {}", self.orientation_id)?,
         };
 
-        write!(f, "{body_name} {orientation_name}")?;
+        // Add the frozen epoch if applicable, trying to match on common frames.
+        if let Some(frozen_epoch) = self.frozen_epoch {
+            if (frozen_epoch - Epoch::from_et_duration(Unit::Second * 0)).abs() < Unit::Second * 1 {
+                write!(f, " @ J2000")?;
+            } else if (frozen_epoch - Epoch::from_gregorian_at_noon(2010, 1, 1, TimeScale::ET))
+                .abs()
+                < Unit::Second * 1
+            {
+                write!(f, " @ J2010")?;
+            } else if (frozen_epoch - Epoch::from_gregorian_at_noon(2020, 1, 1, TimeScale::ET))
+                .abs()
+                < Unit::Second * 1
+            {
+                write!(f, " @ J2020")?;
+            } else {
+                write!(f, " @ {frozen_epoch}")?;
+            }
+        }
+
         if self.is_geodetic() {
             write!(
                 f,
@@ -575,6 +591,8 @@ impl fmt::LowerHex for Frame {
 
 #[cfg(test)]
 mod frame_ut {
+    use hifitime::Epoch;
+
     use super::Frame;
     use crate::constants::frames::EME2000;
 
@@ -609,6 +627,16 @@ mod frame_ut {
         assert_eq!(
             Frame::from_name("Earth", "ICRF").unwrap(),
             Frame::new(EARTH, ICRS)
+        );
+    }
+
+    #[test]
+    fn mars_centered_inertial() {
+        use crate::constants::frames::MARS_INERTIAL_FRAME;
+        assert!(MARS_INERTIAL_FRAME.force_inertial);
+        assert_eq!(
+            MARS_INERTIAL_FRAME.frozen_epoch.unwrap(),
+            Epoch::from_et_seconds(0.0)
         );
     }
 }

@@ -41,7 +41,7 @@ impl Almanac {
         mut epoch: Epoch,
     ) -> Result<DCM, OrientationError> {
         // Compute the frame at the requested frozen epoch if set.
-        if let Some(frozen_epoch) = source.frozen_eval_epoch {
+        if let Some(frozen_epoch) = source.frozen_epoch {
             epoch = frozen_epoch;
         }
 

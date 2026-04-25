@@ -187,10 +187,10 @@ impl From<ArbitraryFrame> for Frame {
         Self {
             ephemeris_id: val.ephemeris_id,
             orientation_id: val.orientation_id,
-            frozen_eval_epoch: None,
             force_inertial: false,
             mu_km3_s2: None,
             shape: None,
+            frozen_epoch: None,
         }
     }
 }
