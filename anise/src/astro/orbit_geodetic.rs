@@ -9,6 +9,7 @@
  */
 
 use super::PhysicsResult;
+use crate::errors::PhysicsError;
 use crate::{
     math::{
         angles::{between_0_360, between_pm_180},
@@ -322,7 +323,15 @@ impl CartesianState {
     /// :rtype: typing.Tuple
     pub fn latlongalt(&self) -> PhysicsResult<(f64, f64, f64)> {
         let a_km = self.frame.mean_equatorial_radius_km()?;
-        let b_km = self.frame.shape.unwrap().polar_radius_km;
+        let b_km = self
+            .frame
+            .shape
+            .ok_or(PhysicsError::MissingFrameData {
+                action: "computing geodetic latitude, longitude, and altitude",
+                data: "shape",
+                frame: self.frame.into(),
+            })?
+            .polar_radius_km;
         let e2 = (a_km.powi(2) - b_km.powi(2)) / a_km.powi(2);
         let e_prime2 = (a_km.powi(2) - b_km.powi(2)) / b_km.powi(2);
         let p = (self.radius_km.x.powi(2) + self.radius_km.y.powi(2)).sqrt();

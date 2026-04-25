@@ -38,9 +38,18 @@ impl EulerParameterDataSet {
 
         for (opt_id, opt_name) in values {
             let data = if let Some(id) = opt_id {
-                self.get_by_id(*id).unwrap()
+                match self.get_by_id(*id) {
+                    Ok(d) => d,
+                    Err(_) => continue,
+                }
             } else {
-                self.get_by_name(&opt_name.clone().unwrap()).unwrap()
+                match opt_name.as_ref() {
+                    Some(name) => match self.get_by_name(name) {
+                        Ok(d) => d,
+                        Err(_) => continue,
+                    },
+                    None => continue,
+                }
             };
 
             let row = EulerParamRow {
@@ -101,9 +110,18 @@ impl LocationDataSet {
 
         for (opt_id, opt_name) in values {
             let data = if let Some(id) = opt_id {
-                self.get_by_id(*id).unwrap()
+                match self.get_by_id(*id) {
+                    Ok(d) => d,
+                    Err(_) => continue,
+                }
             } else {
-                self.get_by_name(&opt_name.clone().unwrap()).unwrap()
+                match opt_name.as_ref() {
+                    Some(name) => match self.get_by_name(name) {
+                        Ok(d) => d,
+                        Err(_) => continue,
+                    },
+                    None => continue,
+                }
             };
 
             let row = LocationRow {

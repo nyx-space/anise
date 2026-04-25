@@ -194,10 +194,11 @@ impl Almanac {
             // Either are at the orientation root, so we'll step through the paths until we find the common root.
             let mut common_path = to_path;
             let mut items: usize = to_len;
-            let common_node = to_path[to_len - 1].unwrap();
+            let common_node = to_path[to_len - 1].expect("path entry within to_len must be Some");
 
             for from_obj in from_path.iter().take(from_len).rev().skip(1) {
-                common_path[items] = Some(from_obj.unwrap());
+                common_path[items] =
+                    Some(from_obj.expect("path entry within from_len must be Some"));
                 items += 1;
             }
 

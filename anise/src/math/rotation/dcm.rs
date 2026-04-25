@@ -532,7 +532,12 @@ impl PartialEq for DCM {
             let rot_mat_match = (self.rot_mat - other.rot_mat).norm() < 1e-1;
 
             let dt_match = if let Some(self_dt) = self.rot_mat_dt {
-                (self_dt - other.rot_mat_dt.unwrap()).norm() < 1e-5
+                (self_dt
+                    - other
+                        .rot_mat_dt
+                        .expect("guaranteed Some by prior is_some check"))
+                .norm()
+                    < 1e-5
             } else {
                 true
             };

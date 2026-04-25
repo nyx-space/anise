@@ -150,7 +150,7 @@ impl CartesianState {
     fn py_radius_km<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         let data: Vec<f64> = self.radius_km.transpose().iter().copied().collect();
 
-        let arr = Array1::from_shape_vec((3,), data).unwrap();
+        let arr = Array1::from_shape_vec((3,), data).expect("radius vector is always 3 elements");
 
         PyArray1::<f64>::from_owned_array(py, arr)
     }
@@ -162,7 +162,7 @@ impl CartesianState {
     fn py_velocity_km_s<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         let data: Vec<f64> = self.velocity_km_s.transpose().iter().copied().collect();
 
-        let arr = Array1::from_shape_vec((3,), data).unwrap();
+        let arr = Array1::from_shape_vec((3,), data).expect("velocity vector is always 3 elements");
 
         PyArray1::<f64>::from_owned_array(py, arr)
     }

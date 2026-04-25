@@ -31,8 +31,16 @@ macro_rules! parse_bytes_as {
         let (int_bytes, _) = $input.split_at(std::mem::size_of::<$type>());
 
         match $order {
-            Endian::Little => $type::from_le_bytes(int_bytes.try_into().unwrap()),
-            Endian::Big => $type::from_be_bytes(int_bytes.try_into().unwrap()),
+            Endian::Little => $type::from_le_bytes(
+                int_bytes
+                    .try_into()
+                    .expect("split_at guarantees correct byte length for the type"),
+            ),
+            Endian::Big => $type::from_be_bytes(
+                int_bytes
+                    .try_into()
+                    .expect("split_at guarantees correct byte length for the type"),
+            ),
         }
     }};
 }

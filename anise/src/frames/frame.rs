@@ -459,11 +459,15 @@ impl fmt::Display for Frame {
             write!(
                 f,
                 " (μ = {} km^3/s^2, {})",
-                self.mu_km3_s2.unwrap(),
-                self.shape.unwrap()
+                self.mu_km3_s2.expect("mu must be set for geodetic frame"),
+                self.shape.expect("shape must be set for geodetic frame")
             )?;
         } else if self.is_celestial() {
-            write!(f, " (μ = {} km^3/s^2)", self.mu_km3_s2.unwrap())?;
+            write!(
+                f,
+                " (μ = {} km^3/s^2)",
+                self.mu_km3_s2.expect("mu must be set for celestial frame")
+            )?;
         }
         Ok(())
     }
