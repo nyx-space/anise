@@ -10,12 +10,14 @@
 
 use core::fmt;
 use core::fmt::Debug;
+use core::str::FromStr;
 use der::{Decode, Encode, Reader, Writer};
+use log::error;
 use serde_derive::{Deserialize, Serialize};
 use snafu::ResultExt;
 
 #[cfg(feature = "metaload")]
-use serde_dhall::StaticType;
+use serde_dhall::{SimpleType, StaticType};
 
 use crate::astro::PhysicsResult;
 use crate::constants::celestial_objects::{
@@ -25,6 +27,7 @@ use crate::constants::orientations::{id_from_orientation_name, orientation_name_
 use crate::errors::{AlmanacError, EphemerisSnafu, OrientationSnafu, PhysicsError};
 use crate::prelude::FrameUid;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
+use crate::time::Epoch;
 use crate::NaifId;
 
 #[cfg(feature = "python")]
@@ -44,12 +47,15 @@ use pyo3::types::{PyBytes, PyType};
 /// :type shape: Ellipsoid, optional
 /// :rtype: Frame
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[cfg_attr(feature = "metaload", derive(StaticType))]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Frame {
     pub ephemeris_id: NaifId,
     pub orientation_id: NaifId,
+    /// If set, the DCM will always be evaluated at the provided epoch, freezing it in time.
+    pub frozen_eval_epoch: Option<Epoch>,
+    /// If true, the DCM of this frame will always force its time derivative to zero, inertially fixing the frame.
+    pub force_inertial: bool,
     /// Gravity parameter of this frame, only defined on celestial frames
     pub mu_km3_s2: Option<f64>,
     /// Shape of the geoid of this frame, only defined on geodetic frames
@@ -62,6 +68,8 @@ impl Frame {
         Self {
             ephemeris_id,
             orientation_id,
+            frozen_eval_epoch: None,
+            force_inertial: false,
             mu_km3_s2: None,
             shape: None,
         }
@@ -109,6 +117,8 @@ impl Frame {
     /// Returns:
     /// + Bit 0 is set if `mu_km3_s2` is available
     /// + Bit 1 is set if `shape` is available
+    /// + Bit 2 is set if `frozen_eval_epoch` is available
+    /// + Bit 3 is set if `force_inertial` is TRUE, ensuring backward compatibility over version 0.10
     fn available_data(&self) -> u8 {
         let mut bits: u8 = 0;
 
@@ -117,6 +127,12 @@ impl Frame {
         }
         if self.shape.is_some() {
             bits |= 1 << 1;
+        }
+        if self.frozen_eval_epoch.is_some() {
+            bits |= 1 << 2;
+        }
+        if self.force_inertial {
+            bits |= 1 >> 3;
         }
 
         bits
@@ -138,6 +154,8 @@ impl Frame {
         Self {
             ephemeris_id,
             orientation_id,
+            frozen_eval_epoch: None,
+            force_inertial: false,
             mu_km3_s2,
             shape,
         }
@@ -394,6 +412,43 @@ impl Frame {
     }
 }
 
+#[cfg(feature = "metaload")]
+impl StaticType for Frame {
+    fn static_type() -> serde_dhall::SimpleType {
+        use std::collections::HashMap;
+        // pub ephemeris_id: NaifId,
+        // pub orientation_id: NaifId,
+        // pub frozen_epoch: Option<Epoch>,
+        // pub force_inertial: bool,
+        // /// Gravity parameter of this frame, only defined on celestial frames
+        // pub mu_km3_s2: Option<f64>,
+        // /// Shape of the geoid of this frame, only defined on geodetic frames
+        // pub shape: Option<Ellipsoid>,
+        let mut repr = HashMap::new();
+
+        repr.insert("ephemeris_id".to_string(), SimpleType::Integer);
+        repr.insert(
+            "orientation_id".to_string(),
+            SimpleType::Optional(Box::new(SimpleType::Integer)),
+        );
+        repr.insert(
+            "frozen_eval_epoch".to_string(),
+            SimpleType::Optional(Box::new(SimpleType::Text)),
+        );
+        repr.insert("force_inertial".to_string(), SimpleType::Bool);
+        repr.insert(
+            "mu_km3_s2".to_string(),
+            SimpleType::Optional(Box::new(SimpleType::Double)),
+        );
+        repr.insert(
+            "shape".to_string(),
+            SimpleType::Optional(Box::new(Ellipsoid::static_type())),
+        );
+
+        SimpleType::Record(repr)
+    }
+}
+
 impl Encode for Frame {
     fn encoded_len(&self) -> der::Result<der::Length> {
         let available_flags = self.available_data();
@@ -433,9 +488,26 @@ impl<'a> Decode<'a> for Frame {
             None
         };
 
+        let frozen_eval_epoch = if data_flags & (1 << 2) != 0 {
+            let epoch_str: String = decoder.decode()?;
+            match Epoch::from_str(&epoch_str) {
+                Ok(epoch) => Some(epoch),
+                Err(e) => {
+                    error!("frozen epoch in frame kernel invalid: {e}");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        let force_inertial = data_flags & (1 << 3) != 0;
+
         Ok(Self {
             ephemeris_id,
             orientation_id,
+            frozen_eval_epoch,
+            force_inertial,
             mu_km3_s2,
             shape,
         })

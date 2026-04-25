@@ -23,7 +23,7 @@ use core::hash::Hash;
 use core::marker::PhantomData;
 use core::ops::Deref;
 use hifitime::{Epoch, Unit};
-use log::{debug, error, trace};
+use log::error;
 use snafu::ResultExt;
 
 use zerocopy::IntoBytes;
@@ -325,16 +325,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                     if epoch >= summary.start_epoch() - Unit::Nanosecond * 100
                         && epoch <= summary.end_epoch() + Unit::Nanosecond * 100
                     {
-                        trace!("Found {id} in position {summary_idx}: {summary:?}");
                         return Ok((summary, idx, summary_idx));
-                    } else {
-                        debug!(
-                        "Summary {id} not valid at {epoch:?} (only from {:?} to {:?}, offset of {} - {})",
-                        summary.start_epoch(),
-                        summary.end_epoch(),
-                        epoch - summary.start_epoch(),
-                        summary.end_epoch() - epoch
-                    );
                     }
                 }
             }

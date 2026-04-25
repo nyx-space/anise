@@ -22,7 +22,7 @@ use crate::{
 use core::fmt;
 use core::ops::Deref;
 use der::{asn1::OctetString, Decode, Encode, Reader, Writer};
-use log::{error, trace};
+use log::error;
 use snafu::prelude::*;
 
 macro_rules! io_imports {
@@ -66,7 +66,6 @@ impl<T: DataSetT> DataSet<T> {
     pub fn try_from_bytes<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DataSetError> {
         match Self::from_der(&bytes) {
             Ok(ctx) => {
-                trace!("[try_from_bytes] loaded context successfully");
                 // Check the full integrity on load of the file.
                 ctx.check_integrity().context(DataSetIntegritySnafu {
                     action: "loading data set from bytes",

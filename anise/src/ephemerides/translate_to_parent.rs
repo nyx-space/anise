@@ -8,7 +8,6 @@
  * Documentation: https://nyxspace.com/
  */
 
-use log::trace;
 use snafu::ResultExt;
 
 use super::{EphemerisError, SPKSnafu};
@@ -47,8 +46,6 @@ impl Almanac {
             self.spk_summary_at_epoch(source.ephemeris_id, epoch)?;
 
         let new_frame = source.with_ephem(summary.center_id);
-
-        trace!("translate {source} wrt to {new_frame} @ {epoch:E}");
 
         // This should not fail because we've fetched the spk_no from above with the spk_summary_at_epoch call.
         let (_, spk_data) = self

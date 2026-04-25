@@ -89,11 +89,13 @@ impl DataSetT for PlanetaryData {
 }
 
 impl PlanetaryData {
-    /// Converts this planetary data into a Frame, unsetting any shape data for non-body-fixed frames (ID < 100).
+    /// Converts this planetary data into a Frame.
     pub fn to_frame(&self, uid: FrameUid) -> Frame {
         Frame {
             ephemeris_id: uid.ephemeris_id,
             orientation_id: uid.orientation_id,
+            frozen_eval_epoch: None,
+            force_inertial: false,
             mu_km3_s2: Some(self.mu_km3_s2),
             shape: self.shape,
         }
@@ -235,7 +237,12 @@ impl PlanetaryData {
     /// Computes the rotation to the parent frame, including its time derivative.
     ///
     /// Source: <https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/rotation.html#Working%20with%20RA,%20Dec%20and%20Twist>
-    pub fn rotation_to_parent(&self, epoch: Epoch, system: &Self) -> PhysicsResult<DCM> {
+    pub fn rotation_to_parent(
+        &self,
+        epoch: Epoch,
+        system: &Self,
+        force_inertial: bool,
+    ) -> PhysicsResult<DCM> {
         if self.pole_declination.is_none()
             && self.prime_meridian.is_none()
             && self.pole_right_ascension.is_none()
@@ -249,11 +256,13 @@ impl PlanetaryData {
                 to: self.object_id,
                 rot_mat_dt: None,
             };
-            // Compute rotation matrix one second before
-            let pre_rot_dcm = self.dcm_to_parent(epoch - 1.seconds(), system)?;
-            let post_rot_dcm = self.dcm_to_parent(epoch + 1.seconds(), system)?;
+            if !force_inertial {
+                // Compute rotation matrix one second before
+                let pre_rot_dcm = self.dcm_to_parent(epoch - 1.seconds(), system)?;
+                let post_rot_dcm = self.dcm_to_parent(epoch + 1.seconds(), system)?;
 
-            dcm.rot_mat_dt = Some((post_rot_dcm - pre_rot_dcm) / 2.0);
+                dcm.rot_mat_dt = Some((post_rot_dcm - pre_rot_dcm) / 2.0);
+            }
 
             Ok(dcm)
         }
