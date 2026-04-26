@@ -90,6 +90,20 @@ impl Frames {
     const IAU_NEPTUNE_FRAME: Frame = IAU_NEPTUNE_FRAME;
     #[classattr]
     const IAU_URANUS_FRAME: Frame = IAU_URANUS_FRAME;
+    #[classattr]
+    const MERCURY_INERTIAL_FRAME: Frame = MERCURY_INERTIAL_FRAME;
+    #[classattr]
+    const VENUS_INERTIAL_FRAME: Frame = VENUS_INERTIAL_FRAME;
+    #[classattr]
+    const MARS_INERTIAL_FRAME: Frame = MARS_INERTIAL_FRAME;
+    #[classattr]
+    const JUPITER_INERTIAL_FRAME: Frame = JUPITER_INERTIAL_FRAME;
+    #[classattr]
+    const SATURN_INERTIAL_FRAME: Frame = SATURN_INERTIAL_FRAME;
+    #[classattr]
+    const URANUS_INERTIAL_FRAME: Frame = URANUS_INERTIAL_FRAME;
+    #[classattr]
+    const NEPTUNE_INERTIAL_FRAME: Frame = NEPTUNE_INERTIAL_FRAME;
 }
 
 #[pyclass]

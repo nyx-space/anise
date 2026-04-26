@@ -32,7 +32,7 @@ use crate::math::rotation::Quaternion;
 /// The current version of ANISE
 pub const ANISE_VERSION: Semver = Semver {
     major: 0,
-    minor: 7,
+    minor: 10,
     patch: 0,
 };
 

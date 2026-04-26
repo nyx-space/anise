@@ -348,6 +348,8 @@ pub mod orientations {
 }
 
 pub mod frames {
+    use hifitime::{Duration, TimeScale};
+
     use crate::prelude::Frame;
 
     use super::{celestial_objects::*, orientations::*};
@@ -401,6 +403,113 @@ pub mod frames {
 
     /// High fidelity Earth centered body fixed frame by the NAIF, requires the "Earth high prec" BPC kernel
     pub const EARTH_ITRF93: Frame = Frame::new(EARTH, ITRF93);
+
+    /* *** Planet centric inertial frames defined below *** */
+
+    /// Mercury Centered Inertial Frame, defined as IAU_MERCURY inertially frozen at J2000 ET/TDB
+    pub const MERCURY_INERTIAL_FRAME: Frame = Frame {
+        ephemeris_id: MERCURY,
+        orientation_id: IAU_MERCURY,
+        force_inertial: true,
+        frozen_epoch: Some(hifitime::Epoch {
+            duration: Duration::ZERO,
+            time_scale: TimeScale::ET,
+        }),
+        mu_km3_s2: None,
+        shape: None,
+    };
+
+    /// Venus Centered Inertial Frame, defined as IAU_VENUS inertially frozen at J2000 ET/TDB
+    pub const VENUS_INERTIAL_FRAME: Frame = Frame {
+        ephemeris_id: VENUS,
+        orientation_id: IAU_VENUS,
+        force_inertial: true,
+        frozen_epoch: Some(hifitime::Epoch {
+            duration: Duration::ZERO,
+            time_scale: TimeScale::ET,
+        }),
+        mu_km3_s2: None,
+        shape: None,
+    };
+
+    /// Moon Centered Inertial Frame, defined as IAU_MOON inertially frozen at J2000 ET/TDB.
+    /// Ansys STK users: ANISE Moon Inertial is slightly different than the [STK counterpart](https://help.agi.com/stk/#stk/referenceFramesCBdescriptions.htm#moonInertial).
+    pub const MOON_INERTIAL_FRAME: Frame = Frame {
+        ephemeris_id: MOON,
+        orientation_id: IAU_MOON,
+        force_inertial: true,
+        frozen_epoch: Some(hifitime::Epoch {
+            duration: Duration::ZERO,
+            time_scale: TimeScale::ET,
+        }),
+        mu_km3_s2: None,
+        shape: None,
+    };
+
+    /// Mars Centered Inertial Frame, defined as IAU_MARS inertially frozen at J2000 ET/TDB
+    pub const MARS_INERTIAL_FRAME: Frame = Frame {
+        ephemeris_id: MARS,
+        orientation_id: IAU_MARS,
+        force_inertial: true,
+        frozen_epoch: Some(hifitime::Epoch {
+            duration: Duration::ZERO,
+            time_scale: TimeScale::ET,
+        }),
+        mu_km3_s2: None,
+        shape: None,
+    };
+
+    /// Jupiter Centered Inertial Frame, defined as IAU_JUPITER inertially frozen at J2000 ET/TDB
+    pub const JUPITER_INERTIAL_FRAME: Frame = Frame {
+        ephemeris_id: JUPITER,
+        orientation_id: IAU_JUPITER,
+        force_inertial: true,
+        frozen_epoch: Some(hifitime::Epoch {
+            duration: Duration::ZERO,
+            time_scale: TimeScale::ET,
+        }),
+        mu_km3_s2: None,
+        shape: None,
+    };
+
+    /// Saturn Centered Inertial Frame, defined as IAU_SATURN inertially frozen at J2000 ET/TDB
+    pub const SATURN_INERTIAL_FRAME: Frame = Frame {
+        ephemeris_id: SATURN,
+        orientation_id: IAU_SATURN,
+        force_inertial: true,
+        frozen_epoch: Some(hifitime::Epoch {
+            duration: Duration::ZERO,
+            time_scale: TimeScale::ET,
+        }),
+        mu_km3_s2: None,
+        shape: None,
+    };
+
+    /// Uranus Centered Inertial Frame, defined as IAU_URANUS inertially frozen at J2000 ET/TDB
+    pub const URANUS_INERTIAL_FRAME: Frame = Frame {
+        ephemeris_id: URANUS,
+        orientation_id: IAU_URANUS,
+        force_inertial: true,
+        frozen_epoch: Some(hifitime::Epoch {
+            duration: Duration::ZERO,
+            time_scale: TimeScale::ET,
+        }),
+        mu_km3_s2: None,
+        shape: None,
+    };
+
+    /// Neptune Centered Inertial Frame, defined as IAU_NEPTUNE inertially frozen at J2000 ET/TDB
+    pub const NEPTUNE_INERTIAL_FRAME: Frame = Frame {
+        ephemeris_id: NEPTUNE,
+        orientation_id: IAU_NEPTUNE,
+        force_inertial: true,
+        frozen_epoch: Some(hifitime::Epoch {
+            duration: Duration::ZERO,
+            time_scale: TimeScale::ET,
+        }),
+        mu_km3_s2: None,
+        shape: None,
+    };
 }
 
 /// Typical planetary constants that aren't found in SPICE input files.

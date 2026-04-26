@@ -378,8 +378,10 @@ mod ut_instrument {
         Frame {
             orientation_id: id,
             ephemeris_id: id,
+            force_inertial: false,
             mu_km3_s2: None,
             shape: Some(shape),
+            frozen_epoch: None,
         }
     }
 

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anise::constants::frames::{
-    EARTH_ITRF93, EARTH_J2000, EME2000, IAU_JUPITER_FRAME, IAU_MOON_FRAME,
+    EARTH_ITRF93, EARTH_J2000, EME2000, GCRF, IAU_JUPITER_FRAME, IAU_MOON_FRAME,
     JUPITER_BARYCENTER_J2000, MOON_J2000, MOON_ME_DE440_ME421_FRAME, MOON_PA_DE421_FRAME,
     MOON_PA_DE440_FRAME,
 };
@@ -674,5 +674,44 @@ fn icrs_angular_velocity_matches_eclipj2000_behaviour() {
             "ECLIPJ2000 angular velocity should be ~0"
         );
         assert!(iv.norm() < 1e-15, "ICRS angular velocity should be ~0");
+    }
+}
+
+#[test]
+fn body_inertial_frames() {
+    use anise::constants::frames::{
+        JUPITER_INERTIAL_FRAME, MARS_INERTIAL_FRAME, MERCURY_INERTIAL_FRAME, MOON_INERTIAL_FRAME,
+        NEPTUNE_INERTIAL_FRAME, SATURN_INERTIAL_FRAME, URANUS_INERTIAL_FRAME, VENUS_INERTIAL_FRAME,
+    };
+    let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
+    let epoch = Epoch::from_str("2020-02-29T12:34:56 TDB").unwrap();
+
+    for mut frame in [
+        JUPITER_INERTIAL_FRAME,
+        MARS_INERTIAL_FRAME,
+        MERCURY_INERTIAL_FRAME,
+        MOON_INERTIAL_FRAME,
+        NEPTUNE_INERTIAL_FRAME,
+        SATURN_INERTIAL_FRAME,
+        URANUS_INERTIAL_FRAME,
+        VENUS_INERTIAL_FRAME,
+    ] {
+        // Ensure that fetching the frame does not affect its properties.
+        frame = almanac.frame_info(frame).unwrap();
+        assert!(frame.force_inertial);
+        assert!(frame.frozen_epoch.is_some());
+
+        // Fetch the DCM and ensure the DCM derivative is zero and matches the DCM at J2000.
+        let dcm = almanac.rotate(frame, GCRF, epoch).unwrap();
+        assert!(dcm.rot_mat_dt.is_none());
+
+        let mut ref_dcm = almanac
+            .rotate(frame, GCRF, Epoch::from_et_seconds(0.0))
+            .unwrap();
+        ref_dcm.rot_mat_dt = None;
+
+        assert_eq!(ref_dcm, dcm);
+
+        println!("{frame}");
     }
 }

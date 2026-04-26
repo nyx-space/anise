@@ -15,11 +15,11 @@ fn main() {
 
     let embedded_files = [
         (
-            "http://public-data.nyxspace.com/anise/v0.5/pck11.pca",
+            "http://public-data.nyxspace.com/anise/v0.10/pck11.pca",
             format!("{}/../data/pck11.pca", env!("CARGO_MANIFEST_DIR")),
         ),
         (
-            "http://public-data.nyxspace.com/anise/de440s.bsp",
+            "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp",
             format!("{}/../data/de440s.bsp", env!("CARGO_MANIFEST_DIR")),
         ),
     ];

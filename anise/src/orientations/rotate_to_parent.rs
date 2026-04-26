@@ -8,7 +8,6 @@
  * Documentation: https://nyxspace.com/
  */
 
-use log::trace;
 use snafu::ResultExt;
 
 use super::{OrientationError, OrientationPhysicsSnafu};
@@ -36,7 +35,16 @@ impl Almanac {
     /// + As of now, some interpolation types are not supported, and if that were to happen, this would return an error.
     ///
     /// **WARNING:** This function only performs the rotation and no translation whatsoever. Use the `transform_to_parent_from` function instead to include rotations.
-    pub fn rotation_to_parent(&self, source: Frame, epoch: Epoch) -> Result<DCM, OrientationError> {
+    pub fn rotation_to_parent(
+        &self,
+        source: Frame,
+        mut epoch: Epoch,
+    ) -> Result<DCM, OrientationError> {
+        // Compute the frame at the requested frozen epoch if set.
+        if let Some(frozen_epoch) = source.frozen_epoch {
+            epoch = frozen_epoch;
+        }
+
         if source.orient_origin_id_match(J2000) {
             // The parent of Earth ecliptic J2000 is the J2000 inertial frame.
             return Ok(DCM::identity(J2000, J2000));
@@ -68,13 +76,10 @@ impl Almanac {
                 to: ICRS,
             });
         }
+
         // Let's see if this orientation is defined in the loaded BPC files
         match self.bpc_summary_at_epoch(source.orientation_id, epoch) {
             Ok((summary, bpc_no, daf_idx, idx_in_bpc)) => {
-                let new_frame = source.with_orient(summary.inertial_frame_id);
-
-                trace!("rotate {source} wrt to {new_frame} @ {epoch:E}");
-
                 // This should not fail because we've fetched the bpc_no from above with the bpc_summary_at_epoch call.
                 let (_, bpc_data) = self
                     .bpc_data
@@ -113,11 +118,16 @@ impl Almanac {
                 let ra_dot_rad = d_ra_dec_w[0];
 
                 let rot_mat = r3(twist_rad) * r1(dec_rad) * r3(ra_rad);
-                let rot_mat_dt = Some(
-                    twist_dot_rad * r3_dot(twist_rad) * r1(dec_rad) * r3(ra_rad)
-                        + dec_dot_rad * r3(twist_rad) * r1_dot(dec_rad) * r3(ra_rad)
-                        + ra_dot_rad * r3(twist_rad) * r1(dec_rad) * r3_dot(ra_rad),
-                );
+
+                let rot_mat_dt = if source.force_inertial {
+                    None
+                } else {
+                    Some(
+                        twist_dot_rad * r3_dot(twist_rad) * r1(dec_rad) * r3(ra_rad)
+                            + dec_dot_rad * r3(twist_rad) * r1_dot(dec_rad) * r3(ra_rad)
+                            + ra_dot_rad * r3(twist_rad) * r1(dec_rad) * r3_dot(ra_rad),
+                    )
+                };
 
                 Ok(DCM {
                     rot_mat,
@@ -137,12 +147,11 @@ impl Almanac {
                         };
 
                         return planetary_data
-                            .rotation_to_parent(epoch, &system_data)
+                            .rotation_to_parent(epoch, &system_data, source.force_inertial)
                             .context(OrientationPhysicsSnafu);
                     }
                 }
 
-                trace!("query {source} wrt to its parent @ {epoch:E} using Euler parameter data");
                 // Finally, let's see if it's in the loaded Euler Parameters.
                 // We can call `into` because EPs can be converted directly into DCMs.
                 Ok(self.euler_param_from_id(source.orientation_id)?.into())
