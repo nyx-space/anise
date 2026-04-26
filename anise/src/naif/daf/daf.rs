@@ -20,9 +20,9 @@ use crate::{errors::IntegrityError, DBL_SIZE};
 use bytes::{Bytes, BytesMut};
 use core::fmt::Debug;
 use core::hash::Hash;
-use core::marker::PhantomData;
 use core::ops::Deref;
 use hifitime::{Epoch, Unit};
+use indexmap::IndexMap;
 use log::error;
 use snafu::ResultExt;
 
@@ -43,8 +43,10 @@ pub(crate) const RCRD_LEN: usize = 1024;
 #[derive(Clone, Default, Debug, PartialEq)]
 pub struct DAF<R: NAIFSummaryRecord> {
     pub bytes: BytesMut,
+    /// CRC32 field enables memory scrubbing, reducing memory errors in a radiation-laden environment.
     pub crc32: Option<u32>,
-    pub _daf_type: PhantomData<R>,
+    /// Index of the NAIF ID to its summary record only if all of the summaries for this ID are chronologically ordered. Enables binary search for that ID.
+    pub index: IndexMap<i32, Vec<(R, Option<usize>, usize)>>,
 }
 
 impl<R: NAIFSummaryRecord> DAF<R> {
@@ -61,16 +63,48 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     /// 2.  The CRC32 checksum of the bytes is computed.
     /// 3.  The `file_record` and `name_record` are parsed to ensure the file is a valid DAF.
     pub fn parse<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DAFError> {
-        let me = Self {
+        let mut me = Self {
             bytes: BytesMut::from(&bytes[..]),
             crc32: None,
-            _daf_type: PhantomData,
+            index: IndexMap::new(),
         };
         // Check that the file record and name record can be parsed successfully.
         // This validates that the file is a DAF and that the endianness is correct.
         me.file_record()?;
         // Ensure tha twe can parse the first name record.
         me.name_record(None)?;
+        // Build the index for all of the NAIF IDs which are ordered in the file.
+        let mut index: IndexMap<i32, Vec<(R, Option<usize>, usize)>> = IndexMap::new();
+        let mut unsorted = vec![];
+        let mut blk_idx = None;
+        loop {
+            for (summary_idx, cur_sum) in me.data_summaries(blk_idx)?.iter().enumerate() {
+                if let Some(prev_summaries) = index.get_mut(&cur_sum.id()) {
+                    let prev_sum: &R =
+                        &prev_summaries.last().expect("there must be at least one").0;
+                    if prev_sum.end_epoch() > cur_sum.start_epoch() {
+                        // This index is not sorted because the previous summary starts before the current one, and we're iterating linerarly.
+                        index.swap_remove(&cur_sum.id());
+                        unsorted.push(cur_sum.id());
+                    } else {
+                        // Append this summary to the index.
+                        prev_summaries.push((*cur_sum, blk_idx, summary_idx));
+                    }
+                } else if !unsorted.contains(&cur_sum.id()) {
+                    index.insert(cur_sum.id(), vec![(*cur_sum, blk_idx, summary_idx)]);
+                }
+            }
+            let summary = me.daf_summary(blk_idx)?;
+            if summary.is_final_record() || summary.is_corrupt() {
+                break;
+            } else {
+                dbg!(summary);
+                blk_idx = Some(summary.next_record());
+            }
+        }
+
+        me.index = index;
+
         Ok(me)
     }
 
@@ -310,36 +344,61 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         Err(DAFError::SummaryIdError { kind: R::NAME, id })
     }
 
-    /// Returns the summary given the id of the summary record if that summary has data defined at the requested epoch
+    /// Returns the summary, block index, and summary index in that block for the id of the summary record if that summary has data defined at the requested epoch
     pub fn summary_from_id_at_epoch(
         &self,
         id: i32,
         epoch: Epoch,
     ) -> Result<(&R, Option<usize>, usize), DAFError> {
-        // NOTE: We iterate through the whole summary because a specific NAIF ID may be repeated in the summary for different valid epochs
-        // so we can't just call `summary_from_id`.
-        let mut idx = None;
-        loop {
-            for (summary_idx, summary) in self.data_summaries(idx)?.iter().enumerate() {
-                if summary.id() == id
-                    && epoch >= summary.start_epoch() - Unit::Nanosecond * 100
-                    && epoch <= summary.end_epoch() + Unit::Nanosecond * 100
-                {
-                    return Ok((summary, idx, summary_idx));
+        // If the summaries are ordered in the DAF file, then they are in the index, so we can run a binary search to find the proper index.
+        if let Some(idx_data) = self.index.get(&id) {
+            let idx = idx_data.partition_point(|(summaries, _blk_idx, _summary_idx)| {
+                summaries.start_epoch() <= epoch
+            });
+            if idx == 0 {
+                Err(DAFError::InterpolationDataErrorFromId {
+                    kind: R::NAME,
+                    id,
+                    epoch,
+                })
+            } else {
+                let (summary, blk_idx, summary_idx) = &idx_data[idx - 1];
+                if epoch <= summary.end_epoch() + Unit::Nanosecond * 100 {
+                    Ok((summary, *blk_idx, *summary_idx))
+                } else {
+                    Err(DAFError::InterpolationDataErrorFromId {
+                        kind: R::NAME,
+                        id,
+                        epoch,
+                    })
                 }
             }
-            let summary = self.daf_summary(idx)?;
-            if summary.is_final_record() {
-                break;
-            } else {
-                idx = Some(summary.next_record());
+        } else {
+            // NOTE: We iterate through the whole summary because a specific NAIF ID may be repeated in the summary for different valid epochs
+            // so we can't just call `summary_from_id`.
+            let mut blk_idx = None;
+            loop {
+                for (summary_idx, summary) in self.data_summaries(blk_idx)?.iter().enumerate() {
+                    if summary.id() == id
+                        && epoch >= summary.start_epoch() - Unit::Nanosecond * 100
+                        && epoch <= summary.end_epoch() + Unit::Nanosecond * 100
+                    {
+                        return Ok((summary, blk_idx, summary_idx));
+                    }
+                }
+                let summary = self.daf_summary(blk_idx)?;
+                if summary.is_final_record() {
+                    break;
+                } else {
+                    blk_idx = Some(summary.next_record());
+                }
             }
+            Err(DAFError::InterpolationDataErrorFromId {
+                kind: R::NAME,
+                id,
+                epoch,
+            })
         }
-        Err(DAFError::InterpolationDataErrorFromId {
-            kind: R::NAME,
-            id,
-            epoch,
-        })
     }
 
     /// Provided a name that is in the summary, return its full data, if name is available.

@@ -18,6 +18,7 @@ use crate::{
     NaifId,
 };
 use bytes::BytesMut;
+use indexmap::IndexMap;
 use log::warn;
 use snafu::ensure;
 use std::{fs::File, io::Write};
@@ -172,7 +173,7 @@ impl Ephemeris {
         let mut spk = SPK {
             bytes: BytesMut::from(&padded_bytes[..]),
             crc32: None,
-            _daf_type: std::marker::PhantomData,
+            index: IndexMap::new(),
         };
         spk.set_crc32();
         Ok(spk)
