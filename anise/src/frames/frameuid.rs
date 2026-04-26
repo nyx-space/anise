@@ -127,16 +127,26 @@ impl StaticType for FrameUid {
 
 impl Encode for FrameUid {
     fn encoded_len(&self) -> der::Result<der::Length> {
+        let mut flags: u8 = 0;
+        if self.frozen_epoch.is_some() {
+            flags |= 1 << 0;
+        }
         self.ephemeris_id.encoded_len()?
             + self.orientation_id.encoded_len()?
             + self.force_inertial.encoded_len()?
+            + flags.encoded_len()?
             + self.frozen_epoch.map(|e| e.to_string()).encoded_len()?
     }
 
     fn encode(&self, encoder: &mut impl Writer) -> der::Result<()> {
+        let mut flags: u8 = 0;
+        if self.frozen_epoch.is_some() {
+            flags |= 1 << 0;
+        }
         self.ephemeris_id.encode(encoder)?;
         self.orientation_id.encode(encoder)?;
         self.force_inertial.encode(encoder)?;
+        flags.encode(encoder)?;
         self.frozen_epoch.map(|e| e.to_string()).encode(encoder)
     }
 }
@@ -147,14 +157,20 @@ impl<'a> Decode<'a> for FrameUid {
         let orientation_id: NaifId = decoder.decode()?;
         let force_inertial: bool = decoder.decode()?;
 
-        let epoch_str: String = decoder.decode()?;
-        let frozen_epoch = match Epoch::from_str(&epoch_str) {
-            Ok(epoch) => Some(epoch),
-            Err(e) => {
-                error!("frozen epoch in frame kernel invalid: {e}");
-                None
+        let flags: u8 = decoder.decode()?;
+        let frozen_epoch = if flags & (1 << 0) != 0 {
+            let epoch_str: String = decoder.decode()?;
+            match Epoch::from_str(&epoch_str) {
+                Ok(epoch) => Some(epoch),
+                Err(e) => {
+                    error!("frozen epoch in frame kernel invalid: {e}");
+                    None
+                }
             }
+        } else {
+            None
         };
+
         Ok(Self {
             ephemeris_id,
             orientation_id,
