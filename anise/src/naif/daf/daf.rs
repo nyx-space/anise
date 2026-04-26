@@ -22,9 +22,9 @@ use core::fmt::Debug;
 use core::hash::Hash;
 use core::ops::Deref;
 use hifitime::{Epoch, Unit};
-use indexmap::IndexMap;
 use log::error;
 use snafu::ResultExt;
+use std::collections::{HashMap, HashSet};
 
 use zerocopy::IntoBytes;
 use zerocopy::{FromBytes, Ref};
@@ -46,7 +46,7 @@ pub struct DAF<R: NAIFSummaryRecord> {
     /// CRC32 field enables memory scrubbing, reducing memory errors in a radiation-laden environment.
     pub crc32: Option<u32>,
     /// Index of the NAIF ID to its summary record only if all of the summaries for this ID are chronologically ordered. Enables binary search for that ID.
-    pub index: IndexMap<i32, Vec<(R, Option<usize>, usize)>>,
+    pub index: HashMap<i32, Vec<(R, Option<usize>, usize)>>,
 }
 
 impl<R: NAIFSummaryRecord> DAF<R> {
@@ -66,7 +66,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         let mut me = Self {
             bytes: BytesMut::from(&bytes[..]),
             crc32: None,
-            index: IndexMap::new(),
+            index: HashMap::new(),
         };
         // Check that the file record and name record can be parsed successfully.
         // This validates that the file is a DAF and that the endianness is correct.
@@ -74,8 +74,8 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         // Ensure tha twe can parse the first name record.
         me.name_record(None)?;
         // Build the index for all of the NAIF IDs which are ordered in the file.
-        let mut index: IndexMap<i32, Vec<(R, Option<usize>, usize)>> = IndexMap::new();
-        let mut unsorted = vec![];
+        let mut index: HashMap<i32, Vec<(R, Option<usize>, usize)>> = HashMap::new();
+        let mut unsorted = HashSet::new();
         let mut blk_idx = None;
         loop {
             for (summary_idx, cur_sum) in me.data_summaries(blk_idx)?.iter().enumerate() {
@@ -84,8 +84,8 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                         &prev_summaries.last().expect("there must be at least one").0;
                     if prev_sum.end_epoch() > cur_sum.start_epoch() {
                         // This index is not sorted because the previous summary starts before the current one, and we're iterating linerarly.
-                        index.swap_remove(&cur_sum.id());
-                        unsorted.push(cur_sum.id());
+                        index.remove(&cur_sum.id());
+                        unsorted.insert(cur_sum.id());
                     } else {
                         // Append this summary to the index.
                         prev_summaries.push((*cur_sum, blk_idx, summary_idx));
@@ -98,7 +98,6 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             if summary.is_final_record() || summary.is_corrupt() {
                 break;
             } else {
-                dbg!(summary);
                 blk_idx = Some(summary.next_record());
             }
         }
@@ -352,8 +351,8 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     ) -> Result<(&R, Option<usize>, usize), DAFError> {
         // If the summaries are ordered in the DAF file, then they are in the index, so we can run a binary search to find the proper index.
         if let Some(idx_data) = self.index.get(&id) {
-            let idx = idx_data.partition_point(|(summaries, _blk_idx, _summary_idx)| {
-                summaries.start_epoch() <= epoch
+            let idx = idx_data.partition_point(|(summary, _blk_idx, _summary_idx)| {
+                summary.start_epoch() - Unit::Nanosecond * 100 <= epoch
             });
             if idx == 0 {
                 Err(DAFError::InterpolationDataErrorFromId {
