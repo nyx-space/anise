@@ -488,18 +488,7 @@ impl Orbit {
     ///
     /// :rtype: DCM
     pub fn dcm3x3_from_rcn_to_inertial(&self) -> PhysicsResult<DCM> {
-        let r = self.r_hat();
-        let n = self.hvec()? / self.hmag()?;
-        let c = n.cross(&r);
-        let rot_mat =
-            Matrix3::new(r[0], r[1], r[2], c[0], c[1], c[2], n[0], n[1], n[2]).transpose();
-
-        Ok(DCM {
-            rot_mat,
-            rot_mat_dt: None,
-            from: uuid_from_epoch(self.frame.orientation_id, self.epoch),
-            to: self.frame.orientation_id,
-        })
+        self.dcm3x3_from_ric_to_inertial()
     }
 
     /// Builds the rotation matrix that rotates from this state's inertial frame to this state's RCN frame (radial, cross, normal)
@@ -519,24 +508,7 @@ impl Orbit {
     ///
     /// :rtype: DCM
     pub fn dcm_from_rcn_to_inertial(&self) -> PhysicsResult<DCM> {
-        let rot_mat_dt = if let Ok(pre) = self.at_epoch(self.epoch - Unit::Millisecond * 1) {
-            if let Ok(post) = self.at_epoch(self.epoch + Unit::Millisecond * 1) {
-                let dcm_pre = pre.dcm3x3_from_rcn_to_inertial()?;
-                let dcm_post = post.dcm3x3_from_rcn_to_inertial()?;
-                Some(500.0 * (dcm_post.rot_mat - dcm_pre.rot_mat))
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
-        Ok(DCM {
-            rot_mat: self.dcm3x3_from_rcn_to_inertial()?.rot_mat,
-            rot_mat_dt,
-            from: uuid_from_epoch(self.frame.orientation_id, self.epoch),
-            to: self.frame.orientation_id,
-        })
+        self.dcm_from_ric_to_inertial()
     }
 
     /// Builds the rotation matrix that rotates from this state's inertial frame to this state's VNC frame (velocity, normal, cross)
