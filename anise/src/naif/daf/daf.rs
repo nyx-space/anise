@@ -321,13 +321,12 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         let mut idx = None;
         loop {
             for (summary_idx, summary) in self.data_summaries(idx)?.iter().enumerate() {
-                if summary.id() == id {
-                    if epoch >= summary.start_epoch() - Unit::Nanosecond * 100
+                if summary.id() == id
+                    && epoch >= summary.start_epoch() - Unit::Nanosecond * 100
                         && epoch <= summary.end_epoch() + Unit::Nanosecond * 100
                     {
                         return Ok((summary, idx, summary_idx));
                     }
-                }
             }
             let summary = self.daf_summary(idx)?;
             if summary.is_final_record() {
