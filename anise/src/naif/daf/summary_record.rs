@@ -39,4 +39,11 @@ impl SummaryRecord {
     pub fn is_final_record(&self) -> bool {
         self.next_record() == 0
     }
+
+    /// Returns true if this summary seems to be corrupted: number of summaries, or next/previous record are not integers
+    pub fn is_corrupt(&self) -> bool {
+        self.num_summaries.round() != self.num_summaries
+            || self.prev_record.round() != self.prev_record
+            || self.next_record.round() != self.next_record
+    }
 }
