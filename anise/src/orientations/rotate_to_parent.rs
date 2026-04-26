@@ -80,8 +80,6 @@ impl Almanac {
         // Let's see if this orientation is defined in the loaded BPC files
         match self.bpc_summary_at_epoch(source.orientation_id, epoch) {
             Ok((summary, bpc_no, daf_idx, idx_in_bpc)) => {
-                let new_frame = source.with_orient(summary.inertial_frame_id);
-
                 // This should not fail because we've fetched the bpc_no from above with the bpc_summary_at_epoch call.
                 let (_, bpc_data) = self
                     .bpc_data

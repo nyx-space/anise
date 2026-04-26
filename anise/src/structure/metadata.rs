@@ -65,7 +65,7 @@ impl Default for Metadata {
             anise_version: ANISE_VERSION,
             dataset_type: DataSetType::NotApplicable,
             creation_date: Epoch::now().expect("system clock should be available"),
-            originator: Default::default(),
+            originator: "ANISE by Nyx Space".to_string(),
         }
     }
 }
@@ -146,8 +146,8 @@ mod metadata_ut {
         assert_eq!(
             format!("{repr}"),
             format!(
-                r#"ANISE version ANISE version 0.7.0
-Originator: (not set)
+                r#"ANISE version ANISE version 0.10.0
+Originator: ANISE by Nyx Space
 Creation date: {}
 "#,
                 repr_dec.creation_date

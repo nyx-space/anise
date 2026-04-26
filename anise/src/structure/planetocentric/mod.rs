@@ -94,10 +94,10 @@ impl PlanetaryData {
         Frame {
             ephemeris_id: uid.ephemeris_id,
             orientation_id: uid.orientation_id,
-            force_inertial: false,
+            force_inertial: uid.force_inertial,
             mu_km3_s2: Some(self.mu_km3_s2),
             shape: self.shape,
-            frozen_epoch: None,
+            frozen_epoch: uid.frozen_epoch,
         }
     }
     /// Specifies what data is available in this structure.

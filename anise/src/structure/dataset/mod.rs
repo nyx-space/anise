@@ -567,7 +567,7 @@ mod dataset_ut {
 
         let mut buf = vec![];
         repr.encode_to_vec(&mut buf).unwrap();
-        assert_eq!(buf.len(), 63);
+        assert_eq!(buf.len(), 81);
 
         let repr_dec = DataSet::from_der(&buf).unwrap();
 

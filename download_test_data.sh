@@ -7,18 +7,18 @@ download_if_missing() {
     # Ensure we strip any existing paths from the second argument to enforce the data/ directory
     filename=$(basename "$2")
     file="data/$filename"
-    
+
     should_download=false
 
     if [ ! -f "$file" ]; then
         should_download=true
     else
         # File exists, check if it is an LFS pointer.
-        # 1. Check size: LFS pointers are text files ~130 bytes. 
+        # 1. Check size: LFS pointers are text files ~130 bytes.
         #    Real SPICE kernels are binary and much larger.
         #    We use 300 bytes as a safe upper bound for a pointer.
         fsize=$(wc -c < "$file" | tr -d ' ')
-        
+
         if [ "$fsize" -lt 300 ]; then
             # 2. Check content: Look for the LFS signature url
             if grep -q "version" "$file"; then
@@ -41,10 +41,10 @@ download_if_missing "http://public-data.nyxspace.com/anise/de430.bsp" "de430.bsp
 download_if_missing "http://public-data.nyxspace.com/anise/de440s.bsp" "de440s.bsp"
 download_if_missing "http://public-data.nyxspace.com/anise/de440.bsp" "de440.bsp"
 download_if_missing "http://public-data.nyxspace.com/anise/de440_type3.bsp" "de440_type3.bsp"
-download_if_missing "http://public-data.nyxspace.com/anise/v0.5/pck08.pca" "pck08.pca"
-download_if_missing "http://public-data.nyxspace.com/anise/v0.5/pck11.pca" "pck11.pca"
-download_if_missing "http://public-data.nyxspace.com/anise/v0.5/moon_fk.epa" "moon_fk.epa"
-download_if_missing "http://public-data.nyxspace.com/anise/v0.5/moon_fk_de440.epa" "moon_fk_de440.epa"
+download_if_missing "http://public-data.nyxspace.com/anise/v0.10/pck08.pca" "pck08.pca"
+download_if_missing "http://public-data.nyxspace.com/anise/v0.10/pck11.pca" "pck11.pca"
+download_if_missing "http://public-data.nyxspace.com/anise/v0.10/moon_fk.epa" "moon_fk.epa"
+download_if_missing "http://public-data.nyxspace.com/anise/v0.10/moon_fk_de440.epa" "moon_fk_de440.epa"
 download_if_missing "http://public-data.nyxspace.com/anise/moon_pa_de440_200625.bpc" "moon_pa_de440_200625.bpc"
 download_if_missing "http://public-data.nyxspace.com/anise/ci/gmat-hermite.bsp" "gmat-hermite.bsp"
 download_if_missing "http://public-data.nyxspace.com/anise/ci/gmat-hermite-big-endian.bsp" "gmat-hermite-big-endian.bsp"

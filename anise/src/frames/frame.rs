@@ -191,47 +191,62 @@ impl Frame {
 
     /// :rtype: int
     #[getter]
-    fn get_ephemeris_id(&self) -> PyResult<NaifId> {
-        Ok(self.ephemeris_id)
+    fn get_ephemeris_id(&self) -> NaifId {
+        self.ephemeris_id
     }
     /// :type ephemeris_id: int
     #[setter]
-    fn set_ephemeris_id(&mut self, ephemeris_id: NaifId) -> PyResult<()> {
+    fn set_ephemeris_id(&mut self, ephemeris_id: NaifId) {
         self.ephemeris_id = ephemeris_id;
-        Ok(())
     }
     /// :rtype: int
     #[getter]
-    fn get_orientation_id(&self) -> PyResult<NaifId> {
-        Ok(self.orientation_id)
+    fn get_orientation_id(&self) -> NaifId {
+        self.orientation_id
     }
     /// :type orientation_id: int
     #[setter]
-    fn set_orientation_id(&mut self, orientation_id: NaifId) -> PyResult<()> {
+    fn set_orientation_id(&mut self, orientation_id: NaifId) {
         self.orientation_id = orientation_id;
-        Ok(())
+    }
+    #[getter]
+    fn get_force_inertial(&self) -> bool {
+        self.force_inertial
+    }
+    /// :type ephemeris_id: int
+    #[setter]
+    fn set_force_inertial(&mut self, force_inertial: bool) {
+        self.force_inertial = force_inertial;
     }
     /// :rtype: float
     #[getter]
-    fn get_mu_km3_s2(&self) -> PyResult<Option<f64>> {
-        Ok(self.mu_km3_s2)
+    fn get_mu_km3_s2(&self) -> Option<f64> {
+        self.mu_km3_s2
     }
     /// :type mu_km3_s2: float
     #[setter]
-    fn set_mu_km3_s2(&mut self, mu_km3_s2: Option<f64>) -> PyResult<()> {
+    fn set_mu_km3_s2(&mut self, mu_km3_s2: Option<f64>) {
         self.mu_km3_s2 = mu_km3_s2;
-        Ok(())
     }
     /// :rtype: Ellipsoid
     #[getter]
-    fn get_shape(&self) -> PyResult<Option<Ellipsoid>> {
-        Ok(self.shape)
+    fn get_shape(&self) -> Option<Ellipsoid> {
+        self.shape
     }
     /// :type shape: Ellipsoid
     #[setter]
-    fn set_shape(&mut self, shape: Option<Ellipsoid>) -> PyResult<()> {
+    fn set_shape(&mut self, shape: Option<Ellipsoid>) {
         self.shape = shape;
-        Ok(())
+    }
+    /// :rtype: Epoch
+    #[getter]
+    fn get_frozen_epoch(&self) -> Option<Epoch> {
+        self.frozen_epoch
+    }
+    /// :type frozen_epoch: Epoch, optional
+    #[setter]
+    fn set_frozen_epoch(&mut self, frozen_epoch: Option<Epoch>) {
+        self.frozen_epoch = frozen_epoch;
     }
 
     /// Decodes an ASN.1 DER encoded byte array into a Frame.
@@ -417,14 +432,7 @@ impl StaticType for Frame {
         let mut repr = HashMap::new();
 
         repr.insert("ephemeris_id".to_string(), SimpleType::Integer);
-        repr.insert(
-            "orientation_id".to_string(),
-            SimpleType::Optional(Box::new(SimpleType::Integer)),
-        );
-        repr.insert(
-            "frozen_epoch".to_string(),
-            SimpleType::Optional(Box::new(SimpleType::Text)),
-        );
+        repr.insert("orientation_id".to_string(), SimpleType::Integer);
         repr.insert("force_inertial".to_string(), SimpleType::Bool);
         repr.insert(
             "mu_km3_s2".to_string(),
@@ -434,7 +442,10 @@ impl StaticType for Frame {
             "shape".to_string(),
             SimpleType::Optional(Box::new(Ellipsoid::static_type())),
         );
-
+        repr.insert(
+            "frozen_epoch".to_string(),
+            SimpleType::Optional(Box::new(SimpleType::Text)),
+        );
         SimpleType::Record(repr)
     }
 }
@@ -509,20 +520,24 @@ impl<'a> Decode<'a> for Frame {
 
 impl fmt::Display for Frame {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        // TODO: Update display
         match celestial_name_from_id(self.ephemeris_id) {
-            Some(name) => write!(f, "{}", name.to_string())?,
+            Some(name) => write!(f, "{name}")?,
             None => write!(f, "body {}", self.ephemeris_id)?,
         };
 
-        if self.force_inertial {
-            write!(f, " inertial ")?;
-        }
-
-        match orientation_name_from_id(self.orientation_id) {
-            Some(name) => write!(f, "{}", name.to_string())?,
-            None => write!(f, "orientation {}", self.orientation_id)?,
+        let skip_orient_print = if self.force_inertial {
+            write!(f, " inertial")?;
+            self.ephemeris_id == self.orientation_id
+        } else {
+            false
         };
+
+        if !skip_orient_print {
+            match orientation_name_from_id(self.orientation_id) {
+                Some(name) => write!(f, " {name}")?,
+                None => write!(f, "orientation {}", self.orientation_id)?,
+            };
+        }
 
         // Add the frozen epoch if applicable, trying to match on common frames.
         if let Some(frozen_epoch) = self.frozen_epoch {
@@ -611,7 +626,7 @@ mod frame_ut {
             .static_type_annotation()
             .to_string()
             .unwrap();
-        assert_eq!(serialized, "{ ephemeris_id = +399, mu_km3_s2 = None Double, orientation_id = +1, shape = None { polar_radius_km : Double, semi_major_equatorial_radius_km : Double, semi_minor_equatorial_radius_km : Double } }");
+        assert_eq!(serialized, "{ ephemeris_id = +399, force_inertial = False, frozen_epoch = None Text, mu_km3_s2 = None Double, orientation_id = +1, shape = None { polar_radius_km : Double, semi_major_equatorial_radius_km : Double, semi_minor_equatorial_radius_km : Double } }");
         assert_eq!(
             serde_dhall::from_str(&serialized).parse::<Frame>().unwrap(),
             EME2000
@@ -638,5 +653,6 @@ mod frame_ut {
             MARS_INERTIAL_FRAME.frozen_epoch.unwrap(),
             Epoch::from_et_seconds(0.0)
         );
+        assert_eq!(format!("{MARS_INERTIAL_FRAME}"), "Mars inertial @ J2000");
     }
 }

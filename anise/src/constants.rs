@@ -432,6 +432,20 @@ pub mod frames {
         shape: None,
     };
 
+    /// Moon Centered Inertial Frame, defined as IAU_MOON inertially frozen at J2000 ET/TDB.
+    /// Ansys STK users: ANISE Moon Inertial is slightly different than the [STK counterpart](https://help.agi.com/stk/#stk/referenceFramesCBdescriptions.htm#moonInertial).
+    pub const MOON_INERTIAL_FRAME: Frame = Frame {
+        ephemeris_id: MOON,
+        orientation_id: IAU_MOON,
+        force_inertial: true,
+        frozen_epoch: Some(hifitime::Epoch {
+            duration: Duration::ZERO,
+            time_scale: TimeScale::ET,
+        }),
+        mu_km3_s2: None,
+        shape: None,
+    };
+
     /// Mars Centered Inertial Frame, defined as IAU_MARS inertially frozen at J2000 ET/TDB
     pub const MARS_INERTIAL_FRAME: Frame = Frame {
         ephemeris_id: MARS,

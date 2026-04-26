@@ -42,6 +42,8 @@ impl SPKSummaryRecord {
         FrameUid {
             ephemeris_id: self.target_id,
             orientation_id: self.frame_id,
+            force_inertial: false,
+            frozen_epoch: None,
         }
     }
 
@@ -50,6 +52,8 @@ impl SPKSummaryRecord {
         FrameUid {
             ephemeris_id: self.center_id,
             orientation_id: self.frame_id,
+            force_inertial: false,
+            frozen_epoch: None,
         }
     }
 }
