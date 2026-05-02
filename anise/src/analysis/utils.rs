@@ -153,7 +153,6 @@ where
 
         // Ensure that we're scanning linearly.
         let delta = (y_next - y_prev).abs();
-        let delta_ratio = delta / step.to_seconds();
 
         // For angles, we smooth the evaluation with an atan2 function of the difference
         // between the desired and the event's evaluation angle.
@@ -169,6 +168,12 @@ where
                 brackets.push((t, t + step));
             }
         } else {
+            let mut delta_ratio = delta / step.to_seconds();
+            if delta_ratio == 0.0 {
+                // If the event eval returned the same value at the current step (i.e. y_next == y_prev)
+                // do not modify modify the step it takes.
+                delta_ratio = 1.0;
+            }
             // Update the step to try to achieve linearity.
             let next_step = (step.to_seconds() / delta_ratio) * Unit::Second;
             if delta_ratio > 1.1 && step >= min_step {
