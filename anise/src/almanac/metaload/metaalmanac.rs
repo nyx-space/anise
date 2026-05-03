@@ -162,14 +162,14 @@ impl Default for MetaAlmanac {
                         .join("v0.10/pck11.pca")
                         .expect("static URL join is valid")
                         .to_string(),
-                    crc32: Some(0xf151b735),
+                    crc32: Some(0x1edb3eac),
                 },
                 MetaFile {
                     uri: nyx_cloud_stor
                         .join("v0.10/moon_fk_de440.epa")
                         .expect("static URL join is valid")
                         .to_string(),
-                    crc32: Some(0x32c8f9d7),
+                    crc32: Some(0xc6c252fa),
                 },
                 MetaFile {
                     uri: jpl_cloud_stor
