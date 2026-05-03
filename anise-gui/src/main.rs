@@ -15,7 +15,9 @@ fn main() {
     use std::env::{set_var, var};
 
     if var(LOG_VAR).is_err() {
-        set_var(LOG_VAR, "INFO");
+        unsafe {
+            set_var(LOG_VAR, "INFO");
+        }
     }
 
     // Initialize the logger
