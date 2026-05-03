@@ -209,6 +209,14 @@ impl Location {
     fn __repr__(&self) -> String {
         format!("{self:?}@{self:p}")
     }
+
+    fn __eq__(&self, other: &Self) -> bool {
+        self == other
+    }
+
+    fn __ne__(&self, other: &Self) -> bool {
+        self != other
+    }
 }
 
 impl DataSetT for Location {
