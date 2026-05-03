@@ -384,6 +384,36 @@ def test_location():
     terrain_mask = my_loc.value.terrain_mask
     print(terrain_mask)
 
+    # We can also append a new location directly to the Almanac bypassing the need for a kernel.
+    entry = LocationDhallSetEntry(dss65, id=-123, alias="DSS65 runtime")
+    # This is a MUTABLE call so it edits in-place
+    almanac.insert_location(entry)
+    # Fetch by ID
+    assert almanac.location_from_id(-123) == dss65
+    assert almanac.location_from_name("DSS65 runtime") == dss65
+    # Create a new location, but reuse the ID
+    dss65_bis = Location(
+        39.0,
+        5.0,
+        1.0,
+        FrameUid(399, 399),
+        mask,
+        terrain_mask_ignored=False,
+    )
+    dup_entry = LocationDhallSetEntry(dss65_bis, id=-123, alias="DSS65 runtime")
+    try:
+        almanac.insert_location(dup_entry)
+    except Exception as e:
+        print(f"error raised because ID is already in use: {e}")
+    else:
+        assert False, "reusing ID did not lead to an error"
+    # Replace existing ID
+    almanac.insert_location(dup_entry, replace=True)
+    assert almanac.location_from_id(-123) == dss65_bis
+    assert almanac.location_from_name("DSS65 runtime") == dss65_bis
+    assert almanac.location_from_id(-123) != dss65
+    assert almanac.location_from_name("DSS65 runtime") != dss65
+
 
 def test_version():
     from anise import __version__

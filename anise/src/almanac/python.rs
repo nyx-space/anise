@@ -11,7 +11,9 @@
 use super::{planetary::PlanetaryDataError, Almanac};
 use crate::constants::orientations::J2000;
 use crate::ephemerides::ephemeris::Ephemeris;
-use crate::errors::EphemerisSnafu;
+use crate::errors::{AlmanacError, EphemerisSnafu};
+use crate::structure::dataset::location_dhall::LocationDhallSetEntry;
+use crate::structure::LocationDataSet;
 use crate::{
     astro::{Aberration, AzElRange, Location, Occultation},
     ephemerides::EphemerisError,
@@ -980,5 +982,49 @@ impl Almanac {
     #[pyo3(name = "location_from_name")]
     pub fn py_location_from_name(&self, name: &str) -> AlmanacResult<Location> {
         self.location_from_name(name)
+    }
+
+    /// Inserts the provided location info, as a DhallSetEntry, into the Almanac. Use this to build a location kernel in memory.
+    /// Set the optional parameter `replace` to True to replace any preexisting location with this ID.
+    /// If replace is unset or false, and the location ID is already taken, this function will raise an error.
+    ///
+    /// :type location: LocationDhallSetEntry
+    /// :type replace: bool, optional
+    #[pyo3(name = "insert_location", signature=(location, replace=None))]
+    pub fn py_insert_location(
+        &mut self,
+        mut location: LocationDhallSetEntry,
+        replace: Option<bool>,
+    ) -> AlmanacResult<()> {
+        let replace = replace.unwrap_or_default();
+
+        if let Some(loc_id) = location.id {
+            if !replace && self.location_from_id(loc_id).is_ok() {
+                return Err(AlmanacError::GenericError {
+                    err: format!("location with id {loc_id} already defined"),
+                });
+            }
+            location.value.sanitize_mask();
+            // Create a fresh dataset
+            let mut loc_dataset = LocationDataSet::default();
+            loc_dataset
+                .push(
+                    location.value.clone(),
+                    location.id,
+                    match location.alias.as_ref() {
+                        Some(s) => Some(s.as_str()),
+                        None => None,
+                    },
+                )
+                .map_err(|e| AlmanacError::GenericError { err: e.to_string() })?;
+
+            self.location_data
+                .insert(Epoch::now().unwrap_or_default().to_string(), loc_dataset);
+            Ok(())
+        } else {
+            Err(AlmanacError::GenericError {
+                err: "location must define an ID".to_string(),
+            })
+        }
     }
 }

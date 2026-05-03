@@ -241,6 +241,13 @@ class Almanac:
     def from_ccsds_oem_file(path: str, naif_id: int) -> Almanac:
         """Initializes a new Almanac from a file path to CCSDS OEM file, after converting to to SPICE SPK/BSP"""
 
+    def insert_location(
+        self, location: LocationDhallSetEntry, replace: typing.Optional[bool] = None
+    ) -> typing.Any:
+        """Inserts the provided location info, as a DhallSetEntry, into the Almanac. Use this to build a location kernel in memory.
+        Set the optional parameter `replace` to True to replace any preexisting location with this ID.
+        If replace is unset or false, and the location ID is already taken, this function will raise an error."""
+
     def line_of_sight_obstructed(
         self,
         observer: astro.Orbit,
@@ -851,7 +858,7 @@ class PyReportScalars:
     def to_s_expr(self) -> str:
         """Converts this report builder to its S-Expression"""
 
-def exec_gui(): ...
+def exec_gui() -> typing.Any: ...
 
 __author__: str = "Christopher Rabotin <christopher.rabotin@gmail.com>"
-__version__: str = "0.9.5"
+__version__: str = "0.10.0"
