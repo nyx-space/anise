@@ -180,7 +180,7 @@ mod meta_test {
   [ { crc32 = Some 0x7286750a
     , uri = "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp"
     }
-  , { crc32 = Some 0xf151b735
+  , { crc32 = Some 0x1edb3eac
     , uri = "http://public-data.nyxspace.com/anise/v0.10/pck11.pca"
     }
   , { crc32 = Some 0x32c8f9d7
