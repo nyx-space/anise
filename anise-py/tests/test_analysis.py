@@ -90,6 +90,7 @@ def test_analysis_gen_report():
         analysis.ScalarExpr.Element(analysis.OrbitalElement.SemiMajorAxis),
         analysis.ScalarExpr.Element(analysis.OrbitalElement.Eccentricity),
         analysis.ScalarExpr.Element(analysis.OrbitalElement.Rmag),
+        analysis.ScalarExpr.Element(analysis.OrbitalElement.Altitude),
         # IMPORTANT: Enums that do not have arguments MUST be called with ()
         # Otherwise PyO3 (the bindings) initializes them differently.
         # This causes a 'type' cannot be converted to ScalarExpr error!

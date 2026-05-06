@@ -27,6 +27,8 @@ use crate::prelude::Orbit;
 #[derive(Copy, Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[cfg_attr(feature = "metaload", derive(serde_dhall::StaticType))]
 pub enum OrbitalElement {
+    /// Altitude (km)
+    Altitude,
     /// Argument of Latitude (deg)
     AoL,
     /// Argument of Periapse (deg)
@@ -105,6 +107,8 @@ pub enum OrbitalElement {
     SemiParameter,
     /// Semi major axis (km)
     SemiMajorAxis,
+    /// Semi major axis altitude (km)
+    SemiMajorAxisAltitude,
     /// Semi minor axis (km)
     SemiMinorAxis,
     /// True anomaly
@@ -134,6 +138,9 @@ impl OrbitalElement {
     /// Computes this scalar expression for the provided orbit.
     pub fn evaluate(self, orbit: Orbit) -> Result<f64, AnalysisError> {
         match self {
+            Self::Altitude => orbit
+                .altitude_km()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::AoL => orbit
                 .aol_deg()
                 .context(PhysicsOrbitElSnafu { el: self, orbit }),
@@ -236,6 +243,9 @@ impl OrbitalElement {
             Self::SemiMajorAxis => orbit
                 .sma_km()
                 .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::SemiMajorAxisAltitude => orbit
+                .sma_altitude_km()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::SemiMinorAxis => orbit
                 .semi_minor_axis_km()
                 .context(PhysicsOrbitElSnafu { el: self, orbit }),
@@ -310,7 +320,8 @@ impl OrbitalElement {
             | Self::VelocityDeclination => "deg",
 
             // Distances
-            Self::ApoapsisRadius
+            Self::Altitude
+            | Self::ApoapsisRadius
             | Self::ApoapsisAltitude
             | Self::BrouwerMeanShortSemiMajorAxis
             | Self::Height
@@ -323,6 +334,7 @@ impl OrbitalElement {
             | Self::Rmag
             | Self::SemiParameter
             | Self::SemiMajorAxis
+            | Self::SemiMajorAxisAltitude
             | Self::SemiMinorAxis
             | Self::X
             | Self::Y
