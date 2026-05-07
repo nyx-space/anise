@@ -75,6 +75,16 @@ pub enum DynamicFrame {
     },
 }
 
+impl DynamicFrame {
+    pub fn family(&self) -> &str {
+        match self {
+            Self::EarthMeanOfDate { .. } | Self::BodyMeanOfDate { .. } => "MOD",
+            Self::EarthTrueOfDate { .. } | Self::BodyTrueOfDate { .. } => "TOD",
+            Self::EarthTrueEquatorMeanEquinox { .. } => "TEME",
+        }
+    }
+}
+
 impl TryFrom<u32> for DynamicFrame {
     type Error = OrientationError;
     fn try_from(orientation_u32: u32) -> Result<Self, Self::Error> {

@@ -12,19 +12,10 @@ use snafu::ResultExt;
 
 use super::{OrientationError, OrientationPhysicsSnafu};
 use crate::almanac::Almanac;
-use crate::constants::orientations::{
-    orientation_name_from_id, ECLIPJ2000, FRAME_BIAS_DEPSBI_ARCSEC, FRAME_BIAS_DPSIBI_ARCSEC,
-    FRAME_BIAS_DRA0_ARCSEC, ICRS, J2000, J2000_TO_ECLIPJ2000_ANGLE_RAD,
-};
-use crate::constants::ARCSEC_TO_RAD;
 use crate::frames::{DynamicFrame, EarthNutationModel, EarthPrecessionModel};
 use crate::hifitime::{Epoch, Unit};
-use crate::math::rotation::{r1, r1_dot, r2, r3, r3_dot, DCM};
-use crate::naif::daf::datatypes::Type2ChebyshevSet;
-use crate::naif::daf::{DAFError, DafDataType, NAIFDataSet, NAIFSummaryRecord};
+use crate::math::rotation::DCM;
 use crate::orientations::{BPCSnafu, OrientationInterpolationSnafu};
-use crate::prelude::Frame;
-use nalgebra::{Matrix3, Vector3};
 
 use sofars::pnp::{
     nut00a, nut00b, nut06a, nut80, obl06, obl80, pmat00, pmat06, pmat76, pnm00a, pnm00b, pnm06a,

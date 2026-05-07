@@ -552,10 +552,32 @@ impl fmt::Display for Frame {
         };
 
         if !skip_orient_print {
-            match orientation_name_from_id(self.orientation_id) {
-                Some(name) => write!(f, " {name}")?,
-                None => write!(f, "orientation {}", self.orientation_id)?,
-            };
+            if let Ok(dyn_frame) = DynamicFrame::try_from(self.orientation_id as u32) {
+                let source_id = match dyn_frame {
+                    DynamicFrame::EarthMeanOfDate { .. }
+                    | DynamicFrame::EarthTrueOfDate { .. }
+                    | DynamicFrame::EarthTrueEquatorMeanEquinox { .. } => 399,
+                    DynamicFrame::BodyMeanOfDate { source_id }
+                    | DynamicFrame::BodyTrueOfDate { source_id } => source_id,
+                };
+
+                let mut name = if self.ephemeris_id == source_id {
+                    // Skip orientation
+                    dyn_frame.family().to_string()
+                } else {
+                    format!("{dyn_frame}")
+                };
+                if self.frozen_epoch.is_some() {
+                    // Frame is now of Epoch not of Date
+                    name = name.replace("TOD", "TOE").replace("MOD", "MOE");
+                }
+                write!(f, " {name}")?;
+            } else {
+                match orientation_name_from_id(self.orientation_id) {
+                    Some(name) => write!(f, " {name}")?,
+                    None => write!(f, " orientation {}", self.orientation_id)?,
+                }
+            }
         }
 
         // Add the frozen epoch if applicable, trying to match on common frames.

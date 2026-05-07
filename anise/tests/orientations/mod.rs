@@ -730,7 +730,14 @@ fn moon_tod_mod() {
 
         let dcm = almanac.rotate(frame, GCRF, epoch).unwrap();
         assert!(dcm.rot_mat_dt.is_none());
-
-        println!("{frame}");
     }
+    assert_eq!(format!("{MOON_MOD_FRAME}"), "Moon inertial MOD".to_string());
+    assert_eq!(format!("{MOON_TOD_FRAME}"), "Moon inertial TOD".to_string());
+    // Convert these to true of epoch frames
+    let mut toe = MOON_TOD_FRAME;
+    toe.frozen_epoch = Some(epoch);
+    assert_eq!(
+        format!("{toe}"),
+        "Moon inertial TOE @ 2020-02-29T12:34:56 TDB".to_string()
+    );
 }
