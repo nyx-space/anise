@@ -1,6 +1,6 @@
 #![no_main]
-use anise::math::rotation::Quaternion;
 use anise::math::Vector3;
+use anise::math::rotation::Quaternion;
 
 use libfuzzer_sys::fuzz_target;
 

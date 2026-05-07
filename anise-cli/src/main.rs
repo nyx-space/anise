@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use anise::math::interpolation::InterpolationError;
 use anise::naif::daf::datatypes::Type2ChebyshevSet;
-use anise::naif::daf::{DafDataType, NAIFDataSet, DAF};
+use anise::naif::daf::{DAF, DafDataType, NAIFDataSet};
 use anise::naif::pck::BPCSummaryRecord;
 use anise::naif::pretty_print::NAIFPrettyPrint;
 use anise::naif::spk::summary::SPKSummaryRecord;
@@ -17,7 +17,7 @@ use snafu::prelude::*;
 use zerocopy::FromBytes;
 
 use anise::file2heap;
-use anise::naif::daf::{file_record::FileRecordError, DAFError, FileRecord, NAIFRecord};
+use anise::naif::daf::{DAFError, FileRecord, NAIFRecord, file_record::FileRecordError};
 use anise::naif::kpl::parser::{convert_fk, convert_tpc};
 use anise::prelude::*;
 use anise::structure::dataset::{DataSetError, DataSetType};
@@ -299,11 +299,13 @@ where
         error: Box::new(err),
     })?;
     ensure!(
-                        data_type == DafDataType::Type2ChebyshevTriplet,
-                        ArgumentSnafu {
-                            arg: format!("{input:?} is of type {data_type:?}, but operation is only valid for Type2ChebyshevTriplet")
-                        }
-                    );
+        data_type == DafDataType::Type2ChebyshevTriplet,
+        ArgumentSnafu {
+            arg: format!(
+                "{input:?} is of type {data_type:?}, but operation is only valid for Type2ChebyshevTriplet"
+            )
+        }
+    );
 
     let segment = fmt
         .nth_data::<Type2ChebyshevSet>(daf_idx, idx)
@@ -314,14 +316,16 @@ where
         .context(SegmentInterpolationSnafu)?;
 
     let mut my_pck_mut = fmt.clone();
-    assert!(my_pck_mut
-        .set_nth_data(
-            idx,
-            updated_segment,
-            start.unwrap_or_else(|| summary.start_epoch()),
-            end.unwrap_or_else(|| summary.end_epoch()),
-        )
-        .is_ok());
+    assert!(
+        my_pck_mut
+            .set_nth_data(
+                idx,
+                updated_segment,
+                start.unwrap_or_else(|| summary.start_epoch()),
+                end.unwrap_or_else(|| summary.end_epoch()),
+            )
+            .is_ok()
+    );
 
     info!("Saving file to {output:?}");
     my_pck_mut.persist(output).context(CliDAFSnafu)?;

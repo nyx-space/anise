@@ -1,5 +1,5 @@
 #![no_main]
-use anise::math::rotation::{Quaternion, DCM};
+use anise::math::rotation::{DCM, Quaternion};
 
 use libfuzzer_sys::fuzz_target;
 

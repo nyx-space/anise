@@ -178,9 +178,16 @@ impl TryFrom<u32> for DynamicFrame {
             let source_id = (orientation_u32 & 0xFFFF) as i32;
 
             match ff {
-                0xE0 => Ok(Self::EarthMeanOfDate {
-                    precession: EarthPrecessionModel::try_from(aa)?,
-                }),
+                0xE0 => {
+                    if bb != 0 {
+                        return Err(OrientationError::NotDynamicFrame {
+                            detail: format!("Earth MOD frame ID must end with 0x00, got 0x{bb:X}"),
+                        });
+                    }
+                    Ok(Self::EarthMeanOfDate {
+                        precession: EarthPrecessionModel::try_from(aa)?,
+                    })
+                }
                 0xE1 => Ok(Self::EarthTrueOfDate {
                     precession: EarthPrecessionModel::try_from(aa)?,
                     nutation: EarthNutationModel::try_from(bb)?,
@@ -255,7 +262,7 @@ impl TryFrom<u8> for EarthPrecessionModel {
         match value {
             0 => Ok(Self::IAU1976),
             1 => Ok(Self::IAU2000),
-            // Skipping 2 so that the 2006 model TOD ID is 0xA0 FE 03 03
+            // Skipping 2 so that the 2006 model TOD ID is 0xA0 E1 03 03
             3 => Ok(Self::IAU2006),
             _ => Err(OrientationError::NotDynamicFrame {
                 detail: format!(
@@ -294,7 +301,7 @@ impl TryFrom<u8> for EarthNutationModel {
             3 => Ok(Self::IAU2006A),
             _ => Err(OrientationError::NotDynamicFrame {
                 detail: format!(
-                    "{value} invalid precession module; use 0 for IAU1976, 1 for IAU2000, 2 for IAU2006"
+                    "{value} invalid nutation module; use 0 for IAU1980, 1 for IAU2000A, 2 for IAU2000B, 3 for IAU2006A"
                 ),
             }),
         }
