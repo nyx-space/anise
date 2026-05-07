@@ -100,11 +100,10 @@ impl Almanac {
         }
 
         let mut obstructed_by = None;
-        if let Some(obstructing_body) = obstructing_body {
-            if self.line_of_sight_obstructed(tx, rx, obstructing_body, ab_corr)? {
+        if let Some(obstructing_body) = obstructing_body
+            && self.line_of_sight_obstructed(tx, rx, obstructing_body, ab_corr)? {
                 obstructed_by = Some(obstructing_body);
             }
-        }
 
         // Compute the SEZ DCM
         // SEZ DCM is topo to fixed

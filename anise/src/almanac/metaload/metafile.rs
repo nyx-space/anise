@@ -134,8 +134,8 @@ impl MetaFile {
                                             }
                                         }
 
-                                        if dest_path.exists() {
-                                            if let Some(crc32) = self.crc32 {
+                                        if dest_path.exists()
+                                            && let Some(crc32) = self.crc32 {
                                                 // Open the file and check the CRC32
                                                 let dest_path_c = dest_path.clone(); // macro token issue
                                                 if let Ok(bytes) = file2heap!(dest_path_c) {
@@ -154,7 +154,6 @@ impl MetaFile {
                                                     }
                                                 }
                                             }
-                                        }
 
                                         // At this stage, either the dest path does not exist, or the CRC32 check failed.
 

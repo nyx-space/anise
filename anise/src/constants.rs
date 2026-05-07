@@ -15,7 +15,7 @@ pub const SPEED_OF_LIGHT_KM_S: f64 = 299_792.458;
 pub const ARCSEC_TO_RAD: f64 = core::f64::consts::PI / (180.0 * 3600.0);
 
 pub mod celestial_objects {
-    use crate::{NaifId, ephemerides::EphemerisError};
+    use crate::{ephemerides::EphemerisError, NaifId};
 
     pub const SOLAR_SYSTEM_BARYCENTER: NaifId = 0;
     pub const MERCURY_BARYCENTER: NaifId = 1;
@@ -128,9 +128,9 @@ pub mod celestial_objects {
 ///  edited by P. Kenneth Seidelmann. University Science
 ///  Books, 20 Edgehill Road, Mill Valley, CA 94941 (1992)
 pub mod orientations {
-    use crate::{NaifId, orientations::OrientationError};
-    /// Earth mean equator, dynamical equinox of J2000. The root reference frame for SPICE.
+    use crate::{orientations::OrientationError, NaifId};
 
+    /// Earth mean equator, dynamical equinox of J2000. The root reference frame for SPICE.
     pub const J2000: NaifId = 1;
     /// Earth mean equator, dynamical equinox of B1950.
     /// The B1950 reference frame is obtained by precessing the J2000 frame backwards from Julian year 2000 to Besselian year 1950, using the 1976 IAU precession model.
@@ -577,7 +577,7 @@ pub mod usual_planetary_constants {
 #[cfg(test)]
 mod constants_ut {
     use crate::constants::orientations::{
-        B1950, ECLIPB1950, ECLIPJ2000, FK4, J2000, MARSIAU, orientation_name_from_id,
+        orientation_name_from_id, B1950, ECLIPB1950, ECLIPJ2000, FK4, J2000, MARSIAU,
     };
 
     use crate::constants::celestial_objects::*;
@@ -638,7 +638,7 @@ mod constants_ut {
     #[test]
     fn icrs_orientation_name_round_trip() {
         use crate::constants::orientations::{
-            ICRS, J2000, id_from_orientation_name, orientation_name_from_id,
+            id_from_orientation_name, orientation_name_from_id, ICRS, J2000,
         };
 
         assert_eq!(orientation_name_from_id(ICRS).unwrap(), "ICRS");

@@ -231,7 +231,7 @@ mod ut_dynamic_frame {
         let dynf_id: i32 = dynf.into();
         assert_eq!(dynf_id, -1595866365);
         assert_eq!(dynf_id as u32, 0xA0E1_0303);
-        assert_eq!(format!("{dynf}"), "Earth TOD (IAU2006)".to_string());
+        assert_eq!(format!("{dynf}"), "Earth TOD (IAU2006A)".to_string());
 
         let dynf = DynamicFrame::try_from(0xA0E0_0000).expect("should be valid");
         assert_eq!(
@@ -280,7 +280,7 @@ mod ut_dynamic_frame {
         assert_eq!(dynf_id as u32, 0xA0E1_0103);
         assert_eq!(
             format!("{dynf}"),
-            "Earth TOD (IAU2000, IAU2006)".to_string()
+            "Earth TOD (IAU2000, IAU2006A)".to_string()
         );
     }
 

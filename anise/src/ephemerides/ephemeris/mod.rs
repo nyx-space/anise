@@ -475,8 +475,8 @@ impl Ephemeris {
                 covar: orig_record.covar,
             };
 
-            if let Some(covar) = &mut new_record.covar {
-                if orig_frame.orientation_id != new_frame.orientation_id {
+            if let Some(covar) = &mut new_record.covar
+                && orig_frame.orientation_id != new_frame.orientation_id {
                     // Query the rotation matrix
                     let dcm = almanac.rotate(orig_frame, new_frame, *epoch).context(
                         OrientationSnafu {
@@ -495,7 +495,6 @@ impl Ephemeris {
                             .matrix
                         * dcm.state_dcm().transpose();
                 }
-            }
 
             me.insert(new_record);
         }

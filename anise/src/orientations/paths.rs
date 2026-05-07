@@ -57,15 +57,14 @@ impl Almanac {
 
         for data in self.planetary_data.values().rev() {
             for id in data.lut.by_id.keys() {
-                if let Ok(pc) = data.get_by_id(*id) {
-                    if pc.parent_id < common_center {
+                if let Ok(pc) = data.get_by_id(*id)
+                    && pc.parent_id < common_center {
                         common_center = pc.parent_id;
                         if common_center == J2000 {
                             // there is nothing higher up
                             return Ok(common_center);
                         }
                     }
-                }
             }
         }
 

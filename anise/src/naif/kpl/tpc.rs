@@ -37,8 +37,8 @@ impl KPLItem for TPCItem {
     }
 
     fn parse(&mut self, data: Assignment) {
-        if data.keyword.starts_with("BODY") {
-            if let Some((body_info, param)) = data.keyword.split_once('_') {
+        if data.keyword.starts_with("BODY")
+            && let Some((body_info, param)) = data.keyword.split_once('_') {
                 let body_id = body_info[4..].parse::<i32>().ok();
                 if self.body_id.is_some() && self.body_id != body_id {
                     warn!("Got body {body_id:?} but expected {:?}", self.body_id);
@@ -51,7 +51,6 @@ impl KPLItem for TPCItem {
                     warn!("Unknown parameter `{param}` -- ignoring");
                 }
             }
-        }
     }
 }
 

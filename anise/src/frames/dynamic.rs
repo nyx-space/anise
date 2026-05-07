@@ -273,12 +273,12 @@ impl TryFrom<u8> for EarthPrecessionModel {
     }
 }
 
-impl Into<u8> for EarthPrecessionModel {
-    fn into(self) -> u8 {
-        match self {
-            Self::IAU1976 => 0,
-            Self::IAU2000 => 1,
-            Self::IAU2006 => 3,
+impl From<EarthPrecessionModel> for u8 {
+    fn from(val: EarthPrecessionModel) -> Self {
+        match val {
+            EarthPrecessionModel::IAU1976 => 0,
+            EarthPrecessionModel::IAU2000 => 1,
+            EarthPrecessionModel::IAU2006 => 3,
         }
     }
 }
@@ -308,13 +308,13 @@ impl TryFrom<u8> for EarthNutationModel {
     }
 }
 
-impl Into<u8> for EarthNutationModel {
-    fn into(self) -> u8 {
-        match self {
-            Self::IAU1980 => 0,
-            Self::IAU2000A => 1,
-            Self::IAU2000B => 2,
-            Self::IAU2006A => 3,
+impl From<EarthNutationModel> for u8 {
+    fn from(val: EarthNutationModel) -> Self {
+        match val {
+            EarthNutationModel::IAU1980 => 0,
+            EarthNutationModel::IAU2000A => 1,
+            EarthNutationModel::IAU2000B => 2,
+            EarthNutationModel::IAU2006A => 3,
         }
     }
 }
@@ -382,7 +382,7 @@ mod ut_dynamic_frame {
         let dynf_id: i32 = dynf.into();
         assert_eq!(dynf_id, -1595866365);
         assert_eq!(dynf_id as u32, 0xA0E1_0303);
-        assert_eq!(format!("{dynf}"), "Earth TOD (IAU2006)".to_string());
+        assert_eq!(format!("{dynf}"), "Earth TOD (IAU2006A)".to_string());
 
         let dynf = DynamicFrame::try_from(0xA0E0_0000).expect("should be valid");
         assert_eq!(
@@ -431,7 +431,7 @@ mod ut_dynamic_frame {
         assert_eq!(dynf_id as u32, 0xA0E1_0103);
         assert_eq!(
             format!("{dynf}"),
-            "Earth TOD (IAU2000, IAU2006)".to_string()
+            "Earth TOD (IAU2000, IAU2006A)".to_string()
         );
     }
 

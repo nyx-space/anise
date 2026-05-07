@@ -131,23 +131,20 @@ impl PlanetaryData {
     }
 
     fn uses_trig_polynomial(&self) -> bool {
-        if let Some(phase) = self.pole_right_ascension {
-            if phase.coeffs_count > 0 {
+        if let Some(phase) = self.pole_right_ascension
+            && phase.coeffs_count > 0 {
                 return true;
             }
-        }
 
-        if let Some(phase) = self.pole_declination {
-            if phase.coeffs_count > 0 {
+        if let Some(phase) = self.pole_declination
+            && phase.coeffs_count > 0 {
                 return true;
             }
-        }
 
-        if let Some(phase) = self.prime_meridian {
-            if phase.coeffs_count > 0 {
+        if let Some(phase) = self.prime_meridian
+            && phase.coeffs_count > 0 {
                 return true;
             }
-        }
 
         false
     }

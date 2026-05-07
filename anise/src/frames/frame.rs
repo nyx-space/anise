@@ -552,7 +552,7 @@ impl fmt::Display for Frame {
         };
 
         if !skip_orient_print {
-            write!(f, "{self:o}")?;
+            write!(f, " {self:o}")?;
         }
 
         // Add the frozen epoch if applicable, trying to match on common frames.
@@ -624,11 +624,11 @@ impl fmt::Octal for Frame {
                 // Frame is now of Epoch not of Date
                 name = name.replace("TOD", "TOE").replace("MOD", "MOE");
             }
-            write!(f, " {name}")
+            write!(f, "{name}")
         } else {
             match orientation_name_from_id(self.orientation_id) {
-                Some(name) => write!(f, " {name}"),
-                None => write!(f, " orientation {}", self.orientation_id),
+                Some(name) => write!(f, "{name}"),
+                None => write!(f, "orientation {}", self.orientation_id),
             }
         }
     }
