@@ -230,7 +230,7 @@ impl Almanac {
                 for summary in these_summaries {
                     let this_id = summary.id();
                     match domains.get_mut(&this_id) {
-                        Some((ref mut cur_start, ref mut cur_end)) => {
+                        Some((cur_start, cur_end)) => {
                             if *cur_start > summary.start_epoch() {
                                 *cur_start = summary.start_epoch();
                             }

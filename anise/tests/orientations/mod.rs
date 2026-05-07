@@ -723,7 +723,7 @@ fn moon_tod_mod() {
     let epoch = Epoch::from_str("2020-02-29T12:34:56 TDB").unwrap();
 
     for mut frame in [MOON_MOD_FRAME, MOON_TOD_FRAME] {
-        // frame = almanac.frame_info(frame).unwrap();
+        frame = almanac.frame_info(frame).unwrap();
         assert!(frame.force_inertial);
         assert!(frame.frozen_epoch.is_none());
         assert!(frame.is_dynamic());
