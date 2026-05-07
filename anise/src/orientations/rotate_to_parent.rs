@@ -12,14 +12,14 @@ use snafu::ResultExt;
 
 use super::{OrientationError, OrientationPhysicsSnafu};
 use crate::almanac::Almanac;
+use crate::constants::ARCSEC_TO_RAD;
 use crate::constants::orientations::{
     ECLIPJ2000, FRAME_BIAS_DEPSBI_ARCSEC, FRAME_BIAS_DPSIBI_ARCSEC, FRAME_BIAS_DRA0_ARCSEC, ICRS,
     J2000, J2000_TO_ECLIPJ2000_ANGLE_RAD,
 };
-use crate::constants::ARCSEC_TO_RAD;
 use crate::frames::DynamicFrame;
 use crate::hifitime::Epoch;
-use crate::math::rotation::{r1, r1_dot, r2, r3, r3_dot, DCM};
+use crate::math::rotation::{DCM, r1, r1_dot, r2, r3, r3_dot};
 use crate::naif::daf::datatypes::Type2ChebyshevSet;
 use crate::naif::daf::{DAFError, DafDataType, NAIFDataSet, NAIFSummaryRecord};
 use crate::orientations::{BPCSnafu, OrientationInterpolationSnafu};
@@ -112,7 +112,7 @@ impl Almanac {
                                 dtype,
                                 kind: "BPC computations",
                             },
-                        })
+                        });
                     }
                 };
 

@@ -13,14 +13,14 @@ use snafu::ResultExt;
 use super::EphemerisError;
 use super::EphemerisPhysicsSnafu;
 use crate::almanac::Almanac;
-use crate::astro::aberration::stellar_aberration;
 use crate::astro::Aberration;
-use crate::constants::frames::SSB_J2000;
+use crate::astro::aberration::stellar_aberration;
 use crate::constants::SPEED_OF_LIGHT_KM_S;
+use crate::constants::frames::SSB_J2000;
 use crate::hifitime::Epoch;
+use crate::math::Vector3;
 use crate::math::cartesian::CartesianState;
 use crate::math::units::*;
-use crate::math::Vector3;
 use crate::prelude::Frame;
 
 /// **Limitation:** no translation or rotation may have more than 8 nodes.

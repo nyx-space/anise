@@ -12,15 +12,15 @@ use hifitime::{Epoch, Unit as TimeUnit};
 use snafu::ResultExt;
 
 use crate::{
+    NaifId,
     constants::{
         frames::{EARTH_J2000, SUN_J2000},
         orientations::J2000,
     },
     errors::{AlmanacResult, EphemerisSnafu, OrientationSnafu},
-    math::{cartesian::CartesianState, units::LengthUnit, Vector3},
+    math::{Vector3, cartesian::CartesianState, units::LengthUnit},
     orientations::OrientationPhysicsSnafu,
     prelude::{Aberration, Frame},
-    NaifId,
 };
 
 use super::Almanac;

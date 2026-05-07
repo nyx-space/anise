@@ -8,20 +8,20 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::{planetary::PlanetaryDataError, Almanac};
+use super::{Almanac, planetary::PlanetaryDataError};
 use crate::constants::orientations::J2000;
 use crate::ephemerides::ephemeris::Ephemeris;
 use crate::errors::{AlmanacError, EphemerisSnafu};
-use crate::structure::dataset::location_dhall::LocationDhallSetEntry;
 use crate::structure::LocationDataSet;
+use crate::structure::dataset::location_dhall::LocationDhallSetEntry;
 use crate::{
+    NaifId,
     astro::{Aberration, AzElRange, Location, Occultation},
     ephemerides::EphemerisError,
     errors::AlmanacResult,
     math::{cartesian::CartesianState, rotation::DCM},
     orientations::OrientationError,
     prelude::{Frame, Orbit},
-    NaifId,
 };
 use hifitime::{Epoch, TimeScale, TimeSeries};
 use ndarray::Array1;

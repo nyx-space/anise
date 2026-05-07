@@ -1,5 +1,5 @@
 use hifitime::{Duration, TimeScale, Unit};
-use tabled::{settings::Style, Table, Tabled};
+use tabled::{Table, Tabled, settings::Style};
 
 use crate::naif::daf::NAIFSummaryRecord;
 

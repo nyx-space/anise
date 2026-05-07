@@ -11,12 +11,12 @@
 use hifitime::Epoch;
 use snafu::prelude::*;
 
+use crate::NaifId;
 use crate::ephemerides::EphemerisError;
 use crate::orientations::OrientationError;
 use crate::prelude::FrameUid;
 use crate::structure::dataset::DataSetError;
 use crate::structure::semver::Semver;
-use crate::NaifId;
 use core::convert::From;
 use der::Error as DerError;
 use std::io::ErrorKind as IOErrorKind;
@@ -92,7 +92,9 @@ pub enum DecodingError {
         got: usize,
         need: usize,
     },
-    #[snafu(display("bytes between indexes {start} and {end} could not be read, array contains {size} bytes (data malformed?)"))]
+    #[snafu(display(
+        "bytes between indexes {start} and {end} could not be read, array contains {size} bytes (data malformed?)"
+    ))]
     InaccessibleBytes {
         start: usize,
         end: usize,
@@ -109,7 +111,9 @@ pub enum DecodingError {
     Casting,
     #[snafu(display("could not load ANISE data version {got}, expected {exp}"))]
     AniseVersion { got: Semver, exp: Semver },
-    #[snafu(display("data could not be parsed as {kind} despite ANISE version matching (should be loaded as another type?)"))]
+    #[snafu(display(
+        "data could not be parsed as {kind} despite ANISE version matching (should be loaded as another type?)"
+    ))]
     Obscure { kind: &'static str },
 }
 
@@ -203,9 +207,13 @@ pub enum PhysicsError {
         data: &'static str,
         frame: FrameUid,
     },
-    #[snafu(display("parabolic orbits are physically impossible and the eccentricity calculated to be within {limit:e} of 1.0"))]
+    #[snafu(display(
+        "parabolic orbits are physically impossible and the eccentricity calculated to be within {limit:e} of 1.0"
+    ))]
     ParabolicEccentricity { limit: f64 },
-    #[snafu(display("parabolic orbits are physically impossible and the semilatus rectum (semi-parameter) calculated to be {p_km} km"))]
+    #[snafu(display(
+        "parabolic orbits are physically impossible and the semilatus rectum (semi-parameter) calculated to be {p_km} km"
+    ))]
     ParabolicSemiParam { p_km: f64 },
     #[snafu(display("hyperbolic true anomaly is physically impossible: {ta_deg} deg"))]
     HyperbolicTrueAnomaly { ta_deg: f64 },

@@ -11,7 +11,7 @@
 use crate::errors::{InvalidRotationSnafu, PhysicsError};
 use crate::math::rotation::EPSILON;
 use crate::structure::dataset::DataSetT;
-use crate::{math::Vector3, math::Vector4, NaifId};
+use crate::{NaifId, math::Vector3, math::Vector4};
 use core::fmt;
 use core::ops::Mul;
 use der::{Decode, Encode, Reader, Writer};
@@ -479,11 +479,11 @@ impl DataSetT for EulerParameter {
 #[cfg(test)]
 mod ut_quaternion {
     use crate::math::{
-        rotation::{generate_angles, vec3_eq, DCM},
         Vector4,
+        rotation::{DCM, generate_angles, vec3_eq},
     };
 
-    use super::{EulerParameter, Quaternion, Vector3, EPSILON};
+    use super::{EPSILON, EulerParameter, Quaternion, Vector3};
     use core::f64::consts::{FRAC_PI_2, PI};
 
     #[test]

@@ -19,16 +19,16 @@ use std::path::Path;
 use log::{error, info, warn};
 
 use crate::constants::orientations::J2000;
-use crate::math::rotation::{r1, r2, r3, Quaternion, DCM};
 use crate::math::Matrix3;
+use crate::math::rotation::{DCM, Quaternion, r1, r2, r3};
+use crate::naif::kpl::Parameter;
 use crate::naif::kpl::fk::FKItem;
 use crate::naif::kpl::tpc::TPCItem;
-use crate::naif::kpl::Parameter;
 use crate::structure::dataset::{DataSetError, DataSetType};
 use crate::structure::metadata::Metadata;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
 use crate::structure::planetocentric::phaseangle::PhaseAngle;
-use crate::structure::planetocentric::{PlanetaryData, MAX_NUT_PREC_ANGLES};
+use crate::structure::planetocentric::{MAX_NUT_PREC_ANGLES, PlanetaryData};
 use crate::structure::{EulerParameterDataSet, PlanetaryDataSet};
 
 use super::{KPLItem, KPLValue};
@@ -198,7 +198,7 @@ pub fn convert_tpc_items(
                                             action: format!(
                                                 "Radii matrix should be length 2 or 3 but was {len}"
                                             ),
-                                        })
+                                        });
                                     }
                                 },
                                 _ => {
@@ -206,7 +206,7 @@ pub fn convert_tpc_items(
                                         action: format!(
                                             "Radii should be float or matrix, got {radii_km:?}"
                                         ),
-                                    })
+                                    });
                                 }
                             },
                             None => None,
@@ -265,22 +265,28 @@ pub fn convert_tpc_items(
                                         }
                                         let prime_mer = PhaseAngle::maybe_new(&prime_mer_data);
 
-                                        let long_axis = match planetary_data.data.get(&Parameter::LongAxis) {
+                                        let long_axis = match planetary_data
+                                            .data
+                                            .get(&Parameter::LongAxis)
+                                        {
                                             Some(val) => match val {
                                                 KPLValue::Float(data) => Some(*data),
                                                 KPLValue::Matrix(data) => {
                                                     if data.is_empty() {
                                                         return Err(DataSetError::Conversion {
-                                                            action: "long axis matrix is empty".to_string(),
+                                                            action: "long axis matrix is empty"
+                                                                .to_string(),
                                                         });
                                                     }
                                                     Some(data[0])
                                                 }
-                                                _ => return Err(DataSetError::Conversion {
-                                                    action: format!(
-                                                        "long axis must be float or matrix, got {val:?}"
-                                                    ),
-                                                }),
+                                                _ => {
+                                                    return Err(DataSetError::Conversion {
+                                                        action: format!(
+                                                            "long axis must be float or matrix, got {val:?}"
+                                                        ),
+                                                    });
+                                                }
                                             },
                                             None => None,
                                         };
@@ -306,9 +312,9 @@ pub fn convert_tpc_items(
                                     _ => {
                                         return Err(DataSetError::Conversion {
                                             action: format!(
-                                            "expected Matrix as PoleRa parameter but got {data:?}"
-                                        ),
-                                        })
+                                                "expected Matrix as PoleRa parameter but got {data:?}"
+                                            ),
+                                        });
                                     }
                                 }
                             }
@@ -328,28 +334,26 @@ pub fn convert_tpc_items(
                         if let Some(nut_prec_val) =
                             planetary_data.data.get(&Parameter::NutPrecAngles)
                         {
-                            let phase_deg = match planetary_data
-                                .data
-                                .get(&Parameter::MaxPhaseDegree)
-                            {
-                                Some(val) => {
-                                    let deg =
+                            let phase_deg =
+                                match planetary_data.data.get(&Parameter::MaxPhaseDegree) {
+                                    Some(val) => {
+                                        let deg =
                                         (val.to_i32().map_err(|_| DataSetError::Conversion {
                                             action: format!(
                                                 "MaxPhaseDegree must be an Integer but was {val:?}"
                                             ),
                                         })? + 1) as usize;
 
-                                    if deg == 0 {
-                                        return Err(DataSetError::Conversion {
-                                            action: "PhaseDegree must be non-zero".to_owned(),
-                                        });
-                                    }
+                                        if deg == 0 {
+                                            return Err(DataSetError::Conversion {
+                                                action: "PhaseDegree must be non-zero".to_owned(),
+                                            });
+                                        }
 
-                                    deg
-                                }
-                                None => 2,
-                            };
+                                        deg
+                                    }
+                                    None => 2,
+                                };
                             let nut_prec_data = nut_prec_val.to_vec_f64().map_err(|_| {
                                 DataSetError::Conversion {
                                     action: format!(
@@ -365,7 +369,8 @@ pub fn convert_tpc_items(
                                     return Err(DataSetError::Conversion {
                                         action: format!(
                                             "Index {} exceeds the maximum number of nutation precession angles ({})",
-                                            i, coeffs.len()
+                                            i,
+                                            coeffs.len()
                                         ),
                                     });
                                 }

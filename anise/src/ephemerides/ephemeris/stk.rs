@@ -127,7 +127,7 @@ impl Ephemeris {
                         return Err(EphemerisError::STKEParsingError {
                             lno,
                             details: format!("could not parse ScenarioEpoch `{epoch_str}`: {e}"),
-                        })
+                        });
                     }
                 }
             } else if line.starts_with("InterpolationMethod") {
@@ -149,7 +149,7 @@ impl Ephemeris {
                         return Err(EphemerisError::STKEParsingError {
                             lno,
                             details: format!("invalid InterpolationOrder/SamplesM1 {val}"),
-                        })
+                        });
                     }
                 }
             } else if line.starts_with("InterpolationSamples") {
@@ -161,7 +161,7 @@ impl Ephemeris {
                         return Err(EphemerisError::STKEParsingError {
                             lno,
                             details: format!("invalid InterpolationSamples {val}"),
-                        })
+                        });
                     }
                 }
             } else if line.starts_with("CentralBody") {
@@ -289,7 +289,7 @@ impl Ephemeris {
                     .join(" ");
 
                 let orient_name_str = orient_name.as_deref().unwrap_or("J2000"); // Default to J2000 if not specified? Or ICRF?
-                                                                                 // STK often uses "ICRF" or "J2000".
+                // STK often uses "ICRF" or "J2000".
 
                 let frame =
                     Frame::from_name(&center_name_str_cap, orient_name_str).map_err(|e| {

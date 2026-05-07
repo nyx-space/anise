@@ -14,8 +14,8 @@ use super::{EphemerisError, SPKSnafu};
 use crate::almanac::Almanac;
 use crate::ephemerides::EphemInterpolationSnafu;
 use crate::hifitime::Epoch;
-use crate::math::cartesian::CartesianState;
 use crate::math::Vector3;
+use crate::math::cartesian::CartesianState;
 use crate::naif::daf::datatypes::modified_diff::ModifiedDiffType1;
 use crate::naif::daf::datatypes::{
     HermiteSetType12, HermiteSetType13, LagrangeSetType8, LagrangeSetType9, Type2ChebyshevSet,
@@ -126,7 +126,7 @@ impl Almanac {
                         dtype,
                         kind: "SPK computations",
                     },
-                })
+                });
             }
         };
 

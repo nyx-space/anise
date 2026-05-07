@@ -15,10 +15,10 @@ use super::OrientationPhysicsSnafu;
 use crate::almanac::Almanac;
 use crate::constants::orientations::J2000;
 use crate::hifitime::Epoch;
+use crate::math::Vector3;
 use crate::math::cartesian::CartesianState;
 use crate::math::rotation::DCM;
 use crate::math::units::*;
-use crate::math::Vector3;
 use crate::prelude::Frame;
 
 impl Almanac {

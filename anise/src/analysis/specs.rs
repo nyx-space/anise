@@ -17,7 +17,7 @@ use crate::{
     almanac::Almanac,
     analysis::{AlmanacStateSpecSnafu, AnalysisError},
     astro::Aberration,
-    math::{cartesian::CartesianState, rotation::DCM, Matrix3},
+    math::{Matrix3, cartesian::CartesianState, rotation::DCM},
     prelude::Frame,
 };
 

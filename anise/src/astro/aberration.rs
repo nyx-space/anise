@@ -11,7 +11,7 @@
 use crate::{
     constants::SPEED_OF_LIGHT_KM_S,
     errors::{AberrationSnafu, VelocitySnafu},
-    math::{rotate_vector, Vector3},
+    math::{Vector3, rotate_vector},
 };
 
 use core::fmt;

@@ -10,9 +10,9 @@
 
 use crate::astro::PhysicsResult;
 use crate::errors::PhysicsError;
+use crate::math::Vector3;
 use crate::math::cartesian::CartesianState;
 use crate::math::rotation::EulerParameter;
-use crate::math::Vector3;
 use crate::structure::dataset::DataSetT;
 use core::f64::consts::TAU;
 use core::fmt;
@@ -349,8 +349,8 @@ impl fmt::Display for Instrument {
 #[cfg(test)]
 mod ut_instrument {
     use super::*;
-    use crate::math::rotation::EulerParameter;
     use crate::math::Vector3;
+    use crate::math::rotation::EulerParameter;
     use crate::prelude::{Epoch, Frame, Orbit};
     use crate::structure::planetocentric::ellipsoid::Ellipsoid;
 
@@ -411,9 +411,11 @@ mod ut_instrument {
 
         assert!(margin > 0.0);
         assert!((margin - 10.0).abs() < 1e-6);
-        assert!(instrument
-            .is_target_in_fov(sc_att, sc_state, target_state)
-            .unwrap());
+        assert!(
+            instrument
+                .is_target_in_fov(sc_att, sc_state, target_state)
+                .unwrap()
+        );
 
         // CASE 2: Target at 90 deg (+X) -> Should be OUTSIDE
         // Margin should be 10 - 90 = -80 deg
@@ -425,9 +427,11 @@ mod ut_instrument {
             .unwrap();
         assert!(margin_out < 0.0);
         assert!((margin_out - -80.0).abs() < 1e-6);
-        assert!(!instrument
-            .is_target_in_fov(sc_att, sc_state, target_state_out)
-            .unwrap());
+        assert!(
+            !instrument
+                .is_target_in_fov(sc_att, sc_state, target_state_out)
+                .unwrap()
+        );
     }
 
     #[test]
@@ -458,9 +462,11 @@ mod ut_instrument {
             .fov_margin_deg(sc_att, sc_state, target_state)
             .unwrap();
         assert!((margin - 5.0).abs() < 1.0); // Rough check on degrees logic
-        assert!(instrument
-            .is_target_in_fov(sc_att, sc_state, target_state)
-            .unwrap());
+        assert!(
+            instrument
+                .is_target_in_fov(sc_att, sc_state, target_state)
+                .unwrap()
+        );
 
         // CASE 2: Target is at 0 deg azimuth (X), 10 deg elevation (Y).
         // X Margin: 20 - 0 = +20.
@@ -474,9 +480,11 @@ mod ut_instrument {
             .fov_margin_deg(sc_att, sc_state, target_state_out)
             .unwrap();
         assert!(margin_out < 0.0);
-        assert!(!instrument
-            .is_target_in_fov(sc_att, sc_state, target_state_out)
-            .unwrap());
+        assert!(
+            !instrument
+                .is_target_in_fov(sc_att, sc_state, target_state_out)
+                .unwrap()
+        );
     }
 
     #[test]
@@ -533,9 +541,11 @@ mod ut_instrument {
             (margin - 5.0).abs() < 1e-6,
             "Target should be on boresight (margin = half-angle)"
         );
-        assert!(instrument
-            .is_target_in_fov(sc_att, sc_state, target_state)
-            .unwrap());
+        assert!(
+            instrument
+                .is_target_in_fov(sc_att, sc_state, target_state)
+                .unwrap()
+        );
     }
 
     #[test]

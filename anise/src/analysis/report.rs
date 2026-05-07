@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::analysis::{specs::StateSpecTrait, ScalarExpr, StateSpec};
+use crate::analysis::{ScalarExpr, StateSpec, specs::StateSpecTrait};
 use csv::Writer;
 use hifitime::Epoch;
 use serde::{Deserialize, Serialize};

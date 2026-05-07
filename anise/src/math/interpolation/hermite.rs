@@ -119,8 +119,7 @@ pub fn hermite_eval(
         if denom.abs() < f64::EPSILON {
             return Err(InterpolationError::InterpMath {
                 source: MathError::DivisionByZero {
-                    action:
-                        "hermite data contains likely duplicate abcissa, remove duplicate states",
+                    action: "hermite data contains likely duplicate abcissa, remove duplicate states",
                 },
             });
         }

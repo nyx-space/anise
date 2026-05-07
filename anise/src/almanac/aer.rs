@@ -250,13 +250,13 @@ mod ut_aer {
 
     use hifitime::Unit;
 
-    use crate::astro::orbit::Orbit;
     use crate::astro::AzElRange;
+    use crate::astro::orbit::Orbit;
     use crate::constants::frames::{EARTH_ITRF93, EARTH_J2000, IAU_EARTH_FRAME};
     use crate::math::cartesian::CartesianState;
     use crate::prelude::{Almanac, Epoch};
-    use crate::structure::location::{Location, TerrainMask};
     use crate::structure::LocationDataSet;
+    use crate::structure::location::{Location, TerrainMask};
 
     #[test]
     fn verif_edge_case() {

@@ -9,8 +9,8 @@
  */
 
 use crate::{
-    astro::Aberration, constants::frames::SUN_J2000, ephemerides::EphemerisError, prelude::Frame,
-    NaifId,
+    NaifId, astro::Aberration, constants::frames::SUN_J2000, ephemerides::EphemerisError,
+    prelude::Frame,
 };
 
 use super::Almanac;

@@ -15,12 +15,12 @@ use anise::{
         orientations::{ECLIPJ2000, FK4, ITRF93, J2000},
     },
     math::{
-        cartesian::CartesianState,
-        rotation::{Quaternion, DCM},
         Matrix3, Vector3,
+        cartesian::CartesianState,
+        rotation::{DCM, Quaternion},
     },
     naif::kpl::parser::convert_tpc,
-    prelude::{Almanac, Frame, BPC},
+    prelude::{Almanac, BPC, Frame},
 };
 use hifitime::{Duration, Epoch, TimeScale, TimeSeries, TimeUnits};
 use spice::cstr;

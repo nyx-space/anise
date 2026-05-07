@@ -150,15 +150,17 @@ mod meta_test {
         // Process again to confirm that the CRC check works
         assert!(meta.process(true).is_ok());
         // Test that loading from an invalid URI reports an error
-        assert!(almanac
-            .load_from_metafile(
-                MetaFile {
-                    uri: "http://example.com/non/existing.pca".to_string(),
-                    crc32: None
-                },
-                true
-            )
-            .is_err());
+        assert!(
+            almanac
+                .load_from_metafile(
+                    MetaFile {
+                        uri: "http://example.com/non/existing.pca".to_string(),
+                        crc32: None
+                    },
+                    true
+                )
+                .is_err()
+        );
     }
 
     #[test]

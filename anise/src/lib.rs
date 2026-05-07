@@ -49,7 +49,7 @@ pub mod prelude {
     pub use crate::almanac::metaload::MetaAlmanac;
 
     pub use crate::almanac::Almanac;
-    pub use crate::astro::{orbit::Orbit, Aberration};
+    pub use crate::astro::{Aberration, orbit::Orbit};
     pub use crate::errors::InputOutputError;
     pub use crate::frames::*;
     pub use crate::math::units::*;

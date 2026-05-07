@@ -12,8 +12,8 @@ use super::{EphemerisError, EphemerisPhysicsSnafu, OEMTimeParsingSnafu};
 use crate::ephemerides::EphemInterpolationSnafu;
 use crate::errors::{AlmanacError, AlmanacPhysicsSnafu, OrientationSnafu};
 use crate::frames::Frame;
-use crate::math::interpolation::{hermite_eval, lagrange_eval};
 use crate::math::Vector6;
+use crate::math::interpolation::{hermite_eval, lagrange_eval};
 use crate::naif::daf::data_types::DataType;
 use crate::prelude::{Almanac, Orbit};
 use core::fmt;
@@ -21,8 +21,8 @@ use covariance::interpolate_covar_log_euclidean;
 use hifitime::{Epoch, TimeSeries};
 use snafu::ResultExt;
 use std::collections::{
-    btree_map::{IntoValues, Values},
     BTreeMap,
+    btree_map::{IntoValues, Values},
 };
 
 #[cfg(feature = "python")]

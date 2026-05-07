@@ -87,7 +87,7 @@ pub fn rotate_vector(a: &Vector3, axis: &Vector3, theta_rad: f64) -> Vector3 {
 
 #[cfg(test)]
 mod math_ut {
-    use super::{rotate_vector, Vector3};
+    use super::{Vector3, rotate_vector};
     #[test]
     fn test_rotate_vector() {
         use approx::assert_abs_diff_eq;

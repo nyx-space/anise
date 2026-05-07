@@ -12,7 +12,7 @@ use core::str::FromStr;
 use std::fmt::Debug;
 use std::{collections::HashMap, hash::Hash};
 
-use snafu::{whatever, Whatever};
+use snafu::{Whatever, whatever};
 
 use self::parser::Assignment;
 

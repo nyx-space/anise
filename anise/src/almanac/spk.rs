@@ -17,11 +17,11 @@ use pyo3::prelude::*;
 use snafu::ensure;
 
 use crate::ephemerides::NoEphemerisLoadedSnafu;
+use crate::naif::SPK;
 use crate::naif::daf::DAFError;
 use crate::naif::daf::NAIFSummaryRecord;
 use crate::naif::spk::summary::SPKSummaryRecord;
-use crate::naif::SPK;
-use crate::{ephemerides::EphemerisError, NaifId};
+use crate::{NaifId, ephemerides::EphemerisError};
 use log::{error, warn};
 
 use super::Almanac;

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anise::{constants::frames::EARTH_ITRF93, naif::kpl::parser::convert_tpc, prelude::*};
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
 
 fn benchmark_fetch(almanac: &Almanac, frame: Frame) {

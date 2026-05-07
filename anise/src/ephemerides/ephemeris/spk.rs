@@ -9,13 +9,13 @@
  */
 
 use crate::{
+    NaifId,
     ephemerides::{EphemerisError, SPKWritingSnafu},
     naif::{
-        daf::{data_types::DataType, FileRecord, NameRecord, SummaryRecord, RCRD_LEN},
-        spk::summary::SPKSummaryRecord,
         SPK,
+        daf::{FileRecord, NameRecord, RCRD_LEN, SummaryRecord, data_types::DataType},
+        spk::summary::SPKSummaryRecord,
     },
-    NaifId,
 };
 use bytes::BytesMut;
 use log::warn;
@@ -199,7 +199,7 @@ impl Ephemeris {
             Err(e) => {
                 return Err(EphemerisError::SPKWritingError {
                     details: format!("{e}"),
-                })
+                });
             }
         };
 

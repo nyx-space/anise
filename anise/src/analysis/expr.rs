@@ -12,15 +12,15 @@ use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
 use std::fmt;
 
+use crate::NaifId;
 use crate::almanac::Almanac;
-use crate::analysis::dcm_expr::DcmExpr;
 use crate::analysis::AlmanacExprSnafu;
+use crate::analysis::dcm_expr::DcmExpr;
 use crate::astro::Aberration;
 use crate::errors::EphemerisSnafu;
 use crate::frames::Frame;
 use crate::math::rotation::EulerParameter;
 use crate::prelude::Orbit;
-use crate::NaifId;
 
 use super::elements::OrbitalElement;
 use super::specs::{StateSpec, StateSpecTrait};
@@ -625,9 +625,9 @@ impl fmt::Display for ScalarExpr {
                 location_id,
             } => {
                 write!(
-                f,
-                "FOV of {instrument_id} when body frame is {sc_dcm_to_body} and observing location #{location_id}"
-            )
+                    f,
+                    "FOV of {instrument_id} when body frame is {sc_dcm_to_body} and observing location #{location_id}"
+                )
             }
         }
     }

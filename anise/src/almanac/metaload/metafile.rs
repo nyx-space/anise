@@ -14,7 +14,7 @@ use regex::Regex;
 use serde_derive::{Deserialize, Serialize};
 use serde_dhall::StaticType;
 use std::env;
-use std::fs::{create_dir_all, remove_file, File};
+use std::fs::{File, create_dir_all, remove_file};
 use std::io::Write;
 use std::path::Path;
 use std::thread;
@@ -148,7 +148,9 @@ impl MetaFile {
                                                         self.uri = dest_path_s;
                                                         return Ok(());
                                                     } else {
-                                                        info!("Discarding cached {dest_path_s} - CRC32 differ (got 0x{computed_crc32:x}, expected 0x{crc32:x})");
+                                                        info!(
+                                                            "Discarding cached {dest_path_s} - CRC32 differ (got 0x{computed_crc32:x}, expected 0x{crc32:x})"
+                                                        );
                                                     }
                                                 }
                                             }
@@ -225,9 +227,9 @@ impl MetaFile {
                                                             )?;
 
                                                             info!(
-                                                                 "Saved {url} to {} (CRC32 = 0x{crc32:x})",
-                                                                 dest_path.to_string_lossy()
-                                                             );
+                                                                "Saved {url} to {} (CRC32 = 0x{crc32:x})",
+                                                                dest_path.to_string_lossy()
+                                                            );
 
                                                             // Set the URI for loading
                                                             self.uri = dest_path

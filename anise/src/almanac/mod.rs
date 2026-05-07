@@ -15,6 +15,7 @@ use log::{info, warn};
 use snafu::ResultExt;
 use zerocopy::FromBytes;
 
+use crate::NaifId;
 use crate::ephemerides::SPKSnafu;
 use crate::errors::{
     AlmanacError, AlmanacResult, EphemerisSnafu, InputOutputError, LoadingSnafu, OrientationSnafu,
@@ -31,7 +32,6 @@ use crate::structure::metadata::Metadata;
 use crate::structure::{
     EulerParameterDataSet, InstrumentDataSet, LocationDataSet, PlanetaryDataSet, SpacecraftDataSet,
 };
-use crate::NaifId;
 use core::fmt;
 
 pub mod aer;
@@ -322,7 +322,7 @@ impl Almanac {
                 return Err(AlmanacError::Loading {
                     path: path.to_string(),
                     source: InputOutputError::IOError { kind: e.kind() },
-                })
+                });
             }
             Ok(bytes) => BytesMut::from(&bytes[..]),
         };

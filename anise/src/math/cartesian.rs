@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::{perp_vector, root_mean_squared, root_sum_squared, Vector3};
+use super::{Vector3, perp_vector, root_mean_squared, root_sum_squared};
 use crate::{
     astro::PhysicsResult,
     constants::SPEED_OF_LIGHT_KM_S,
@@ -690,8 +690,18 @@ mod cartesian_state_ut {
 
         assert_eq!(s1 + s2, Ok(s3));
 
-        assert_eq!(format!("{s1}"), format!("[Earth J2000] {e}\tposition = [10.000000, 20.000000, 30.000000] km\tvelocity = [1.000000, 2.000000, 2.000000] km/s"));
-        assert_eq!(format!("{s1:e}"), format!("[Earth J2000] {e}\tposition = [1.000000e1, 2.000000e1, 3.000000e1] km\tvelocity = [1.000000e0, 2.000000e0, 2.000000e0] km/s"));
+        assert_eq!(
+            format!("{s1}"),
+            format!(
+                "[Earth J2000] {e}\tposition = [10.000000, 20.000000, 30.000000] km\tvelocity = [1.000000, 2.000000, 2.000000] km/s"
+            )
+        );
+        assert_eq!(
+            format!("{s1:e}"),
+            format!(
+                "[Earth J2000] {e}\tposition = [1.000000e1, 2.000000e1, 3.000000e1] km\tvelocity = [1.000000e0, 2.000000e0, 2.000000e0] km/s"
+            )
+        );
     }
 
     #[test]

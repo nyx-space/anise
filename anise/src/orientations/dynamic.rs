@@ -13,8 +13,9 @@ use snafu::ResultExt;
 use super::{OrientationError, OrientationPhysicsSnafu};
 use crate::almanac::Almanac;
 use crate::frames::{DynamicFrame, EarthNutationModel, EarthPrecessionModel};
-use crate::hifitime::{Epoch, Unit};
+use crate::hifitime::{Epoch, TimeUnits, Unit};
 use crate::math::rotation::DCM;
+use crate::math::Matrix3;
 use crate::orientations::{BPCSnafu, OrientationInterpolationSnafu};
 
 use sofars::pnp::{
@@ -37,7 +38,22 @@ impl Almanac {
     ) -> Result<DCM, OrientationError> {
         match source {
             DynamicFrame::EarthMeanOfDate { precession } => {
-                todo!("MOD")
+                // Evaluate nominal rotation matrix
+                let rot_mat = precession.rot_mat(epoch);
+
+                // Finite differencing for the time derivative
+                let pre_rot_dcm = precession.rot_mat(epoch - 1.seconds());
+                let post_rot_dcm = precession.rot_mat(epoch + 1.seconds());
+                let rot_mat_dt = (post_rot_dcm - pre_rot_dcm) * 0.5;
+
+                let dcm = DCM {
+                    rot_mat,
+                    from: precession.parent_id(),
+                    to: source.into(),
+                    rot_mat_dt: Some(rot_mat_dt),
+                };
+
+                Ok(dcm)
             }
             DynamicFrame::EarthTrueOfDate {
                 precession,
@@ -215,55 +231,55 @@ impl Almanac {
     //     })
     // }
 
-    fn dynamic_rot_mat_dt<F>(
-        &self,
-        source: Frame,
-        epoch: Epoch,
-        f: F,
-    ) -> Result<Matrix3<f64>, OrientationError>
-    where
-        F: Fn(&Almanac, Epoch) -> Result<Matrix3<f64>, OrientationError>,
-    {
-        // Pick a small but not tiny step. 1 second is reasonable for precession/nutation
-        // and body-pole frames. You can tune with CSPICE/SOFA regression tests.
-        let dt = Unit::Second;
+    // fn dynamic_rot_mat_dt<F>(
+    //     &self,
+    //     source: Frame,
+    //     epoch: Epoch,
+    //     f: F,
+    // ) -> Result<Matrix3<f64>, OrientationError>
+    // where
+    //     F: Fn(&Almanac, Epoch) -> Result<Matrix3<f64>, OrientationError>,
+    // {
+    //     // Pick a small but not tiny step. 1 second is reasonable for precession/nutation
+    //     // and body-pole frames. You can tune with CSPICE/SOFA regression tests.
+    //     let dt = Unit::Second;
 
-        let cp = f(self, epoch + dt)?;
-        let cm = f(self, epoch - dt)?;
+    //     let cp = f(self, epoch + dt)?;
+    //     let cm = f(self, epoch - dt)?;
 
-        Ok((cp - cm) * 0.5) // if dt is exactly 1 second
+    //     Ok((cp - cm) * 0.5) // if dt is exactly 1 second
+    // }
+}
+
+impl EarthPrecessionModel {
+    pub(crate) fn rot_mat(&self, epoch: Epoch) -> Matrix3 {
+        // SOFA models expect Terrestrial Time (TT) as a two-part Julian Date.
+        // Assuming hifitime v4's `to_jde_tt_days()` or equivalent is available.
+        let (tt1, tt2) = sofa_tt_jd_parts(epoch);
+
+        let pmat = match self {
+            EarthPrecessionModel::IAU1976 => sofars::pnp::pmat76(tt1, tt2),
+            EarthPrecessionModel::IAU2000 => sofars::pnp::pmat00(tt1, tt2),
+            EarthPrecessionModel::IAU2006 => sofars::pnp::pmat06(tt1, tt2),
+        };
+
+        // SOFARS returns a standard [[f64; 3]; 3] row-major array.
+        // nalgebra's Matrix3::new populates row-by-row.
+        Matrix3::new(
+            pmat[0][0], pmat[0][1], pmat[0][2], pmat[1][0], pmat[1][1], pmat[1][2], pmat[2][0],
+            pmat[2][1], pmat[2][2],
+        )
     }
 }
 
-fn fixed_axis_date_from_fixed_dcm(
-    fixed_from_parent: &Matrix3<f64>,
-) -> Result<Matrix3<f64>, OrientationError> {
-    let icrf_x = Vector3::new(1.0, 0.0, 0.0);
-    let icrf_z = Vector3::new(0.0, 0.0, 1.0);
+// Helper function to convert an epoch to a SOFA two-part epoch
+fn sofa_tt_jd_parts(epoch: Epoch) -> (f64, f64) {
+    let jde_tt = epoch.to_jde_tt_duration();
 
-    // If C maps parent components to fixed components, rows are fixed axes in parent.
-    let z = Vector3::new(
-        fixed_from_parent[(2, 0)],
-        fixed_from_parent[(2, 1)],
-        fixed_from_parent[(2, 2)],
-    )
-    .normalize();
+    let tt1 = jde_tt.to_unit(Unit::Day).trunc();
+    let tt2 = (jde_tt - Unit::Day * tt1).to_unit(Unit::Day);
 
-    let x_candidate = icrf_z.cross(&z);
-
-    let (x, y) = if x_candidate.norm() > 1.0e-14 {
-        let x = x_candidate.normalize();
-        let y = z.cross(&x).normalize();
-        (x, y)
-    } else {
-        let y = z.cross(&icrf_x).normalize();
-        let x = y.cross(&z).normalize();
-        (x, y)
-    };
-
-    Ok(Matrix3::new(
-        x[0], x[1], x[2], y[0], y[1], y[2], z[0], z[1], z[2],
-    ))
+    (tt1, tt2)
 }
 
 #[cfg(test)]

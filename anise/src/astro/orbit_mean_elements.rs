@@ -9,7 +9,7 @@
  */
 
 use super::utils::mean_anomaly_to_true_anomaly_rad;
-use super::{orbit::Orbit, orbit_equinoctial::equinoctial_to_keplerian, PhysicsResult};
+use super::{PhysicsResult, orbit::Orbit, orbit_equinoctial::equinoctial_to_keplerian};
 
 use crate::{
     errors::MeanElementSnafu,
@@ -286,7 +286,12 @@ impl Orbit {
             }
         );
 
-        ensure!(self.periapsis_km()? > 3000.0, MeanElementSnafu{detail: "Brouwer Mean Short only applies for orbits whose periapsis is greater than 3,000 km"});
+        ensure!(
+            self.periapsis_km()? > 3000.0,
+            MeanElementSnafu {
+                detail: "Brouwer Mean Short only applies for orbits whose periapsis is greater than 3,000 km"
+            }
+        );
 
         ensure!(
             (0.0..1.0).contains(&self.ecc()?),
@@ -443,7 +448,9 @@ impl Orbit {
                 }
             } else {
                 if emag_old >= 1e-6 {
-                    warn!("Brouwer Mean Short algorithm convergence not improving, current rel. error {emag_old}");
+                    warn!(
+                        "Brouwer Mean Short algorithm convergence not improving, current rel. error {emag_old}"
+                    );
                 }
                 break;
             }

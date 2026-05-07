@@ -168,6 +168,17 @@ pub enum EarthPrecessionModel {
     IAU2006,
 }
 
+impl EarthPrecessionModel {
+    /// Returns the parent ID, depends on the model used.
+    pub(crate) fn parent_id(self) -> i32 {
+        match self {
+            EarthPrecessionModel::IAU1976 => J2000,
+            EarthPrecessionModel::IAU2000 => ICRS,
+            EarthPrecessionModel::IAU2006 => ICRS,
+        }
+    }
+}
+
 impl TryFrom<u8> for EarthPrecessionModel {
     type Error = OrientationError;
     fn try_from(value: u8) -> Result<Self, Self::Error> {
@@ -177,7 +188,9 @@ impl TryFrom<u8> for EarthPrecessionModel {
             // Skipping 2 so that the 2006 model TOD ID is 0xA0 FE 03 03
             3 => Ok(Self::IAU2006),
             _ => Err(OrientationError::NotDynamicFrame {
-                detail: format!("{value} invalid precession module; use 0 for IAU1976, 1 for IAU2000, 3 for IAU2006"),
+                detail: format!(
+                    "{value} invalid precession module; use 0 for IAU1976, 1 for IAU2000, 3 for IAU2006"
+                ),
             }),
         }
     }
@@ -210,7 +223,9 @@ impl TryFrom<u8> for EarthNutationModel {
             2 => Ok(Self::IAU2000B),
             3 => Ok(Self::IAU2006),
             _ => Err(OrientationError::NotDynamicFrame {
-                detail: format!("{value} invalid precession module; use 0 for IAU1976, 1 for IAU2000, 2 for IAU2006"),
+                detail: format!(
+                    "{value} invalid precession module; use 0 for IAU1976, 1 for IAU2000, 2 for IAU2006"
+                ),
             }),
         }
     }

@@ -5,8 +5,8 @@ use anise::astro::Location;
 use anise::constants::celestial_objects::MOON;
 use anise::constants::frames::{IAU_MOON_FRAME, MOON_J2000};
 use anise::constants::orientations::{IAU_MOON, J2000};
-use anise::math::rotation::EulerParameter;
 use anise::math::Vector3;
+use anise::math::rotation::EulerParameter;
 use anise::prelude::{Almanac, Frame, Orbit};
 use anise::prelude::{FovShape, Instrument};
 use anise::structure::{InstrumentDataSet, LocationDataSet};
@@ -136,14 +136,16 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
     // Grab the rotation of the target.
     let dcm = almanac.rotate(MOON_J2000, IAU_MOON_FRAME, epoch).unwrap();
     let target_orientation_to_fixed = EulerParameter::from(dcm);
-    assert!(instrument
-        .footprint(
-            sc_attitude_to_body,
-            lro_state,
-            target_orientation_to_fixed,
-            36,
-        )
-        .is_err());
+    assert!(
+        instrument
+            .footprint(
+                sc_attitude_to_body,
+                lro_state,
+                target_orientation_to_fixed,
+                36,
+            )
+            .is_err()
+    );
 
     // But if we pass in identity, then the footprint is correctly computed.
     let footprint = instrument
@@ -244,9 +246,11 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
 
     println!("Zenith Margin (Expected negative large): {margin_zenith:.4}",);
     assert!(margin_zenith < -100.0);
-    assert!(!cam_zenith
-        .is_target_in_fov(sc_attitude_to_body, lro_state, below)
-        .unwrap());
+    assert!(
+        !cam_zenith
+            .is_target_in_fov(sc_attitude_to_body, lro_state, below)
+            .unwrap()
+    );
 }
 
 #[rstest]

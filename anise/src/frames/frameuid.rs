@@ -9,11 +9,11 @@
  */
 
 use crate::{
+    NaifId,
     constants::{
         celestial_objects::celestial_name_from_id, orientations::orientation_name_from_id,
     },
     time::Epoch,
-    NaifId,
 };
 use core::fmt;
 use core::str::FromStr;

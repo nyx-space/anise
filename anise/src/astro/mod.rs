@@ -262,7 +262,12 @@ impl Display for AzElRange {
         write!(
             f,
             "{}: az.: {:.6} deg    el.: {:.6} deg    range: {:.6} km    range-rate: {:.6} km/s    obstruction: {}",
-            self.epoch, self.azimuth_deg, self.elevation_deg, self.range_km, self.range_rate_km_s, obs
+            self.epoch,
+            self.azimuth_deg,
+            self.elevation_deg,
+            self.range_km,
+            self.range_rate_km_s,
+            obs
         )
     }
 }

@@ -12,7 +12,7 @@ use std::{collections::HashMap, str::FromStr};
 
 use log::warn;
 
-use super::{parser::Assignment, KPLItem, KPLValue, Parameter};
+use super::{KPLItem, KPLValue, Parameter, parser::Assignment};
 
 #[derive(Debug, Default)]
 pub struct TPCItem {
@@ -145,7 +145,7 @@ fn test_parse_gm() {
 fn test_anise_conversion() {
     use crate::errors::InputOutputError;
     use crate::naif::kpl::parser::convert_tpc;
-    use crate::{file2heap, file_mmap, structure::dataset::DataSet};
+    use crate::{file_mmap, file2heap, structure::dataset::DataSet};
     use std::fs::File;
     use std::path::PathBuf;
 

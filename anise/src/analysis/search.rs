@@ -11,10 +11,10 @@
 use crate::{
     almanac::Almanac,
     analysis::{
+        AlmanacVisibilitySnafu, AnalysisResult,
         event::{EventEdge, VisibilityArc},
         event_ops::find_arc_intersections,
         utils::{adaptive_step_scanner, brent_solver},
-        AlmanacVisibilitySnafu, AnalysisResult,
     },
     astro::AzElRange,
     frames::Frame,

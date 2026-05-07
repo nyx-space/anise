@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::{orbit::Orbit, PhysicsResult};
+use super::{PhysicsResult, orbit::Orbit};
 
 use crate::prelude::Frame;
 

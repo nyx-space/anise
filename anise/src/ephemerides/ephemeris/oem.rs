@@ -13,8 +13,8 @@ use crate::math::{Matrix6, Vector6};
 use crate::naif::daf::data_types::DataType;
 use crate::prelude::{Frame, Orbit};
 use hifitime::{
-    efmt::{Format, Formatter},
     Epoch,
+    efmt::{Format, Formatter},
 };
 use log::warn;
 use snafu::ResultExt;
@@ -89,14 +89,14 @@ impl Ephemeris {
                                 lno,
                                 details: "CCSDS OEM version {version_val} not supported"
                                     .to_string(),
-                            })
+                            });
                         }
                     },
                     Err(_) => {
                         return Err(EphemerisError::OEMParsingError {
                             lno,
                             details: format!("could not parse OEM version `{version_str}`"),
-                        })
+                        });
                     }
                 }
             }
@@ -131,7 +131,7 @@ impl Ephemeris {
                         return Err(EphemerisError::OEMParsingError {
                             lno,
                             details: format!("could not parse `{interp_str}` as float"),
-                        })
+                        });
                     }
                 }
             } else if line.starts_with("INTERPOLATION") {
@@ -217,7 +217,7 @@ impl Ephemeris {
                         return Err(EphemerisError::OEMParsingError {
                             lno,
                             details: "no `=` sign for covariance epoch".to_string(),
-                        })
+                        });
                     }
                 };
 
@@ -235,14 +235,14 @@ impl Ephemeris {
                                         "could not parse `{}` as float",
                                         val_str.trim()
                                     ),
-                                })
+                                });
                             }
                         },
                         None => {
                             return Err(EphemerisError::OEMParsingError {
                                 lno,
                                 details: format!("missing float in position {}", i + 1),
-                            })
+                            });
                         }
                     };
                 }
@@ -261,7 +261,12 @@ impl Ephemeris {
 
                     // Check that we have associated state data
                     if !state_data.contains_key(&epoch) {
-                        return Err(EphemerisError::OEMParsingError { lno, details: format!("cannot have covariance data at {epoch} because no orbit data at that epoch")});
+                        return Err(EphemerisError::OEMParsingError {
+                            lno,
+                            details: format!(
+                                "cannot have covariance data at {epoch} because no orbit data at that epoch"
+                            ),
+                        });
                     }
 
                     cov_epoch = Some(epoch);
@@ -278,7 +283,7 @@ impl Ephemeris {
                             return Err(EphemerisError::OEMParsingError {
                                 lno,
                                 details: format!("invalid COV_REF_FRAME `{cov_frame_str}`"),
-                            })
+                            });
                         }
                     };
                 } else {
@@ -312,7 +317,7 @@ impl Ephemeris {
                                             "could not parse `{}` as float",
                                             val_str.trim()
                                         ),
-                                    })
+                                    });
                                 }
                             },
                             None => {
@@ -321,7 +326,7 @@ impl Ephemeris {
                                     details: format!(
                                         "missing float in covariance data position {col}"
                                     ),
-                                })
+                                });
                             }
                         };
                     }
@@ -343,7 +348,7 @@ impl Ephemeris {
                                 return Err(EphemerisError::OEMParsingError {
                                     lno,
                                     details: "no cov epoch ever found?!".to_string(),
-                                })
+                                });
                             }
                         }
                     }

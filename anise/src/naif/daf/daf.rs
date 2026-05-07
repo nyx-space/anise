@@ -16,7 +16,7 @@ use super::{
 pub use super::{FileRecord, NameRecord, SummaryRecord};
 use crate::errors::{DecodingError, InputOutputError};
 use crate::naif::daf::DecodingDataSnafu;
-use crate::{errors::IntegrityError, DBL_SIZE};
+use crate::{DBL_SIZE, errors::IntegrityError};
 use bytes::{Bytes, BytesMut};
 use core::fmt::Debug;
 use core::hash::Hash;
@@ -134,7 +134,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 return Err(DAFError::IO {
                     action: format!("loading {path:?}"),
                     source: InputOutputError::IOError { kind: e.kind() },
-                })
+                });
             }
             Ok(bytes) => BytesMut::from(&bytes[..]),
         };
@@ -261,7 +261,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 return Err(DAFError::DecodingSummary {
                     kind: R::NAME,
                     source,
-                })
+                });
             }
         };
 
@@ -288,7 +288,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 .index_from_name::<R>(name, self.file_record()?.summary_size())
             {
                 Ok(summary_idx) => {
-                    return Ok((&self.data_summaries(idx)?[summary_idx], idx, summary_idx))
+                    return Ok((&self.data_summaries(idx)?[summary_idx], idx, summary_idx));
                 }
                 Err(e) => {
                     if summary.is_final_record() {
@@ -468,7 +468,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                             kind: R::NAME,
                             idx,
                             source,
-                        })
+                        });
                     }
                 },
             )
@@ -509,7 +509,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                     return Err(DAFError::DecodingComments {
                         kind: R::NAME,
                         source,
-                    })
+                    });
                 }
             };
 
@@ -676,8 +676,8 @@ mod daf_ut {
         errors::IntegrityError,
         file2heap,
         naif::{
-            daf::{datatypes::HermiteSetType13, file_record::FileRecordError, DAFError},
             BPC,
+            daf::{DAFError, datatypes::HermiteSetType13, file_record::FileRecordError},
         },
         prelude::SPK,
     };

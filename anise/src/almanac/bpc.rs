@@ -16,11 +16,11 @@ use hifitime::Epoch;
 use pyo3::prelude::*;
 use snafu::ensure;
 
+use crate::naif::BPC;
 use crate::naif::daf::NAIFSummaryRecord;
 use crate::naif::pck::BPCSummaryRecord;
-use crate::naif::BPC;
 use crate::orientations::{NoOrientationsLoadedSnafu, OrientationError};
-use crate::{naif::daf::DAFError, NaifId};
+use crate::{NaifId, naif::daf::DAFError};
 use log::{error, warn};
 
 use super::Almanac;

@@ -66,6 +66,8 @@ pub enum OrientationError {
     OrientationNameToId { name: String },
     #[snafu(display("not a valid dynamic frame: {detail}"))]
     NotDynamicFrame { detail: String },
-    #[snafu(display("planetary constants kernel missing ID {source_id} referenced in dynamic frame {dyn_frame_id:X}"))]
+    #[snafu(display(
+        "planetary constants kernel missing ID {source_id} referenced in dynamic frame {dyn_frame_id:X}"
+    ))]
     DynamicFrameNotLoaded { source_id: i32, dyn_frame_id: u32 },
 }

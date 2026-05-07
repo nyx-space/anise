@@ -9,16 +9,16 @@
  */
 
 use crate::{
+    NaifId,
     astro::PhysicsResult,
     errors::{InvalidRotationSnafu, InvalidStateRotationSnafu, PhysicsError},
-    math::{cartesian::CartesianState, Matrix3, Matrix6, Vector3, Vector6},
+    math::{Matrix3, Matrix6, Vector3, Vector6, cartesian::CartesianState},
     prelude::Frame,
-    NaifId,
 };
 use nalgebra::Vector4;
 use snafu::ensure;
 
-use super::{r1, r2, r3, Quaternion, Rotation};
+use super::{Quaternion, Rotation, r1, r2, r3};
 use core::fmt;
 use core::ops::Mul;
 
@@ -568,7 +568,7 @@ impl fmt::Display for DCM {
 mod ut_dcm {
     use crate::math::Matrix3;
 
-    use super::{Vector3, DCM};
+    use super::{DCM, Vector3};
     use core::f64::consts::FRAC_PI_2;
 
     #[test]

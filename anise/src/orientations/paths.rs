@@ -12,11 +12,11 @@ use hifitime::Epoch;
 use snafu::ensure;
 
 use super::{NoOrientationsLoadedSnafu, OrientationError};
+use crate::NaifId;
 use crate::almanac::Almanac;
 use crate::constants::orientations::{ECLIPJ2000, ICRS, J2000};
-use crate::frames::{DynamicFrame, Frame};
+use crate::frames::{DynamicFrame, EarthPrecessionModel, Frame};
 use crate::naif::daf::{DAFError, NAIFSummaryRecord};
-use crate::NaifId;
 
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
 pub const MAX_TREE_DEPTH: usize = 8;
@@ -105,17 +105,25 @@ impl Almanac {
                     | DynamicFrame::EarthTrueEquatorMeanEquinox { .. }
             )
         {
-            // In ANISE, all of the Earth dynamic frames are computed with respect to J2000.
-            J2000
-        } else {
-            let orientation_id = if let Ok(dyn_frame) = DynamicFrame::try_from(source.orientation_id as u32) {
-                match dyn_frame {
-                    DynamicFrame::BodyMeanOfDate { source_id } |
-                    DynamicFrame::BodyTrueOfDate { source_id } => source_id,
-                    _ => unreachable!("all other variants handled above")
+            match dyn_frame {
+                DynamicFrame::EarthMeanOfDate { precession }
+                | DynamicFrame::EarthTrueOfDate { precession, .. }
+                | DynamicFrame::EarthTrueEquatorMeanEquinox { precession, .. } => {
+                    precession.parent_id()
                 }
-            } else {source.orientation_id};
-
+                _ => unreachable!(),
+            }
+        } else {
+            let orientation_id =
+                if let Ok(dyn_frame) = DynamicFrame::try_from(source.orientation_id as u32) {
+                    match dyn_frame {
+                        DynamicFrame::BodyMeanOfDate { source_id }
+                        | DynamicFrame::BodyTrueOfDate { source_id } => source_id,
+                        _ => unreachable!("all other variants handled above"),
+                    }
+                } else {
+                    source.orientation_id
+                };
 
             match self.bpc_summary_at_epoch(orientation_id, epoch) {
                 Ok((summary, _, _, _)) => summary.inertial_frame_id,

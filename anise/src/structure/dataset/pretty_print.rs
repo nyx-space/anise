@@ -1,4 +1,4 @@
-use tabled::{settings::Style, Table, Tabled};
+use tabled::{Table, Tabled, settings::Style};
 
 use crate::structure::{EulerParameterDataSet, LocationDataSet};
 

@@ -15,10 +15,10 @@ use anise::{
     file2heap,
     math::rotation::Quaternion,
     naif::{
-        daf::{datatypes::Type2ChebyshevSet, NAIFDataSet, DAF},
+        Endian,
+        daf::{DAF, NAIFDataSet, datatypes::Type2ChebyshevSet},
         pck::BPCSummaryRecord,
         spk::summary::SPKSummaryRecord,
-        Endian,
     },
     prelude::*,
 };
@@ -241,9 +241,11 @@ fn test_spk_truncate_cheby() {
 
     // Now we can grab a mutable version of the SPK and modify it.
     let mut my_spk_trunc = my_spk.clone();
-    assert!(my_spk_trunc
-        .set_nth_data(idx, updated_segment, new_start, summary.end_epoch())
-        .is_ok());
+    assert!(
+        my_spk_trunc
+            .set_nth_data(idx, updated_segment, new_start, summary.end_epoch())
+            .is_ok()
+    );
 
     // Serialize the data into a new BSP and confirm that we've updated everything.
     let output_path = "../target/truncated-de440s.bsp";

@@ -3,7 +3,7 @@ use anise::{
     file2heap,
     prelude::*,
 };
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
 
 const NUM_QUERIES_PER_PAIR: f64 = 100.0;

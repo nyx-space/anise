@@ -1,7 +1,7 @@
 use anise::{constants::frames::EARTH_J2000, file2heap, prelude::*};
-use criterion::{criterion_group, criterion_main, Criterion};
-use rand::seq::SliceRandom;
+use criterion::{Criterion, criterion_group, criterion_main};
 use rand::SeedableRng;
+use rand::seq::SliceRandom;
 use rand_pcg::Pcg64;
 use std::hint::black_box;
 

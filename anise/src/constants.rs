@@ -435,6 +435,10 @@ pub mod frames {
     pub const EARTH_MOD_FRAME: Frame = Frame::new_inertial(EARTH, EARTH_MOD);
     /// The Earth True of Date frame uses the IAU2006 Precession and Nutation models.
     pub const EARTH_TOD_FRAME: Frame = Frame::new_inertial(EARTH, EARTH_TOD);
+    /// The Earth Mean of Date frame uses the IAU1976 Precession model.
+    pub const EARTH_MOD_LEGACY_FRAME: Frame = Frame::new_inertial(EARTH, EARTH_MOD_1976);
+    /// The Earth True of Date frame uses the 1976 Precession model and the 1980 Nutation model.
+    pub const EARTH_TOD_LEGACY_FRAME: Frame = Frame::new_inertial(EARTH, EARTH_TOD_1980);
 
     /// Moon Mean of Date (MOD) orientation uses the loaded IAU model from the planetary constants kernel, ignoring oscillatory terms and prime meridian.
     pub const MOON_MOD_FRAME: Frame = Frame::new_inertial(MOON, MOON_MOD);

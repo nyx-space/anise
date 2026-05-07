@@ -741,3 +741,22 @@ fn moon_tod_mod() {
         "Moon inertial TOE @ 2020-02-29T12:34:56 TDB".to_string()
     );
 }
+
+#[test]
+fn earth_mean_of_date_mean_of_epoch() {
+    use anise::constants::frames::{EARTH_MOD_FRAME, EARTH_MOD_LEGACY_FRAME};
+    let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
+    let epoch = Epoch::from_str("2020-02-29T12:34:56 TDB").unwrap();
+
+    // Ensure we can compute the rotation matrix to latest Earth MOD.
+    let dcm_mod = almanac.rotate(EARTH_MOD_FRAME, GCRF, epoch).unwrap();
+    assert!(dcm_mod.rot_mat_dt.is_none());
+    println!("{dcm_mod}");
+
+    let dcm_mod_legacy = almanac.rotate(EARTH_MOD_LEGACY_FRAME, GCRF, epoch).unwrap();
+    assert!(dcm_mod_legacy.rot_mat_dt.is_none());
+    println!("{dcm_mod_legacy}");
+
+    let dcm_norm_delta = (dcm_mod.rot_mat - dcm_mod_legacy.rot_mat).norm();
+    assert!(dcm_norm_delta > 0.0 && dcm_norm_delta < 1e-6);
+}

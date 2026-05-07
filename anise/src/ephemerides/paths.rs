@@ -13,10 +13,10 @@ use log::warn;
 use snafu::ensure;
 
 use super::{EphemerisError, NoEphemerisLoadedSnafu};
+use crate::NaifId;
 use crate::almanac::Almanac;
 use crate::frames::Frame;
 use crate::naif::daf::{DAFError, NAIFSummaryRecord};
-use crate::NaifId;
 
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
 pub const MAX_TREE_DEPTH: usize = 8;

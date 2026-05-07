@@ -13,18 +13,18 @@ use pyo3::prelude::*;
 use pyo3::types::PyType;
 use std::collections::HashMap;
 
-use crate::prelude::{Aberration, Almanac, Frame, Orbit};
 use crate::NaifId;
+use crate::prelude::{Aberration, Almanac, Frame, Orbit};
 
 pub use crate::analysis::elements::OrbitalElement;
 use crate::analysis::specs::{OrthogonalFrame, Plane};
 use crate::math::rotation::DCM;
 
+use super::AnalysisError;
 use super::event::{Event, EventArc, EventDetails, VisibilityArc};
 use super::prelude::{ScalarExpr, VectorExpr};
 use super::report::PyReportScalars;
 use super::specs::{DcmExpr, FrameSpec, StateSpec, StateSpecTrait};
-use super::AnalysisError;
 
 #[pymethods]
 impl Almanac {

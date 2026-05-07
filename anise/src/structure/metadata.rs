@@ -11,10 +11,10 @@ use crate::errors::DecodingError;
 use bytes::Bytes;
 use core::fmt;
 use core::str::FromStr;
-use der::{asn1::Utf8StringRef, Decode, Encode, Reader, Writer};
+use der::{Decode, Encode, Reader, Writer, asn1::Utf8StringRef};
 use hifitime::Epoch;
 
-use super::{dataset::DataSetType, semver::Semver, ANISE_VERSION};
+use super::{ANISE_VERSION, dataset::DataSetType, semver::Semver};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Metadata {
