@@ -74,7 +74,7 @@ pub const DYNAMIC_FRAME_PREFIX: u8 = 0xA0;
 ///   IAU1980  -> EQEQ94
 ///   IAU2000A -> EE00A
 ///   IAU2000B -> EE00B
-///   IAU2006  -> EE06A
+///   IAU2006A  -> EE06A
 /// ```
 ///
 /// This aligns with the SOFA/SOFARS sidereal-time identity:
@@ -99,7 +99,7 @@ pub const DYNAMIC_FRAME_PREFIX: u8 = 0xA0;
 /// - **Body True of Date** uses the full source pole model, inclusive of periodic trigonometric terms.
 /// - **Body Mean of Date** uses the mean source pole model, zeroing out periodic trigonometric terms in the pole right ascension and declination.
 ///
-/// For body TOD/MOD, the dynamic frame axes evaluate as:
+/// For body TOD/MOD, the dynamic frame axes evaluate as follows via the same Euler rotations code at the PCK-defined IAU frames:
 ///
 /// ```text
 ///   Z = source pole direction
@@ -107,7 +107,7 @@ pub const DYNAMIC_FRAME_PREFIX: u8 = 0xA0;
 ///   Y = Z × X
 /// ```
 ///
-/// If `parent_Z × Z` evaluates as singular (i.e., the pole aligns with the inertial Z-axis), the fallback perfectly mirrors the STK specification:
+/// If `parent_Z × Z` evaluates as singular (i.e., the pole aligns with the inertial Z-axis), the fallback perfectly mirrors the Ansys STK specification:
 ///
 /// ```text
 ///   Y = normalize(Z × parent_X)
@@ -117,7 +117,7 @@ pub const DYNAMIC_FRAME_PREFIX: u8 = 0xA0;
 /// # Interaction with `Frame` fields
 ///
 /// - `Frame::frozen_epoch`: If set, evaluates the dynamic models (precession, nutation, pole right ascension/declination) at the specified epoch rather than the integration time, freezing the frame inertially.
-/// - `Frame::force_inertial`: If `true`, the time derivative of the resulting Direction Cosine Matrix (DCM) is explicitly zeroed out.
+/// - `Frame::force_inertial`: If `true`, the time derivative of the resulting Direction Cosine Matrix (DCM) is explicitly zeroed out. The built-in Earth MOD/TOD constants are defined as inertial in the ANISE constants.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DynamicFrame {
     /// Earth Mean Equator, Mean Equinox of Date.
@@ -135,7 +135,7 @@ pub enum DynamicFrame {
     /// but backs out the nutation in right ascension to align the X-axis with the Mean Equinox.
     ///
     /// The Equation of the Equinoxes (EqE) SOFA model is determined by the `nutation` model:
-    /// IAU1980 -> eqeq94; IAU2000A -> ee00a; IAU2000B -> ee00b; IAU2006 -> ee06a.
+    /// IAU1980 -> eqeq94; IAU2000A -> ee00a; IAU2000B -> ee00b; IAU2006A -> ee06a.
     ///
     /// The sign convention follows the sidereal-time identity used by SOFARS: apparent sidereal time
     /// is mean sidereal time plus the equation of the equinoxes.
@@ -301,7 +301,7 @@ impl TryFrom<u8> for EarthNutationModel {
             3 => Ok(Self::IAU2006A),
             _ => Err(OrientationError::NotDynamicFrame {
                 detail: format!(
-                    "{value} invalid nutation module; use 0 for IAU1980, 1 for IAU2000A, 2 for IAU2000B, 3 for IAU2006A"
+                    "{value} invalid nutation model; use 0 for IAU1980, 1 for IAU2000A, 2 for IAU2000B, 3 for IAU2006A"
                 ),
             }),
         }
