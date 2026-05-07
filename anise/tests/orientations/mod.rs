@@ -9,7 +9,7 @@ use anise::constants::orientations::{
     ECLIPJ2000, IAU_JUPITER, IAU_MOON, ITRF93, J2000, MOON_PA_DE440,
 };
 use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
-use anise::math::rotation::{EulerParameter, DCM};
+use anise::math::rotation::{DCM, EulerParameter};
 use anise::math::{Matrix3, Vector3};
 use anise::naif::kpl::parser::convert_tpc;
 
@@ -814,4 +814,25 @@ fn earth_true_of_date_true_of_epoch() {
 
     let dcm_norm_delta = (dcm_2000a.rot_mat - dcm_2000b.rot_mat).norm();
     assert!(dcm_norm_delta > 0.0 && dcm_norm_delta < 2e-9);
+}
+
+#[test]
+fn earth_teme() {
+    use anise::constants::frames::{EARTH_TEME_FRAME, EARTH_TEME_LEGACY_FRAME};
+    let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
+    let epoch = Epoch::from_str("2020-02-29T12:34:56 TDB").unwrap();
+
+    // Ensure we can compute the rotation matrix to latest Earth MOD.
+    let dcm_mod = almanac.rotate(EARTH_TEME_FRAME, GCRF, epoch).unwrap();
+    assert!(dcm_mod.rot_mat_dt.is_none());
+    println!("{dcm_mod}");
+
+    let dcm_mod_legacy = almanac
+        .rotate(EARTH_TEME_LEGACY_FRAME, GCRF, epoch)
+        .unwrap();
+    assert!(dcm_mod_legacy.rot_mat_dt.is_none());
+    println!("{dcm_mod_legacy}");
+
+    let dcm_norm_delta = (dcm_mod.rot_mat - dcm_mod_legacy.rot_mat).norm();
+    assert!(dcm_norm_delta > 0.0 && dcm_norm_delta < 1e-6);
 }

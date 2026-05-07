@@ -128,10 +128,7 @@ pub mod celestial_objects {
 ///  edited by P. Kenneth Seidelmann. University Science
 ///  Books, 20 Edgehill Road, Mill Valley, CA 94941 (1992)
 pub mod orientations {
-    // use crate::orientations::dynamic::{
-    //     dynamic_orientation_id, DynamicOrientFamily, SofaNutationModel, SofaPrecessionModel,
-    // };
-    use crate::{NaifId, frames::DynamicFrame, orientations::OrientationError};
+    use crate::{NaifId, orientations::OrientationError};
     /// Earth mean equator, dynamical equinox of J2000. The root reference frame for SPICE.
 
     pub const J2000: NaifId = 1;
@@ -287,14 +284,14 @@ pub mod orientations {
     /// Changing this constant shifts both the ECLIPJ2000 rotation and the ICRS frame bias — that is intentional, but be aware of the coupling.
     pub const J2000_TO_ECLIPJ2000_ANGLE_RAD: f64 = 0.40909280422232897;
 
-    /// The Earth Mean of Date frame uses the IAU2006 Precession model.
+    /// The Earth Mean of Date uses the IAU2006 Precession model.
     pub const EARTH_MOD: NaifId = 0xA0E0_0300_u32 as i32;
     /// Earth MOD with the 2000 Precession model.
     pub const EARTH_MOD_2000: NaifId = 0xA0E0_0100_u32 as i32;
     /// Earth MOD with the 1976 Precession model (legacy MOD).
     pub const EARTH_MOD_1976: NaifId = 0xA0E0_0000_u32 as i32;
 
-    /// The Earth True of Date frame uses the IAU2006 Precession and Nutation models.
+    /// The Earth True of Date uses the IAU2006 Precession and Nutation models.
     pub const EARTH_TOD: NaifId = 0xA0E1_0303_u32 as i32;
     /// Earth MOD with the 2000 Precession model and the 2000A Nutation model.
     pub const EARTH_TOD_2000A: NaifId = 0xA0E1_0101_u32 as i32;
@@ -302,6 +299,11 @@ pub mod orientations {
     pub const EARTH_TOD_2000B: NaifId = 0xA0E1_0102_u32 as i32;
     /// Earth MOD with the 1976 Precession model and the 1980 Nutation model.
     pub const EARTH_TOD_1980: NaifId = 0xA0E1_0000_u32 as i32;
+
+    /// The Earth True Equator True Equinox Of Date uses the IAU2006 Precession and Nutation models.
+    pub const EARTH_TEME: NaifId = 0xA0E2_0303_u32 as i32;
+    /// Earth TEME with the 1976 Precession model and the 1980 Nutation model.
+    pub const EARTH_TEME_LEGACY: NaifId = 0xA0E2_0000_u32 as i32;
 
     /// Moon Mean of Date (MOD) orientation uses the loaded IAU model from the planetary constants kernel, ignoring oscillatory terms and prime meridian.
     pub const MOON_MOD: NaifId = 0xA0B0_012D_u32 as i32;
@@ -439,6 +441,10 @@ pub mod frames {
     pub const EARTH_MOD_LEGACY_FRAME: Frame = Frame::new_inertial(EARTH, EARTH_MOD_1976);
     /// The Earth True of Date frame uses the 1976 Precession model and the 1980 Nutation model.
     pub const EARTH_TOD_LEGACY_FRAME: Frame = Frame::new_inertial(EARTH, EARTH_TOD_1980);
+    /// The Earth True Equator True Equinox Of Date frame uses the IAU2006 Precession and Nutation models.
+    pub const EARTH_TEME_FRAME: Frame = Frame::new_inertial(EARTH, EARTH_TEME);
+    /// The Earth True Equator True Equinox Of Date frame uses the 1976 Precession model and the 1980 Nutation model.
+    pub const EARTH_TEME_LEGACY_FRAME: Frame = Frame::new_inertial(EARTH, EARTH_TEME_LEGACY);
 
     /// Moon Mean of Date (MOD) orientation uses the loaded IAU model from the planetary constants kernel, ignoring oscillatory terms and prime meridian.
     pub const MOON_MOD_FRAME: Frame = Frame::new_inertial(MOON, MOON_MOD);

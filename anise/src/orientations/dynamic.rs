@@ -16,7 +16,7 @@ use crate::constants::orientations::{ICRS, J2000};
 use crate::frames::{DynamicFrame, EarthNutationModel, EarthPrecessionModel};
 use crate::hifitime::{Epoch, TimeUnits, Unit};
 use crate::math::Matrix3;
-use crate::math::rotation::DCM;
+use crate::math::rotation::{DCM, r3};
 
 impl Almanac {
     /// Builds the DCM to rotate from a dynamic frame.
@@ -80,7 +80,24 @@ impl Almanac {
             DynamicFrame::EarthTrueEquatorMeanEquinox {
                 precession,
                 nutation,
-            } => todo!("TEME"),
+            } => {
+                // Evaluate nominal rotation matrix.
+                let rot_mat = nutation.teme_rot_mat(epoch, precession);
+
+                // Finite differencing for the time derivative.
+                let pre_rot_dcm = nutation.teme_rot_mat(epoch - 1.seconds(), precession);
+                let post_rot_dcm = nutation.teme_rot_mat(epoch + 1.seconds(), precession);
+                let rot_mat_dt = (post_rot_dcm - pre_rot_dcm) * 0.5;
+
+                let dcm = DCM {
+                    rot_mat,
+                    from: precession.parent_id(),
+                    to: source.into(),
+                    rot_mat_dt: Some(rot_mat_dt),
+                };
+
+                Ok(dcm)
+            }
             DynamicFrame::BodyMeanOfDate { source_id }
             | DynamicFrame::BodyTrueOfDate { source_id } => {
                 let mean_model = matches!(source, DynamicFrame::BodyMeanOfDate { .. });
@@ -142,6 +159,7 @@ impl EarthPrecessionModel {
 }
 
 impl EarthNutationModel {
+    /// Builds the rotation matrix for the nutation using SOFA
     pub(crate) fn rot_mat(&self, epoch: Epoch) -> Matrix3 {
         // SOFA models expect Terrestrial Time (TT) as a two-part Julian Date.
         let (tt1, tt2) = sofa_tt_jd_parts(epoch);
@@ -159,6 +177,30 @@ impl EarthNutationModel {
             nmat[0][0], nmat[0][1], nmat[0][2], nmat[1][0], nmat[1][1], nmat[1][2], nmat[2][0],
             nmat[2][1], nmat[2][2],
         )
+    }
+
+    /// Compute the equation of the equinoxes, in radians
+    pub(crate) fn eqeq_rad(&self, epoch: Epoch) -> f64 {
+        // SOFA models expect TT as a two-part Julian Date for the modern models.
+        // eqeq94's docs are historically a bit odd about the time scale, but using
+        // the same TT split here keeps this consistent with the rest of the P/N path.
+        let (tt1, tt2) = sofa_tt_jd_parts(epoch);
+
+        match self {
+            EarthNutationModel::IAU1980 => sofars::erst::eqeq94(tt1, tt2),
+            EarthNutationModel::IAU2000A => sofars::erst::ee00a(tt1, tt2),
+            EarthNutationModel::IAU2000B => sofars::erst::ee00b(tt1, tt2),
+            EarthNutationModel::IAU2006A => sofars::erst::ee06a(tt1, tt2),
+        }
+    }
+
+    /// Builds the rotation matrix of the True Equator True Equinox frame for the given precession model
+    pub(crate) fn teme_rot_mat(&self, epoch: Epoch, precession: EarthPrecessionModel) -> Matrix3 {
+        let tod_rot_mat = self.rot_mat(epoch) * precession.rot_mat(epoch);
+
+        // Equation of the equinoxes rotates TOD/TETE coordinates into TEME coordinates:
+        // true equator is retained, true equinox is replaced by the mean equinox.
+        r3(self.eqeq_rad(epoch)) * tod_rot_mat
     }
 }
 

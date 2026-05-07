@@ -15,50 +15,145 @@ use core::fmt;
 
 pub const DYNAMIC_FRAME_PREFIX: u8 = 0xA0;
 
-/// Dynamic frames in ANISE are encoded as an integer in the orientation ID of the frame.
+/// Dynamic frames in ANISE are encoded as a packed integer within the frame's orientation ID.
 ///
 /// # Encoding format
 ///
-/// The format is as follows:
+/// The identifier is a 32-bit signed integer packed as four bytes:
 /// ```text
 ///   0xA0 FF AA BB
 /// ```
-/// Where
-///  - 0xA0: ANISE dynamic frame prefix
-///  - FF: Frame family, either Earth True of Date, Earth Mean of Date, Earth True Equator True Equinox, non-Earth True of Date, non-Earth Mean of Date
-///  - AA: Primary Model, e.g., precession model for Earth TOD/MOD frames
-///  - BB: Secondary Model, e.g. nutation model identifier for Earth TOD frame
+/// Where:
+///  - `0xA0`: ANISE dynamic frame prefix.
+///  - `FF`: Frame family identifier (e.g., Earth Mean of Date, Body True of Date).
+///  - `AA`: Primary payload (e.g., precession model for Earth frames, or the high byte of a source ID).
+///  - `BB`: Secondary payload (e.g., nutation model for Earth frames, or the low byte of a source ID).
 ///
-/// For generic body mean of date and true of dates, the source_id is contractually an i32 for compatibility with the rest of NAIF IDs.
-/// **However**, due to encoding limitations, the ID is in fact limited to being strictly positive between 0 and 65535, i.e. it MUST be
-/// representable on a u16. This guarantees the ability to define an MOD or TOD frame against any arbitrary NAIF ID of a celestial object,
-/// but never against a spacecraft ID. **Importantly:** the encoding will fail silently.
+/// # Frame families
 ///
-/// # Examples
+/// ```text
+///   0xA0 E0 AA 00   Earth Mean Equator, Mean Equinox of Date (MOD)
+///   0xA0 E1 AA BB   Earth True Equator, True Equinox of Date (TOD)
+///   0xA0 E2 AA BB   Earth True Equator, Mean Equinox of Date (TEME)
 ///
-/// - Frame Family for Earth models is prefixed by `0xA0 Ez .. ..` (note the `E` in hex)
-/// - Frame Family for other Bodies is prefixed by `0xA0 Bz .. ..` (note the `B` in hex)
+///   0xA0 B0 SS SS   Body Mean of Date
+///   0xA0 B1 SS SS   Body True of Date
+/// ```
+///
+/// The `E*` families are Earth-specific models. The `B*` families are generic celestial-body pole models.
+///
+/// # Earth payload
+///
+/// For Earth frames, `AA` encodes the precession / bias-precession model:
+///
+/// ```text
+///   0x00   IAU 1976 / FK5 precession
+///   0x01   IAU 2000 precession-bias model
+///   0x03   IAU 2006 precession-bias model
+/// ```
+///
+/// *(Note: `0x02` is intentionally reserved and unused).*
+///
+/// For Earth TOD and TEME frames, `BB` encodes the nutation model:
+///
+/// ```text
+///   0x00   IAU 1980 nutation
+///   0x01   IAU 2000A nutation
+///   0x02   IAU 2000B nutation
+///   0x03   IAU 2006 / 2000A-compatible nutation
+/// ```
+///
+/// For Earth MOD frames, `BB` is reserved and must strictly be `0x00`.
+///
+/// Earth MOD uses the selected precession model only. Earth TOD composes the selected precession and nutation models.
+/// Earth TEME first builds the corresponding true-equator/true-equinox frame, then rotates about the true Z-axis by the equation of the equinoxes to replace the true equinox with the mean equinox.
+///
+/// For Earth TEME, the equation of the equinoxes model is strictly derived from the selected nutation model:
+///
+/// ```text
+///   IAU1980  -> EQEQ94
+///   IAU2000A -> EE00A
+///   IAU2000B -> EE00B
+///   IAU2006  -> EE06A
+/// ```
+///
+/// This aligns with the SOFA/SOFARS sidereal-time identity:
+/// `apparent sidereal time = mean sidereal time + equation of the equinoxes`.
+///
+/// # Body payload
+///
+/// For generic body frames, `AA BB` is interpreted as a single unsigned 16-bit source orientation ID:
+///
+/// ```text
+///   source_id = u16::from_be_bytes([AA, BB])
+/// ```
+///
+/// While the public enum stores this as an `i32` for seamless integration with ANISE and NAIF ID routing, the compact bitmask fundamentally restricts the payload.
+/// The source ID MUST be strictly positive and fall within the `0..=65535` range.
+///
+/// This perfectly accommodates standard celestial-body orientation IDs (e.g., `301` for the Moon, or `31001` for a lunar ME-style frame). **It cannot represent negative spacecraft IDs or deeply nested user-defined SPICE frames.**
+/// **Warning:** Out-of-range body source IDs will fail silently via bitwise truncation. Callers must treat the `u16` bound as a strict mathematical contract.
+///
+/// Body TOD and MOD frames use the source orientation model solely to establish the body's pole direction. The source prime meridian (twist) angle is explicitly ignored.
+///
+/// - **Body True of Date** uses the full source pole model, inclusive of periodic trigonometric terms.
+/// - **Body Mean of Date** uses the mean source pole model, zeroing out periodic trigonometric terms in the pole right ascension and declination.
+///
+/// For body TOD/MOD, the dynamic frame axes evaluate as:
+///
+/// ```text
+///   Z = source pole direction
+///   X = normalize(parent_Z × Z)
+///   Y = Z × X
+/// ```
+///
+/// If `parent_Z × Z` evaluates as singular (i.e., the pole aligns with the inertial Z-axis), the fallback perfectly mirrors the STK specification:
+///
+/// ```text
+///   Y = normalize(Z × parent_X)
+///   X = Y × Z
+/// ```
+///
+/// # Interaction with `Frame` fields
+///
+/// - `Frame::frozen_epoch`: If set, evaluates the dynamic models (precession, nutation, pole right ascension/declination) at the specified epoch rather than the integration time, freezing the frame inertially.
+/// - `Frame::force_inertial`: If `true`, the time derivative of the resulting Direction Cosine Matrix (DCM) is explicitly zeroed out.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DynamicFrame {
-    EarthMeanOfDate {
-        precession: EarthPrecessionModel,
-    },
+    /// Earth Mean Equator, Mean Equinox of Date.
+    ///
+    /// Also known as Earth Mean of Date or MEME.
+    EarthMeanOfDate { precession: EarthPrecessionModel },
+    /// Earth True Equator, True Equinox of Date.
+    ///
+    /// Also known as Earth True of Date or TETE.
     EarthTrueOfDate {
         precession: EarthPrecessionModel,
         nutation: EarthNutationModel,
     },
-    /// For the Earth TEME, the equation of equinox SOFA model is chosen from the nutation model.
-    /// IAU1980 -> EQEQ94; IAU2000A -> EE00A; IAU2000B -> EE00B; IAU2006 -> EE06A
+    /// The True Equator Mean Equinox (TEME) frame shares its True Equator (Z-axis) with the TOD frame,
+    /// but backs out the nutation in right ascension to align the X-axis with the Mean Equinox.
+    ///
+    /// The Equation of the Equinoxes (EqE) SOFA model is determined by the `nutation` model:
+    /// IAU1980 -> eqeq94; IAU2000A -> ee00a; IAU2000B -> ee00b; IAU2006 -> ee06a.
+    ///
+    /// The sign convention follows the sidereal-time identity used by SOFARS: apparent sidereal time
+    /// is mean sidereal time plus the equation of the equinoxes.
     EarthTrueEquatorMeanEquinox {
         precession: EarthPrecessionModel,
         nutation: EarthNutationModel,
     },
-    BodyMeanOfDate {
-        source_id: i32,
-    },
-    BodyTrueOfDate {
-        source_id: i32,
-    },
+    /// Generic body Mean of Date frame.
+    ///
+    /// The Z axis is the mean source pole. Periodic trigonometric terms in the
+    /// source pole right ascension and declination are ignored. The source prime
+    /// meridian angle is ignored.
+    BodyMeanOfDate { source_id: i32 },
+    /// Generic body True of Date frame.
+    ///
+    /// The Z axis is the full source pole, including periodic trigonometric
+    /// terms. The source prime meridian angle is ignored.
+    BodyTrueOfDate { source_id: i32 },
 }
 
 impl DynamicFrame {

@@ -15,7 +15,7 @@ use super::{NoOrientationsLoadedSnafu, OrientationError};
 use crate::NaifId;
 use crate::almanac::Almanac;
 use crate::constants::orientations::{ECLIPJ2000, ICRS, J2000};
-use crate::frames::{DynamicFrame, EarthPrecessionModel, Frame};
+use crate::frames::{DynamicFrame, Frame};
 use crate::naif::daf::{DAFError, NAIFSummaryRecord};
 
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
