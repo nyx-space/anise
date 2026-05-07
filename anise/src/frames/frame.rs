@@ -25,6 +25,7 @@ use crate::constants::celestial_objects::{
 };
 use crate::constants::orientations::{id_from_orientation_name, orientation_name_from_id, J2000};
 use crate::errors::{AlmanacError, EphemerisSnafu, OrientationSnafu, PhysicsError};
+use crate::frames::DynamicFrame;
 use crate::prelude::FrameUid;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
 use crate::time::{Epoch, TimeScale, Unit};
@@ -85,7 +86,18 @@ impl Frame {
         Self::new(SOLAR_SYSTEM_BARYCENTER, orientation_id)
     }
 
+    pub const fn new_inertial(ephemeris_id: NaifId, orientation_id: NaifId) -> Self {
+        Self {
+            ephemeris_id,
+            orientation_id,
+            frozen_epoch: None,
+            force_inertial: true,
+            mu_km3_s2: None,
+            shape: None,
+        }
+    }
     /// Attempts to create a new frame from its center and reference frame name.
+
     /// This function is compatible with the CCSDS OEM names.
     pub fn from_name(center: &str, ref_frame: &str) -> Result<Self, AlmanacError> {
         let ephemeris_id = id_from_celestial_name(center).context(EphemerisSnafu {
@@ -422,6 +434,13 @@ impl Frame {
                 frame: self.into(),
             })?
             .polar_radius_km)
+    }
+
+    /// Returns true if this is a dynamic frame, e.g. Mean/True of Date/Epoch
+    ///
+    /// :rtype: bool
+    pub fn is_dynamic(&self) -> bool {
+        DynamicFrame::try_from(self.orientation_id as u32).is_ok()
     }
 }
 

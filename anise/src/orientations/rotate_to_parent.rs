@@ -17,6 +17,7 @@ use crate::constants::orientations::{
     J2000, J2000_TO_ECLIPJ2000_ANGLE_RAD,
 };
 use crate::constants::ARCSEC_TO_RAD;
+use crate::frames::DynamicFrame;
 use crate::hifitime::Epoch;
 use crate::math::rotation::{r1, r1_dot, r2, r3, r3_dot, DCM};
 use crate::naif::daf::datatypes::Type2ChebyshevSet;
@@ -75,6 +76,13 @@ impl Almanac {
                 from: J2000,
                 to: ICRS,
             });
+        } else if let Ok(dyn_frame) = DynamicFrame::try_from(source.orientation_id as u32) {
+            // Dynamic frames are dispatched differently.
+            let mut dcm = self.rotation_to_parent_dynamic(dyn_frame, epoch)?;
+            if source.force_inertial {
+                dcm.rot_mat_dt = None;
+            }
+            return Ok(dcm);
         }
 
         // Let's see if this orientation is defined in the loaded BPC files
@@ -147,7 +155,13 @@ impl Almanac {
                         };
 
                         return planetary_data
-                            .rotation_to_parent(epoch, &system_data, source.force_inertial)
+                            .rotation_to_parent(
+                                epoch,
+                                &system_data,
+                                source.force_inertial,
+                                false,
+                                false,
+                            )
                             .context(OrientationPhysicsSnafu);
                     }
                 }
