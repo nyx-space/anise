@@ -204,7 +204,7 @@ impl EarthNutationModel {
     }
 }
 
-// Helper function to convert an epoch to a SOFA two-part epoch
+// Helper function to convert an epoch to a SOFA two-part epoch, snagged from the hifitime TCG/TCB tests.
 fn sofa_tt_jd_parts(epoch: Epoch) -> (f64, f64) {
     let jde_tt = epoch.to_jde_tt_duration();
 

@@ -152,7 +152,7 @@ impl PlanetaryData {
     /// Computes the rotation to the parent frame, returning only the rotation matrix.
     /// If mean_model is true, the trigonometric contributions of the oscillating terms are ignored.
     /// If ignore_twist is true, the W angle is never computed.
-    /// Set mean_model and ignore_prime_meridian to true to build a body Mean-of-Date pole frame.
+    /// Set mean_model and ignore_prime_meridian to true to build a body Mean of Date pole frame.
     fn dcm_to_parent(
         &self,
         epoch: Epoch,
@@ -270,7 +270,7 @@ impl PlanetaryData {
     /// Computes the rotation to the parent frame, including its time derivative. System is the parent system, e.g. the Jupiter system.
     /// If mean_model is true, the trigonometric contributions of the oscillating terms are ignored.
     /// If ignore_twist is true, the W angle is never computed.
-    /// Set mean_model and ignore_prime_meridian to true to build a body Mean-of-Date pole frame.
+    /// Set mean_model and ignore_prime_meridian to true to build a body Mean of Date pole frame.
     ///
     /// Source: <https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/rotation.html#Working%20with%20RA,%20Dec%20and%20Twist>
     pub fn rotation_to_parent(
