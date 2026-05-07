@@ -8,22 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 
-use snafu::ResultExt;
-
-use crate::almanac::Almanac;
-use crate::constants::orientations::{
-    orientation_name_from_id, ECLIPJ2000, FRAME_BIAS_DEPSBI_ARCSEC, FRAME_BIAS_DPSIBI_ARCSEC,
-    FRAME_BIAS_DRA0_ARCSEC, ICRS, J2000, J2000_TO_ECLIPJ2000_ANGLE_RAD,
-};
-use crate::constants::ARCSEC_TO_RAD;
-use crate::hifitime::Epoch;
-use crate::math::rotation::{r1, r1_dot, r2, r3, r3_dot, DCM};
-use crate::naif::daf::datatypes::Type2ChebyshevSet;
-use crate::naif::daf::{DAFError, DafDataType, NAIFDataSet, NAIFSummaryRecord};
-use crate::orientations::{BPCSnafu, OrientationInterpolationSnafu};
-use crate::orientations::{OrientationError, OrientationPhysicsSnafu};
-use crate::prelude::Frame;
-use nalgebra::{Matrix3, Vector3};
+use crate::constants::orientations::orientation_name_from_id;
+use crate::orientations::OrientationError;
 
 use core::fmt;
 
@@ -168,17 +154,6 @@ pub enum EarthPrecessionModel {
     IAU2006,
 }
 
-impl EarthPrecessionModel {
-    /// Returns the parent ID, depends on the model used.
-    pub(crate) fn parent_id(self) -> i32 {
-        match self {
-            EarthPrecessionModel::IAU1976 => J2000,
-            EarthPrecessionModel::IAU2000 => ICRS,
-            EarthPrecessionModel::IAU2006 => ICRS,
-        }
-    }
-}
-
 impl TryFrom<u8> for EarthPrecessionModel {
     type Error = OrientationError;
     fn try_from(value: u8) -> Result<Self, Self::Error> {
@@ -211,7 +186,7 @@ pub enum EarthNutationModel {
     IAU1980,
     IAU2000A,
     IAU2000B,
-    IAU2006,
+    IAU2006A,
 }
 
 impl TryFrom<u8> for EarthNutationModel {
@@ -221,7 +196,7 @@ impl TryFrom<u8> for EarthNutationModel {
             0 => Ok(Self::IAU1980),
             1 => Ok(Self::IAU2000A),
             2 => Ok(Self::IAU2000B),
-            3 => Ok(Self::IAU2006),
+            3 => Ok(Self::IAU2006A),
             _ => Err(OrientationError::NotDynamicFrame {
                 detail: format!(
                     "{value} invalid precession module; use 0 for IAU1976, 1 for IAU2000, 2 for IAU2006"
@@ -237,7 +212,7 @@ impl Into<u8> for EarthNutationModel {
             Self::IAU1980 => 0,
             Self::IAU2000A => 1,
             Self::IAU2000B => 2,
-            Self::IAU2006 => 3,
+            Self::IAU2006A => 3,
         }
     }
 }
@@ -299,7 +274,7 @@ mod ut_dynamic_frame {
             dynf,
             DynamicFrame::EarthTrueOfDate {
                 precession: EarthPrecessionModel::IAU2006,
-                nutation: EarthNutationModel::IAU2006
+                nutation: EarthNutationModel::IAU2006A
             }
         );
         let dynf_id: i32 = dynf.into();
@@ -347,7 +322,7 @@ mod ut_dynamic_frame {
             dynf,
             DynamicFrame::EarthTrueOfDate {
                 precession: EarthPrecessionModel::IAU2000,
-                nutation: EarthNutationModel::IAU2006
+                nutation: EarthNutationModel::IAU2006A
             }
         );
         let dynf_id: i32 = dynf.into();

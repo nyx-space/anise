@@ -15,7 +15,7 @@ pub const SPEED_OF_LIGHT_KM_S: f64 = 299_792.458;
 pub const ARCSEC_TO_RAD: f64 = core::f64::consts::PI / (180.0 * 3600.0);
 
 pub mod celestial_objects {
-    use crate::{ephemerides::EphemerisError, NaifId};
+    use crate::{NaifId, ephemerides::EphemerisError};
 
     pub const SOLAR_SYSTEM_BARYCENTER: NaifId = 0;
     pub const MERCURY_BARYCENTER: NaifId = 1;
@@ -131,7 +131,7 @@ pub mod orientations {
     // use crate::orientations::dynamic::{
     //     dynamic_orientation_id, DynamicOrientFamily, SofaNutationModel, SofaPrecessionModel,
     // };
-    use crate::{frames::DynamicFrame, orientations::OrientationError, NaifId};
+    use crate::{NaifId, frames::DynamicFrame, orientations::OrientationError};
     /// Earth mean equator, dynamical equinox of J2000. The root reference frame for SPICE.
 
     pub const J2000: NaifId = 1;
@@ -571,7 +571,7 @@ pub mod usual_planetary_constants {
 #[cfg(test)]
 mod constants_ut {
     use crate::constants::orientations::{
-        orientation_name_from_id, B1950, ECLIPB1950, ECLIPJ2000, FK4, J2000, MARSIAU,
+        B1950, ECLIPB1950, ECLIPJ2000, FK4, J2000, MARSIAU, orientation_name_from_id,
     };
 
     use crate::constants::celestial_objects::*;
@@ -632,7 +632,7 @@ mod constants_ut {
     #[test]
     fn icrs_orientation_name_round_trip() {
         use crate::constants::orientations::{
-            id_from_orientation_name, orientation_name_from_id, ICRS, J2000,
+            ICRS, J2000, id_from_orientation_name, orientation_name_from_id,
         };
 
         assert_eq!(orientation_name_from_id(ICRS).unwrap(), "ICRS");

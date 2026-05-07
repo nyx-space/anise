@@ -733,12 +733,20 @@ fn moon_tod_mod() {
     }
     assert_eq!(format!("{MOON_MOD_FRAME}"), "Moon inertial MOD".to_string());
     assert_eq!(format!("{MOON_TOD_FRAME}"), "Moon inertial TOD".to_string());
+
     // Convert these to true of epoch frames
     let mut toe = MOON_TOD_FRAME;
     toe.frozen_epoch = Some(epoch);
     assert_eq!(
         format!("{toe}"),
         "Moon inertial TOE @ 2020-02-29T12:34:56 TDB".to_string()
+    );
+
+    let mut moe = MOON_MOD_FRAME;
+    moe.frozen_epoch = Some(epoch);
+    assert_eq!(
+        format!("{moe}"),
+        "Moon inertial MOE @ 2020-02-29T12:34:56 TDB".to_string()
     );
 }
 
@@ -759,4 +767,51 @@ fn earth_mean_of_date_mean_of_epoch() {
 
     let dcm_norm_delta = (dcm_mod.rot_mat - dcm_mod_legacy.rot_mat).norm();
     assert!(dcm_norm_delta > 0.0 && dcm_norm_delta < 1e-6);
+
+    let mut of_epoch = EARTH_MOD_FRAME;
+    // Must freeze at a different epoch than the evaluation epoch for this test
+    of_epoch.frozen_epoch = Some(epoch - Unit::Day * 365.25);
+    let dcm_moe = almanac.rotate(of_epoch, GCRF, epoch).unwrap();
+    // We compare the exactly rotation matrices because the DCM structure itself has a larger epsilon.
+    assert_ne!(dcm_moe.rot_mat, dcm_mod.rot_mat);
+    assert!(dcm_mod.rot_mat_dt.is_none());
+    // Note that the printed rotation name in the DCM structure only looses the knowledge that this
+    // is an Of Epoch frame (it does not know that, it only knows the IDs).
+    println!("{dcm_moe}");
+}
+
+#[test]
+fn earth_true_of_date_true_of_epoch() {
+    use anise::constants::frames::{EARTH_TOD_FRAME, EARTH_TOD_LEGACY_FRAME};
+    use anise::constants::orientations::{EARTH_TOD_2000A, EARTH_TOD_2000B};
+    let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
+    let epoch = Epoch::from_str("2020-02-29T12:34:56 TDB").unwrap();
+
+    // Ensure we can compute the rotation matrix to latest Earth MOD.
+    let dcm_mod = almanac.rotate(EARTH_TOD_FRAME, GCRF, epoch).unwrap();
+    assert!(dcm_mod.rot_mat_dt.is_none());
+    println!("{dcm_mod}");
+
+    let dcm_mod_legacy = almanac.rotate(EARTH_TOD_LEGACY_FRAME, GCRF, epoch).unwrap();
+    assert!(dcm_mod_legacy.rot_mat_dt.is_none());
+    println!("{dcm_mod_legacy}");
+
+    let dcm_norm_delta = (dcm_mod.rot_mat - dcm_mod_legacy.rot_mat).norm();
+    assert!(dcm_norm_delta > 0.0 && dcm_norm_delta < 1e-6);
+
+    // Compute the delta between both 2000 model
+    let dcm_2000a = almanac
+        .rotate(EARTH_TOD_FRAME.with_orient(EARTH_TOD_2000A), GCRF, epoch)
+        .unwrap();
+    assert!(dcm_2000a.rot_mat_dt.is_none());
+    println!("{dcm_2000a}");
+
+    let dcm_2000b = almanac
+        .rotate(EARTH_TOD_FRAME.with_orient(EARTH_TOD_2000B), GCRF, epoch)
+        .unwrap();
+    assert!(dcm_2000b.rot_mat_dt.is_none());
+    println!("{dcm_2000b}");
+
+    let dcm_norm_delta = (dcm_2000a.rot_mat - dcm_2000b.rot_mat).norm();
+    assert!(dcm_norm_delta > 0.0 && dcm_norm_delta < 2e-9);
 }

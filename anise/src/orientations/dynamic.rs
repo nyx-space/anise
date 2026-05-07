@@ -12,18 +12,11 @@ use snafu::ResultExt;
 
 use super::{OrientationError, OrientationPhysicsSnafu};
 use crate::almanac::Almanac;
+use crate::constants::orientations::{ICRS, J2000};
 use crate::frames::{DynamicFrame, EarthNutationModel, EarthPrecessionModel};
 use crate::hifitime::{Epoch, TimeUnits, Unit};
-use crate::math::rotation::DCM;
 use crate::math::Matrix3;
-use crate::orientations::{BPCSnafu, OrientationInterpolationSnafu};
-
-use sofars::pnp::{
-    nut00a, nut00b, nut06a, nut80, obl06, obl80, pmat00, pmat06, pmat76, pnm00a, pnm00b, pnm06a,
-    pnm80,
-};
-
-use core::fmt;
+use crate::math::rotation::DCM;
 
 impl Almanac {
     /// Builds the DCM to rotate from a dynamic frame.
@@ -58,7 +51,32 @@ impl Almanac {
             DynamicFrame::EarthTrueOfDate {
                 precession,
                 nutation,
-            } => todo!("TOD"),
+            } => {
+                // Evaluate nominal rotation matrix.
+                //
+                // P maps parent -> mean equator / mean equinox of date.
+                // N maps mean-of-date -> true equator / true equinox of date.
+                // Therefore TOD = N * P.
+                let rot_mat = nutation.rot_mat(epoch) * precession.rot_mat(epoch);
+
+                // Finite differencing for the time derivative.
+                let pre_rot_dcm =
+                    nutation.rot_mat(epoch - 1.seconds()) * precession.rot_mat(epoch - 1.seconds());
+
+                let post_rot_dcm =
+                    nutation.rot_mat(epoch + 1.seconds()) * precession.rot_mat(epoch + 1.seconds());
+
+                let rot_mat_dt = (post_rot_dcm - pre_rot_dcm) * 0.5;
+
+                let dcm = DCM {
+                    rot_mat,
+                    from: precession.parent_id(),
+                    to: source.into(),
+                    rot_mat_dt: Some(rot_mat_dt),
+                };
+
+                Ok(dcm)
+            }
             DynamicFrame::EarthTrueEquatorMeanEquinox {
                 precession,
                 nutation,
@@ -91,170 +109,21 @@ impl Almanac {
             }
         }
     }
-
-    // fn rotation_earth_mod(
-    //     &self,
-    //     source: Frame,
-    //     epoch: Epoch,
-    //     id: DynamicOrientationId,
-    // ) -> Result<DCM, OrientationError> {
-    //     let prec = SofaPrecessionModel::try_from(id.primary)?;
-    //     let rot_mat = sofa_precession_matrix(prec, epoch)?;
-
-    //     let rot_mat_dt = if source.force_inertial {
-    //         None
-    //     } else {
-    //         Some(self.dynamic_rot_mat_dt(source, epoch, |almanac, t| {
-    //             almanac.rotation_earth_mod_matrix(t, prec)
-    //         })?)
-    //     };
-
-    //     Ok(DCM {
-    //         rot_mat,
-    //         rot_mat_dt,
-    //         from: J2000,
-    //         to: source.orientation_id,
-    //     })
-    // }
-
-    // fn rotation_earth_tod(
-    //     &self,
-    //     source: Frame,
-    //     epoch: Epoch,
-    //     id: DynamicOrientationId,
-    // ) -> Result<DCM, OrientationError> {
-    //     let prec = SofaPrecessionModel::try_from(id.primary)?;
-    //     let nut = SofaNutationModel::try_from(id.secondary)?;
-
-    //     let rot_mat = sofa_true_of_date_matrix(prec, nut, epoch)?;
-
-    //     let rot_mat_dt = if source.force_inertial {
-    //         None
-    //     } else {
-    //         Some(self.dynamic_rot_mat_dt(source, epoch, |almanac, t| {
-    //             almanac.rotation_earth_tod_matrix(t, prec, nut)
-    //         })?)
-    //     };
-
-    //     Ok(DCM {
-    //         rot_mat,
-    //         rot_mat_dt,
-    //         from: J2000,
-    //         to: source.orientation_id,
-    //     })
-    // }
-
-    // fn sofa_precession_matrix(
-    //     model: SofaPrecessionModel,
-    //     epoch: Epoch,
-    // ) -> Result<Matrix3<f64>, OrientationError> {
-    //     match model {
-    //         SofaPrecessionModel::Iau1976 => {
-    //             let (zeta, z, theta) = prec76(epoch)?;
-    //             Ok(r3(-z) * r2(theta) * r3(-zeta))
-    //         }
-    //         SofaPrecessionModel::Iau2006 => {
-    //             // Prefer SOFA pmat06-style matrix if exposed.
-    //             pmat06(epoch)
-    //         }
-    //         SofaPrecessionModel::Iau2000 => pmat00(epoch),
-    //         SofaPrecessionModel::None => todo!(),
-    //     }
-    // }
-
-    // fn sofa_true_of_date_matrix(
-    //     prec: SofaPrecessionModel,
-    //     nut: SofaNutationModel,
-    //     epoch: Epoch,
-    // ) -> Result<Matrix3<f64>, OrientationError> {
-    //     match (prec, nut) {
-    //         (SofaPrecessionModel::Iau1976, SofaNutationModel::Iau1980) => {
-    //             let p = sofa_precession_matrix(prec, epoch)?;
-    //             let (dpsi, deps) = nut80(epoch)?;
-    //             let eps_bar = obl80(epoch)?;
-    //             let n = r1(-(eps_bar + deps)) * r3(-dpsi) * r1(eps_bar);
-    //             Ok(n * p)
-    //         }
-
-    //         (SofaPrecessionModel::Iau2006, SofaNutationModel::Iau2000A) => {
-    //             // Prefer SOFA pnm06a if exposed.
-    //             pnm06a(epoch)
-    //         }
-
-    //         (SofaPrecessionModel::Iau2000, SofaNutationModel::Iau2000A) => pnm00a(epoch),
-
-    //         (SofaPrecessionModel::Iau2000, SofaNutationModel::Iau2000B) => pnm00b(epoch),
-
-    //         _ => todo!(),
-    //     }
-    // }
-
-    // fn rotation_body_fixed_axis_date(
-    //     &self,
-    //     source: Frame,
-    //     epoch: Epoch,
-    //     id: DynamicOrientationId,
-    //     _true_of_date: bool,
-    // ) -> Result<DCM, OrientationError> {
-    //     let fixed_source = FixedAxisSource::try_from(id.primary)?;
-
-    //     let fixed_orientation_id =
-    //         self.fixed_orientation_id_for_body(source.ephemeris_id, fixed_source)?;
-
-    //     let fixed_frame = Frame {
-    //         ephemeris_id: source.ephemeris_id,
-    //         orientation_id: fixed_orientation_id,
-    //         // Important: do not inherit the dynamic frame’s orientation_id.
-    //         // Inherit force_inertial? No: we need the fixed orientation at epoch.
-    //         force_inertial: false,
-    //         frozen_epoch: None,
-    //         ..source
-    //     };
-
-    //     let fixed_to_parent = self.rotation_to_parent(fixed_frame, epoch)?;
-    //     let rot_mat = fixed_axis_date_from_fixed_dcm(&fixed_to_parent.rot_mat)?;
-
-    //     let rot_mat_dt = if source.force_inertial {
-    //         None
-    //     } else {
-    //         Some(self.dynamic_rot_mat_dt(source, epoch, |almanac, t| {
-    //             let fixed_to_parent = almanac.rotation_to_parent(fixed_frame, t)?;
-    //             fixed_axis_date_from_fixed_dcm(&fixed_to_parent.rot_mat)
-    //         })?)
-    //     };
-
-    //     Ok(DCM {
-    //         rot_mat,
-    //         rot_mat_dt,
-    //         from: J2000,
-    //         to: source.orientation_id,
-    //     })
-    // }
-
-    // fn dynamic_rot_mat_dt<F>(
-    //     &self,
-    //     source: Frame,
-    //     epoch: Epoch,
-    //     f: F,
-    // ) -> Result<Matrix3<f64>, OrientationError>
-    // where
-    //     F: Fn(&Almanac, Epoch) -> Result<Matrix3<f64>, OrientationError>,
-    // {
-    //     // Pick a small but not tiny step. 1 second is reasonable for precession/nutation
-    //     // and body-pole frames. You can tune with CSPICE/SOFA regression tests.
-    //     let dt = Unit::Second;
-
-    //     let cp = f(self, epoch + dt)?;
-    //     let cm = f(self, epoch - dt)?;
-
-    //     Ok((cp - cm) * 0.5) // if dt is exactly 1 second
-    // }
 }
 
 impl EarthPrecessionModel {
+    /// Returns the parent ID, depends on the model used.
+    pub(crate) fn parent_id(self) -> i32 {
+        match self {
+            EarthPrecessionModel::IAU1976 => J2000,
+            EarthPrecessionModel::IAU2000 => ICRS,
+            EarthPrecessionModel::IAU2006 => ICRS,
+        }
+    }
+
+    /// Compute the rotation matrix using SOFA directly.
     pub(crate) fn rot_mat(&self, epoch: Epoch) -> Matrix3 {
         // SOFA models expect Terrestrial Time (TT) as a two-part Julian Date.
-        // Assuming hifitime v4's `to_jde_tt_days()` or equivalent is available.
         let (tt1, tt2) = sofa_tt_jd_parts(epoch);
 
         let pmat = match self {
@@ -268,6 +137,27 @@ impl EarthPrecessionModel {
         Matrix3::new(
             pmat[0][0], pmat[0][1], pmat[0][2], pmat[1][0], pmat[1][1], pmat[1][2], pmat[2][0],
             pmat[2][1], pmat[2][2],
+        )
+    }
+}
+
+impl EarthNutationModel {
+    pub(crate) fn rot_mat(&self, epoch: Epoch) -> Matrix3 {
+        // SOFA models expect Terrestrial Time (TT) as a two-part Julian Date.
+        let (tt1, tt2) = sofa_tt_jd_parts(epoch);
+
+        let nmat = match self {
+            EarthNutationModel::IAU1980 => sofars::pnp::nutm80(tt1, tt2),
+            EarthNutationModel::IAU2000A => sofars::pnp::num00a(tt1, tt2),
+            EarthNutationModel::IAU2000B => sofars::pnp::num00b(tt1, tt2),
+            EarthNutationModel::IAU2006A => sofars::pnp::num06a(tt1, tt2),
+        };
+
+        // SOFARS returns a standard [[f64; 3]; 3] row-major array.
+        // nalgebra's Matrix3::new populates row-by-row.
+        Matrix3::new(
+            nmat[0][0], nmat[0][1], nmat[0][2], nmat[1][0], nmat[1][1], nmat[1][2], nmat[2][0],
+            nmat[2][1], nmat[2][2],
         )
     }
 }
@@ -293,7 +183,7 @@ mod ut_dynamic_frame {
             dynf,
             DynamicFrame::EarthTrueOfDate {
                 precession: EarthPrecessionModel::IAU2006,
-                nutation: EarthNutationModel::IAU2006
+                nutation: EarthNutationModel::IAU2006A
             }
         );
         let dynf_id: i32 = dynf.into();
@@ -341,7 +231,7 @@ mod ut_dynamic_frame {
             dynf,
             DynamicFrame::EarthTrueOfDate {
                 precession: EarthPrecessionModel::IAU2000,
-                nutation: EarthNutationModel::IAU2006
+                nutation: EarthNutationModel::IAU2006A
             }
         );
         let dynf_id: i32 = dynf.into();
