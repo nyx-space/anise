@@ -19,16 +19,16 @@ use snafu::ResultExt;
 #[cfg(feature = "metaload")]
 use serde_dhall::{SimpleType, StaticType};
 
-use crate::NaifId;
 use crate::astro::PhysicsResult;
 use crate::constants::celestial_objects::{
-    SOLAR_SYSTEM_BARYCENTER, celestial_name_from_id, id_from_celestial_name,
+    celestial_name_from_id, id_from_celestial_name, SOLAR_SYSTEM_BARYCENTER,
 };
-use crate::constants::orientations::{J2000, id_from_orientation_name, orientation_name_from_id};
+use crate::constants::orientations::{id_from_orientation_name, orientation_name_from_id, J2000};
 use crate::errors::{AlmanacError, EphemerisSnafu, OrientationSnafu, PhysicsError};
 use crate::frames::DynamicFrame;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
 use crate::time::{Epoch, TimeScale, Unit};
+use crate::NaifId;
 
 #[cfg(feature = "python")]
 use pyo3::exceptions::{PyTypeError, PyValueError};
@@ -95,8 +95,8 @@ impl Frame {
             shape: None,
         }
     }
-    /// Attempts to create a new frame from its center and reference frame name.
 
+    /// Attempts to create a new frame from its center and reference frame name.
     /// This function is compatible with the CCSDS OEM names.
     pub fn from_name(center: &str, ref_frame: &str) -> Result<Self, AlmanacError> {
         let ephemeris_id = id_from_celestial_name(center).context(EphemerisSnafu {
