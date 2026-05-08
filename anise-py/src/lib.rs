@@ -8,23 +8,23 @@
  * Documentation: https://nyxspace.com/
  */
 
-use anise::almanac::metaload::{MetaAlmanac, MetaFile};
 use anise::almanac::Almanac;
+use anise::almanac::metaload::{MetaAlmanac, MetaFile};
 use anise::analysis::prelude::{
-    find_arc_intersections, Condition, Event, EventArc, EventDetails, EventEdge, OrbitalElement,
-    Plane, VisibilityArc,
+    Condition, Event, EventArc, EventDetails, EventEdge, OrbitalElement, Plane, VisibilityArc,
+    find_arc_intersections,
 };
 use anise::analysis::python::{
     PyFrameSpec, PyOrthogonalFrame, PyScalarExpr, PyStateSpec, PyVectorExpr,
 };
 use anise::analysis::report::PyReportScalars;
-use anise::astro::orbit::Orbit;
 use anise::astro::Aberration;
+use anise::astro::orbit::Orbit;
 use anise::astro::{AzElRange, Location, Occultation, TerrainMask};
 use anise::ephemerides::ephemeris::{Covariance, Ephemeris, EphemerisRecord, LocalFrame};
-use anise::frames::Frame;
 use anise::frames::FrameUid;
-use anise::math::rotation::{Quaternion, DCM};
+use anise::frames::{DynamicFrame, EarthNutationModel, EarthPrecessionModel, Frame};
+use anise::math::rotation::{DCM, Quaternion};
 use anise::naif::daf::DafDataType;
 use anise::structure::dataset::location_dhall::PyLocationDataSet;
 use anise::structure::dataset::location_dhall::{LocationDhallSet, LocationDhallSetEntry};
@@ -34,7 +34,7 @@ use anise::structure::spacecraft::{DragData, Mass, SRPData};
 use hifitime::leap_seconds::{LatestLeapSeconds, LeapSecondsFile};
 use hifitime::python::{PyDurationError, PyHifitimeError, PyParsingError};
 use hifitime::ut1::Ut1Provider;
-use hifitime::{prelude::*, MonthName, Polynomial};
+use hifitime::{MonthName, Polynomial, prelude::*};
 
 use pyo3::{prelude::*, wrap_pyfunction, wrap_pymodule};
 
@@ -76,6 +76,9 @@ pub(crate) fn astro(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
     sm.add_class::<Ellipsoid>()?;
     sm.add_class::<Frame>()?;
     sm.add_class::<FrameUid>()?;
+    sm.add_class::<DynamicFrame>()?;
+    sm.add_class::<EarthPrecessionModel>()?;
+    sm.add_class::<EarthNutationModel>()?;
     sm.add_class::<Orbit>()?;
     sm.add_class::<AzElRange>()?;
     sm.add_class::<Occultation>()?;

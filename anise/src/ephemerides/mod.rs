@@ -12,8 +12,8 @@ use hifitime::{Epoch, HifitimeError};
 use snafu::prelude::*;
 
 use crate::{
-    astro::Aberration, errors::PhysicsError, math::interpolation::InterpolationError,
-    naif::daf::DAFError, prelude::FrameUid, NaifId,
+    NaifId, astro::Aberration, errors::PhysicsError, math::interpolation::InterpolationError,
+    naif::daf::DAFError, prelude::FrameUid,
 };
 
 #[cfg(feature = "analysis")]

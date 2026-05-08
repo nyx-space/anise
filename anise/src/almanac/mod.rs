@@ -15,6 +15,7 @@ use log::{info, warn};
 use snafu::ResultExt;
 use zerocopy::FromBytes;
 
+use crate::NaifId;
 use crate::ephemerides::SPKSnafu;
 use crate::errors::{
     AlmanacError, AlmanacResult, EphemerisSnafu, InputOutputError, LoadingSnafu, OrientationSnafu,
@@ -31,7 +32,6 @@ use crate::structure::metadata::Metadata;
 use crate::structure::{
     EulerParameterDataSet, InstrumentDataSet, LocationDataSet, PlanetaryDataSet, SpacecraftDataSet,
 };
-use crate::NaifId;
 use core::fmt;
 
 pub mod aer;
@@ -61,7 +61,7 @@ use pyo3::prelude::*;
 /// :type path: str
 /// :rtype: Almanac
 #[derive(Clone, Default)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct Almanac {
     /// NAIF SPK is kept unchanged
@@ -201,12 +201,12 @@ impl Almanac {
 
     fn _load_from_bytes(self, bytes: BytesMut, path: Option<&str>) -> AlmanacResult<Self> {
         // Check if they forgot to run git lfs
-        if let Some(lfs_header) = bytes.get(..8) {
-            if lfs_header == "version".as_bytes() {
-                return Err(AlmanacError::GenericError {
-                    err: "file is a git lfs pointer, run `git lfs pull`".to_string(),
-                });
-            }
+        if let Some(lfs_header) = bytes.get(..8)
+            && lfs_header == "version".as_bytes()
+        {
+            return Err(AlmanacError::GenericError {
+                err: "file is a git lfs pointer, run `git lfs pull`".to_string(),
+            });
         }
 
         let path_str = path.map_or_else(|| None, |p| Some(p.to_string()));
@@ -322,7 +322,7 @@ impl Almanac {
                 return Err(AlmanacError::Loading {
                     path: path.to_string(),
                     source: InputOutputError::IOError { kind: e.kind() },
-                })
+                });
             }
             Ok(bytes) => BytesMut::from(&bytes[..]),
         };

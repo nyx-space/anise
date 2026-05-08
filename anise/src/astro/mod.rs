@@ -52,7 +52,7 @@ pub type PhysicsResult<T> = Result<T, PhysicsError>;
 /// :type mask_deg: float, optional
 /// :rtype: AzElRange
 #[derive(Copy, Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct AzElRange {
     pub epoch: Epoch,
@@ -262,7 +262,12 @@ impl Display for AzElRange {
         write!(
             f,
             "{}: az.: {:.6} deg    el.: {:.6} deg    range: {:.6} km    range-rate: {:.6} km/s    obstruction: {}",
-            self.epoch, self.azimuth_deg, self.elevation_deg, self.range_km, self.range_rate_km_s, obs
+            self.epoch,
+            self.azimuth_deg,
+            self.elevation_deg,
+            self.range_km,
+            self.range_rate_km_s,
+            obs
         )
     }
 }

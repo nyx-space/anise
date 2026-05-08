@@ -12,8 +12,8 @@ use super::{EphemerisError, EphemerisPhysicsSnafu, OEMTimeParsingSnafu};
 use crate::ephemerides::EphemInterpolationSnafu;
 use crate::errors::{AlmanacError, AlmanacPhysicsSnafu, OrientationSnafu};
 use crate::frames::Frame;
-use crate::math::interpolation::{hermite_eval, lagrange_eval};
 use crate::math::Vector6;
+use crate::math::interpolation::{hermite_eval, lagrange_eval};
 use crate::naif::daf::data_types::DataType;
 use crate::prelude::{Almanac, Orbit};
 use core::fmt;
@@ -21,8 +21,8 @@ use covariance::interpolate_covar_log_euclidean;
 use hifitime::{Epoch, TimeSeries};
 use snafu::ResultExt;
 use std::collections::{
-    btree_map::{IntoValues, Values},
     BTreeMap,
+    btree_map::{IntoValues, Values},
 };
 
 #[cfg(feature = "python")]
@@ -48,7 +48,7 @@ pub use record::EphemerisRecord;
 /// :type orbit_list: list
 /// :type object_id: str
 #[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Ephemeris {
     pub object_id: String,
@@ -475,26 +475,27 @@ impl Ephemeris {
                 covar: orig_record.covar,
             };
 
-            if let Some(covar) = &mut new_record.covar {
-                if orig_frame.orientation_id != new_frame.orientation_id {
-                    // Query the rotation matrix
-                    let dcm = almanac.rotate(orig_frame, new_frame, *epoch).context(
-                        OrientationSnafu {
+            if let Some(covar) = &mut new_record.covar
+                && orig_frame.orientation_id != new_frame.orientation_id
+            {
+                // Query the rotation matrix
+                let dcm =
+                    almanac
+                        .rotate(orig_frame, new_frame, *epoch)
+                        .context(OrientationSnafu {
                             action: "rotating covariance",
-                        },
-                    )?;
+                        })?;
 
-                    // Unwrap because we know it is set
-                    covar.matrix = dcm.state_dcm()
-                        * orig_record
-                            .covar_in_frame(LocalFrame::Inertial)
-                            .context(AlmanacPhysicsSnafu {
-                                action: "computing covar inertial",
-                            })?
-                            .expect("covariance is Some, inside if-let guard")
-                            .matrix
-                        * dcm.state_dcm().transpose();
-                }
+                // Unwrap because we know it is set
+                covar.matrix = dcm.state_dcm()
+                    * orig_record
+                        .covar_in_frame(LocalFrame::Inertial)
+                        .context(AlmanacPhysicsSnafu {
+                            action: "computing covar inertial",
+                        })?
+                        .expect("covariance is Some, inside if-let guard")
+                        .matrix
+                    * dcm.state_dcm().transpose();
             }
 
             me.insert(new_record);

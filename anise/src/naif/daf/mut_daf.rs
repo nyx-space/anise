@@ -9,12 +9,12 @@
  */
 
 use super::{
-    daf::DAF, DAFError, DecodingNameSnafu, NAIFDataSet, NAIFSummaryRecord, NameRecord, RCRD_LEN,
+    DAFError, DecodingNameSnafu, NAIFDataSet, NAIFSummaryRecord, NameRecord, RCRD_LEN, daf::DAF,
 };
 use crate::{
-    errors::DecodingError,
-    naif::daf::{file_record::FileRecordError, NAIFRecord, SummaryRecord},
     DBL_SIZE,
+    errors::DecodingError,
+    naif::daf::{NAIFRecord, SummaryRecord, file_record::FileRecordError},
 };
 use bytes::BytesMut;
 use hifitime::Epoch;

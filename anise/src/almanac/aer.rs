@@ -100,10 +100,10 @@ impl Almanac {
         }
 
         let mut obstructed_by = None;
-        if let Some(obstructing_body) = obstructing_body {
-            if self.line_of_sight_obstructed(tx, rx, obstructing_body, ab_corr)? {
-                obstructed_by = Some(obstructing_body);
-            }
+        if let Some(obstructing_body) = obstructing_body
+            && self.line_of_sight_obstructed(tx, rx, obstructing_body, ab_corr)?
+        {
+            obstructed_by = Some(obstructing_body);
         }
 
         // Compute the SEZ DCM
@@ -250,13 +250,13 @@ mod ut_aer {
 
     use hifitime::Unit;
 
-    use crate::astro::orbit::Orbit;
     use crate::astro::AzElRange;
+    use crate::astro::orbit::Orbit;
     use crate::constants::frames::{EARTH_ITRF93, EARTH_J2000, IAU_EARTH_FRAME};
     use crate::math::cartesian::CartesianState;
     use crate::prelude::{Almanac, Epoch};
-    use crate::structure::location::{Location, TerrainMask};
     use crate::structure::LocationDataSet;
+    use crate::structure::location::{Location, TerrainMask};
 
     #[test]
     fn verif_edge_case() {

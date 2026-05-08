@@ -9,14 +9,14 @@
  */
 
 use crate::{
+    NaifId,
     astro::PhysicsResult,
     constants::orientations::orientation_name_from_id,
     math::{
-        rotation::{r1, r3, DCM},
         Matrix3,
+        rotation::{DCM, r1, r3},
     },
     prelude::{Frame, FrameUid},
-    NaifId,
 };
 use core::f64::consts::FRAC_PI_2;
 use core::fmt;
@@ -131,29 +131,38 @@ impl PlanetaryData {
     }
 
     fn uses_trig_polynomial(&self) -> bool {
-        if let Some(phase) = self.pole_right_ascension {
-            if phase.coeffs_count > 0 {
-                return true;
-            }
+        if let Some(phase) = self.pole_right_ascension
+            && phase.coeffs_count > 0
+        {
+            return true;
         }
 
-        if let Some(phase) = self.pole_declination {
-            if phase.coeffs_count > 0 {
-                return true;
-            }
+        if let Some(phase) = self.pole_declination
+            && phase.coeffs_count > 0
+        {
+            return true;
         }
 
-        if let Some(phase) = self.prime_meridian {
-            if phase.coeffs_count > 0 {
-                return true;
-            }
+        if let Some(phase) = self.prime_meridian
+            && phase.coeffs_count > 0
+        {
+            return true;
         }
 
         false
     }
 
-    /// Computes the rotation to the parent frame, returning only the rotation matrix
-    fn dcm_to_parent(&self, epoch: Epoch, system: &Self) -> PhysicsResult<Matrix3> {
+    /// Computes the rotation to the parent frame, returning only the rotation matrix.
+    /// If mean_model is true, the trigonometric contributions of the oscillating terms are ignored.
+    /// If ignore_twist is true, the W angle is never computed.
+    /// Set mean_model and ignore_prime_meridian to true to build a body Mean of Date pole frame.
+    fn dcm_to_parent(
+        &self,
+        epoch: Epoch,
+        system: &Self,
+        mean_model: bool,
+        ignore_prime_meridian: bool,
+    ) -> PhysicsResult<Matrix3> {
         if self.pole_declination.is_none()
             && self.prime_meridian.is_none()
             && self.pole_right_ascension.is_none()
@@ -178,14 +187,16 @@ impl PlanetaryData {
             let right_asc_rad = match self.pole_right_ascension {
                 Some(right_asc_deg) => {
                     let mut angle_deg = right_asc_deg.evaluate_deg(epoch, Unit::Century);
-                    // Add the nutation and precession angles for this phase angle
-                    for (ii, coeff) in right_asc_deg
-                        .coeffs
-                        .iter()
-                        .enumerate()
-                        .take(right_asc_deg.coeffs_count as usize)
-                    {
-                        angle_deg += coeff * variable_angles_rad[ii].sin();
+                    if !mean_model {
+                        // Add the nutation and precession angles for this phase angle
+                        for (ii, coeff) in right_asc_deg
+                            .coeffs
+                            .iter()
+                            .enumerate()
+                            .take(right_asc_deg.coeffs_count as usize)
+                        {
+                            angle_deg += coeff * variable_angles_rad[ii].sin();
+                        }
                     }
                     angle_deg.to_radians() + FRAC_PI_2
                 }
@@ -195,46 +206,74 @@ impl PlanetaryData {
             let dec_rad = match self.pole_declination {
                 Some(decl_deg) => {
                     let mut angle_deg = decl_deg.evaluate_deg(epoch, Unit::Century);
-                    // Add the nutation and precession angles for this phase angle
-                    for (ii, coeff) in decl_deg
-                        .coeffs
-                        .iter()
-                        .enumerate()
-                        .take(decl_deg.coeffs_count as usize)
-                    {
-                        angle_deg += coeff * variable_angles_rad[ii].cos();
+                    if !mean_model {
+                        // Add the nutation and precession angles for this phase angle
+                        for (ii, coeff) in decl_deg
+                            .coeffs
+                            .iter()
+                            .enumerate()
+                            .take(decl_deg.coeffs_count as usize)
+                        {
+                            angle_deg += coeff * variable_angles_rad[ii].cos();
+                        }
                     }
                     FRAC_PI_2 - angle_deg.to_radians()
                 }
                 None => 0.0,
             };
 
-            let twist_rad = match self.prime_meridian {
-                Some(twist_deg) => {
-                    let mut angle_deg = twist_deg.evaluate_deg(epoch, Unit::Day);
-                    // Add the nutation and precession angles for this phase angle
-                    for (ii, coeff) in twist_deg
-                        .coeffs
-                        .iter()
-                        .enumerate()
-                        .take(twist_deg.coeffs_count as usize)
-                    {
-                        angle_deg += coeff * variable_angles_rad[ii].sin();
+            let twist_rad = if ignore_prime_meridian {
+                0.0
+            } else {
+                match self.prime_meridian {
+                    Some(twist_deg) => {
+                        let mut angle_deg = twist_deg.evaluate_deg(epoch, Unit::Day);
+
+                        if !mean_model {
+                            // Add the nutation and precession angles for this phase angle
+                            for (ii, coeff) in twist_deg
+                                .coeffs
+                                .iter()
+                                .enumerate()
+                                .take(twist_deg.coeffs_count as usize)
+                            {
+                                angle_deg += coeff * variable_angles_rad[ii].sin();
+                            }
+                        }
+                        angle_deg.to_radians()
                     }
-                    angle_deg.to_radians()
+                    None => 0.0,
                 }
-                None => 0.0,
             };
 
-            let ra_dcm = r3(right_asc_rad);
-            let dec_dcm = r1(dec_rad);
-            let w_dcm = r3(twist_rad);
-            // Perform a multiplication of the DCMs, regardless of frames.
-            Ok(w_dcm * dec_dcm * ra_dcm)
+            // NOTE: the dec_rad is not the physical declination, it's pi/2 away from it.
+            // Hence, the norm of the cross product with its parent is proportional to the sine and not to cosine.
+            let pole_cross_norm = dec_rad.sin().abs();
+
+            if ignore_prime_meridian && pole_cross_norm < 1e-12 {
+                if dec_rad.cos() > 0.0 {
+                    // +Z case: source pole parallel to parent +Z.
+                    Ok(Matrix3::identity())
+                } else {
+                    // -Z case: source pole anti-parallel to parent Z.
+                    Ok(Matrix3::new(1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0))
+                }
+            } else {
+                // Nominal continuous Euler construction
+                let ra_dcm = r3(right_asc_rad);
+                let dec_dcm = r1(dec_rad);
+                let w_dcm = r3(twist_rad);
+
+                // Perform a multiplication of the DCMs, regardless of frames.
+                Ok(w_dcm * dec_dcm * ra_dcm)
+            }
         }
     }
 
-    /// Computes the rotation to the parent frame, including its time derivative.
+    /// Computes the rotation to the parent frame, including its time derivative. System is the parent system, e.g. the Jupiter system.
+    /// If mean_model is true, the trigonometric contributions of the oscillating terms are ignored.
+    /// If ignore_twist is true, the W angle is never computed.
+    /// Set mean_model and ignore_prime_meridian to true to build a body Mean of Date pole frame.
     ///
     /// Source: <https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/rotation.html#Working%20with%20RA,%20Dec%20and%20Twist>
     pub fn rotation_to_parent(
@@ -242,6 +281,8 @@ impl PlanetaryData {
         epoch: Epoch,
         system: &Self,
         force_inertial: bool,
+        mean_model: bool,
+        ignore_prime_meridian: bool,
     ) -> PhysicsResult<DCM> {
         if self.pole_declination.is_none()
             && self.prime_meridian.is_none()
@@ -251,17 +292,27 @@ impl PlanetaryData {
         } else {
             // For planetary constants data, we perform a finite differencing to compute the time derivative.
             let mut dcm = DCM {
-                rot_mat: self.dcm_to_parent(epoch, system)?,
+                rot_mat: self.dcm_to_parent(epoch, system, mean_model, ignore_prime_meridian)?,
                 from: self.parent_id,
                 to: self.object_id,
                 rot_mat_dt: None,
             };
             if !force_inertial {
                 // Compute rotation matrix one second before
-                let pre_rot_dcm = self.dcm_to_parent(epoch - 1.seconds(), system)?;
-                let post_rot_dcm = self.dcm_to_parent(epoch + 1.seconds(), system)?;
+                let pre_rot_dcm = self.dcm_to_parent(
+                    epoch - 1.seconds(),
+                    system,
+                    mean_model,
+                    ignore_prime_meridian,
+                )?;
+                let post_rot_dcm = self.dcm_to_parent(
+                    epoch + 1.seconds(),
+                    system,
+                    mean_model,
+                    ignore_prime_meridian,
+                )?;
 
-                dcm.rot_mat_dt = Some((post_rot_dcm - pre_rot_dcm) / 2.0);
+                dcm.rot_mat_dt = Some((post_rot_dcm - pre_rot_dcm) * 0.5);
             }
 
             Ok(dcm)
@@ -544,7 +595,10 @@ mod planetary_constants_ut {
 
         assert_eq!(core::mem::size_of::<PlanetaryData>(), 1984);
 
-        assert_eq!(format!("{repr}"), "planetary data 1234 (μ = 12345.6789 km^3/s^2) Dec = 66.541 + 0.013 t PM = 38.317 + 13.1763582 t");
+        assert_eq!(
+            format!("{repr}"),
+            "planetary data 1234 (μ = 12345.6789 km^3/s^2) Dec = 66.541 + 0.013 t PM = 38.317 + 13.1763582 t"
+        );
     }
 
     #[test]
@@ -622,6 +676,9 @@ mod planetary_constants_ut {
 
         assert_eq!(moon, moon_dec);
 
-        assert_eq!(format!("{moon}"), "IAU_MOON (μ = 4902.800066163796 km^3/s^2) RA = 269.9949 + 0.0031 t Dec = 66.5392 + 0.013 t PM = 38.3213 + 13.17635815 t + -0.0000000000014 t^2");
+        assert_eq!(
+            format!("{moon}"),
+            "IAU_MOON (μ = 4902.800066163796 km^3/s^2) RA = 269.9949 + 0.0031 t Dec = 66.5392 + 0.013 t PM = 38.3213 + 13.17635815 t + -0.0000000000014 t^2"
+        );
     }
 }

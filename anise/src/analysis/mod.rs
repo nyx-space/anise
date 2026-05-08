@@ -726,7 +726,10 @@ mod ut_analysis {
             .unwrap();
 
         let intersections = find_arc_intersections(vec![sunrise_events, sunset_events]);
-        assert!(intersections.is_empty(), "sunrise and sunset events should NOT intersect because one is LessThan the other GreaterThan");
+        assert!(
+            intersections.is_empty(),
+            "sunrise and sunset events should NOT intersect because one is LessThan the other GreaterThan"
+        );
 
         // Seek the min and max sun angles
         let min_sun_angles = almanac

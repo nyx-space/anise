@@ -1,8 +1,8 @@
 use anise::frames::Frame;
-use anise::math::rotation::Quaternion;
+use anise::math::Vector3;
 use anise::math::rotation::DCM;
 use anise::math::rotation::MRP;
-use anise::math::Vector3;
+use anise::math::rotation::Quaternion;
 use anise::naif::kpl::fk::FKItem;
 use anise::naif::kpl::parser::Assignment;
 use anise::naif::kpl::tpc::TPCItem;

@@ -9,17 +9,17 @@
  */
 use super::Almanac;
 use crate::{
+    NaifId,
     prelude::{Frame, FrameUid},
     structure::{
-        dataset::DataSetError, lookuptable::LutError, planetocentric::PlanetaryData,
-        PlanetaryDataSet,
+        PlanetaryDataSet, dataset::DataSetError, lookuptable::LutError,
+        planetocentric::PlanetaryData,
     },
-    NaifId,
 };
 use hifitime::Epoch;
 use log::warn;
 use snafu::prelude::*;
-use tabled::{settings::Style, Table, Tabled};
+use tabled::{Table, Tabled, settings::Style};
 
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(visibility(pub(crate)))]

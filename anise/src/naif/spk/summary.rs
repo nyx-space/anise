@@ -21,7 +21,7 @@ use crate::{
     prelude::{Frame, FrameUid},
 };
 
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.internals"))]
 #[derive(Clone, Copy, Debug, Default, IntoBytes, Immutable, KnownLayout, FromBytes, PartialEq)]
 #[repr(C)]

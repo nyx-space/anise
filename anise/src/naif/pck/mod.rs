@@ -20,7 +20,7 @@ use pyo3::prelude::*;
 
 use super::daf::DafDataType;
 
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.internals"))]
 #[derive(Clone, Copy, Debug, Default, IntoBytes, FromBytes, KnownLayout, Immutable, PartialEq)]
 #[repr(C)]

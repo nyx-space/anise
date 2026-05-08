@@ -9,16 +9,16 @@
  */
 
 use crate::{
+    NaifId,
     astro::PhysicsResult,
     errors::{InvalidRotationSnafu, InvalidStateRotationSnafu, PhysicsError},
-    math::{cartesian::CartesianState, Matrix3, Matrix6, Vector3, Vector6},
+    math::{Matrix3, Matrix6, Vector3, Vector6, cartesian::CartesianState},
     prelude::Frame,
-    NaifId,
 };
 use nalgebra::Vector4;
 use snafu::ensure;
 
-use super::{r1, r2, r3, Quaternion, Rotation};
+use super::{Quaternion, Rotation, r1, r2, r3};
 use core::fmt;
 use core::ops::Mul;
 
@@ -34,7 +34,7 @@ use pyo3::prelude::*;
 /// :type np_rot_mat_dt: numpy.array, optional
 /// :rtype: DCM
 #[derive(Copy, Clone, Debug, Default)]
-#[cfg_attr(feature = "python", pyclass(name = "DCM"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, name = "DCM"))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.rotation"))]
 pub struct DCM {
     /// The rotation matrix itself
@@ -568,7 +568,7 @@ impl fmt::Display for DCM {
 mod ut_dcm {
     use crate::math::Matrix3;
 
-    use super::{Vector3, DCM};
+    use super::{DCM, Vector3};
     use core::f64::consts::FRAC_PI_2;
 
     #[test]

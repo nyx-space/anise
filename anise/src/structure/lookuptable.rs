@@ -7,7 +7,7 @@
  *
  * Documentation: https://nyxspace.com/
  */
-use der::{asn1::OctetStringRef, Decode, Encode, Reader, Writer};
+use der::{Decode, Encode, Reader, Writer, asn1::OctetStringRef};
 use indexmap::IndexMap;
 use log::warn;
 use snafu::prelude::*;

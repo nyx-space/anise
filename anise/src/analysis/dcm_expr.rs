@@ -9,10 +9,10 @@
  */
 
 use crate::almanac::Almanac;
+use crate::analysis::PhysicsDcmExprSnafu;
 use crate::analysis::prelude::VectorExpr;
 use crate::analysis::specs::{StateSpec, StateSpecTrait};
-use crate::analysis::PhysicsDcmExprSnafu;
-use crate::math::rotation::{EulerParameter, DCM};
+use crate::math::rotation::{DCM, EulerParameter};
 use crate::prelude::Epoch;
 use serde::{Deserialize, Serialize};
 use snafu::ResultExt;

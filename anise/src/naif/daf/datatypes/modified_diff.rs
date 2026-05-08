@@ -10,7 +10,7 @@
 
 use core::fmt;
 use hifitime::Epoch;
-use snafu::{ensure, ResultExt};
+use snafu::{ResultExt, ensure};
 
 use crate::errors::{DecodingError, InaccessibleBytesSnafu, IntegrityError, TooFewDoublesSnafu};
 use crate::math::interpolation::{InterpDecodingSnafu, InterpolationError};

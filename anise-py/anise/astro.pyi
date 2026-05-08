@@ -156,6 +156,283 @@ class DragData:
         """Return str(self)."""
 
 @typing.final
+class DynamicFrame:
+    """Dynamic frames in ANISE are encoded as a packed integer within the frame's orientation ID.
+
+    # Encoding format
+
+    The identifier is a 32-bit signed integer packed as four bytes:
+    ```text
+    0xA0 FF AA BB
+    ```
+    Where:
+    - `0xA0`: ANISE dynamic frame prefix.
+    - `FF`: Frame family identifier (e.g., Earth Mean of Date, Body True of Date).
+    - `AA`: Primary payload (e.g., precession model for Earth frames, or the high byte of a source ID).
+    - `BB`: Secondary payload (e.g., nutation model for Earth frames, or the low byte of a source ID).
+
+    # Frame families
+
+    ```text
+    0xA0 E0 AA 00   Earth Mean Equator, Mean Equinox of Date (MOD)
+    0xA0 E1 AA BB   Earth True Equator, True Equinox of Date (TOD)
+    0xA0 E2 AA BB   Earth True Equator, Mean Equinox of Date (TEME)
+
+    0xA0 B0 SS SS   Body Mean of Date
+    0xA0 B1 SS SS   Body True of Date
+    ```
+
+    The `E*` families are Earth-specific models. The `B*` families are generic celestial-body pole models.
+
+    # Earth payload
+
+    For Earth frames, `AA` encodes the precession / bias-precession model:
+
+    ```text
+    0x00   IAU 1976 / FK5 precession
+    0x01   IAU 2000 precession-bias model
+    0x03   IAU 2006 precession-bias model
+    ```
+
+    *(Note: `0x02` is intentionally reserved and unused).*
+
+    For Earth TOD and TEME frames, `BB` encodes the nutation model:
+
+    ```text
+    0x00   IAU 1980 nutation
+    0x01   IAU 2000A nutation
+    0x02   IAU 2000B nutation
+    0x03   IAU 2006 / 2000A-compatible nutation
+    ```
+
+    For Earth MOD frames, `BB` is reserved and must strictly be `0x00`.
+
+    Earth MOD uses the selected precession model only. Earth TOD composes the selected precession and nutation models.
+    Earth TEME first builds the corresponding true-equator/true-equinox frame, then rotates about the true Z-axis by the equation of the equinoxes to replace the true equinox with the mean equinox.
+
+    For Earth TEME, the equation of the equinoxes model is strictly derived from the selected nutation model:
+
+    ```text
+    IAU1980  -> EQEQ94
+    IAU2000A -> EE00A
+    IAU2000B -> EE00B
+    IAU2006A  -> EE06A
+    ```
+
+    This aligns with the SOFA/SOFARS sidereal-time identity:
+    `apparent sidereal time = mean sidereal time + equation of the equinoxes`.
+
+    # Body payload
+
+    For generic body frames, `AA BB` is interpreted as a single unsigned 16-bit source orientation ID:
+
+    ```text
+    source_id = u16::from_be_bytes([AA, BB])
+    ```
+
+    While the public enum stores this as an `i32` for seamless integration with ANISE and NAIF ID routing, the compact bitmask fundamentally restricts the payload.
+    The source ID MUST be strictly positive and fall within the `0..=65535` range.
+
+    This perfectly accommodates standard celestial-body orientation IDs (e.g., `301` for the Moon, or `31001` for a lunar ME-style frame). **It cannot represent negative spacecraft IDs or deeply nested user-defined SPICE frames.**
+    **Warning:** Out-of-range body source IDs will fail silently via bitwise truncation. Callers must treat the `u16` bound as a strict mathematical contract.
+
+    Body TOD and MOD frames use the source orientation model solely to establish the body's pole direction. The source prime meridian (twist) angle is explicitly ignored.
+
+    - **Body True of Date** uses the full source pole model, inclusive of periodic trigonometric terms.
+    - **Body Mean of Date** uses the mean source pole model, zeroing out periodic trigonometric terms in the pole right ascension and declination.
+
+    For body TOD/MOD, the dynamic frame axes evaluate as follows via the same Euler rotations code at the PCK-defined IAU frames:
+
+    ```text
+    Z = source pole direction
+    X = normalize(parent_Z × Z)
+    Y = Z × X
+    ```
+
+    If `parent_Z × Z` evaluates as singular (i.e., the pole aligns with the inertial Z-axis), the fallback perfectly mirrors the Ansys STK specification:
+
+    ```text
+    Y = normalize(Z × parent_X)
+    X = Y × Z
+    ```
+
+    # Interaction with `Frame` fields
+
+    - `Frame::frozen_epoch`: If set, evaluates the dynamic models (precession, nutation, pole right ascension/declination) at the specified epoch rather than the integration time, freezing the frame inertially.
+    - `Frame::force_inertial`: If `true`, the time derivative of the resulting Direction Cosine Matrix (DCM) is explicitly zeroed out. The built-in Earth MOD/TOD constants are defined as inertial in the ANISE constants."""
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls) -> DynamicFrame:
+        """Dynamic frames in ANISE are encoded as a packed integer within the frame's orientation ID.
+
+        # Encoding format
+
+        The identifier is a 32-bit signed integer packed as four bytes:
+        ```text
+        0xA0 FF AA BB
+        ```
+        Where:
+        - `0xA0`: ANISE dynamic frame prefix.
+        - `FF`: Frame family identifier (e.g., Earth Mean of Date, Body True of Date).
+        - `AA`: Primary payload (e.g., precession model for Earth frames, or the high byte of a source ID).
+        - `BB`: Secondary payload (e.g., nutation model for Earth frames, or the low byte of a source ID).
+
+        # Frame families
+
+        ```text
+        0xA0 E0 AA 00   Earth Mean Equator, Mean Equinox of Date (MOD)
+        0xA0 E1 AA BB   Earth True Equator, True Equinox of Date (TOD)
+        0xA0 E2 AA BB   Earth True Equator, Mean Equinox of Date (TEME)
+
+        0xA0 B0 SS SS   Body Mean of Date
+        0xA0 B1 SS SS   Body True of Date
+        ```
+
+        The `E*` families are Earth-specific models. The `B*` families are generic celestial-body pole models.
+
+        # Earth payload
+
+        For Earth frames, `AA` encodes the precession / bias-precession model:
+
+        ```text
+        0x00   IAU 1976 / FK5 precession
+        0x01   IAU 2000 precession-bias model
+        0x03   IAU 2006 precession-bias model
+        ```
+
+        *(Note: `0x02` is intentionally reserved and unused).*
+
+        For Earth TOD and TEME frames, `BB` encodes the nutation model:
+
+        ```text
+        0x00   IAU 1980 nutation
+        0x01   IAU 2000A nutation
+        0x02   IAU 2000B nutation
+        0x03   IAU 2006 / 2000A-compatible nutation
+        ```
+
+        For Earth MOD frames, `BB` is reserved and must strictly be `0x00`.
+
+        Earth MOD uses the selected precession model only. Earth TOD composes the selected precession and nutation models.
+        Earth TEME first builds the corresponding true-equator/true-equinox frame, then rotates about the true Z-axis by the equation of the equinoxes to replace the true equinox with the mean equinox.
+
+        For Earth TEME, the equation of the equinoxes model is strictly derived from the selected nutation model:
+
+        ```text
+        IAU1980  -> EQEQ94
+        IAU2000A -> EE00A
+        IAU2000B -> EE00B
+        IAU2006A  -> EE06A
+        ```
+
+        This aligns with the SOFA/SOFARS sidereal-time identity:
+        `apparent sidereal time = mean sidereal time + equation of the equinoxes`.
+
+        # Body payload
+
+        For generic body frames, `AA BB` is interpreted as a single unsigned 16-bit source orientation ID:
+
+        ```text
+        source_id = u16::from_be_bytes([AA, BB])
+        ```
+
+        While the public enum stores this as an `i32` for seamless integration with ANISE and NAIF ID routing, the compact bitmask fundamentally restricts the payload.
+        The source ID MUST be strictly positive and fall within the `0..=65535` range.
+
+        This perfectly accommodates standard celestial-body orientation IDs (e.g., `301` for the Moon, or `31001` for a lunar ME-style frame). **It cannot represent negative spacecraft IDs or deeply nested user-defined SPICE frames.**
+        **Warning:** Out-of-range body source IDs will fail silently via bitwise truncation. Callers must treat the `u16` bound as a strict mathematical contract.
+
+        Body TOD and MOD frames use the source orientation model solely to establish the body's pole direction. The source prime meridian (twist) angle is explicitly ignored.
+
+        - **Body True of Date** uses the full source pole model, inclusive of periodic trigonometric terms.
+        - **Body Mean of Date** uses the mean source pole model, zeroing out periodic trigonometric terms in the pole right ascension and declination.
+
+        For body TOD/MOD, the dynamic frame axes evaluate as follows via the same Euler rotations code at the PCK-defined IAU frames:
+
+        ```text
+        Z = source pole direction
+        X = normalize(parent_Z × Z)
+        Y = Z × X
+        ```
+
+        If `parent_Z × Z` evaluates as singular (i.e., the pole aligns with the inertial Z-axis), the fallback perfectly mirrors the Ansys STK specification:
+
+        ```text
+        Y = normalize(Z × parent_X)
+        X = Y × Z
+        ```
+
+        # Interaction with `Frame` fields
+
+        - `Frame::frozen_epoch`: If set, evaluates the dynamic models (precession, nutation, pole right ascension/declination) at the specified epoch rather than the integration time, freezing the frame inertially.
+        - `Frame::force_inertial`: If `true`, the time derivative of the resulting Direction Cosine Matrix (DCM) is explicitly zeroed out. The built-in Earth MOD/TOD constants are defined as inertial in the ANISE constants."""
+
+    @staticmethod
+    def from_frame_id(frame_id: typing.Any) -> typing.Any: ...
+    def to_frame_id(self) -> typing.Any: ...
+    def __eq__(self, value: typing.Any) -> bool:
+        """Return self==value."""
+
+    def __ge__(self, value: typing.Any) -> bool:
+        """Return self>=value."""
+
+    def __gt__(self, value: typing.Any) -> bool:
+        """Return self>value."""
+
+    def __le__(self, value: typing.Any) -> bool:
+        """Return self<=value."""
+
+    def __lt__(self, value: typing.Any) -> bool:
+        """Return self<value."""
+
+    def __ne__(self, value: typing.Any) -> bool:
+        """Return self!=value."""
+
+    def __repr__(self) -> str:
+        """Return repr(self)."""
+
+    def __str__(self) -> str:
+        """Return str(self)."""
+    BodyMeanOfDate: type = ...
+    BodyTrueOfDate: type = ...
+    EarthMeanOfDate: type = ...
+    EarthTrueEquatorMeanEquinox: type = ...
+    EarthTrueOfDate: type = ...
+
+@typing.final
+class EarthNutationModel:
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls) -> EarthNutationModel: ...
+    def __int__(self) -> None:
+        """int(self)"""
+
+    def __repr__(self) -> str:
+        """Return repr(self)."""
+    IAU1980: EarthNutationModel = ...
+    IAU2000A: EarthNutationModel = ...
+    IAU2000B: EarthNutationModel = ...
+    IAU2006A: EarthNutationModel = ...
+
+@typing.final
+class EarthPrecessionModel:
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls) -> EarthPrecessionModel: ...
+    def __int__(self) -> None:
+        """int(self)"""
+
+    def __repr__(self) -> str:
+        """Return repr(self)."""
+    IAU1976: EarthPrecessionModel = ...
+    IAU2000: EarthPrecessionModel = ...
+    IAU2006: EarthPrecessionModel = ...
+
+@typing.final
 class Ellipsoid:
     """Only the tri-axial Ellipsoid shape model is currently supported by ANISE.
     This is directly inspired from SPICE PCK.
@@ -401,6 +678,8 @@ class Frame:
     """A Frame uniquely defined by its ephemeris center and orientation. Refer to FrameDetail for frames combined with parameters."""
 
     ephemeris_id: int
+    force_inertial: typing.Any
+    frozen_epoch: time.Epoch
     orientation_id: int
     shape: Ellipsoid
 
@@ -431,6 +710,9 @@ class Frame:
 
     def is_celestial(self) -> bool:
         """Returns whether this is a celestial frame"""
+
+    def is_dynamic(self) -> bool:
+        """Returns true if this is a dynamic frame, e.g. Mean/True of Date/Epoch"""
 
     def is_geodetic(self) -> bool:
         """Returns whether this is a geodetic frame"""
@@ -501,6 +783,9 @@ class FrameUid:
     """A unique frame reference that only contains enough information to build the actual Frame object.
     It cannot be used for any computations, is it be used in any structure apart from error structures."""
 
+    force_inertial: typing.Any
+    frozen_epoch: time.Epoch
+
     def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         """Initialize self.  See help(type(self)) for accurate signature."""
 
@@ -561,6 +846,24 @@ class Location:
 
     def to_dhall(self) -> str:
         """Returns the Dhall representation of this Location"""
+
+    def __eq__(self, value: typing.Any) -> bool:
+        """Return self==value."""
+
+    def __ge__(self, value: typing.Any) -> bool:
+        """Return self>=value."""
+
+    def __gt__(self, value: typing.Any) -> bool:
+        """Return self>value."""
+
+    def __le__(self, value: typing.Any) -> bool:
+        """Return self<=value."""
+
+    def __lt__(self, value: typing.Any) -> bool:
+        """Return self<value."""
+
+    def __ne__(self, value: typing.Any) -> bool:
+        """Return self!=value."""
 
     def __repr__(self) -> str:
         """Return repr(self)."""

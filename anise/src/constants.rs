@@ -15,7 +15,7 @@ pub const SPEED_OF_LIGHT_KM_S: f64 = 299_792.458;
 pub const ARCSEC_TO_RAD: f64 = core::f64::consts::PI / (180.0 * 3600.0);
 
 pub mod celestial_objects {
-    use crate::{ephemerides::EphemerisError, NaifId};
+    use crate::{NaifId, ephemerides::EphemerisError};
 
     pub const SOLAR_SYSTEM_BARYCENTER: NaifId = 0;
     pub const MERCURY_BARYCENTER: NaifId = 1;
@@ -50,9 +50,13 @@ pub mod celestial_objects {
             MARS_BARYCENTER => Some("Mars Barycenter"),
             MARS => Some("Mars"),
             JUPITER_BARYCENTER => Some("Jupiter Barycenter"),
+            JUPITER => Some("Jupiter"),
             SATURN_BARYCENTER => Some("Saturn Barycenter"),
+            SATURN => Some("Saturn"),
             URANUS_BARYCENTER => Some("Uranus Barycenter"),
+            URANUS => Some("Uranus"),
             NEPTUNE_BARYCENTER => Some("Neptune Barycenter"),
+            NEPTUNE => Some("Neptune"),
             PLUTO_BARYCENTER => Some("Pluto Barycenter"),
             SUN => Some("Sun"),
             MOON => Some("Moon"),
@@ -124,7 +128,8 @@ pub mod celestial_objects {
 ///  edited by P. Kenneth Seidelmann. University Science
 ///  Books, 20 Edgehill Road, Mill Valley, CA 94941 (1992)
 pub mod orientations {
-    use crate::{orientations::OrientationError, NaifId};
+    use crate::{NaifId, orientations::OrientationError};
+
     /// Earth mean equator, dynamical equinox of J2000. The root reference frame for SPICE.
     pub const J2000: NaifId = 1;
     /// Earth mean equator, dynamical equinox of B1950.
@@ -279,6 +284,32 @@ pub mod orientations {
     /// Changing this constant shifts both the ECLIPJ2000 rotation and the ICRS frame bias — that is intentional, but be aware of the coupling.
     pub const J2000_TO_ECLIPJ2000_ANGLE_RAD: f64 = 0.40909280422232897;
 
+    /// The Earth Mean of Date uses the IAU2006 Precession model.
+    pub const EARTH_MOD: NaifId = 0xA0E0_0300_u32 as i32;
+    /// Earth MOD with the 2000 Precession model.
+    pub const EARTH_MOD_2000: NaifId = 0xA0E0_0100_u32 as i32;
+    /// Earth MOD with the 1976 Precession model (legacy MOD).
+    pub const EARTH_MOD_1976: NaifId = 0xA0E0_0000_u32 as i32;
+
+    /// The Earth True of Date uses the IAU2006 Precession and Nutation models.
+    pub const EARTH_TOD: NaifId = 0xA0E1_0303_u32 as i32;
+    /// Earth MOD with the 2000 Precession model and the 2000A Nutation model.
+    pub const EARTH_TOD_2000A: NaifId = 0xA0E1_0101_u32 as i32;
+    /// Earth MOD with the 2000 Precession model and the 2000B Nutation model.
+    pub const EARTH_TOD_2000B: NaifId = 0xA0E1_0102_u32 as i32;
+    /// Earth MOD with the 1976 Precession model and the 1980 Nutation model.
+    pub const EARTH_TOD_1980: NaifId = 0xA0E1_0000_u32 as i32;
+
+    /// The Earth True Equator True Equinox Of Date uses the IAU2006 Precession and Nutation models.
+    pub const EARTH_TEME: NaifId = 0xA0E2_0303_u32 as i32;
+    /// Earth TEME with the 1976 Precession model and the 1980 Nutation model.
+    pub const EARTH_TEME_LEGACY: NaifId = 0xA0E2_0000_u32 as i32;
+
+    /// Moon Mean of Date (MOD) orientation uses the loaded IAU model from the planetary constants kernel, ignoring oscillatory terms and prime meridian.
+    pub const MOON_MOD: NaifId = 0xA0B0_012D_u32 as i32;
+    /// Moon True of Date (TOD) orientation uses the loaded IAU model from the planetary constants kernel, ignoring only the prime meridian.
+    pub const MOON_TOD: NaifId = 0xA0B1_012D_u32 as i32;
+
     /// Given the frame ID, try to return a human name
     /// Source: <https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/frames.html#Appendix.%20%60%60Built%20in''%20Inertial%20Reference%20Frames>
     pub const fn orientation_name_from_id(id: NaifId) -> Option<&'static str> {
@@ -402,6 +433,24 @@ pub mod frames {
     /// High fidelity Earth centered body fixed frame by the NAIF, requires the "Earth high prec" BPC kernel
     pub const EARTH_ITRF93: Frame = Frame::new(EARTH, ITRF93);
 
+    /// The Earth Mean of Date frame uses the IAU2006 Precession model.
+    pub const EARTH_MOD_FRAME: Frame = Frame::new_inertial(EARTH, EARTH_MOD);
+    /// The Earth True of Date frame uses the IAU2006 Precession and Nutation models.
+    pub const EARTH_TOD_FRAME: Frame = Frame::new_inertial(EARTH, EARTH_TOD);
+    /// The Earth Mean of Date frame uses the IAU1976 Precession model.
+    pub const EARTH_MOD_LEGACY_FRAME: Frame = Frame::new_inertial(EARTH, EARTH_MOD_1976);
+    /// The Earth True of Date frame uses the 1976 Precession model and the 1980 Nutation model.
+    pub const EARTH_TOD_LEGACY_FRAME: Frame = Frame::new_inertial(EARTH, EARTH_TOD_1980);
+    /// The Earth True Equator True Equinox Of Date frame uses the IAU2006 Precession and Nutation models.
+    pub const EARTH_TEME_FRAME: Frame = Frame::new_inertial(EARTH, EARTH_TEME);
+    /// The Earth True Equator True Equinox Of Date frame uses the 1976 Precession model and the 1980 Nutation model.
+    pub const EARTH_TEME_LEGACY_FRAME: Frame = Frame::new_inertial(EARTH, EARTH_TEME_LEGACY);
+
+    /// Moon Mean of Date (MOD) orientation uses the loaded IAU model from the planetary constants kernel, ignoring oscillatory terms and prime meridian.
+    pub const MOON_MOD_FRAME: Frame = Frame::new_inertial(MOON, MOON_MOD);
+    /// Moon True of Date (TOD) orientation uses the loaded IAU model from the planetary constants kernel, ignoring only the prime meridian.
+    pub const MOON_TOD_FRAME: Frame = Frame::new_inertial(MOON, MOON_TOD);
+
     /* *** Planet centric inertial frames defined below *** */
 
     /// Mercury Centered Inertial Frame, defined as IAU_MERCURY inertially frozen at J2000 ET/TDB
@@ -430,8 +479,8 @@ pub mod frames {
         shape: None,
     };
 
-    /// Moon Centered Inertial Frame, defined as IAU_MOON inertially frozen at J2000 ET/TDB.
-    /// Ansys STK users: ANISE Moon Inertial is slightly different than the [STK counterpart](https://help.agi.com/stk/#stk/referenceFramesCBdescriptions.htm#moonInertial).
+    /// Moon Centered Inertial Frame, defined as IAU_MOON inertially frozen at J2000 ET/TDB. The default IAU_MOON frame in ANISE is the [pck00011.tpc](https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/pck00011.tpc) frame, which uses the IAU2015 model.
+    /// Ansys STK users: ANISE Moon Inertial may be slightly different than the [STK counterpart](https://help.agi.com/stk/#stk/referenceFramesCBdescriptions.htm#moonInertial) because the STK implementation uses the IAU2003 model.
     pub const MOON_INERTIAL_FRAME: Frame = Frame {
         ephemeris_id: MOON,
         orientation_id: IAU_MOON,
@@ -528,7 +577,7 @@ pub mod usual_planetary_constants {
 #[cfg(test)]
 mod constants_ut {
     use crate::constants::orientations::{
-        orientation_name_from_id, B1950, ECLIPB1950, ECLIPJ2000, FK4, J2000, MARSIAU,
+        B1950, ECLIPB1950, ECLIPJ2000, FK4, J2000, MARSIAU, orientation_name_from_id,
     };
 
     use crate::constants::celestial_objects::*;
@@ -589,7 +638,7 @@ mod constants_ut {
     #[test]
     fn icrs_orientation_name_round_trip() {
         use crate::constants::orientations::{
-            id_from_orientation_name, orientation_name_from_id, ICRS, J2000,
+            ICRS, J2000, id_from_orientation_name, orientation_name_from_id,
         };
 
         assert_eq!(orientation_name_from_id(ICRS).unwrap(), "ICRS");

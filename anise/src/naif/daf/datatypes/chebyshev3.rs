@@ -10,13 +10,13 @@
 
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits};
-use snafu::{ensure, ResultExt};
+use snafu::{ResultExt, ensure};
 
 use crate::{
     errors::{DecodingError, IntegrityError, TooFewDoublesSnafu},
     math::{
-        interpolation::{chebyshev_eval_poly, InterpDecodingSnafu, InterpolationError},
         Vector3,
+        interpolation::{InterpDecodingSnafu, InterpolationError, chebyshev_eval_poly},
     },
     naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFSummaryRecord},
 };

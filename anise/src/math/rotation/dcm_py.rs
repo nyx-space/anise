@@ -9,9 +9,9 @@
  */
 
 use super::DCM;
+use crate::NaifId;
 use crate::astro::PhysicsResult;
 use crate::math::rotation::Quaternion;
-use crate::NaifId;
 
 use nalgebra::{Matrix3, Vector3};
 use ndarray::{Array1, Array2};

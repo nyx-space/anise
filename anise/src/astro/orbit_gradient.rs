@@ -9,8 +9,8 @@
  */
 
 use crate::analysis::prelude::OrbitalElement;
-use crate::astro::orbit::ECC_EPSILON;
 use crate::astro::PhysicsResult;
+use crate::astro::orbit::ECC_EPSILON;
 use crate::errors::PhysicsError;
 use crate::prelude::{Frame, Orbit};
 use crate::time::Epoch;
@@ -19,7 +19,7 @@ use core::fmt;
 use hyperdual::linalg::norm;
 use hyperdual::{Float, OHyperdual};
 use log::{debug, error, warn};
-use nalgebra::{Vector3, U7};
+use nalgebra::{U7, Vector3};
 
 /// Define the gradient of an Orbit with respect to its of its Cartesian elements.
 #[derive(Copy, Clone, Debug)]

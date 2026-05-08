@@ -8,8 +8,10 @@
  * Documentation: https://nyxspace.com/
  */
 
+mod dynamic;
 mod frame;
 mod frameuid;
 
+pub use dynamic::{DynamicFrame, EarthNutationModel, EarthPrecessionModel};
 pub use frame::Frame;
 pub use frameuid::FrameUid;

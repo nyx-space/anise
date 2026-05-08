@@ -19,16 +19,16 @@ use snafu::ResultExt;
 #[cfg(feature = "metaload")]
 use serde_dhall::{SimpleType, StaticType};
 
+use crate::NaifId;
 use crate::astro::PhysicsResult;
 use crate::constants::celestial_objects::{
-    celestial_name_from_id, id_from_celestial_name, SOLAR_SYSTEM_BARYCENTER,
+    SOLAR_SYSTEM_BARYCENTER, celestial_name_from_id, id_from_celestial_name,
 };
-use crate::constants::orientations::{id_from_orientation_name, orientation_name_from_id, J2000};
+use crate::constants::orientations::{J2000, id_from_orientation_name, orientation_name_from_id};
 use crate::errors::{AlmanacError, EphemerisSnafu, OrientationSnafu, PhysicsError};
-use crate::prelude::FrameUid;
+use crate::frames::DynamicFrame;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
 use crate::time::{Epoch, TimeScale, Unit};
-use crate::NaifId;
 
 #[cfg(feature = "python")]
 use pyo3::exceptions::{PyTypeError, PyValueError};
@@ -49,7 +49,7 @@ use pyo3::types::{PyBytes, PyType};
 /// :type frozen_epoch: Epoch, optional
 /// :rtype: Frame
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Frame {
     pub ephemeris_id: NaifId,
@@ -83,6 +83,17 @@ impl Frame {
 
     pub const fn from_orient_ssb(orientation_id: NaifId) -> Self {
         Self::new(SOLAR_SYSTEM_BARYCENTER, orientation_id)
+    }
+
+    pub const fn new_inertial(ephemeris_id: NaifId, orientation_id: NaifId) -> Self {
+        Self {
+            ephemeris_id,
+            orientation_id,
+            frozen_epoch: None,
+            force_inertial: true,
+            mu_km3_s2: None,
+            shape: None,
+        }
     }
 
     /// Attempts to create a new frame from its center and reference frame name.
@@ -423,6 +434,13 @@ impl Frame {
             })?
             .polar_radius_km)
     }
+
+    /// Returns true if this is a dynamic frame, e.g. Mean/True of Date/Epoch
+    ///
+    /// :rtype: bool
+    pub fn is_dynamic(&self) -> bool {
+        DynamicFrame::try_from(self.orientation_id as u32).is_ok()
+    }
 }
 
 #[cfg(feature = "metaload")]
@@ -533,10 +551,7 @@ impl fmt::Display for Frame {
         };
 
         if !skip_orient_print {
-            match orientation_name_from_id(self.orientation_id) {
-                Some(name) => write!(f, " {name}")?,
-                None => write!(f, "orientation {}", self.orientation_id)?,
-            };
+            write!(f, " {self:o}")?;
         }
 
         // Add the frozen epoch if applicable, trying to match on common frames.
@@ -589,9 +604,31 @@ impl fmt::LowerExp for Frame {
 impl fmt::Octal for Frame {
     /// Only prints the orientation name
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        match orientation_name_from_id(self.orientation_id) {
-            Some(name) => write!(f, "{name}"),
-            None => write!(f, "orientation {}", self.orientation_id),
+        if let Ok(dyn_frame) = DynamicFrame::try_from(self.orientation_id as u32) {
+            let source_id = match dyn_frame {
+                DynamicFrame::EarthMeanOfDate { .. }
+                | DynamicFrame::EarthTrueOfDate { .. }
+                | DynamicFrame::EarthTrueEquatorMeanEquinox { .. } => 399,
+                DynamicFrame::BodyMeanOfDate { source_id }
+                | DynamicFrame::BodyTrueOfDate { source_id } => source_id,
+            };
+
+            let mut name = if self.ephemeris_id == source_id {
+                // Skip orientation
+                dyn_frame.family().to_string()
+            } else {
+                format!("{dyn_frame}")
+            };
+            if self.frozen_epoch.is_some() {
+                // Frame is now of Epoch not of Date
+                name = name.replace("TOD", "TOE").replace("MOD", "MOE");
+            }
+            write!(f, "{name}")
+        } else {
+            match orientation_name_from_id(self.orientation_id) {
+                Some(name) => write!(f, "{name}"),
+                None => write!(f, "orientation {}", self.orientation_id),
+            }
         }
     }
 }
@@ -599,8 +636,7 @@ impl fmt::Octal for Frame {
 impl fmt::LowerHex for Frame {
     /// Only prints the UID
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        let uid: FrameUid = self.into();
-        write!(f, "{uid}")
+        write!(f, "{}", self.stripped())
     }
 }
 
@@ -626,7 +662,10 @@ mod frame_ut {
             .static_type_annotation()
             .to_string()
             .unwrap();
-        assert_eq!(serialized, "{ ephemeris_id = +399, force_inertial = False, frozen_epoch = None Text, mu_km3_s2 = None Double, orientation_id = +1, shape = None { polar_radius_km : Double, semi_major_equatorial_radius_km : Double, semi_minor_equatorial_radius_km : Double } }");
+        assert_eq!(
+            serialized,
+            "{ ephemeris_id = +399, force_inertial = False, frozen_epoch = None Text, mu_km3_s2 = None Double, orientation_id = +1, shape = None { polar_radius_km : Double, semi_major_equatorial_radius_km : Double, semi_minor_equatorial_radius_km : Double } }"
+        );
         assert_eq!(
             serde_dhall::from_str(&serialized).parse::<Frame>().unwrap(),
             EME2000

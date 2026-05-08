@@ -10,16 +10,16 @@
 
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits};
-use snafu::{ensure, ResultExt};
+use snafu::{ResultExt, ensure};
 
 use crate::{
+    DBL_SIZE,
     errors::{DecodingError, IntegrityError, TooFewDoublesSnafu},
     math::{
-        interpolation::{lagrange_eval, InterpDecodingSnafu, InterpolationError, MAX_SAMPLES},
         Vector3,
+        interpolation::{InterpDecodingSnafu, InterpolationError, MAX_SAMPLES, lagrange_eval},
     },
     naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord, NAIFSummaryRecord},
-    DBL_SIZE,
 };
 
 use super::posvel::PositionVelocityRecord;

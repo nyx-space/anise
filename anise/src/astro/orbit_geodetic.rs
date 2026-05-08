@@ -12,9 +12,9 @@ use super::PhysicsResult;
 use crate::errors::PhysicsError;
 use crate::{
     math::{
+        Vector3,
         angles::{between_0_360, between_pm_180},
         cartesian::CartesianState,
-        Vector3,
     },
     prelude::Frame,
 };

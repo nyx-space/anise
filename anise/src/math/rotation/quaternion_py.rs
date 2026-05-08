@@ -8,9 +8,9 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::{EulerParameter, DCM};
-use crate::astro::PhysicsResult;
+use super::{DCM, EulerParameter};
 use crate::NaifId;
+use crate::astro::PhysicsResult;
 
 use nalgebra::Vector3;
 use ndarray::{Array1, Array2};

@@ -12,7 +12,7 @@ use std::{collections::HashMap, str::FromStr};
 
 use log::warn;
 
-use super::{parser::Assignment, KPLItem, KPLValue, Parameter};
+use super::{KPLItem, KPLValue, Parameter, parser::Assignment};
 
 #[derive(Debug, Default)]
 pub struct TPCItem {
@@ -37,19 +37,19 @@ impl KPLItem for TPCItem {
     }
 
     fn parse(&mut self, data: Assignment) {
-        if data.keyword.starts_with("BODY") {
-            if let Some((body_info, param)) = data.keyword.split_once('_') {
-                let body_id = body_info[4..].parse::<i32>().ok();
-                if self.body_id.is_some() && self.body_id != body_id {
-                    warn!("Got body {body_id:?} but expected {:?}", self.body_id);
-                } else {
-                    self.body_id = body_id;
-                }
-                if let Ok(param) = Parameter::from_str(param) {
-                    self.data.insert(param, data.to_value());
-                } else if param != "GMLIST" {
-                    warn!("Unknown parameter `{param}` -- ignoring");
-                }
+        if data.keyword.starts_with("BODY")
+            && let Some((body_info, param)) = data.keyword.split_once('_')
+        {
+            let body_id = body_info[4..].parse::<i32>().ok();
+            if self.body_id.is_some() && self.body_id != body_id {
+                warn!("Got body {body_id:?} but expected {:?}", self.body_id);
+            } else {
+                self.body_id = body_id;
+            }
+            if let Ok(param) = Parameter::from_str(param) {
+                self.data.insert(param, data.to_value());
+            } else if param != "GMLIST" {
+                warn!("Unknown parameter `{param}` -- ignoring");
             }
         }
     }
@@ -145,7 +145,7 @@ fn test_parse_gm() {
 fn test_anise_conversion() {
     use crate::errors::InputOutputError;
     use crate::naif::kpl::parser::convert_tpc;
-    use crate::{file2heap, file_mmap, structure::dataset::DataSet};
+    use crate::{file_mmap, file2heap, structure::dataset::DataSet};
     use std::fs::File;
     use std::path::PathBuf;
 

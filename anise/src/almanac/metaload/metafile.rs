@@ -14,7 +14,7 @@ use regex::Regex;
 use serde_derive::{Deserialize, Serialize};
 use serde_dhall::StaticType;
 use std::env;
-use std::fs::{create_dir_all, remove_file, File};
+use std::fs::{File, create_dir_all, remove_file};
 use std::io::Write;
 use std::path::Path;
 use std::thread;
@@ -42,7 +42,7 @@ use super::MetaAlmanacError;
 /// :type uri: str
 /// :type crc32: int, optional
 /// :rtype: MetaFile
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, StaticType)]
 pub struct MetaFile {
@@ -134,22 +134,24 @@ impl MetaFile {
                                             }
                                         }
 
-                                        if dest_path.exists() {
-                                            if let Some(crc32) = self.crc32 {
-                                                // Open the file and check the CRC32
-                                                let dest_path_c = dest_path.clone(); // macro token issue
-                                                if let Ok(bytes) = file2heap!(dest_path_c) {
-                                                    let computed_crc32 = crc32fast::hash(&bytes);
-                                                    let dest_path_s =
-                                                        dest_path.to_string_lossy().to_string();
-                                                    if computed_crc32 == crc32 {
-                                                        // No need to redownload this, let's just update the uri path
-                                                        info!("Using cached {dest_path_s}",);
-                                                        self.uri = dest_path_s;
-                                                        return Ok(());
-                                                    } else {
-                                                        info!("Discarding cached {dest_path_s} - CRC32 differ (got 0x{computed_crc32:x}, expected 0x{crc32:x})");
-                                                    }
+                                        if dest_path.exists()
+                                            && let Some(crc32) = self.crc32
+                                        {
+                                            // Open the file and check the CRC32
+                                            let dest_path_c = dest_path.clone(); // macro token issue
+                                            if let Ok(bytes) = file2heap!(dest_path_c) {
+                                                let computed_crc32 = crc32fast::hash(&bytes);
+                                                let dest_path_s =
+                                                    dest_path.to_string_lossy().to_string();
+                                                if computed_crc32 == crc32 {
+                                                    // No need to redownload this, let's just update the uri path
+                                                    info!("Using cached {dest_path_s}",);
+                                                    self.uri = dest_path_s;
+                                                    return Ok(());
+                                                } else {
+                                                    info!(
+                                                        "Discarding cached {dest_path_s} - CRC32 differ (got 0x{computed_crc32:x}, expected 0x{crc32:x})"
+                                                    );
                                                 }
                                             }
                                         }
@@ -225,9 +227,9 @@ impl MetaFile {
                                                             )?;
 
                                                             info!(
-                                                                 "Saved {url} to {} (CRC32 = 0x{crc32:x})",
-                                                                 dest_path.to_string_lossy()
-                                                             );
+                                                                "Saved {url} to {} (CRC32 = 0x{crc32:x})",
+                                                                dest_path.to_string_lossy()
+                                                            );
 
                                                             // Set the URI for loading
                                                             self.uri = dest_path

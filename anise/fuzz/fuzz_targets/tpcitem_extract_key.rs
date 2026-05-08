@@ -1,5 +1,5 @@
 #![no_main]
-use anise::naif::kpl::{tpc::TPCItem, KPLItem};
+use anise::naif::kpl::{KPLItem, tpc::TPCItem};
 
 use libfuzzer_sys::fuzz_target;
 

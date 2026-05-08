@@ -235,12 +235,16 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
     // Regression test for GH #346 where the ephemeris time converted to UTC is a handful of
     // nanoseconds past the midnight so the DAF query would normally fail.
     let gh346_epoch = Epoch::from_gregorian_utc_at_midnight(2023, 12, 15);
-    assert!(almanac
-        .common_ephemeris_path(lro_frame, SUN_J2000, gh346_epoch)
-        .is_ok());
-    assert!(almanac
-        .transform(lro_frame, SUN_J2000, gh346_epoch, None)
-        .is_ok());
+    assert!(
+        almanac
+            .common_ephemeris_path(lro_frame, SUN_J2000, gh346_epoch)
+            .is_ok()
+    );
+    assert!(
+        almanac
+            .transform(lro_frame, SUN_J2000, gh346_epoch, None)
+            .is_ok()
+    );
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 1, 1);
 

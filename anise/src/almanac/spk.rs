@@ -17,11 +17,11 @@ use pyo3::prelude::*;
 use snafu::ensure;
 
 use crate::ephemerides::NoEphemerisLoadedSnafu;
+use crate::naif::SPK;
 use crate::naif::daf::DAFError;
 use crate::naif::daf::NAIFSummaryRecord;
 use crate::naif::spk::summary::SPKSummaryRecord;
-use crate::naif::SPK;
-use crate::{ephemerides::EphemerisError, NaifId};
+use crate::{NaifId, ephemerides::EphemerisError};
 use log::{error, warn};
 
 use super::Almanac;
@@ -261,7 +261,7 @@ impl Almanac {
                 for summary in these_summaries {
                     let this_id = summary.id();
                     match domains.get_mut(&this_id) {
-                        Some((ref mut cur_start, ref mut cur_end)) => {
+                        Some((cur_start, cur_end)) => {
                             if *cur_start > summary.start_epoch() {
                                 *cur_start = summary.start_epoch();
                             }

@@ -12,11 +12,11 @@ use hifitime::Epoch;
 use snafu::ensure;
 
 use super::{NoOrientationsLoadedSnafu, OrientationError};
+use crate::NaifId;
 use crate::almanac::Almanac;
 use crate::constants::orientations::{ECLIPJ2000, ICRS, J2000};
-use crate::frames::Frame;
+use crate::frames::{DynamicFrame, Frame};
 use crate::naif::daf::{DAFError, NAIFSummaryRecord};
-use crate::NaifId;
 
 /// **Limitation:** no translation or rotation may have more than 8 nodes.
 pub const MAX_TREE_DEPTH: usize = 8;
@@ -57,13 +57,13 @@ impl Almanac {
 
         for data in self.planetary_data.values().rev() {
             for id in data.lut.by_id.keys() {
-                if let Ok(pc) = data.get_by_id(*id) {
-                    if pc.parent_id < common_center {
-                        common_center = pc.parent_id;
-                        if common_center == J2000 {
-                            // there is nothing higher up
-                            return Ok(common_center);
-                        }
+                if let Ok(pc) = data.get_by_id(*id)
+                    && pc.parent_id < common_center
+                {
+                    common_center = pc.parent_id;
+                    if common_center == J2000 {
+                        // there is nothing higher up
+                        return Ok(common_center);
                     }
                 }
             }
@@ -97,16 +97,43 @@ impl Almanac {
         // Let's see if this orientation is defined in the loaded BPC files
         let mut inertial_frame_id = if source.orient_origin_id_match(ICRS) {
             J2000
+        } else if let Ok(dyn_frame) = DynamicFrame::try_from(source.orientation_id as u32)
+            && matches!(
+                dyn_frame,
+                DynamicFrame::EarthMeanOfDate { .. }
+                    | DynamicFrame::EarthTrueOfDate { .. }
+                    | DynamicFrame::EarthTrueEquatorMeanEquinox { .. }
+            )
+        {
+            match dyn_frame {
+                DynamicFrame::EarthMeanOfDate { precession }
+                | DynamicFrame::EarthTrueOfDate { precession, .. }
+                | DynamicFrame::EarthTrueEquatorMeanEquinox { precession, .. } => {
+                    precession.parent_id()
+                }
+                _ => unreachable!(),
+            }
         } else {
-            match self.bpc_summary_at_epoch(source.orientation_id, epoch) {
+            let orientation_id =
+                if let Ok(dyn_frame) = DynamicFrame::try_from(source.orientation_id as u32) {
+                    match dyn_frame {
+                        DynamicFrame::BodyMeanOfDate { source_id }
+                        | DynamicFrame::BodyTrueOfDate { source_id } => source_id,
+                        _ => unreachable!("all other variants handled above"),
+                    }
+                } else {
+                    source.orientation_id
+                };
+
+            match self.bpc_summary_at_epoch(orientation_id, epoch) {
                 Ok((summary, _, _, _)) => summary.inertial_frame_id,
                 Err(_) => {
                     // Not available as a BPC, so let's see if there's planetary data for it.
-                    match self.get_planetary_data_from_id(source.orientation_id) {
+                    match self.get_planetary_data_from_id(orientation_id) {
                         Ok(planetary_data) => planetary_data.parent_id,
                         Err(_) => {
                             // Finally, let's see if it's in the loaded Euler Parameters.
-                            self.euler_param_from_id(source.orientation_id)?.to
+                            self.euler_param_from_id(orientation_id)?.to
                         }
                     }
                 }

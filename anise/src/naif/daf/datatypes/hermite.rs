@@ -10,17 +10,17 @@
 
 use core::fmt;
 use hifitime::{Duration, Epoch, TimeUnits};
-use snafu::{ensure, ResultExt};
+use snafu::{ResultExt, ensure};
 
 use crate::errors::{DecodingError, IntegrityError, TooFewDoublesSnafu};
 use crate::math::interpolation::{
-    hermite_eval, InterpDecodingSnafu, InterpolationError, MAX_SAMPLES,
+    InterpDecodingSnafu, InterpolationError, MAX_SAMPLES, hermite_eval,
 };
 use crate::naif::daf::NAIFSummaryRecord;
 use crate::{
+    DBL_SIZE,
     math::Vector3,
     naif::daf::{NAIFDataRecord, NAIFDataSet, NAIFRecord},
-    DBL_SIZE,
 };
 
 use super::posvel::PositionVelocityRecord;

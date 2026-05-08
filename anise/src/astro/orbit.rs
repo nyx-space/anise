@@ -8,8 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::utils::mean_anomaly_to_true_anomaly_rad;
 use super::PhysicsResult;
+use super::utils::mean_anomaly_to_true_anomaly_rad;
 
 use crate::{
     astro::utils::true_anomaly_to_mean_anomaly_rad,
@@ -18,12 +18,12 @@ use crate::{
         ParabolicSemiParamSnafu, PhysicsError, RadiusSnafu, VelocitySnafu,
     },
     math::{
+        Matrix3, Vector3, Vector6,
         angles::{between_0_360, between_pm_180},
         cartesian::CartesianState,
         rotation::DCM,
-        Matrix3, Vector3, Vector6,
     },
-    prelude::{uuid_from_epoch, Frame},
+    prelude::{Frame, uuid_from_epoch},
 };
 
 #[cfg(feature = "analysis")]
@@ -902,11 +902,7 @@ impl Orbit {
         let cos_aop = n.dot(&self.evec()?) / (n.norm() * self.ecc()?);
         let aop = cos_aop.acos();
         if aop.is_nan() {
-            if cos_aop > 1.0 {
-                Ok(180.0)
-            } else {
-                Ok(0.0)
-            }
+            if cos_aop > 1.0 { Ok(180.0) } else { Ok(0.0) }
         } else if self.evec()?[2] < 0.0 {
             Ok((TAU - aop).to_degrees())
         } else {
@@ -963,11 +959,7 @@ impl Orbit {
         let cos_raan = n[0] / n.norm();
         let raan = cos_raan.acos();
         if raan.is_nan() {
-            if cos_raan > 1.0 {
-                Ok(180.0)
-            } else {
-                Ok(0.0)
-            }
+            if cos_raan > 1.0 { Ok(180.0) } else { Ok(0.0) }
         } else if n[1] < 0.0 {
             Ok((TAU - raan).to_degrees())
         } else {
@@ -1037,11 +1029,7 @@ impl Orbit {
         // If we're close the valid bounds, let's just do a sign check and return the true anomaly
         let ta = cos_nu.acos();
         if ta.is_nan() {
-            if cos_nu > 1.0 {
-                Ok(180.0)
-            } else {
-                Ok(0.0)
-            }
+            if cos_nu > 1.0 { Ok(180.0) } else { Ok(0.0) }
         } else if self.radius_km.dot(&self.velocity_km_s) < 0.0 {
             Ok((TAU - ta).to_degrees())
         } else {
@@ -1569,17 +1557,17 @@ impl fmt::LowerHex for Orbit {
         let decimals = f.precision().unwrap_or(6);
 
         write!(
-                f,
-                "[{:x}] {}\tsma = {} km\tecc = {}\tinc = {} deg\traan = {} deg\taop = {} deg\tta = {} deg",
-                self.frame,
-                self.epoch,
-                format!("{:.*}", decimals, self.sma_km().unwrap_or(f64::NAN)),
-                format!("{:.*}", decimals, self.ecc().unwrap_or(f64::NAN)),
-                format!("{:.*}", decimals, self.inc_deg().unwrap_or(f64::NAN)),
-                format!("{:.*}", decimals, self.raan_deg().unwrap_or(f64::NAN)),
-                format!("{:.*}", decimals, self.aop_deg().unwrap_or(f64::NAN)),
-                format!("{:.*}", decimals, self.ta_deg().unwrap_or(f64::NAN)),
-            )
+            f,
+            "[{:x}] {}\tsma = {} km\tecc = {}\tinc = {} deg\traan = {} deg\taop = {} deg\tta = {} deg",
+            self.frame,
+            self.epoch,
+            format!("{:.*}", decimals, self.sma_km().unwrap_or(f64::NAN)),
+            format!("{:.*}", decimals, self.ecc().unwrap_or(f64::NAN)),
+            format!("{:.*}", decimals, self.inc_deg().unwrap_or(f64::NAN)),
+            format!("{:.*}", decimals, self.raan_deg().unwrap_or(f64::NAN)),
+            format!("{:.*}", decimals, self.aop_deg().unwrap_or(f64::NAN)),
+            format!("{:.*}", decimals, self.ta_deg().unwrap_or(f64::NAN)),
+        )
     }
 }
 

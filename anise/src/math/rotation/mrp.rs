@@ -11,9 +11,9 @@
 use snafu::ensure;
 
 use crate::{
+    NaifId,
     errors::{DivisionByZeroSnafu, InvalidRotationSnafu, MathError, PhysicsError},
     math::{Matrix3, Vector3},
-    NaifId,
 };
 
 use core::ops::Mul;
@@ -286,7 +286,7 @@ impl From<MRP> for Quaternion {
 mod ut_mrp {
     use crate::math::rotation::generate_angles;
 
-    use super::{Quaternion, MRP};
+    use super::{MRP, Quaternion};
     use core::f64::consts::{FRAC_PI_2, PI, TAU};
 
     #[test]

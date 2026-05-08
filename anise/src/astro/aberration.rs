@@ -11,7 +11,7 @@
 use crate::{
     constants::SPEED_OF_LIGHT_KM_S,
     errors::{AberrationSnafu, VelocitySnafu},
-    math::{rotate_vector, Vector3},
+    math::{Vector3, rotate_vector},
 };
 
 use core::fmt;
@@ -48,7 +48,7 @@ use crate::errors::PhysicsError;
 /// :rtype: Aberration
 #[derive(Copy, Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "analysis", derive(Deserialize, Serialize))]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct Aberration {
     /// Indicates whether the light time calculations should be iterated upon (more precise but three times as many CPU cycles).

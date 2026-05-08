@@ -413,26 +413,31 @@ fn type13_hermite_query() {
         .unwrap();
 
     // This tests that we've loaded the frame info from the Almanac, otherwise we cannot compute the orbital elements.
-    assert_eq!(format!("{state:x}"), "[Earth J2000] 2000-01-01T13:40:32.183929398 ET\tsma = 7192.041350 km\tecc = 0.024628\tinc = 12.851841 deg\traan = 306.170038 deg\taop = 315.085528 deg\tta = 96.135384 deg");
+    assert_eq!(
+        format!("{state:x}"),
+        "[Earth J2000] 2000-01-01T13:40:32.183929398 ET\tsma = 7192.041350 km\tecc = 0.024628\tinc = 12.851841 deg\traan = 306.170038 deg\taop = 315.085528 deg\tta = 96.135384 deg"
+    );
 
     // Fetch the state at the start of this spline to make sure we don't glitch.
-    assert!(ctx
-        .translate(
+    assert!(
+        ctx.translate(
             summary.target_frame(),
             summary.center_frame(),
             summary.start_epoch(),
             Aberration::NONE,
         )
-        .is_ok());
+        .is_ok()
+    );
 
-    assert!(ctx
-        .translate(
+    assert!(
+        ctx.translate(
             summary.target_frame(),
             summary.center_frame(),
             summary.end_epoch(),
             Aberration::NONE,
         )
-        .is_ok());
+        .is_ok()
+    );
 }
 
 /// This tests that the rotation from Moon to Earth matches SPICE with different aberration corrections.

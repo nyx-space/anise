@@ -40,7 +40,7 @@ use pyo3::pyclass::CompareOp;
 /// :rtype: Ellipsoid
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "metaload", derive(StaticType))]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Ellipsoid {
     pub semi_major_equatorial_radius_km: f64,

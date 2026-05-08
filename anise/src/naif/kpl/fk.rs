@@ -12,7 +12,7 @@ use std::{collections::HashMap, str::FromStr};
 
 use log::warn;
 
-use super::{parser::Assignment, KPLItem, KPLValue, Parameter};
+use super::{KPLItem, KPLValue, Parameter, parser::Assignment};
 
 #[derive(Debug, Default)]
 pub struct FKItem {
@@ -215,7 +215,7 @@ mod fk_ut {
         use std::path::PathBuf;
         use std::str::FromStr;
 
-        use crate::math::rotation::{r1, r2, r3, DCM};
+        use crate::math::rotation::{DCM, r1, r2, r3};
         let dataset = convert_fk("../data/moon_080317.txt", false).unwrap();
 
         assert_eq!(dataset.len(), 5, "expected three items");
@@ -243,7 +243,7 @@ mod fk_ut {
         use std::path::PathBuf;
         use std::str::FromStr;
 
-        use crate::math::rotation::{r1, r2, r3, DCM};
+        use crate::math::rotation::{DCM, r1, r2, r3};
         let dataset = convert_fk("../data/moon_de440_220930.txt", false).unwrap();
 
         assert_eq!(dataset.len(), 4, "expected three items");

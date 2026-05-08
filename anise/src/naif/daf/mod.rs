@@ -9,8 +9,8 @@
  */
 
 use crate::{
-    errors::IntegrityError, math::interpolation::InterpolationError, prelude::InputOutputError,
-    NaifId,
+    NaifId, errors::IntegrityError, math::interpolation::InterpolationError,
+    prelude::InputOutputError,
 };
 use core::fmt::Display;
 use hifitime::Epoch;

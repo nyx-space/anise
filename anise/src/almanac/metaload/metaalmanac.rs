@@ -32,7 +32,7 @@ use super::{Almanac, MetaAlmanacError, MetaFile};
 /// :type maybe_path: str, optional
 /// :rtype: MetaAlmanac
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, StaticType)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct MetaAlmanac {
     pub files: Vec<MetaFile>,
