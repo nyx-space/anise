@@ -27,7 +27,6 @@ use crate::constants::celestial_objects::{
 use crate::constants::orientations::{J2000, id_from_orientation_name, orientation_name_from_id};
 use crate::errors::{AlmanacError, EphemerisSnafu, OrientationSnafu, PhysicsError};
 use crate::frames::DynamicFrame;
-use crate::prelude::FrameUid;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
 use crate::time::{Epoch, TimeScale, Unit};
 
@@ -637,8 +636,7 @@ impl fmt::Octal for Frame {
 impl fmt::LowerHex for Frame {
     /// Only prints the UID
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        let uid: FrameUid = self.into();
-        write!(f, "{uid}")
+        write!(f, "{}", self.stripped())
     }
 }
 

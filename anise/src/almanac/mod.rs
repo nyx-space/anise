@@ -202,11 +202,12 @@ impl Almanac {
     fn _load_from_bytes(self, bytes: BytesMut, path: Option<&str>) -> AlmanacResult<Self> {
         // Check if they forgot to run git lfs
         if let Some(lfs_header) = bytes.get(..8)
-            && lfs_header == "version".as_bytes() {
-                return Err(AlmanacError::GenericError {
-                    err: "file is a git lfs pointer, run `git lfs pull`".to_string(),
-                });
-            }
+            && lfs_header == "version".as_bytes()
+        {
+            return Err(AlmanacError::GenericError {
+                err: "file is a git lfs pointer, run `git lfs pull`".to_string(),
+            });
+        }
 
         let path_str = path.map_or_else(|| None, |p| Some(p.to_string()));
 

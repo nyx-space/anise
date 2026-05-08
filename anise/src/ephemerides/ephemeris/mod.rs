@@ -476,25 +476,27 @@ impl Ephemeris {
             };
 
             if let Some(covar) = &mut new_record.covar
-                && orig_frame.orientation_id != new_frame.orientation_id {
-                    // Query the rotation matrix
-                    let dcm = almanac.rotate(orig_frame, new_frame, *epoch).context(
-                        OrientationSnafu {
+                && orig_frame.orientation_id != new_frame.orientation_id
+            {
+                // Query the rotation matrix
+                let dcm =
+                    almanac
+                        .rotate(orig_frame, new_frame, *epoch)
+                        .context(OrientationSnafu {
                             action: "rotating covariance",
-                        },
-                    )?;
+                        })?;
 
-                    // Unwrap because we know it is set
-                    covar.matrix = dcm.state_dcm()
-                        * orig_record
-                            .covar_in_frame(LocalFrame::Inertial)
-                            .context(AlmanacPhysicsSnafu {
-                                action: "computing covar inertial",
-                            })?
-                            .expect("covariance is Some, inside if-let guard")
-                            .matrix
-                        * dcm.state_dcm().transpose();
-                }
+                // Unwrap because we know it is set
+                covar.matrix = dcm.state_dcm()
+                    * orig_record
+                        .covar_in_frame(LocalFrame::Inertial)
+                        .context(AlmanacPhysicsSnafu {
+                            action: "computing covar inertial",
+                        })?
+                        .expect("covariance is Some, inside if-let guard")
+                        .matrix
+                    * dcm.state_dcm().transpose();
+            }
 
             me.insert(new_record);
         }

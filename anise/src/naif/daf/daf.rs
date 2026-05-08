@@ -160,9 +160,10 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     /// Scrubs the data by computing the CRC32 of the bytes and making sure that it still matches the previously known hash
     pub fn scrub(&self) -> Result<(), IntegrityError> {
         if let Some(cur_crc32) = self.crc32
-            && cur_crc32 == self.crc32() {
-                return Ok(());
-            }
+            && cur_crc32 == self.crc32()
+        {
+            return Ok(());
+        }
         // Compiler will optimize the double computation away
         Err(IntegrityError::ChecksumInvalid {
             expected: self.crc32,

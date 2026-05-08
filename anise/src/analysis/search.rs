@@ -389,27 +389,25 @@ impl Almanac {
                     }
                 }
                 // After the loop, if we are *still* in an arc, it must continue until `end_epoch`.
-                if is_inside_arc
-                    && let Some(rise) = rise.take() {
-                        let end_orbit = state_spec.evaluate(end_epoch, self)?;
-                        let end_eval = boundary_event.eval(end_orbit, self)?;
-                        let prev_orbit =
-                            state_spec.evaluate(end_epoch - event.epoch_precision, self);
+                if is_inside_arc && let Some(rise) = rise.take() {
+                    let end_orbit = state_spec.evaluate(end_epoch, self)?;
+                    let end_eval = boundary_event.eval(end_orbit, self)?;
+                    let prev_orbit = state_spec.evaluate(end_epoch - event.epoch_precision, self);
 
-                        let fall_details = EventDetails::new(
-                            end_orbit,
-                            end_eval,
-                            &boundary_event,
-                            prev_orbit.ok(),
-                            None,
-                            self,
-                        )?;
+                    let fall_details = EventDetails::new(
+                        end_orbit,
+                        end_eval,
+                        &boundary_event,
+                        prev_orbit.ok(),
+                        None,
+                        self,
+                    )?;
 
-                        arcs.push(EventArc {
-                            rise,
-                            fall: fall_details,
-                        });
-                    }
+                    arcs.push(EventArc {
+                        rise,
+                        fall: fall_details,
+                    });
+                }
                 Ok(arcs)
             }
             Condition::Equals(..) | Condition::Minimum() | Condition::Maximum() => unreachable!(),
@@ -436,14 +434,15 @@ impl Almanac {
         'outer: for location_data in self.location_data.values().rev() {
             for (idx, (opt_id, opt_name)) in location_data.lut.entries() {
                 if let Some(id) = opt_id
-                    && id == location_id {
-                        match opt_name {
-                            Some(name) => location_ref = Some(format!("{name} (#{id})")),
-                            None => location_ref = Some(format!("#{id}")),
-                        };
-                        location = Some(location_data.data[idx as usize].clone());
-                        break 'outer;
-                    }
+                    && id == location_id
+                {
+                    match opt_name {
+                        Some(name) => location_ref = Some(format!("{name} (#{id})")),
+                        None => location_ref = Some(format!("#{id}")),
+                    };
+                    location = Some(location_data.data[idx as usize].clone());
+                    break 'outer;
+                }
             }
         }
 

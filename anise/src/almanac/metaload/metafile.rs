@@ -135,25 +135,26 @@ impl MetaFile {
                                         }
 
                                         if dest_path.exists()
-                                            && let Some(crc32) = self.crc32 {
-                                                // Open the file and check the CRC32
-                                                let dest_path_c = dest_path.clone(); // macro token issue
-                                                if let Ok(bytes) = file2heap!(dest_path_c) {
-                                                    let computed_crc32 = crc32fast::hash(&bytes);
-                                                    let dest_path_s =
-                                                        dest_path.to_string_lossy().to_string();
-                                                    if computed_crc32 == crc32 {
-                                                        // No need to redownload this, let's just update the uri path
-                                                        info!("Using cached {dest_path_s}",);
-                                                        self.uri = dest_path_s;
-                                                        return Ok(());
-                                                    } else {
-                                                        info!(
-                                                            "Discarding cached {dest_path_s} - CRC32 differ (got 0x{computed_crc32:x}, expected 0x{crc32:x})"
-                                                        );
-                                                    }
+                                            && let Some(crc32) = self.crc32
+                                        {
+                                            // Open the file and check the CRC32
+                                            let dest_path_c = dest_path.clone(); // macro token issue
+                                            if let Ok(bytes) = file2heap!(dest_path_c) {
+                                                let computed_crc32 = crc32fast::hash(&bytes);
+                                                let dest_path_s =
+                                                    dest_path.to_string_lossy().to_string();
+                                                if computed_crc32 == crc32 {
+                                                    // No need to redownload this, let's just update the uri path
+                                                    info!("Using cached {dest_path_s}",);
+                                                    self.uri = dest_path_s;
+                                                    return Ok(());
+                                                } else {
+                                                    info!(
+                                                        "Discarding cached {dest_path_s} - CRC32 differ (got 0x{computed_crc32:x}, expected 0x{crc32:x})"
+                                                    );
                                                 }
                                             }
+                                        }
 
                                         // At this stage, either the dest path does not exist, or the CRC32 check failed.
 

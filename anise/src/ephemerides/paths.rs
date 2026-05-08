@@ -15,6 +15,7 @@ use snafu::ensure;
 use super::{EphemerisError, NoEphemerisLoadedSnafu};
 use crate::NaifId;
 use crate::almanac::Almanac;
+use crate::constants::celestial_objects::SOLAR_SYSTEM_BARYCENTER;
 use crate::frames::Frame;
 use crate::naif::daf::{DAFError, NAIFSummaryRecord};
 
@@ -47,7 +48,7 @@ impl Almanac {
                     // This summary exists, so we need to follow the branch of centers up the tree.
                     if !summary.is_empty() && summary.center_id.abs() < common_center.abs() {
                         common_center = summary.center_id;
-                        if common_center == 0 {
+                        if common_center == SOLAR_SYSTEM_BARYCENTER {
                             // We're at the SSB, there is nothing higher up
                             return Ok(common_center);
                         }

@@ -18,6 +18,9 @@ from anise.analysis import OrbitalElement
 from anise.astro import (
     Covariance,
     DataType,
+    DynamicFrame,
+    EarthNutationModel,
+    EarthPrecessionModel,
     Ellipsoid,
     Ephemeris,
     EphemerisRecord,
@@ -28,7 +31,7 @@ from anise.astro import (
     Orbit,
     TerrainMask,
 )
-from anise.constants import Frames
+from anise.constants import Frames, Orientations
 from anise.rotation import DCM, Quaternion
 from anise.time import Duration, Epoch, TimeSeries, Unit
 from anise.utils import convert_tpc
@@ -517,6 +520,52 @@ def test_oem():
 
     ephem.degree = 159
     assert ephem.degree == 159
+
+
+def test_mod_tod_teme():
+    for prec_model, value in [
+        (EarthPrecessionModel.IAU1976, Orientations.EARTH_MOD_1976),
+        (EarthPrecessionModel.IAU2006, Orientations.EARTH_MOD),
+    ]:
+        dyn_frame = DynamicFrame.EarthMeanOfDate(prec_model)
+        assert dyn_frame.to_frame_id() == value
+        assert DynamicFrame.from_frame_id(dyn_frame.to_frame_id()) == dyn_frame
+    assert f"{dyn_frame}" == "Earth MOD (IAU2006)"
+
+    for prec_model, nut_model, value in [
+        (
+            EarthPrecessionModel.IAU1976,
+            EarthNutationModel.IAU1980,
+            Orientations.EARTH_TOD_1980,
+        ),
+        (
+            EarthPrecessionModel.IAU2006,
+            EarthNutationModel.IAU2006A,
+            Orientations.EARTH_TOD,
+        ),
+    ]:
+        assert (
+            DynamicFrame.EarthTrueOfDate(prec_model, nut_model).to_frame_id() == value
+        )
+
+    for prec_model, nut_model, value in [
+        (
+            EarthPrecessionModel.IAU1976,
+            EarthNutationModel.IAU1980,
+            Orientations.EARTH_TEME_LEGACY,
+        ),
+        (
+            EarthPrecessionModel.IAU2006,
+            EarthNutationModel.IAU2006A,
+            Orientations.EARTH_TEME,
+        ),
+    ]:
+        assert (
+            DynamicFrame.EarthTrueEquatorMeanEquinox(
+                prec_model, nut_model
+            ).to_frame_id()
+            == value
+        )
 
 
 if __name__ == "__main__":

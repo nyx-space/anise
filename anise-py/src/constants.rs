@@ -67,6 +67,18 @@ impl Frames {
     #[classattr]
     const EARTH_ITRF93: Frame = EARTH_ITRF93;
     #[classattr]
+    const EARTH_MOD_FRAME: Frame = EARTH_MOD_FRAME;
+    #[classattr]
+    const EARTH_TOD_FRAME: Frame = EARTH_TOD_FRAME;
+    #[classattr]
+    const EARTH_MOD_LEGACY_FRAME: Frame = EARTH_MOD_LEGACY_FRAME;
+    #[classattr]
+    const EARTH_TOD_LEGACY_FRAME: Frame = EARTH_TOD_LEGACY_FRAME;
+    #[classattr]
+    const EARTH_TEME_FRAME: Frame = EARTH_TEME_FRAME;
+    #[classattr]
+    const EARTH_TEME_LEGACY_FRAME: Frame = EARTH_TEME_LEGACY_FRAME;
+    #[classattr]
     const MOON_ME_FRAME: Frame = MOON_ME_FRAME;
     #[classattr]
     const MOON_ME_DE421_FRAME: Frame = MOON_ME_DE421_FRAME;
@@ -78,6 +90,10 @@ impl Frames {
     const MOON_PA_DE421_FRAME: Frame = MOON_PA_DE421_FRAME;
     #[classattr]
     const MOON_PA_DE440_FRAME: Frame = MOON_PA_DE440_FRAME;
+    #[classattr]
+    const MOON_MOD_FRAME: Frame = MOON_MOD_FRAME;
+    #[classattr]
+    const MOON_TOD_FRAME: Frame = MOON_TOD_FRAME;
     #[classattr]
     const IAU_MOON_FRAME: Frame = IAU_MOON_FRAME;
     #[classattr]
@@ -119,6 +135,24 @@ impl Orientations {
     #[classattr]
     const ICRS: i32 = ICRS;
     #[classattr]
+    const EARTH_MOD: i32 = EARTH_MOD;
+    #[classattr]
+    const EARTH_MOD_2000: i32 = EARTH_MOD_2000;
+    #[classattr]
+    const EARTH_MOD_1976: i32 = EARTH_MOD_1976;
+    #[classattr]
+    const EARTH_TOD: i32 = EARTH_TOD;
+    #[classattr]
+    const EARTH_TOD_2000A: i32 = EARTH_TOD_2000A;
+    #[classattr]
+    const EARTH_TOD_2000B: i32 = EARTH_TOD_2000B;
+    #[classattr]
+    const EARTH_TOD_1980: i32 = EARTH_TOD_1980;
+    #[classattr]
+    const EARTH_TEME: i32 = EARTH_TEME;
+    #[classattr]
+    const EARTH_TEME_LEGACY: i32 = EARTH_TEME_LEGACY;
+    #[classattr]
     const IAU_MERCURY: i32 = IAU_MERCURY;
     #[classattr]
     const IAU_VENUS: i32 = IAU_VENUS;
@@ -132,6 +166,10 @@ impl Orientations {
     const MOON_ME_DE421: i32 = MOON_ME_DE421;
     #[classattr]
     const MOON_ME_DE440_ME421: i32 = MOON_ME_DE440_ME421;
+    #[classattr]
+    const MOON_MOD: i32 = MOON_MOD;
+    #[classattr]
+    const MOON_TOD: i32 = MOON_TOD;
     #[classattr]
     const MOON_PA: i32 = MOON_PA;
     #[classattr]

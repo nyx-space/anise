@@ -8,6 +8,15 @@
  * Documentation: https://nyxspace.com/
  */
 
+#[cfg(feature = "python")]
+use pyo3::exceptions::{PyTypeError, PyValueError};
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+#[cfg(feature = "python")]
+use pyo3::pyclass::CompareOp;
+#[cfg(feature = "python")]
+use pyo3::types::PyType;
+
 use crate::constants::orientations::orientation_name_from_id;
 use crate::orientations::OrientationError;
 
@@ -119,6 +128,8 @@ pub const DYNAMIC_FRAME_PREFIX: u8 = 0xA0;
 /// - `Frame::frozen_epoch`: If set, evaluates the dynamic models (precession, nutation, pole right ascension/declination) at the specified epoch rather than the integration time, freezing the frame inertially.
 /// - `Frame::force_inertial`: If `true`, the time derivative of the resulting Direction Cosine Matrix (DCM) is explicitly zeroed out. The built-in Earth MOD/TOD constants are defined as inertial in the ANISE constants.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub enum DynamicFrame {
     /// Earth Mean Equator, Mean Equinox of Date.
     ///
@@ -162,6 +173,38 @@ impl DynamicFrame {
             Self::EarthMeanOfDate { .. } | Self::BodyMeanOfDate { .. } => "MOD",
             Self::EarthTrueOfDate { .. } | Self::BodyTrueOfDate { .. } => "TOD",
             Self::EarthTrueEquatorMeanEquinox { .. } => "TEME",
+        }
+    }
+}
+
+#[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pymethods)]
+impl DynamicFrame {
+    #[allow(clippy::too_many_arguments)]
+    #[classmethod]
+    pub fn from_frame_id(_cls: &Bound<'_, PyType>, frame_id: i32) -> PyResult<Self> {
+        Self::try_from(frame_id as u32).map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    fn to_frame_id(&self) -> i32 {
+        Into::<i32>::into(*self)
+    }
+
+    fn __str__(&self) -> String {
+        format!("{self}")
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{self} (@{self:p})")
+    }
+
+    fn __richcmp__(&self, other: &Self, op: CompareOp) -> Result<bool, PyErr> {
+        match op {
+            CompareOp::Eq => Ok(self == other),
+            CompareOp::Ne => Ok(self != other),
+            _ => Err(PyErr::new::<PyTypeError, _>(format!(
+                "{op:?} not available"
+            ))),
         }
     }
 }
@@ -250,6 +293,8 @@ fn pack_id_generic(ff: u32, source_id: u32) -> u32 {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub enum EarthPrecessionModel {
     IAU1976,
     IAU2000,
@@ -284,6 +329,8 @@ impl From<EarthPrecessionModel> for u8 {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub enum EarthNutationModel {
     IAU1980,
     IAU2000A,

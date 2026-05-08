@@ -9,10 +9,11 @@ use anise::constants::orientations::{
     ECLIPJ2000, IAU_JUPITER, IAU_MOON, ITRF93, J2000, MOON_PA_DE440,
 };
 use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
-use anise::math::rotation::{DCM, EulerParameter};
+use anise::math::rotation::{EulerParameter, DCM};
 use anise::math::{Matrix3, Vector3};
 use anise::naif::kpl::parser::convert_tpc;
 
+use anise::f64_eq_tol;
 use anise::structure::PlanetaryDataSet;
 use anise::{file2heap, prelude::*};
 
@@ -753,7 +754,11 @@ fn moon_tod_mod() {
 #[test]
 fn earth_mean_of_date_mean_of_epoch() {
     use anise::constants::frames::{EARTH_MOD_FRAME, EARTH_MOD_LEGACY_FRAME};
-    let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
+    let almanac = Almanac::default()
+        .load("../data/pck11.pca")
+        .unwrap()
+        .load("../data/de440s.bsp")
+        .unwrap();
     let epoch = Epoch::from_str("2020-02-29T12:34:56 TDB").unwrap();
 
     // Ensure we can compute the rotation matrix to latest Earth MOD.
@@ -778,13 +783,45 @@ fn earth_mean_of_date_mean_of_epoch() {
     // Note that the printed rotation name in the DCM structure only looses the knowledge that this
     // is an Of Epoch frame (it does not know that, it only knows the IDs).
     println!("{dcm_moe}");
+
+    // Validation test case
+    let epoch = Epoch::from_gregorian_utc_hms(2026, 5, 7, 18, 0, 0);
+    let orbit = Orbit::new(7000.0, 0.0, 0.0, 0.0, 6.0, 0.0, epoch, EARTH_J2000);
+    let orbit_xf = almanac
+        .transform_to(orbit, EARTH_MOD_LEGACY_FRAME, None)
+        .unwrap();
+    f64_eq_tol!(orbit_xf.radius_km.x, 6999.855552, 1e-4, "validation failed");
+    f64_eq_tol!(orbit_xf.radius_km.y, 41.244545, 1e-4, "validation failed");
+    f64_eq_tol!(orbit_xf.radius_km.z, 17.920174, 1e-4, "validation failed");
+    f64_eq_tol!(
+        orbit_xf.velocity_km_s.x,
+        -0.035352,
+        1e-4,
+        "validation failed"
+    );
+    f64_eq_tol!(
+        orbit_xf.velocity_km_s.y,
+        5.999896,
+        1e-4,
+        "validation failed"
+    );
+    f64_eq_tol!(
+        orbit_xf.velocity_km_s.z,
+        -0.000045,
+        1e-4,
+        "validation failed"
+    );
 }
 
 #[test]
 fn earth_true_of_date_true_of_epoch() {
     use anise::constants::frames::{EARTH_TOD_FRAME, EARTH_TOD_LEGACY_FRAME};
     use anise::constants::orientations::{EARTH_TOD_2000A, EARTH_TOD_2000B};
-    let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
+    let almanac = Almanac::default()
+        .load("../data/pck11.pca")
+        .unwrap()
+        .load("../data/de440s.bsp")
+        .unwrap();
     let epoch = Epoch::from_str("2020-02-29T12:34:56 TDB").unwrap();
 
     // Ensure we can compute the rotation matrix to latest Earth MOD.
@@ -814,12 +851,45 @@ fn earth_true_of_date_true_of_epoch() {
 
     let dcm_norm_delta = (dcm_2000a.rot_mat - dcm_2000b.rot_mat).norm();
     assert!(dcm_norm_delta > 0.0 && dcm_norm_delta < 2e-9);
+
+    // Validation test case
+    let epoch = Epoch::from_gregorian_utc_hms(2026, 5, 7, 18, 0, 0);
+    let orbit = Orbit::new(7000.0, 0.0, 0.0, 0.0, 6.0, 0.0, epoch, EARTH_J2000);
+    let orbit_xf = almanac
+        .transform_to(orbit, EARTH_TOD_LEGACY_FRAME, None)
+        .unwrap();
+    println!("{orbit_xf}");
+    f64_eq_tol!(orbit_xf.radius_km.x, 6999.854255, 1e-4, "validation failed");
+    f64_eq_tol!(orbit_xf.radius_km.y, 41.428761, 1e-4, "validation failed");
+    f64_eq_tol!(orbit_xf.radius_km.z, 18.001989, 1e-4, "validation failed");
+    f64_eq_tol!(
+        orbit_xf.velocity_km_s.x,
+        -0.03551,
+        1e-4,
+        "validation failed"
+    );
+    f64_eq_tol!(
+        orbit_xf.velocity_km_s.y,
+        5.999895,
+        1e-4,
+        "validation failed"
+    );
+    f64_eq_tol!(
+        orbit_xf.velocity_km_s.z,
+        0.000193,
+        1e-4,
+        "validation failed"
+    );
 }
 
 #[test]
 fn earth_teme() {
     use anise::constants::frames::{EARTH_TEME_FRAME, EARTH_TEME_LEGACY_FRAME};
-    let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
+    let almanac = Almanac::default()
+        .load("../data/pck11.pca")
+        .unwrap()
+        .load("../data/de440s.bsp")
+        .unwrap();
     let epoch = Epoch::from_str("2020-02-29T12:34:56 TDB").unwrap();
 
     // Ensure we can compute the rotation matrix to latest Earth MOD.
@@ -835,4 +905,32 @@ fn earth_teme() {
 
     let dcm_norm_delta = (dcm_mod.rot_mat - dcm_mod_legacy.rot_mat).norm();
     assert!(dcm_norm_delta > 0.0 && dcm_norm_delta < 1e-6);
+
+    // Validation test case
+    let epoch = Epoch::from_gregorian_utc_hms(2026, 5, 7, 18, 0, 0);
+    let orbit = Orbit::new(7000.0, 0.0, 0.0, 0.0, 6.0, 0.0, epoch, EARTH_J2000);
+    let orbit_xf = almanac
+        .transform_to(orbit, EARTH_TEME_LEGACY_FRAME, None)
+        .unwrap();
+    f64_eq_tol!(orbit_xf.radius_km.x, 6999.855346, 1e-4, "validation failed");
+    f64_eq_tol!(orbit_xf.radius_km.y, 41.243867, 1e-4, "validation failed");
+    f64_eq_tol!(orbit_xf.radius_km.z, 18.001989, 1e-4, "validation failed");
+    f64_eq_tol!(
+        orbit_xf.velocity_km_s.x,
+        -0.035352,
+        1e-4,
+        "validation failed"
+    );
+    f64_eq_tol!(
+        orbit_xf.velocity_km_s.y,
+        5.999896,
+        1e-4,
+        "validation failed"
+    );
+    f64_eq_tol!(
+        orbit_xf.velocity_km_s.z,
+        0.000193,
+        1e-4,
+        "validation failed"
+    );
 }
