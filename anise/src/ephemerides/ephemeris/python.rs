@@ -9,9 +9,9 @@
  */
 
 use super::{Covariance, Ephemeris, EphemerisError, EphemerisRecord, LocalFrame, Orbit};
-use crate::naif::daf::data_types::DataType;
-use crate::naif::daf::DafDataType;
 use crate::NaifId;
+use crate::naif::daf::DafDataType;
+use crate::naif::daf::data_types::DataType;
 use nalgebra::Matrix6;
 use ndarray::Array2;
 use numpy::{PyArray2, PyReadonlyArray2, PyUntypedArrayMethods};
