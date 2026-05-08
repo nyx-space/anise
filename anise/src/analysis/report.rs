@@ -40,7 +40,7 @@ pub struct ReportScalars<S: StateSpecTrait> {
 /// :type state_spec: StateSpec
 /// :rtype: ReportScalars
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(
     feature = "python",
     pyo3(module = "anise.analysis", name = "ReportScalars")

@@ -61,7 +61,7 @@ use pyo3::prelude::*;
 /// :type path: str
 /// :rtype: Almanac
 #[derive(Clone, Default)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct Almanac {
     /// NAIF SPK is kept unchanged

@@ -34,7 +34,7 @@ use pyo3::prelude::*;
 /// :type np_rot_mat_dt: numpy.array, optional
 /// :rtype: DCM
 #[derive(Copy, Clone, Debug, Default)]
-#[cfg_attr(feature = "python", pyclass(name = "DCM"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, name = "DCM"))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.rotation"))]
 pub struct DCM {
     /// The rotation matrix itself

@@ -17,7 +17,7 @@ use pyo3::prelude::*;
 #[cfg(feature = "python")]
 use pyo3::types::{PyBytes, PyType};
 
-#[cfg_attr(feature = "python", pyclass(get_all, set_all, module = "anise.astro"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, get_all, set_all, module = "anise.astro"))]
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "metaload", derive(serde_dhall::StaticType))]
 pub struct DragData {

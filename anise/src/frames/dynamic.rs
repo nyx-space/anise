@@ -128,7 +128,7 @@ pub const DYNAMIC_FRAME_PREFIX: u8 = 0xA0;
 /// - `Frame::frozen_epoch`: If set, evaluates the dynamic models (precession, nutation, pole right ascension/declination) at the specified epoch rather than the integration time, freezing the frame inertially.
 /// - `Frame::force_inertial`: If `true`, the time derivative of the resulting Direction Cosine Matrix (DCM) is explicitly zeroed out. The built-in Earth MOD/TOD constants are defined as inertial in the ANISE constants.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub enum DynamicFrame {
     /// Earth Mean Equator, Mean Equinox of Date.
@@ -293,7 +293,7 @@ fn pack_id_generic(ff: u32, source_id: u32) -> u32 {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub enum EarthPrecessionModel {
     IAU1976,
@@ -329,7 +329,7 @@ impl From<EarthPrecessionModel> for u8 {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub enum EarthNutationModel {
     IAU1980,

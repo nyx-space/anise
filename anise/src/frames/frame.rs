@@ -49,7 +49,7 @@ use pyo3::types::{PyBytes, PyType};
 /// :type frozen_epoch: Epoch, optional
 /// :rtype: Frame
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Frame {
     pub ephemeris_id: NaifId,

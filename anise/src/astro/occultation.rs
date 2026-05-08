@@ -20,7 +20,7 @@ use pyo3::prelude::*;
 /// Stores the result of an occultation computation with the occultation percentage
 /// Refer to the [MathSpec](https://nyxspace.com/nyxspace/MathSpec/celestial/eclipse/) for modeling details.
 #[derive(Copy, Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Occultation {
     pub epoch: Epoch,

@@ -22,7 +22,7 @@ use crate::prelude::Orbit;
 
 /// Orbital element defines all of the supported orbital elements in ANISE, which are all built from a State.
 #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.analysis"))]
 #[derive(Copy, Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[cfg_attr(feature = "metaload", derive(serde_dhall::StaticType))]

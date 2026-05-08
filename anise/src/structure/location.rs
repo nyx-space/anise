@@ -39,7 +39,7 @@ use super::dataset::DataSetT;
 ///
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "analysis", derive(StaticType))]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Location {
     pub latitude_deg: f64,
@@ -229,7 +229,7 @@ impl DataSetT for Location {
 /// :type elevation_mask_deg: float
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "analysis", derive(StaticType))]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct TerrainMask {
     /// Azimuth where this elevation mask starts.

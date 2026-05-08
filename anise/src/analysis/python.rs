@@ -148,7 +148,7 @@ impl Almanac {
 }
 
 /// ScalarExpr defines a scalar computation from a (set of) vector expression(s).
-#[pyclass]
+#[pyclass(from_py_object)]
 #[pyo3(module = "anise.analysis", name = "ScalarExpr", get_all, set_all)]
 pub enum PyScalarExpr {
     Constant(f64),
@@ -464,7 +464,7 @@ impl PyScalarExpr {
     }
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[pyo3(module = "anise.analysis", name = "VectorExpr", get_all, set_all)]
 pub enum PyVectorExpr {
     // Vector with unspecified units, for arbitrary computations
@@ -564,7 +564,7 @@ impl Clone for PyVectorExpr {
 /// :type ab_corr: Aberration, optional
 /// :rtype: None
 #[derive(Clone)]
-#[pyclass]
+#[pyclass(from_py_object)]
 #[pyo3(module = "anise.analysis", name = "StateSpec", get_all, set_all)]
 pub struct PyStateSpec {
     /// :rtype: FrameSpec
@@ -632,7 +632,7 @@ impl PyStateSpec {
 }
 
 /// FrameSpec allows defining a frame that can be computed from another set of loaded frames, which include a center.
-#[pyclass]
+#[pyclass(from_py_object)]
 #[pyo3(module = "anise.analysis", name = "FrameSpec", get_all, set_all)]
 pub enum PyFrameSpec {
     Loaded(Frame),
@@ -666,7 +666,7 @@ impl Clone for PyFrameSpec {
 //
 // WARNING: Building such a frame does NOT normalize the vectors, you must use the Unit vector expression
 // to build an orthonormal frame.
-#[pyclass]
+#[pyclass(from_py_object)]
 #[pyo3(module = "anise.analysis", name = "OrthogonalFrame", get_all, set_all)]
 pub enum PyOrthogonalFrame {
     XY {
@@ -704,7 +704,7 @@ impl Clone for PyOrthogonalFrame {
     }
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[pyo3(module = "anise.analysis", name = "DcmExpr", get_all, set_all)]
 pub enum PyDcmExpr {
     Identity {

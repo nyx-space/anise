@@ -42,7 +42,7 @@ use super::MetaAlmanacError;
 /// :type uri: str
 /// :type crc32: int, optional
 /// :rtype: MetaFile
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, StaticType)]
 pub struct MetaFile {

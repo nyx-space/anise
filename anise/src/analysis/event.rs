@@ -30,7 +30,7 @@ use pyo3::exceptions::PyException;
 use pyo3::types::PyType;
 
 /// Defines an event condition
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.analysis"))]
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum Condition {
@@ -48,7 +48,7 @@ pub enum Condition {
 /// :type condition: Condition
 /// :type epoch_precision: Duration
 /// :type ab_corr: Aberration, optional
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.analysis"))]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Event {
@@ -455,7 +455,7 @@ impl fmt::Display for Event {
 ///
 /// `EventEdge` is used to describe the nature of a trajectory event, particularly in terms of its temporal dynamics relative to a specified condition or threshold. This enum helps in distinguishing whether the event is occurring at a rising edge, a falling edge, or if the edge is unclear due to insufficient data or ambiguous conditions.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Serialize, Deserialize)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.analysis"))]
 pub enum EventEdge {
     /// Represents a rising edge of the event. This indicates that the event is transitioning from a lower to a higher evaluation of the event. For example, in the context of elevation, a rising edge would indicate an increase in elevation from a lower angle.
@@ -485,7 +485,7 @@ impl EventEdge {
 ///
 /// `EventDetails` encapsulates the state at which a particular event occurs in a trajectory, along with additional information about the nature of the event. This struct is particularly useful for understanding the dynamics of the event, such as whether it represents a rising or falling edge, or if the edge is unclear.
 #[derive(Clone, PartialEq)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.analysis", get_all))]
 pub struct EventDetails {
     /// The state of the trajectory at the found event.
@@ -639,7 +639,7 @@ impl fmt::Debug for EventDetails {
     }
 }
 
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.analysis", get_all))]
 #[derive(Clone, PartialEq)]
 pub struct EventArc {
@@ -701,7 +701,7 @@ impl fmt::Debug for EventArc {
     }
 }
 
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.analysis", get_all))]
 #[derive(Clone, Debug, PartialEq)]
 pub struct VisibilityArc {

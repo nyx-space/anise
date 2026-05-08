@@ -35,7 +35,7 @@ use pyo3::prelude::*;
 /// :type ephemeris_id: int
 /// :type orientation_id: int
 #[derive(Copy, Clone, Default, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct FrameUid {
     pub ephemeris_id: NaifId,

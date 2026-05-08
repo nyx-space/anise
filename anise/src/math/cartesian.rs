@@ -35,7 +35,7 @@ use pyo3::prelude::*;
 /// :type args: tuples
 /// :rtype: Orbit
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "python", pyclass(name = "Orbit"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, name = "Orbit"))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct CartesianState {
     /// Position radius in kilometers

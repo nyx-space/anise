@@ -33,7 +33,7 @@ use super::{DataSet, DataSetType};
 /// :type alias: str, optional
 /// :type value: Location
 #[derive(Clone, Debug, StaticType, Serialize, Deserialize, PartialEq)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct LocationDhallSetEntry {
     pub id: Option<NaifId>,
@@ -85,7 +85,7 @@ impl LocationDhallSetEntry {
 ///
 /// :type data: list
 #[derive(Clone, Debug, StaticType, Serialize, Deserialize, PartialEq)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct LocationDhallSet {
     data: Vec<LocationDhallSetEntry>,

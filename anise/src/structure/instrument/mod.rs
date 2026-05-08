@@ -26,7 +26,7 @@ mod python;
 mod enc_dec;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.instrument"))]
 pub enum FovShape {
     /// Circular Field of View (e.g., simple antenna, laser)
@@ -59,7 +59,7 @@ impl fmt::Display for FovShape {
 
 /// Instrument is defined by a mounting Euler Parameter, a mounting translation ("level arm"), and a field of view of the instrument.
 /// Notations: frame N is inertial; frame B is body; frame I is instrument.
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.instrument"))]
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Instrument {

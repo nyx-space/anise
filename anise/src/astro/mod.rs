@@ -52,7 +52,7 @@ pub type PhysicsResult<T> = Result<T, PhysicsError>;
 /// :type mask_deg: float, optional
 /// :rtype: AzElRange
 #[derive(Copy, Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct AzElRange {
     pub epoch: Epoch,
