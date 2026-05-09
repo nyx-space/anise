@@ -498,9 +498,10 @@ impl<'a, T: DataSetT> Decode<'a> for DataSet<T> {
         // Decode the concatenated data items.
         let der_octets: OctetString = decoder.decode()?;
         let bytes = der_octets.as_bytes();
+        let actual_len = der::Length::new(bytes.len().min(u16::MAX as usize) as u16);
 
         let mut data = vec![];
-        let mut idx = 0;
+        let mut idx = 0_usize;
         // The first element of bytes_meta is the number of data items.
         let num_items = *bytes_meta.first().ok_or_else(|| {
             der::Error::new(
@@ -523,9 +524,27 @@ impl<'a, T: DataSetT> Decode<'a> for DataSet<T> {
                 )
             })? as usize;
             // Decode each data item from its slice of the bytes.
-            let this_data = T::from_der(&bytes[idx..idx + next_len])?;
+            let next_idx = idx.checked_add(next_len).ok_or_else(|| {
+                der::Error::new(
+                    der::ErrorKind::Incomplete {
+                        expected_len: der::Length::new(u16::MAX),
+                        actual_len,
+                    },
+                    der::Length::new(idx.min(u16::MAX as usize) as u16),
+                )
+            })?;
+            let data_bytes = bytes.get(idx..next_idx).ok_or_else(|| {
+                der::Error::new(
+                    der::ErrorKind::Incomplete {
+                        expected_len: der::Length::new(next_idx.min(u16::MAX as usize) as u16),
+                        actual_len,
+                    },
+                    der::Length::new(idx.min(u16::MAX as usize) as u16),
+                )
+            })?;
+            let this_data = T::from_der(data_bytes)?;
             data.push(this_data);
-            idx += next_len;
+            idx = next_idx;
         }
 
         Ok(Self {
@@ -575,6 +594,30 @@ mod dataset_ut {
 
         dbg!(repr);
         assert_eq!(core::mem::size_of::<DataSet<SpacecraftData>>(), 232);
+    }
+
+    #[test]
+    fn malformed_data_item_length_returns_error() {
+        let mut repr = DataSet::<SpacecraftData>::default();
+        repr.push(SpacecraftData::default(), Some(-20), Some("spacecraft"))
+            .unwrap();
+
+        let (mut bytes_meta, bytes) = repr.build_data_seq().unwrap();
+        bytes_meta[1] = bytes.as_bytes().len() as u32 + 1;
+
+        let mut buf = vec![];
+        repr.metadata.encode_to_vec(&mut buf).unwrap();
+        repr.lut.encode_to_vec(&mut buf).unwrap();
+        repr.data_checksum.encode_to_vec(&mut buf).unwrap();
+        bytes_meta.encode_to_vec(&mut buf).unwrap();
+        bytes.encode_to_vec(&mut buf).unwrap();
+
+        let decoded = DataSet::<SpacecraftData>::from_der(&buf);
+
+        assert!(
+            decoded.is_err(),
+            "malformed embedded data lengths must be rejected without panicking"
+        );
     }
 
     #[test]
