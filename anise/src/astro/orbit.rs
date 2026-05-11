@@ -785,7 +785,7 @@ impl Orbit {
     ///
     /// :rtype: Duration
     pub fn period(&self) -> PhysicsResult<Duration> {
-        let period2_s2 = (self.sma_km()?.powi(3) / self.frame.mu_km3_s2()?;
+        let period2_s2 = self.sma_km()?.powi(3) / self.frame.mu_km3_s2()?;
         if period2_s2 > 0.0 {
             Ok(TAU * period2_s2.sqrt().seconds())
         } else {
