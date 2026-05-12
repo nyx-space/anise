@@ -527,10 +527,10 @@ impl<'a, T: DataSetT> Decode<'a> for DataSet<T> {
             let next_idx = idx.checked_add(next_len).ok_or_else(|| {
                 der::Error::new(
                     der::ErrorKind::Incomplete {
-                        expected_len: der::Length::new(u16::MAX),
+                        expected_len: der::Length::MAX,
                         actual_len,
                     },
-                    der::Length::new(idx.min(u16::MAX as usize) as u16),
+                    der::Length::try_from(idx).unwrap_or(der::Length::MAX),
                 )
             })?;
             let data_bytes = bytes.get(idx..next_idx).ok_or_else(|| {
