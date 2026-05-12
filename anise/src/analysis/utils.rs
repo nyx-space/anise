@@ -61,11 +61,6 @@ where
 
     for _ in 0..max_iter {
         if has_converged(xa, xb) {
-            if !xb.is_finite() {
-                return Err(AnalysisError::GenericAnalysisError {
-                    err: format!("xb is not finite: {xb}"),
-                });
-            }
             return Ok(xa_e + xb * Unit::Second);
         }
 

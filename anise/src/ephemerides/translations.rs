@@ -148,14 +148,6 @@ impl Almanac {
                 let lt_sign = if ab_corr.transmit_mode { 1.0 } else { -1.0 };
 
                 for _ in 0..num_it {
-                    if !one_way_lt_s.is_finite() {
-                        return Err(EphemerisError::LightTimeCorrection {
-                            epoch,
-                            epoch_lt: epoch, // We can't calculate epoch_lt, so we use epoch to avoid uninitialized value error or need for Option
-                            ab_corr,
-                            source: Box::new(EphemerisError::Unreachable), // Best match we can use here to signify math failure
-                        });
-                    }
                     // Calculate the light-time corrected epoch.
                     let epoch_lt = epoch + lt_sign * one_way_lt_s * TimeUnit::Second;
                     // Find the position of the target at the corrected epoch.

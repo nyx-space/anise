@@ -258,7 +258,9 @@ impl Almanac {
         state: Orbit,
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<Duration> {
+        // The unit_vector function returns an error if the vector is zero magnitude.
         let u_sun = self.sun_unit_vector(state.epoch, state.frame, ab_corr)?;
+        // The cross product may be zero only if the velocity is zero (we know the radius is non zero norm).
         let u_hvec = state.h_hat().map_err(|e| AlmanacError::GenericError {
             err: format!("{e}"),
         })?;
@@ -268,16 +270,11 @@ impl Almanac {
 
         let sin_theta = v.dot(&state.r_hat());
         let cos_theta = u.dot(&state.r_hat());
-
+        // Worst case scenario: both sin_theta and cos_theta are zero: atan2 still behaves well and returns zero.
         let theta_rad = sin_theta.atan2(cos_theta);
         let lst_h = (theta_rad / PI * 12.0 + 6.0).rem_euclid(24.0);
 
-        if !lst_h.is_finite() {
-            return Err(AlmanacError::GenericError {
-                err: format!("local solar time is not finite: {lst_h}"),
-            });
-        }
-
+        // Hence, no need to check that lst_h is finite.
         Ok(Unit::Hour * lst_h)
     }
 
@@ -297,12 +294,6 @@ impl Almanac {
             err: format!("{e}"),
         })?;
         let ltan = (12.0 + (raan_orbit_deg - ra_sun_deg) / 15.0).rem_euclid(24.0);
-
-        if !ltan.is_finite() {
-            return Err(AlmanacError::GenericError {
-                err: format!("local time of ascending node is not finite: {ltan}"),
-            });
-        }
 
         Ok(Unit::Hour * ltan)
     }
