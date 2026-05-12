@@ -17,7 +17,7 @@ use crate::{
         frames::{EARTH_J2000, SUN_J2000},
         orientations::J2000,
     },
-    errors::{AlmanacResult, EphemerisSnafu, OrientationSnafu},
+    errors::{AlmanacError, AlmanacResult, EphemerisSnafu, OrientationSnafu, PhysicsError},
     math::{Vector3, cartesian::CartesianState, units::LengthUnit},
     orientations::OrientationPhysicsSnafu,
     prelude::{Aberration, Frame},
@@ -189,7 +189,18 @@ impl Almanac {
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<Vector3> {
         let state = self.transform(target_frame, observer_frame, epoch, ab_corr)?;
-        Ok(state.radius_km / state.rmag_km())
+        if state.rmag_km() > 0.0 {
+            Ok(state.radius_km / state.rmag_km())
+        } else {
+            Err(AlmanacError::AlmanacPhysics {
+                action: "computing unit vector",
+                source: Box::new(PhysicsError::AppliedMath {
+                    source: crate::errors::MathError::DivisionByZero {
+                        action: "requested unit vector of zero magnitude",
+                    },
+                }),
+            })
+        }
     }
 
     /// Returns the unitary 3D vector between desired [Frame] (solid body) and the Sun at desired [Epoch]
