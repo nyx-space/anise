@@ -1512,6 +1512,15 @@ impl Orbit {
             delta_t_s = 0.0;
         }
 
+        if !delta_t_s.is_finite() {
+            return Err(PhysicsError::AppliedMath {
+                source: MathError::DomainError {
+                    value: delta_t_s,
+                    msg: "delta time computation failed",
+                },
+            });
+        }
+
         // Step 16: Return Ok(Duration::from_seconds(delta_t_s))
         Ok(Duration::from_seconds(delta_t_s))
     }

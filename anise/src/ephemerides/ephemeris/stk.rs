@@ -248,6 +248,13 @@ impl Ephemeris {
                             details: format!("invalid time offset {}", parts[0]),
                         })?;
 
+                if !time_offset.is_finite() {
+                    return Err(EphemerisError::STKEParsingError {
+                        lno,
+                        details: format!("invalid time offset {}", parts[0]),
+                    });
+                }
+
                 let start_epoch = scenario_epoch.ok_or(EphemerisError::STKEParsingError {
                     lno,
                     details: "ScenarioEpoch not found before data".to_string(),
@@ -330,6 +337,12 @@ impl Ephemeris {
                     }
 
                     let time_offset = record_vals[0];
+                    if !time_offset.is_finite() {
+                        return Err(EphemerisError::STKEParsingError {
+                            lno,
+                            details: format!("invalid time offset {time_offset}"),
+                        });
+                    }
                     let start_epoch = scenario_epoch.ok_or(EphemerisError::STKEParsingError {
                         lno,
                         details: "ScenarioEpoch not found before data".to_string(),

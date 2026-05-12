@@ -61,6 +61,11 @@ where
 
     for _ in 0..max_iter {
         if has_converged(xa, xb) {
+            if !xb.is_finite() {
+                return Err(AnalysisError::GenericAnalysisError {
+                    err: format!("xb is not finite: {xb}"),
+                });
+            }
             return Ok(xa_e + xb * Unit::Second);
         }
 
@@ -84,6 +89,11 @@ where
             flag = false;
         }
 
+        if !s.is_finite() {
+            return Err(AnalysisError::GenericAnalysisError {
+                err: format!("s is not finite: {s}"),
+            });
+        }
         let ys = evaluator(xa_e + s * Unit::Second)?;
         if ys.abs() <= f64::EPSILON {
             return Ok(xa_e + s * Unit::Second);
@@ -175,7 +185,13 @@ where
                 delta_ratio = 1.0;
             }
             // Update the step to try to achieve linearity.
-            let next_step = (step.to_seconds() / delta_ratio) * Unit::Second;
+            let next_step_seconds = step.to_seconds() / delta_ratio;
+            if !next_step_seconds.is_finite() {
+                return Err(AnalysisError::GenericAnalysisError {
+                    err: format!("next step is not finite: {next_step_seconds}"),
+                });
+            }
+            let next_step = next_step_seconds * Unit::Second;
             if delta_ratio > 1.1 && step >= min_step {
                 // More than 10% faster than linear scan, reject advancement, use updated step.
                 step = next_step;

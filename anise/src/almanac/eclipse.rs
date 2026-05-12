@@ -272,6 +272,12 @@ impl Almanac {
         let theta_rad = sin_theta.atan2(cos_theta);
         let lst_h = (theta_rad / PI * 12.0 + 6.0).rem_euclid(24.0);
 
+        if !lst_h.is_finite() {
+            return Err(AlmanacError::GenericError {
+                err: format!("local solar time is not finite: {lst_h}"),
+            });
+        }
+
         Ok(Unit::Hour * lst_h)
     }
 
@@ -291,6 +297,13 @@ impl Almanac {
             err: format!("{e}"),
         })?;
         let ltan = (12.0 + (raan_orbit_deg - ra_sun_deg) / 15.0).rem_euclid(24.0);
+
+        if !ltan.is_finite() {
+            return Err(AlmanacError::GenericError {
+                err: format!("local time of ascending node is not finite: {ltan}"),
+            });
+        }
+
         Ok(Unit::Hour * ltan)
     }
 
@@ -305,6 +318,13 @@ impl Almanac {
     pub fn ltdn(&self, orbit: Orbit, ab_corr: Option<Aberration>) -> AlmanacResult<Duration> {
         let ltan_h = self.ltan(orbit, ab_corr)?.to_unit(Unit::Hour);
         let ltdn_h = (ltan_h + 12.0).rem_euclid(24.0);
+
+        if !ltdn_h.is_finite() {
+            return Err(AlmanacError::GenericError {
+                err: format!("local time of descending node is not finite: {ltdn_h}"),
+            });
+        }
+
         Ok(Unit::Hour * ltdn_h)
     }
 }
