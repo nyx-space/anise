@@ -11,9 +11,12 @@
 use anise::{naif::spk::summary::SPKSummaryRecord, prelude::*};
 use log::{error, info};
 use polars::prelude::*;
-use std::{collections::HashMap, fs::File};
+use std::{collections::HashMap, fs, fs::File, path::Path};
 
 const COMPONENT: &[&str] = &["X", "Y", "Z", "VX", "VY", "VZ"];
+
+// Number of items to pre-allocate in memory
+const ALLOC_SIZE: usize = 10_000;
 
 #[derive(Default)]
 pub struct EphemValData {
@@ -88,13 +91,13 @@ impl CompareEphem {
             num_queries_per_pair,
             aberration,
             dry_run: false,
-            batch_src_frame: Vec::new(),
-            batch_dst_frame: Vec::new(),
-            batch_component: Vec::new(),
-            batch_epoch_et_s: Vec::new(),
-            batch_spice_val: Vec::new(),
-            batch_anise_val: Vec::new(),
-            batch_abs_diff: Vec::new(),
+            batch_src_frame: Vec::with_capacity(ALLOC_SIZE),
+            batch_dst_frame: Vec::with_capacity(ALLOC_SIZE),
+            batch_component: Vec::with_capacity(ALLOC_SIZE),
+            batch_epoch_et_s: Vec::with_capacity(ALLOC_SIZE),
+            batch_spice_val: Vec::with_capacity(ALLOC_SIZE),
+            batch_anise_val: Vec::with_capacity(ALLOC_SIZE),
+            batch_abs_diff: Vec::with_capacity(ALLOC_SIZE),
         }
     }
 
@@ -322,11 +325,18 @@ impl CompareEphem {
             "ANISE value" => &self.batch_anise_val,
             "Absolute difference" => &self.batch_abs_diff,
         )
-        .unwrap();
+        .expect("Could not create DataFrame from accumulated test data");
+
+        let target_dir = Path::new("../target");
+        if !target_dir.exists() {
+            fs::create_dir_all(target_dir).expect("Could not create target directory for Parquet file");
+        }
 
         let path = format!("../target/{}.parquet", self.output_file_name);
-        let file = File::create(path).unwrap();
-        ParquetWriter::new(file).finish(&mut df).unwrap();
+        let file = File::create(path).expect("Could not create Parquet file");
+        ParquetWriter::new(file)
+            .finish(&mut df)
+            .expect("Could not write DataFrame to Parquet file");
 
         // Clear the batch vectors to prevent double-persistence if called multiple times.
         self.batch_src_frame.clear();
