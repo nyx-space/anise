@@ -498,7 +498,7 @@ impl<'a, T: DataSetT> Decode<'a> for DataSet<T> {
         // Decode the concatenated data items.
         let der_octets: OctetString = decoder.decode()?;
         let bytes = der_octets.as_bytes();
-        let actual_len = der::Length::new(bytes.len().min(u16::MAX as usize) as u16);
+        let actual_len = der_octets.len();
 
         let mut data = vec![];
         let mut idx = 0_usize;
