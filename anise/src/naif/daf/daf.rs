@@ -265,16 +265,30 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             }
         };
 
-        // The summaries are located after the main DAF summary record within the same record.
-        Ok(
-            match Ref::<_, [R]>::from_bytes(&rcrd_bytes[SummaryRecord::SIZE..]) {
-                Ok(r) => Ref::into_ref(r),
-                Err(_) => &{
-                    R::default();
-                    [] as [R; 0]
-                },
+        let summaries = match Ref::<_, [R]>::from_bytes(&rcrd_bytes[SummaryRecord::SIZE..]) {
+            Ok(r) => Ref::into_ref(r),
+            Err(_) => &{
+                R::default();
+                [] as [R; 0]
             },
-        )
+        };
+
+        for summary in summaries {
+            if !summary.start_epoch_et_s().is_finite() || !summary.end_epoch_et_s().is_finite() {
+                return Err(DAFError::DecodingSummary {
+                    kind: R::NAME,
+                    source: DecodingError::Integrity {
+                        source: IntegrityError::SubNormal {
+                            dataset: R::NAME,
+                            variable: "start or end epoch in ET seconds",
+                        },
+                    },
+                });
+            }
+        }
+
+        // The summaries are located after the main DAF summary record within the same record.
+        Ok(summaries)
     }
 
     /// Returns the summary given the name of the summary record
