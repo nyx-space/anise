@@ -9,19 +9,11 @@
  */
 
 use anise::{naif::spk::summary::SPKSummaryRecord, prelude::*};
-use arrow::{
-    array::{ArrayRef, Float64Array, StringArray},
-    datatypes::{DataType, Field, Schema},
-    record_batch::RecordBatch,
-};
 use log::{error, info};
-use parquet::{arrow::ArrowWriter, file::properties::WriterProperties};
-use std::{collections::HashMap, fs::File, sync::Arc};
+use polars::prelude::*;
+use std::{collections::HashMap, fs::File};
 
 const COMPONENT: &[&str] = &["X", "Y", "Z", "VX", "VY", "VZ"];
-
-// Number of items to keep in memory before flushing to the parquet file
-const BATCH_SIZE: usize = 10_000;
 
 #[derive(Default)]
 pub struct EphemValData {
@@ -68,10 +60,10 @@ impl EphemValData {
 /// An ephemeris comparison tool that writes the differences between ephemerides to a Parquet file.
 pub struct CompareEphem {
     pub input_file_names: Vec<String>,
+    pub output_file_name: String,
     pub num_queries_per_pair: usize,
     pub dry_run: bool,
     pub aberration: Option<Aberration>,
-    pub writer: ArrowWriter<File>,
     pub batch_src_frame: Vec<String>,
     pub batch_dst_frame: Vec<String>,
     pub batch_component: Vec<String>,
@@ -90,28 +82,11 @@ impl CompareEphem {
     ) -> Self {
         let _ = pretty_env_logger::try_init();
 
-        // Build the schema
-        let schema = Schema::new(vec![
-            Field::new("source frame", DataType::Utf8, false),
-            Field::new("destination frame", DataType::Utf8, false),
-            Field::new("component", DataType::Utf8, false),
-            Field::new("ET Epoch (s)", DataType::Float64, false),
-            Field::new("SPICE value", DataType::Float64, false),
-            Field::new("ANISE value", DataType::Float64, false),
-            Field::new("Absolute difference", DataType::Float64, false),
-        ]);
-
-        let file = File::create(format!("../target/{}.parquet", output_file_name)).unwrap();
-
-        // Default writer properties
-        let props = WriterProperties::builder().build();
-        let writer = ArrowWriter::try_new(file, Arc::new(schema), Some(props)).unwrap();
-
         Self {
             input_file_names,
+            output_file_name,
             num_queries_per_pair,
             aberration,
-            writer,
             dry_run: false,
             batch_src_frame: Vec::new(),
             batch_dst_frame: Vec::new(),
@@ -123,7 +98,9 @@ impl CompareEphem {
         }
     }
 
-    /// Executes this ephemeris validation and return the number of querying errors
+    /// Executes this ephemeris validation and return the number of querying errors.
+    ///
+    /// NOTE: All results are accumulated in memory before being written to the Parquet file.
     #[must_use]
     pub fn run(mut self) -> usize {
         let mut spks: Vec<SPK> = Vec::new();
@@ -320,74 +297,44 @@ impl CompareEphem {
                     self.batch_anise_val.push(anise_val);
                     self.batch_abs_diff.push((anise_val - spice_val).abs());
                 }
-
-                // Consider writing the batch
-                if i % BATCH_SIZE == 0 {
-                    self.persist();
-                }
                 i += 1;
             }
         }
 
         info!("Done with all {i} comparisons");
 
-        // Comparison is finished, let's persist the last batch, close the file, and return the number of querying errors.
+        // Comparison is finished, let's persist the results, and return the number of querying errors.
         self.persist();
-        self.writer.close().unwrap();
         err_count
     }
 
     fn persist(&mut self) {
-        if self.dry_run {
+        if self.dry_run || self.batch_src_frame.is_empty() {
             return;
         }
 
-        self.writer
-            .write(
-                &RecordBatch::try_from_iter(vec![
-                    (
-                        "source frame",
-                        Arc::new(StringArray::from(self.batch_src_frame.clone())) as ArrayRef,
-                    ),
-                    (
-                        "destination frame",
-                        Arc::new(StringArray::from(self.batch_dst_frame.clone())) as ArrayRef,
-                    ),
-                    (
-                        "component",
-                        Arc::new(StringArray::from(self.batch_component.clone())) as ArrayRef,
-                    ),
-                    (
-                        "ET Epoch (s)",
-                        Arc::new(Float64Array::from(self.batch_epoch_et_s.clone())) as ArrayRef,
-                    ),
-                    (
-                        "SPICE value",
-                        Arc::new(Float64Array::from(self.batch_spice_val.clone())) as ArrayRef,
-                    ),
-                    (
-                        "ANISE value",
-                        Arc::new(Float64Array::from(self.batch_anise_val.clone())) as ArrayRef,
-                    ),
-                    (
-                        "Absolute difference",
-                        Arc::new(Float64Array::from(self.batch_abs_diff.clone())) as ArrayRef,
-                    ),
-                ])
-                .unwrap(),
-            )
-            .unwrap();
+        let mut df = df!(
+            "source frame" => &self.batch_src_frame,
+            "destination frame" => &self.batch_dst_frame,
+            "component" => &self.batch_component,
+            "ET Epoch (s)" => &self.batch_epoch_et_s,
+            "SPICE value" => &self.batch_spice_val,
+            "ANISE value" => &self.batch_anise_val,
+            "Absolute difference" => &self.batch_abs_diff,
+        )
+        .unwrap();
 
-        // Regularly flush to not lose data
-        self.writer.flush().unwrap();
+        let path = format!("../target/{}.parquet", self.output_file_name);
+        let file = File::create(path).unwrap();
+        ParquetWriter::new(file).finish(&mut df).unwrap();
 
-        // Re-init all of the vectors
-        self.batch_src_frame = Vec::with_capacity(BATCH_SIZE);
-        self.batch_dst_frame = Vec::with_capacity(BATCH_SIZE);
-        self.batch_component = Vec::with_capacity(BATCH_SIZE);
-        self.batch_epoch_et_s = Vec::with_capacity(BATCH_SIZE);
-        self.batch_spice_val = Vec::with_capacity(BATCH_SIZE);
-        self.batch_anise_val = Vec::with_capacity(BATCH_SIZE);
-        self.batch_abs_diff = Vec::with_capacity(BATCH_SIZE);
+        // Clear the batch vectors to prevent double-persistence if called multiple times.
+        self.batch_src_frame.clear();
+        self.batch_dst_frame.clear();
+        self.batch_component.clear();
+        self.batch_epoch_et_s.clear();
+        self.batch_spice_val.clear();
+        self.batch_anise_val.clear();
+        self.batch_abs_diff.clear();
     }
 }
