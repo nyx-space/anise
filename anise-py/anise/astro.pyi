@@ -1032,11 +1032,11 @@ class Orbit:
         """Returns the radius of apoapsis (or apogee around Earth), in kilometers."""
 
     def at_epoch(self, new_epoch: time.Epoch) -> Orbit:
-        """Adjusts the true anomaly of this orbit using the mean anomaly.
+        """Adjusts the equinoctial mean longitude this orbit via the mean motion.
 
         # Astrodynamics note
         This is not a true propagation of the orbit. This is akin to a two body propagation ONLY without any other force models applied.
-        Use Nyx for high fidelity propagation."""
+        Use Nyx for high fidelity propagation. This implementation uses equinoctial elements and should be well behaved for circular equatorial orbits."""
 
     def c3_km2_s2(self) -> float:
         """Returns the $C_3$ of this orbit in km^2/s^2"""
@@ -1213,6 +1213,9 @@ class Orbit:
     def equinoctial_a_km(self) -> float:
         """Returns the equinoctial semi-major axis (a) in km."""
 
+    def equinoctial_elements(self) -> list[float]:
+        """Returns the six equinoctial elements in order: sma (km), h, k, p, q, lambda (deg)"""
+
     def equinoctial_h(self) -> float:
         """Returns the equinoctial element h (ecc * sin(aop + raan))."""
 
@@ -1257,6 +1260,23 @@ class Orbit:
         """Creates a new Cartesian state from a numpy array, an epoch, and a frame.
 
         **Units:** km, km, km, km/s, km/s, km/s"""
+
+    @staticmethod
+    def from_equinoctial(
+        sma_km: float,
+        h: float,
+        k: float,
+        p: float,
+        q: float,
+        lambda_deg: float,
+        epoch: time.Epoch,
+        frame: Frame,
+    ) -> Orbit:
+        """Attempts to create a new Orbit from the Equinoctial orbital elements.
+
+        # Implementation notes
+        Note that this function computes the Keplerian elements from the equinoctial and then
+        calls the try_keplerian_mean_anomaly initializer."""
 
     @staticmethod
     def from_keplerian(

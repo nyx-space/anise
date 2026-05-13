@@ -797,7 +797,7 @@ impl Orbit {
     ///
     /// :rtype: float
     pub fn mean_motion_deg_s(&self) -> PhysicsResult<f64> {
-        Ok((self.frame.mu_km3_s2()? / self.sma_km()?.abs().powi(3)).sqrt())
+        Ok(((self.frame.mu_km3_s2()? / self.sma_km()?.abs().powi(3)).sqrt()).to_degrees())
     }
 
     /// Returns the eccentricity (no unit)
@@ -1366,27 +1366,32 @@ impl Orbit {
         }
     }
 
-    /// Adjusts the true anomaly of this orbit using the mean anomaly.
+    /// Adjusts the equinoctial mean longitude this orbit via the mean motion.
     ///
     /// # Astrodynamics note
     /// This is not a true propagation of the orbit. This is akin to a two body propagation ONLY without any other force models applied.
-    /// Use Nyx for high fidelity propagation.
+    /// Use Nyx for high fidelity propagation. This implementation uses equinoctial elements and should be well behaved for circular equatorial orbits.
     ///
     /// :type new_epoch: Epoch
     /// :rtype: Orbit
     pub fn at_epoch(&self, new_epoch: Epoch) -> PhysicsResult<Self> {
-        let m0_rad = self.ma_deg()?.to_radians();
-        let mt_rad = m0_rad
-            + (self.frame.mu_km3_s2()? / self.sma_km()?.powi(3)).sqrt()
-                * (new_epoch - self.epoch).to_seconds();
+        if new_epoch == self.epoch {
+            return Ok(*self);
+        }
+        // Compute the equinoctial elements of this state.
+        let eq_elements = self.equinoctial_elements()?;
+        // Compute the mean motion
+        let n = self.mean_motion_deg_s()?;
+        // Adjust the mean motion to the desired epoch
+        let new_lambda_deg = eq_elements[5] + n * (new_epoch - self.epoch).to_seconds();
 
-        Self::try_keplerian_mean_anomaly(
-            self.sma_km()?,
-            self.ecc()?,
-            self.inc_deg()?,
-            self.raan_deg()?,
-            self.aop_deg()?,
-            mt_rad.to_degrees(),
+        Self::try_equinoctial(
+            eq_elements[0],
+            eq_elements[1],
+            eq_elements[2],
+            eq_elements[3],
+            eq_elements[4],
+            new_lambda_deg,
             new_epoch,
             self.frame,
         )
@@ -1476,7 +1481,7 @@ impl Orbit {
         let m_current_rad = self.ma_deg()?.to_radians();
 
         // Calculate mean motion n_rad_s
-        let n_rad_s = self.mean_motion_deg_s()?;
+        let n_rad_s = self.mean_motion_deg_s()?.to_radians();
 
         if !n_rad_s.is_finite() || n_rad_s <= 0.0 {
             return Err(PhysicsError::AppliedMath {

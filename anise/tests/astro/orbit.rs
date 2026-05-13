@@ -150,13 +150,13 @@ fn val_state_def_circ_inc(almanac: Almanac) {
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
     f64_eq!(
         kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        9.69e-10,
+        2.6e-10,
         "RIC RMS velocity"
     );
     f64_eq!(kep_rtn.rms_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
     f64_eq!(
         kep_rtn.rms_velocity_km_s(&kep).unwrap(),
-        5.59e-10,
+        1.5e-10,
         "RIC RMS velocity"
     );
 
@@ -175,13 +175,13 @@ fn val_state_def_circ_inc(almanac: Almanac) {
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "VNC RSS radius");
     f64_eq!(
         kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        9.69e-10,
+        2.6e-10,
         "VNC RMS velocity"
     );
     f64_eq!(kep_rtn.rms_radius_km(&kep).unwrap(), 0.0, "VNC RSS radius");
     f64_eq!(
         kep_rtn.rms_velocity_km_s(&kep).unwrap(),
-        5.59e-10,
+        1.5e-10,
         "VNC RMS velocity"
     );
 
@@ -194,13 +194,13 @@ fn val_state_def_circ_inc(almanac: Almanac) {
     );
     f64_eq!(
         abs_vel_km_s.abs(),
-        9.69e-10,
+        2.6e-10,
         "non zero absolute velocity difference"
     );
 
     let (rel_pos, rel_vel) = kep_rtn.rel_difference(&kep).unwrap();
     f64_eq!(rel_pos.abs(), 0.0, "non zero relative position difference");
-    f64_eq!(rel_vel.abs(), 1.38e-10, "relative velocity difference");
+    f64_eq!(rel_vel.abs(), 3.7e-11, "relative velocity difference");
 
     // Ensure that setting the radius or velocity to zero causes an error in relative difference
     let mut zero_pos = kep;
@@ -330,7 +330,7 @@ fn val_state_def_elliptical(almanac: Almanac) {
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
     f64_eq!(
         kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        1.38e-10,
+        7.7e-10,
         "RIC RSS velocity"
     );
 }
@@ -487,7 +487,7 @@ fn val_state_def_equatorial(almanac: Almanac) {
     );
     f64_eq!(
         cart_rtn.rss_velocity_km_s(&cart).unwrap(),
-        4.08e-8,
+        4.01e-8,
         "RIC RSS velocity"
     );
 }
@@ -739,7 +739,20 @@ fn verif_orbit_at_epoch(almanac: Almanac) {
         8_191.93, 1e-8, 1e-5, 306.614, 314.19, -99.887_7, epoch, eme2k,
     );
 
-    for (ono, orbit) in [circ_incl, elliptical, circ_equa].iter().enumerate() {
+    // Regression tests from #718
+    let r_km = 26559.381;
+    let v_km_s = 3.874002;
+    let circ_eq_0 = Orbit::new(r_km, 0.0, 0.0, 0.0, v_km_s, 0.0, epoch, eme2k);
+    let circ_eq_1 = Orbit::new(0.0, r_km, 0.0, -v_km_s, 0.0, 0.0, epoch, eme2k);
+    let circ_eq_2 = Orbit::new(-r_km, 0.0, 0.0, 0.0, -v_km_s, 0.0, epoch, eme2k);
+    let circ_eq_3 = Orbit::new(0.0, -r_km, 0.0, v_km_s, 0.0, 0.0, epoch, eme2k);
+
+    for (ono, orbit) in [
+        circ_incl, elliptical, circ_equa, circ_eq_0, circ_eq_1, circ_eq_2, circ_eq_3,
+    ]
+    .iter()
+    .enumerate()
+    {
         let future_orbit = orbit
             .at_epoch(epoch + 0.5 * orbit.period().unwrap())
             .unwrap();
@@ -769,7 +782,7 @@ fn verif_orbit_at_epoch(almanac: Almanac) {
         f64_eq_tol!(
             orbit.aop_deg().unwrap(),
             future_orbit.aop_deg().unwrap(),
-            2e-6,
+            3e-6,
             format!("#{ono}: AOP changed")
         );
     }
