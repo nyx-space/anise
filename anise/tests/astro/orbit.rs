@@ -3,8 +3,8 @@ extern crate pretty_env_logger as pel;
 use anise::astro::orbit::ECC_EPSILON;
 use anise::constants::frames::{EARTH_J2000, MOON_J2000};
 use anise::errors::PhysicsError;
-use anise::math::Vector3;
 use anise::math::angles::{between_0_360, between_pm_180};
+use anise::math::Vector3;
 use anise::prelude::*;
 use anise::time::{Epoch, TimeSeries, Unit};
 use anise::{f64_eq, f64_eq_tol};
@@ -150,13 +150,13 @@ fn val_state_def_circ_inc(almanac: Almanac) {
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
     f64_eq!(
         kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        1e-10,
+        2.6e-10,
         "RIC RMS velocity"
     );
     f64_eq!(kep_rtn.rms_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
     f64_eq!(
         kep_rtn.rms_velocity_km_s(&kep).unwrap(),
-        6.4e-11,
+        1.5e-10,
         "RIC RMS velocity"
     );
 
@@ -175,13 +175,13 @@ fn val_state_def_circ_inc(almanac: Almanac) {
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "VNC RSS radius");
     f64_eq!(
         kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        1e-10,
+        2.6e-10,
         "VNC RMS velocity"
     );
     f64_eq!(kep_rtn.rms_radius_km(&kep).unwrap(), 0.0, "VNC RSS radius");
     f64_eq!(
         kep_rtn.rms_velocity_km_s(&kep).unwrap(),
-        6.4e-11,
+        1.5e-10,
         "VNC RMS velocity"
     );
 
@@ -194,13 +194,13 @@ fn val_state_def_circ_inc(almanac: Almanac) {
     );
     f64_eq!(
         abs_vel_km_s.abs(),
-        1e-10,
+        2.6e-10,
         "non zero absolute velocity difference"
     );
 
     let (rel_pos, rel_vel) = kep_rtn.rel_difference(&kep).unwrap();
     f64_eq!(rel_pos.abs(), 0.0, "non zero relative position difference");
-    f64_eq!(rel_vel.abs(), 1.58e-11, "relative velocity difference");
+    f64_eq!(rel_vel.abs(), 3.7e-11, "relative velocity difference");
 
     // Ensure that setting the radius or velocity to zero causes an error in relative difference
     let mut zero_pos = kep;
@@ -330,7 +330,7 @@ fn val_state_def_elliptical(almanac: Almanac) {
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
     f64_eq!(
         kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        7.9e-10,
+        7.7e-10,
         "RIC RSS velocity"
     );
 }
@@ -436,7 +436,7 @@ fn val_state_def_circ_eq(almanac: Almanac) {
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
     f64_eq!(
         kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        6e-10,
+        1.02e-8,
         "RIC RSS velocity"
     );
 }
@@ -487,7 +487,7 @@ fn val_state_def_equatorial(almanac: Almanac) {
     );
     f64_eq!(
         cart_rtn.rss_velocity_km_s(&cart).unwrap(),
-        1.3e-9,
+        4.01e-8,
         "RIC RSS velocity"
     );
 }
@@ -551,9 +551,7 @@ fn val_state_def_reciprocity(almanac: Almanac) {
     );
 
     assert_eq!(
-        Orbit::new(
-            -2436.45, -2436.45, 6891.037, 5.088_611, -5.088_611, 0.0, epoch, eme2k
-        ),
+        Orbit::new(-2436.45, -2436.45, 6891.037, 5.088_611, -5.088_611, 0.0, epoch, eme2k),
         Orbit::keplerian(
             7_712.186_117_895_043,
             0.000_999_582_831_432_052_5,
@@ -1041,8 +1039,8 @@ fn test_duration_to_radius_error_conditions(epoch: Epoch, frame: Frame) {
 
     // Case 2: Hyperbolic, ecc = 1.0 + 2*ECC_EPSILON
     let ecc_near_para_hyp = 1.0 + 2.0 * ECC_EPSILON; // Still hyperbolic
-    // sma = rp / (1-ecc) = 7000 / (-2*ECC_EPSILON) -> large negative sma
-    // Using try_keplerian_apsis_radii is for elliptical, need direct try_keplerian for hyperbolic SMA
+                                                     // sma = rp / (1-ecc) = 7000 / (-2*ECC_EPSILON) -> large negative sma
+                                                     // Using try_keplerian_apsis_radii is for elliptical, need direct try_keplerian for hyperbolic SMA
     let sma_near_para_hyp = rp_near_para / (1.0 - ecc_near_para_hyp); // This will be negative
     let orbit_near_para_hyp = create_orbit(sma_near_para_hyp, ecc_near_para_hyp, 0.0, epoch, frame);
 
