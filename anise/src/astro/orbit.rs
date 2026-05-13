@@ -8,8 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::PhysicsResult;
 use super::utils::mean_anomaly_to_true_anomaly_rad;
+use super::PhysicsResult;
 
 use crate::{
     astro::utils::true_anomaly_to_mean_anomaly_rad,
@@ -18,12 +18,12 @@ use crate::{
         ParabolicSemiParamSnafu, PhysicsError, RadiusSnafu, VelocitySnafu,
     },
     math::{
-        Matrix3, Vector3, Vector6,
         angles::{between_0_360, between_pm_180},
         cartesian::CartesianState,
         rotation::DCM,
+        Matrix3, Vector3, Vector6,
     },
-    prelude::{Frame, uuid_from_epoch},
+    prelude::{uuid_from_epoch, Frame},
 };
 
 #[cfg(feature = "analysis")]
@@ -797,7 +797,7 @@ impl Orbit {
     ///
     /// :rtype: float
     pub fn mean_motion_deg_s(&self) -> PhysicsResult<f64> {
-        Ok((self.frame.mu_km3_s2()? / self.sma_km()?.abs().powi(3)).sqrt())
+        Ok(((self.frame.mu_km3_s2()? / self.sma_km()?.abs().powi(3)).sqrt()).to_degrees())
     }
 
     /// Returns the eccentricity (no unit)
@@ -904,7 +904,11 @@ impl Orbit {
         let cos_aop = n.dot(&self.evec()?) / (n.norm() * self.ecc()?);
         let aop = cos_aop.acos();
         if aop.is_nan() {
-            if cos_aop > 1.0 { Ok(180.0) } else { Ok(0.0) }
+            if cos_aop > 1.0 {
+                Ok(180.0)
+            } else {
+                Ok(0.0)
+            }
         } else if self.evec()?[2] < 0.0 {
             Ok((TAU - aop).to_degrees())
         } else {
@@ -961,7 +965,11 @@ impl Orbit {
         let cos_raan = n[0] / n.norm();
         let raan = cos_raan.acos();
         if raan.is_nan() {
-            if cos_raan > 1.0 { Ok(180.0) } else { Ok(0.0) }
+            if cos_raan > 1.0 {
+                Ok(180.0)
+            } else {
+                Ok(0.0)
+            }
         } else if n[1] < 0.0 {
             Ok((TAU - raan).to_degrees())
         } else {
@@ -1031,7 +1039,11 @@ impl Orbit {
         // If we're close the valid bounds, let's just do a sign check and return the true anomaly
         let ta = cos_nu.acos();
         if ta.is_nan() {
-            if cos_nu > 1.0 { Ok(180.0) } else { Ok(0.0) }
+            if cos_nu > 1.0 {
+                Ok(180.0)
+            } else {
+                Ok(0.0)
+            }
         } else if self.radius_km.dot(&self.velocity_km_s) < 0.0 {
             Ok((TAU - ta).to_degrees())
         } else {
@@ -1392,7 +1404,7 @@ impl Orbit {
             eq_elements[3],
             eq_elements[4],
             new_lambda_deg,
-            self.epoch,
+            new_epoch,
             self.frame,
         )
     }
@@ -1481,7 +1493,7 @@ impl Orbit {
         let m_current_rad = self.ma_deg()?.to_radians();
 
         // Calculate mean motion n_rad_s
-        let n_rad_s = self.mean_motion_deg_s()?;
+        let n_rad_s = self.mean_motion_deg_s()?.to_radians();
 
         if !n_rad_s.is_finite() || n_rad_s <= 0.0 {
             return Err(PhysicsError::AppliedMath {
