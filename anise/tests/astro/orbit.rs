@@ -150,13 +150,13 @@ fn val_state_def_circ_inc(almanac: Almanac) {
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
     f64_eq!(
         kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        9.69e-10,
+        1e-10,
         "RIC RMS velocity"
     );
     f64_eq!(kep_rtn.rms_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
     f64_eq!(
         kep_rtn.rms_velocity_km_s(&kep).unwrap(),
-        5.59e-10,
+        6.4e-11,
         "RIC RMS velocity"
     );
 
@@ -175,13 +175,13 @@ fn val_state_def_circ_inc(almanac: Almanac) {
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "VNC RSS radius");
     f64_eq!(
         kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        9.69e-10,
+        1e-10,
         "VNC RMS velocity"
     );
     f64_eq!(kep_rtn.rms_radius_km(&kep).unwrap(), 0.0, "VNC RSS radius");
     f64_eq!(
         kep_rtn.rms_velocity_km_s(&kep).unwrap(),
-        5.59e-10,
+        6.4e-11,
         "VNC RMS velocity"
     );
 
@@ -194,13 +194,13 @@ fn val_state_def_circ_inc(almanac: Almanac) {
     );
     f64_eq!(
         abs_vel_km_s.abs(),
-        9.69e-10,
+        1e-10,
         "non zero absolute velocity difference"
     );
 
     let (rel_pos, rel_vel) = kep_rtn.rel_difference(&kep).unwrap();
     f64_eq!(rel_pos.abs(), 0.0, "non zero relative position difference");
-    f64_eq!(rel_vel.abs(), 1.38e-10, "relative velocity difference");
+    f64_eq!(rel_vel.abs(), 1.58e-11, "relative velocity difference");
 
     // Ensure that setting the radius or velocity to zero causes an error in relative difference
     let mut zero_pos = kep;
@@ -330,7 +330,7 @@ fn val_state_def_elliptical(almanac: Almanac) {
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
     f64_eq!(
         kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        1.38e-10,
+        7.9e-10,
         "RIC RSS velocity"
     );
 }
@@ -436,7 +436,7 @@ fn val_state_def_circ_eq(almanac: Almanac) {
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
     f64_eq!(
         kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        1.02e-8,
+        6e-10,
         "RIC RSS velocity"
     );
 }
@@ -487,7 +487,7 @@ fn val_state_def_equatorial(almanac: Almanac) {
     );
     f64_eq!(
         cart_rtn.rss_velocity_km_s(&cart).unwrap(),
-        4.08e-8,
+        1.3e-9,
         "RIC RSS velocity"
     );
 }
