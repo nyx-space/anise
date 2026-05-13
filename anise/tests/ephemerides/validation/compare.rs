@@ -329,7 +329,8 @@ impl CompareEphem {
 
         let target_dir = Path::new("../target");
         if !target_dir.exists() {
-            fs::create_dir_all(target_dir).expect("Could not create target directory for Parquet file");
+            fs::create_dir_all(target_dir)
+                .expect("Could not create target directory for Parquet file");
         }
 
         let path = format!("../target/{}.parquet", self.output_file_name);
