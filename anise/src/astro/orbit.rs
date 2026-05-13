@@ -8,8 +8,8 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::PhysicsResult;
 use super::utils::mean_anomaly_to_true_anomaly_rad;
+use super::PhysicsResult;
 
 use crate::{
     astro::utils::true_anomaly_to_mean_anomaly_rad,
@@ -18,12 +18,12 @@ use crate::{
         ParabolicSemiParamSnafu, PhysicsError, RadiusSnafu, VelocitySnafu,
     },
     math::{
-        Matrix3, Vector3, Vector6,
         angles::{between_0_360, between_pm_180},
         cartesian::CartesianState,
         rotation::DCM,
+        Matrix3, Vector3, Vector6,
     },
-    prelude::{Frame, uuid_from_epoch},
+    prelude::{uuid_from_epoch, Frame},
 };
 
 #[cfg(feature = "analysis")]
@@ -904,7 +904,11 @@ impl Orbit {
         let cos_aop = n.dot(&self.evec()?) / (n.norm() * self.ecc()?);
         let aop = cos_aop.acos();
         if aop.is_nan() {
-            if cos_aop > 1.0 { Ok(180.0) } else { Ok(0.0) }
+            if cos_aop > 1.0 {
+                Ok(180.0)
+            } else {
+                Ok(0.0)
+            }
         } else if self.evec()?[2] < 0.0 {
             Ok((TAU - aop).to_degrees())
         } else {
@@ -961,7 +965,11 @@ impl Orbit {
         let cos_raan = n[0] / n.norm();
         let raan = cos_raan.acos();
         if raan.is_nan() {
-            if cos_raan > 1.0 { Ok(180.0) } else { Ok(0.0) }
+            if cos_raan > 1.0 {
+                Ok(180.0)
+            } else {
+                Ok(0.0)
+            }
         } else if n[1] < 0.0 {
             Ok((TAU - raan).to_degrees())
         } else {
@@ -1031,7 +1039,11 @@ impl Orbit {
         // If we're close the valid bounds, let's just do a sign check and return the true anomaly
         let ta = cos_nu.acos();
         if ta.is_nan() {
-            if cos_nu > 1.0 { Ok(180.0) } else { Ok(0.0) }
+            if cos_nu > 1.0 {
+                Ok(180.0)
+            } else {
+                Ok(0.0)
+            }
         } else if self.radius_km.dot(&self.velocity_km_s) < 0.0 {
             Ok((TAU - ta).to_degrees())
         } else {
@@ -1366,28 +1378,33 @@ impl Orbit {
         }
     }
 
-    /// Adjusts the true anomaly of this orbit using the mean anomaly.
+    /// Adjusts the equinoctial mean longitude this orbit via the mean motion.
     ///
     /// # Astrodynamics note
     /// This is not a true propagation of the orbit. This is akin to a two body propagation ONLY without any other force models applied.
-    /// Use Nyx for high fidelity propagation.
+    /// Use Nyx for high fidelity propagation. This implementation uses equinoctial elements and should be well behaved for circular equatorial orbits.
     ///
     /// :type new_epoch: Epoch
     /// :rtype: Orbit
     pub fn at_epoch(&self, new_epoch: Epoch) -> PhysicsResult<Self> {
-        let m0_rad = self.ma_deg()?.to_radians();
-        let mt_rad = m0_rad
-            + (self.frame.mu_km3_s2()? / self.sma_km()?.powi(3)).sqrt()
-                * (new_epoch - self.epoch).to_seconds();
+        if new_epoch == self.epoch {
+            return Ok(*self);
+        }
+        // Compute the equinoctial elements of this state.
+        let eq_elements = self.equinoctial_elements()?;
+        // Compute the mean motion
+        let n = self.mean_motion_deg_s()?;
+        // Adjust the mean motion to the desired epoch
+        let new_lambda_deg = eq_elements[5] + n * (new_epoch - self.epoch).to_seconds();
 
-        Self::try_keplerian_mean_anomaly(
-            self.sma_km()?,
-            self.ecc()?,
-            self.inc_deg()?,
-            self.raan_deg()?,
-            self.aop_deg()?,
-            mt_rad.to_degrees(),
-            new_epoch,
+        Self::try_equinoctial(
+            eq_elements[0],
+            eq_elements[1],
+            eq_elements[2],
+            eq_elements[3],
+            eq_elements[4],
+            new_lambda_deg,
+            self.epoch,
             self.frame,
         )
     }

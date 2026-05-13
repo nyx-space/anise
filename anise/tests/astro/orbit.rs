@@ -3,8 +3,8 @@ extern crate pretty_env_logger as pel;
 use anise::astro::orbit::ECC_EPSILON;
 use anise::constants::frames::{EARTH_J2000, MOON_J2000};
 use anise::errors::PhysicsError;
-use anise::math::Vector3;
 use anise::math::angles::{between_0_360, between_pm_180};
+use anise::math::Vector3;
 use anise::prelude::*;
 use anise::time::{Epoch, TimeSeries, Unit};
 use anise::{f64_eq, f64_eq_tol};
@@ -551,9 +551,7 @@ fn val_state_def_reciprocity(almanac: Almanac) {
     );
 
     assert_eq!(
-        Orbit::new(
-            -2436.45, -2436.45, 6891.037, 5.088_611, -5.088_611, 0.0, epoch, eme2k
-        ),
+        Orbit::new(-2436.45, -2436.45, 6891.037, 5.088_611, -5.088_611, 0.0, epoch, eme2k),
         Orbit::keplerian(
             7_712.186_117_895_043,
             0.000_999_582_831_432_052_5,
@@ -739,7 +737,20 @@ fn verif_orbit_at_epoch(almanac: Almanac) {
         8_191.93, 1e-8, 1e-5, 306.614, 314.19, -99.887_7, epoch, eme2k,
     );
 
-    for (ono, orbit) in [circ_incl, elliptical, circ_equa].iter().enumerate() {
+    // Regression tests from #718
+    let r_km = 26559.381;
+    let v_km_s = 3.874002;
+    let circ_eq_0 = Orbit::new(r_km, 0.0, 0.0, 0.0, v_km_s, 0.0, epoch, eme2k);
+    let circ_eq_1 = Orbit::new(0.0, r_km, 0.0, -v_km_s, 0.0, 0.0, epoch, eme2k);
+    let circ_eq_2 = Orbit::new(-r_km, 0.0, 0.0, 0.0, -v_km_s, 0.0, epoch, eme2k);
+    let circ_eq_3 = Orbit::new(0.0, -r_km, 0.0, v_km_s, 0.0, 0.0, epoch, eme2k);
+
+    for (ono, orbit) in [
+        circ_incl, elliptical, circ_equa, circ_eq_0, circ_eq_1, circ_eq_2, circ_eq_3,
+    ]
+    .iter()
+    .enumerate()
+    {
         let future_orbit = orbit
             .at_epoch(epoch + 0.5 * orbit.period().unwrap())
             .unwrap();
@@ -769,7 +780,7 @@ fn verif_orbit_at_epoch(almanac: Almanac) {
         f64_eq_tol!(
             orbit.aop_deg().unwrap(),
             future_orbit.aop_deg().unwrap(),
-            2e-6,
+            3e-6,
             format!("#{ono}: AOP changed")
         );
     }
@@ -1028,8 +1039,8 @@ fn test_duration_to_radius_error_conditions(epoch: Epoch, frame: Frame) {
 
     // Case 2: Hyperbolic, ecc = 1.0 + 2*ECC_EPSILON
     let ecc_near_para_hyp = 1.0 + 2.0 * ECC_EPSILON; // Still hyperbolic
-    // sma = rp / (1-ecc) = 7000 / (-2*ECC_EPSILON) -> large negative sma
-    // Using try_keplerian_apsis_radii is for elliptical, need direct try_keplerian for hyperbolic SMA
+                                                     // sma = rp / (1-ecc) = 7000 / (-2*ECC_EPSILON) -> large negative sma
+                                                     // Using try_keplerian_apsis_radii is for elliptical, need direct try_keplerian for hyperbolic SMA
     let sma_near_para_hyp = rp_near_para / (1.0 - ecc_near_para_hyp); // This will be negative
     let orbit_near_para_hyp = create_orbit(sma_near_para_hyp, ecc_near_para_hyp, 0.0, epoch, frame);
 

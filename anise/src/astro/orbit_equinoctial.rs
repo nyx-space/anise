@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use super::{PhysicsResult, orbit::Orbit};
+use super::{orbit::Orbit, PhysicsResult};
 
 use crate::prelude::Frame;
 
@@ -16,6 +16,8 @@ use hifitime::Epoch;
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
+#[cfg(feature = "python")]
+use pyo3::types::PyType;
 
 pub(crate) fn equinoctial_to_keplerian(
     sma_km: f64,
@@ -115,5 +117,54 @@ impl Orbit {
     pub fn equinoctial_lambda_mean_deg(&self) -> PhysicsResult<f64> {
         // C++ version `aeq[5]=kep[3]+kep[4]+kep[5]` sums degrees.
         Ok(self.raan_deg()? + self.aop_deg()? + self.ma_deg()?)
+    }
+
+    /// Returns the six equinoctial elements in order: sma (km), h, k, p, q, lambda (deg)
+    ///
+    /// :rtype: list[float]
+    pub fn equinoctial_elements(&self) -> PhysicsResult<Vec<f64>> {
+        Ok(vec![
+            self.equinoctial_a_km()?,
+            self.equinoctial_h()?,
+            self.equinoctial_k()?,
+            self.equinoctial_p()?,
+            self.equinoctial_q()?,
+            self.equinoctial_lambda_mean_deg()?,
+        ])
+    }
+}
+
+#[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pymethods)]
+impl Orbit {
+    /// Attempts to create a new Orbit from the Equinoctial orbital elements.
+    ///
+    /// # Implementation notes
+    /// Note that this function computes the Keplerian elements from the equinoctial and then
+    /// calls the try_keplerian_mean_anomaly initializer.
+    ///
+    /// :type sma_km: float
+    /// :type h: float
+    /// :type k: float
+    /// :type p: float
+    /// :type q: float
+    /// :type lambda_deg: float
+    /// :type epoch: Epoch
+    /// :type frame: Frame
+    /// :rtype: Orbit
+    #[cfg(feature = "python")]
+    #[classmethod]
+    pub fn from_equinoctial(
+        _cls: &Bound<'_, PyType>,
+        sma_km: f64,
+        h: f64,
+        k: f64,
+        p: f64,
+        q: f64,
+        lambda_deg: f64,
+        epoch: Epoch,
+        frame: Frame,
+    ) -> PhysicsResult<Self> {
+        Self::try_equinoctial(sma_km, h, k, p, q, lambda_deg, epoch, frame)
     }
 }
