@@ -3,8 +3,8 @@ extern crate pretty_env_logger as pel;
 use anise::astro::orbit::ECC_EPSILON;
 use anise::constants::frames::{EARTH_J2000, MOON_J2000};
 use anise::errors::PhysicsError;
-use anise::math::angles::{between_0_360, between_pm_180};
 use anise::math::Vector3;
+use anise::math::angles::{between_0_360, between_pm_180};
 use anise::prelude::*;
 use anise::time::{Epoch, TimeSeries, Unit};
 use anise::{f64_eq, f64_eq_tol};
@@ -551,7 +551,9 @@ fn val_state_def_reciprocity(almanac: Almanac) {
     );
 
     assert_eq!(
-        Orbit::new(-2436.45, -2436.45, 6891.037, 5.088_611, -5.088_611, 0.0, epoch, eme2k),
+        Orbit::new(
+            -2436.45, -2436.45, 6891.037, 5.088_611, -5.088_611, 0.0, epoch, eme2k
+        ),
         Orbit::keplerian(
             7_712.186_117_895_043,
             0.000_999_582_831_432_052_5,
@@ -1039,8 +1041,8 @@ fn test_duration_to_radius_error_conditions(epoch: Epoch, frame: Frame) {
 
     // Case 2: Hyperbolic, ecc = 1.0 + 2*ECC_EPSILON
     let ecc_near_para_hyp = 1.0 + 2.0 * ECC_EPSILON; // Still hyperbolic
-                                                     // sma = rp / (1-ecc) = 7000 / (-2*ECC_EPSILON) -> large negative sma
-                                                     // Using try_keplerian_apsis_radii is for elliptical, need direct try_keplerian for hyperbolic SMA
+    // sma = rp / (1-ecc) = 7000 / (-2*ECC_EPSILON) -> large negative sma
+    // Using try_keplerian_apsis_radii is for elliptical, need direct try_keplerian for hyperbolic SMA
     let sma_near_para_hyp = rp_near_para / (1.0 - ecc_near_para_hyp); // This will be negative
     let orbit_near_para_hyp = create_orbit(sma_near_para_hyp, ecc_near_para_hyp, 0.0, epoch, frame);
 
