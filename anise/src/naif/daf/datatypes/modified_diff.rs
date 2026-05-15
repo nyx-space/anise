@@ -23,6 +23,11 @@ use crate::{
 // Length of a single modified difference type 1 record.
 const MD1_RCRD_LEN: usize = 71;
 
+/// Hard upper bound on MAXDIM the Modified-Difference recurrence work
+/// arrays accommodate. Type 1 fixes MAXDIM at 15; Type 21 in practice
+/// uses up to 25 (e.g. JPL Horizons on-demand SPKs).
+pub(crate) const MD_MAXDIM_LIMIT: usize = 25;
+
 #[derive(PartialEq)]
 pub struct ModifiedDiffType1<'a> {
     pub num_records: usize,
@@ -207,98 +212,121 @@ pub struct ModifiedDiffRecord<'a> {
 
 impl<'a> ModifiedDiffRecord<'a> {
     pub fn to_pos_vel(&self, epoch: Epoch) -> (Vector3, Vector3) {
-        //  Set up for the computation of the various differences.
-        let delta = epoch.to_et_seconds() - self.ref_epoch; // Time delta from reference epoch
-        let mut tp = delta;
+        // SPK Type 1 has a fixed MAXDIM = 15.
+        modified_diff_interpolate(
+            epoch,
+            self.ref_epoch,
+            self.nodes,
+            (
+                self.ref_x_km,
+                self.ref_y_km,
+                self.ref_z_km,
+                self.ref_vx_km_s,
+                self.ref_vy_km_s,
+                self.ref_vz_km_s,
+            ),
+            self.mod_diff_array,
+            self.kqmax1,
+            self.kq,
+            15,
+        )
+    }
+}
 
-        // The maximum degree of the polynomials we might need to evaluate.
-        // mq2 is the number of coefficients for the recurrence relation.
-        let mq2 = self.kqmax1 - 2.0;
+/// Shared evaluator for SPK Types 1 and 21 (Modified Difference Array
+/// family). The math is undocumented outside of CSPICE `spke01.c` /
+/// `spke21.c`; this is a Rust translation, verified against JPL
+/// reference data. Both record types use the same recurrence — only the
+/// per-record array sizes (driven by `MAXDIM`) differ.
+///
+/// * `epoch` — requested evaluation epoch.
+/// * `ref_epoch` — reference epoch stored in the record (seconds, ET).
+/// * `nodes` — stepsize-function nodes (length MAXDIM).
+/// * `ref_state` — reference state (rx, ry, rz, vx, vy, vz).
+/// * `mod_diff_array` — flat (3 × MAXDIM) modified differences.
+/// * `kqmax1` — max integration order + 1.
+/// * `kq` — per-component (3) integration orders.
+/// * `maxdim` — row stride for `mod_diff_array` (15 for Type 1, ≤25 for Type 21).
+pub(crate) fn modified_diff_interpolate(
+    epoch: Epoch,
+    ref_epoch: f64,
+    nodes: &[f64],
+    ref_state: (f64, f64, f64, f64, f64, f64),
+    mod_diff_array: &[f64],
+    kqmax1: f64,
+    kq: &[f64],
+    maxdim: usize,
+) -> (Vector3, Vector3) {
+    let (ref_x, ref_y, ref_z, ref_vx, ref_vy, ref_vz) = ref_state;
+    let delta = epoch.to_et_seconds() - ref_epoch;
+    let mut tp = delta;
 
-        // Initialize lists for the recurrence relation coefficients.
-        let mut fc = [0.0; 14];
-        let mut wc = [0.0; 13];
+    let mq2 = kqmax1 - 2.0;
 
-        for j in 0..mq2.max(0.0) as usize {
-            fc[j] = tp / self.nodes[j];
-            wc[j] = delta / self.nodes[j];
-            tp = delta + self.nodes[j];
-        }
+    let mut fc = [0.0_f64; MD_MAXDIM_LIMIT + 1];
+    let mut wc = [0.0_f64; MD_MAXDIM_LIMIT];
+    let mut w = [0.0_f64; 2 * MD_MAXDIM_LIMIT + 4];
 
-        // 3. Compute the W(k) terms for position interpolation.
-        let mut w = [0.0; 17];
+    for j in 0..mq2.max(0.0) as usize {
+        fc[j] = tp / nodes[j];
+        wc[j] = delta / nodes[j];
+        tp = delta + nodes[j];
+    }
 
-        // Initialize the first set of W terms with reciprocals.
-        for (j, mut_w) in w.iter_mut().enumerate().take(self.kqmax1 as usize) {
-            *mut_w = 1.0 / ((j + 1) as f64);
-        }
+    for (j, mut_w) in w.iter_mut().enumerate().take(kqmax1 as usize) {
+        *mut_w = 1.0 / ((j + 1) as f64);
+    }
 
-        // This is the core recurrence relation. It builds the values of the
-        // position basis polynomials evaluated at the time `delta`.
-        let mut ks = self.kqmax1 as usize - 1;
-        for jx in 1..(mq2 + 1.0).max(0.0) as usize {
-            for j in 0..jx {
-                w[j + ks] = fc[j] * w[j + ks - 1] - wc[j] * w[j + ks];
-            }
-            ks -= 1;
-        }
-
-        // 4. Perform position interpolation.
-        let mut pos_km = Vector3::zeros();
-        let mut vel_km_s = Vector3::zeros();
-
-        for i in 0..3 {
-            let component_order = self.kq[i] as usize;
-            let mut poly_sum = 0.0;
-
-            for j in 0..component_order {
-                // Access dt value from the flat record array.
-                // The index is equivalent to dt[i, j] in a 3x15 reshaped array.
-                // The dt data block starts at record index 22.
-                let dt_idx = i * 15 + j;
-                poly_sum += self.mod_diff_array[dt_idx] * w[j + ks]
-            }
-
-            let (refpos, refvel) = match i {
-                0 => (self.ref_x_km, self.ref_vx_km_s),
-                1 => (self.ref_y_km, self.ref_vy_km_s),
-                2 => (self.ref_z_km, self.ref_vz_km_s),
-                _ => unreachable!(),
-            };
-
-            pos_km[i] = refpos + delta * (refvel + delta * poly_sum)
-        }
-
-        // 5. Compute the W(k) terms for velocity interpolation.
-        if mq2 > 0.0 {
-            for j in 1..(mq2 + 1.0) as usize {
-                w[j] = fc[j - 1] * w[j - 1] - wc[j - 1] * w[j];
-            }
+    let mut ks = kqmax1 as usize - 1;
+    for jx in 1..(mq2 + 1.0).max(0.0) as usize {
+        for j in 0..jx {
+            w[j + ks] = fc[j] * w[j + ks - 1] - wc[j] * w[j + ks];
         }
         ks -= 1;
-
-        // 6. Perform velocity interpolation.
-        for i in 0..3 {
-            let component_order = self.kq[i] as usize;
-            let mut poly_sum_vel = 0.0;
-
-            for j in 0..component_order {
-                // The index into the flat dt block is the same as for position.
-                let dt_idx = i * 15 + j;
-                poly_sum_vel += self.mod_diff_array[dt_idx] * w[j + ks];
-            }
-
-            let refvel = match i {
-                0 => self.ref_vx_km_s,
-                1 => self.ref_vy_km_s,
-                2 => self.ref_vz_km_s,
-                _ => unreachable!(),
-            };
-            vel_km_s[i] = refvel + delta * poly_sum_vel;
-        }
-
-        (pos_km, vel_km_s)
     }
+
+    let mut pos_km = Vector3::zeros();
+    let mut vel_km_s = Vector3::zeros();
+
+    for i in 0..3 {
+        let component_order = kq[i] as usize;
+        let mut poly_sum = 0.0;
+        for j in 0..component_order {
+            // Flat (3 × maxdim) array indexed as [i, j] = i*maxdim + j.
+            poly_sum += mod_diff_array[i * maxdim + j] * w[j + ks];
+        }
+        let (refpos, refvel) = match i {
+            0 => (ref_x, ref_vx),
+            1 => (ref_y, ref_vy),
+            2 => (ref_z, ref_vz),
+            _ => unreachable!(),
+        };
+        pos_km[i] = refpos + delta * (refvel + delta * poly_sum);
+    }
+
+    if mq2 > 0.0 {
+        for j in 1..(mq2 + 1.0) as usize {
+            w[j] = fc[j - 1] * w[j - 1] - wc[j - 1] * w[j];
+        }
+    }
+    ks -= 1;
+
+    for i in 0..3 {
+        let component_order = kq[i] as usize;
+        let mut poly_sum_vel = 0.0;
+        for j in 0..component_order {
+            poly_sum_vel += mod_diff_array[i * maxdim + j] * w[j + ks];
+        }
+        let refvel = match i {
+            0 => ref_vx,
+            1 => ref_vy,
+            2 => ref_vz,
+            _ => unreachable!(),
+        };
+        vel_km_s[i] = refvel + delta * poly_sum_vel;
+    }
+
+    (pos_km, vel_km_s)
 }
 
 impl<'a> fmt::Display for ModifiedDiffRecord<'a> {
