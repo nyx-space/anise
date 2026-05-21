@@ -9,7 +9,7 @@ repository = { workspace = true }
 description = "A command line interface for ANISE"
 
 [dependencies]
-anise = { workspace = true }
+anise = { workspace = true, features = ["analysis", "parquet"] }
 clap = { version = "4", features = ["derive"] }
 pretty_env_logger = { workspace = true }
 bytes = { workspace = true }

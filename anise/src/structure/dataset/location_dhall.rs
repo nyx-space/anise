@@ -11,6 +11,7 @@
 use crate::NaifId;
 use crate::{astro::Location, structure::LocationDataSet};
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "metaload")]
 use serde_dhall::StaticType;
 use std::collections::BTreeMap;
 
@@ -32,7 +33,8 @@ use super::{DataSet, DataSetType};
 /// :type id: int, optional
 /// :type alias: str, optional
 /// :type value: Location
-#[derive(Clone, Debug, StaticType, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "metaload", derive(StaticType))]
 #[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct LocationDhallSetEntry {
@@ -84,7 +86,8 @@ impl LocationDhallSetEntry {
 /// A Dhall-serializable Location DataSet that serves as an optional intermediate to the LocationDataSet kernels.
 ///
 /// :type data: list
-#[derive(Clone, Debug, StaticType, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "metaload", derive(StaticType))]
 #[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct LocationDhallSet {
@@ -118,20 +121,35 @@ impl LocationDhallSet {
 
     /// Deserialize the Dhall string of a Location data set into its Dhall representation structure.
     pub fn from_dhall(repr: &str) -> Result<Self, String> {
-        let me: Self = serde_dhall::from_str(repr)
-            .static_type_annotation()
-            .parse()
-            .map_err(|e| e.to_string())?;
+        #[cfg(feature = "metaload")]
+        {
+            let me: Self = serde_dhall::from_str(repr)
+                .static_type_annotation()
+                .parse()
+                .map_err(|e| e.to_string())?;
 
-        Ok(me)
+            Ok(me)
+        }
+        #[cfg(not(feature = "metaload"))]
+        {
+            let _ = repr;
+            Err("Dhall support is not enabled in this build of ANISE".to_string())
+        }
     }
 
     /// Serializes to a Dhall string
     pub fn to_dhall(&self) -> Result<String, String> {
-        serde_dhall::serialize(&self)
-            .static_type_annotation()
-            .to_string()
-            .map_err(|e| e.to_string())
+        #[cfg(feature = "metaload")]
+        {
+            serde_dhall::serialize(&self)
+                .static_type_annotation()
+                .to_string()
+                .map_err(|e| e.to_string())
+        }
+        #[cfg(not(feature = "metaload"))]
+        {
+            Err("Dhall support is not enabled in this build of ANISE".to_string())
+        }
     }
 }
 

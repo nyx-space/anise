@@ -47,6 +47,30 @@ pub enum Actions {
     /// Remove the segment of the provided ID of the input NAIF DAF file.
     /// Limitation: this may not work correctly if there are several segments with the same ID.
     RmDAFById(RmById),
+    /// Perform an analysis from a LISP expression and multiple kernels
+    Analysis(AnalysisArgs),
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Args)]
+pub(crate) struct AnalysisArgs {
+    /// LISP expression file (e.g. my_expression.lisp)
+    #[clap(short, long)]
+    pub expression: PathBuf,
+    /// Kernels to load (comma separated)
+    #[clap(short, long, value_delimiter = ',')]
+    pub kernels: Vec<PathBuf>,
+    /// Output file (CSV or Parquet)
+    #[clap(short, long)]
+    pub output: PathBuf,
+    /// Start epoch
+    #[clap(long)]
+    pub start: Epoch,
+    /// End epoch
+    #[clap(long)]
+    pub end: Epoch,
+    /// Time step
+    #[clap(long, default_value = "1 min")]
+    pub step: String,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Args)]

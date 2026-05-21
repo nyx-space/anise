@@ -1,9 +1,8 @@
-use anise::{almanac::Almanac, errors::AlmanacError};
+use anise::prelude::Almanac;
 use eframe::egui;
-use egui::Theme;
+use egui_dock::{DockArea, DockState, NodeIndex, SurfaceIndex};
 use hifitime::TimeScale;
 
-use log::error;
 #[cfg(target_arch = "wasm32")]
 use poll_promise::Promise;
 
@@ -12,24 +11,58 @@ use crate::{bpc::bpc_ui, epa::epa_ui, pca::pca_ui, spk::spk_ui};
 #[cfg(target_arch = "wasm32")]
 type AlmanacFile = Option<(String, Vec<u8>)>;
 
+pub enum Tab {
+    Info,
+    Analysis,
+}
+
+struct TabViewer<'a> {
+    app: &'a mut UiApp,
+}
+
+impl egui_dock::TabViewer for TabViewer<'_> {
+    type Tab = Tab;
+
+    fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
+        match tab {
+            Tab::Info => "Info".into(),
+            Tab::Analysis => "Analysis".into(),
+        }
+    }
+
+    fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
+        match tab {
+            Tab::Info => self.app.info_tab_ui(ui),
+            Tab::Analysis => self.app.analysis_tab_ui(ui),
+        }
+    }
+}
+
 pub struct UiApp {
     pub selected_time_scale: TimeScale,
     pub show_unix: bool,
     pub almanac: Almanac,
-    pub path: Option<String>,
+    /// List of loaded file paths and their associated aliases in the Almanac
+    pub loaded_files: Vec<String>,
+    /// The currently selected file for the Info tab
+    pub selected_file: Option<String>,
     #[cfg(target_arch = "wasm32")]
     promise: Option<Promise<AlmanacFile>>,
+    dock_state: DockState<Tab>,
 }
 
 impl Default for UiApp {
     fn default() -> Self {
+        let mut dock_state = DockState::new(vec![Tab::Info, Tab::Analysis]);
         Self {
             selected_time_scale: TimeScale::UTC,
             show_unix: false,
             almanac: Default::default(),
-            path: None,
+            loaded_files: Vec::new(),
+            selected_file: None,
             #[cfg(target_arch = "wasm32")]
             promise: Default::default(),
+            dock_state,
         }
     }
 }
@@ -37,23 +70,102 @@ impl Default for UiApp {
 enum FileLoadResult {
     NoFileSelectedYet,
     Ok((String, Box<Almanac>)),
-    Error(Box<AlmanacError>),
+    Error(String),
 }
 
 impl UiApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
-        // Restore app state using cc.storage (requires the "persistence" feature).
-        // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
-        // for e.g. egui::PaintCallback.
-        cc.egui_ctx.set_theme(Theme::Dark);
+        cc.egui_ctx.set_theme(egui::Theme::Dark);
         Self::default()
+    }
+
+    fn info_tab_ui(&mut self, ui: &mut egui::Ui) {
+        egui::ScrollArea::both().show(ui, |ui| {
+            if let Some(alias) = &self.selected_file {
+                ui.heading(format!("File: {alias}"));
+                // Generic data
+                let (label, crc) = if let Some(spk) = self.almanac.spk_data.get(alias) {
+                    ("DAF/SPK", spk.crc32())
+                } else if let Some(bpc) = self.almanac.bpc_data.get(alias) {
+                    ("DAF/PCK", bpc.crc32())
+                } else if let Some(pca) = self.almanac.planetary_data.get(alias) {
+                    ("ANISE/PCA", pca.crc32())
+                } else if let Some(epa) = self.almanac.euler_param_data.get(alias) {
+                    ("ANISE/EPA", epa.crc32())
+                } else {
+                    ("UNKNOWN", 0)
+                };
+
+                ui.horizontal(|ui| {
+                    ui.label("File type");
+                    ui.label(label);
+                    ui.label("CRC32");
+                    ui.text_edit_singleline(&mut format!("{crc}"));
+                });
+
+                if label.starts_with("DAF/") {
+                    ui.horizontal(|ui| {
+                        ui.label("Time scale");
+                        egui::ComboBox::new("ts_combo", "")
+                            .selected_text(format!("{}", self.selected_time_scale))
+                            .show_ui(ui, |ui| {
+                                for ts in [
+                                    TimeScale::UTC,
+                                    TimeScale::ET,
+                                    TimeScale::TDB,
+                                    TimeScale::TAI,
+                                    TimeScale::TT,
+                                ] {
+                                    ui.selectable_value(
+                                        &mut self.selected_time_scale,
+                                        ts,
+                                        format!("{ts}"),
+                                    );
+                                }
+                            });
+                        ui.checkbox(&mut self.show_unix, "UNIX timestamps");
+                    });
+                }
+
+                ui.separator();
+
+                if label == "DAF/PCK" {
+                    bpc_ui(ui, &self.almanac, self.show_unix, self.selected_time_scale);
+                } else if label == "DAF/SPK" {
+                    spk_ui(ui, &self.almanac, self.show_unix, self.selected_time_scale);
+                } else if label == "ANISE/PCA" {
+                    pca_ui(ui, &self.almanac);
+                } else if label == "ANISE/EPA" {
+                    epa_ui(ui, &self.almanac);
+                }
+            } else {
+                ui.vertical_centered(|ui| {
+                    ui.label("Select a file from the sidebar to see its details.");
+                });
+            }
+        });
+    }
+
+    fn analysis_tab_ui(&mut self, ui: &mut egui::Ui) {
+        ui.label("Analysis tools coming soon...");
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn load_almanac(&mut self) -> FileLoadResult {
+        if let Some(path_buf) = rfd::FileDialog::new().pick_file() {
+            let path = path_buf.to_str().unwrap().to_string();
+            match self.almanac.clone().load(&path) {
+                Ok(almanac) => FileLoadResult::Ok((path, Box::new(almanac))),
+                Err(e) => FileLoadResult::Error(e.to_string()),
+            }
+        } else {
+            FileLoadResult::NoFileSelectedYet
+        }
     }
 
     #[cfg(target_arch = "wasm32")]
     fn load_almanac(&mut self) -> FileLoadResult {
-        if let Some(promise) = self.promise.as_ref() {
-            // We are already waiting for a file, so we don't need to show the dialog again
+         if let Some(promise) = self.promise.as_ref() {
             if let Some(result) = promise.ready() {
                 let (file_name, data) = result.as_ref().map(|x| x.clone()).unwrap();
                 self.promise = None;
@@ -63,13 +175,12 @@ impl UiApp {
                     .load_from_bytes(bytes::Bytes::from(data).into())
                 {
                     Ok(almanac) => FileLoadResult::Ok((file_name, Box::new(almanac))),
-                    Err(e) => FileLoadResult::Error(Box::new(e)),
+                    Err(e) => FileLoadResult::Error(e.to_string()),
                 }
             } else {
                 FileLoadResult::NoFileSelectedYet
             }
         } else {
-            // Show the dialog and start loading the file
             self.promise = Some(Promise::spawn_local(async move {
                 let fh = rfd::AsyncFileDialog::new().pick_file().await?;
                 Some((fh.file_name(), fh.read().await))
@@ -77,26 +188,13 @@ impl UiApp {
             FileLoadResult::NoFileSelectedYet
         }
     }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    fn load_almanac(&mut self) -> FileLoadResult {
-        if let Some(path_buf) = rfd::FileDialog::new().pick_file() {
-            let path = path_buf.to_str().unwrap().to_string();
-            match self.almanac.clone().load(&path) {
-                Ok(almanac) => FileLoadResult::Ok((path, Box::new(almanac))),
-                Err(e) => FileLoadResult::Error(Box::new(e)),
-            }
-        } else {
-            FileLoadResult::NoFileSelectedYet
-        }
-    }
 }
 
 impl eframe::App for UiApp {
-    fn ui(&mut self, ctx: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.set_pixels_per_point(1.25);
 
-        egui::Panel::top("header").show_inside(ctx, |ui| {
+        egui::TopBottomPanel::top("header").show(ctx, |ui| {
             ui.horizontal_centered(|ui| {
                 ui.vertical_centered(|ui| {
                     ui.heading("ANISE v0.10");
@@ -109,10 +207,10 @@ impl eframe::App for UiApp {
             });
         });
 
-        egui::Panel::bottom("bottom_panel")
-            .resizable(false)
-            .min_size(0.0)
-            .show_inside(ctx, |ui| {
+        egui::TopBottomPanel::bottom("bottom_panel")
+            .resizable(true)
+            .default_height(100.0)
+            .show(ctx, |ui| {
                 ui.vertical_centered(|ui| {
                     ui.heading("Run log");
                 });
@@ -123,194 +221,67 @@ impl eframe::App for UiApp {
                     .show(ui);
             });
 
-        egui::CentralPanel::default().show_inside(ctx, |ui| {
-            egui::ScrollArea::both().show(ui, |ui| {
-                ui.horizontal_centered(|ui| {
-                    ui.vertical_centered(|ui| {
-                        match &self.path {
-                            None => {
-                                let mut trigger_file_load = false;
-                                trigger_file_load |=
-                                    ui.button("Select file to inspect...").clicked();
+        egui::SidePanel::left("sidebar")
+            .resizable(true)
+            .default_width(200.0)
+            .show(ctx, |ui| {
+                ui.heading("Loaded Files");
+                if ui.button("Load file...").clicked() {
+                    match self.load_almanac() {
+                        FileLoadResult::Ok((path, almanac)) => {
+                            self.almanac = *almanac;
+                            self.loaded_files.push(path.clone());
+                            self.selected_file = Some(path);
+                        }
+                        FileLoadResult::Error(e) => {
+                            log::error!("{e}");
+                        }
+                        FileLoadResult::NoFileSelectedYet => {}
+                    }
+                }
 
-                                // If we are in the browser, we need to also check if the file
-                                // is ready to be loaded instead of just checking if the button
-                                // was clicked
-                                #[cfg(target_arch = "wasm32")]
-                                {
-                                    trigger_file_load |= self.promise.is_some();
-                                }
+                #[cfg(target_arch = "wasm32")]
+                if self.promise.is_some() {
+                     match self.load_almanac() {
+                        FileLoadResult::Ok((path, almanac)) => {
+                            self.almanac = *almanac;
+                            self.loaded_files.push(path.clone());
+                            self.selected_file = Some(path);
+                        }
+                        FileLoadResult::Error(e) => {
+                            log::error!("{e}");
+                        }
+                        FileLoadResult::NoFileSelectedYet => {}
+                    }
+                }
 
-                                // Show the open file dialog
-                                if trigger_file_load {
-                                    // Try to load this file
-                                    match self.load_almanac() {
-                                        FileLoadResult::NoFileSelectedYet => {}
-                                        FileLoadResult::Ok((path, almanac)) => {
-                                            self.almanac = *almanac;
-                                            self.path = Some(path);
-                                        }
-                                        FileLoadResult::Error(e) => {
-                                            error!("{e}");
-                                        }
-                                    }
-                                }
-                            }
-                            Some(path) => {
-                                // Grab generic data
-                                let (label, crc) = if self.almanac.num_loaded_spk() == 1 {
-                                    (
-                                        "DAF/SPK",
-                                        self.almanac.spk_data.get_index(0).unwrap().1.crc32(),
-                                    )
-                                } else if self.almanac.num_loaded_bpc() == 1 {
-                                    (
-                                        "DAF/PCK",
-                                        self.almanac.bpc_data.get_index(0).unwrap().1.crc32(),
-                                    )
-                                } else if !self.almanac.planetary_data.is_empty() {
-                                    (
-                                        "ANISE/PCA",
-                                        self.almanac
-                                            .planetary_data
-                                            .values()
-                                            .next()
-                                            .unwrap()
-                                            .crc32(),
-                                    )
-                                } else if !self.almanac.spacecraft_data.is_empty() {
-                                    (
-                                        "ANISE/SCA",
-                                        self.almanac
-                                            .spacecraft_data
-                                            .values()
-                                            .next()
-                                            .unwrap()
-                                            .crc32(),
-                                    )
-                                } else if !self.almanac.euler_param_data.is_empty() {
-                                    (
-                                        "ANISE/EPA",
-                                        self.almanac
-                                            .euler_param_data
-                                            .values()
-                                            .next()
-                                            .unwrap()
-                                            .crc32(),
-                                    )
-                                } else {
-                                    ("UNKNOWN", 0)
-                                };
+                ui.separator();
 
-                                let mut unload_file = false;
-                                ui.vertical(|ui| {
-                                    ui.horizontal(|ui| {
-                                        ui.label(format!("Inspecting {path}"));
-                                        if ui.button("Close").clicked() {
-                                            unload_file = true;
-                                        }
-                                    });
-                                    ui.horizontal(|ui| {
-                                        ui.label("File type");
-                                        ui.label(label);
-
-                                        ui.label("CRC32");
-                                        ui.text_edit_singleline(&mut format!("{crc}"));
-
-                                        if label.ends_with("SPK") {
-                                            // NOTE: Use the explicit loop method because we need the DAF summary info
-                                            let mut num_summaries = 0;
-                                            let spk = self.almanac.spk_data.get_index(0).unwrap().1;
-                                            let mut idx = None;
-                                            loop {
-                                                let summary = spk.daf_summary(idx).unwrap();
-                                                num_summaries += summary.num_summaries();
-                                                if summary.is_final_record() {
-                                                    break;
-                                                } else {
-                                                    idx = Some(summary.next_record());
-                                                }
-                                            }
-                                            ui.label("Number of summaries");
-                                            ui.label(format!("{num_summaries}"));
-                                        } else if label.ends_with("PCK") {
-                                            // NOTE: Use the explicit loop method because we need the DAF summary info
-                                            let mut num_summaries = 0;
-                                            let bpc = self.almanac.bpc_data.get_index(0).unwrap().1;
-                                            let mut idx = None;
-                                            loop {
-                                                let summary = bpc.daf_summary(idx).unwrap();
-                                                num_summaries += summary.num_summaries();
-                                                if summary.is_final_record() {
-                                                    break;
-                                                } else {
-                                                    idx = Some(summary.next_record());
-                                                }
-                                            }
-                                            ui.label("Number of summaries");
-                                            ui.label(format!("{num_summaries}"));
-                                        }
-                                    });
-
-                                    if label.starts_with("DAF/") {
-                                        ui.horizontal(|ui| {
-                                            ui.label("Time scale");
-                                            egui::ComboBox::new("attention", "")
-                                                .selected_text(format!(
-                                                    "{}",
-                                                    self.selected_time_scale
-                                                ))
-                                                .show_ui(ui, |ui| {
-                                                    for ts in [
-                                                        TimeScale::UTC,
-                                                        TimeScale::ET,
-                                                        TimeScale::TDB,
-                                                        TimeScale::TAI,
-                                                        TimeScale::TT,
-                                                    ] {
-                                                        ui.selectable_value(
-                                                            &mut self.selected_time_scale,
-                                                            ts,
-                                                            format!("{ts}"),
-                                                        );
-                                                    }
-                                                });
-
-                                            ui.checkbox(&mut self.show_unix, "UNIX timestamps");
-                                        });
-                                    }
-
-                                    // Now display the data
-                                    if label == "DAF/PCK" {
-                                        bpc_ui(
-                                            ui,
-                                            &self.almanac,
-                                            self.show_unix,
-                                            self.selected_time_scale,
-                                        );
-                                    } else if label == "DAF/SPK" {
-                                        spk_ui(
-                                            ui,
-                                            &self.almanac,
-                                            self.show_unix,
-                                            self.selected_time_scale,
-                                        );
-                                    } else if label == "ANISE/PCA" {
-                                        pca_ui(ui, &self.almanac);
-                                    } else if label == "ANISE/EPA" {
-                                        epa_ui(ui, &self.almanac);
-                                    }
-                                });
-
-                                if unload_file {
-                                    self.almanac = Almanac::default();
-                                    self.path = None;
-                                }
-                            }
-                        };
+                let mut to_unload = None;
+                for file in &self.loaded_files {
+                    ui.horizontal(|ui| {
+                        if ui.selectable_label(self.selected_file.as_ref() == Some(file), file).clicked() {
+                            self.selected_file = Some(file.clone());
+                        }
+                        if ui.button("x").clicked() {
+                            to_unload = Some(file.clone());
+                        }
                     });
-                });
+                }
+
+                if let Some(file) = to_unload {
+                    self.almanac.unload(&file);
+                    self.loaded_files.retain(|f| f != &file);
+                    if self.selected_file.as_ref() == Some(&file) {
+                        self.selected_file = self.loaded_files.last().cloned();
+                    }
+                }
             });
+
+        egui::CentralPanel::default().show(ctx, |ui| {
+            DockArea::new(&mut self.dock_state)
+                .style(egui_dock::Style::from_egui(ctx.style().as_ref()))
+                .show_inside(ui, &mut TabViewer { app: self });
         });
     }
 }

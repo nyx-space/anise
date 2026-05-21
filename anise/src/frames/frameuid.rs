@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 
 pub use super::Frame;
 
-#[cfg(feature = "analysis")]
+#[cfg(feature = "metaload")]
 use serde_dhall::{SimpleType, StaticType};
 
 #[cfg(feature = "python")]
@@ -108,7 +108,7 @@ impl fmt::Display for FrameUid {
     }
 }
 
-#[cfg(feature = "analysis")]
+#[cfg(feature = "metaload")]
 impl StaticType for FrameUid {
     fn static_type() -> serde_dhall::SimpleType {
         use std::collections::HashMap;

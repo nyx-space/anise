@@ -26,8 +26,10 @@ use anise::structure::{
     EulerParameterDataSet, LocationDataSet, PlanetaryDataSet, SpacecraftDataSet,
 };
 
+use anise::analysis::prelude::*;
+
 mod args;
-use args::{Actions, CliArgs};
+use args::{Actions, AnalysisArgs, CliArgs};
 
 const LOG_VAR: &str = "ANISE_LOG";
 
@@ -204,6 +206,7 @@ fn main() -> Result<(), CliErrors> {
                 }),
             }
         }
+        Actions::Analysis(action) => analysis(action),
     }
 }
 
@@ -329,6 +332,64 @@ where
 
     info!("Saving file to {output:?}");
     my_pck_mut.persist(output).context(CliDAFSnafu)?;
+
+    Ok(())
+}
+
+fn analysis(args: AnalysisArgs) -> Result<(), CliErrors> {
+    let mut almanac = Almanac::default();
+    for kernel in args.kernels {
+        info!("Loading kernel {kernel:?}");
+        almanac = almanac.load(kernel.to_str().unwrap()).map_err(|_e| {
+            CliErrors::AniseError {
+                source: InputOutputError::IOUnknownError,
+            }
+        })?;
+    }
+
+    let expression_str = std::fs::read_to_string(&args.expression).map_err(|e| CliErrors::FileNotFound { source: e })?;
+    let report = ReportScalars::from_s_expr(&expression_str).map_err(|e| {
+        CliErrors::CliDataType {
+            error: Box::new(e),
+        }
+    })?;
+
+    let step = hifitime::Duration::from_str(&args.step).map_err(|e| {
+        CliErrors::CliDataType {
+            error: e.into(),
+        }
+    })?;
+
+    let time_series = TimeSeries::inclusive(args.start, args.end, step);
+
+    let table = almanac.report_scalars_flat(&report, time_series).map_err(|e| {
+        CliErrors::CliDataType {
+            error: Box::new(e),
+        }
+    })?;
+
+    if args.output.extension().map_or(false, |ext| ext == "parquet") {
+        #[cfg(feature = "parquet")]
+        {
+            table.to_parquet(args.output).map_err(|e| {
+                CliErrors::CliDataType {
+                    error: e,
+                }
+            })?;
+        }
+        #[cfg(not(feature = "parquet"))]
+        {
+             return Err(CliErrors::ArgumentError {
+                arg: "Parquet support is not enabled in this build of ANISE".to_string(),
+            });
+        }
+    } else {
+        table.to_csv(args.output).map_err(|e| {
+            CliErrors::CliDataType {
+                error: e,
+            }
+        })?;
+    }
 
     Ok(())
 }

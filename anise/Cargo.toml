@@ -46,6 +46,7 @@ regex = { version = "1.10.5", optional = true }
 rayon = { workspace = true, optional = true } # Only used when building with Python or with Analysis
 serde-lexpr = {version = "0.1.3", optional = true}
 csv = {version = "1", optional = true}
+polars = { version = "0.51.0", features = ["lazy", "parquet", "fmt"], optional = true }
 indexmap = "2.11.4"
 hyperdual = { version = "1.4.0", optional = true }
 sofars = { version = "0.6.1" }
@@ -74,8 +75,9 @@ python = ["pyo3", "pyo3-log", "numpy", "ndarray", "rayon", "hifitime/python"]
 metaload = ["url", "ureq", "platform-dirs", "regex", "serde_dhall"]
 embed_ephem = ["rust-embed", "ureq"]
 analysis = ["rayon", "serde-lexpr", "csv", "hyperdual"]
+parquet = ["polars"]
 # Enabling this flag significantly increases compilation times due to Arrow and Polars.
-validation = []
+validation = ["parquet"]
 
 [[bench]]
 name = "iai_jpl_ephemeris"

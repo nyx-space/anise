@@ -526,6 +526,32 @@ impl Almanac {
     /// is larger than the previous capacity. This effectively adopts a
     /// "high watermark" memory strategy, where the memory usage for this slot
     /// is determined by the largest file ever loaded into it.
+    /// Unload the data associated with the provided alias.
+    pub fn unload(&mut self, alias: &str) {
+        let msg = format!("unloading `{alias}`");
+        if self.spk_data.shift_remove(alias).is_some() {
+            info!("{msg} (SPK)");
+        }
+        if self.bpc_data.shift_remove(alias).is_some() {
+            info!("{msg} (BPC)");
+        }
+        if self.planetary_data.shift_remove(alias).is_some() {
+            info!("{msg} (Planetary)");
+        }
+        if self.spacecraft_data.shift_remove(alias).is_some() {
+            info!("{msg} (Spacecraft)");
+        }
+        if self.euler_param_data.shift_remove(alias).is_some() {
+            info!("{msg} (Euler Parameter)");
+        }
+        if self.location_data.shift_remove(alias).is_some() {
+            info!("{msg} (Location)");
+        }
+        if self.instrument_data.shift_remove(alias).is_some() {
+            info!("{msg} (Instrument)");
+        }
+    }
+
     pub fn bpc_swap(
         &mut self,
         alias: &str,

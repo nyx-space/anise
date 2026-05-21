@@ -13,7 +13,7 @@ use crate::frames::FrameUid;
 
 use serde_derive::{Deserialize, Serialize};
 
-#[cfg(feature = "analysis")]
+#[cfg(feature = "metaload")]
 use serde_dhall::StaticType;
 
 #[cfg(feature = "python")]
@@ -38,7 +38,7 @@ use super::dataset::DataSetT;
 /// :type terrain_mask_ignored: bool
 ///
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "analysis", derive(StaticType))]
+#[cfg_attr(feature = "metaload", derive(StaticType))]
 #[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Location {
@@ -53,22 +53,36 @@ pub struct Location {
     pub terrain_mask_ignored: bool,
 }
 
-#[cfg(feature = "analysis")]
 impl Location {
     /// Rebuild a Location from its Dhall representation
     pub fn from_dhall(repr: &str) -> Result<Self, String> {
-        serde_dhall::from_str(repr)
-            .static_type_annotation()
-            .parse::<Self>()
-            .map_err(|e| e.to_string())
+        #[cfg(feature = "metaload")]
+        {
+            serde_dhall::from_str(repr)
+                .static_type_annotation()
+                .parse::<Self>()
+                .map_err(|e| e.to_string())
+        }
+        #[cfg(not(feature = "metaload"))]
+        {
+            let _ = repr;
+            Err("Dhall support is not enabled in this build of ANISE".to_string())
+        }
     }
 
     /// Returns the Dhall representation of this Location
     pub fn to_dhall(&self) -> Result<String, String> {
-        serde_dhall::serialize(&self)
-            .static_type_annotation()
-            .to_string()
-            .map_err(|e| e.to_string())
+        #[cfg(feature = "metaload")]
+        {
+            serde_dhall::serialize(&self)
+                .static_type_annotation()
+                .to_string()
+                .map_err(|e| e.to_string())
+        }
+        #[cfg(not(feature = "metaload"))]
+        {
+            Err("Dhall support is not enabled in this build of ANISE".to_string())
+        }
     }
 
     /// Ensures that the terrain mask is ordered by azimuth, and remove duplicate azimuths
@@ -228,7 +242,7 @@ impl DataSetT for Location {
 /// :type azimuth_deg: float
 /// :type elevation_mask_deg: float
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "analysis", derive(StaticType))]
+#[cfg_attr(feature = "metaload", derive(StaticType))]
 #[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct TerrainMask {

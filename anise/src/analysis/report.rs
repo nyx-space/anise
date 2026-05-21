@@ -11,6 +11,8 @@
 use crate::analysis::{ScalarExpr, StateSpec, specs::StateSpecTrait};
 use csv::Writer;
 use hifitime::Epoch;
+#[cfg(feature = "parquet")]
+use polars::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -116,6 +118,38 @@ pub struct ScalarsTable {
 }
 
 impl ScalarsTable {
+    /// Export this scalars table to Parquet
+    #[cfg(feature = "parquet")]
+    pub fn to_parquet(&self, path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+        if self.rows.is_empty() {
+            return Ok(());
+        }
+
+        let mut epoch_strings = Vec::with_capacity(self.rows.len());
+        let mut col_values: Vec<Vec<f64>> = vec![Vec::with_capacity(self.rows.len()); self.headers.len()];
+
+        for row in &self.rows {
+            epoch_strings.push(row.epoch.to_string());
+            for (i, val) in row.values.iter().enumerate() {
+                col_values[i].push(*val);
+            }
+        }
+
+        let epoch_col_name = format!("Epoch ({})", self.rows[0].epoch.time_scale);
+        let mut series = vec![Series::new(epoch_col_name.into(), epoch_strings)];
+
+        for (header, values) in self.headers.iter().zip(col_values) {
+            series.push(Series::new(header.clone().into(), values));
+        }
+
+        let mut df = DataFrame::new(series.into_iter().map(Column::from).collect())?;
+
+        let file = std::fs::File::create(path)?;
+        ParquetWriter::new(file).finish(&mut df)?;
+
+        Ok(())
+    }
+
     /// Export this scalars table to CSV
     pub fn to_csv(&self, path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
         if self.rows.is_empty() {
