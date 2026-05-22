@@ -11,6 +11,7 @@ use crate::{bpc::bpc_ui, epa::epa_ui, pca::pca_ui, spk::spk_ui};
 #[cfg(target_arch = "wasm32")]
 type AlmanacFile = Option<(String, Vec<u8>)>;
 
+#[derive(Copy, Clone)]
 pub enum Tab {
     Info,
     Analysis,
@@ -165,7 +166,7 @@ impl UiApp {
 
     #[cfg(target_arch = "wasm32")]
     fn load_almanac(&mut self) -> FileLoadResult {
-         if let Some(promise) = self.promise.as_ref() {
+        if let Some(promise) = self.promise.as_ref() {
             if let Some(result) = promise.ready() {
                 let (file_name, data) = result.as_ref().map(|x| x.clone()).unwrap();
                 self.promise = None;
@@ -191,7 +192,8 @@ impl UiApp {
 }
 
 impl eframe::App for UiApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ctx: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        // fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.set_pixels_per_point(1.25);
 
         egui::TopBottomPanel::top("header").show(ctx, |ui| {
@@ -242,7 +244,7 @@ impl eframe::App for UiApp {
 
                 #[cfg(target_arch = "wasm32")]
                 if self.promise.is_some() {
-                     match self.load_almanac() {
+                    match self.load_almanac() {
                         FileLoadResult::Ok((path, almanac)) => {
                             self.almanac = *almanac;
                             self.loaded_files.push(path.clone());
@@ -260,7 +262,10 @@ impl eframe::App for UiApp {
                 let mut to_unload = None;
                 for file in &self.loaded_files {
                     ui.horizontal(|ui| {
-                        if ui.selectable_label(self.selected_file.as_ref() == Some(file), file).clicked() {
+                        if ui
+                            .selectable_label(self.selected_file.as_ref() == Some(file), file)
+                            .clicked()
+                        {
                             self.selected_file = Some(file.clone());
                         }
                         if ui.button("x").clicked() {
@@ -279,7 +284,7 @@ impl eframe::App for UiApp {
             });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            DockArea::new(&mut self.dock_state)
+            DockArea::new(&mut self.dock_state.clone())
                 .style(egui_dock::Style::from_egui(ctx.style().as_ref()))
                 .show_inside(ui, &mut TabViewer { app: self });
         });
