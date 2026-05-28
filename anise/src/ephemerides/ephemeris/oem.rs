@@ -439,11 +439,13 @@ impl Ephemeris {
         .map_err(err_hdlr)?;
 
         writeln!(writer, "META_START").map_err(err_hdlr)?;
+        let object_name = object_name
+            .as_deref()
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+            .unwrap_or("UNKNOWN");
+        writeln!(writer, "OBJECT_NAME = {object_name}").map_err(err_hdlr)?;
         writeln!(writer, "OBJECT_ID = {}", self.object_id).map_err(err_hdlr)?;
-
-        if let Some(object_name) = object_name {
-            writeln!(writer, "OBJECT_NAME = {object_name}").map_err(err_hdlr)?;
-        }
 
         let first_orbit = self
             .state_data
@@ -461,6 +463,7 @@ impl Ephemeris {
 
         let center = format!("{first_frame:e}");
         let ref_frame = format!("{first_frame:o}");
+        writeln!(writer, "CENTER_NAME = {center}",).map_err(err_hdlr)?;
         writeln!(
             writer,
             "REF_FRAME = {}",
@@ -471,21 +474,7 @@ impl Ephemeris {
         )
         .map_err(err_hdlr)?;
 
-        writeln!(writer, "CENTER_NAME = {center}",).map_err(err_hdlr)?;
         writeln!(writer, "TIME_SYSTEM = {}", first_orbit.epoch.time_scale).map_err(err_hdlr)?;
-        writeln!(
-            writer,
-            "INTERPOLATION = {}",
-            match self.interpolation {
-                DataType::Type9LagrangeUnequalStep => "LAGRANGE",
-                DataType::Type13HermiteUnequalStep => "HERMITE",
-                _ => unreachable!(),
-            }
-        )
-        .map_err(err_hdlr)?;
-
-        writeln!(writer, "INTERPOLATION_DEGREE = {}", self.degree).map_err(err_hdlr)?;
-
         writeln!(
             writer,
             "START_TIME = {}",
@@ -510,6 +499,18 @@ impl Ephemeris {
             Formatter::new(last_orbit.epoch, iso8601_no_ts),
         )
         .map_err(err_hdlr)?;
+        writeln!(
+            writer,
+            "INTERPOLATION = {}",
+            match self.interpolation {
+                DataType::Type9LagrangeUnequalStep => "LAGRANGE",
+                DataType::Type13HermiteUnequalStep => "HERMITE",
+                _ => unreachable!(),
+            }
+        )
+        .map_err(err_hdlr)?;
+
+        writeln!(writer, "INTERPOLATION_DEGREE = {}", self.degree).map_err(err_hdlr)?;
 
         writeln!(writer, "META_STOP\n").map_err(err_hdlr)?;
 
