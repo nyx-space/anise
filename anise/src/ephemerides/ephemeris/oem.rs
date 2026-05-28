@@ -83,7 +83,7 @@ impl Ephemeris {
                 let version_str = parse_one_val(lno, line, "no value for CCSDS_OEM_VERS")?;
                 match version_str.parse::<f32>() {
                     Ok(version_val) => match version_val as i16 {
-                        1 | 2 => {}
+                        1 | 2 | 3 => {}
                         _ => {
                             return Err(EphemerisError::OEMParsingError {
                                 lno,
@@ -407,7 +407,7 @@ impl Ephemeris {
             Format::from_str("%Y-%m-%dT%H:%M:%S.%f").expect("static format string is valid");
 
         // Write mandatory metadata
-        writeln!(writer, "CCSDS_OEM_VERS = 2.0\n").map_err(err_hdlr)?;
+        writeln!(writer, "CCSDS_OEM_VERS = 3.0\n").map_err(err_hdlr)?;
 
         writeln!(
             writer,
@@ -439,10 +439,10 @@ impl Ephemeris {
         .map_err(err_hdlr)?;
 
         writeln!(writer, "META_START").map_err(err_hdlr)?;
-        writeln!(writer, "\tOBJECT_ID = {}", self.object_id).map_err(err_hdlr)?;
+        writeln!(writer, "OBJECT_ID = {}", self.object_id).map_err(err_hdlr)?;
 
         if let Some(object_name) = object_name {
-            writeln!(writer, "\tOBJECT_NAME = {object_name}").map_err(err_hdlr)?;
+            writeln!(writer, "OBJECT_NAME = {object_name}").map_err(err_hdlr)?;
         }
 
         let first_orbit = self
@@ -463,7 +463,7 @@ impl Ephemeris {
         let ref_frame = format!("{first_frame:o}");
         writeln!(
             writer,
-            "\tREF_FRAME = {}",
+            "REF_FRAME = {}",
             match ref_frame.trim() {
                 "J2000" => "EME2000",
                 _ => ref_frame.trim(),
@@ -471,11 +471,11 @@ impl Ephemeris {
         )
         .map_err(err_hdlr)?;
 
-        writeln!(writer, "\tCENTER_NAME = {center}",).map_err(err_hdlr)?;
-        writeln!(writer, "\tTIME_SYSTEM = {}", first_orbit.epoch.time_scale).map_err(err_hdlr)?;
+        writeln!(writer, "CENTER_NAME = {center}",).map_err(err_hdlr)?;
+        writeln!(writer, "TIME_SYSTEM = {}", first_orbit.epoch.time_scale).map_err(err_hdlr)?;
         writeln!(
             writer,
-            "\tINTERPOLATION = {}",
+            "INTERPOLATION = {}",
             match self.interpolation {
                 DataType::Type9LagrangeUnequalStep => "LAGRANGE",
                 DataType::Type13HermiteUnequalStep => "HERMITE",
@@ -484,29 +484,29 @@ impl Ephemeris {
         )
         .map_err(err_hdlr)?;
 
-        writeln!(writer, "\tINTERPOLATION_DEGREE = {}", self.degree).map_err(err_hdlr)?;
+        writeln!(writer, "INTERPOLATION_DEGREE = {}", self.degree).map_err(err_hdlr)?;
 
         writeln!(
             writer,
-            "\tSTART_TIME = {}",
+            "START_TIME = {}",
             Formatter::new(first_orbit.epoch, iso8601_no_ts),
         )
         .map_err(err_hdlr)?;
         writeln!(
             writer,
-            "\tUSEABLE_START_TIME = {}",
+            "USEABLE_START_TIME = {}",
             Formatter::new(first_orbit.epoch, iso8601_no_ts),
         )
         .map_err(err_hdlr)?;
         writeln!(
             writer,
-            "\tUSEABLE_STOP_TIME = {}",
+            "USEABLE_STOP_TIME = {}",
             Formatter::new(last_orbit.epoch, iso8601_no_ts),
         )
         .map_err(err_hdlr)?;
         writeln!(
             writer,
-            "\tSTOP_TIME = {}",
+            "STOP_TIME = {}",
             Formatter::new(last_orbit.epoch, iso8601_no_ts),
         )
         .map_err(err_hdlr)?;
