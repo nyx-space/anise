@@ -59,7 +59,7 @@ rstest = { workspace = true }
 approx = "0.5.1"
 polars = { version = "0.51.0", features = ["lazy", "parquet", "fmt"] }
 rayon = "1.7"
-serde_yml = "0.0.12"
+serde_yml = "0.0.13"
 rand_pcg = "0.10.0"
 rand = "0.10.0"
 
