@@ -83,7 +83,7 @@ impl Ephemeris {
                 let version_str = parse_one_val(lno, line, "no value for CCSDS_OEM_VERS")?;
                 match version_str.parse::<f32>() {
                     Ok(version_val) => match version_val as i16 {
-                        1 | 2 | 3 => {}
+                        1..=3 => {}
                         _ => {
                             return Err(EphemerisError::OEMParsingError {
                                 lno,
