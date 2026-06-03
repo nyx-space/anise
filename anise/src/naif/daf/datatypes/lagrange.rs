@@ -86,6 +86,16 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
 
         let step_size = step_size_s.seconds();
         let degree = slice[slice.len() - 2] as usize;
+        if degree + 1 > MAX_SAMPLES {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::InvalidValue {
+                    dataset: Self::DATASET_NAME,
+                    variable: "interpolation window size",
+                    value: (degree + 1) as f64,
+                    reason: "must be less than or equal to MAX_SAMPLES (32)",
+                },
+            });
+        }
         let num_records = slice[slice.len() - 1] as usize;
 
         let record_data = &slice[0..slice.len() - 4];
@@ -254,6 +264,16 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
         // For this kind of record, the metadata is stored at the very end of the dataset
         let num_records = slice[slice.len() - 1] as usize;
         let degree = slice[slice.len() - 2] as usize;
+        if degree + 1 > MAX_SAMPLES {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::InvalidValue {
+                    dataset: Self::DATASET_NAME,
+                    variable: "interpolation window size",
+                    value: (degree + 1) as f64,
+                    reason: "must be less than or equal to MAX_SAMPLES (32)",
+                },
+            });
+        }
         // NOTE: The ::SIZE returns the C representation memory size of this, but we only want the number of doubles.
         let state_data_end_idx = PositionVelocityRecord::SIZE / DBL_SIZE * num_records;
         let state_data =
