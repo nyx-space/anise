@@ -148,14 +148,16 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
         // file and drive the indexing into the fixed-size work buffers (fc, wc, w) and the
         // 3x15 difference array in to_pos_vel. Reject any record whose orders fall outside
         // those bounds so a crafted Type 1 segment cannot index past them.
-        if !(2..=15).contains(&(record.kqmax1 as usize)) {
+        // Check the orders on the raw f64 values rather than casting to usize first: a NaN
+        // or negative value would saturate to 0 on cast and slip past the kq check.
+        if !(2.0..=15.0).contains(&record.kqmax1) {
             return Err(InterpolationError::CorruptedData {
-                what: "modified difference kqmax1 outside the supported range (2..=15)",
+                what: "modified difference kqmax1 outside the supported range (2.0..=15.0)",
             });
         }
-        if record.kq.iter().any(|&order| order as usize > 15) {
+        if record.kq.iter().any(|&order| !(1.0..=15.0).contains(&order)) {
             return Err(InterpolationError::CorruptedData {
-                what: "modified difference integration order (kq) exceeds 15",
+                what: "modified difference integration order (kq) outside the supported range (1.0..=15.0)",
             });
         }
 
