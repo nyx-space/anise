@@ -294,6 +294,16 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
         }
 
         let samples = num_samples_f64 as usize + 1;
+        if samples > MAX_SAMPLES {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::InvalidValue {
+                    dataset: Self::DATASET_NAME,
+                    variable: "number of interpolation samples",
+                    value: samples as f64,
+                    reason: "must be less than or equal to MAX_SAMPLES (32)",
+                },
+            });
+        }
         // NOTE: The ::SIZE returns the C representation memory size of this, but we only want the number of doubles.
         let state_data_end_idx = PositionVelocityRecord::SIZE / DBL_SIZE * num_records;
         let state_data =
