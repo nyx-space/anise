@@ -144,6 +144,21 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
 
         let record = self.nth_record(rcrd_idx).context(InterpDecodingSnafu)?;
 
+        // kqmax1 and the per-component integration orders (kq) are read straight from the
+        // file and drive the indexing into the fixed-size work buffers (fc, wc, w) and the
+        // 3x15 difference array in to_pos_vel. Reject any record whose orders fall outside
+        // those bounds so a crafted Type 1 segment cannot index past them.
+        if !(2..=15).contains(&(record.kqmax1 as usize)) {
+            return Err(InterpolationError::CorruptedData {
+                what: "modified difference kqmax1 outside the supported range (2..=15)",
+            });
+        }
+        if record.kq.iter().any(|&order| order as usize > 15) {
+            return Err(InterpolationError::CorruptedData {
+                what: "modified difference integration order (kq) exceeds 15",
+            });
+        }
+
         Ok(record.to_pos_vel(epoch))
     }
 
@@ -360,5 +375,42 @@ mod ut_spk1 {
         // Serves as validation that ANISE and SPICE match to machine precision.
         assert_eq!(state.radius_km, expct_radius_km);
         assert_eq!(state.velocity_km_s, expct_velocity_km_s);
+    }
+
+    /// A crafted Type 1 segment whose kqmax1 / kq orders exceed the work-buffer sizes must be
+    /// rejected at evaluation rather than indexing past the fixed fc/wc/w buffers in to_pos_vel.
+    #[test]
+    fn spk1_out_of_range_orders_are_rejected() {
+        use super::ModifiedDiffType1;
+        use crate::naif::daf::NAIFDataSet;
+        use crate::naif::spk::summary::SPKSummaryRecord;
+
+        // One record (71 doubles) + one epoch + two trailing metadata doubles.
+        let build = |kqmax1: f64, kq0: f64| {
+            let mut slice = [0.0_f64; 74];
+            // Avoid division by zero on the interpolation nodes (slice[1..16]).
+            for n in slice.iter_mut().take(16).skip(1) {
+                *n = 1.0;
+            }
+            slice[67] = kqmax1; // kqmax1
+            slice[68] = kq0; // kq[0]
+            slice[69] = 1.0;
+            slice[70] = 1.0;
+            slice[71] = 0.0; // single epoch at 0 ET seconds
+            slice[73] = 1.0; // num_records
+            slice
+        };
+
+        let summary = SPKSummaryRecord::default();
+        // Query just inside the lower bound so record index 0 is selected.
+        let epoch = Epoch::from_et_seconds(-1e-3);
+
+        let oversized_kqmax1 = build(100.0, 1.0);
+        let set = ModifiedDiffType1::from_f64_slice(&oversized_kqmax1).unwrap();
+        assert!(set.evaluate(epoch, &summary).is_err());
+
+        let oversized_kq = build(2.0, 100.0);
+        let set = ModifiedDiffType1::from_f64_slice(&oversized_kq).unwrap();
+        assert!(set.evaluate(epoch, &summary).is_err());
     }
 }
