@@ -155,7 +155,11 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
                 what: "modified difference kqmax1 outside the supported range (2.0..=15.0)",
             });
         }
-        if record.kq.iter().any(|&order| !(1.0..=15.0).contains(&order)) {
+        if record
+            .kq
+            .iter()
+            .any(|&order| !(1.0..=15.0).contains(&order))
+        {
             return Err(InterpolationError::CorruptedData {
                 what: "modified difference integration order (kq) outside the supported range (1.0..=15.0)",
             });
