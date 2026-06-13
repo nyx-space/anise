@@ -123,6 +123,20 @@ impl<'a> NAIFDataSet<'a> for Type3ChebyshevSet<'a> {
 
         let interval_length = interval_length_s.seconds();
         let rsize = slice[slice.len() - 2] as usize;
+        // A valid Type 3 record holds two metadata doubles (midpoint, radius) plus at least
+        // one coefficient for each of the six position and velocity axes, so rsize must be at
+        // least 8. Anything smaller makes degree() and the record decoder underflow when they
+        // compute (rsize - 2) / 6 - 1.
+        if rsize < 8 {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::InvalidValue {
+                    dataset: Self::DATASET_NAME,
+                    variable: "record size (rsize)",
+                    value: rsize as f64,
+                    reason: "must be at least 8 to hold the record metadata and coefficients",
+                },
+            });
+        }
         let num_records = slice[slice.len() - 1] as usize;
 
         Ok(Self {
@@ -382,6 +396,27 @@ mod chebyshev_ut {
                     },
                 );
             }
+        }
+    }
+
+    #[test]
+    fn rejects_undersized_rsize() {
+        // rsize = 1 in the footer is far too small to hold a record. Before this guard the
+        // dataset decoded fine but degree() and the record decoder panicked with a subtract
+        // overflow while evaluating a crafted segment.
+        match Type3ChebyshevSet::from_f64_slice(&[0.0, 0.0, 10.0, 1.0, 1.0]) {
+            Ok(_) => panic!("test failed: undersized rsize was accepted"),
+            Err(e) => assert_eq!(
+                e,
+                DecodingError::Integrity {
+                    source: IntegrityError::InvalidValue {
+                        dataset: "Chebyshev Type 3",
+                        variable: "record size (rsize)",
+                        value: 1.0,
+                        reason: "must be at least 8 to hold the record metadata and coefficients",
+                    },
+                }
+            ),
         }
     }
 
