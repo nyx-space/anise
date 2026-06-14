@@ -123,7 +123,45 @@ impl<'a> NAIFDataSet<'a> for Type3ChebyshevSet<'a> {
 
         let interval_length = interval_length_s.seconds();
         let rsize = slice[slice.len() - 2] as usize;
+        // A valid Type 3 record holds two metadata doubles (midpoint, radius) plus at least
+        // one coefficient for each of the six position and velocity axes, so rsize must be at
+        // least 8. Anything smaller makes degree() and the record decoder underflow when they
+        // compute (rsize - 2) / 6 - 1.
+        if rsize < 8 {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::InvalidValue {
+                    dataset: Self::DATASET_NAME,
+                    variable: "record size (rsize)",
+                    value: rsize as f64,
+                    reason: "must be at least 8 to hold the record metadata and coefficients",
+                },
+            });
+        }
         let num_records = slice[slice.len() - 1] as usize;
+        // A segment with no records would underflow num_records - 1 in evaluate() and truncate(),
+        // and a record count that overruns the footer-trimmed data would slice out of bounds when
+        // a record is decoded. Reject both, using saturating_mul so the product cannot wrap first.
+        if num_records == 0 {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::InvalidValue {
+                    dataset: Self::DATASET_NAME,
+                    variable: "number of records (num_records)",
+                    value: 0.0,
+                    reason: "must be at least 1",
+                },
+            });
+        }
+        let total_size = num_records.saturating_mul(rsize);
+        if total_size > slice.len().saturating_sub(4) {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::InvalidValue {
+                    dataset: Self::DATASET_NAME,
+                    variable: "total records size",
+                    value: total_size as f64,
+                    reason: "total size of records exceeds the available data slice",
+                },
+            });
+        }
 
         Ok(Self {
             init_epoch: start_epoch,
@@ -368,9 +406,24 @@ mod chebyshev_ut {
             }
         }
 
-        // Load a slice whose metadata is OK but the record data is not
-        let dataset =
-            Type3ChebyshevSet::from_f64_slice(&[f64::INFINITY, 0.0, 2e-16, 0.0, 0.0]).unwrap();
+        // Load a slice whose metadata is OK but the record data is not. The footer carries a
+        // single valid-sized record (rsize 8, num_records 1) so decoding succeeds and the
+        // subnormal value in the record data is only caught by check_integrity.
+        let dataset = Type3ChebyshevSet::from_f64_slice(&[
+            f64::INFINITY,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            2e-16,
+            8.0,
+            1.0,
+        ])
+        .unwrap();
         match dataset.check_integrity() {
             Ok(_) => panic!("test failed on invalid interval_length"),
             Err(e) => {
@@ -382,6 +435,60 @@ mod chebyshev_ut {
                     },
                 );
             }
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_rsize_and_num_records() {
+        // rsize = 1 in the footer is far too small to hold a record. Before this guard the
+        // dataset decoded fine but degree() and the record decoder panicked with a subtract
+        // overflow while evaluating a crafted segment.
+        match Type3ChebyshevSet::from_f64_slice(&[0.0, 0.0, 10.0, 1.0, 1.0]) {
+            Ok(_) => panic!("test failed: undersized rsize was accepted"),
+            Err(e) => assert_eq!(
+                e,
+                DecodingError::Integrity {
+                    source: IntegrityError::InvalidValue {
+                        dataset: "Chebyshev Type 3",
+                        variable: "record size (rsize)",
+                        value: 1.0,
+                        reason: "must be at least 8 to hold the record metadata and coefficients",
+                    },
+                }
+            ),
+        }
+
+        // num_records = 0 would underflow num_records - 1 during evaluation and truncation.
+        match Type3ChebyshevSet::from_f64_slice(&[0.0, 0.0, 10.0, 8.0, 0.0]) {
+            Ok(_) => panic!("test failed: zero num_records was accepted"),
+            Err(e) => assert_eq!(
+                e,
+                DecodingError::Integrity {
+                    source: IntegrityError::InvalidValue {
+                        dataset: "Chebyshev Type 3",
+                        variable: "number of records (num_records)",
+                        value: 0.0,
+                        reason: "must be at least 1",
+                    },
+                }
+            ),
+        }
+
+        // num_records * rsize overruns the footer-trimmed data, so a record decode would slice
+        // out of bounds.
+        match Type3ChebyshevSet::from_f64_slice(&[0.0, 0.0, 10.0, 8.0, 10.0]) {
+            Ok(_) => panic!("test failed: oversized record count was accepted"),
+            Err(e) => assert_eq!(
+                e,
+                DecodingError::Integrity {
+                    source: IntegrityError::InvalidValue {
+                        dataset: "Chebyshev Type 3",
+                        variable: "total records size",
+                        value: 80.0,
+                        reason: "total size of records exceeds the available data slice",
+                    },
+                }
+            ),
         }
     }
 
