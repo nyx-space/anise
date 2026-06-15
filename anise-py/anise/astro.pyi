@@ -708,6 +708,10 @@ class Frame:
     def from_asn1(data: bytes) -> Frame:
         """Decodes an ASN.1 DER encoded byte array into a Frame."""
 
+    @staticmethod
+    def from_frameuid(frameuid: typing.Any) -> FrameUid:
+        """Creates a Frame from a FrameUid"""
+
     def is_celestial(self) -> bool:
         """Returns whether this is a celestial frame"""
 
@@ -741,6 +745,9 @@ class Frame:
 
     def to_asn1(self) -> bytes:
         """Encodes this Frame into an ASN.1 DER encoded byte array."""
+
+    def to_frameuid(self) -> Frame:
+        """Converts this Frame to a FrameUid"""
 
     def with_ephem(self, new_ephem_id: int) -> Frame:
         """Returns a copy of this Frame whose ephemeris ID is set to the provided ID"""
@@ -792,6 +799,37 @@ class FrameUid:
     def __new__(cls, ephemeris_id: int, orientation_id: int) -> FrameUid:
         """A unique frame reference that only contains enough information to build the actual Frame object.
         It cannot be used for any computations, is it be used in any structure apart from error structures."""
+
+    @staticmethod
+    def from_frame(frame: Frame) -> FrameUid:
+        """Creates a FrameUid from a Frame"""
+
+    def to_frame(self) -> Frame:
+        """Creates a Frame from a FrameUid"""
+
+    def __eq__(self, value: typing.Any) -> bool:
+        """Return self==value."""
+
+    def __ge__(self, value: typing.Any) -> bool:
+        """Return self>=value."""
+
+    def __gt__(self, value: typing.Any) -> bool:
+        """Return self>value."""
+
+    def __le__(self, value: typing.Any) -> bool:
+        """Return self<=value."""
+
+    def __lt__(self, value: typing.Any) -> bool:
+        """Return self<value."""
+
+    def __ne__(self, value: typing.Any) -> bool:
+        """Return self!=value."""
+
+    def __repr__(self) -> str:
+        """Return repr(self)."""
+
+    def __str__(self) -> str:
+        """Return str(self)."""
 
 @typing.final
 class LocalFrame:
