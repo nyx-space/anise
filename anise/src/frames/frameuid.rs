@@ -27,7 +27,13 @@ pub use super::Frame;
 use serde_dhall::{SimpleType, StaticType};
 
 #[cfg(feature = "python")]
+use pyo3::basic::CompareOp;
+#[cfg(feature = "python")]
+use pyo3::exceptions::PyTypeError;
+#[cfg(feature = "python")]
 use pyo3::prelude::*;
+#[cfg(feature = "python")]
+use pyo3::types::PyType;
 
 /// A unique frame reference that only contains enough information to build the actual Frame object.
 /// It cannot be used for any computations, is it be used in any structure apart from error structures.
@@ -210,5 +216,41 @@ impl FrameUid {
     #[setter]
     fn set_frozen_epoch(&mut self, frozen_epoch: Option<Epoch>) {
         self.frozen_epoch = frozen_epoch;
+    }
+
+    fn __str__(&self) -> String {
+        format!("{self}")
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{self} (@{self:p})")
+    }
+
+    fn __richcmp__(&self, other: &Self, op: CompareOp) -> Result<bool, PyErr> {
+        match op {
+            CompareOp::Eq => Ok(self == other),
+            CompareOp::Ne => Ok(self != other),
+            _ => Err(PyErr::new::<PyTypeError, _>(format!(
+                "{op:?} not available"
+            ))),
+        }
+    }
+
+    /// Creates a FrameUid from a Frame
+    ///
+    /// :type frame: Frame
+    /// :rtype: FrameUid
+    #[classmethod]
+    #[pyo3(name = "from_frame", signature=(frame))]
+    fn py_from_frame(_cls: Bound<'_, PyType>, frame: Frame) -> Self {
+        frame.into()
+    }
+
+    /// Converts this FrameUid to a Frame
+    ///
+    /// :rtype: Frame
+    #[allow(clippy::wrong_self_convention)]
+    fn to_frame(&self) -> Frame {
+        self.into()
     }
 }

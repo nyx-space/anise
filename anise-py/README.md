@@ -147,7 +147,7 @@ orig_state = Orbit.from_keplerian(
 )
 
 # Transform to a new frame (e.g., Earth Fixed / ITRF)
-# Note: If high-precision Earth orientation files (BPC) aren't loaded, 
+# Note: If high-precision Earth orientation files (BPC) aren't loaded,
 # this uses the IAU approximation.
 state_itrf93 = almanac.transform_to(orig_state, Frames.IAU_EARTH_FRAME)
 
@@ -248,7 +248,7 @@ Type hints are extremely useful for Python users. Building them is a bit of manu
 3.  Repeat for all submodules: `utils`, `time`, `astro`, `astro.constants`, `rotation`, `analysis` writing to a new file each time:
     1.  `python generate_stubs.py anise.astro anise.astro.pyi`
     2.  `python generate_stubs.py anise.time anise.time.pyi`
-    3.  `python generate_stubs.py anise.astro.constants anise.astro.constants.pyi`
+    3.  `python generate_stubs.py anise.constants anise.constants.pyi`
     4.  `python generate_stubs.py anise.utils anise.utils.pyi`
     5.  `python generate_stubs.py anise.rotation anise.rotation.pyi`
     6.  `python generate_stubs.py anise.analysis anise.analysis.pyi`

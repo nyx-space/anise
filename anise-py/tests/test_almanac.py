@@ -568,6 +568,12 @@ def test_mod_tod_teme():
         )
 
 
+def test_frame_uid():
+    assert Frame.from_frameuid(Frames.EARTH_J2000.to_frameuid()) == Frames.EARTH_J2000
+    uid = FrameUid(399, 399)
+    assert isinstance(uid.to_frame(), Frame)
+
+
 if __name__ == "__main__":
     # test_meta_load()
     # test_exports()

@@ -27,6 +27,8 @@ use crate::constants::celestial_objects::{
 use crate::constants::orientations::{J2000, id_from_orientation_name, orientation_name_from_id};
 use crate::errors::{AlmanacError, EphemerisSnafu, OrientationSnafu, PhysicsError};
 use crate::frames::DynamicFrame;
+#[cfg(feature = "python")]
+use crate::frames::FrameUid;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
 use crate::time::{Epoch, TimeScale, Unit};
 
@@ -281,6 +283,24 @@ impl Frame {
             Ok(_) => Ok(PyBytes::new(py, &buf)),
             Err(e) => Err(PyValueError::new_err(format!("ASN.1 encoding error: {e}"))),
         }
+    }
+
+    /// Creates a Frame from a FrameUid
+    ///
+    /// :type frame: FrameUid
+    /// :rtype: Frame
+    #[classmethod]
+    #[pyo3(name = "from_frameuid", signature=(frameuid))]
+    fn py_from_frameuid(_cls: Bound<'_, PyType>, frameuid: FrameUid) -> Self {
+        frameuid.into()
+    }
+
+    /// Converts this Frame to a FrameUid
+    ///
+    /// :rtype: FrameUid
+    #[allow(clippy::wrong_self_convention)]
+    fn to_frameuid(&self) -> FrameUid {
+        self.into()
     }
 }
 

@@ -19,7 +19,7 @@ use anise::constants::frames::*;
 use anise::frames::Frame;
 
 #[pyclass]
-#[pyo3(module = "anise.astro.constants")]
+#[pyo3(module = "anise.constants")]
 struct Frames {}
 
 #[pymethods]
@@ -123,7 +123,7 @@ impl Frames {
 }
 
 #[pyclass]
-#[pyo3(module = "anise.astro.constants")]
+#[pyo3(module = "anise.constants")]
 struct Orientations {}
 
 #[pymethods]
@@ -191,7 +191,7 @@ impl Orientations {
 }
 
 #[pyclass]
-#[pyo3(module = "anise.astro.constants")]
+#[pyo3(module = "anise.constants")]
 struct CelestialObjects {}
 
 #[pymethods]
@@ -235,7 +235,7 @@ impl CelestialObjects {
 }
 
 #[pyclass]
-#[pyo3(module = "anise.astro.constants")]
+#[pyo3(module = "anise.constants")]
 struct UsualConstants {}
 
 #[pymethods]
@@ -258,7 +258,6 @@ impl UsualConstants {
     const SPEED_OF_LIGHT_KM_S: f64 = SPEED_OF_LIGHT_KM_S;
 }
 
-// NOTE: Constant is both in anise.astro.constants and anise.constants
 #[pymodule]
 pub(crate) fn constants(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
     sm.add_class::<CelestialObjects>()?;

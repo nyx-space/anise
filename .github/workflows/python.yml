@@ -20,13 +20,13 @@ jobs:
         target: [x86_64, x86]
     steps:
       - uses: actions/checkout@v4
-        
+
       - name: Download Data
         if: steps.cache-data.outputs.cache-hit != 'true'
         shell: bash
         run: sh download_test_data.sh
 
-      - name: Setup Python on ${{ matrix.target }} 
+      - name: Setup Python on ${{ matrix.target }}
         uses: actions/setup-python@v5
         with:
           python-version: 3.12
@@ -97,8 +97,9 @@ jobs:
           set -e
           pip debug --verbose
           pip install anise --find-links anise-py/dist --force-reinstall
-          pip install pytest-notebook numpy
+          pip install -r anise-py/tests/reqs.txt
           pytest
+          jupyter nbconvert --to notebook --execute anise-py/tutorials/*.ipynb --ExecutePreprocessor.kernel_name=python
 
   windows:
     runs-on: windows-latest
@@ -128,7 +129,7 @@ jobs:
         with:
           name: wheels-windows-${{ matrix.target }}
           path: anise-py/dist
-      
+
       - name: pytest
         shell: bash
         env:
@@ -153,7 +154,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: 3.x
-      
+
       - name: Download Data
         if: steps.cache-data.outputs.cache-hit != 'true'
         shell: bash
@@ -171,7 +172,7 @@ jobs:
         with:
           name: wheels-macos-${{ matrix.platform.target }}
           path: dist
-    
+
       - name: pytest
         shell: bash
         env:
