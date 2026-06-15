@@ -11,11 +11,12 @@
 use crate::math::Matrix6;
 use core::fmt;
 use nalgebra::SymmetricEigen;
+use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 #[cfg_attr(feature = "metaload", derive(serde_dhall::StaticType))]
@@ -89,4 +90,20 @@ fn matrix_exp_symmetric(mat: Matrix6) -> Option<Matrix6> {
     let exp_eigenvalues = decomp.eigenvalues.map(|e| e.exp());
     let exp_diag = Matrix6::from_diagonal(&exp_eigenvalues);
     Some(decomp.eigenvectors * exp_diag * decomp.eigenvectors.transpose())
+}
+
+#[cfg(all(test, feature = "metaload"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_local_frame_dhall() {
+        let ric = LocalFrame::RIC;
+        let serialized = serde_dhall::serialize(&ric)
+            .static_type_annotation()
+            .to_string()
+            .unwrap();
+        let deserialized: LocalFrame = serde_dhall::from_str(&serialized).parse().unwrap();
+        assert_eq!(deserialized, ric);
+    }
 }
