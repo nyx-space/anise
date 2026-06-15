@@ -709,7 +709,7 @@ class Frame:
         """Decodes an ASN.1 DER encoded byte array into a Frame."""
 
     @staticmethod
-    def from_frameuid(frameuid: typing.Any) -> FrameUid:
+    def from_frameuid(frameuid: typing.Any) -> Frame:
         """Creates a Frame from a FrameUid"""
 
     def is_celestial(self) -> bool:
@@ -746,7 +746,7 @@ class Frame:
     def to_asn1(self) -> bytes:
         """Encodes this Frame into an ASN.1 DER encoded byte array."""
 
-    def to_frameuid(self) -> Frame:
+    def to_frameuid(self) -> FrameUid:
         """Converts this Frame to a FrameUid"""
 
     def with_ephem(self, new_ephem_id: int) -> Frame:
@@ -805,7 +805,7 @@ class FrameUid:
         """Creates a FrameUid from a Frame"""
 
     def to_frame(self) -> Frame:
-        """Creates a Frame from a FrameUid"""
+        """Converts this FrameUid to a Frame"""
 
     def __eq__(self, value: typing.Any) -> bool:
         """Return self==value."""

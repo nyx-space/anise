@@ -246,7 +246,7 @@ impl FrameUid {
         frame.into()
     }
 
-    /// Creates a Frame from a FrameUid
+    /// Converts this FrameUid to a Frame
     ///
     /// :rtype: Frame
     #[allow(clippy::wrong_self_convention)]

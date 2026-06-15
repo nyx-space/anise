@@ -287,8 +287,8 @@ impl Frame {
 
     /// Creates a Frame from a FrameUid
     ///
-    /// :type frame: Frame
-    /// :rtype: FrameUid
+    /// :type frame: FrameUid
+    /// :rtype: Frame
     #[classmethod]
     #[pyo3(name = "from_frameuid", signature=(frameuid))]
     fn py_from_frameuid(_cls: Bound<'_, PyType>, frameuid: FrameUid) -> Self {
@@ -297,7 +297,7 @@ impl Frame {
 
     /// Converts this Frame to a FrameUid
     ///
-    /// :rtype: Frame
+    /// :rtype: FrameUid
     #[allow(clippy::wrong_self_convention)]
     fn to_frameuid(&self) -> FrameUid {
         self.into()
