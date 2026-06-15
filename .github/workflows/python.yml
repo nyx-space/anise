@@ -97,7 +97,7 @@ jobs:
           set -e
           pip debug --verbose
           pip install anise --find-links anise-py/dist --force-reinstall
-          pip install numpy==2.4.0
+          pip install -r anise-py/tests/reqs.txt
           pytest
           jupyter nbconvert --to notebook --execute anise-py/tutorials/*.ipynb --ExecutePreprocessor.kernel_name=python
 
