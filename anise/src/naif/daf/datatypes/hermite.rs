@@ -97,17 +97,18 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
                 },
             });
         }
-        let num_records = slice[slice.len() - 1] as usize;
-        if num_records == 0 {
+        let num_records_f64 = slice[slice.len() - 1];
+        if !num_records_f64.is_finite() || num_records_f64 <= 0.0 {
             return Err(DecodingError::Integrity {
                 source: IntegrityError::InvalidValue {
                     dataset: Self::DATASET_NAME,
                     variable: "number of records",
-                    value: num_records as f64,
-                    reason: "must be greater than zero",
+                    value: num_records_f64,
+                    reason: "must be a finite value greater than zero",
                 },
             });
         }
+        let num_records = num_records_f64 as usize;
 
         Ok(Self {
             first_state_epoch,
@@ -656,7 +657,7 @@ mod hermite_ut {
                     dataset: "Hermite Type 12",
                     variable: "number of records",
                     value: 0.0,
-                    reason: "must be greater than zero",
+                    reason: "must be a finite value greater than zero",
                 },
             })
         {
