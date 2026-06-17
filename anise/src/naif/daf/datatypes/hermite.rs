@@ -97,7 +97,18 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
                 },
             });
         }
-        let num_records = slice[slice.len() - 1] as usize;
+        let num_records_f64 = slice[slice.len() - 1];
+        if !num_records_f64.is_finite() || num_records_f64 <= 0.0 {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::InvalidValue {
+                    dataset: Self::DATASET_NAME,
+                    variable: "number of records",
+                    value: num_records_f64,
+                    reason: "must be a finite value greater than zero",
+                },
+            });
+        }
+        let num_records = num_records_f64 as usize;
 
         Ok(Self {
             first_state_epoch,
@@ -623,6 +634,34 @@ mod hermite_ut {
                     },
                 );
             }
+        }
+    }
+
+    #[test]
+    fn type12_zero_records() {
+        use super::HermiteSetType12;
+
+        // A Type 12 segment whose trailing metadata declares num_records = 0.
+        // nth_record divides record_data.len() by num_records during evaluate, so
+        // this must be rejected at decode time rather than panicking later.
+        let mut slice = vec![0.0_f64; 10];
+        let n = slice.len();
+        slice[n - 4] = 0.0; // first state epoch
+        slice[n - 3] = 10.0; // step size
+        slice[n - 2] = 3.0; // window size - 1 => samples = 4
+        slice[n - 1] = 0.0; // num_records = 0
+
+        if HermiteSetType12::from_f64_slice(&slice)
+            != Err(DecodingError::Integrity {
+                source: IntegrityError::InvalidValue {
+                    dataset: "Hermite Type 12",
+                    variable: "number of records",
+                    value: 0.0,
+                    reason: "must be a finite value greater than zero",
+                },
+            })
+        {
+            panic!("Type 12 with zero records should be rejected at decode time");
         }
     }
 
