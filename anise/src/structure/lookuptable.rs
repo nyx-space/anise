@@ -318,6 +318,10 @@ mod lut_ut {
 
         let decoded = LookUpTable::from_der(&buf).unwrap();
         assert_eq!(decoded.by_name.len(), 1);
+        // The multi-byte char straddling the cut is dropped entirely, leaving the
+        // ASCII prefix up to the nearest char boundary.
+        let expected_name = "a".repeat(super::KEY_NAME_LEN - 1);
+        assert!(decoded.by_name.contains_key(&expected_name));
     }
 
     #[test]
