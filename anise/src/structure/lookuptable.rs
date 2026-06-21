@@ -226,8 +226,14 @@ impl<'a> Decode<'a> for LookUpTable {
 
         for (name, entry) in names.iter().zip(name_entries.iter()) {
             let key = core::str::from_utf8(name.as_bytes())?;
-            lut.by_name
-                .insert(key[..KEY_NAME_LEN.min(key.len())].to_string(), *entry);
+            // Cap the stored name at KEY_NAME_LEN bytes, but step back to the nearest
+            // char boundary so a multi-byte UTF-8 sequence straddling that index does
+            // not panic the slice.
+            let mut end = KEY_NAME_LEN.min(key.len());
+            while end > 0 && !key.is_char_boundary(end) {
+                end -= 1;
+            }
+            lut.by_name.insert(key[..end].to_string(), *entry);
         }
 
         if !lut.check_integrity() {
@@ -296,6 +302,26 @@ mod lut_ut {
         let repr_dec = LookUpTable::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
+    }
+
+    #[test]
+    fn decode_multibyte_name_over_key_len() {
+        // A name longer than KEY_NAME_LEN whose byte at the truncation index lands
+        // in the middle of a multi-byte UTF-8 char must not panic on decode.
+        let mut repr = LookUpTable::default();
+        let name = "a".repeat(super::KEY_NAME_LEN - 1) + "é";
+        assert!(name.len() > super::KEY_NAME_LEN);
+        repr.append_name(&name, 0).unwrap();
+
+        let mut buf = vec![];
+        repr.encode_to_vec(&mut buf).unwrap();
+
+        let decoded = LookUpTable::from_der(&buf).unwrap();
+        assert_eq!(decoded.by_name.len(), 1);
+        // The multi-byte char straddling the cut is dropped entirely, leaving the
+        // ASCII prefix up to the nearest char boundary.
+        let expected_name = "a".repeat(super::KEY_NAME_LEN - 1);
+        assert!(decoded.by_name.contains_key(&expected_name));
     }
 
     #[test]
