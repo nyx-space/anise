@@ -780,6 +780,31 @@ mod daf_ut {
     }
 
     #[test]
+    fn zero_summary_size_name_lookup() {
+        use crate::naif::daf::FileRecord;
+        use crate::naif::spk::summary::SPKSummaryRecord;
+        use zerocopy::IntoBytes;
+
+        let mut file_record = FileRecord::spk("TEST");
+        file_record.forward = 2;
+        file_record.nd = 0;
+        file_record.ni = 0;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(file_record.as_bytes());
+        bytes.resize(1024 * 3, 0);
+
+        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+        // Before the guard in num_entries this divided 1024 by zero and panicked.
+        // HermiteSetType13 does not implement Debug, so we cannot assert_eq the result.
+        match daf.data_from_name::<crate::naif::daf::datatypes::HermiteSetType13>("anything") {
+            Err(DAFError::NameError { name, .. }) => assert_eq!(name, "anything"),
+            Ok(_) => panic!("unexpected data for a zero summary-size record"),
+            Err(e) => panic!("unexpected error: {e}"),
+        }
+    }
+
+    #[test]
     fn test_comments_allocation_and_range() {
         use crate::naif::daf::FileRecord;
         use crate::naif::spk::summary::SPKSummaryRecord;

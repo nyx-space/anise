@@ -36,7 +36,13 @@ impl NameRecord {
     ///
     /// Note that we don't actually use `&self` here, but it's just easier to call.
     pub const fn num_entries(&self, summary_size: usize) -> usize {
-        RCRD_LEN / (summary_size * DBL_SIZE)
+        let entry_size = summary_size.saturating_mul(DBL_SIZE);
+        if entry_size == 0 {
+            // A summary size of zero (nd and ni both zero in the file record) would
+            // otherwise divide by zero here when a crafted DAF is queried by name.
+            return 0;
+        }
+        RCRD_LEN / entry_size
     }
 
     pub fn nth_name(&self, n: usize, summary_size: usize) -> &str {
