@@ -36,7 +36,7 @@ impl NameRecord {
     ///
     /// Note that we don't actually use `&self` here, but it's just easier to call.
     pub const fn num_entries(&self, summary_size: usize) -> usize {
-        let entry_size = summary_size * DBL_SIZE;
+        let entry_size = summary_size.saturating_mul(DBL_SIZE);
         if entry_size == 0 {
             // A summary size of zero (nd and ni both zero in the file record) would
             // otherwise divide by zero here when a crafted DAF is queried by name.
