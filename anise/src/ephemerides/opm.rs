@@ -238,6 +238,7 @@ impl Opm {
             writeln!(writer, "MAN_DV_3 = {:E}", man.delta_v_km_s.z).map_err(err_hdlr)?;
         }
 
+        writer.flush().map_err(err_hdlr)?;
         Ok(())
     }
 
@@ -315,7 +316,7 @@ impl Opm {
                                 lno,
                                 details: format!("could not parse OPM version `{val}`"),
                             })?;
-                    if !(1..=3).contains(&(version as i16)) {
+                    if !(1.0..=3.0).contains(&version) {
                         return Err(EphemerisError::OPMParsingError {
                             lno,
                             details: format!("CCSDS OPM version {version} not supported"),
