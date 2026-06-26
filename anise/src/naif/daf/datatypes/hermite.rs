@@ -315,6 +315,19 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 },
             });
         }
+        // A non-empty segment must carry at least a full interpolation window of states.
+        // With fewer, evaluate() recentres the window with `last_idx - 2 * num_left`, which
+        // underflows and panics when the segment is queried at an interior epoch.
+        if num_records > 0 && num_records < samples {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::InvalidValue {
+                    dataset: Self::DATASET_NAME,
+                    variable: "number of records",
+                    value: num_records as f64,
+                    reason: "must be at least the interpolation window size (samples)",
+                },
+            });
+        }
         // NOTE: The ::SIZE returns the C representation memory size of this, but we only want the number of doubles.
         let state_data_end_idx = PositionVelocityRecord::SIZE / DBL_SIZE * num_records;
         let state_data =
@@ -634,6 +647,30 @@ mod hermite_ut {
                     },
                 );
             }
+        }
+    }
+
+    #[test]
+    fn rejects_window_larger_than_records_type13() {
+        // num_records = 4 but the declared window is samples = 7. evaluate() would recentre the
+        // window with `last_idx - 2 * num_left` and underflow when queried at an interior epoch,
+        // so the segment must be rejected at decode time.
+        let mut slice = vec![0.0_f64; 30];
+        slice[28] = 6.0; // window size - 1 => samples = 7
+        slice[29] = 4.0; // num_records
+        match HermiteSetType13::from_f64_slice(&slice) {
+            Ok(_) => panic!("a window larger than the record count must be rejected"),
+            Err(e) => assert_eq!(
+                e,
+                DecodingError::Integrity {
+                    source: IntegrityError::InvalidValue {
+                        dataset: "Hermite Type 13",
+                        variable: "number of records",
+                        value: 4.0,
+                        reason: "must be at least the interpolation window size (samples)",
+                    },
+                }
+            ),
         }
     }
 
