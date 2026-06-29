@@ -18,6 +18,8 @@ use crate::{
 
 #[cfg(feature = "analysis")]
 pub mod ephemeris;
+#[cfg(feature = "analysis")]
+pub mod opm;
 pub mod paths;
 pub mod translate_to_parent;
 pub mod translations;
@@ -83,4 +85,14 @@ pub enum EphemerisError {
     OEMWritingError { details: String },
     #[snafu(display("SPICE BSP/SPK writing error: {details}"))]
     SPKWritingError { details: String },
+    #[snafu(display("CCSDS OPM parsing error on line {lno}: {details}"))]
+    OPMParsingError { lno: usize, details: String },
+    #[snafu(display("CCSDS OPM epoch parsing error on line {line}: {details}"))]
+    OPMTimeParsingError {
+        line: usize,
+        details: String,
+        source: HifitimeError,
+    },
+    #[snafu(display("CCSDS OPM writing error: {details}"))]
+    OPMWritingError { details: String },
 }

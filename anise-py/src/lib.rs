@@ -22,6 +22,7 @@ use anise::astro::Aberration;
 use anise::astro::orbit::Orbit;
 use anise::astro::{AzElRange, Location, Occultation, TerrainMask};
 use anise::ephemerides::ephemeris::{Covariance, Ephemeris, EphemerisRecord, LocalFrame};
+use anise::ephemerides::opm::{Maneuver, Opm};
 use anise::frames::FrameUid;
 use anise::frames::{DynamicFrame, EarthNutationModel, EarthPrecessionModel, Frame};
 use anise::math::rotation::{DCM, Quaternion};
@@ -86,6 +87,8 @@ pub(crate) fn astro(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
     sm.add_class::<TerrainMask>()?;
     sm.add_class::<Ephemeris>()?;
     sm.add_class::<EphemerisRecord>()?;
+    sm.add_class::<Opm>()?;
+    sm.add_class::<Maneuver>()?;
     sm.add_class::<Covariance>()?;
     sm.add_class::<LocalFrame>()?;
     sm.add_class::<DafDataType>()?;

@@ -910,6 +910,35 @@ class Location:
         """Return str(self)."""
 
 @typing.final
+class Maneuver:
+    """A single maneuver as described in a CCSDS OPM."""
+
+    delta_mass_kg: float
+    delta_v_km_s: numpy.ndarray
+    duration: time.Duration
+    epoch_ignition: time.Epoch
+    ref_frame: LocalFrame
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(
+        cls,
+        epoch_ignition: typing.Any,
+        duration: typing.Any,
+        delta_mass_kg: typing.Any,
+        ref_frame: typing.Any,
+        delta_v_km_s: typing.Any,
+    ) -> Maneuver:
+        """A single maneuver as described in a CCSDS OPM."""
+
+    def __repr__(self) -> str:
+        """Return repr(self)."""
+
+    def __str__(self) -> str:
+        """Return str(self)."""
+
+@typing.final
 class Mass:
     """Defines a spacecraft mass a the sum of the dry (structural) mass and the propellant mass, both in kilogram"""
 
@@ -981,6 +1010,46 @@ class Occultation:
 
     def is_visible(self) -> bool:
         """Returns true if the occultation percentage is less than or equal 0.001%"""
+
+    def __repr__(self) -> str:
+        """Return repr(self)."""
+
+    def __str__(self) -> str:
+        """Return str(self)."""
+
+@typing.final
+class Opm:
+    """A CCSDS Orbit Parameter Message (OPM): a single state vector"""
+
+    covariance: Covariance
+    drag_data: DragData
+    maneuvers: typing.List[Maneuver]
+    mass: Mass
+    object_id: str
+    object_name: str
+    orbit: Orbit
+    srp_data: SRPData
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls, orbit: typing.Any) -> Opm:
+        """A CCSDS Orbit Parameter Message (OPM): a single state vector"""
+
+    def add_maneuver(self, maneuver: Maneuver) -> None:
+        """Adds a maneuver to this OPM."""
+
+    @staticmethod
+    def from_ccsds_opm_file(path: str) -> Opm:
+        """Initializes a new OPM from a file path to a CCSDS OPM file."""
+
+    def write_ccsds_opm(
+        self,
+        path: str,
+        originator: typing.Optional[str] = None,
+        object_name: typing.Optional[str] = None,
+    ) -> None:
+        """Writes this OPM to CCSDS OPM at the provided path, optionally specifying an originator and/or an object name."""
 
     def __repr__(self) -> str:
         """Return repr(self)."""
