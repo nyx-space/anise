@@ -15,7 +15,7 @@ use crate::prelude::{Frame, Orbit};
 use crate::structure::spacecraft::{DragData, Mass, SRPData, SpacecraftData};
 use hifitime::{
     Duration, Epoch,
-    efmt::{Format, Formatter},
+    efmt::{Formatter, consts::ISO8601_STD},
 };
 use snafu::ResultExt;
 use std::fs::File;
@@ -93,17 +93,12 @@ impl Opm {
         originator: Option<String>,
         object_name: Option<String>,
     ) -> Result<(), EphemerisError> {
-        let file = File::create(&path).map_err(|e| EphemerisError::OPMWritingError {
-            details: format!("could not create file: {e}"),
-        })?;
-        let mut writer = BufWriter::new(file);
-
         let err_hdlr = |e| EphemerisError::OPMWritingError {
             details: format!("{e}"),
         };
 
-        let iso8601_no_ts =
-            Format::from_str("%Y-%m-%dT%H:%M:%S.%f").expect("static format string is valid");
+        let file = File::create(&path).map_err(err_hdlr)?;
+        let mut writer = BufWriter::new(file);
 
         // Header
         writeln!(writer, "CCSDS_OPM_VERS = 3.0\n").map_err(err_hdlr)?;
@@ -119,7 +114,7 @@ impl Opm {
                 Epoch::now().map_err(|e| EphemerisError::OPMWritingError {
                     details: format!("could not get current epoch: {e}"),
                 })?,
-                iso8601_no_ts,
+                ISO8601_STD,
             )
         )
         .map_err(err_hdlr)?;
@@ -130,14 +125,16 @@ impl Opm {
         )
         .map_err(err_hdlr)?;
 
-        // Metadata
+        // Metadata: use the override if given, else the stored object name, else UNKNOWN.
+        let stored_name = self.object_name.trim();
         let object_name = object_name
             .as_deref()
             .map(str::trim)
             .filter(|name| !name.is_empty())
-            .unwrap_or_else(|| {
-                let n = self.object_name.trim();
-                if n.is_empty() { "UNKNOWN" } else { n }
+            .unwrap_or(if stored_name.is_empty() {
+                "UNKNOWN"
+            } else {
+                stored_name
             });
         writeln!(writer, "OBJECT_NAME = {object_name}").map_err(err_hdlr)?;
         writeln!(writer, "OBJECT_ID = {}", self.object_id).map_err(err_hdlr)?;
@@ -162,7 +159,7 @@ impl Opm {
         writeln!(
             writer,
             "EPOCH = {}",
-            Formatter::new(self.orbit.epoch, iso8601_no_ts)
+            Formatter::new(self.orbit.epoch, ISO8601_STD)
         )
         .map_err(err_hdlr)?;
         writeln!(writer, "X = {:E}", self.orbit.radius_km.x).map_err(err_hdlr)?;
@@ -196,13 +193,8 @@ impl Opm {
         if let Some(cov) = &self.covariance {
             let cov_frame = match cov.local_frame {
                 LocalFrame::Inertial => "EME2000",
-                LocalFrame::RIC => "RTN",
+                LocalFrame::RIC | LocalFrame::RCN => "RTN",
                 LocalFrame::VNC => "TNW",
-                LocalFrame::RCN => {
-                    return Err(EphemerisError::OPMWritingError {
-                        details: "RCN frame is not supported for OPM covariance export".to_string(),
-                    });
-                }
             };
             writeln!(writer, "\nCOMMENT Covariance").map_err(err_hdlr)?;
             writeln!(writer, "COV_REF_FRAME = {cov_frame}").map_err(err_hdlr)?;
@@ -215,19 +207,14 @@ impl Opm {
         for man in &self.maneuvers {
             let ref_frame = match man.ref_frame {
                 LocalFrame::Inertial => "EME2000",
-                LocalFrame::RIC => "RTN",
+                LocalFrame::RIC | LocalFrame::RCN => "RTN",
                 LocalFrame::VNC => "TNW",
-                LocalFrame::RCN => {
-                    return Err(EphemerisError::OPMWritingError {
-                        details: "RCN frame is not supported for OPM maneuver export".to_string(),
-                    });
-                }
             };
             writeln!(writer, "\nCOMMENT Maneuver").map_err(err_hdlr)?;
             writeln!(
                 writer,
                 "MAN_EPOCH_IGNITION = {}",
-                Formatter::new(man.epoch_ignition, iso8601_no_ts)
+                Formatter::new(man.epoch_ignition, ISO8601_STD)
             )
             .map_err(err_hdlr)?;
             writeln!(writer, "MAN_DURATION = {:E}", man.duration.to_seconds()).map_err(err_hdlr)?;
