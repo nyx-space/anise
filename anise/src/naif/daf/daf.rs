@@ -220,7 +220,19 @@ impl<R: NAIFSummaryRecord> DAF<R> {
 
     /// Reads and parses the DAF summary record, starting at the provided idx (1-index!) or at the file record's forward index if no index provided.
     pub fn daf_summary(&self, idx: Option<usize>) -> Result<SummaryRecord, DAFError> {
-        let rcrd_idx = (idx.unwrap_or(self.file_record()?.fwrd_idx()) - 1) * RCRD_LEN;
+        // The forward pointer is a 1-based record index, so a value of zero is
+        // malformed; guard the subtraction so a crafted file errors out instead
+        // of underflowing.
+        let rcrd_idx = idx
+            .unwrap_or(self.file_record()?.fwrd_idx())
+            .checked_sub(1)
+            .ok_or(DecodingError::InaccessibleBytes {
+                start: 0,
+                end: RCRD_LEN,
+                size: self.bytes.len(),
+            })
+            .context(DecodingSummarySnafu { kind: R::NAME })?
+            * RCRD_LEN;
         let rcrd_bytes = self
             .bytes
             .get(rcrd_idx..rcrd_idx + RCRD_LEN)
@@ -247,7 +259,24 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         }
 
         // The file record's forward pointer points to the first summary record.
-        let rcrd_idx = (idx.unwrap_or(self.file_record()?.fwrd_idx()) - 1) * RCRD_LEN;
+        // It is a 1-based index, so reject a zero pointer rather than letting the
+        // subtraction underflow on a crafted file.
+        let rcrd_idx = match idx
+            .unwrap_or(self.file_record()?.fwrd_idx())
+            .checked_sub(1)
+            .ok_or(DecodingError::InaccessibleBytes {
+                start: 0,
+                end: RCRD_LEN,
+                size: self.bytes.len(),
+            }) {
+            Ok(it) => it * RCRD_LEN,
+            Err(source) => {
+                return Err(DAFError::DecodingSummary {
+                    kind: R::NAME,
+                    source,
+                });
+            }
+        };
         let rcrd_bytes = match self
             .bytes
             .get(rcrd_idx..rcrd_idx + RCRD_LEN)
@@ -800,6 +829,31 @@ mod daf_ut {
         match daf.data_from_name::<crate::naif::daf::datatypes::HermiteSetType13>("anything") {
             Err(DAFError::NameError { name, .. }) => assert_eq!(name, "anything"),
             Ok(_) => panic!("unexpected data for a zero summary-size record"),
+            Err(e) => panic!("unexpected error: {e}"),
+        }
+    }
+
+    #[test]
+    fn zero_forward_pointer() {
+        use crate::naif::daf::FileRecord;
+        use crate::naif::spk::summary::SPKSummaryRecord;
+        use zerocopy::IntoBytes;
+
+        let mut file_record = FileRecord::spk("TEST");
+        // A zero forward pointer is malformed: it is a 1-based record index.
+        file_record.forward = 0;
+        file_record.nd = 2;
+        file_record.ni = 6;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(file_record.as_bytes());
+        bytes.resize(1024 * 3, 0);
+
+        // Before the guard in daf_summary/data_summaries this subtraction
+        // underflowed and panicked while building the index during parse.
+        match super::DAF::<SPKSummaryRecord>::parse(&bytes[..]) {
+            Err(DAFError::DecodingSummary { .. }) => {}
+            Ok(_) => panic!("unexpected success for a zero forward pointer"),
             Err(e) => panic!("unexpected error: {e}"),
         }
     }
