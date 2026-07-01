@@ -98,18 +98,23 @@ impl FileRecord {
     }
 
     pub fn identification(&self) -> Result<&str, FileRecordError> {
-        let str_locidw =
-            core::str::from_utf8(&self.id_str).map_err(|_| FileRecordError::NoIdentifier)?;
+        // Require the record to be valid UTF-8 so it can be reported back.
+        core::str::from_utf8(&self.id_str).map_err(|_| FileRecordError::NoIdentifier)?;
 
-        if &str_locidw[0..3] != "DAF" || str_locidw.chars().nth(3) != Some('/') {
+        // The identifier is the fixed ASCII marker `DAF/` followed by the sub-type.
+        // Compare against the raw bytes: slicing the decoded string at byte offsets
+        // 3 and 4 panics if a multi-byte character straddles those offsets.
+        if &self.id_str[..4] != b"DAF/" {
             Err(FileRecordError::NotDAF)
         } else {
-            let loci = str_locidw[4..].trim();
+            let loci = core::str::from_utf8(&self.id_str[4..])
+                .map_err(|_| FileRecordError::NoIdentifier)?
+                .trim();
             match loci {
                 "SPK" => Ok("SPK"),
                 "PCK" => Ok("PCK"),
                 _ => {
-                    error!("DAF of type `{}` is not yet supported", &str_locidw[4..]);
+                    error!("DAF of type `{loci}` is not yet supported");
                     Err(FileRecordError::UnsupportedIdentifier {
                         loci: loci.to_string(),
                     })
@@ -166,6 +171,27 @@ impl FileRecord {
             endian_str: Endian::daf_endian_str(),
             ..Default::default()
         }
+    }
+}
+
+#[cfg(test)]
+mod ut_file_record {
+    use super::{FileRecord, FileRecordError};
+
+    #[test]
+    fn identification_non_ascii_id_str() {
+        // First eight bytes are valid UTF-8 but start with a 4-byte character, so
+        // slicing the decoded string at byte offset 3 or 4 would land inside it.
+        let mut rec = FileRecord::default();
+        rec.id_str = [0xF0, 0x9F, 0x98, 0x80, 0x20, 0x20, 0x20, 0x20];
+        assert_eq!(rec.identification(), Err(FileRecordError::NotDAF));
+    }
+
+    #[test]
+    fn identification_spk() {
+        let mut rec = FileRecord::default();
+        rec.id_str = *b"DAF/SPK ";
+        assert_eq!(rec.identification(), Ok("SPK"));
     }
 }
 
