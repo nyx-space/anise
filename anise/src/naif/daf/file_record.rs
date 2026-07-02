@@ -98,18 +98,17 @@ impl FileRecord {
     }
 
     pub fn identification(&self) -> Result<&str, FileRecordError> {
-        // Require the record to be valid UTF-8 so it can be reported back.
-        core::str::from_utf8(&self.id_str).map_err(|_| FileRecordError::NoIdentifier)?;
+        let str_locidw =
+            core::str::from_utf8(&self.id_str).map_err(|_| FileRecordError::NoIdentifier)?;
 
         // The identifier is the fixed ASCII marker `DAF/` followed by the sub-type.
-        // Compare against the raw bytes: slicing the decoded string at byte offsets
-        // 3 and 4 panics if a multi-byte character straddles those offsets.
-        if &self.id_str[..4] != b"DAF/" {
+        // Using `starts_with` avoids slicing at a fixed byte offset, which would
+        // panic if a multi-byte character straddled that offset. Once the ASCII
+        // `DAF/` prefix is confirmed, byte offset 4 is a valid char boundary.
+        if !str_locidw.starts_with("DAF/") {
             Err(FileRecordError::NotDAF)
         } else {
-            let loci = core::str::from_utf8(&self.id_str[4..])
-                .map_err(|_| FileRecordError::NoIdentifier)?
-                .trim();
+            let loci = str_locidw[4..].trim();
             match loci {
                 "SPK" => Ok("SPK"),
                 "PCK" => Ok("PCK"),
