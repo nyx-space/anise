@@ -288,6 +288,16 @@ impl Ephemeris {
                     };
                 } else {
                     // Matrix data!
+                    // A covariance block only holds the lower triangle of a 6x6 matrix,
+                    // so a seventh data row would index past it. Reject it here rather
+                    // than letting the matrix write panic.
+                    if cov_row >= 6 {
+                        return Err(EphemerisError::OEMParsingError {
+                            lno,
+                            details: "too many covariance rows, expected six for a 6x6 matrix"
+                                .to_string(),
+                        });
+                    }
                     let parts: Vec<&str> = line.split_whitespace().collect();
                     if parts.len() != cov_row + 1 {
                         return Err(EphemerisError::OEMParsingError {

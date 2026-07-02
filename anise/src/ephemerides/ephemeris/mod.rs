@@ -668,6 +668,16 @@ mod ut_oem {
         assert!(Ephemeris::from_ccsds_oem_file("../data/tests/ccsds/oem/MEO_60s_bad.oem").is_err());
     }
 
+    #[test]
+    fn test_parse_oem_covar_extra_row() {
+        // A covariance block with a seventh data row must be rejected rather than
+        // indexing past the 6x6 covariance matrix.
+        assert!(
+            Ephemeris::from_ccsds_oem_file("../data/tests/ccsds/oem/JPL_MGS_cov_extra_row.oem")
+                .is_err()
+        );
+    }
+
     #[rstest]
     fn test_parse_oem_covar(almanac: Almanac) {
         let ephem = Ephemeris::from_ccsds_oem_file("../data/tests/ccsds/oem/JPL_MGS_cov.oem")
