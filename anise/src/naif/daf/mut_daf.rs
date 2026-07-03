@@ -73,12 +73,12 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                     idx,
                     source: DecodingError::InaccessibleBytes {
                         start: 0,
-                        end: orig_index_end * DBL_SIZE,
+                        end: orig_index_end.saturating_mul(DBL_SIZE),
                         size: self.bytes.len(),
                     },
                 })?;
-        let orig_data_start = orig_index_start * DBL_SIZE;
-        let orig_data_end = orig_index_end * DBL_SIZE;
+        let orig_data_start = orig_index_start.saturating_mul(DBL_SIZE);
+        let orig_data_end = orig_index_end.saturating_mul(DBL_SIZE);
 
         let original_size = ((orig_data_end - orig_data_start) / DBL_SIZE) as isize;
 
@@ -161,12 +161,12 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                     idx,
                     source: DecodingError::InaccessibleBytes {
                         start: 0,
-                        end: orig_index_end * DBL_SIZE,
+                        end: orig_index_end.saturating_mul(DBL_SIZE),
                         size: self.bytes.len(),
                     },
                 })?;
-        let orig_data_start = orig_index_start * DBL_SIZE;
-        let orig_data_end = orig_index_end * DBL_SIZE;
+        let orig_data_start = orig_index_start.saturating_mul(DBL_SIZE);
+        let orig_data_end = orig_index_end.saturating_mul(DBL_SIZE);
 
         let original_size = ((orig_data_end - orig_data_start) / DBL_SIZE) as isize;
 

@@ -496,7 +496,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         // The summary's start pointer is a 1-based array index, so a zero is
         // malformed; guard the subtraction so a crafted summary errors out
         // instead of underflowing.
-        let end = this_summary.end_index() * DBL_SIZE;
+        let end = this_summary.end_index().saturating_mul(DBL_SIZE);
         let start = this_summary
             .start_index()
             .checked_sub(1)
@@ -509,7 +509,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                     size: self.bytes.len(),
                 },
             })?
-            * DBL_SIZE;
+            .saturating_mul(DBL_SIZE);
         let data: &[f64] = Ref::into_ref(
             Ref::<&[u8], [f64]>::from_bytes(
                 match self
