@@ -493,8 +493,23 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             });
         }
 
-        let start = (this_summary.start_index() - 1) * DBL_SIZE;
+        // The summary's start pointer is a 1-based array index, so a zero is
+        // malformed; guard the subtraction so a crafted summary errors out
+        // instead of underflowing.
         let end = this_summary.end_index() * DBL_SIZE;
+        let start = this_summary
+            .start_index()
+            .checked_sub(1)
+            .ok_or(DAFError::DecodingData {
+                kind: R::NAME,
+                idx,
+                source: DecodingError::InaccessibleBytes {
+                    start: 0,
+                    end,
+                    size: self.bytes.len(),
+                },
+            })?
+            * DBL_SIZE;
         let data: &[f64] = Ref::into_ref(
             Ref::<&[u8], [f64]>::from_bytes(
                 match self
@@ -854,6 +869,51 @@ mod daf_ut {
         match super::DAF::<SPKSummaryRecord>::parse(&bytes[..]) {
             Err(DAFError::DecodingSummary { .. }) => {}
             Ok(_) => panic!("unexpected success for a zero forward pointer"),
+            Err(e) => panic!("unexpected error: {e}"),
+        }
+    }
+
+    #[test]
+    fn zero_start_index_nth_data() {
+        use crate::naif::daf::FileRecord;
+        use crate::naif::daf::summary_record::SummaryRecord;
+        use crate::naif::spk::summary::SPKSummaryRecord;
+        use zerocopy::IntoBytes;
+
+        let mut file_record = FileRecord::spk("TEST");
+        file_record.forward = 2;
+        file_record.nd = 2;
+        file_record.ni = 6;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(file_record.as_bytes());
+        bytes.resize(1024, 0);
+
+        // Summary record (record 2): one summary whose start index is a malformed 0.
+        let summary_header = SummaryRecord {
+            next_record: 0.0,
+            prev_record: 0.0,
+            num_summaries: 1.0,
+        };
+        let mut summary = SPKSummaryRecord::default();
+        summary.data_type_i = 13;
+        summary.start_idx = 0; // 1-based index, so 0 is malformed
+        summary.end_idx = 5;
+
+        let mut summary_record = Vec::new();
+        summary_record.extend_from_slice(summary_header.as_bytes());
+        summary_record.extend_from_slice(summary.as_bytes());
+        summary_record.resize(1024, 0);
+        bytes.extend(summary_record);
+
+        // Name record (record 3).
+        bytes.extend(vec![0u8; 1024]);
+
+        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+        // Before the guard this subtracted 1 from a zero start index and panicked.
+        match daf.nth_data::<crate::naif::daf::datatypes::HermiteSetType13>(None, 0) {
+            Err(DAFError::DecodingData { .. }) => {}
+            Ok(_) => panic!("unexpected success for a zero start index"),
             Err(e) => panic!("unexpected error: {e}"),
         }
     }
