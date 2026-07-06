@@ -288,6 +288,15 @@ impl Ephemeris {
                     };
                 } else {
                     // Matrix data!
+                    // A covariance row is only meaningful once an EPOCH line has set up
+                    // the target epoch and its destination matrix. A stray data row before
+                    // any EPOCH would otherwise unwrap the still-empty matrix and panic.
+                    if cov_epoch.is_none() {
+                        return Err(EphemerisError::OEMParsingError {
+                            lno,
+                            details: "covariance data appears before its EPOCH line".to_string(),
+                        });
+                    }
                     // A covariance block only holds the lower triangle of a 6x6 matrix,
                     // so a seventh data row would index past it. Reject it here rather
                     // than letting the matrix write panic.

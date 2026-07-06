@@ -678,6 +678,16 @@ mod ut_oem {
         );
     }
 
+    #[test]
+    fn test_parse_oem_covar_no_epoch() {
+        // A covariance data row before any EPOCH line must be rejected rather than
+        // unwrapping the still-empty covariance matrix.
+        assert!(
+            Ephemeris::from_ccsds_oem_file("../data/tests/ccsds/oem/JPL_MGS_cov_no_epoch.oem")
+                .is_err()
+        );
+    }
+
     #[rstest]
     fn test_parse_oem_covar(almanac: Almanac) {
         let ephem = Ephemeris::from_ccsds_oem_file("../data/tests/ccsds/oem/JPL_MGS_cov.oem")
