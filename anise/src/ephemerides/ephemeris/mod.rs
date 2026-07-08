@@ -688,6 +688,19 @@ mod ut_oem {
         );
     }
 
+    #[test]
+    fn test_parse_oem_covar_stray_after_block() {
+        // Each covariance block must start from a clean slate: a stray data row in a
+        // later block before its own EPOCH line must be rejected rather than folded
+        // into a previous block's matrix.
+        assert!(
+            Ephemeris::from_ccsds_oem_file(
+                "../data/tests/ccsds/oem/JPL_MGS_cov_stray_after_block.oem"
+            )
+            .is_err()
+        );
+    }
+
     #[rstest]
     fn test_parse_oem_covar(almanac: Almanac) {
         let ephem = Ephemeris::from_ccsds_oem_file("../data/tests/ccsds/oem/JPL_MGS_cov.oem")

@@ -155,6 +155,11 @@ impl Ephemeris {
             } else if line.starts_with("COVARIANCE_START") {
                 in_state_data = false;
                 in_cov_data = true;
+                // Start each block from a clean slate so a stray data row before this
+                // block's own EPOCH line cannot latch onto a previous block's matrix.
+                cov_epoch = None;
+                cov_mat = None;
+                cov_row = 0;
             } else if line.starts_with("COVARIANCE_STOP") {
                 in_state_data = false;
                 in_cov_data = false;
@@ -370,6 +375,12 @@ impl Ephemeris {
                                 });
                             }
                         }
+                        // Clear the slot now that the matrix is stored, so any further
+                        // data rows before the next EPOCH are rejected rather than
+                        // folded into this completed matrix.
+                        cov_epoch = None;
+                        cov_mat = None;
+                        cov_row = 0;
                     }
                 }
             }
