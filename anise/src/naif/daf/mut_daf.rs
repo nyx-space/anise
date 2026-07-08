@@ -60,10 +60,25 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             });
         }
 
-        let orig_index_start = this_summary.start_index() - 1;
         let orig_index_end = this_summary.end_index();
-        let orig_data_start = orig_index_start * DBL_SIZE;
-        let orig_data_end = orig_index_end * DBL_SIZE;
+        // The summary's start pointer is a 1-based array index, so a zero is
+        // malformed; guard the subtraction so a crafted summary errors out
+        // instead of underflowing.
+        let orig_index_start =
+            this_summary
+                .start_index()
+                .checked_sub(1)
+                .ok_or(DAFError::DecodingData {
+                    kind: R::NAME,
+                    idx,
+                    source: DecodingError::InaccessibleBytes {
+                        start: 0,
+                        end: orig_index_end.saturating_mul(DBL_SIZE),
+                        size: self.bytes.len(),
+                    },
+                })?;
+        let orig_data_start = orig_index_start.saturating_mul(DBL_SIZE);
+        let orig_data_end = orig_index_end.saturating_mul(DBL_SIZE);
 
         let original_size = ((orig_data_end - orig_data_start) / DBL_SIZE) as isize;
 
@@ -133,10 +148,25 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             });
         }
 
-        let orig_index_start = this_summary.start_index() - 1;
         let orig_index_end = this_summary.end_index();
-        let orig_data_start = orig_index_start * DBL_SIZE;
-        let orig_data_end = orig_index_end * DBL_SIZE;
+        // The summary's start pointer is a 1-based array index, so a zero is
+        // malformed; guard the subtraction so a crafted summary errors out
+        // instead of underflowing.
+        let orig_index_start =
+            this_summary
+                .start_index()
+                .checked_sub(1)
+                .ok_or(DAFError::DecodingData {
+                    kind: R::NAME,
+                    idx,
+                    source: DecodingError::InaccessibleBytes {
+                        start: 0,
+                        end: orig_index_end.saturating_mul(DBL_SIZE),
+                        size: self.bytes.len(),
+                    },
+                })?;
+        let orig_data_start = orig_index_start.saturating_mul(DBL_SIZE);
+        let orig_data_end = orig_index_end.saturating_mul(DBL_SIZE);
 
         let original_size = ((orig_data_end - orig_data_start) / DBL_SIZE) as isize;
 
