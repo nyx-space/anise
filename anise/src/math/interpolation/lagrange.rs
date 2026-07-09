@@ -25,6 +25,10 @@ pub fn lagrange_eval(
         return Err(InterpolationError::CorruptedData {
             what: "list of abscissas (xs) is empty",
         });
+    } else if xs.len() > MAX_SAMPLES {
+        return Err(InterpolationError::CorruptedData {
+            what: "list of abscissas (xs) contains more items than MAX_SAMPLES (32)",
+        });
     }
 
     // At this point, we know that the lengths of items is correct, so we can directly address them without worry for overflowing the array.
@@ -64,6 +68,21 @@ pub fn lagrange_eval(
     let f = work[0];
     let df = dwork[0];
     Ok((f, df))
+}
+
+#[test]
+fn lagrange_rejects_too_many_samples() {
+    // The workspace arrays are sized to MAX_SAMPLES, so more abscissas than that used to index
+    // past them. A Type 9 ephemeris built from an untrusted OEM/STK file whose interpolation
+    // degree exceeds 32 reaches here, so the oversize input must be rejected like hermite_eval.
+    let xs: Vec<f64> = (0..MAX_SAMPLES + 1).map(|i| i as f64).collect();
+    let ys: Vec<f64> = xs.iter().map(|x| x * 2.0).collect();
+    assert_eq!(
+        lagrange_eval(&xs, &ys, 1.5),
+        Err(InterpolationError::CorruptedData {
+            what: "list of abscissas (xs) contains more items than MAX_SAMPLES (32)",
+        })
+    );
 }
 
 #[test]
