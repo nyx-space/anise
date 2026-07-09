@@ -155,6 +155,11 @@ impl Ephemeris {
             } else if line.starts_with("COVARIANCE_START") {
                 in_state_data = false;
                 in_cov_data = true;
+                // Start each block from a clean slate so a stray data row before this
+                // block's own EPOCH line cannot latch onto a previous block's matrix.
+                cov_epoch = None;
+                cov_mat = None;
+                cov_row = 0;
             } else if line.starts_with("COVARIANCE_STOP") {
                 in_state_data = false;
                 in_cov_data = false;
@@ -288,6 +293,15 @@ impl Ephemeris {
                     };
                 } else {
                     // Matrix data!
+                    // A covariance row is only meaningful once an EPOCH line has set up
+                    // the target epoch and its destination matrix. A stray data row before
+                    // any EPOCH would otherwise unwrap the still-empty matrix and panic.
+                    if cov_epoch.is_none() {
+                        return Err(EphemerisError::OEMParsingError {
+                            lno,
+                            details: "covariance data appears before its EPOCH line".to_string(),
+                        });
+                    }
                     // A covariance block only holds the lower triangle of a 6x6 matrix,
                     // so a seventh data row would index past it. Reject it here rather
                     // than letting the matrix write panic.
@@ -361,6 +375,12 @@ impl Ephemeris {
                                 });
                             }
                         }
+                        // Clear the slot now that the matrix is stored, so any further
+                        // data rows before the next EPOCH are rejected rather than
+                        // folded into this completed matrix.
+                        cov_epoch = None;
+                        cov_mat = None;
+                        cov_row = 0;
                     }
                 }
             }
