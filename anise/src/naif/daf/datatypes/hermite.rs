@@ -110,12 +110,26 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
         }
         let num_records = num_records_f64 as usize;
 
+        // Type 12 stores equal-step states, so the record area is exactly six doubles per
+        // record with no per-state epochs. Without this the divide in nth_record yields a
+        // record length below six and the PositionVelocityRecord decoder indexes past the
+        // slice. Matches the Type 8 Lagrange (equal-step) decoder.
+        let record_data = &slice[0..slice.len() - 4];
+        ensure!(
+            record_data.len() == 6 * num_records,
+            TooFewDoublesSnafu {
+                dataset: Self::DATASET_NAME,
+                need: 6 * num_records,
+                got: record_data.len(),
+            }
+        );
+
         Ok(Self {
             first_state_epoch,
             step_size,
             samples,
             num_records,
-            record_data: &slice[0..slice.len() - 4],
+            record_data,
         })
     }
 
@@ -699,6 +713,31 @@ mod hermite_ut {
             })
         {
             panic!("Type 12 with zero records should be rejected at decode time");
+        }
+    }
+
+    #[test]
+    fn type12_short_record_data() {
+        use super::HermiteSetType12;
+
+        // record_data holds six doubles but num_records = 5, so nth_record would compute a
+        // record length of one and the PositionVelocityRecord decoder would index past it.
+        // Reject the mismatch at decode time.
+        let mut slice = vec![0.0_f64; 10];
+        let n = slice.len();
+        slice[n - 4] = 0.0; // first state epoch
+        slice[n - 3] = 1.0; // step size
+        slice[n - 2] = 0.0; // window size - 1 => samples = 1
+        slice[n - 1] = 5.0; // num_records = 5
+
+        if HermiteSetType12::from_f64_slice(&slice)
+            != Err(DecodingError::TooFewDoubles {
+                dataset: "Hermite Type 12",
+                need: 30,
+                got: 6,
+            })
+        {
+            panic!("Type 12 with record data shorter than num_records must be rejected");
         }
     }
 
