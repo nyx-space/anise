@@ -115,11 +115,12 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
         // record length below six and the PositionVelocityRecord decoder indexes past the
         // slice. Matches the Type 8 Lagrange (equal-step) decoder.
         let record_data = &slice[0..slice.len() - 4];
+        let need = num_records.saturating_mul(6);
         ensure!(
-            record_data.len() == 6 * num_records,
+            record_data.len() == need,
             TooFewDoublesSnafu {
                 dataset: Self::DATASET_NAME,
-                need: 6 * num_records,
+                need,
                 got: record_data.len(),
             }
         );
