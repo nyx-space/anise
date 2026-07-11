@@ -383,6 +383,15 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
                 (dir_idx * 100) - 1
             };
 
+            // The directory index is derived from the untrusted epoch registry, whose length
+            // and values need not agree with num_records. If it lands past the epoch data the
+            // slice below would panic, so treat an out-of-range directory as corrupt data.
+            if sub_array_start_idx >= self.num_records {
+                return Err(InterpolationError::CorruptedData {
+                    what: "epoch directory index is out of bounds of the epoch data",
+                });
+            }
+
             // The block is at most 100 records long, or fewer if at the end of epoch_data.
             // Ensure end index does not exceed total number of records.
             let sub_array_end_idx = (sub_array_start_idx + 99).min(self.num_records - 1);
@@ -551,6 +560,30 @@ mod ut_lagrange {
                         value: 4.0,
                         reason: "must be at least the interpolation window size (degree + 1)",
                     },
+                }
+            ),
+        }
+    }
+
+    #[test]
+    fn type9_registry_index_out_of_bounds() {
+        // Two records (12 state doubles + 2 epochs), one epoch-registry entry, window size 2.
+        // The registry entry sits below an in-range query epoch, so the directory search yields
+        // start index 99, which points past the 2-element epoch data.
+        let mut slice = vec![0.0_f64; 17];
+        slice[12] = 0.0; // epoch_data[0]
+        slice[13] = 100.0; // epoch_data[1]
+        slice[14] = -1000.0; // single registry entry, below the query epoch
+        slice[15] = 1.0; // degree => window size 2
+        slice[16] = 2.0; // num_records
+        let set = LagrangeSetType9::from_f64_slice(&slice).unwrap();
+        let summary = SPKSummaryRecord::default();
+        match set.evaluate(Epoch::from_et_seconds(50.0), &summary) {
+            Ok(_) => panic!("an out-of-range epoch directory must be rejected"),
+            Err(e) => assert_eq!(
+                e,
+                InterpolationError::CorruptedData {
+                    what: "epoch directory index is out of bounds of the epoch data",
                 }
             ),
         }
