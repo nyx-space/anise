@@ -171,7 +171,7 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: wheels-macos-${{ matrix.platform.target }}
-          path: dist
+          path: anise-py/dist
 
       - name: pytest
         shell: bash
