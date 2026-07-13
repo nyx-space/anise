@@ -91,6 +91,12 @@ impl Almanac {
         for _ in 0..MAX_TREE_DEPTH {
             let summary = self.spk_summary_at_epoch(center_id, epoch)?.0;
             center_id = summary.center_id;
+            if of_path_len >= MAX_TREE_DEPTH {
+                return Err(EphemerisError::SPK {
+                    action: "computing path to common node",
+                    source: DAFError::MaxRecursionDepth,
+                });
+            }
             of_path[of_path_len] = Some(center_id);
             of_path_len += 1;
             if center_id == common_center {
@@ -204,5 +210,68 @@ impl Almanac {
             // This is weird and I don't think it should happen, so let's raise an error.
             Err(EphemerisError::Unreachable)
         }
+    }
+}
+
+#[cfg(test)]
+mod path_depth_ut {
+    use crate::almanac::Almanac;
+    use crate::naif::daf::{FileRecord, SummaryRecord};
+    use crate::naif::spk::summary::SPKSummaryRecord;
+    use crate::prelude::{Frame, SPK};
+    use hifitime::Epoch;
+    use zerocopy::IntoBytes;
+
+    #[test]
+    fn ephemeris_path_deeper_than_max_depth_errors() {
+        // Craft an SPK whose center chain is longer than MAX_TREE_DEPTH (8):
+        // target 10 -> 9 -> 8 -> ... -> 2 -> 1. The traversal must return a
+        // MaxRecursionDepth error rather than writing past the fixed of_path array.
+        let mut file_record = FileRecord::spk("DEEP");
+        file_record.forward = 2;
+        file_record.nd = 2;
+        file_record.ni = 6;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(file_record.as_bytes());
+        bytes.resize(1024, 0);
+
+        // Summary record (block index 1).
+        let header = SummaryRecord {
+            next_record: 0.0,
+            prev_record: 0.0,
+            num_summaries: 9.0,
+        };
+        let mut summary_block = Vec::new();
+        summary_block.extend_from_slice(header.as_bytes());
+        for target in (2..=10).rev() {
+            let mut summary = SPKSummaryRecord::default();
+            summary.start_epoch_et_s = -1e9;
+            summary.end_epoch_et_s = 1e9;
+            summary.target_id = target;
+            summary.center_id = target - 1;
+            summary.frame_id = 1;
+            summary.data_type_i = 2;
+            summary.start_idx = 1;
+            summary.end_idx = 100;
+            summary_block.extend_from_slice(summary.as_bytes());
+        }
+        summary_block.resize(1024, 0);
+        bytes.extend(summary_block);
+
+        // Name record (block index 2).
+        bytes.extend(vec![0u8; 1024]);
+
+        let spk = SPK::parse(&bytes[..]).unwrap();
+        let almanac = Almanac::from_spk(spk);
+
+        let source = Frame::from_ephem_j2000(10);
+        let epoch = Epoch::from_et_seconds(0.0);
+
+        let result = almanac.ephemeris_path_to_root(source, epoch);
+        assert!(
+            result.is_err(),
+            "a chain deeper than MAX_TREE_DEPTH must error, not panic"
+        );
     }
 }

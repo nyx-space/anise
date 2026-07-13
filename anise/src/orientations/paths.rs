@@ -171,6 +171,12 @@ impl Almanac {
                 }
             };
 
+            if of_path_len >= MAX_TREE_DEPTH {
+                return Err(OrientationError::BPC {
+                    action: "computing path to common node",
+                    source: DAFError::MaxRecursionDepth,
+                });
+            }
             of_path[of_path_len] = Some(inertial_frame_id);
             of_path_len += 1;
             if inertial_frame_id == common_center {
