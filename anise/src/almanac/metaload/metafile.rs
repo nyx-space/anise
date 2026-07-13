@@ -68,8 +68,19 @@ impl MetaFile {
                 if !url.scheme().starts_with("http") {
                     // This means it could be either a path with `file:///`, or an absolute path on Windows.
                     if url.scheme() == "file" {
-                        // Remove the first four characters plus `://`, regardless of case
-                        self.uri = self.uri[7..].to_string();
+                        // Recover the local path from the `file:` URI. A fixed `[7..]` slice
+                        // assumes the URI is always `file://` followed by the path, but the parser
+                        // also accepts shorter forms like `file:/path` and `file:path`, so on a
+                        // short URI it slices out of bounds and on a multi-byte character landing on
+                        // the offset it slices off a char boundary, panicking in both cases. Split
+                        // at the scheme separator and strip the optional `//` authority marker,
+                        // which also copes with any leading whitespace the parser trims.
+                        if let Some((_, after_scheme)) = self.uri.split_once(':') {
+                            self.uri = after_scheme
+                                .strip_prefix("//")
+                                .unwrap_or(after_scheme)
+                                .to_string();
+                        }
                     }
                     return Ok(());
                 }
@@ -390,6 +401,33 @@ mod ut_metafile {
         };
         assert!(unix_rel_path.process(true).is_ok());
         assert_eq!(unix_rel_path.uri, "../Users/me/meta.dhall".to_string());
+    }
+
+    #[test]
+    fn short_and_non_ascii_file_uris() {
+        // A `file:` URI that is not exactly `file://<path>` used to slice the raw string at a
+        // hard-coded byte offset, panicking when the URI was shorter than the offset or had a
+        // multi-byte character landing on it.
+        for uri in [
+            "file:",
+            "file:x",
+            "file:/\u{20AC}", // multi-byte char straddling the old offset
+            "file:a\u{E4}",
+        ] {
+            let mut mf = MetaFile {
+                uri: uri.to_string(),
+                crc32: None,
+            };
+            assert!(mf.process(true).is_ok(), "process panicked/failed on {uri}");
+        }
+
+        // The usual `file:///` form still resolves to the bare local path.
+        let mut mf = MetaFile {
+            uri: "file:///Users/me/meta.dhall".to_string(),
+            crc32: None,
+        };
+        mf.process(true).unwrap();
+        assert_eq!(mf.uri, "/Users/me/meta.dhall");
     }
 
     #[test]
