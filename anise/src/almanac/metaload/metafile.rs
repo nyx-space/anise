@@ -72,13 +72,15 @@ impl MetaFile {
                         // assumes the URI is always `file://` followed by the path, but the parser
                         // also accepts shorter forms like `file:/path` and `file:path`, so on a
                         // short URI it slices out of bounds and on a multi-byte character landing on
-                        // the offset it slices off a char boundary, panicking in both cases. Strip
-                        // the scheme and the optional `//` authority marker without a fixed offset.
-                        let after_scheme = &self.uri[url.scheme().len() + 1..];
-                        self.uri = after_scheme
-                            .strip_prefix("//")
-                            .unwrap_or(after_scheme)
-                            .to_string();
+                        // the offset it slices off a char boundary, panicking in both cases. Split
+                        // at the scheme separator and strip the optional `//` authority marker,
+                        // which also copes with any leading whitespace the parser trims.
+                        if let Some((_, after_scheme)) = self.uri.split_once(':') {
+                            self.uri = after_scheme
+                                .strip_prefix("//")
+                                .unwrap_or(after_scheme)
+                                .to_string();
+                        }
                     }
                     return Ok(());
                 }
