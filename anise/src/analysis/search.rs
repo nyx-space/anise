@@ -436,12 +436,19 @@ impl Almanac {
                 if let Some(id) = opt_id
                     && id == location_id
                 {
-                    match opt_name {
-                        Some(name) => location_ref = Some(format!("{name} (#{id})")),
-                        None => location_ref = Some(format!("#{id}")),
-                    };
-                    location = Some(location_data.data[idx as usize].clone());
-                    break 'outer;
+                    // The stored index comes from the loaded dataset's lookup table and is not
+                    // cross-checked against the data length when decoding, so indexing directly
+                    // panics on a dataset whose entry points past `data`. Match location_from_id
+                    // and skip this hit so a later dataset holding the id at a valid index still
+                    // resolves.
+                    if let Some(datum) = location_data.data.get(idx as usize) {
+                        match opt_name {
+                            Some(name) => location_ref = Some(format!("{name} (#{id})")),
+                            None => location_ref = Some(format!("#{id}")),
+                        };
+                        location = Some(datum.clone());
+                        break 'outer;
+                    }
                 }
             }
         }
