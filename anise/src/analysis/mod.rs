@@ -1169,4 +1169,66 @@ mod ut_analysis {
 
         // assert_eq!(events_ric2, events);
     }
+
+    #[test]
+    fn report_visibility_arcs_out_of_bounds_location_index() {
+        // A location dataset whose lookup-table entry points past its `data` vector (which a
+        // crafted or truncated location kernel can produce, since the index is not checked
+        // against the data length when decoding) must not panic the visibility search.
+        // report_event_arcs already tolerates this through location_from_id's fall-through;
+        // this checks report_visibility_arcs does too.
+        use std::path::PathBuf;
+
+        let manifest_dir =
+            PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or(".".to_string()));
+
+        let almanac = Almanac::new(
+            &manifest_dir
+                .clone()
+                .join("../data/de440s.bsp")
+                .to_string_lossy(),
+        )
+        .unwrap()
+        .load(&manifest_dir.join("../data/pck08.pca").to_string_lossy())
+        .unwrap();
+
+        let ground = Location {
+            latitude_deg: 40.427_222,
+            longitude_deg: 4.250_556,
+            height_km: 0.834_939,
+            frame: IAU_EARTH_FRAME.into(),
+            terrain_mask: vec![],
+            terrain_mask_ignored: true,
+        };
+
+        // A well-formed dataset that resolves location 42 to a valid entry.
+        let mut good = LocationDataSet::default();
+        good.push(ground, Some(42), Some("Ground")).unwrap();
+
+        // A malformed dataset that also claims location 42 but whose lookup-table index (7)
+        // points past its empty `data` vector.
+        let mut corrupt = LocationDataSet::default();
+        corrupt.lut.append_id(42, 7).unwrap();
+
+        // `corrupt` is inserted last, so the reverse iteration in report_visibility_arcs hits
+        // it first, which is exactly the case that used to panic.
+        let almanac = almanac
+            .with_location_data_as(good, Some("good".to_string()))
+            .with_location_data_as(corrupt, Some("corrupt".to_string()));
+
+        let state_spec = StateSpec {
+            target_frame: FrameSpec::Loaded(MOON_J2000),
+            observer_frame: FrameSpec::Loaded(EME2000),
+            ab_corr: Aberration::NONE,
+        };
+
+        let start = Epoch::from_gregorian_utc_at_midnight(2025, 1, 1);
+        let end = start + Unit::Day * 1;
+
+        // Before the fix this panicked with an out-of-bounds index; now it resolves against
+        // the valid dataset instead.
+        almanac
+            .report_visibility_arcs(&state_spec, 42, start, end, Unit::Minute * 10, None)
+            .unwrap();
+    }
 }
