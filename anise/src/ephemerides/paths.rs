@@ -195,6 +195,16 @@ impl Almanac {
                         return Ok((items, common_path, to_frame.ephemeris_id));
                     }
 
+                    // The two paths are each capped at MAX_TREE_DEPTH, but they are
+                    // walked together here and appended into a single fixed array, so a
+                    // crafted set of segments whose branches only meet late can push
+                    // `items` to MAX_TREE_DEPTH before the common node is reached.
+                    if items >= MAX_TREE_DEPTH {
+                        return Err(EphemerisError::SPK {
+                            action: "computing common ephemeris path",
+                            source: DAFError::MaxRecursionDepth,
+                        });
+                    }
                     common_path[items] = Some(from_id);
                     items += 1;
 
@@ -272,6 +282,70 @@ mod path_depth_ut {
         assert!(
             result.is_err(),
             "a chain deeper than MAX_TREE_DEPTH must error, not panic"
+        );
+    }
+
+    #[test]
+    fn common_ephemeris_path_concatenation_within_max_depth_errors() {
+        // Two branches whose center chains are each within MAX_TREE_DEPTH but which
+        // only meet at the shared root: `from` = 100 -> 50 -> 51 -> 52 -> 53 -> 1 and
+        // `to` = 200 -> 60 -> 1. common_ephemeris_path walks them together into one
+        // fixed array, so the concatenated length exceeds MAX_TREE_DEPTH and used to
+        // write past `common_path`. It must now return an error instead of panicking.
+        let mut file_record = FileRecord::spk("DEEP");
+        file_record.forward = 2;
+        file_record.nd = 2;
+        file_record.ni = 6;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(file_record.as_bytes());
+        bytes.resize(1024, 0);
+
+        let header = SummaryRecord {
+            next_record: 0.0,
+            prev_record: 0.0,
+            num_summaries: 7.0,
+        };
+        let mut summary_block = Vec::new();
+        summary_block.extend_from_slice(header.as_bytes());
+        // (target, center) links for the two branches sharing root 1.
+        let links = [
+            (100, 50),
+            (50, 51),
+            (51, 52),
+            (52, 53),
+            (53, 1),
+            (200, 60),
+            (60, 1),
+        ];
+        for (target, center) in links {
+            let mut summary = SPKSummaryRecord::default();
+            summary.start_epoch_et_s = -1e9;
+            summary.end_epoch_et_s = 1e9;
+            summary.target_id = target;
+            summary.center_id = center;
+            summary.frame_id = 1;
+            summary.data_type_i = 2;
+            summary.start_idx = 1;
+            summary.end_idx = 100;
+            summary_block.extend_from_slice(summary.as_bytes());
+        }
+        summary_block.resize(1024, 0);
+        bytes.extend(summary_block);
+        bytes.extend(vec![0u8; 1024]);
+
+        let spk = SPK::parse(&bytes[..]).unwrap();
+        let almanac = Almanac::from_spk(spk);
+
+        let epoch = Epoch::from_et_seconds(0.0);
+        let result = almanac.common_ephemeris_path(
+            Frame::from_ephem_j2000(100),
+            Frame::from_ephem_j2000(200),
+            epoch,
+        );
+        assert!(
+            result.is_err(),
+            "a concatenated path exceeding MAX_TREE_DEPTH must error, not panic"
         );
     }
 }

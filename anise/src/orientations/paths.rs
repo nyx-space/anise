@@ -230,6 +230,15 @@ impl Almanac {
             let common_node = to_path[to_len - 1].expect("path entry within to_len must be Some");
 
             for from_obj in from_path.iter().take(from_len).rev().skip(1) {
+                // Each path is capped at MAX_TREE_DEPTH on its own, but they are
+                // concatenated into a single fixed array here, so `to_len + from_len`
+                // can exceed it on a crafted BPC and write past `common_path`.
+                if items >= MAX_TREE_DEPTH {
+                    return Err(OrientationError::BPC {
+                        action: "computing common orientation path",
+                        source: DAFError::MaxRecursionDepth,
+                    });
+                }
                 common_path[items] =
                     Some(from_obj.expect("path entry within from_len must be Some"));
                 items += 1;
