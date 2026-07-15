@@ -174,7 +174,7 @@ impl Almanac {
         } else {
             // Either are at the ephemeris root, so we'll step through the paths until we find the common root.
             let mut common_path = [None; MAX_TREE_DEPTH];
-            let mut items: usize = 0;
+            let mut items: usize;
 
             for to_obj in to_path.iter().take(to_len) {
                 // Check the trivial case of the common node being one of the input frames
@@ -184,6 +184,13 @@ impl Almanac {
                     items = 1;
                     return Ok((items, common_path, from_frame.ephemeris_id));
                 }
+
+                // Each outer step restarts the search along `from_path`, so reset the
+                // write index. Without this, `items` keeps accumulating across outer
+                // iterations that don't find a match and eventually walks past the end
+                // of `common_path` (both paths are already capped at MAX_TREE_DEPTH by
+                // `ephemeris_path_to_root`, but their running sum was never bounded).
+                items = 0;
 
                 for from_obj in from_path.iter().take(from_len) {
                     let from_id =
@@ -195,16 +202,6 @@ impl Almanac {
                         return Ok((items, common_path, to_frame.ephemeris_id));
                     }
 
-                    // The two paths are each capped at MAX_TREE_DEPTH, but they are
-                    // walked together here and appended into a single fixed array, so a
-                    // crafted set of segments whose branches only meet late can push
-                    // `items` to MAX_TREE_DEPTH before the common node is reached.
-                    if items >= MAX_TREE_DEPTH {
-                        return Err(EphemerisError::SPK {
-                            action: "computing common ephemeris path",
-                            source: DAFError::MaxRecursionDepth,
-                        });
-                    }
                     common_path[items] = Some(from_id);
                     items += 1;
 
@@ -286,12 +283,14 @@ mod path_depth_ut {
     }
 
     #[test]
-    fn common_ephemeris_path_concatenation_within_max_depth_errors() {
+    fn common_ephemeris_path_disjoint_branches_resolve_shared_root() {
         // Two branches whose center chains are each within MAX_TREE_DEPTH but which
         // only meet at the shared root: `from` = 100 -> 50 -> 51 -> 52 -> 53 -> 1 and
-        // `to` = 200 -> 60 -> 1. common_ephemeris_path walks them together into one
-        // fixed array, so the concatenated length exceeds MAX_TREE_DEPTH and used to
-        // write past `common_path`. It must now return an error instead of panicking.
+        // `to` = 200 -> 60 -> 1. The common node (1) is not the immediate parent of
+        // `to`, so the outer walk over `to_path` steps past its first entry. That used
+        // to leave `items` accumulating from the failed step and walk `common_path`
+        // out of bounds. The real depth is 5, well within MAX_TREE_DEPTH, so the query
+        // must resolve to root 1 rather than panic or error.
         let mut file_record = FileRecord::spk("DEEP");
         file_record.forward = 2;
         file_record.nd = 2;
@@ -338,14 +337,19 @@ mod path_depth_ut {
         let almanac = Almanac::from_spk(spk);
 
         let epoch = Epoch::from_et_seconds(0.0);
-        let result = almanac.common_ephemeris_path(
-            Frame::from_ephem_j2000(100),
-            Frame::from_ephem_j2000(200),
-            epoch,
-        );
-        assert!(
-            result.is_err(),
-            "a concatenated path exceeding MAX_TREE_DEPTH must error, not panic"
+        let (items, path, common_node) = almanac
+            .common_ephemeris_path(
+                Frame::from_ephem_j2000(100),
+                Frame::from_ephem_j2000(200),
+                epoch,
+            )
+            .expect("branches sharing a depth-5 root must resolve, not overflow");
+
+        assert_eq!(common_node, 1);
+        assert_eq!(items, 5);
+        assert_eq!(
+            &path[..items],
+            &[Some(50), Some(51), Some(52), Some(53), Some(1)]
         );
     }
 }
