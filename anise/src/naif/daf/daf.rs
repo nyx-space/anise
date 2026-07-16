@@ -849,6 +849,54 @@ mod daf_ut {
     }
 
     #[test]
+    fn oversized_summary_size_describe() {
+        use crate::naif::daf::FileRecord;
+        use crate::naif::daf::summary_record::SummaryRecord;
+        use crate::naif::pretty_print::NAIFPrettyPrint;
+        use crate::naif::spk::summary::SPKSummaryRecord;
+        use zerocopy::IntoBytes;
+
+        let craft = |nd: u32, ni: u32| {
+            let mut file_record = FileRecord::spk("TEST");
+            file_record.forward = 2;
+            file_record.nd = nd;
+            file_record.ni = ni;
+
+            let mut bytes = Vec::new();
+            bytes.extend_from_slice(file_record.as_bytes());
+            bytes.resize(1024, 0);
+
+            // Summary record (record 2): one non-empty summary, so describe emits a row for it.
+            let summary_header = SummaryRecord {
+                next_record: 0.0,
+                prev_record: 0.0,
+                num_summaries: 1.0,
+            };
+            let mut summary = SPKSummaryRecord::default();
+            summary.data_type_i = 13;
+            summary.start_idx = 1;
+            summary.end_idx = 5;
+
+            bytes.extend_from_slice(summary_header.as_bytes());
+            bytes.extend_from_slice(summary.as_bytes());
+            bytes.resize(1024 * 3, 0);
+            bytes
+        };
+
+        // The number of summaries is derived from the size of the summary record, but the name of
+        // each one is looked up with the file record's own summary size: an `nd` that makes an
+        // entry larger than the 1024 byte name record used to slice past it.
+        let bytes = craft(200, 6);
+        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+        assert!(daf.describe().contains("MALFORMED NAME"));
+
+        // An `nd` of u32::MAX used to overflow the addition in summary_size itself.
+        let bytes = craft(u32::MAX, 6);
+        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+        assert!(daf.describe().contains("MALFORMED NAME"));
+    }
+
+    #[test]
     fn zero_forward_pointer() {
         use crate::naif::daf::FileRecord;
         use crate::naif::spk::summary::SPKSummaryRecord;

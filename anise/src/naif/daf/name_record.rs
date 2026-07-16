@@ -8,6 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
+use core::ops::Range;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 use crate::DBL_SIZE;
@@ -45,9 +46,28 @@ impl NameRecord {
         RCRD_LEN / entry_size
     }
 
+    /// Returns the byte range of the n-th entry, or None if it does not fit in this record.
+    ///
+    /// The summary size is derived from the `nd` and `ni` fields of the file record, which are
+    /// read straight from the file, so the range is computed with checked arithmetic and bounded
+    /// against the record rather than trusting it to address a valid entry.
+    fn entry_range(n: usize, summary_size: usize) -> Option<Range<usize>> {
+        let entry_size = summary_size.checked_mul(DBL_SIZE)?;
+        let start = n.checked_mul(entry_size)?;
+        let end = start.checked_add(entry_size)?;
+        if end > RCRD_LEN {
+            None
+        } else {
+            Some(start..end)
+        }
+    }
+
     pub fn nth_name(&self, n: usize, summary_size: usize) -> &str {
-        let this_name =
-            &self.raw_names[n * summary_size * DBL_SIZE..(n + 1) * summary_size * DBL_SIZE];
+        let Some(this_name) = Self::entry_range(n, summary_size).map(|rng| &self.raw_names[rng])
+        else {
+            warn!("malformed name record: entry {n} of {summary_size} words is out of bounds!");
+            return "MALFORMED NAME";
+        };
         match core::str::from_utf8(this_name) {
             Ok(name) => name.trim(),
             Err(e) => {
@@ -59,8 +79,11 @@ impl NameRecord {
 
     /// Changes the name of the n-th record
     pub fn set_nth_name(&mut self, n: usize, summary_size: usize, new_name: &str) {
-        let this_name =
-            &mut self.raw_names[n * summary_size * DBL_SIZE..(n + 1) * summary_size * DBL_SIZE];
+        let Some(rng) = Self::entry_range(n, summary_size) else {
+            warn!("malformed name record: entry {n} of {summary_size} words is out of bounds!");
+            return;
+        };
+        let this_name = &mut self.raw_names[rng];
 
         // Copy the name (thanks Clippy)
         let cur_len = this_name.len();

@@ -94,7 +94,9 @@ impl FileRecord {
     }
 
     pub fn summary_size(&self) -> usize {
-        (self.nd + self.ni.div_ceil(2)) as usize
+        // `nd` and `ni` are read straight from the file, so widen before summing: this addition
+        // overflows in u32 on a crafted record (e.g. an `nd` of u32::MAX).
+        (self.nd as usize).saturating_add((self.ni as usize).div_ceil(2))
     }
 
     pub fn identification(&self) -> Result<&str, FileRecordError> {
