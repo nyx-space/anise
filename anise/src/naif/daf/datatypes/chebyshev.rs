@@ -57,7 +57,11 @@ impl Type2ChebyshevSet<'_> {
         // dataset footer epoch. Use the dataset init epoch for record selection.
         let ephem_start_delta_s = epoch.to_et_seconds() - self.init_epoch.to_et_seconds();
 
-        Ok(((ephem_start_delta_s / window_duration_s) as usize + 1).min(self.num_records))
+        // A tiny interval length makes this ratio saturate the usize cast, so add with
+        // saturation to avoid an overflow panic before the clamp to num_records.
+        Ok(((ephem_start_delta_s / window_duration_s) as usize)
+            .saturating_add(1)
+            .min(self.num_records))
     }
 }
 
@@ -498,5 +502,31 @@ mod chebyshev_ut {
         assert_eq!(state[0], 2.0);
         assert_eq!(state[1], 20.0);
         assert_eq!(state[2], 200.0);
+    }
+
+    #[test]
+    fn tiny_interval_length_does_not_overflow_spline_idx() {
+        // A crafted segment with a very small interval length makes the record-selection ratio
+        // in spline_idx saturate the usize cast, so the following `+ 1` used to overflow and
+        // panic (in debug) before the clamp to num_records. Selecting the last record is fine.
+        let dataset = Type2ChebyshevSet::from_f64_slice(&[
+            0.0, 1.0, 0.0, 0.0, 0.0, // one degree-0 record
+            0.0, 1e-300, 5.0, 1.0, // init_epoch, tiny interval, rsize, num_records
+        ])
+        .unwrap();
+        let summary = SPKSummaryRecord {
+            start_epoch_et_s: 0.0,
+            end_epoch_et_s: 1e6,
+            target_id: 301,
+            center_id: 3,
+            frame_id: 1,
+            data_type_i: 2,
+            start_idx: 1,
+            end_idx: 9,
+        };
+        let epoch = Epoch::from_et_seconds(1000.0);
+        assert_eq!(dataset.spline_idx(epoch, &summary).unwrap(), 1);
+        // The full evaluate path must not panic on this input.
+        let _ = dataset.evaluate(epoch, &summary);
     }
 }
