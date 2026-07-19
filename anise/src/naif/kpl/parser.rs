@@ -334,26 +334,6 @@ pub fn convert_tpc_items(
                         if let Some(nut_prec_val) =
                             planetary_data.data.get(&Parameter::NutPrecAngles)
                         {
-                            let phase_deg =
-                                match planetary_data.data.get(&Parameter::MaxPhaseDegree) {
-                                    Some(val) => {
-                                        let deg =
-                                        (val.to_i32().map_err(|_| DataSetError::Conversion {
-                                            action: format!(
-                                                "MaxPhaseDegree must be an Integer but was {val:?}"
-                                            ),
-                                        })? + 1) as usize;
-
-                                        if deg == 0 {
-                                            return Err(DataSetError::Conversion {
-                                                action: "PhaseDegree must be non-zero".to_owned(),
-                                            });
-                                        }
-
-                                        deg
-                                    }
-                                    None => 2,
-                                };
                             let nut_prec_data = nut_prec_val.to_vec_f64().map_err(|_| {
                                 DataSetError::Conversion {
                                     action: format!(
@@ -361,6 +341,36 @@ pub fn convert_tpc_items(
                                     ),
                                 }
                             })?;
+
+                            let phase_deg = match planetary_data
+                                .data
+                                .get(&Parameter::MaxPhaseDegree)
+                            {
+                                Some(val) => {
+                                    let max_deg =
+                                        val.to_i32().map_err(|_| DataSetError::Conversion {
+                                            action: format!(
+                                                "MaxPhaseDegree must be an Integer but was {val:?}"
+                                            ),
+                                        })?;
+
+                                    // The chunk size is this degree plus one, so the degree
+                                    // has to be known good before the addition: the previous
+                                    // zero check only ever caught -1, and it sat behind an
+                                    // add that i32::MAX already overflowed.
+                                    if max_deg < 1 || max_deg as usize + 1 > nut_prec_data.len() {
+                                        return Err(DataSetError::Conversion {
+                                            action: format!(
+                                                "MaxPhaseDegree must be between 1 and {} but was {max_deg}",
+                                                nut_prec_data.len().saturating_sub(1)
+                                            ),
+                                        });
+                                    }
+
+                                    max_deg as usize + 1
+                                }
+                                None => 2,
+                            };
 
                             let mut coeffs = [PhaseAngle::<0>::default(); MAX_NUT_PREC_ANGLES];
                             let mut num = 0;
@@ -626,4 +636,72 @@ pub fn convert_fk_items(
     dataset.metadata.dataset_type = DataSetType::EulerParameterData;
 
     Ok(dataset)
+}
+
+#[cfg(test)]
+mod tpc_conversion_ut {
+    use super::*;
+
+    /// Builds the minimal TPC data for body 599 that reaches the nutation precession
+    /// angle conversion, with the provided MAX_PHASE_DEGREE.
+    fn tpc_items(max_phase_degree: i32) -> (HashMap<i32, TPCItem>, HashMap<i32, TPCItem>) {
+        let mut planetary = TPCItem {
+            body_id: Some(599),
+            ..Default::default()
+        };
+        planetary.data.insert(
+            Parameter::PoleRa,
+            KPLValue::Matrix(vec![268.056595, -0.006499, 0.0]),
+        );
+        planetary.data.insert(
+            Parameter::PoleDec,
+            KPLValue::Matrix(vec![64.495303, 0.002413, 0.0]),
+        );
+        planetary.data.insert(
+            Parameter::PrimeMeridian,
+            KPLValue::Matrix(vec![284.95, 870.536642, 0.0]),
+        );
+        planetary.data.insert(
+            Parameter::NutPrecAngles,
+            KPLValue::Matrix(vec![73.32, 91472.9]),
+        );
+        planetary.data.insert(
+            Parameter::MaxPhaseDegree,
+            KPLValue::Integer(max_phase_degree),
+        );
+
+        let mut gravity = TPCItem {
+            body_id: Some(599),
+            ..Default::default()
+        };
+        gravity.data.insert(
+            Parameter::GravitationalParameter,
+            KPLValue::Float(126686531.9),
+        );
+
+        (
+            HashMap::from([(599, planetary)]),
+            HashMap::from([(599, gravity)]),
+        )
+    }
+
+    #[test]
+    fn reject_out_of_range_max_phase_degree() {
+        // i32::MAX overflowed the `+ 1` that builds the chunk size, and the zero check
+        // that followed it only ever rejected -1.
+        for max_phase_degree in [i32::MAX, 0, -1, -5] {
+            let (planetary, gravity) = tpc_items(max_phase_degree);
+            assert!(
+                convert_tpc_items(planetary, gravity).is_err(),
+                "accepted MAX_PHASE_DEGREE of {max_phase_degree}"
+            );
+        }
+    }
+
+    #[test]
+    fn accept_in_range_max_phase_degree() {
+        let (planetary, gravity) = tpc_items(1);
+        let dataset = convert_tpc_items(planetary, gravity).unwrap();
+        assert_eq!(dataset.get_by_id(599).unwrap().num_nut_prec_angles, 1);
+    }
 }
