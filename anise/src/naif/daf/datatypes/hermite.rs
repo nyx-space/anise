@@ -86,17 +86,21 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
 
         let step_size = step_size_s.seconds();
         // NOTE: The Type 12 and 13 specify that the windows size minus one is stored!
-        let samples = slice[slice.len() - 2] as usize + 1;
-        if samples > MAX_SAMPLES {
+        // Bound this on the raw f64 rather than after the cast: a large value in the footer
+        // saturates the usize cast, so the `+ 1` overflows before the sample count is
+        // compared to MAX_SAMPLES, and a negative or NaN value would land on zero instead.
+        let samples_m1 = slice[slice.len() - 2];
+        if !(0.0..MAX_SAMPLES as f64).contains(&samples_m1) {
             return Err(DecodingError::Integrity {
                 source: IntegrityError::InvalidValue {
                     dataset: Self::DATASET_NAME,
                     variable: "number of interpolation samples",
-                    value: samples as f64,
-                    reason: "must be less than or equal to MAX_SAMPLES (32)",
+                    value: samples_m1,
+                    reason: "window size minus one must be positive and yield at most MAX_SAMPLES (32) samples",
                 },
             });
         }
+        let samples = samples_m1 as usize + 1;
         let num_records_f64 = slice[slice.len() - 1];
         if !num_records_f64.is_finite() || num_records_f64 <= 0.0 {
             return Err(DecodingError::Integrity {
@@ -319,17 +323,21 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
             });
         }
 
-        let samples = num_samples_f64 as usize + 1;
-        if samples > MAX_SAMPLES {
+        // Bound this on the raw f64 rather than after the cast: a large value in the footer
+        // saturates the usize cast, so the `+ 1` overflows before the sample count is
+        // compared to MAX_SAMPLES, and a negative value would land on zero instead.
+        if !(0.0..MAX_SAMPLES as f64).contains(&num_samples_f64) {
             return Err(DecodingError::Integrity {
                 source: IntegrityError::InvalidValue {
                     dataset: Self::DATASET_NAME,
                     variable: "number of interpolation samples",
-                    value: samples as f64,
-                    reason: "must be less than or equal to MAX_SAMPLES (32)",
+                    value: num_samples_f64,
+                    reason: "window size minus one must be positive and yield at most MAX_SAMPLES (32) samples",
                 },
             });
         }
+
+        let samples = num_samples_f64 as usize + 1;
         // A non-empty segment must carry at least a full interpolation window of states.
         // With fewer, evaluate() recentres the window with `last_idx - 2 * num_left`, which
         // underflows and panics when the segment is queried at an interior epoch.
@@ -579,7 +587,50 @@ mod hermite_ut {
         naif::daf::NAIFDataSet,
     };
 
-    use super::HermiteSetType13;
+    use super::{HermiteSetType12, HermiteSetType13};
+
+    #[test]
+    fn rejects_oversized_window_without_overflow() {
+        // A huge finite window size in the footer saturates the `as usize` cast, so the sample
+        // count used to be computed as `usize::MAX + 1` and overflowed before the MAX_SAMPLES
+        // bound was applied.
+        let mut slice = vec![0.0_f64; 16];
+        slice[14] = 1e300; // window size minus one
+        slice[15] = 2.0; // num_records
+        match HermiteSetType13::from_f64_slice(&slice) {
+            Ok(_) => panic!("an oversized interpolation window must be rejected"),
+            Err(e) => assert_eq!(
+                e,
+                DecodingError::Integrity {
+                    source: IntegrityError::InvalidValue {
+                        dataset: "Hermite Type 13",
+                        variable: "number of interpolation samples",
+                        value: 1e300,
+                        reason: "window size minus one must be positive and yield at most MAX_SAMPLES (32) samples",
+                    },
+                }
+            ),
+        }
+
+        // Same footer field on the equal-step Type 12 decoder.
+        let mut slice = vec![0.0_f64; 10];
+        slice[8] = 1e300; // window size minus one
+        slice[9] = 1.0; // num_records
+        match HermiteSetType12::from_f64_slice(&slice) {
+            Ok(_) => panic!("an oversized interpolation window must be rejected"),
+            Err(e) => assert_eq!(
+                e,
+                DecodingError::Integrity {
+                    source: IntegrityError::InvalidValue {
+                        dataset: "Hermite Type 12",
+                        variable: "number of interpolation samples",
+                        value: 1e300,
+                        reason: "window size minus one must be positive and yield at most MAX_SAMPLES (32) samples",
+                    },
+                }
+            ),
+        }
+    }
 
     #[test]
     fn too_small() {

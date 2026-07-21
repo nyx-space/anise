@@ -85,17 +85,21 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
         }
 
         let step_size = step_size_s.seconds();
-        let degree = slice[slice.len() - 2] as usize;
-        if degree + 1 > MAX_SAMPLES {
+        // Bound the degree on the raw f64 rather than after the cast: a large value in the
+        // footer saturates the usize cast, so `degree + 1` overflows before the window size
+        // is compared to MAX_SAMPLES, and a negative or NaN value would land on zero instead.
+        let degree_f64 = slice[slice.len() - 2];
+        if !(0.0..MAX_SAMPLES as f64).contains(&degree_f64) {
             return Err(DecodingError::Integrity {
                 source: IntegrityError::InvalidValue {
                     dataset: Self::DATASET_NAME,
                     variable: "interpolation window size",
-                    value: (degree + 1) as f64,
-                    reason: "must be less than or equal to MAX_SAMPLES (32)",
+                    value: degree_f64,
+                    reason: "degree must be positive and its window size (degree + 1) at most MAX_SAMPLES (32)",
                 },
             });
         }
+        let degree = degree_f64 as usize;
         let num_records = slice[slice.len() - 1] as usize;
 
         let record_data = &slice[0..slice.len() - 4];
@@ -263,17 +267,21 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
 
         // For this kind of record, the metadata is stored at the very end of the dataset
         let num_records = slice[slice.len() - 1] as usize;
-        let degree = slice[slice.len() - 2] as usize;
-        if degree + 1 > MAX_SAMPLES {
+        // Bound the degree on the raw f64 rather than after the cast: a large value in the
+        // footer saturates the usize cast, so `degree + 1` overflows before the window size
+        // is compared to MAX_SAMPLES, and a negative or NaN value would land on zero instead.
+        let degree_f64 = slice[slice.len() - 2];
+        if !(0.0..MAX_SAMPLES as f64).contains(&degree_f64) {
             return Err(DecodingError::Integrity {
                 source: IntegrityError::InvalidValue {
                     dataset: Self::DATASET_NAME,
                     variable: "interpolation window size",
-                    value: (degree + 1) as f64,
-                    reason: "must be less than or equal to MAX_SAMPLES (32)",
+                    value: degree_f64,
+                    reason: "degree must be positive and its window size (degree + 1) at most MAX_SAMPLES (32)",
                 },
             });
         }
+        let degree = degree_f64 as usize;
         // A non-empty segment must carry at least a full interpolation window of states.
         // With fewer, evaluate() recentres the window with `last_idx - 2 * num_left`, which
         // underflows and panics when the segment is queried at an interior epoch.
@@ -540,6 +548,49 @@ mod ut_lagrange {
     use super::*;
     use crate::naif::spk::summary::SPKSummaryRecord;
     use hifitime::Epoch;
+
+    #[test]
+    fn rejects_oversized_window_without_overflow() {
+        // A huge finite degree in the footer saturates the `as usize` cast, so the window size
+        // used to be computed as `usize::MAX + 1` and overflowed before the MAX_SAMPLES bound
+        // was applied.
+        let mut slice = vec![0.0_f64; 20];
+        slice[18] = 1e300; // degree
+        slice[19] = 2.0; // num_records
+        match LagrangeSetType9::from_f64_slice(&slice) {
+            Ok(_) => panic!("an oversized interpolation window must be rejected"),
+            Err(e) => assert_eq!(
+                e,
+                DecodingError::Integrity {
+                    source: IntegrityError::InvalidValue {
+                        dataset: "Lagrange Type 9",
+                        variable: "interpolation window size",
+                        value: 1e300,
+                        reason: "degree must be positive and its window size (degree + 1) at most MAX_SAMPLES (32)",
+                    },
+                }
+            ),
+        }
+
+        // Same footer field on the equal-step Type 8 decoder.
+        let mut slice = vec![0.0_f64; 10];
+        slice[8] = 1e300; // degree
+        slice[9] = 1.0; // num_records
+        match LagrangeSetType8::from_f64_slice(&slice) {
+            Ok(_) => panic!("an oversized interpolation window must be rejected"),
+            Err(e) => assert_eq!(
+                e,
+                DecodingError::Integrity {
+                    source: IntegrityError::InvalidValue {
+                        dataset: "Lagrange Type 8",
+                        variable: "interpolation window size",
+                        value: 1e300,
+                        reason: "degree must be positive and its window size (degree + 1) at most MAX_SAMPLES (32)",
+                    },
+                }
+            ),
+        }
+    }
 
     #[test]
     fn rejects_window_larger_than_records_type9() {
