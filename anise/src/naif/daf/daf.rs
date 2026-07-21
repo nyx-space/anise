@@ -894,6 +894,12 @@ mod daf_ut {
         let bytes = craft(u32::MAX, 6);
         let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
         assert!(daf.describe().contains("MALFORMED NAME"));
+
+        // A zero summary size makes every entry zero bytes wide, so any index would otherwise
+        // resolve to an empty range and be reported as a valid, blank name.
+        let bytes = craft(0, 0);
+        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+        assert!(daf.describe().contains("MALFORMED NAME"));
     }
 
     #[test]

@@ -53,6 +53,11 @@ impl NameRecord {
     /// against the record rather than trusting it to address a valid entry.
     fn entry_range(n: usize, summary_size: usize) -> Option<Range<usize>> {
         let entry_size = summary_size.checked_mul(DBL_SIZE)?;
+        if entry_size == 0 {
+            // A zero entry size would make every index compute an empty 0..0 range, which
+            // would silently succeed for any n instead of reporting a malformed record.
+            return None;
+        }
         let start = n.checked_mul(entry_size)?;
         let end = start.checked_add(entry_size)?;
         if end > RCRD_LEN {
