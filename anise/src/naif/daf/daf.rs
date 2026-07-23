@@ -331,7 +331,18 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 .index_from_name::<R>(name, self.file_record()?.summary_size())
             {
                 Ok(summary_idx) => {
-                    return Ok((&self.data_summaries(idx)?[summary_idx], idx, summary_idx));
+                    // The name record is walked with the summary size declared in the file
+                    // record, but the number of summaries the record holds is fixed by the
+                    // size of R, so those two disagree on a crafted nd/ni pair and the name
+                    // entry can sit past the last summary. Guard the lookup the same way
+                    // `nth_data` does rather than indexing out of bounds.
+                    let data_summary = self.data_summaries(idx)?.get(summary_idx).ok_or(
+                        DAFError::InvalidIndex {
+                            idx: summary_idx,
+                            kind: R::NAME,
+                        },
+                    )?;
+                    return Ok((data_summary, idx, summary_idx));
                 }
                 Err(e) => {
                     if summary.is_final_record() {
@@ -844,6 +855,37 @@ mod daf_ut {
         match daf.data_from_name::<crate::naif::daf::datatypes::HermiteSetType13>("anything") {
             Err(DAFError::NameError { name, .. }) => assert_eq!(name, "anything"),
             Ok(_) => panic!("unexpected data for a zero summary-size record"),
+            Err(e) => panic!("unexpected error: {e}"),
+        }
+    }
+
+    #[test]
+    fn name_entry_past_last_summary() {
+        use crate::naif::daf::FileRecord;
+        use crate::naif::spk::summary::SPKSummaryRecord;
+        use zerocopy::IntoBytes;
+
+        // An nd of 1 and an ni of 2 declare a two-word summary, so the name record is walked
+        // as 64 entries of 16 bytes while the summary record still only holds 25 SPK summaries.
+        let mut file_record = FileRecord::spk("TEST");
+        file_record.forward = 2;
+        file_record.nd = 1;
+        file_record.ni = 2;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(file_record.as_bytes());
+        bytes.resize(3 * super::RCRD_LEN, 0);
+
+        // Name record (record 3), with the queried name planted at entry 30.
+        let name_rcrd = 2 * super::RCRD_LEN;
+        bytes[name_rcrd..name_rcrd + super::RCRD_LEN].fill(b' ');
+        bytes[name_rcrd + 30 * 16..name_rcrd + 30 * 16 + 4].copy_from_slice(b"BOOM");
+
+        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+        // Before the guard this indexed the 25 summaries with entry 30 and panicked.
+        match daf.summary_from_name("BOOM") {
+            Err(DAFError::InvalidIndex { idx, .. }) => assert_eq!(idx, 30),
+            Ok(_) => panic!("unexpected summary for a name past the last one"),
             Err(e) => panic!("unexpected error: {e}"),
         }
     }
