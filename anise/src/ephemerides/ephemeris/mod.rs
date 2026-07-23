@@ -544,11 +544,13 @@ impl IntoIterator for Ephemeris {
 
 #[cfg(test)]
 mod ut_oem {
-    use super::{Almanac, DataType, Ephemeris, LocalFrame};
+    use super::{Almanac, DataType, Ephemeris, EphemerisRecord, LocalFrame};
     use crate::analysis::prelude::OrbitalElement;
-    use crate::prelude::NAIFSummaryRecord;
+    use crate::constants::frames::EARTH_J2000;
+    use crate::prelude::{NAIFSummaryRecord, Orbit};
     use hifitime::{Epoch, TimeSeries, Unit};
     use nalgebra::{Matrix6, SymmetricEigen, Vector6};
+    use std::collections::BTreeMap;
     use std::{fs::File, io::Write};
 
     use rstest::*;
@@ -1022,5 +1024,47 @@ mod ut_oem {
         // Verify Symmetry
         assert!((mat0[(0, 1)] - 2.0).abs() < 1e-9);
         assert!((mat0[(5, 2)] - 18.0).abs() < 1e-9); // C[2][5] symmetric to C[5][2] (value 18)
+    }
+
+    #[test]
+    fn oem_rejects_zero_interpolation_degree() {
+        // A degree of zero leaves no samples to interpolate with, and it used to underflow the
+        // window size computation when the parsed ephemeris was written back out as a BSP.
+        let path = std::env::temp_dir().join("anise_oem_zero_degree.oem");
+        let mut file = File::create(&path).unwrap();
+        file.write_all(
+            b"CCSDS_OEM_VERS = 2.0\n\
+              OBJECT_ID = TEST\n\
+              CENTER_NAME = EARTH\n\
+              REF_FRAME = EME2000\n\
+              TIME_SYSTEM = UTC\n\
+              INTERPOLATION = HERMITE\n\
+              INTERPOLATION_DEGREE = 0\n\
+              META_STOP\n\
+              2020-06-01T12:00:00 7000.0 0.0 0.0 0.0 7.5 0.0\n",
+        )
+        .unwrap();
+        drop(file);
+
+        assert!(Ephemeris::from_ccsds_oem_file(path.to_str().unwrap()).is_err());
+    }
+
+    #[test]
+    fn bsp_writer_rejects_zero_degree() {
+        let epoch = Epoch::from_gregorian_utc_at_noon(2020, 6, 1);
+        let orbit = Orbit::from_cartesian_pos_vel(
+            Vector6::new(7000.0, 0.0, 0.0, 0.0, 7.5, 0.0),
+            epoch,
+            EARTH_J2000,
+        );
+        let mut state_data = BTreeMap::new();
+        state_data.insert(epoch, EphemerisRecord { orbit, covar: None });
+        let ephem = Ephemeris {
+            object_id: "TEST".to_string(),
+            degree: 0,
+            interpolation: DataType::Type13HermiteUnequalStep,
+            state_data,
+        };
+        assert!(ephem.to_spice_bsp(-999, None).is_err());
     }
 }

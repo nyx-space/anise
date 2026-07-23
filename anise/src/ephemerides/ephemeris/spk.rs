@@ -38,6 +38,15 @@ impl Ephemeris {
             });
         }
 
+        // The Hermite branch below stores (degree - 1) / 2 as the window size, so a degree of
+        // zero underflows. Nothing can be interpolated with it either, so reject it up front.
+        ensure!(
+            self.degree > 0,
+            SPKWritingSnafu {
+                details: "interpolation degree must be strictly positive".to_string()
+            }
+        );
+
         if let Some(data_type) = data_type {
             ensure!(
                 [

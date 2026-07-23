@@ -126,6 +126,14 @@ impl Ephemeris {
                     parse_one_val(lno, line, "no value for INTERPOLATION_DEGREE")?.to_lowercase();
 
                 match interp_str.parse::<usize>() {
+                    // A degree of zero leaves no samples to interpolate with, and the SPK
+                    // writer subtracts one from it, so reject it here like the Python setter does.
+                    Ok(0) => {
+                        return Err(EphemerisError::OEMParsingError {
+                            lno,
+                            details: "INTERPOLATION_DEGREE must be strictly positive".to_string(),
+                        });
+                    }
                     Ok(ideg) => degree = ideg,
                     Err(_) => {
                         return Err(EphemerisError::OEMParsingError {
