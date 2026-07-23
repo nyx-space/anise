@@ -174,7 +174,7 @@ impl Almanac {
         } else {
             // Either are at the ephemeris root, so we'll step through the paths until we find the common root.
             let mut common_path = [None; MAX_TREE_DEPTH];
-            let mut items: usize = 0;
+            let mut items: usize;
 
             for to_obj in to_path.iter().take(to_len) {
                 // Check the trivial case of the common node being one of the input frames
@@ -184,6 +184,13 @@ impl Almanac {
                     items = 1;
                     return Ok((items, common_path, from_frame.ephemeris_id));
                 }
+
+                // Each outer step restarts the search along `from_path`, so reset the
+                // write index. Without this, `items` keeps accumulating across outer
+                // iterations that don't find a match and eventually walks past the end
+                // of `common_path` (both paths are already capped at MAX_TREE_DEPTH by
+                // `ephemeris_path_to_root`, but their running sum was never bounded).
+                items = 0;
 
                 for from_obj in from_path.iter().take(from_len) {
                     let from_id =
@@ -272,6 +279,77 @@ mod path_depth_ut {
         assert!(
             result.is_err(),
             "a chain deeper than MAX_TREE_DEPTH must error, not panic"
+        );
+    }
+
+    #[test]
+    fn common_ephemeris_path_disjoint_branches_resolve_shared_root() {
+        // Two branches whose center chains are each within MAX_TREE_DEPTH but which
+        // only meet at the shared root: `from` = 100 -> 50 -> 51 -> 52 -> 53 -> 1 and
+        // `to` = 200 -> 60 -> 1. The common node (1) is not the immediate parent of
+        // `to`, so the outer walk over `to_path` steps past its first entry. That used
+        // to leave `items` accumulating from the failed step and walk `common_path`
+        // out of bounds. The real depth is 5, well within MAX_TREE_DEPTH, so the query
+        // must resolve to root 1 rather than panic or error.
+        let mut file_record = FileRecord::spk("DEEP");
+        file_record.forward = 2;
+        file_record.nd = 2;
+        file_record.ni = 6;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(file_record.as_bytes());
+        bytes.resize(1024, 0);
+
+        let header = SummaryRecord {
+            next_record: 0.0,
+            prev_record: 0.0,
+            num_summaries: 7.0,
+        };
+        let mut summary_block = Vec::new();
+        summary_block.extend_from_slice(header.as_bytes());
+        // (target, center) links for the two branches sharing root 1.
+        let links = [
+            (100, 50),
+            (50, 51),
+            (51, 52),
+            (52, 53),
+            (53, 1),
+            (200, 60),
+            (60, 1),
+        ];
+        for (target, center) in links {
+            let mut summary = SPKSummaryRecord::default();
+            summary.start_epoch_et_s = -1e9;
+            summary.end_epoch_et_s = 1e9;
+            summary.target_id = target;
+            summary.center_id = center;
+            summary.frame_id = 1;
+            summary.data_type_i = 2;
+            summary.start_idx = 1;
+            summary.end_idx = 100;
+            summary_block.extend_from_slice(summary.as_bytes());
+        }
+        summary_block.resize(1024, 0);
+        bytes.extend(summary_block);
+        bytes.extend(vec![0u8; 1024]);
+
+        let spk = SPK::parse(&bytes[..]).unwrap();
+        let almanac = Almanac::from_spk(spk);
+
+        let epoch = Epoch::from_et_seconds(0.0);
+        let (items, path, common_node) = almanac
+            .common_ephemeris_path(
+                Frame::from_ephem_j2000(100),
+                Frame::from_ephem_j2000(200),
+                epoch,
+            )
+            .expect("branches sharing a depth-5 root must resolve, not overflow");
+
+        assert_eq!(common_node, 1);
+        assert_eq!(items, 5);
+        assert_eq!(
+            &path[..items],
+            &[Some(50), Some(51), Some(52), Some(53), Some(1)]
         );
     }
 }
