@@ -346,10 +346,85 @@ impl Encode for Ellipsoid {
 
 impl<'a> Decode<'a> for Ellipsoid {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
+        let semi_major_equatorial_radius_km: f64 = decoder.decode()?;
+        let semi_minor_equatorial_radius_km: f64 = decoder.decode()?;
+        let polar_radius_km: f64 = decoder.decode()?;
+
+        // Every real body has strictly positive, finite radii; the surface, geodetic and
+        // eclipse routines divide by them (and by the mean/polar radius) without guarding
+        // against a zero, so a crafted kernel carrying a non-positive or non-finite radius
+        // would silently turn every query into a NaN. Reject it here like the other decoders
+        // reject their out-of-range values.
+        for radius_km in [
+            semi_major_equatorial_radius_km,
+            semi_minor_equatorial_radius_km,
+            polar_radius_km,
+        ] {
+            if !radius_km.is_finite() || radius_km <= 0.0 {
+                return Err(der::Error::new(
+                    der::ErrorKind::Value {
+                        tag: der::Tag::Real,
+                    },
+                    der::Length::ONE,
+                ));
+            }
+        }
+
         Ok(Self {
-            semi_major_equatorial_radius_km: decoder.decode()?,
-            semi_minor_equatorial_radius_km: decoder.decode()?,
-            polar_radius_km: decoder.decode()?,
+            semi_major_equatorial_radius_km,
+            semi_minor_equatorial_radius_km,
+            polar_radius_km,
         })
+    }
+}
+
+#[cfg(test)]
+mod ellipsoid_ut {
+    use super::Ellipsoid;
+    use der::{Decode, Encode};
+
+    #[test]
+    fn reject_non_positive_or_non_finite_radii() {
+        for bad in [
+            Ellipsoid {
+                semi_major_equatorial_radius_km: 0.0,
+                semi_minor_equatorial_radius_km: 0.0,
+                polar_radius_km: 0.0,
+            },
+            Ellipsoid {
+                semi_major_equatorial_radius_km: 6378.0,
+                semi_minor_equatorial_radius_km: -1.0,
+                polar_radius_km: 6356.0,
+            },
+            Ellipsoid {
+                semi_major_equatorial_radius_km: f64::NAN,
+                semi_minor_equatorial_radius_km: 6378.0,
+                polar_radius_km: 6356.0,
+            },
+            Ellipsoid {
+                semi_major_equatorial_radius_km: f64::INFINITY,
+                semi_minor_equatorial_radius_km: 6378.0,
+                polar_radius_km: 6356.0,
+            },
+        ] {
+            let mut buf = vec![];
+            bad.encode_to_vec(&mut buf).unwrap();
+            assert!(
+                Ellipsoid::from_der(&buf).is_err(),
+                "decoded an ellipsoid with a non-positive or non-finite radius: {bad:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn valid_radii_round_trip() {
+        let earth = Ellipsoid {
+            semi_major_equatorial_radius_km: 6378.1366,
+            semi_minor_equatorial_radius_km: 6378.1366,
+            polar_radius_km: 6356.7519,
+        };
+        let mut buf = vec![];
+        earth.encode_to_vec(&mut buf).unwrap();
+        assert_eq!(Ellipsoid::from_der(&buf).unwrap(), earth);
     }
 }
