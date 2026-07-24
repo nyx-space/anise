@@ -32,7 +32,7 @@ def get_pr_metadata():
 
 
 def get_pr_diff():
-    response = requests.get(f"https://patch-diff.githubusercontent.com/raw/nyx-space/nyx/pull/{PR_NUMBER}.patch")
+    response = requests.get(f"https://patch-diff.githubusercontent.com/raw/nyx-space/anise/pull/{PR_NUMBER}.patch")
     response.raise_for_status()
     return response.text
 
