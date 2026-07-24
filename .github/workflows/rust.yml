@@ -1,4 +1,4 @@
-name: ANISE Rust
+name: Rust
 
 on:
   push:
@@ -47,7 +47,7 @@ jobs:
         env:
           LAGRANGE_BSP: gmat-lagrange.bsp
         run: cargo test --release --workspace --exclude anise-gui --exclude anise-py
-      
+
       - name: Test rust_embed build
         run: |
           # Clean up the data folder as if we were on crates.io
