@@ -1,4 +1,4 @@
-name: ANISE C++
+name: C++
 
 on:
   push:

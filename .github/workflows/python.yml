@@ -1,4 +1,4 @@
-name: ANISE Python
+name: Python
 
 on:
   push:

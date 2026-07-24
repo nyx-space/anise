@@ -1,8 +1,8 @@
-name: "ANISE Intelligent Code Review"
+name: "Intelligent Code Review"
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, synchronize]
   issue_comment:
     types: [created]
 
