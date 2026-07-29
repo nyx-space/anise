@@ -252,6 +252,15 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
             self.num_records - 1
         };
 
+        // A new start epoch that is later than the new end epoch selects a first record past
+        // the last one, so the byte range below is reversed and the slice panics. Reject the
+        // inverted window rather than letting it abort.
+        if start_idx > end_idx {
+            return Err(InterpolationError::CorruptedData {
+                what: "truncation start epoch is after its end epoch",
+            });
+        }
+
         self.record_data = &self.record_data[start_idx * self.rsize..(end_idx + 1) * self.rsize];
         self.num_records = self.record_data.len() / self.rsize;
         self.init_epoch = self
@@ -528,5 +537,36 @@ mod chebyshev_ut {
         assert_eq!(dataset.spline_idx(epoch, &summary).unwrap(), 1);
         // The full evaluate path must not panic on this input.
         let _ = dataset.evaluate(epoch, &summary);
+    }
+
+    #[test]
+    fn truncate_rejects_reversed_window() {
+        let dataset = Type2ChebyshevSet::from_f64_slice(&[
+            5.0, 5.0, 1.0, 0.0, 0.0, // record 0 (midpoint, radius, x, y, z)
+            15.0, 5.0, 1.0, 0.0, 0.0, // record 1
+            25.0, 5.0, 1.0, 0.0, 0.0, // record 2
+            0.0, 10.0, 5.0, 3.0, // init_epoch, interval, rsize, num_records
+        ])
+        .unwrap();
+        let summary = SPKSummaryRecord {
+            start_epoch_et_s: 0.0,
+            end_epoch_et_s: 30.0,
+            target_id: 301,
+            center_id: 3,
+            frame_id: 1,
+            data_type_i: 2,
+            start_idx: 1,
+            end_idx: 13,
+        };
+        // new_start (25 s) is later than new_end (5 s): both in bounds but inverted.
+        let res = dataset.truncate(
+            &summary,
+            Some(Epoch::from_et_seconds(25.0)),
+            Some(Epoch::from_et_seconds(5.0)),
+        );
+        assert!(
+            res.is_err(),
+            "reversed truncation window must error, not panic"
+        );
     }
 }
