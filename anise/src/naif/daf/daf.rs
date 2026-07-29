@@ -636,10 +636,22 @@ impl<R: NAIFSummaryRecord> DAF<R> {
 
         let file_rec = self.file_record()?;
         let mut file_rcrd = Vec::from(file_rec.as_bytes());
-        file_rcrd.extend(vec![
-            0x0;
-            (file_rec.fwrd_idx() - 1) * RCRD_LEN - file_rcrd.len()
-        ]);
+        // The forward pointer is a 1-based record index of the first summary record, read
+        // straight from the file. The records between the file record and it hold comments, so
+        // pad up to it; a pointer below 2 makes this length underflow. Guard it like daf_summary
+        // does instead of panicking (or requesting a usize::MAX allocation in release).
+        let comment_pad = file_rec
+            .fwrd_idx()
+            .checked_sub(1)
+            .and_then(|records| records.checked_mul(RCRD_LEN))
+            .and_then(|len| len.checked_sub(file_rcrd.len()))
+            .ok_or(DecodingError::InaccessibleBytes {
+                start: file_rcrd.len(),
+                end: file_rec.fwrd_idx().saturating_mul(RCRD_LEN),
+                size: self.bytes.len(),
+            })
+            .context(DecodingSummarySnafu { kind: R::NAME })?;
+        file_rcrd.extend(vec![0x0; comment_pad]);
         fs.write_all(&file_rcrd).map_err(|e| DAFError::IO {
             action: "writing file record".to_string(),
             source: InputOutputError::IOError { kind: e.kind() },
@@ -1061,6 +1073,36 @@ mod daf_ut {
             );
         } else {
             panic!("No comments found!");
+        }
+    }
+
+    #[test]
+    fn persist_rejects_malformed_forward_pointer() {
+        use crate::naif::daf::FileRecord;
+        use crate::naif::spk::summary::SPKSummaryRecord;
+        use zerocopy::IntoBytes;
+
+        // A forward pointer of 1 places the first summary record on top of the file record.
+        // Such a file still parses, but persist() padded the file record up to that record
+        // with (fwrd_idx - 1) * RCRD_LEN - file_record_len, which underflows for any forward
+        // pointer below 2 and used to panic (or request a usize::MAX allocation in release).
+        let mut file_record = FileRecord::spk("TEST");
+        file_record.forward = 1;
+        file_record.nd = 2;
+        file_record.ni = 6;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(file_record.as_bytes());
+        bytes.resize(1024, 0);
+        bytes.extend(vec![0u8; 1024 * 3]);
+
+        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+
+        let tmp = std::env::temp_dir().join("anise_persist_bad_forward.bsp");
+        match daf.persist(&tmp) {
+            Err(DAFError::DecodingSummary { .. }) => {}
+            Ok(_) => panic!("unexpected success for a forward pointer below 2"),
+            Err(e) => panic!("unexpected error: {e}"),
         }
     }
 }
