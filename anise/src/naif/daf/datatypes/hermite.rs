@@ -168,6 +168,15 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
 
         let delta_t_s = (epoch - self.first_state_epoch).to_seconds();
         let step_size_s = self.step_size.to_seconds();
+        // A zero step size comes straight from the footer, which from_f64_slice only checks
+        // for finiteness, so the division below yields an infinite index that saturates the
+        // usize cast and overflows `first_idx + samples`. The equal-step Lagrange Type 8
+        // decoder guards this the same way.
+        if step_size_s.abs() < f64::EPSILON {
+            return Err(InterpolationError::CorruptedData {
+                what: "step size is zero",
+            });
+        }
         let float_index = delta_t_s / step_size_s;
 
         let mut first_idx = if self.samples.is_multiple_of(2) {
@@ -829,6 +838,39 @@ mod hermite_ut {
         {
             panic!("Type 12 with record data shorter than num_records must be rejected");
         }
+    }
+
+    #[test]
+    fn type12_zero_step_size_does_not_panic() {
+        use super::HermiteSetType12;
+        use crate::naif::daf::NAIFDataSet;
+        use crate::naif::spk::summary::SPKSummaryRecord;
+        use hifitime::Epoch;
+
+        // A Type 12 segment whose footer declares a zero step size decodes fine (the size is
+        // only checked for finiteness). Evaluating at an interior epoch used to divide the
+        // query offset by zero, producing an infinite index that saturated the usize cast and
+        // overflowed `first_idx + samples`.
+        let num_records = 4;
+        let mut slice = vec![0.0_f64; num_records * 6 + 4];
+        let n = slice.len();
+        slice[n - 4] = 0.0; // first state epoch
+        slice[n - 3] = 0.0; // step size
+        slice[n - 2] = 3.0; // window size - 1 => samples = 4
+        slice[n - 1] = num_records as f64;
+
+        let dataset = HermiteSetType12::from_f64_slice(&slice).unwrap();
+
+        let mut summary = SPKSummaryRecord::default();
+        summary.start_epoch_et_s = 0.0;
+        summary.end_epoch_et_s = 100.0;
+
+        assert!(
+            dataset
+                .evaluate(Epoch::from_et_seconds(50.0), &summary)
+                .is_err(),
+            "zero step size must error, not panic"
+        );
     }
 
     #[test]
