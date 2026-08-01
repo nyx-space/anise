@@ -244,7 +244,7 @@ impl Almanac {
         distance_unit: LengthUnit,
         time_unit: TimeUnit,
     ) -> Result<CartesianState, EphemerisError> {
-        let dist_unit_factor = LengthUnit::Kilometer.from_meters() * distance_unit.to_meters();
+        let dist_unit_factor = LengthUnit::Kilometer.to_meters() * distance_unit.from_meters();
         let time_unit_factor = time_unit.in_seconds();
 
         let state = CartesianState {

@@ -216,7 +216,7 @@ impl Almanac {
         // Compute the frame translation
         let dcm = self.rotate(from_frame, to_frame, epoch)?;
 
-        let dist_unit_factor = LengthUnit::Kilometer.from_meters() * distance_unit.to_meters();
+        let dist_unit_factor = LengthUnit::Kilometer.to_meters() * distance_unit.from_meters();
         let time_unit_factor = time_unit.in_seconds();
 
         let input_state = CartesianState {
