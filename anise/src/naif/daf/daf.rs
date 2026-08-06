@@ -43,10 +43,39 @@ pub(crate) const RCRD_LEN: usize = 1024;
 #[derive(Clone, Default, Debug, PartialEq)]
 pub struct DAF<R: NAIFSummaryRecord> {
     pub bytes: BytesMut,
+    pub file_record: FileRecord,
     /// CRC32 field enables memory scrubbing, reducing memory errors in a radiation-laden environment.
     pub crc32: Option<u32>,
     /// Index of the NAIF ID to its summary record only if all of the summaries for this ID are chronologically ordered. Enables binary search for that ID.
     pub index: HashMap<i32, Vec<(R, Option<usize>, usize)>>,
+}
+
+/// Reads and parses the file record from the DAF bytes.
+/// The file record is always the first 1024 bytes of the file.
+fn file_record<R: NAIFSummaryRecord>(bytes: &[u8]) -> Result<FileRecord, DAFError> {
+    let file_record = FileRecord::read_from_bytes(
+        bytes
+            .get(..FileRecord::SIZE)
+            .ok_or_else(|| DecodingError::InaccessibleBytes {
+                start: 0,
+                end: FileRecord::SIZE,
+                size: bytes.len(),
+            })
+            .context(DecodingDataSnafu {
+                idx: 0_usize,
+                kind: R::NAME,
+            })?,
+    )
+    .map_err(|_| DAFError::DecodingData {
+        kind: R::NAME,
+        idx: 0,
+        source: DecodingError::Casting,
+    })?;
+    // Check that the endian-ness is compatible with this platform.
+    file_record
+        .endianness()
+        .context(FileRecordSnafu { kind: R::NAME })?;
+    Ok(file_record)
 }
 
 impl<R: NAIFSummaryRecord> DAF<R> {
@@ -63,14 +92,17 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     /// 2.  The CRC32 checksum of the bytes is computed.
     /// 3.  The `file_record` and `name_record` are parsed to ensure the file is a valid DAF.
     pub fn parse<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DAFError> {
+        // Parse file record
+
         let mut me = Self {
+            file_record: file_record::<R>(&bytes[..])?,
             bytes: BytesMut::from(&bytes[..]),
             crc32: None,
             index: HashMap::new(),
         };
         // Check that the file record and name record can be parsed successfully.
         // This validates that the file is a DAF and that the endianness is correct.
-        me.file_record()?;
+        // me.file_record()?;
         // Ensure tha twe can parse the first name record.
         me.name_record(None)?;
         // Build the index for all of the NAIF IDs which are ordered in the file.
@@ -174,29 +206,30 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     /// Reads and parses the file record from the DAF bytes.
     /// The file record is always the first 1024 bytes of the file.
     pub fn file_record(&self) -> Result<FileRecord, DAFError> {
-        let file_record = FileRecord::read_from_bytes(
-            self.bytes
-                .get(..FileRecord::SIZE)
-                .ok_or_else(|| DecodingError::InaccessibleBytes {
-                    start: 0,
-                    end: FileRecord::SIZE,
-                    size: self.bytes.len(),
-                })
-                .context(DecodingDataSnafu {
-                    idx: 0_usize,
-                    kind: R::NAME,
-                })?,
-        )
-        .map_err(|_| DAFError::DecodingData {
-            kind: R::NAME,
-            idx: 0,
-            source: DecodingError::Casting,
-        })?;
-        // Check that the endian-ness is compatible with this platform.
-        file_record
-            .endianness()
-            .context(FileRecordSnafu { kind: R::NAME })?;
-        Ok(file_record)
+        Ok(self.file_record)
+        // let file_record = FileRecord::read_from_bytes(
+        //     self.bytes
+        //         .get(..FileRecord::SIZE)
+        //         .ok_or_else(|| DecodingError::InaccessibleBytes {
+        //             start: 0,
+        //             end: FileRecord::SIZE,
+        //             size: self.bytes.len(),
+        //         })
+        //         .context(DecodingDataSnafu {
+        //             idx: 0_usize,
+        //             kind: R::NAME,
+        //         })?,
+        // )
+        // .map_err(|_| DAFError::DecodingData {
+        //     kind: R::NAME,
+        //     idx: 0,
+        //     source: DecodingError::Casting,
+        // })?;
+        // // Check that the endian-ness is compatible with this platform.
+        // file_record
+        //     .endianness()
+        //     .context(FileRecordSnafu { kind: R::NAME })?;
+        // Ok(file_record)
     }
 
     /// Reads and parses the name record from the DAF bytes.

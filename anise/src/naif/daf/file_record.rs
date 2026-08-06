@@ -44,7 +44,7 @@ pub enum FileRecordError {
     EmptyRecord,
 }
 
-#[derive(Debug, Clone, FromBytes, KnownLayout, Immutable, IntoBytes, PartialEq)]
+#[derive(Debug, Copy, Clone, FromBytes, KnownLayout, Immutable, IntoBytes, PartialEq)]
 #[repr(C)]
 pub struct FileRecord {
     pub id_str: [u8; 8],

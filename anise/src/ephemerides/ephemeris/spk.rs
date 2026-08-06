@@ -180,6 +180,7 @@ impl Ephemeris {
 
         // Finally, builds the DAF!
         let mut spk = SPK {
+            file_record: FileRecord::default(),
             bytes: BytesMut::from(&padded_bytes[..]),
             crc32: None,
             index: HashMap::new(),
