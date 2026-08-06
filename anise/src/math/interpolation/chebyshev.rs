@@ -22,7 +22,7 @@ pub fn chebyshev_eval(
     normalized_time: f64,
     spline_coeffs: &[f64],
     spline_radius_s: f64,
-    eval_epoch: Epoch,
+    eval_epoch_et_s: f64,
     degree: usize,
 ) -> Result<(f64, f64), InterpolationError> {
     if spline_radius_s.abs() < f64::EPSILON {
@@ -41,7 +41,9 @@ pub fn chebyshev_eval(
         w[1] = w[0];
         w[0] = (spline_coeffs
             .get(j - 1)
-            .ok_or(InterpolationError::MissingInterpolationData { epoch: eval_epoch })?)
+            .ok_or(InterpolationError::MissingInterpolationData {
+                epoch: Epoch::from_et_seconds(eval_epoch_et_s),
+            })?)
             + (2.0 * normalized_time * w[1] - w[2]);
 
         dw[2] = dw[1];
@@ -51,7 +53,9 @@ pub fn chebyshev_eval(
 
     let val = (spline_coeffs
         .first()
-        .ok_or(InterpolationError::MissingInterpolationData { epoch: eval_epoch })?)
+        .ok_or(InterpolationError::MissingInterpolationData {
+            epoch: Epoch::from_et_seconds(eval_epoch_et_s),
+        })?)
         + (normalized_time * w[0] - w[1]);
 
     let deriv = (w[0] + normalized_time * dw[0] - dw[1]) / spline_radius_s;
@@ -65,7 +69,7 @@ pub fn chebyshev_eval(
 pub fn chebyshev_eval_poly(
     normalized_time: f64,
     spline_coeffs: &[f64],
-    eval_epoch: Epoch,
+    eval_epoch_et_s: f64,
     degree: usize,
 ) -> Result<f64, InterpolationError> {
     // Workspace array
@@ -76,7 +80,9 @@ pub fn chebyshev_eval_poly(
         w[1] = w[0];
         w[0] = (spline_coeffs
             .get(j - 1)
-            .ok_or(InterpolationError::MissingInterpolationData { epoch: eval_epoch })?)
+            .ok_or(InterpolationError::MissingInterpolationData {
+                epoch: Epoch::from_et_seconds(eval_epoch_et_s),
+            })?)
             + (2.0 * normalized_time * w[1] - w[2]);
     }
 
@@ -87,7 +93,9 @@ pub fn chebyshev_eval_poly(
     let val = (normalized_time * w[0]) - w[1]
         + (spline_coeffs
             .first()
-            .ok_or(InterpolationError::MissingInterpolationData { epoch: eval_epoch })?);
+            .ok_or(InterpolationError::MissingInterpolationData {
+                epoch: Epoch::from_et_seconds(eval_epoch_et_s),
+            })?);
 
     Ok(val)
 }

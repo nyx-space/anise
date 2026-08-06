@@ -37,15 +37,15 @@ impl Type3ChebyshevSet<'_> {
 
     fn spline_idx<S: NAIFSummaryRecord>(
         &self,
-        epoch: Epoch,
+        epoch_et_s: f64,
         summary: &S,
     ) -> Result<usize, InterpolationError> {
-        if epoch < summary.start_epoch() - 1_i64.nanoseconds()
-            || epoch > summary.end_epoch() + 1_i64.nanoseconds()
+        if epoch_et_s < summary.start_epoch_et_s() - 1.0
+            || epoch_et_s > summary.end_epoch_et_s() + 1.0
         {
             // No need to go any further.
             return Err(InterpolationError::NoInterpolationData {
-                req: epoch,
+                req: Epoch::from_et_seconds(epoch_et_s),
                 start: summary.start_epoch(),
                 end: summary.end_epoch(),
             });
@@ -55,7 +55,7 @@ impl Type3ChebyshevSet<'_> {
 
         // For trimmed kernels, the summary bounds may no longer align exactly with the
         // dataset footer epoch. Use the dataset init epoch for record selection.
-        let ephem_start_delta_s = epoch.to_et_seconds() - self.init_epoch.to_et_seconds();
+        let ephem_start_delta_s = epoch_et_s - self.init_epoch.to_et_seconds();
 
         // A tiny interval length makes this ratio saturate the usize cast, so add with
         // saturation to avoid an overflow panic before the clamp to num_records.
@@ -190,10 +190,10 @@ impl<'a> NAIFDataSet<'a> for Type3ChebyshevSet<'a> {
 
     fn evaluate<S: NAIFSummaryRecord>(
         &self,
-        epoch: Epoch,
+        epoch_et_s: f64,
         summary: &S,
     ) -> Result<(Vector3, Vector3), InterpolationError> {
-        let spline_idx = self.spline_idx(epoch, summary)?;
+        let spline_idx = self.spline_idx(epoch_et_s, summary)?;
 
         let window_duration_s = self.interval_length.to_seconds();
         let radius_s = window_duration_s / 2.0;
@@ -202,7 +202,7 @@ impl<'a> NAIFDataSet<'a> for Type3ChebyshevSet<'a> {
             .nth_record(spline_idx - 1)
             .context(InterpDecodingSnafu)?;
 
-        let normalized_time = (epoch.to_et_seconds() - record.midpoint_et_s) / radius_s;
+        let normalized_time = (epoch_et_s - record.midpoint_et_s) / radius_s;
 
         let mut state = Vector3::zeros();
         let mut rate = Vector3::zeros();
@@ -211,7 +211,7 @@ impl<'a> NAIFDataSet<'a> for Type3ChebyshevSet<'a> {
             .iter()
             .enumerate()
         {
-            let val = chebyshev_eval_poly(normalized_time, coeffs, epoch, self.degree())?;
+            let val = chebyshev_eval_poly(normalized_time, coeffs, epoch_et_s, self.degree())?;
             state[cno] = val;
         }
 
@@ -219,7 +219,7 @@ impl<'a> NAIFDataSet<'a> for Type3ChebyshevSet<'a> {
             .iter()
             .enumerate()
         {
-            let val = chebyshev_eval_poly(normalized_time, coeffs, epoch, self.degree())?;
+            let val = chebyshev_eval_poly(normalized_time, coeffs, epoch_et_s, self.degree())?;
             rate[cno] = val;
         }
 
@@ -247,13 +247,13 @@ impl<'a> NAIFDataSet<'a> for Type3ChebyshevSet<'a> {
         new_end: Option<Epoch>,
     ) -> Result<Self, InterpolationError> {
         let start_idx = if let Some(start) = new_start {
-            self.spline_idx(start, summary)? - 1
+            self.spline_idx(start.to_et_seconds(), summary)? - 1
         } else {
             0
         };
 
         let end_idx = if let Some(end) = new_end {
-            self.spline_idx(end, summary)? - 1
+            self.spline_idx(end.to_et_seconds(), summary)? - 1
         } else {
             self.num_records - 1
         };
@@ -353,7 +353,6 @@ mod chebyshev_ut {
         errors::{DecodingError, IntegrityError},
         naif::{daf::NAIFDataSet, spk::summary::SPKSummaryRecord},
     };
-    use hifitime::Epoch;
 
     use super::Type3ChebyshevSet;
 
@@ -527,7 +526,7 @@ mod chebyshev_ut {
             end_idx: 28,
         };
 
-        let epoch = Epoch::from_et_seconds(12.0);
+        let epoch = 12.0;
         assert_eq!(dataset.spline_idx(epoch, &shifted_summary).unwrap(), 2);
 
         let (state, rate) = dataset.evaluate(epoch, &shifted_summary).unwrap();
@@ -559,7 +558,7 @@ mod chebyshev_ut {
             start_idx: 1,
             end_idx: 12,
         };
-        let epoch = Epoch::from_et_seconds(1000.0);
+        let epoch = 1000.0;
         assert_eq!(dataset.spline_idx(epoch, &summary).unwrap(), 1);
         // The full evaluate path must not panic on this input.
         let _ = dataset.evaluate(epoch, &summary);

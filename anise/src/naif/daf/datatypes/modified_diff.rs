@@ -112,23 +112,26 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
 
     fn evaluate<S: NAIFSummaryRecord>(
         &self,
-        epoch: Epoch,
+        epoch_et_s: f64,
         _: &S,
     ) -> Result<Self::StateKind, InterpolationError> {
         // Start by doing a binary search on the epoch registry to limit the search space in the total number of epochs.
         if self.epoch_data.is_empty() {
-            return Err(InterpolationError::MissingInterpolationData { epoch });
+            return Err(InterpolationError::MissingInterpolationData {
+                epoch: Epoch::from_et_seconds(epoch_et_s),
+            });
         }
         // Check that we even have interpolation data for that time
-        let last_epoch = *self
-            .epoch_data
-            .last()
-            .ok_or(InterpolationError::MissingInterpolationData { epoch })?;
-        if epoch.to_et_seconds() < self.epoch_data[0] - 1e-2
-            || epoch.to_et_seconds() > last_epoch + 1e-2
-        {
+        let last_epoch =
+            *self
+                .epoch_data
+                .last()
+                .ok_or(InterpolationError::MissingInterpolationData {
+                    epoch: Epoch::from_et_seconds(epoch_et_s),
+                })?;
+        if epoch_et_s < self.epoch_data[0] - 1e-2 || epoch_et_s > last_epoch + 1e-2 {
             return Err(InterpolationError::NoInterpolationData {
-                req: epoch,
+                req: Epoch::from_et_seconds(epoch_et_s),
                 start: Epoch::from_et_seconds(self.epoch_data[0]),
                 end: Epoch::from_et_seconds(last_epoch),
             });
@@ -140,7 +143,7 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
         // We want the index of the first element that is > epoch.
         let rcrd_idx = self
             .epoch_data
-            .partition_point(|&epoch_et| epoch_et <= epoch.to_et_seconds());
+            .partition_point(|&epoch_et| epoch_et <= epoch_et_s);
 
         let record = self.nth_record(rcrd_idx).context(InterpDecodingSnafu)?;
 
@@ -165,7 +168,7 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
             });
         }
 
-        Ok(record.to_pos_vel(epoch))
+        Ok(record.to_pos_vel(epoch_et_s))
     }
 
     fn check_integrity(&self) -> Result<(), IntegrityError> {
@@ -227,9 +230,9 @@ pub struct ModifiedDiffRecord<'a> {
 }
 
 impl<'a> ModifiedDiffRecord<'a> {
-    pub fn to_pos_vel(&self, epoch: Epoch) -> (Vector3, Vector3) {
+    pub fn to_pos_vel(&self, epoch_et_s: f64) -> (Vector3, Vector3) {
         //  Set up for the computation of the various differences.
-        let delta = epoch.to_et_seconds() - self.ref_epoch; // Time delta from reference epoch
+        let delta = epoch_et_s - self.ref_epoch; // Time delta from reference epoch
         let mut tp = delta;
 
         // The maximum degree of the polynomials we might need to evaluate.
@@ -409,14 +412,14 @@ mod ut_spk1 {
 
         let summary = SPKSummaryRecord::default();
         // Query just inside the lower bound so record index 0 is selected.
-        let epoch = Epoch::from_et_seconds(-1e-3);
+        // let epoch = Epoch::from_et_seconds(-1e-3);
 
         let oversized_kqmax1 = build(100.0, 1.0);
         let set = ModifiedDiffType1::from_f64_slice(&oversized_kqmax1).unwrap();
-        assert!(set.evaluate(epoch, &summary).is_err());
+        assert!(set.evaluate(-1e-3, &summary).is_err());
 
         let oversized_kq = build(2.0, 100.0);
         let set = ModifiedDiffType1::from_f64_slice(&oversized_kq).unwrap();
-        assert!(set.evaluate(epoch, &summary).is_err());
+        assert!(set.evaluate(-1e-3, &summary).is_err());
     }
 }

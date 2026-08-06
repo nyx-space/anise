@@ -102,7 +102,7 @@ impl Almanac {
                             .context(BPCSnafu {
                                 action: "fetching data for interpolation",
                             })?;
-                        data.evaluate(epoch, summary)
+                        data.evaluate(epoch.to_et_seconds(), summary)
                             .context(OrientationInterpolationSnafu)?
                     }
                     dtype => {

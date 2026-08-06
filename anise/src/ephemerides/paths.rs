@@ -63,7 +63,7 @@ impl Almanac {
     pub fn ephemeris_path_to_root(
         &self,
         source: Frame,
-        epoch: Epoch,
+        epoch_et_s: f64,
     ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH]), EphemerisError> {
         let common_center = self.try_find_ephemeris_root()?;
         // Build a tree, set a fixed depth to avoid allocations
@@ -76,7 +76,9 @@ impl Almanac {
         }
 
         // Grab the summary data, which we use to find the paths
-        let summary = self.spk_summary_at_epoch(source.ephemeris_id, epoch)?.0;
+        let summary = self
+            .spk_summary_at_epoch(source.ephemeris_id, epoch_et_s)?
+            .0;
 
         let mut center_id = summary.center_id;
 
@@ -89,7 +91,7 @@ impl Almanac {
         }
 
         for _ in 0..MAX_TREE_DEPTH {
-            let summary = self.spk_summary_at_epoch(center_id, epoch)?.0;
+            let summary = self.spk_summary_at_epoch(center_id, epoch_et_s)?.0;
             center_id = summary.center_id;
             if of_path_len >= MAX_TREE_DEPTH {
                 return Err(EphemerisError::SPK {
@@ -144,7 +146,7 @@ impl Almanac {
         &self,
         from_frame: Frame,
         to_frame: Frame,
-        epoch: Epoch,
+        epoch_et_s: f64,
     ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH], NaifId), EphemerisError> {
         if from_frame == to_frame {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
@@ -152,8 +154,8 @@ impl Almanac {
         }
 
         // Grab the paths
-        let (from_len, from_path) = self.ephemeris_path_to_root(from_frame, epoch)?;
-        let (to_len, to_path) = self.ephemeris_path_to_root(to_frame, epoch)?;
+        let (from_len, from_path) = self.ephemeris_path_to_root(from_frame, epoch_et_s)?;
+        let (to_len, to_path) = self.ephemeris_path_to_root(to_frame, epoch_et_s)?;
 
         // Now that we have the paths, we can find the matching origin.
 
@@ -163,7 +165,7 @@ impl Almanac {
             Err(EphemerisError::TranslationOrigin {
                 from: from_frame.into(),
                 to: to_frame.into(),
-                epoch,
+                epoch: Epoch::from_et_seconds(epoch_et_s),
             })
         } else if from_len != 0 && to_len == 0 {
             // One has an empty path but not the other, so the root is at the empty path
@@ -268,7 +270,7 @@ mod path_depth_ut {
         let source = Frame::from_ephem_j2000(10);
         let epoch = Epoch::from_et_seconds(0.0);
 
-        let result = almanac.ephemeris_path_to_root(source, epoch);
+        let result = almanac.ephemeris_path_to_root(source, epoch.to_et_seconds());
         assert!(
             result.is_err(),
             "a chain deeper than MAX_TREE_DEPTH must error, not panic"

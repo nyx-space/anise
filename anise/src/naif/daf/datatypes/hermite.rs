@@ -153,20 +153,20 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
 
     fn evaluate<S: NAIFSummaryRecord>(
         &self,
-        epoch: Epoch,
+        epoch_et_s: f64,
         summary: &S,
     ) -> Result<Self::StateKind, InterpolationError> {
-        if epoch < summary.start_epoch() - 1e-7.seconds()
-            || epoch > summary.end_epoch() + 1e-7.seconds()
+        if epoch_et_s < summary.start_epoch_et_s() - 1e-7
+            || epoch_et_s > summary.end_epoch_et_s() + 1e-7
         {
             return Err(InterpolationError::NoInterpolationData {
-                req: epoch,
+                req: Epoch::from_et_seconds(epoch_et_s),
                 start: summary.start_epoch(),
                 end: summary.end_epoch(),
             });
         }
 
-        let delta_t_s = (epoch - self.first_state_epoch).to_seconds();
+        let delta_t_s = epoch_et_s - self.first_state_epoch.to_et_seconds();
         let step_size_s = self.step_size.to_seconds();
         // A zero step size comes straight from the footer, which from_f64_slice only checks
         // for finiteness, so the division below yields an infinite index that saturates the
@@ -218,21 +218,21 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
             &epochs[..self.samples],
             &xs[..self.samples],
             &vxs[..self.samples],
-            epoch.to_et_seconds(),
+            epoch_et_s,
         )?;
 
         let (y_km, vy_km_s) = hermite_eval(
             &epochs[..self.samples],
             &ys[..self.samples],
             &vys[..self.samples],
-            epoch.to_et_seconds(),
+            epoch_et_s,
         )?;
 
         let (z_km, vz_km_s) = hermite_eval(
             &epochs[..self.samples],
             &zs[..self.samples],
             &vzs[..self.samples],
-            epoch.to_et_seconds(),
+            epoch_et_s,
         )?;
 
         // And build the result
@@ -411,23 +411,26 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
 
     fn evaluate<S: NAIFSummaryRecord>(
         &self,
-        epoch: Epoch,
+        epoch_et_s: f64,
         _: &S,
     ) -> Result<Self::StateKind, InterpolationError> {
         // Start by doing a binary search on the epoch registry to limit the search space in the total number of epochs.
         if self.epoch_data.is_empty() {
-            return Err(InterpolationError::MissingInterpolationData { epoch });
+            return Err(InterpolationError::MissingInterpolationData {
+                epoch: Epoch::from_et_seconds(epoch_et_s),
+            });
         }
         // Check that we even have interpolation data for that time
-        let last_epoch = *self
-            .epoch_data
-            .last()
-            .ok_or(InterpolationError::MissingInterpolationData { epoch })?;
-        if epoch.to_et_seconds() < self.epoch_data[0] - 1e-7
-            || epoch.to_et_seconds() > last_epoch + 1e-7
-        {
+        let last_epoch =
+            *self
+                .epoch_data
+                .last()
+                .ok_or(InterpolationError::MissingInterpolationData {
+                    epoch: Epoch::from_et_seconds(epoch_et_s),
+                })?;
+        if epoch_et_s < self.epoch_data[0] - 1e-7 || epoch_et_s > last_epoch + 1e-7 {
             return Err(InterpolationError::NoInterpolationData {
-                req: epoch,
+                req: Epoch::from_et_seconds(epoch_et_s),
                 start: Epoch::from_et_seconds(self.epoch_data[0]),
                 end: Epoch::from_et_seconds(last_epoch),
             });
@@ -442,7 +445,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
             // dir_idx is the index of the first registry epoch such that epoch_registry[dir_idx] >= et_target.
             let dir_idx = self
                 .epoch_registry
-                .partition_point(|&reg_epoch| reg_epoch < epoch.to_et_seconds());
+                .partition_point(|&reg_epoch| reg_epoch < epoch_et_s);
 
             let sub_array_start_idx = if dir_idx == 0 {
                 // et_target <= self.epoch_registry[0] (i.e., et_target is before or at the first directory epoch, E_100).
@@ -480,7 +483,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
 
         match search_data_slice.binary_search_by(|epoch_et| {
             epoch_et
-                .partial_cmp(&epoch.to_et_seconds())
+                .partial_cmp(&epoch_et_s)
                 .expect("epochs in Hermite data is now NaN or infinite but was not before")
         }) {
             Ok(idx) => {
@@ -530,21 +533,21 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                     &epochs[..self.samples],
                     &xs[..self.samples],
                     &vxs[..self.samples],
-                    epoch.to_et_seconds(),
+                    epoch_et_s,
                 )?;
 
                 let (y_km, vy_km_s) = hermite_eval(
                     &epochs[..self.samples],
                     &ys[..self.samples],
                     &vys[..self.samples],
-                    epoch.to_et_seconds(),
+                    epoch_et_s,
                 )?;
 
                 let (z_km, vz_km_s) = hermite_eval(
                     &epochs[..self.samples],
                     &zs[..self.samples],
                     &vzs[..self.samples],
-                    epoch.to_et_seconds(),
+                    epoch_et_s,
                 )?;
 
                 // And build the result
@@ -763,7 +766,6 @@ mod hermite_ut {
         use super::HermiteSetType13;
         use crate::math::interpolation::InterpolationError;
         use crate::naif::spk::summary::SPKSummaryRecord;
-        use hifitime::Epoch;
 
         // Two records (12 state doubles + 2 epochs), one epoch-registry entry, window size 2.
         // The registry entry sits below an in-range query epoch, so the directory search yields
@@ -776,7 +778,7 @@ mod hermite_ut {
         slice[16] = 2.0; // num_records
         let set = HermiteSetType13::from_f64_slice(&slice).unwrap();
         let summary = SPKSummaryRecord::default();
-        match set.evaluate(Epoch::from_et_seconds(50.0), &summary) {
+        match set.evaluate(50.0, &summary) {
             Ok(_) => panic!("an out-of-range epoch directory must be rejected"),
             Err(e) => assert_eq!(
                 e,
@@ -845,7 +847,6 @@ mod hermite_ut {
         use super::HermiteSetType12;
         use crate::naif::daf::NAIFDataSet;
         use crate::naif::spk::summary::SPKSummaryRecord;
-        use hifitime::Epoch;
 
         // A Type 12 segment whose footer declares a zero step size decodes fine (the size is
         // only checked for finiteness). Evaluating at an interior epoch used to divide the
@@ -866,9 +867,7 @@ mod hermite_ut {
         summary.end_epoch_et_s = 100.0;
 
         assert!(
-            dataset
-                .evaluate(Epoch::from_et_seconds(50.0), &summary)
-                .is_err(),
+            dataset.evaluate(50.0, &summary).is_err(),
             "zero step size must error, not panic"
         );
     }
@@ -877,7 +876,6 @@ mod hermite_ut {
     fn test_hermite_type12() {
         use super::HermiteSetType12;
         use crate::naif::spk::summary::SPKSummaryRecord;
-        use hifitime::Epoch;
 
         // Construct a synthetic HermiteSetType12
         let num_records = 10;
@@ -913,26 +911,26 @@ mod hermite_ut {
         summary.end_epoch_et_s = first_epoch_s + (num_records as f64 - 1.0) * step_size_s;
 
         // Test exact match
-        let epoch = Epoch::from_et_seconds(120.0);
+        let epoch = 120.0;
         let result = dataset.evaluate(epoch, &summary).unwrap();
         assert!((result.0.x - 120.0).abs() < 1e-12);
         assert!((result.0.y - 240.0).abs() < 1e-12);
         assert!((result.1.x - 1.0).abs() < 1e-12);
 
         // Test interpolation
-        let epoch = Epoch::from_et_seconds(125.0);
+        let epoch = 125.0;
         let result = dataset.evaluate(epoch, &summary).unwrap();
         assert!((result.0.x - 125.0).abs() < 1e-12);
         assert!((result.0.y - 250.0).abs() < 1e-12);
         assert!((result.1.x - 1.0).abs() < 1e-12);
 
         // Test boundary case: near start
-        let epoch = Epoch::from_et_seconds(105.0);
+        let epoch = 105.0;
         let result = dataset.evaluate(epoch, &summary).unwrap();
         assert!((result.0.x - 105.0).abs() < 1e-12);
 
         // Test boundary case: near end
-        let epoch = Epoch::from_et_seconds(185.0);
+        let epoch = 185.0;
         let result = dataset.evaluate(epoch, &summary).unwrap();
         assert!((result.0.x - 185.0).abs() < 1e-12);
     }

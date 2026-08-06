@@ -401,28 +401,28 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     pub fn summary_from_id_at_epoch(
         &self,
         id: i32,
-        epoch: Epoch,
+        epoch_et_s: f64,
     ) -> Result<(&R, Option<usize>, usize), DAFError> {
         // If the summaries are ordered in the DAF file, then they are in the index, so we can run a binary search to find the proper index.
         if let Some(idx_data) = self.index.get(&id) {
             let idx = idx_data.partition_point(|(summary, _blk_idx, _summary_idx)| {
-                summary.start_epoch() - Unit::Nanosecond * 100 <= epoch
+                summary.start_epoch_et_s() - 100e-9 <= epoch_et_s
             });
             if idx == 0 {
                 Err(DAFError::InterpolationDataErrorFromId {
                     kind: R::NAME,
                     id,
-                    epoch,
+                    epoch: Epoch::from_et_seconds(epoch_et_s),
                 })
             } else {
                 let (summary, blk_idx, summary_idx) = &idx_data[idx - 1];
-                if epoch <= summary.end_epoch() + Unit::Nanosecond * 100 {
+                if epoch_et_s <= summary.end_epoch_et_s() + 100e-9 {
                     Ok((summary, *blk_idx, *summary_idx))
                 } else {
                     Err(DAFError::InterpolationDataErrorFromId {
                         kind: R::NAME,
                         id,
-                        epoch,
+                        epoch: Epoch::from_et_seconds(epoch_et_s),
                     })
                 }
             }
@@ -433,8 +433,8 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             loop {
                 for (summary_idx, summary) in self.data_summaries(blk_idx)?.iter().enumerate() {
                     if summary.id() == id
-                        && epoch >= summary.start_epoch() - Unit::Nanosecond * 100
-                        && epoch <= summary.end_epoch() + Unit::Nanosecond * 100
+                        && epoch_et_s >= summary.start_epoch_et_s() - 100e-9
+                        && epoch_et_s <= summary.end_epoch_et_s() + 100e-9
                     {
                         return Ok((summary, blk_idx, summary_idx));
                     }
@@ -449,7 +449,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             Err(DAFError::InterpolationDataErrorFromId {
                 kind: R::NAME,
                 id,
-                epoch,
+                epoch: Epoch::from_et_seconds(epoch_et_s),
             })
         }
     }

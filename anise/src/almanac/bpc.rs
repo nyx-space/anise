@@ -96,7 +96,9 @@ impl Almanac {
         epoch: Epoch,
     ) -> Result<(&BPCSummaryRecord, usize, Option<usize>, usize), OrientationError> {
         for (no, bpc) in self.bpc_data.values().rev().enumerate() {
-            if let Ok((summary, daf_idx, idx_in_bpc)) = bpc.summary_from_id_at_epoch(id, epoch) {
+            if let Ok((summary, daf_idx, idx_in_bpc)) =
+                bpc.summary_from_id_at_epoch(id, epoch.to_et_seconds())
+            {
                 // NOTE: We're iterating backward, so the correct BPC number is "total loaded" minus "current iteration".
                 return Ok((summary, self.num_loaded_bpc() - no - 1, daf_idx, idx_in_bpc));
             }
