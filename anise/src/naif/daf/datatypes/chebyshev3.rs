@@ -40,8 +40,8 @@ impl Type3ChebyshevSet<'_> {
         epoch_et_s: f64,
         summary: &S,
     ) -> Result<usize, InterpolationError> {
-        if epoch_et_s < summary.start_epoch_et_s() - 1.0
-            || epoch_et_s > summary.end_epoch_et_s() + 1.0
+        if epoch_et_s < summary.start_epoch_et_s().next_down()
+            || epoch_et_s > summary.end_epoch_et_s().next_up()
         {
             // No need to go any further.
             return Err(InterpolationError::NoInterpolationData {

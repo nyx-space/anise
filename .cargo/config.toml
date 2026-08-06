@@ -1,6 +1,9 @@
 [env]
 CSPICE_DIR = {value = "./cspice/", relative = true}
 
+[build]
+rustflags = ["-C", "target-cpu=native"]
+
 # For flamegraph -- https://github.com/flamegraph-rs/flamegraph
 [target.x86_64-unknown-linux-gnu]
 rustflags = ["-Clink-arg=-Wl,--no-rosegment"]

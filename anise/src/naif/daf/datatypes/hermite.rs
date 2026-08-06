@@ -156,8 +156,8 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
         epoch_et_s: f64,
         summary: &S,
     ) -> Result<Self::StateKind, InterpolationError> {
-        if epoch_et_s < summary.start_epoch_et_s() - 1e-7
-            || epoch_et_s > summary.end_epoch_et_s() + 1e-7
+        if epoch_et_s < summary.start_epoch_et_s().next_down()
+            || epoch_et_s > summary.end_epoch_et_s().next_up()
         {
             return Err(InterpolationError::NoInterpolationData {
                 req: Epoch::from_et_seconds(epoch_et_s),
@@ -428,7 +428,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 .ok_or(InterpolationError::MissingInterpolationData {
                     epoch: Epoch::from_et_seconds(epoch_et_s),
                 })?;
-        if epoch_et_s < self.epoch_data[0] - 1e-7 || epoch_et_s > last_epoch + 1e-7 {
+        if epoch_et_s < self.epoch_data[0].next_down() || epoch_et_s > last_epoch.next_up() {
             return Err(InterpolationError::NoInterpolationData {
                 req: Epoch::from_et_seconds(epoch_et_s),
                 start: Epoch::from_et_seconds(self.epoch_data[0]),

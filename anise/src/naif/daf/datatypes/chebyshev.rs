@@ -40,8 +40,8 @@ impl Type2ChebyshevSet<'_> {
         epoch_et_s: f64,
         summary: &S,
     ) -> Result<usize, InterpolationError> {
-        if epoch_et_s < summary.start_epoch_et_s() - 1.0
-            || epoch_et_s > summary.end_epoch_et_s() + 1.0
+        if epoch_et_s < summary.start_epoch_et_s().next_down()
+            || epoch_et_s > summary.end_epoch_et_s().next_up()
         {
             // No need to go any further.
             return Err(InterpolationError::NoInterpolationData {
@@ -204,18 +204,15 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
 
         let normalized_time = (epoch_et_s - record.midpoint_et_s) / radius_s;
 
-        let mut state = Vector3::zeros();
-        let mut rate = Vector3::zeros();
-
-        for (cno, coeffs) in [record.x_coeffs, record.y_coeffs, record.z_coeffs]
-            .iter()
-            .enumerate()
-        {
-            let (val, deriv) =
-                chebyshev_eval(normalized_time, coeffs, radius_s, epoch_et_s, self.degree())?;
-            state[cno] = val;
-            rate[cno] = deriv;
-        }
+        let (state, rate) = chebyshev_eval(
+            normalized_time,
+            record.x_coeffs,
+            record.x_coeffs,
+            record.x_coeffs,
+            radius_s,
+            epoch_et_s,
+            self.degree(),
+        )?;
 
         Ok((state, rate))
     }
