@@ -862,9 +862,11 @@ mod hermite_ut {
 
         let dataset = HermiteSetType12::from_f64_slice(&slice).unwrap();
 
-        let mut summary = SPKSummaryRecord::default();
-        summary.start_epoch_et_s = 0.0;
-        summary.end_epoch_et_s = 100.0;
+        let summary = SPKSummaryRecord {
+            start_epoch_et_s: 0.0,
+            end_epoch_et_s: 100.0,
+            ..Default::default()
+        };
 
         assert!(
             dataset.evaluate(50.0, &summary).is_err(),
@@ -906,9 +908,11 @@ mod hermite_ut {
         assert_eq!(dataset.samples, samples);
         assert_eq!(dataset.num_records, num_records);
 
-        let mut summary = SPKSummaryRecord::default();
-        summary.start_epoch_et_s = first_epoch_s;
-        summary.end_epoch_et_s = first_epoch_s + (num_records as f64 - 1.0) * step_size_s;
+        let summary = SPKSummaryRecord {
+            start_epoch_et_s: first_epoch_s,
+            end_epoch_et_s: first_epoch_s + (num_records as f64 - 1.0) * step_size_s,
+            ..Default::default()
+        };
 
         // Test exact match
         let epoch = 120.0;

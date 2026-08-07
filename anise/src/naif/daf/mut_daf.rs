@@ -299,10 +299,12 @@ mod mut_daf_ut {
             prev_record: 0.0,
             num_summaries: 1.0,
         };
-        let mut summary = SPKSummaryRecord::default();
-        summary.data_type_i = 13;
-        summary.start_idx = start_idx;
-        summary.end_idx = end_idx;
+        let summary = SPKSummaryRecord {
+            data_type_i: 13,
+            start_idx,
+            end_idx,
+            ..Default::default()
+        };
 
         let mut summary_record = Vec::new();
         summary_record.extend_from_slice(summary_header.as_bytes());

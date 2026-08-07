@@ -958,10 +958,12 @@ mod daf_ut {
                 prev_record: 0.0,
                 num_summaries: 1.0,
             };
-            let mut summary = SPKSummaryRecord::default();
-            summary.data_type_i = 13;
-            summary.start_idx = 1;
-            summary.end_idx = 5;
+            let summary = SPKSummaryRecord {
+                data_type_i: 13,
+                start_idx: 1,
+                end_idx: 5,
+                ..Default::default()
+            };
 
             bytes.extend_from_slice(summary_header.as_bytes());
             bytes.extend_from_slice(summary.as_bytes());
@@ -1035,10 +1037,12 @@ mod daf_ut {
             prev_record: 0.0,
             num_summaries: 1.0,
         };
-        let mut summary = SPKSummaryRecord::default();
-        summary.data_type_i = 13;
-        summary.start_idx = 0; // 1-based index, so 0 is malformed
-        summary.end_idx = 5;
+        let summary = SPKSummaryRecord {
+            data_type_i: 13,
+            start_idx: 0,
+            end_idx: 5,
+            ..Default::default()
+        };
 
         let mut summary_record = Vec::new();
         summary_record.extend_from_slice(summary_header.as_bytes());

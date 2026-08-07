@@ -247,15 +247,17 @@ mod path_depth_ut {
         let mut summary_block = Vec::new();
         summary_block.extend_from_slice(header.as_bytes());
         for target in (2..=10).rev() {
-            let mut summary = SPKSummaryRecord::default();
-            summary.start_epoch_et_s = -1e9;
-            summary.end_epoch_et_s = 1e9;
-            summary.target_id = target;
-            summary.center_id = target - 1;
-            summary.frame_id = 1;
-            summary.data_type_i = 2;
-            summary.start_idx = 1;
-            summary.end_idx = 100;
+            let summary = SPKSummaryRecord {
+                start_epoch_et_s: -1e9,
+                end_epoch_et_s: 1e9,
+                target_id: target,
+                center_id: target - 1,
+                frame_id: 1,
+                data_type_i: 2,
+                start_idx: 1,
+                end_idx: 100,
+            };
+
             summary_block.extend_from_slice(summary.as_bytes());
         }
         summary_block.resize(1024, 0);

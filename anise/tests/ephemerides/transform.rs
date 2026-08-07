@@ -409,14 +409,14 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
                 println!("{occult} @ {rx_lro:x}");
                 printed_visible = true;
             }
-            if let Some(prev_occult) = &prev_occult {
-                if prev_occult.is_partial() {
-                    assert_eq!(
-                        epoch,
-                        Epoch::from_gregorian_utc_hms(2024, 1, 1, 0, 46, 36),
-                        "wrong post-penumbra state"
-                    );
-                }
+            if let Some(prev_occult) = &prev_occult
+                && prev_occult.is_partial()
+            {
+                assert_eq!(
+                    epoch,
+                    Epoch::from_gregorian_utc_hms(2024, 1, 1, 0, 46, 36),
+                    "wrong post-penumbra state"
+                );
             }
         } else if occult.is_obstructed() {
             if !printed_umbra {

@@ -326,7 +326,7 @@ impl Almanac {
                         )
                 })
                 .collect::<Vec<AzElRange>>();
-            rslt.sort_by(|aer_a, aer_b| aer_a.epoch.cmp(&aer_b.epoch));
+            rslt.sort_by_key(|aer| aer.epoch);
             rslt
         })
     }
@@ -469,7 +469,7 @@ impl Almanac {
                         )
                 })
                 .collect::<Vec<Occultation>>();
-            rslt.sort_by(|aer_a, aer_b| aer_a.epoch.cmp(&aer_b.epoch));
+            rslt.sort_by_key(|aer| aer.epoch);
             rslt
         })
     }
@@ -567,7 +567,7 @@ impl Almanac {
                         )
                 })
                 .collect::<Vec<CartesianState>>();
-            states.sort_by(|state_a, state_b| state_a.epoch.cmp(&state_b.epoch));
+            states.sort_by_key(|state| state.epoch);
             states
         })
     }
@@ -628,7 +628,7 @@ impl Almanac {
                         )
                 })
                 .collect::<Vec<CartesianState>>();
-            rslt.sort_by(|state_a, state_b| state_a.epoch.cmp(&state_b.epoch));
+            rslt.sort_by_key(|state| state.epoch);
             rslt
         })
     }

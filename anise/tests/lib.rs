@@ -21,7 +21,7 @@ mod orientations;
 /// Single query for timing purposes
 #[test]
 fn flamegraph() {
-    use anise::constants::frames::{EARTH_J2000, MOON_J2000, SUN_J2000};
+    use anise::constants::frames::{MOON_J2000, SUN_J2000};
     use anise::prelude::Almanac;
     use hifitime::{Epoch, TimeSeries, Unit};
     let almanac = Almanac::new("../data/de440s.bsp").unwrap();

@@ -186,6 +186,7 @@ impl DynamicFrame {
         Self::try_from(frame_id as u32).map_err(|e| PyValueError::new_err(e.to_string()))
     }
 
+    #[allow(clippy::wrong_self_convention)]
     fn to_frame_id(&self) -> i32 {
         Into::<i32>::into(*self)
     }
