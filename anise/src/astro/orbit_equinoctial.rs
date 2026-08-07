@@ -154,6 +154,7 @@ impl Orbit {
     /// :rtype: Orbit
     #[cfg(feature = "python")]
     #[classmethod]
+    #[allow(clippy::too_many_arguments)]
     pub fn from_equinoctial(
         _cls: &Bound<'_, PyType>,
         sma_km: f64,

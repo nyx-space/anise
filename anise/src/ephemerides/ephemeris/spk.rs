@@ -22,6 +22,7 @@ use log::warn;
 use snafu::ensure;
 use std::collections::HashMap;
 use std::{fs::File, io::Write};
+use zerocopy::FromBytes;
 use zerocopy::IntoBytes;
 
 use super::Ephemeris;
@@ -180,6 +181,8 @@ impl Ephemeris {
 
         // Finally, builds the DAF!
         let mut spk = SPK {
+            file_record: FileRecord::read_from_bytes(&padded_bytes[..1024])
+                .expect("failed to parse FileRecord"),
             bytes: BytesMut::from(&padded_bytes[..]),
             crc32: None,
             index: HashMap::new(),

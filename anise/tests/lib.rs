@@ -17,3 +17,19 @@ mod frames;
 #[cfg(feature = "analysis")]
 mod instrument;
 mod orientations;
+
+/// Single query for timing purposes
+#[test]
+fn flamegraph() {
+    use anise::constants::frames::{MOON_J2000, SUN_J2000};
+    use anise::prelude::Almanac;
+    use hifitime::{Epoch, TimeSeries, Unit};
+    let almanac = Almanac::new("../data/de440s.bsp").unwrap();
+    let epoch = Epoch::from_gregorian_utc_at_noon(2024, 2, 29);
+    for epoch in TimeSeries::inclusive(epoch, epoch + Unit::Hour * 1, Unit::Second * 1) {
+        let orbit = almanac
+            .transform(SUN_J2000, MOON_J2000, epoch, None)
+            .unwrap();
+        println!("{orbit}")
+    }
+}

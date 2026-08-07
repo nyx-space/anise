@@ -43,10 +43,39 @@ pub(crate) const RCRD_LEN: usize = 1024;
 #[derive(Clone, Default, Debug, PartialEq)]
 pub struct DAF<R: NAIFSummaryRecord> {
     pub bytes: BytesMut,
+    pub file_record: FileRecord,
     /// CRC32 field enables memory scrubbing, reducing memory errors in a radiation-laden environment.
     pub crc32: Option<u32>,
     /// Index of the NAIF ID to its summary record only if all of the summaries for this ID are chronologically ordered. Enables binary search for that ID.
     pub index: HashMap<i32, Vec<(R, Option<usize>, usize)>>,
+}
+
+/// Reads and parses the file record from the DAF bytes.
+/// The file record is always the first 1024 bytes of the file.
+fn file_record<R: NAIFSummaryRecord>(bytes: &[u8]) -> Result<FileRecord, DAFError> {
+    let file_record = FileRecord::read_from_bytes(
+        bytes
+            .get(..FileRecord::SIZE)
+            .ok_or(DecodingError::InaccessibleBytes {
+                start: 0,
+                end: FileRecord::SIZE,
+                size: bytes.len(),
+            })
+            .context(DecodingDataSnafu {
+                idx: 0_usize,
+                kind: R::NAME,
+            })?,
+    )
+    .map_err(|_| DAFError::DecodingData {
+        kind: R::NAME,
+        idx: 0,
+        source: DecodingError::Casting,
+    })?;
+    // Check that the endian-ness is compatible with this platform.
+    file_record
+        .endianness()
+        .context(FileRecordSnafu { kind: R::NAME })?;
+    Ok(file_record)
 }
 
 impl<R: NAIFSummaryRecord> DAF<R> {
@@ -63,14 +92,16 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     /// 2.  The CRC32 checksum of the bytes is computed.
     /// 3.  The `file_record` and `name_record` are parsed to ensure the file is a valid DAF.
     pub fn parse<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DAFError> {
+        // Parse file record once.
         let mut me = Self {
+            file_record: file_record::<R>(&bytes[..])?,
             bytes: BytesMut::from(&bytes[..]),
             crc32: None,
             index: HashMap::new(),
         };
         // Check that the file record and name record can be parsed successfully.
         // This validates that the file is a DAF and that the endianness is correct.
-        me.file_record()?;
+        // me.file_record()?;
         // Ensure tha twe can parse the first name record.
         me.name_record(None)?;
         // Build the index for all of the NAIF IDs which are ordered in the file.
@@ -174,29 +205,30 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     /// Reads and parses the file record from the DAF bytes.
     /// The file record is always the first 1024 bytes of the file.
     pub fn file_record(&self) -> Result<FileRecord, DAFError> {
-        let file_record = FileRecord::read_from_bytes(
-            self.bytes
-                .get(..FileRecord::SIZE)
-                .ok_or_else(|| DecodingError::InaccessibleBytes {
-                    start: 0,
-                    end: FileRecord::SIZE,
-                    size: self.bytes.len(),
-                })
-                .context(DecodingDataSnafu {
-                    idx: 0_usize,
-                    kind: R::NAME,
-                })?,
-        )
-        .map_err(|_| DAFError::DecodingData {
-            kind: R::NAME,
-            idx: 0,
-            source: DecodingError::Casting,
-        })?;
-        // Check that the endian-ness is compatible with this platform.
-        file_record
-            .endianness()
-            .context(FileRecordSnafu { kind: R::NAME })?;
-        Ok(file_record)
+        Ok(self.file_record)
+        // let file_record = FileRecord::read_from_bytes(
+        //     self.bytes
+        //         .get(..FileRecord::SIZE)
+        //         .ok_or_else(|| DecodingError::InaccessibleBytes {
+        //             start: 0,
+        //             end: FileRecord::SIZE,
+        //             size: self.bytes.len(),
+        //         })
+        //         .context(DecodingDataSnafu {
+        //             idx: 0_usize,
+        //             kind: R::NAME,
+        //         })?,
+        // )
+        // .map_err(|_| DAFError::DecodingData {
+        //     kind: R::NAME,
+        //     idx: 0,
+        //     source: DecodingError::Casting,
+        // })?;
+        // // Check that the endian-ness is compatible with this platform.
+        // file_record
+        //     .endianness()
+        //     .context(FileRecordSnafu { kind: R::NAME })?;
+        // Ok(file_record)
     }
 
     /// Reads and parses the name record from the DAF bytes.
@@ -401,28 +433,28 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     pub fn summary_from_id_at_epoch(
         &self,
         id: i32,
-        epoch: Epoch,
+        epoch_et_s: f64,
     ) -> Result<(&R, Option<usize>, usize), DAFError> {
         // If the summaries are ordered in the DAF file, then they are in the index, so we can run a binary search to find the proper index.
         if let Some(idx_data) = self.index.get(&id) {
             let idx = idx_data.partition_point(|(summary, _blk_idx, _summary_idx)| {
-                summary.start_epoch() - Unit::Nanosecond * 100 <= epoch
+                summary.start_epoch_et_s() - 100e-9 <= epoch_et_s
             });
             if idx == 0 {
                 Err(DAFError::InterpolationDataErrorFromId {
                     kind: R::NAME,
                     id,
-                    epoch,
+                    epoch: Epoch::from_et_seconds(epoch_et_s),
                 })
             } else {
                 let (summary, blk_idx, summary_idx) = &idx_data[idx - 1];
-                if epoch <= summary.end_epoch() + Unit::Nanosecond * 100 {
+                if epoch_et_s <= summary.end_epoch_et_s() + 100e-9 {
                     Ok((summary, *blk_idx, *summary_idx))
                 } else {
                     Err(DAFError::InterpolationDataErrorFromId {
                         kind: R::NAME,
                         id,
-                        epoch,
+                        epoch: Epoch::from_et_seconds(epoch_et_s),
                     })
                 }
             }
@@ -433,8 +465,8 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             loop {
                 for (summary_idx, summary) in self.data_summaries(blk_idx)?.iter().enumerate() {
                     if summary.id() == id
-                        && epoch >= summary.start_epoch() - Unit::Nanosecond * 100
-                        && epoch <= summary.end_epoch() + Unit::Nanosecond * 100
+                        && epoch_et_s >= summary.start_epoch_et_s() - 100e-9
+                        && epoch_et_s <= summary.end_epoch_et_s() + 100e-9
                     {
                         return Ok((summary, blk_idx, summary_idx));
                     }
@@ -449,7 +481,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             Err(DAFError::InterpolationDataErrorFromId {
                 kind: R::NAME,
                 id,
-                epoch,
+                epoch: Epoch::from_et_seconds(epoch_et_s),
             })
         }
     }
@@ -926,10 +958,12 @@ mod daf_ut {
                 prev_record: 0.0,
                 num_summaries: 1.0,
             };
-            let mut summary = SPKSummaryRecord::default();
-            summary.data_type_i = 13;
-            summary.start_idx = 1;
-            summary.end_idx = 5;
+            let summary = SPKSummaryRecord {
+                data_type_i: 13,
+                start_idx: 1,
+                end_idx: 5,
+                ..Default::default()
+            };
 
             bytes.extend_from_slice(summary_header.as_bytes());
             bytes.extend_from_slice(summary.as_bytes());
@@ -1003,10 +1037,12 @@ mod daf_ut {
             prev_record: 0.0,
             num_summaries: 1.0,
         };
-        let mut summary = SPKSummaryRecord::default();
-        summary.data_type_i = 13;
-        summary.start_idx = 0; // 1-based index, so 0 is malformed
-        summary.end_idx = 5;
+        let summary = SPKSummaryRecord {
+            data_type_i: 13,
+            start_idx: 0,
+            end_idx: 5,
+            ..Default::default()
+        };
 
         let mut summary_record = Vec::new();
         summary_record.extend_from_slice(summary_header.as_bytes());

@@ -136,10 +136,9 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
 
     fn evaluate<S: NAIFSummaryRecord>(
         &self,
-        epoch: Epoch,
+        epoch_et_s: f64,
         _: &S,
     ) -> Result<Self::StateKind, InterpolationError> {
-        let et = epoch.to_et_seconds();
         let t0 = self.first_state_epoch.to_et_seconds();
         let h = self.step_size.to_seconds();
 
@@ -150,7 +149,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
         }
 
         // Find the index such that t0 + idx * h <= et < t0 + (idx + 1) * h
-        let idx_f = (et - t0) / h;
+        let idx_f = (epoch_et_s - t0) / h;
 
         // Exact match check
         if (idx_f - idx_f.round()).abs() < 1e-12 {
@@ -197,15 +196,36 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
             epochs[cno] = t0 + (cur_idx as f64) * h;
         }
 
-        let (x_km, _) = lagrange_eval(&epochs[..actual_group_size], &xs[..actual_group_size], et)?;
-        let (y_km, _) = lagrange_eval(&epochs[..actual_group_size], &ys[..actual_group_size], et)?;
-        let (z_km, _) = lagrange_eval(&epochs[..actual_group_size], &zs[..actual_group_size], et)?;
-        let (vx_km_s, _) =
-            lagrange_eval(&epochs[..actual_group_size], &vxs[..actual_group_size], et)?;
-        let (vy_km_s, _) =
-            lagrange_eval(&epochs[..actual_group_size], &vys[..actual_group_size], et)?;
-        let (vz_km_s, _) =
-            lagrange_eval(&epochs[..actual_group_size], &vzs[..actual_group_size], et)?;
+        let (x_km, _) = lagrange_eval(
+            &epochs[..actual_group_size],
+            &xs[..actual_group_size],
+            epoch_et_s,
+        )?;
+        let (y_km, _) = lagrange_eval(
+            &epochs[..actual_group_size],
+            &ys[..actual_group_size],
+            epoch_et_s,
+        )?;
+        let (z_km, _) = lagrange_eval(
+            &epochs[..actual_group_size],
+            &zs[..actual_group_size],
+            epoch_et_s,
+        )?;
+        let (vx_km_s, _) = lagrange_eval(
+            &epochs[..actual_group_size],
+            &vxs[..actual_group_size],
+            epoch_et_s,
+        )?;
+        let (vy_km_s, _) = lagrange_eval(
+            &epochs[..actual_group_size],
+            &vys[..actual_group_size],
+            epoch_et_s,
+        )?;
+        let (vz_km_s, _) = lagrange_eval(
+            &epochs[..actual_group_size],
+            &vzs[..actual_group_size],
+            epoch_et_s,
+        )?;
 
         Ok((
             Vector3::new(x_km, y_km, z_km),
@@ -346,23 +366,26 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
 
     fn evaluate<S: NAIFSummaryRecord>(
         &self,
-        epoch: Epoch,
+        epoch_et_s: f64,
         _: &S,
     ) -> Result<Self::StateKind, InterpolationError> {
         // Start by doing a binary search on the epoch registry to limit the search space in the total number of epochs.
         if self.epoch_data.is_empty() {
-            return Err(InterpolationError::MissingInterpolationData { epoch });
+            return Err(InterpolationError::MissingInterpolationData {
+                epoch: Epoch::from_et_seconds(epoch_et_s),
+            });
         }
         // Check that we even have interpolation data for that time
-        let last_epoch = *self
-            .epoch_data
-            .last()
-            .ok_or(InterpolationError::MissingInterpolationData { epoch })?;
-        if epoch.to_et_seconds() < self.epoch_data[0] - 1e-7
-            || epoch.to_et_seconds() > last_epoch + 1e-7
-        {
+        let last_epoch =
+            *self
+                .epoch_data
+                .last()
+                .ok_or(InterpolationError::MissingInterpolationData {
+                    epoch: Epoch::from_et_seconds(epoch_et_s),
+                })?;
+        if epoch_et_s < self.epoch_data[0] - 1e-7 || epoch_et_s > last_epoch + 1e-7 {
             return Err(InterpolationError::NoInterpolationData {
-                req: epoch,
+                req: Epoch::from_et_seconds(epoch_et_s),
                 start: Epoch::from_et_seconds(self.epoch_data[0]),
                 end: Epoch::from_et_seconds(last_epoch),
             });
@@ -377,7 +400,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
             // dir_idx is the index of the first registry epoch such that epoch_registry[dir_idx] >= et_target.
             let dir_idx = self
                 .epoch_registry
-                .partition_point(|&reg_epoch| reg_epoch < epoch.to_et_seconds());
+                .partition_point(|&reg_epoch| reg_epoch < epoch_et_s);
 
             let sub_array_start_idx = if dir_idx == 0 {
                 // et_target <= self.epoch_registry[0] (i.e., et_target is before or at the first directory epoch, E_100).
@@ -416,7 +439,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
         // Now, perform a binary search on the epochs themselves.
         match search_data_slice.binary_search_by(|epoch_et| {
             epoch_et
-                .partial_cmp(&epoch.to_et_seconds())
+                .partial_cmp(&epoch_et_s)
                 .expect("epochs in Lagrange data is now NaN or infinite but was not before")
         }) {
             Ok(idx) => {
@@ -465,41 +488,23 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
 
                 // Build the interpolation polynomials making sure to limit the slices to exactly the number of items we actually used
                 // The other ones are zeros, which would cause the interpolation function to fail.
-                let (x_km, _) = lagrange_eval(
-                    &epochs[..group_size],
-                    &xs[..group_size],
-                    epoch.to_et_seconds(),
-                )?;
+                let (x_km, _) =
+                    lagrange_eval(&epochs[..group_size], &xs[..group_size], epoch_et_s)?;
 
-                let (y_km, _) = lagrange_eval(
-                    &epochs[..group_size],
-                    &ys[..group_size],
-                    epoch.to_et_seconds(),
-                )?;
+                let (y_km, _) =
+                    lagrange_eval(&epochs[..group_size], &ys[..group_size], epoch_et_s)?;
 
-                let (z_km, _) = lagrange_eval(
-                    &epochs[..group_size],
-                    &zs[..group_size],
-                    epoch.to_et_seconds(),
-                )?;
+                let (z_km, _) =
+                    lagrange_eval(&epochs[..group_size], &zs[..group_size], epoch_et_s)?;
 
-                let (vx_km_s, _) = lagrange_eval(
-                    &epochs[..group_size],
-                    &vxs[..group_size],
-                    epoch.to_et_seconds(),
-                )?;
+                let (vx_km_s, _) =
+                    lagrange_eval(&epochs[..group_size], &vxs[..group_size], epoch_et_s)?;
 
-                let (vy_km_s, _) = lagrange_eval(
-                    &epochs[..group_size],
-                    &vys[..group_size],
-                    epoch.to_et_seconds(),
-                )?;
+                let (vy_km_s, _) =
+                    lagrange_eval(&epochs[..group_size], &vys[..group_size], epoch_et_s)?;
 
-                let (vz_km_s, _) = lagrange_eval(
-                    &epochs[..group_size],
-                    &vzs[..group_size],
-                    epoch.to_et_seconds(),
-                )?;
+                let (vz_km_s, _) =
+                    lagrange_eval(&epochs[..group_size], &vzs[..group_size], epoch_et_s)?;
 
                 // And build the result
                 let pos_km = Vector3::new(x_km, y_km, z_km);
@@ -629,7 +634,7 @@ mod ut_lagrange {
         slice[16] = 2.0; // num_records
         let set = LagrangeSetType9::from_f64_slice(&slice).unwrap();
         let summary = SPKSummaryRecord::default();
-        match set.evaluate(Epoch::from_et_seconds(50.0), &summary) {
+        match set.evaluate(50.0, &summary) {
             Ok(_) => panic!("an out-of-range epoch directory must be rejected"),
             Err(e) => assert_eq!(
                 e,
@@ -670,25 +675,25 @@ mod ut_lagrange {
         let summary = SPKSummaryRecord::default();
 
         // Test exact match
-        let epoch = Epoch::from_et_seconds(60.0);
+        let epoch = 60.0;
         let result = dataset.evaluate(epoch, &summary).unwrap();
         assert!((result.0.x - (60.0 * 60.0 + 60.0 + 1.0)).abs() < 1e-12);
         assert!((result.1.x - (2.0 * 60.0 + 1.0)).abs() < 1e-12);
 
         // Test interpolation (mid-point of an interval)
-        let epoch = Epoch::from_et_seconds(90.0);
+        let epoch = 90.0;
         let result = dataset.evaluate(epoch, &summary).unwrap();
         // Since motion is quadratic and degree is 3, Lagrange should be exact.
         assert!((result.0.x - (90.0 * 90.0 + 90.0 + 1.0)).abs() < 1e-12);
         assert!((result.1.x - (2.0 * 90.0 + 1.0)).abs() < 1e-12);
 
         // Test near start
-        let epoch = Epoch::from_et_seconds(10.0);
+        let epoch = 10.0;
         let result = dataset.evaluate(epoch, &summary).unwrap();
         assert!((result.0.x - (10.0 * 10.0 + 10.0 + 1.0)).abs() < 1e-12);
 
         // Test near end
-        let epoch = Epoch::from_et_seconds((num_records as f64 - 1.5) * h);
+        let epoch = (num_records as f64 - 1.5) * h;
         let result = dataset.evaluate(epoch, &summary).unwrap();
         let et = (num_records as f64 - 1.5) * h;
         assert!((result.0.x - (et * et + et + 1.0)).abs() < 1e-12);
@@ -731,12 +736,12 @@ mod ut_lagrange {
         let summary = SPKSummaryRecord::default();
 
         // Test exact match
-        let epoch = Epoch::from_et_seconds(10.0);
+        let epoch = 10.0;
         let result = dataset.evaluate(epoch, &summary).unwrap();
         assert_eq!(result.0.x, 10.0);
 
         // Test interpolation
-        let epoch = Epoch::from_et_seconds(10.5);
+        let epoch = 10.5;
         let result = dataset.evaluate(epoch, &summary).unwrap();
         assert_eq!(result.0.x, 10.5);
         assert_eq!(result.0.y, 21.0);
@@ -748,14 +753,14 @@ mod ut_lagrange {
         // sub_array_start_idx = 99.
         // Slice: 99..=198.
         // 99.5 is > epoch_data[99] (99.0).
-        let epoch = Epoch::from_et_seconds(99.5);
+        let epoch = 99.5;
         let result = dataset.evaluate(epoch, &summary).unwrap();
         assert_eq!(result.0.x, 99.5);
 
         // Target: 100.5.
         // partition_point(|x| x < 100.5): 1.
         // Same slice. 100.5 is in 99..=198.
-        let epoch = Epoch::from_et_seconds(100.5);
+        let epoch = 100.5;
         let result = dataset.evaluate(epoch, &summary).unwrap();
         assert_eq!(result.0.x, 100.5);
 
@@ -764,7 +769,7 @@ mod ut_lagrange {
         // dir_idx = 2.
         // start = 199.
         // Slice 199..=249.
-        let epoch = Epoch::from_et_seconds(200.5);
+        let epoch = 200.5;
         let result = dataset.evaluate(epoch, &summary).unwrap();
         assert_eq!(result.0.x, 200.5);
     }

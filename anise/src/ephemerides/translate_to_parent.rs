@@ -39,11 +39,11 @@ impl Almanac {
     pub(crate) fn translation_parts_to_parent(
         &self,
         source: Frame,
-        epoch: Epoch,
+        epoch_et_s: f64,
     ) -> Result<(Vector3, Vector3, Frame), EphemerisError> {
         // First, let's find the SPK summary for this frame.
         let (summary, spk_no, daf_idx, idx_in_spk) =
-            self.spk_summary_at_epoch(source.ephemeris_id, epoch)?;
+            self.spk_summary_at_epoch(source.ephemeris_id, epoch_et_s)?;
 
         let new_frame = source.with_ephem(summary.center_id);
 
@@ -62,7 +62,7 @@ impl Almanac {
                     .context(SPKSnafu {
                         action: "fetching data for interpolation",
                     })?;
-                data.evaluate(epoch, summary)
+                data.evaluate(epoch_et_s, summary)
                     .context(EphemInterpolationSnafu)?
             }
             DafDataType::Type2ChebyshevTriplet => {
@@ -71,7 +71,7 @@ impl Almanac {
                     .context(SPKSnafu {
                         action: "fetching data for interpolation",
                     })?;
-                data.evaluate(epoch, summary)
+                data.evaluate(epoch_et_s, summary)
                     .context(EphemInterpolationSnafu)?
             }
             DafDataType::Type3ChebyshevSextuplet => {
@@ -80,7 +80,7 @@ impl Almanac {
                     .context(SPKSnafu {
                         action: "fetching data for interpolation",
                     })?;
-                data.evaluate(epoch, summary)
+                data.evaluate(epoch_et_s, summary)
                     .context(EphemInterpolationSnafu)?
             }
             DafDataType::Type8LagrangeEqualStep => {
@@ -89,7 +89,7 @@ impl Almanac {
                     .context(SPKSnafu {
                         action: "fetching data for interpolation",
                     })?;
-                data.evaluate(epoch, summary)
+                data.evaluate(epoch_et_s, summary)
                     .context(EphemInterpolationSnafu)?
             }
             DafDataType::Type9LagrangeUnequalStep => {
@@ -98,7 +98,7 @@ impl Almanac {
                     .context(SPKSnafu {
                         action: "fetching data for interpolation",
                     })?;
-                data.evaluate(epoch, summary)
+                data.evaluate(epoch_et_s, summary)
                     .context(EphemInterpolationSnafu)?
             }
             DafDataType::Type12HermiteEqualStep => {
@@ -107,7 +107,7 @@ impl Almanac {
                     .context(SPKSnafu {
                         action: "fetching data for interpolation",
                     })?;
-                data.evaluate(epoch, summary)
+                data.evaluate(epoch_et_s, summary)
                     .context(EphemInterpolationSnafu)?
             }
             DafDataType::Type13HermiteUnequalStep => {
@@ -116,7 +116,7 @@ impl Almanac {
                     .context(SPKSnafu {
                         action: "fetching data for interpolation",
                     })?;
-                data.evaluate(epoch, summary)
+                data.evaluate(epoch_et_s, summary)
                     .context(EphemInterpolationSnafu)?
             }
             dtype => {
@@ -146,7 +146,8 @@ impl Almanac {
         source: Frame,
         epoch: Epoch,
     ) -> Result<CartesianState, EphemerisError> {
-        let (radius_km, velocity_km_s, frame) = self.translation_parts_to_parent(source, epoch)?;
+        let (radius_km, velocity_km_s, frame) =
+            self.translation_parts_to_parent(source, epoch.to_et_seconds())?;
 
         Ok(CartesianState {
             radius_km,

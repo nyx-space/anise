@@ -303,6 +303,7 @@ impl DCM {
         self.to = to_id;
     }
 
+    #[allow(clippy::wrong_self_convention)]
     /// :rtype: Quaternion
     fn to_quaternion(&self) -> Quaternion {
         Quaternion::from(*self)

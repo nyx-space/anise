@@ -97,7 +97,7 @@ pub trait NAIFDataSet<'a>: Sized + Display + PartialEq {
 
     fn evaluate<S: NAIFSummaryRecord>(
         &self,
-        epoch: Epoch,
+        epoch_et_s: f64,
         summary: &S,
     ) -> Result<Self::StateKind, InterpolationError>;
 

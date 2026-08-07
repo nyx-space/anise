@@ -105,10 +105,11 @@ impl Almanac {
     pub fn spk_summary_at_epoch(
         &self,
         id: i32,
-        epoch: Epoch,
+        epoch_et_s: f64,
     ) -> Result<(&SPKSummaryRecord, usize, Option<usize>, usize), EphemerisError> {
         for (spk_no, spk) in self.spk_data.values().rev().enumerate() {
-            if let Ok((summary, daf_idx, idx_in_spk)) = spk.summary_from_id_at_epoch(id, epoch) {
+            if let Ok((summary, daf_idx, idx_in_spk)) = spk.summary_from_id_at_epoch(id, epoch_et_s)
+            {
                 // NOTE: We're iterating backward, so the correct SPK number is "total loaded" minus "current iteration".
                 return Ok((
                     summary,
@@ -121,14 +122,16 @@ impl Almanac {
 
         // If the ID is not present at all, spk_domain will report it.
         let (start, end) = self.spk_domain(id)?;
-        error!("Almanac: summary {id} valid from {start} to {end} but not at requested {epoch}");
+        error!(
+            "Almanac: summary {id} valid from {start} to {end} but not at requested {epoch_et_s}"
+        );
         // If we're reached this point, there is no relevant summary at this epoch.
         Err(EphemerisError::SPK {
             action: "searching for SPK summary",
             source: DAFError::SummaryIdAtEpochError {
                 kind: "SPK",
                 id,
-                epoch,
+                epoch: Epoch::from_et_seconds(epoch_et_s),
                 start,
                 end,
             },
@@ -298,7 +301,7 @@ mod ut_almanac_spk {
             "empty Almanac should report an error"
         );
         assert!(
-            almanac.spk_summary_at_epoch(0, e).is_err(),
+            almanac.spk_summary_at_epoch(0, e.to_et_seconds()).is_err(),
             "empty Almanac should report an error"
         );
         assert!(
@@ -324,13 +327,15 @@ mod ut_almanac_spk {
         );
 
         assert!(
-            almanac.ephemeris_path_to_root(MOON_J2000, e).is_err(),
+            almanac
+                .ephemeris_path_to_root(MOON_J2000, e.to_et_seconds())
+                .is_err(),
             "empty Almanac should report an error"
         );
 
         assert!(
             almanac
-                .common_ephemeris_path(MOON_J2000, EARTH_J2000, e)
+                .common_ephemeris_path(MOON_J2000, EARTH_J2000, e.to_et_seconds())
                 .is_err(),
             "empty Almanac should report an error"
         );

@@ -67,11 +67,13 @@ impl Almanac {
             observer_frame = obs_frame_info;
         }
 
+        let epoch_et_s = epoch.to_et_seconds();
+
         match ab_corr {
             None => {
                 // Geometric case (no aberration correction)
                 let (node_count, _path, common_node) =
-                    self.common_ephemeris_path(observer_frame, target_frame, epoch)?;
+                    self.common_ephemeris_path(observer_frame, target_frame, epoch_et_s)?;
 
                 // The `fwrd` variables store the state of the observer frame relative to the common ancestor.
                 let (mut pos_fwrd, mut vel_fwrd, mut frame_fwrd) =
@@ -79,7 +81,7 @@ impl Almanac {
                         // Observer is the common ancestor, so state is zero.
                         (Vector3::zeros(), Vector3::zeros(), observer_frame)
                     } else {
-                        self.translation_parts_to_parent(observer_frame, epoch)?
+                        self.translation_parts_to_parent(observer_frame, epoch_et_s)?
                     };
 
                 // The `bwrd` variables store the state of the target frame relative to the common ancestor.
@@ -88,7 +90,7 @@ impl Almanac {
                         // Target is the common ancestor, so state is zero.
                         (Vector3::zeros(), Vector3::zeros(), target_frame)
                     } else {
-                        self.translation_parts_to_parent(target_frame, epoch)?
+                        self.translation_parts_to_parent(target_frame, epoch_et_s)?
                     };
 
                 // Traverse the ephemeris tree from both the observer and target up to the common ancestor.
@@ -96,7 +98,7 @@ impl Almanac {
                     if !frame_fwrd.ephem_origin_id_match(common_node) {
                         // Accumulate the state from the current forward frame to its parent.
                         let (cur_pos_fwrd, cur_vel_fwrd, cur_frame_fwrd) =
-                            self.translation_parts_to_parent(frame_fwrd, epoch)?;
+                            self.translation_parts_to_parent(frame_fwrd, epoch_et_s)?;
 
                         pos_fwrd += cur_pos_fwrd;
                         vel_fwrd += cur_vel_fwrd;
@@ -106,7 +108,7 @@ impl Almanac {
                     if !frame_bwrd.ephem_origin_id_match(common_node) {
                         // Accumulate the state from the current backward frame to its parent.
                         let (cur_pos_bwrd, cur_vel_bwrd, cur_frame_bwrd) =
-                            self.translation_parts_to_parent(frame_bwrd, epoch)?;
+                            self.translation_parts_to_parent(frame_bwrd, epoch_et_s)?;
 
                         pos_bwrd += cur_pos_bwrd;
                         vel_bwrd += cur_vel_bwrd;

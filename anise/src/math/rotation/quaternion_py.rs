@@ -146,6 +146,7 @@ impl EulerParameter {
         PyArray1::<f64>::from_owned_array(py, vec)
     }
 
+    #[allow(clippy::wrong_self_convention)]
     /// Convert this quaterion to a DCM
     /// :rtype: DCM
     fn to_dcm(&self) -> DCM {

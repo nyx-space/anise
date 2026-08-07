@@ -44,7 +44,7 @@ pub enum FileRecordError {
     EmptyRecord,
 }
 
-#[derive(Debug, Clone, FromBytes, KnownLayout, Immutable, IntoBytes, PartialEq)]
+#[derive(Debug, Copy, Clone, FromBytes, KnownLayout, Immutable, IntoBytes, PartialEq)]
 #[repr(C)]
 pub struct FileRecord {
     pub id_str: [u8; 8],
@@ -175,27 +175,6 @@ impl FileRecord {
     }
 }
 
-#[cfg(test)]
-mod ut_file_record {
-    use super::{FileRecord, FileRecordError};
-
-    #[test]
-    fn identification_non_ascii_id_str() {
-        // First eight bytes are valid UTF-8 but start with a 4-byte character, so
-        // slicing the decoded string at byte offset 3 or 4 would land inside it.
-        let mut rec = FileRecord::default();
-        rec.id_str = [0xF0, 0x9F, 0x98, 0x80, 0x20, 0x20, 0x20, 0x20];
-        assert_eq!(rec.identification(), Err(FileRecordError::NotDAF));
-    }
-
-    #[test]
-    fn identification_spk() {
-        let mut rec = FileRecord::default();
-        rec.id_str = *b"DAF/SPK ";
-        assert_eq!(rec.identification(), Ok("SPK"));
-    }
-}
-
 impl fmt::Display for FileRecord {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let id = self.identification().unwrap_or("invalid identifier");
@@ -205,5 +184,30 @@ impl fmt::Display for FileRecord {
             "invalid endian".to_string()
         };
         write!(f, "FileRecord for {id} in {endian}",)
+    }
+}
+
+#[cfg(test)]
+mod ut_file_record {
+    use super::{FileRecord, FileRecordError};
+
+    #[test]
+    fn identification_non_ascii_id_str() {
+        // First eight bytes are valid UTF-8 but start with a 4-byte character, so
+        // slicing the decoded string at byte offset 3 or 4 would land inside it.
+        let rec = FileRecord {
+            id_str: [0xF0, 0x9F, 0x98, 0x80, 0x20, 0x20, 0x20, 0x20],
+            ..Default::default()
+        };
+        assert_eq!(rec.identification(), Err(FileRecordError::NotDAF));
+    }
+
+    #[test]
+    fn identification_spk() {
+        let rec = FileRecord {
+            id_str: *b"DAF/SPK ",
+            ..Default::default()
+        };
+        assert_eq!(rec.identification(), Ok("SPK"));
     }
 }

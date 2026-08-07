@@ -11,6 +11,7 @@
 use crate::errors::MathError;
 
 use hifitime::Epoch;
+use nalgebra::{Vector3, Vector4};
 
 use super::InterpolationError;
 
@@ -20,11 +21,13 @@ use super::InterpolationError;
 /// 1. At this point, the splines are expected to be in Chebyshev format and no verification is done.
 pub fn chebyshev_eval(
     normalized_time: f64,
-    spline_coeffs: &[f64],
+    spline_coeffs_x: &[f64],
+    spline_coeffs_y: &[f64],
+    spline_coeffs_z: &[f64],
     spline_radius_s: f64,
-    eval_epoch: Epoch,
+    eval_epoch_et_s: f64,
     degree: usize,
-) -> Result<(f64, f64), InterpolationError> {
+) -> Result<(Vector3<f64>, Vector3<f64>), InterpolationError> {
     if spline_radius_s.abs() < f64::EPSILON {
         return Err(InterpolationError::InterpMath {
             source: MathError::DivisionByZero {
@@ -32,29 +35,67 @@ pub fn chebyshev_eval(
             },
         });
     }
-    // Workspace arrays
-    let mut w = [0.0_f64; 3];
-    let mut dw = [0.0_f64; 3];
+
+    // Workspace arrays, all in Vector4 to force SIMD where possible.
+    let mut w = [Vector4::zeros(); 3];
+    let mut dw = [Vector4::zeros(); 3];
 
     for j in (2..=degree + 1).rev() {
         w[2] = w[1];
         w[1] = w[0];
-        w[0] = (spline_coeffs
-            .get(j - 1)
-            .ok_or(InterpolationError::MissingInterpolationData { epoch: eval_epoch })?)
-            + (2.0 * normalized_time * w[1] - w[2]);
+
+        let c = Vector4::new(
+            *spline_coeffs_x
+                .get(j - 1)
+                .ok_or(InterpolationError::MissingInterpolationData {
+                    epoch: Epoch::from_et_seconds(eval_epoch_et_s),
+                })?,
+            *spline_coeffs_y
+                .get(j - 1)
+                .ok_or(InterpolationError::MissingInterpolationData {
+                    epoch: Epoch::from_et_seconds(eval_epoch_et_s),
+                })?,
+            *spline_coeffs_z
+                .get(j - 1)
+                .ok_or(InterpolationError::MissingInterpolationData {
+                    epoch: Epoch::from_et_seconds(eval_epoch_et_s),
+                })?,
+            0.0,
+        );
+
+        w[0] = c + (2.0 * normalized_time * w[1] - w[2]);
 
         dw[2] = dw[1];
         dw[1] = dw[0];
         dw[0] = w[1] * 2. + dw[1] * 2.0 * normalized_time - dw[2];
     }
 
-    let val = (spline_coeffs
-        .first()
-        .ok_or(InterpolationError::MissingInterpolationData { epoch: eval_epoch })?)
-        + (normalized_time * w[0] - w[1]);
+    let c0 = Vector4::new(
+        *spline_coeffs_x
+            .first()
+            .ok_or(InterpolationError::MissingInterpolationData {
+                epoch: Epoch::from_et_seconds(eval_epoch_et_s),
+            })?,
+        *spline_coeffs_y
+            .first()
+            .ok_or(InterpolationError::MissingInterpolationData {
+                epoch: Epoch::from_et_seconds(eval_epoch_et_s),
+            })?,
+        *spline_coeffs_z
+            .first()
+            .ok_or(InterpolationError::MissingInterpolationData {
+                epoch: Epoch::from_et_seconds(eval_epoch_et_s),
+            })?,
+        0.0,
+    );
 
-    let deriv = (w[0] + normalized_time * dw[0] - dw[1]) / spline_radius_s;
+    let val = (c0 + (normalized_time * w[0] - w[1]))
+        .fixed_rows::<3>(0)
+        .into_owned();
+
+    let deriv = ((w[0] + normalized_time * dw[0] - dw[1]) / spline_radius_s)
+        .fixed_rows::<3>(0)
+        .into_owned();
     Ok((val, deriv))
 }
 
@@ -65,7 +106,7 @@ pub fn chebyshev_eval(
 pub fn chebyshev_eval_poly(
     normalized_time: f64,
     spline_coeffs: &[f64],
-    eval_epoch: Epoch,
+    eval_epoch_et_s: f64,
     degree: usize,
 ) -> Result<f64, InterpolationError> {
     // Workspace array
@@ -76,7 +117,9 @@ pub fn chebyshev_eval_poly(
         w[1] = w[0];
         w[0] = (spline_coeffs
             .get(j - 1)
-            .ok_or(InterpolationError::MissingInterpolationData { epoch: eval_epoch })?)
+            .ok_or(InterpolationError::MissingInterpolationData {
+                epoch: Epoch::from_et_seconds(eval_epoch_et_s),
+            })?)
             + (2.0 * normalized_time * w[1] - w[2]);
     }
 
@@ -87,7 +130,9 @@ pub fn chebyshev_eval_poly(
     let val = (normalized_time * w[0]) - w[1]
         + (spline_coeffs
             .first()
-            .ok_or(InterpolationError::MissingInterpolationData { epoch: eval_epoch })?);
+            .ok_or(InterpolationError::MissingInterpolationData {
+                epoch: Epoch::from_et_seconds(eval_epoch_et_s),
+            })?);
 
     Ok(val)
 }

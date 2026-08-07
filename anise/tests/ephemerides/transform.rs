@@ -237,7 +237,7 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
     let gh346_epoch = Epoch::from_gregorian_utc_at_midnight(2023, 12, 15);
     assert!(
         almanac
-            .common_ephemeris_path(lro_frame, SUN_J2000, gh346_epoch)
+            .common_ephemeris_path(lro_frame, SUN_J2000, gh346_epoch.to_et_seconds())
             .is_ok()
     );
     assert!(
@@ -250,7 +250,7 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
 
     // First, let's test that the common ephemeris path is correct
     let (node_count, path, common_node) = almanac
-        .common_ephemeris_path(lro_frame, SUN_J2000, epoch)
+        .common_ephemeris_path(lro_frame, SUN_J2000, epoch.to_et_seconds())
         .unwrap();
 
     assert_eq!(common_node, 0, "common node should be the SSB");
@@ -409,14 +409,14 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
                 println!("{occult} @ {rx_lro:x}");
                 printed_visible = true;
             }
-            if let Some(prev_occult) = &prev_occult {
-                if prev_occult.is_partial() {
-                    assert_eq!(
-                        epoch,
-                        Epoch::from_gregorian_utc_hms(2024, 1, 1, 0, 46, 36),
-                        "wrong post-penumbra state"
-                    );
-                }
+            if let Some(prev_occult) = &prev_occult
+                && prev_occult.is_partial()
+            {
+                assert_eq!(
+                    epoch,
+                    Epoch::from_gregorian_utc_hms(2024, 1, 1, 0, 46, 36),
+                    "wrong post-penumbra state"
+                );
             }
         } else if occult.is_obstructed() {
             if !printed_umbra {

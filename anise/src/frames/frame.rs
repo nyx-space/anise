@@ -707,7 +707,7 @@ mod frame_ut {
     #[test]
     fn mars_centered_inertial() {
         use crate::constants::frames::MARS_INERTIAL_FRAME;
-        assert!(MARS_INERTIAL_FRAME.force_inertial);
+        const { assert!(MARS_INERTIAL_FRAME.force_inertial) };
         assert_eq!(
             MARS_INERTIAL_FRAME.frozen_epoch.unwrap(),
             Epoch::from_et_seconds(0.0)
