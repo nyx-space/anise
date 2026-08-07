@@ -207,8 +207,8 @@ impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
         let (state, rate) = chebyshev_eval(
             normalized_time,
             record.x_coeffs,
-            record.x_coeffs,
-            record.x_coeffs,
+            record.y_coeffs,
+            record.z_coeffs,
             radius_s,
             epoch_et_s,
             self.degree(),

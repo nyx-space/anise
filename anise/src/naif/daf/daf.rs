@@ -56,7 +56,7 @@ fn file_record<R: NAIFSummaryRecord>(bytes: &[u8]) -> Result<FileRecord, DAFErro
     let file_record = FileRecord::read_from_bytes(
         bytes
             .get(..FileRecord::SIZE)
-            .ok_or_else(|| DecodingError::InaccessibleBytes {
+            .ok_or(DecodingError::InaccessibleBytes {
                 start: 0,
                 end: FileRecord::SIZE,
                 size: bytes.len(),
@@ -92,8 +92,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     /// 2.  The CRC32 checksum of the bytes is computed.
     /// 3.  The `file_record` and `name_record` are parsed to ensure the file is a valid DAF.
     pub fn parse<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DAFError> {
-        // Parse file record
-
+        // Parse file record once.
         let mut me = Self {
             file_record: file_record::<R>(&bytes[..])?,
             bytes: BytesMut::from(&bytes[..]),
