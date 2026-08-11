@@ -436,12 +436,22 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
             )
         };
 
-        // Now, perform a binary search on the epochs themselves.
-        match search_data_slice.binary_search_by(|epoch_et| {
-            epoch_et
-                .partial_cmp(&epoch_et_s)
-                .expect("epochs in Lagrange data is now NaN or infinite but was not before")
-        }) {
+        // Now, perform a binary search on the epochs themselves. A crafted segment can hold a
+        // non-finite epoch that check_integrity would reject, but that check is not run on the
+        // query path, so guard the comparison rather than unwrapping a failed partial_cmp.
+        let mut non_finite_epoch = false;
+        let search = search_data_slice.binary_search_by(|epoch_et| {
+            epoch_et.partial_cmp(&epoch_et_s).unwrap_or_else(|| {
+                non_finite_epoch = true;
+                core::cmp::Ordering::Equal
+            })
+        });
+        if non_finite_epoch {
+            return Err(InterpolationError::CorruptedData {
+                what: "epoch data contains a non-finite value",
+            });
+        }
+        match search {
             Ok(idx) => {
                 // Oh wow, this state actually exists, no interpolation needed!
                 Ok(self
@@ -772,5 +782,26 @@ mod ut_lagrange {
         let epoch = 200.5;
         let result = dataset.evaluate(epoch, &summary).unwrap();
         assert_eq!(result.0.x, 200.5);
+    }
+
+    #[test]
+    fn non_finite_epoch_data_is_rejected() {
+        // A crafted Type 9 segment whose epoch directory holds a NaN reaches the binary search
+        // with a non-finite comparand. check_integrity would catch it, but it is not run on the
+        // query path, so the comparator used to panic on the failed partial_cmp.
+        let state_data = [0.0_f64; 6];
+        let epoch_data = [f64::NAN];
+        let dataset = LagrangeSetType9 {
+            degree: 0,
+            num_records: 1,
+            state_data: &state_data,
+            epoch_data: &epoch_data,
+            epoch_registry: &[],
+        };
+        let summary = SPKSummaryRecord::default();
+        assert!(
+            dataset.evaluate(0.0, &summary).is_err(),
+            "a non-finite epoch must error, not panic"
+        );
     }
 }
