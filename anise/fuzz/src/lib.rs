@@ -1,8 +1,6 @@
 use anise::frames::Frame;
 use anise::math::Vector3;
-use anise::math::rotation::DCM;
-use anise::math::rotation::MRP;
-use anise::math::rotation::Quaternion;
+use anise::math::rotation::{DCM, MRP, Quaternion};
 use anise::naif::kpl::fk::FKItem;
 use anise::naif::kpl::parser::Assignment;
 use anise::naif::kpl::tpc::TPCItem;
@@ -165,9 +163,25 @@ impl From<ArbitraryDCM> for DCM {
     }
 }
 
-#[derive(arbitrary::Arbitrary, Debug)]
+#[derive(Debug)]
 pub struct ArbitraryEpoch {
     pub seconds_since_1900_utc: f64,
+}
+
+impl<'a> arbitrary::Arbitrary<'a> for ArbitraryEpoch {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let val: f64 = u.arbitrary()?;
+        if !val.is_finite() {
+            return Err(arbitrary::Error::IncorrectFormat);
+        }
+        Ok(Self {
+            seconds_since_1900_utc: val,
+        })
+    }
+
+    fn size_hint(depth: usize) -> (usize, Option<usize>) {
+        <f64 as arbitrary::Arbitrary<'a>>::size_hint(depth)
+    }
 }
 
 impl From<ArbitraryEpoch> for Epoch {
