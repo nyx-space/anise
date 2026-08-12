@@ -48,6 +48,7 @@ use crate::errors::PhysicsError;
 /// :rtype: Aberration
 #[derive(Copy, Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "analysis", derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "metaload", derive(serde_dhall::StaticType))]
 #[cfg_attr(feature = "python", pyclass(from_py_object))]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
 pub struct Aberration {
@@ -343,5 +344,29 @@ mod ut_aberration {
         assert_eq!(format!("{:?}", Aberration::XLT_S.unwrap()), "XLT+S");
         assert_eq!(format!("{:?}", Aberration::XCN.unwrap()), "XCN");
         assert_eq!(format!("{:?}", Aberration::XCN_S.unwrap()), "XCN+S");
+    }
+    #[cfg(feature = "metaload")]
+    #[test]
+    fn test_ab_corr_static_type() {
+        use super::Aberration;
+
+        for ab_corr in [
+            Aberration::NONE,
+            Aberration::LT,
+            Aberration::LT_S,
+            Aberration::CN_S,
+            Aberration::XCN,
+            Aberration::XCN_S,
+            Aberration::XLT,
+            Aberration::XLT_S,
+        ] {
+            let as_dhall = serde_dhall::serialize(&ab_corr)
+                .static_type_annotation()
+                .to_string()
+                .unwrap();
+            let from_dhall: Option<Aberration> = serde_dhall::from_str(&as_dhall).parse().unwrap();
+
+            assert_eq!(from_dhall, ab_corr);
+        }
     }
 }

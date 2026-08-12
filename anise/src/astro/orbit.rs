@@ -41,6 +41,8 @@ use pyo3::types::PyType;
 
 /// If an orbit has an eccentricity below the following value, it is considered circular.
 pub const ECC_EPSILON: f64 = 1e-11;
+/// If an orbit has an inclination below the following valie, it is considered equatorial.
+pub const INC_EPSILON_DEG: f64 = 1e-6;
 
 /// A helper type alias, but no assumptions are made on the underlying validity of the frame.
 pub type Orbit = CartesianState;
@@ -1143,16 +1145,31 @@ impl Orbit {
 
     /// Returns the argument of latitude in degrees
     ///
-    /// NOTE: If the orbit is near circular, the AoL will be computed from the true longitude
-    /// instead of relying on the ill-defined true anomaly.
+    /// NOTE: This computation uses vector geometry, ensuring proper conditioning with circular orbits.
+    /// NOTE: If the orbit is near equatorial (inclination < 1e-6 deg), then the AoL is ill-defined
+    /// and an error will be returned.
     ///
     /// :rtype: float
     pub fn aol_deg(&self) -> PhysicsResult<f64> {
-        Ok(between_0_360(if self.ecc()? < ECC_EPSILON {
-            self.tlong_deg()? - self.raan_deg()?
-        } else {
-            self.aop_deg()? + self.ta_deg()?
-        }))
+        let h_hat = self.h_hat()?;
+        let mut n_hat = Vector3::new(0.0, 0.0, 1.0).cross(&h_hat);
+
+        if n_hat.norm() < INC_EPSILON_DEG.to_radians() {
+            return Err(PhysicsError::AppliedMath {
+                source: MathError::DomainError {
+                    value: n_hat.norm_squared(),
+                    msg: "orbit is equatorial",
+                },
+            });
+        }
+
+        n_hat /= n_hat.norm();
+
+        let m_hat = h_hat.cross(&n_hat);
+        let sin_u = self.r_hat().dot(&m_hat);
+        let cos_u = self.r_hat().dot(&n_hat);
+
+        Ok(between_0_360(sin_u.atan2(cos_u).to_degrees()))
     }
 
     /// Returns the radius of periapsis (or perigee around Earth), in kilometers.
