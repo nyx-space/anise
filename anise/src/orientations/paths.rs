@@ -230,8 +230,13 @@ impl Almanac {
             let common_node = to_path[to_len - 1].expect("path entry within to_len must be Some");
 
             for from_obj in from_path.iter().take(from_len).rev().skip(1) {
-                common_path[items] =
-                    Some(from_obj.expect("path entry within from_len must be Some"));
+                // `items` starts at `to_len` and grows with the from path, so it can run past
+                // the fixed-size common-path buffer when both frames sit in deep branches.
+                // Guard the write; the caller only reads up to MAX_TREE_DEPTH entries.
+                if items < common_path.len() {
+                    common_path[items] =
+                        Some(from_obj.expect("path entry within from_len must be Some"));
+                }
                 items += 1;
             }
 
