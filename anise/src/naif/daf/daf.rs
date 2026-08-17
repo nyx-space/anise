@@ -234,7 +234,17 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     /// Reads and parses the name record from the DAF bytes.
     /// The file record contains a pointer to the start of the name record.
     pub fn name_record(&self, idx: Option<usize>) -> Result<NameRecord, DAFError> {
-        let rcrd_idx = idx.unwrap_or(self.file_record()?.fwrd_idx()) * RCRD_LEN;
+        // The record pointer is a raw f64 read from the summary chain, so multiplying it by the
+        // record length can overflow usize on a crafted file. Guard it like daf_summary does.
+        let rcrd_idx = idx
+            .unwrap_or(self.file_record()?.fwrd_idx())
+            .checked_mul(RCRD_LEN)
+            .ok_or(DecodingError::InaccessibleBytes {
+                start: 0,
+                end: RCRD_LEN,
+                size: self.bytes.len(),
+            })
+            .context(DecodingNameSnafu { kind: R::NAME })?;
         let rcrd_bytes = self
             .bytes
             .get(rcrd_idx..rcrd_idx + RCRD_LEN)
@@ -258,13 +268,13 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         let rcrd_idx = idx
             .unwrap_or(self.file_record()?.fwrd_idx())
             .checked_sub(1)
+            .and_then(|record| record.checked_mul(RCRD_LEN))
             .ok_or(DecodingError::InaccessibleBytes {
                 start: 0,
                 end: RCRD_LEN,
                 size: self.bytes.len(),
             })
-            .context(DecodingSummarySnafu { kind: R::NAME })?
-            * RCRD_LEN;
+            .context(DecodingSummarySnafu { kind: R::NAME })?;
         let rcrd_bytes = self
             .bytes
             .get(rcrd_idx..rcrd_idx + RCRD_LEN)
@@ -296,12 +306,13 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         let rcrd_idx = match idx
             .unwrap_or(self.file_record()?.fwrd_idx())
             .checked_sub(1)
+            .and_then(|record| record.checked_mul(RCRD_LEN))
             .ok_or(DecodingError::InaccessibleBytes {
                 start: 0,
                 end: RCRD_LEN,
                 size: self.bytes.len(),
             }) {
-            Ok(it) => it * RCRD_LEN,
+            Ok(it) => it,
             Err(source) => {
                 return Err(DAFError::DecodingSummary {
                     kind: R::NAME,
@@ -1011,6 +1022,52 @@ mod daf_ut {
         match super::DAF::<SPKSummaryRecord>::parse(&bytes[..]) {
             Err(DAFError::DecodingSummary { .. }) => {}
             Ok(_) => panic!("unexpected success for a zero forward pointer"),
+            Err(e) => panic!("unexpected error: {e}"),
+        }
+    }
+
+    #[test]
+    fn oversized_next_record_pointer() {
+        use crate::naif::daf::FileRecord;
+        use crate::naif::daf::summary_record::SummaryRecord;
+        use crate::naif::spk::summary::SPKSummaryRecord;
+        use zerocopy::IntoBytes;
+
+        let mut file_record = FileRecord::spk("TEST");
+        file_record.forward = 2;
+        file_record.nd = 2;
+        file_record.ni = 6;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(file_record.as_bytes());
+        bytes.resize(1024, 0);
+
+        // Summary record (record 2): the next-record pointer is a huge integer-valued f64, so
+        // it passes is_corrupt (round(x) == x) and is not the final record, and the parse loop
+        // follows it into data_summaries. Multiplying (next_record - 1) by the record length
+        // used to overflow usize and panic while building the index during parse.
+        let summary_header = SummaryRecord {
+            next_record: 1e17,
+            prev_record: 0.0,
+            num_summaries: 1.0,
+        };
+        let summary = SPKSummaryRecord {
+            data_type_i: 13,
+            start_idx: 1,
+            end_idx: 5,
+            ..Default::default()
+        };
+
+        let mut summary_record = Vec::new();
+        summary_record.extend_from_slice(summary_header.as_bytes());
+        summary_record.extend_from_slice(summary.as_bytes());
+        summary_record.resize(1024, 0);
+        bytes.extend(summary_record);
+        bytes.extend(vec![0u8; 1024]);
+
+        match super::DAF::<SPKSummaryRecord>::parse(&bytes[..]) {
+            Err(DAFError::DecodingSummary { .. }) => {}
+            Ok(_) => panic!("unexpected success for an oversized next-record pointer"),
             Err(e) => panic!("unexpected error: {e}"),
         }
     }
