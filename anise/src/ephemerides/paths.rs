@@ -199,11 +199,15 @@ impl Almanac {
 
                     // `items` accumulates across both the outer (to) and inner (from) walks,
                     // so it can run past the fixed-size common-path buffer when the two frames
-                    // sit in deep, divergent branches. Guard the write; the buffer contents are
-                    // only used up to `items` and never beyond MAX_TREE_DEPTH by the caller.
-                    if items < common_path.len() {
-                        common_path[items] = Some(from_id);
+                    // sit in deep, divergent branches. Rather than write out of bounds, report
+                    // the tree as too deep to represent a common path.
+                    if items >= common_path.len() {
+                        return Err(EphemerisError::SPK {
+                            action: "computing common path between frames",
+                            source: DAFError::MaxRecursionDepth,
+                        });
                     }
+                    common_path[items] = Some(from_id);
                     items += 1;
 
                     if from_obj == to_obj {
@@ -334,10 +338,13 @@ mod path_depth_ut {
         let to = Frame::from_ephem_j2000(8);
         let epoch = Epoch::from_et_seconds(0.0);
 
-        // Must resolve (or error) without panicking on an out-of-bounds write.
+        // The accumulated `items` counter runs past the fixed common-path buffer before the
+        // branches meet, so the merge must report a MaxRecursionDepth error rather than writing
+        // out of bounds and panicking.
         let result = almanac.common_ephemeris_path(from, to, epoch.to_et_seconds());
-        assert!(result.is_ok(), "expected a common root at ephemeris 1");
-        let (_, _, common_node) = result.unwrap();
-        assert_eq!(common_node, 1);
+        assert!(
+            result.is_err(),
+            "a common path that overruns the buffer must error, not panic"
+        );
     }
 }

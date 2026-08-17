@@ -232,11 +232,15 @@ impl Almanac {
             for from_obj in from_path.iter().take(from_len).rev().skip(1) {
                 // `items` starts at `to_len` and grows with the from path, so it can run past
                 // the fixed-size common-path buffer when both frames sit in deep branches.
-                // Guard the write; the caller only reads up to MAX_TREE_DEPTH entries.
-                if items < common_path.len() {
-                    common_path[items] =
-                        Some(from_obj.expect("path entry within from_len must be Some"));
+                // Rather than write out of bounds, report the tree as too deep.
+                if items >= common_path.len() {
+                    return Err(OrientationError::BPC {
+                        action: "computing common path between frames",
+                        source: DAFError::MaxRecursionDepth,
+                    });
                 }
+                common_path[items] =
+                    Some(from_obj.expect("path entry within from_len must be Some"));
                 items += 1;
             }
 
