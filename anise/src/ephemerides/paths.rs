@@ -197,6 +197,16 @@ impl Almanac {
                         return Ok((items, common_path, to_frame.ephemeris_id));
                     }
 
+                    // `items` accumulates across both the outer (to) and inner (from) walks,
+                    // so it can run past the fixed-size common-path buffer when the two frames
+                    // sit in deep, divergent branches. Rather than write out of bounds, report
+                    // the tree as too deep to represent a common path.
+                    if items >= common_path.len() {
+                        return Err(EphemerisError::SPK {
+                            action: "computing common path between frames",
+                            source: DAFError::MaxRecursionDepth,
+                        });
+                    }
                     common_path[items] = Some(from_id);
                     items += 1;
 
@@ -276,6 +286,65 @@ mod path_depth_ut {
         assert!(
             result.is_err(),
             "a chain deeper than MAX_TREE_DEPTH must error, not panic"
+        );
+    }
+
+    #[test]
+    fn common_ephemeris_path_divergent_branches_does_not_panic() {
+        // Two center chains that share only the root (1):
+        //   branch F: 5 -> 4 -> 3 -> 1
+        //   branch T: 8 -> 7 -> 6 -> 1
+        // common_ephemeris_path scans both paths with a single `items` counter that is not
+        // reset between the outer (to) and inner (from) walks, so it walks past the fixed
+        // MAX_TREE_DEPTH common-path buffer and writes out of bounds.
+        let mut file_record = FileRecord::spk("DIVERGE");
+        file_record.forward = 2;
+        file_record.nd = 2;
+        file_record.ni = 6;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(file_record.as_bytes());
+        bytes.resize(1024, 0);
+
+        let links = [(5, 4), (4, 3), (3, 1), (8, 7), (7, 6), (6, 1)];
+        let header = SummaryRecord {
+            next_record: 0.0,
+            prev_record: 0.0,
+            num_summaries: links.len() as f64,
+        };
+        let mut summary_block = Vec::new();
+        summary_block.extend_from_slice(header.as_bytes());
+        for (target, center) in links {
+            let summary = SPKSummaryRecord {
+                start_epoch_et_s: -1e9,
+                end_epoch_et_s: 1e9,
+                target_id: target,
+                center_id: center,
+                frame_id: 1,
+                data_type_i: 2,
+                start_idx: 1,
+                end_idx: 100,
+            };
+            summary_block.extend_from_slice(summary.as_bytes());
+        }
+        summary_block.resize(1024, 0);
+        bytes.extend(summary_block);
+        bytes.extend(vec![0u8; 1024]);
+
+        let spk = SPK::parse(&bytes[..]).unwrap();
+        let almanac = Almanac::from_spk(spk);
+
+        let from = Frame::from_ephem_j2000(5);
+        let to = Frame::from_ephem_j2000(8);
+        let epoch = Epoch::from_et_seconds(0.0);
+
+        // The accumulated `items` counter runs past the fixed common-path buffer before the
+        // branches meet, so the merge must report a MaxRecursionDepth error rather than writing
+        // out of bounds and panicking.
+        let result = almanac.common_ephemeris_path(from, to, epoch.to_et_seconds());
+        assert!(
+            result.is_err(),
+            "a common path that overruns the buffer must error, not panic"
         );
     }
 }
