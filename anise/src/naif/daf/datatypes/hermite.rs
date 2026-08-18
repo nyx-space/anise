@@ -189,9 +189,12 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
             nearest_i.saturating_sub((self.samples - 1) / 2)
         };
 
-        // Ensure we don't go past the end of the records
-        if first_idx + self.samples > self.num_records {
-            first_idx = self.num_records.saturating_sub(self.samples);
+        // Ensure we don't go past the end of the records. Compare against the last valid start
+        // index rather than `first_idx + self.samples`: a query far from the segment start
+        // saturates the usize cast of float_index, so the addition would overflow.
+        let max_first_idx = self.num_records.saturating_sub(self.samples);
+        if first_idx > max_first_idx {
+            first_idx = max_first_idx;
         }
 
         // Statically allocated arrays of the maximum number of samples
@@ -883,6 +886,37 @@ mod hermite_ut {
             dataset.evaluate(50.0, &summary).is_err(),
             "zero step size must error, not panic"
         );
+    }
+
+    #[test]
+    fn type12_large_offset_does_not_overflow() {
+        use super::HermiteSetType12;
+        use crate::naif::daf::NAIFDataSet;
+        use crate::naif::spk::summary::SPKSummaryRecord;
+
+        // The step size is nonzero and finite, so the zero-step guard does not apply, yet a
+        // query epoch far from the segment start makes `float_index` a huge finite value that
+        // saturates the usize cast to usize::MAX. `first_idx + samples` then overflowed.
+        let num_records = 4;
+        let mut slice = vec![0.0_f64; num_records * 6 + 4];
+        let n = slice.len();
+        slice[n - 4] = 0.0; // first state epoch
+        slice[n - 3] = 1.0; // step size (nonzero, finite)
+        slice[n - 2] = 3.0; // window size - 1 => samples = 4
+        slice[n - 1] = num_records as f64;
+
+        let dataset = HermiteSetType12::from_f64_slice(&slice).unwrap();
+
+        let summary = SPKSummaryRecord {
+            start_epoch_et_s: 0.0,
+            end_epoch_et_s: 3e19,
+            ..Default::default()
+        };
+
+        // Must not panic: the offset is clamped to the last window like any past-the-end query.
+        let (pos, vel) = dataset.evaluate(2e19, &summary).unwrap();
+        assert!(pos.iter().all(|v| v.is_finite()));
+        assert!(vel.iter().all(|v| v.is_finite()));
     }
 
     #[test]
