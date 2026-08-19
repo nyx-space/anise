@@ -159,15 +159,18 @@ impl PlanetaryDataSet {
 
         for (opt_id, opt_name) in values {
             let data = if let Some(id) = opt_id {
-                self.get_by_id(*id)
-                    .expect("ID from LUT entries must exist in dataset")
+                match self.get_by_id(*id) {
+                    Ok(d) => d,
+                    Err(_) => continue,
+                }
             } else {
-                self.get_by_name(
-                    opt_name
-                        .as_deref()
-                        .expect("LUT entry must have either an ID or a name"),
-                )
-                .expect("name from LUT entries must exist in dataset")
+                match opt_name.as_ref() {
+                    Some(name) => match self.get_by_name(name) {
+                        Ok(d) => d,
+                        Err(_) => continue,
+                    },
+                    None => continue,
+                }
             };
 
             let mut row = PlanetaryRow {
@@ -214,5 +217,24 @@ impl PlanetaryDataSet {
         let mut tbl = Table::new(rows);
         tbl.with(Style::modern());
         format!("{tbl}")
+    }
+}
+
+#[cfg(test)]
+mod ut_planetary_describe {
+    use super::PlanetaryDataSet;
+
+    #[test]
+    fn describe_skips_out_of_range_lut_entry() {
+        // The dataset checksum only covers the data bytes, not the lookup table, so a crafted
+        // PCA can decode with a LUT entry whose index points past the data vector. describe()
+        // used to `.expect()` on that lookup and panic; it should skip the entry instead, the
+        // way the spacecraft, Euler-parameter, and location tables already do.
+        let mut dataset = PlanetaryDataSet::default();
+        dataset.lut.append_id(399, 0).unwrap();
+        assert!(dataset.data.is_empty());
+
+        // Must not panic.
+        let _ = dataset.describe();
     }
 }
