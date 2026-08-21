@@ -107,8 +107,24 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         // Build the index for all of the NAIF IDs which are ordered in the file.
         let mut index: HashMap<i32, Vec<(R, Option<usize>, usize)>> = HashMap::new();
         let mut unsorted = HashSet::new();
+        let mut visited_summary_records = HashSet::new();
         let mut blk_idx = None;
         loop {
+            let current_idx = blk_idx.unwrap_or(me.file_record.fwrd_idx());
+            if !visited_summary_records.insert(current_idx) {
+                return Err(DAFError::DecodingSummary {
+                    kind: R::NAME,
+                    source: DecodingError::Integrity {
+                        source: IntegrityError::InvalidValue {
+                            dataset: R::NAME,
+                            variable: "summary record index",
+                            value: current_idx as f64,
+                            reason: "because it appears more than once in the summary chain",
+                        },
+                    },
+                });
+            }
+
             for (summary_idx, cur_sum) in me.data_summaries(blk_idx)?.iter().enumerate() {
                 if let Some(prev_summaries) = index.get_mut(&cur_sum.id()) {
                     let prev_sum: &R =
@@ -797,7 +813,7 @@ mod daf_ut {
     use hifitime::Epoch;
 
     use crate::{
-        errors::IntegrityError,
+        errors::{DecodingError, IntegrityError},
         file2heap,
         naif::{
             BPC,
@@ -1068,6 +1084,64 @@ mod daf_ut {
         match super::DAF::<SPKSummaryRecord>::parse(&bytes[..]) {
             Err(DAFError::DecodingSummary { .. }) => {}
             Ok(_) => panic!("unexpected success for an oversized next-record pointer"),
+            Err(e) => panic!("unexpected error: {e}"),
+        }
+    }
+
+    #[test]
+    fn cyclic_summary_chain() {
+        use crate::naif::daf::FileRecord;
+        use crate::naif::daf::summary_record::SummaryRecord;
+        use crate::naif::spk::summary::SPKSummaryRecord;
+        use zerocopy::IntoBytes;
+
+        let mut file_record = FileRecord::spk("TEST");
+        file_record.forward = 2;
+        file_record.nd = 2;
+        file_record.ni = 6;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(file_record.as_bytes());
+        bytes.resize(1024, 0);
+
+        // Summary record 2 points back to itself. Before the visited-record guard, parsing this
+        // chain repeatedly extended the in-memory index until the process exhausted its memory.
+        let summary_header = SummaryRecord {
+            next_record: 2.0,
+            prev_record: 0.0,
+            num_summaries: 1.0,
+        };
+        let summary = SPKSummaryRecord {
+            data_type_i: 13,
+            start_idx: 1,
+            end_idx: 5,
+            ..Default::default()
+        };
+
+        let mut summary_record = Vec::new();
+        summary_record.extend_from_slice(summary_header.as_bytes());
+        summary_record.extend_from_slice(summary.as_bytes());
+        summary_record.resize(1024, 0);
+        bytes.extend(summary_record);
+
+        // Name record (record 3).
+        bytes.extend(vec![0u8; 1024]);
+
+        match super::DAF::<SPKSummaryRecord>::parse(&bytes[..]) {
+            Err(DAFError::DecodingSummary {
+                source:
+                    DecodingError::Integrity {
+                        source:
+                            IntegrityError::InvalidValue {
+                                variable, value, ..
+                            },
+                    },
+                ..
+            }) => {
+                assert_eq!(variable, "summary record index");
+                assert_eq!(value, 2.0);
+            }
+            Ok(_) => panic!("unexpected success for a cyclic summary chain"),
             Err(e) => panic!("unexpected error: {e}"),
         }
     }
