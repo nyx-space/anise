@@ -97,6 +97,8 @@ pub enum OrbitalElement {
     PeriapsisAltitude,
     /// Orbital period (s)
     Period,
+    /// One-way light time from the frame origin to the object (s)
+    LightTime,
     /// Right ascension (deg)
     RightAscension,
     /// Right ascension of the ascending node (deg)
@@ -232,6 +234,7 @@ impl OrbitalElement {
                 .period()
                 .context(PhysicsOrbitElSnafu { el: self, orbit })?
                 .to_seconds()),
+            Self::LightTime => Ok(orbit.light_time().to_seconds()),
             Self::RightAscension => Ok(orbit.right_ascension_deg()),
             Self::RAAN => orbit
                 .raan_deg()
@@ -350,7 +353,7 @@ impl OrbitalElement {
             | Self::EquinoctialP
             | Self::EquinoctialQ
             | Self::Custom => "unitless",
-            Self::Period => "s",
+            Self::Period | Self::LightTime => "s",
         }
     }
 }
