@@ -262,6 +262,10 @@ pub enum PyScalarExpr {
         location_id: i32,
         obstructing_body: Option<Frame>,
     },
+    LightTimeFromLocation {
+        location_id: i32,
+        obstructing_body: Option<Frame>,
+    },
     RicDiff(PyStateSpec),
     /// FovMargin requires the spacecraft frame in sc_observer_frame and the StateSpec **must** be the target location on target obdy (e.g. IAU Moon).
     FovMargin {
@@ -392,6 +396,13 @@ impl Clone for PyScalarExpr {
                     location_id,
                     obstructing_body,
                 } => Self::RangeRateFromLocation {
+                    location_id: *location_id,
+                    obstructing_body: *obstructing_body,
+                },
+                Self::LightTimeFromLocation {
+                    location_id,
+                    obstructing_body,
+                } => Self::LightTimeFromLocation {
                     location_id: *location_id,
                     obstructing_body: *obstructing_body,
                 },
@@ -935,6 +946,13 @@ impl TryFrom<ScalarExpr> for PyScalarExpr {
                     location_id,
                     obstructing_body,
                 }),
+                ScalarExpr::LightTimeFromLocation {
+                    location_id,
+                    obstructing_body,
+                } => Ok(Self::LightTimeFromLocation {
+                    location_id,
+                    obstructing_body,
+                }),
                 ScalarExpr::SolarEclipsePercentage { eclipsing_frame } => {
                     Ok(Self::SolarEclipsePercentage { eclipsing_frame })
                 }
@@ -1365,6 +1383,13 @@ impl From<PyScalarExpr> for ScalarExpr {
                 location_id,
                 obstructing_body,
             } => ScalarExpr::RangeRateFromLocation {
+                location_id,
+                obstructing_body,
+            },
+            PyScalarExpr::LightTimeFromLocation {
+                location_id,
+                obstructing_body,
+            } => ScalarExpr::LightTimeFromLocation {
                 location_id,
                 obstructing_body,
             },

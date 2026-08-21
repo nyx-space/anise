@@ -543,6 +543,55 @@ mod ut_analysis {
     }
 
     #[rstest]
+    fn light_time_from_location(almanac: Almanac) {
+        use crate::constants::SPEED_OF_LIGHT_KM_S;
+
+        // The one-way light time from a ground location is just the range to that
+        // location divided by the speed of light, so the two expressions must agree.
+        let state = StateSpec {
+            target_frame: FrameSpec::Loaded(Frame::from_ephem_j2000(-85)),
+            observer_frame: FrameSpec::Loaded(EME2000),
+            ab_corr: Aberration::NONE,
+        };
+
+        let light_time = ScalarExpr::LightTimeFromLocation {
+            location_id: 123,
+            obstructing_body: None,
+        };
+
+        assert_eq!(format!("{light_time}"), "light time from location #123 (s)");
+
+        let report = ReportScalars {
+            scalars: vec![
+                (
+                    ScalarExpr::RangeFromLocation {
+                        location_id: 123,
+                        obstructing_body: None,
+                    },
+                    None,
+                ),
+                (light_time, None),
+            ],
+            state_spec: state,
+        };
+
+        let start = almanac.spk_domain(-85).unwrap().0 + Unit::Hour * 1;
+        let data = almanac.report_scalars(
+            &report,
+            TimeSeries::inclusive(start, start + Unit::Hour * 2, Unit::Hour * 1),
+        );
+
+        assert!(!data.is_empty());
+
+        for row in data.values() {
+            let row = row.as_ref().unwrap();
+            let range_km = row["range from location #123 (km)"].as_ref().unwrap();
+            let lt_s = row["light time from location #123 (s)"].as_ref().unwrap();
+            assert!((lt_s - range_km / SPEED_OF_LIGHT_KM_S).abs() < 1e-9);
+        }
+    }
+
+    #[rstest]
     fn test_analysis_event(mut almanac: Almanac) {
         use crate::analysis::event_ops::find_arc_intersections;
 

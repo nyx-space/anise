@@ -140,6 +140,11 @@ pub enum ScalarExpr {
         location_id: i32,
         obstructing_body: Option<Frame>,
     },
+    /// Compute the one-way light time from the location to the object, in seconds
+    LightTimeFromLocation {
+        location_id: i32,
+        obstructing_body: Option<Frame>,
+    },
     /// Compute the RIC diff with the provided state spec
     RicDiff(StateSpec),
     FovMargin {
@@ -412,6 +417,22 @@ impl ScalarExpr {
                     state: orbit,
                 })?
                 .range_rate_km_s),
+            Self::LightTimeFromLocation {
+                location_id,
+                obstructing_body,
+            } => Ok(almanac
+                .azimuth_elevation_range_sez_from_location_id(
+                    orbit,
+                    *location_id,
+                    *obstructing_body,
+                    ab_corr,
+                )
+                .context(AlmanacExprSnafu {
+                    expr: Box::new(self.clone()),
+                    state: orbit,
+                })?
+                .light_time
+                .to_seconds()),
             Self::RicDiff(spec) => {
                 let other = spec.evaluate(orbit.epoch, almanac)?;
 
@@ -602,6 +623,12 @@ impl fmt::Display for ScalarExpr {
                 obstructing_body: _,
             } => {
                 write!(f, "range-rate from location #{location_id} (km/s)")
+            }
+            Self::LightTimeFromLocation {
+                location_id,
+                obstructing_body: _,
+            } => {
+                write!(f, "light time from location #{location_id} (s)")
             }
             Self::Acos(v) => write!(f, "acos({v})"),
             Self::Asin(v) => write!(f, "asin({v})"),
