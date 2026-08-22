@@ -167,7 +167,11 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
 
         // Selection logic from SPICE: centered as closely as possible.
         // For N points, if target is in [t_i, t_{i+1}], we use i - (N-1)/2 as the first index.
-        let first_idx = (idx - ((group_size as isize - 1) / 2))
+        // `idx` is a saturating float-to-int cast of (epoch - first_state_epoch) / step_size, both
+        // read from the segment footer, so a crafted kernel can drive it to isize::MIN; subtract
+        // with saturation so the following clamps run instead of underflowing.
+        let first_idx = idx
+            .saturating_sub((group_size as isize - 1) / 2)
             .max(0)
             .min((self.num_records as isize - group_size as isize).max(0));
 
@@ -782,6 +786,33 @@ mod ut_lagrange {
         let epoch = 200.5;
         let result = dataset.evaluate(epoch, &summary).unwrap();
         assert_eq!(result.0.x, 200.5);
+    }
+
+    #[test]
+    fn type8_far_first_epoch_does_not_underflow() {
+        // A crafted Type 8 (equal-step Lagrange) segment whose footer places the first state
+        // epoch enormously far from the query epoch. from_f64_slice only checks that epoch for
+        // finiteness, so the record ratio (epoch - first_state_epoch) / step_size floors to a
+        // saturated isize::MIN, and centring the interpolation window subtracted from it and
+        // underflowed (panicking under overflow checks) before the clamps ran. Unlike its
+        // sibling datatypes, Type 8 evaluate performs no epoch-in-domain check either.
+        let num_records = 4;
+        let mut slice = vec![0.0_f64; num_records * 6 + 4];
+        let n = slice.len();
+        slice[n - 4] = 1e13; // first state epoch, far ahead of the query
+        slice[n - 3] = 1e-9; // step size: nonzero and above EPSILON, but tiny enough to amplify
+        slice[n - 2] = 2.0; // degree => window size 3
+        slice[n - 1] = num_records as f64;
+
+        let dataset = LagrangeSetType8::from_f64_slice(&slice).unwrap();
+        let summary = SPKSummaryRecord {
+            start_epoch_et_s: 0.0,
+            end_epoch_et_s: 100.0,
+            ..Default::default()
+        };
+        // (0 - 1e13) / 1e-9 floors to a value below isize::MIN, so the cast saturates and the
+        // window-centring subtraction underflowed. Must not panic; the window clamps to the start.
+        let _ = dataset.evaluate(0.0, &summary);
     }
 
     #[test]
