@@ -8,34 +8,34 @@
  * Documentation: https://nyxspace.com/
  */
 
-use anise::almanac::Almanac;
 use anise::almanac::metaload::{MetaAlmanac, MetaFile};
+use anise::almanac::Almanac;
 use anise::analysis::prelude::{
-    Condition, Event, EventArc, EventDetails, EventEdge, OrbitalElement, Plane, VisibilityArc,
-    find_arc_intersections,
+    find_arc_intersections, Condition, Event, EventArc, EventDetails, EventEdge, OrbitalElement,
+    Plane, VisibilityArc,
 };
 use anise::analysis::python::{
     PyFrameSpec, PyOrthogonalFrame, PyScalarExpr, PyStateSpec, PyVectorExpr,
 };
 use anise::analysis::report::PyReportScalars;
-use anise::astro::Aberration;
 use anise::astro::orbit::Orbit;
+use anise::astro::Aberration;
 use anise::astro::{AzElRange, Location, Occultation, TerrainMask};
 use anise::ephemerides::ephemeris::{Covariance, Ephemeris, EphemerisRecord, LocalFrame};
 use anise::ephemerides::opm::{Maneuver, Opm};
 use anise::frames::FrameUid;
 use anise::frames::{DynamicFrame, EarthNutationModel, EarthPrecessionModel, Frame};
-use anise::math::rotation::{DCM, Quaternion};
+use anise::math::rotation::{Quaternion, DCM};
 use anise::naif::daf::DafDataType;
 use anise::structure::dataset::location_dhall::PyLocationDataSet;
 use anise::structure::dataset::location_dhall::{LocationDhallSet, LocationDhallSetEntry};
 use anise::structure::instrument::{FovShape, Instrument};
 use anise::structure::planetocentric::ellipsoid::Ellipsoid;
-use anise::structure::spacecraft::{DragData, Mass, SRPData};
+use anise::structure::spacecraft::{DragData, Inertia, Mass, SRPData};
 use hifitime::leap_seconds::{LatestLeapSeconds, LeapSecondsFile};
 use hifitime::python::{PyDurationError, PyHifitimeError, PyParsingError};
 use hifitime::ut1::Ut1Provider;
-use hifitime::{MonthName, Polynomial, prelude::*};
+use hifitime::{prelude::*, MonthName, Polynomial};
 
 use pyo3::{prelude::*, wrap_pyfunction, wrap_pymodule};
 
@@ -95,6 +95,7 @@ pub(crate) fn astro(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
     sm.add_class::<Mass>()?;
     sm.add_class::<DragData>()?;
     sm.add_class::<SRPData>()?;
+    sm.add_class::<Inertia>()?;
 
     // Also add the constants as a submodule to astro for backward compatibility
     sm.add_wrapped(wrap_pymodule!(crate::constants::constants))?;

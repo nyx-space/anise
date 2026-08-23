@@ -22,7 +22,18 @@ mod inertia;
 mod mass;
 mod srp;
 
+#[cfg(feature = "python")]
+use pyo3::exceptions::PyValueError;
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+#[cfg(feature = "python")]
+use pyo3::types::{PyBytes, PyType};
+
 /// Spacecraft constants can store the some of the spacecraft constant data as the CCSDS Orbit Parameter Message (OPM) and CCSDS Attitude Parameter Messages (APM)
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, get_all, set_all, module = "anise.astro")
+)]
 #[derive(Copy, Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SpacecraftData {
     /// Mass of the spacecraft in kg
@@ -33,6 +44,57 @@ pub struct SpacecraftData {
     pub drag_data: Option<DragData>,
     // Inertia tensor
     pub inertia: Option<Inertia>,
+}
+
+#[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pymethods)]
+impl SpacecraftData {
+    #[new]
+    #[pyo3(signature = (mass = None, srp_data = None, drag_data = None, inertia = None))]
+    fn py_new(
+        mass: Option<Mass>,
+        srp_data: Option<SRPData>,
+        drag_data: Option<DragData>,
+        inertia: Option<Inertia>,
+    ) -> Self {
+        Self {
+            mass,
+            srp_data,
+            drag_data,
+            inertia,
+        }
+    }
+
+    fn __str__(&self) -> String {
+        format!("{self:?}")
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{self:?} @ {self:p}")
+    }
+
+    /// Decodes an ASN.1 DER encoded byte array into a SpacecraftData object.
+    ///
+    /// :type data: bytes
+    /// :rtype: SpacecraftData
+    #[classmethod]
+    pub fn from_asn1(_cls: &Bound<'_, PyType>, data: &[u8]) -> PyResult<Self> {
+        match Self::from_der(data) {
+            Ok(obj) => Ok(obj),
+            Err(e) => Err(PyValueError::new_err(format!("ASN.1 decoding error: {e}"))),
+        }
+    }
+
+    /// Encodes this SpacecraftData object into an ASN.1 DER encoded byte array.
+    ///
+    /// :rtype: bytes
+    pub fn to_asn1<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyBytes>> {
+        let mut buf = Vec::new();
+        match self.encode_to_vec(&mut buf) {
+            Ok(_) => Ok(PyBytes::new(py, &buf)),
+            Err(e) => Err(PyValueError::new_err(format!("ASN.1 encoding error: {e}"))),
+        }
+    }
 }
 
 impl DataSetT for SpacecraftData {

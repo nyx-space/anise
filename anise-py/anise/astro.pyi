@@ -832,6 +832,46 @@ class FrameUid:
         """Return str(self)."""
 
 @typing.final
+class Inertia:
+    """Inertial tensor definition"""
+
+    i_xx_kgm2: typing.Any
+    i_xy_kgm2: typing.Any
+    i_xz_kgm2: typing.Any
+    i_yy_kgm2: typing.Any
+    i_yz_kgm2: typing.Any
+    i_zz_kgm2: typing.Any
+    orientation_id: typing.Any
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(
+        cls,
+        orientation_id: typing.Any,
+        i_xx_kgm2: typing.Any,
+        i_yy_kgm2: typing.Any,
+        i_zz_kgm2: typing.Any,
+        i_xy_kgm2: typing.Any = 0.0,
+        i_xz_kgm2: typing.Any = 0.0,
+        i_yz_kgm2: typing.Any = 0.0,
+    ) -> Inertia:
+        """Inertial tensor definition"""
+
+    @staticmethod
+    def from_asn1(data: bytes) -> Inertia:
+        """Decodes an ASN.1 DER encoded byte array into an Inertia object."""
+
+    def to_asn1(self) -> bytes:
+        """Encodes this Inertia object into an ASN.1 DER encoded byte array."""
+
+    def __repr__(self) -> str:
+        """Return repr(self)."""
+
+    def __str__(self) -> str:
+        """Return str(self)."""
+
+@typing.final
 class LocalFrame:
     def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         """Initialize self.  See help(type(self)) for accurate signature."""

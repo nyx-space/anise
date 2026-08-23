@@ -11,9 +11,20 @@ use der::{Decode, Encode, Reader, Writer};
 use nalgebra::Matrix3;
 use serde_derive::{Deserialize, Serialize};
 
+#[cfg(feature = "python")]
+use pyo3::exceptions::PyValueError;
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+#[cfg(feature = "python")]
+use pyo3::types::{PyBytes, PyType};
+
 use crate::NaifId;
 
 /// Inertial tensor definition
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, get_all, set_all, module = "anise.astro")
+)]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Inertia {
     /// Inertia tensor reference frame hash
@@ -45,6 +56,63 @@ impl Inertia {
             self.i_yz_kgm2,
             self.i_zz_kgm2,
         )
+    }
+}
+
+#[cfg(feature = "python")]
+#[cfg_attr(feature = "python", pymethods)]
+impl Inertia {
+    #[new]
+    #[pyo3(signature = (orientation_id, i_xx_kgm2, i_yy_kgm2, i_zz_kgm2, i_xy_kgm2 = 0.0, i_xz_kgm2 = 0.0, i_yz_kgm2 = 0.0))]
+    fn py_new(
+        orientation_id: NaifId,
+        i_xx_kgm2: f64,
+        i_yy_kgm2: f64,
+        i_zz_kgm2: f64,
+        i_xy_kgm2: f64,
+        i_xz_kgm2: f64,
+        i_yz_kgm2: f64,
+    ) -> Self {
+        Self {
+            orientation_id,
+            i_xx_kgm2,
+            i_yy_kgm2,
+            i_zz_kgm2,
+            i_xy_kgm2,
+            i_xz_kgm2,
+            i_yz_kgm2,
+        }
+    }
+
+    fn __str__(&self) -> String {
+        format!("{self:?}")
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{self:?} @ {self:p}")
+    }
+
+    /// Decodes an ASN.1 DER encoded byte array into an Inertia object.
+    ///
+    /// :type data: bytes
+    /// :rtype: Inertia
+    #[classmethod]
+    pub fn from_asn1(_cls: &Bound<'_, PyType>, data: &[u8]) -> PyResult<Self> {
+        match Self::from_der(data) {
+            Ok(obj) => Ok(obj),
+            Err(e) => Err(PyValueError::new_err(format!("ASN.1 decoding error: {e}"))),
+        }
+    }
+
+    /// Encodes this Inertia object into an ASN.1 DER encoded byte array.
+    ///
+    /// :rtype: bytes
+    pub fn to_asn1<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyBytes>> {
+        let mut buf = Vec::new();
+        match self.encode_to_vec(&mut buf) {
+            Ok(_) => Ok(PyBytes::new(py, &buf)),
+            Err(e) => Err(PyValueError::new_err(format!("ASN.1 encoding error: {e}"))),
+        }
     }
 }
 
