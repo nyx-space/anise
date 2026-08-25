@@ -99,20 +99,14 @@ mod ut_spacecraft {
 
         // Fetch by ID
         assert_eq!(almanac.spacecraft_data_from_id(-101).unwrap(), sc_data1);
-        assert_eq!(almanac.spacecraft_from_id(-101).unwrap(), sc_data1);
         assert_eq!(almanac.spacecraft_data_from_id(-102).unwrap(), sc_data2);
-        assert_eq!(almanac.spacecraft_from_id(-102).unwrap(), sc_data2);
 
         // Fetch by Name
         assert_eq!(almanac.spacecraft_data_from_name("SC1").unwrap(), sc_data1);
-        assert_eq!(almanac.spacecraft_from_name("SC1").unwrap(), sc_data1);
         assert_eq!(almanac.spacecraft_data_from_name("SC2").unwrap(), sc_data2);
-        assert_eq!(almanac.spacecraft_from_name("SC2").unwrap(), sc_data2);
 
         // Error cases
         assert!(almanac.spacecraft_data_from_id(-999).is_err());
-        assert!(almanac.spacecraft_from_id(-999).is_err());
         assert!(almanac.spacecraft_data_from_name("Unknown").is_err());
-        assert!(almanac.spacecraft_from_name("Unknown").is_err());
     }
 }

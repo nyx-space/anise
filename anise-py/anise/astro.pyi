@@ -1889,7 +1889,7 @@ class SpacecraftDataSet:
 
     @staticmethod
     def load(path: str) -> SpacecraftDataSet:
-        """Loads a Location Dataset kernel from the provided path"""
+        """Loads a Spacecraft Dataset kernel from the provided path"""
 
     def save_as(self, path: str, overwrite: typing.Optional[bool] = False) -> None:
         """Save this dataset as a kernel, optionally specifying whether to overwrite the existing file."""
@@ -1899,7 +1899,7 @@ class SpacecraftDataSet:
 
 @typing.final
 class SpacecraftDhallSet:
-    """A Dhall-serializable Location DataSet that serves as an optional intermediate to the SpacecraftDataSet kernels."""
+    """A Dhall-serializable Spacecraft DhallSet that serves as an optional intermediate to the SpacecraftDataSet kernels."""
 
     data: list
 
@@ -1907,28 +1907,28 @@ class SpacecraftDhallSet:
         """Initialize self.  See help(type(self)) for accurate signature."""
 
     def __new__(cls, data: list) -> SpacecraftDhallSet:
-        """A Dhall-serializable Location DataSet that serves as an optional intermediate to the SpacecraftDataSet kernels."""
+        """A Dhall-serializable Spacecraft DhallSet that serves as an optional intermediate to the SpacecraftDataSet kernels."""
 
     def dumps(self) -> str:
         """Returns the Dhall representation of this SpacecraftDhallSet. Equivalent to to_dhall."""
 
     @staticmethod
     def from_dhall(repr: str) -> SpacecraftDhallSet:
-        """Loads this Location dataset from its Dhall representation as a string"""
+        """Loads this Spacecraft dataset from its Dhall representation as a string"""
 
     @staticmethod
     def loads(repr: str) -> SpacecraftDhallSet:
-        """Loads this Location dataset from its Dhall representation as a string. Equivalent to from_dhall."""
+        """Loads this Spacecraft dataset from its Dhall representation as a string. Equivalent to from_dhall."""
 
     def to_dataset(self) -> SpacecraftDataSet:
-        """Converts this location Dhall set into a Python-compatible Location DataSet."""
+        """Converts this location Dhall set into a Python-compatible Spacecraft DataSet."""
 
     def to_dhall(self) -> str:
-        """Returns the Dhall representation of this Location"""
+        """Returns the Dhall representation of this Spacecraft"""
 
 @typing.final
 class SpacecraftDhallSetEntry:
-    """Entry of a Location Dhall set"""
+    """Entry of a Spacecraft Dhall set"""
 
     id: typing.Any
     name: typing.Any
@@ -1938,9 +1938,12 @@ class SpacecraftDhallSetEntry:
         """Initialize self.  See help(type(self)) for accurate signature."""
 
     def __new__(
-        cls, value: Location, id: typing.Optional[int] = None, name: typing.Any = None
+        cls,
+        value: SpacecraftData,
+        id: typing.Optional[int] = None,
+        name: typing.Any = None,
     ) -> SpacecraftDhallSetEntry:
-        """Entry of a Location Dhall set"""
+        """Entry of a Spacecraft Dhall set"""
 
     def __eq__(self, value: typing.Any) -> bool:
         """Return self==value."""

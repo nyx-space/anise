@@ -222,29 +222,6 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     /// The file record is always the first 1024 bytes of the file.
     pub fn file_record(&self) -> Result<FileRecord, DAFError> {
         Ok(self.file_record)
-        // let file_record = FileRecord::read_from_bytes(
-        //     self.bytes
-        //         .get(..FileRecord::SIZE)
-        //         .ok_or_else(|| DecodingError::InaccessibleBytes {
-        //             start: 0,
-        //             end: FileRecord::SIZE,
-        //             size: self.bytes.len(),
-        //         })
-        //         .context(DecodingDataSnafu {
-        //             idx: 0_usize,
-        //             kind: R::NAME,
-        //         })?,
-        // )
-        // .map_err(|_| DAFError::DecodingData {
-        //     kind: R::NAME,
-        //     idx: 0,
-        //     source: DecodingError::Casting,
-        // })?;
-        // // Check that the endian-ness is compatible with this platform.
-        // file_record
-        //     .endianness()
-        //     .context(FileRecordSnafu { kind: R::NAME })?;
-        // Ok(file_record)
     }
 
     /// Reads and parses the name record from the DAF bytes.

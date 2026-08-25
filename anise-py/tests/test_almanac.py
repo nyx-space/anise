@@ -35,7 +35,6 @@ from anise.astro import (
     SRPData,
     DragData,
     Inertia,
-    SpacecraftDataSet,
     SpacecraftDhallSet,
     SpacecraftDhallSetEntry,
 )

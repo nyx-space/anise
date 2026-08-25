@@ -28,11 +28,11 @@ use std::path::PathBuf;
 
 use super::{DataSet, DataSetType};
 
-/// Entry of a Location Dhall set
+/// Entry of a Spacecraft Dhall set
 ///
 /// :type id: int, optional
 /// :type alias: str, optional
-/// :type value: Location
+/// :type value: SpacecraftData
 #[derive(Clone, Debug, StaticType, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "python", pyclass(from_py_object, get_all, set_all))]
 #[cfg_attr(feature = "python", pyo3(module = "anise"))]
@@ -55,7 +55,7 @@ impl SpacecraftDhallSetEntry {
         self == other
     }
 }
-/// A Dhall-serializable Location DataSet that serves as an optional intermediate to the SpacecraftDataSet kernels.
+/// A Dhall-serializable Spacecraft DhallSet that serves as an optional intermediate to the SpacecraftDataSet kernels.
 ///
 /// :type data: list
 #[derive(Clone, Debug, StaticType, Serialize, Deserialize, PartialEq)]
@@ -66,14 +66,12 @@ pub struct SpacecraftDhallSet {
 }
 
 impl SpacecraftDhallSet {
-    /// Convert this Dhall representation of locations to a SpacecraftDataSet kernel.
-    ///
-    /// Function is mutable because the terrain mask is sanitized prior to building the kernel.
-    pub fn to_dataset(&mut self) -> Result<SpacecraftDataSet, String> {
+    /// Convert this Dhall representation of a spacecraft dhallset to a SpacecraftDataSet kernel.
+    pub fn to_dataset(&self) -> Result<SpacecraftDataSet, String> {
         let mut dataset = DataSet::default();
         dataset.metadata.dataset_type = DataSetType::SpacecraftData;
 
-        for e in &mut self.data {
+        for e in &self.data {
             dataset
                 .push(
                     e.value.clone(),
@@ -88,7 +86,7 @@ impl SpacecraftDhallSet {
         Ok(dataset)
     }
 
-    /// Deserialize the Dhall string of a Location data set into its Dhall representation structure.
+    /// Deserialize the Dhall string of a Spacecraft data set into its Dhall representation structure.
     pub fn from_dhall(repr: &str) -> Result<Self, String> {
         let me: Self = serde_dhall::from_str(repr)
             .static_type_annotation()
@@ -126,7 +124,7 @@ impl SpacecraftDhallSet {
         self.data = data;
     }
 
-    /// Loads this Location dataset from its Dhall representation as a string. Equivalent to from_dhall.
+    /// Loads this Spacecraft dataset from its Dhall representation as a string. Equivalent to from_dhall.
     ///
     /// :type repr: str
     /// :rtype: SpacecraftDhallSet
@@ -142,7 +140,7 @@ impl SpacecraftDhallSet {
         self.to_dhall().map_err(PyException::new_err)
     }
 
-    /// Returns the Dhall representation of this Location
+    /// Returns the Dhall representation of this Spacecraft
     ///
     /// :rtype: str
     #[pyo3(name = "to_dhall")]
@@ -150,7 +148,7 @@ impl SpacecraftDhallSet {
         self.to_dhall().map_err(PyException::new_err)
     }
 
-    /// Loads this Location dataset from its Dhall representation as a string
+    /// Loads this Spacecraft dataset from its Dhall representation as a string
     ///
     /// :type repr: str
     /// :rtype: SpacecraftDhallSet
@@ -160,7 +158,7 @@ impl SpacecraftDhallSet {
         Self::from_dhall(repr).map_err(PyException::new_err)
     }
 
-    /// Converts this location Dhall set into a Python-compatible Location DataSet.
+    /// Converts this location Dhall set into a Python-compatible Spacecraft DataSet.
     ///
     /// :rtype: SpacecraftDataSet
     #[pyo3(name = "to_dataset")]
@@ -227,7 +225,7 @@ pub struct PySpacecraftDataSet {
 #[cfg(feature = "python")]
 #[cfg_attr(feature = "python", pymethods)]
 impl PySpacecraftDataSet {
-    /// Loads a Location Dataset kernel from the provided path
+    /// Loads a Spacecraft Dataset kernel from the provided path
     ///
     /// :type path: str
     /// :rtype: SpacecraftDataSet
@@ -350,7 +348,7 @@ mod ut_sc_dhall {
         let as_dhall = set.to_dhall().unwrap();
         println!("{as_dhall}");
 
-        let mut from_dhall = SpacecraftDhallSet::from_dhall(&as_dhall).unwrap();
+        let from_dhall = SpacecraftDhallSet::from_dhall(&as_dhall).unwrap();
 
         assert_eq!(from_dhall, set);
 
