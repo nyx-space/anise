@@ -581,7 +581,10 @@ mod ut_aer {
         let almanac = Almanac::default().with_location_data(dataset);
 
         assert_eq!(almanac.location_ids(), vec![100, 200]);
-        assert_eq!(almanac.location_names(), vec!["Loc1".to_string(), "Loc2".to_string()]);
+        assert_eq!(
+            almanac.location_names(),
+            vec!["Loc1".to_string(), "Loc2".to_string()]
+        );
     }
 
     #[cfg(feature = "metaload")]

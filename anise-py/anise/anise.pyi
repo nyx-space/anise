@@ -318,16 +318,16 @@ Note: the output AER will be chronologically sorted, regardless of transmitter.
 
 Refer to [solar_eclipsing] for details."""
 
-    def spacecraft_data_from_id(self, id: typing.Any) -> typing.Any:
+    def spacecraft_data_from_id(self, id: int) -> SpacecraftData:
         """Returns the SpacecraftData from its ID, searching through all loaded spacecraft datasets in reverse order."""
 
-    def spacecraft_data_from_name(self, name: typing.Any) -> typing.Any:
+    def spacecraft_data_from_name(self, name: str) -> SpacecraftData:
         """Returns the SpacecraftData from its name, searching through all loaded spacecraft datasets in reverse order."""
 
-    def spacecraft_data_ids(self) -> typing.Any:
+    def spacecraft_data_ids(self) -> typing.List[int]:
         """Returns a list of all spacecraft data IDs present in the loaded spacecraft datasets, searching in reverse order of datasets loaded."""
 
-    def spacecraft_data_names(self) -> typing.Any:
+    def spacecraft_data_names(self) -> typing.List[str]:
         """Returns a list of all spacecraft data names present in the loaded spacecraft datasets, searching in reverse order of datasets loaded."""
 
     def spk_domain(self, id: int) -> typing.Tuple:

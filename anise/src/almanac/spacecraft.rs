@@ -21,6 +21,9 @@ use pyo3::pymethods;
 #[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
     /// Returns the SpacecraftData from its ID, searching through all loaded spacecraft datasets in reverse order.
+    ///
+    /// :type id: int
+    /// :rtype: SpacecraftData
     pub fn spacecraft_data_from_id(&self, id: NaifId) -> AlmanacResult<SpacecraftData> {
         for data in self.spacecraft_data.values().rev() {
             if let Ok(datum) = data.get_by_id(id) {
@@ -38,6 +41,9 @@ impl Almanac {
     }
 
     /// Returns the SpacecraftData from its name, searching through all loaded spacecraft datasets in reverse order.
+    ///
+    /// :type name: str
+    /// :rtype: SpacecraftData
     pub fn spacecraft_data_from_name(&self, name: &str) -> AlmanacResult<SpacecraftData> {
         for data in self.spacecraft_data.values().rev() {
             if let Ok(datum) = data.get_by_name(name) {
@@ -57,6 +63,8 @@ impl Almanac {
     }
 
     /// Returns a list of all spacecraft data IDs present in the loaded spacecraft datasets, searching in reverse order of datasets loaded.
+    ///
+    /// :rtype: typing.List[int]
     pub fn spacecraft_data_ids(&self) -> Vec<NaifId> {
         let mut ids = Vec::new();
         for data in self.spacecraft_data.values().rev() {
@@ -68,6 +76,8 @@ impl Almanac {
     }
 
     /// Returns a list of all spacecraft data names present in the loaded spacecraft datasets, searching in reverse order of datasets loaded.
+    ///
+    /// :rtype: typing.List[str]
     pub fn spacecraft_data_names(&self) -> Vec<String> {
         let mut names = Vec::new();
         for data in self.spacecraft_data.values().rev() {
