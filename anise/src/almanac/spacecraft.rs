@@ -55,6 +55,28 @@ impl Almanac {
             },
         })
     }
+
+    /// Returns a list of all spacecraft data IDs present in the loaded spacecraft datasets, searching in reverse order of datasets loaded.
+    pub fn spacecraft_data_ids(&self) -> Vec<NaifId> {
+        let mut ids = Vec::new();
+        for data in self.spacecraft_data.values().rev() {
+            for id in data.lut.by_id.keys() {
+                ids.push(*id);
+            }
+        }
+        ids
+    }
+
+    /// Returns a list of all spacecraft data names present in the loaded spacecraft datasets, searching in reverse order of datasets loaded.
+    pub fn spacecraft_data_names(&self) -> Vec<String> {
+        let mut names = Vec::new();
+        for data in self.spacecraft_data.values().rev() {
+            for name in data.lut.by_name.keys() {
+                names.push(name.clone());
+            }
+        }
+        names
+    }
 }
 
 #[cfg(test)]
@@ -104,6 +126,13 @@ mod ut_spacecraft {
         // Fetch by Name
         assert_eq!(almanac.spacecraft_data_from_name("SC1").unwrap(), sc_data1);
         assert_eq!(almanac.spacecraft_data_from_name("SC2").unwrap(), sc_data2);
+
+        // Fetch IDs and Names
+        assert_eq!(almanac.spacecraft_data_ids(), vec![-101, -102]);
+        assert_eq!(
+            almanac.spacecraft_data_names(),
+            vec!["SC1".to_string(), "SC2".to_string()]
+        );
 
         // Error cases
         assert!(almanac.spacecraft_data_from_id(-999).is_err());
