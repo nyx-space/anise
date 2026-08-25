@@ -96,10 +96,10 @@ impl eframe::App for UiApp {
     fn ui(&mut self, ctx: &mut egui::Ui, _frame: &mut eframe::Frame) {
         ctx.set_pixels_per_point(1.25);
 
-        egui::Panel::top("header").show_inside(ctx, |ui| {
+        egui::Panel::top("header").show(ctx, |ui| {
             ui.horizontal_centered(|ui| {
                 ui.vertical_centered(|ui| {
-                    ui.heading("ANISE v0.10");
+                    ui.heading("ANISE v1.0.0");
                     ui.label("A modern rewrite of NASA's SPICE toolkit");
                     ui.hyperlink_to(
                         "https://www.nyxspace.com",
@@ -112,7 +112,7 @@ impl eframe::App for UiApp {
         egui::Panel::bottom("bottom_panel")
             .resizable(false)
             .min_size(0.0)
-            .show_inside(ctx, |ui| {
+            .show(ctx, |ui| {
                 ui.vertical_centered(|ui| {
                     ui.heading("Run log");
                 });
@@ -123,7 +123,7 @@ impl eframe::App for UiApp {
                     .show(ui);
             });
 
-        egui::CentralPanel::default().show_inside(ctx, |ui| {
+        egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::both().show(ui, |ui| {
                 ui.horizontal_centered(|ui| {
                     ui.vertical_centered(|ui| {

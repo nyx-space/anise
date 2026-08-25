@@ -8,9 +8,9 @@
  * Documentation: https://nyxspace.com/
  */
 
-use crate::structure::spacecraft::SpacecraftData;
-use crate::structure::SpacecraftDataSet;
 use crate::NaifId;
+use crate::structure::SpacecraftDataSet;
+use crate::structure::spacecraft::SpacecraftData;
 use serde::{Deserialize, Serialize};
 use serde_dhall::StaticType;
 use std::collections::BTreeMap;
@@ -74,7 +74,7 @@ impl SpacecraftDhallSet {
         for e in &self.data {
             dataset
                 .push(
-                    e.value.clone(),
+                    e.value,
                     e.id,
                     match e.name.as_ref() {
                         Some(s) => Some(s.as_str()),

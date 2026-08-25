@@ -8,6 +8,22 @@ pub fn spk_ui(
     show_unix: bool,
     selected_time_scale: TimeScale,
 ) {
+    let Some((_, spk)) = almanac.spk_data.get_index(0) else {
+        ui.label(
+            egui::RichText::new("No SPK data available in almanac").color(egui::Color32::KHAKI),
+        );
+        return;
+    };
+
+    let summary_size = match spk.file_record() {
+        Ok(fr) => fr.summary_size(),
+        Err(err) => {
+            log::error!("Failed to read SPK file record: {err}");
+            ui.label(egui::RichText::new("Corrupt SPK file record").color(egui::Color32::RED));
+            return;
+        }
+    };
+
     TableBuilder::new(ui)
         .column(Column::auto().at_least(150.0).resizable(true))
         .column(Column::auto().at_least(150.0).resizable(true))
@@ -40,17 +56,35 @@ pub fn spk_ui(
             });
         })
         .body(|mut body| {
-            let spk = almanac.spk_data.get_index(0).unwrap().1;
-
             // NOTE: Using the explicit loop and index here to we can fetch the name record correctly.
             let mut idx = None;
             loop {
-                for (sno, summary) in spk.data_summaries(idx).unwrap().iter().enumerate() {
-                    let name_rcrd = spk.name_record(idx).unwrap();
-                    let name = name_rcrd.nth_name(sno, spk.file_record().unwrap().summary_size());
+                // Fetch segment summaries safely
+                let summaries = match spk.data_summaries(idx) {
+                    Ok(s) => s,
+                    Err(err) => {
+                        log::error!("Failed to fetch SPK data summaries for index {idx:?}: {err}");
+                        break;
+                    }
+                };
+
+                let name_rcrd = match spk.name_record(idx) {
+                    Ok(r) => Some(r),
+                    Err(err) => {
+                        log::warn!("Missing name record for index {idx:?}: {err}");
+                        None
+                    }
+                };
+
+                for (sno, summary) in summaries.iter().enumerate() {
                     if summary.is_empty() {
                         continue;
                     }
+
+                    let name = name_rcrd
+                        .as_ref()
+                        .map(|r| r.nth_name(sno, summary_size))
+                        .unwrap_or_else(|| "Unknown");
 
                     body.row(30.0, |mut row| {
                         row.col(|ui| {

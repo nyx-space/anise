@@ -10,9 +10,9 @@
 
 use super::Almanac;
 use crate::{
+    NaifId,
     errors::{AlmanacError, AlmanacResult},
     structure::{dataset::DataSetError, lookuptable::LutError, spacecraft::SpacecraftData},
-    NaifId,
 };
 
 #[cfg(feature = "python")]
@@ -60,8 +60,8 @@ impl Almanac {
 #[cfg(test)]
 mod ut_spacecraft {
     use crate::prelude::Almanac;
-    use crate::structure::spacecraft::{DragData, Inertia, Mass, SRPData, SpacecraftData};
     use crate::structure::SpacecraftDataSet;
+    use crate::structure::spacecraft::{DragData, Inertia, Mass, SRPData, SpacecraftData};
 
     #[test]
     fn test_spacecraft_retrieval() {
