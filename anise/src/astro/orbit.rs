@@ -1014,30 +1014,26 @@ impl Orbit {
 
     /// Returns the true anomaly in degrees between 0 and 360.0
     ///
-    /// NOTE: This function will emit a warning stating that the TA should be avoided if in a very near circular orbit
-    /// Code from <https://github.com/ChristopherRabotin/GMAT/blob/80bde040e12946a61dae90d9fc3538f16df34190/src/gmatutil/util/StateConversionUtil.cpp#L6835>
-    ///
-    /// LIMITATION: For an orbit whose true anomaly is (very nearly) 0.0 or 180.0, this function may return either 0.0 or 180.0 with a very small time increment.
-    /// This is due to the precision of the cosine calculation: if the arccosine calculation is out of bounds, the sign of the cosine of the true anomaly is used
-    /// to determine whether the true anomaly should be 0.0 or 180.0. **In other words**, there is an ambiguity in the computation in the true anomaly exactly at 180.0 and 0.0.
+    /// NOTE: This function will return a PhysicsError::Circular if the eccentricity is less than [ECC_EPSILON] (1e-11) because the line of apses is not defined,
+    /// and therefore the periapsis location is not defined.
     ///
     /// :rtype: float
     pub fn ta_deg(&self) -> PhysicsResult<f64> {
         if self.ecc()? < ECC_EPSILON {
-            warn!(
-                "true anomaly ill-defined for circular orbit (e = {})",
-                self.ecc()?
-            );
+            return Err(PhysicsError::Circular {
+                action: "true anomaly",
+                limit: ECC_EPSILON,
+            });
         }
+
         let cos_nu = self.evec()?.dot(&self.radius_km) / (self.ecc()? * self.rmag_km());
-        // If we're close the valid bounds, let's just do a sign check and return the true anomaly
-        let ta = cos_nu.acos();
-        if ta.is_nan() {
-            if cos_nu > 1.0 { Ok(180.0) } else { Ok(0.0) }
-        } else if self.radius_km.dot(&self.velocity_km_s) < 0.0 {
-            Ok((TAU - ta).to_degrees())
+        let ta_rad = cos_nu.clamp(-1.0, 1.0).acos();
+
+        // If moving towards periapsis (r . v < 0), nu is in [PI, 2*PI[
+        if self.radius_km.dot(&self.velocity_km_s) < 0.0 {
+            Ok((TAU - ta_rad).to_degrees())
         } else {
-            Ok(ta.to_degrees())
+            Ok(ta_rad.to_degrees())
         }
     }
 
@@ -1212,27 +1208,44 @@ impl Orbit {
         Ok(sin_fpa.atan2(cos_fpa).to_degrees())
     }
 
-    /// Returns the mean anomaly in degrees
+    /// Returns the mean anomaly in degrees.
     ///
-    /// This is a conversion from GMAT's StateConversionUtil::TrueToMeanAnomaly
+    /// - For elliptic orbits (e < 1.0 - ECC_EPSILON), returns M in [0.0, 360.0[.
+    /// - For hyperbolic orbits (e > 1.0 + ECC_EPSILON), returns M_h in ]-inf, +inf[ degrees.
+    ///
+    /// This is a mostly conversion from GMAT's StateConversionUtil::TrueToMeanAnomaly
+    ///
+    /// # Errors
+    /// Returns `PhysicsError::ParabolicEccentricity` if `|e - 1.0| < ECC_EPSILON`.
+    /// Returns `PhysicsError::Circular` if `e < ECC_EPSILON` (propagated from `ea_deg`/`ta_deg`).
     ///
     /// :rtype: float
     pub fn ma_deg(&self) -> PhysicsResult<f64> {
-        if self.ecc()?.abs() < ECC_EPSILON {
-            Err(PhysicsError::ParabolicEccentricity { limit: ECC_EPSILON })
-        } else if self.ecc()? < 1.0 {
+        let ecc = self.ecc()?;
+
+        if (ecc - 1.0).abs() < ECC_EPSILON {
+            return Err(PhysicsError::ParabolicEccentricity { limit: ECC_EPSILON });
+        }
+
+        if ecc < 1.0 {
+            // Elliptic Kepler Equation: M = E - e * sin(E)
             Ok(between_0_360(
                 (self.ea_deg()?.to_radians() - self.ecc()? * self.ea_deg()?.to_radians().sin())
                     .to_degrees(),
             ))
         } else {
-            // From GMAT's TrueToHyperbolicAnomaly
-            Ok(
-                ((self.ta_deg()?.to_radians().sin() * (self.ecc()?.powi(2) - 1.0)).sqrt()
-                    / (1.0 + self.ecc()? * self.ta_deg()?.to_radians().cos()))
-                .asinh()
-                .to_degrees(),
-            )
+            // From GMAT's TrueToHyperbolicAnomaly, rewritten with temporary variable
+            // for ease of tracking.
+            let ta_rad = self.ta_deg()?.to_radians();
+            let (sin_ta, cos_ta) = ta_rad.sin_cos();
+
+            // sinh(H) = (sqrt(e^2 - 1) * sin(nu)) / (1 + e * cos(nu))
+            let sinh_h = ((ecc.powi(2) - 1.0).sqrt() * sin_ta) / (1.0 + ecc * cos_ta);
+            let h = sinh_h.asinh();
+
+            // Hyperbolic Kepler Equation: M_h = e * sinh(H) - H
+            let mh_rad = ecc * sinh_h - h;
+            Ok(mh_rad.to_degrees())
         }
     }
 

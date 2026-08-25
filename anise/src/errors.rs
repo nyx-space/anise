@@ -237,6 +237,8 @@ pub enum PhysicsError {
     NoCovariance { action: &'static str },
     #[snafu(display("partials are not yet defined for this orbital element"))]
     PartialsNotYetDefined,
+    #[snafu(display("{action} is not valid for circular orbits (eccentricity < {limit:e})"))]
+    Circular { action: &'static str, limit: f64 },
 }
 
 impl From<IOErrorKind> for InputOutputError {
