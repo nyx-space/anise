@@ -218,7 +218,7 @@ impl LocationDataSet {
         }
 
         for (name, pos) in &self.lut.by_name {
-            if let Some(entry) = many_me.get_mut(&pos) {
+            if let Some(entry) = many_me.get_mut(pos) {
                 entry.alias = Some(name.to_string());
             } else {
                 many_me.insert(
