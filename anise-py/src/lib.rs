@@ -29,9 +29,12 @@ use anise::math::rotation::{Quaternion, DCM};
 use anise::naif::daf::DafDataType;
 use anise::structure::dataset::location_dhall::PyLocationDataSet;
 use anise::structure::dataset::location_dhall::{LocationDhallSet, LocationDhallSetEntry};
+use anise::structure::dataset::spacecraft_dhall::{
+    PySpacecraftDataSet, SpacecraftDhallSet, SpacecraftDhallSetEntry,
+};
 use anise::structure::instrument::{FovShape, Instrument};
 use anise::structure::planetocentric::ellipsoid::Ellipsoid;
-use anise::structure::spacecraft::{DragData, Inertia, Mass, SRPData};
+use anise::structure::spacecraft::{DragData, Inertia, Mass, SRPData, SpacecraftData};
 use hifitime::leap_seconds::{LatestLeapSeconds, LeapSecondsFile};
 use hifitime::python::{PyDurationError, PyHifitimeError, PyParsingError};
 use hifitime::ut1::Ut1Provider;
@@ -96,6 +99,10 @@ pub(crate) fn astro(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
     sm.add_class::<DragData>()?;
     sm.add_class::<SRPData>()?;
     sm.add_class::<Inertia>()?;
+    sm.add_class::<SpacecraftData>()?;
+    sm.add_class::<PySpacecraftDataSet>()?;
+    sm.add_class::<SpacecraftDhallSet>()?;
+    sm.add_class::<SpacecraftDhallSetEntry>()?;
 
     // Also add the constants as a submodule to astro for backward compatibility
     sm.add_wrapped(wrap_pymodule!(crate::constants::constants))?;

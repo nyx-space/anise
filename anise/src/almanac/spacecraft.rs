@@ -10,11 +10,15 @@
 
 use super::Almanac;
 use crate::{
-    NaifId,
     errors::{AlmanacError, AlmanacResult},
     structure::{dataset::DataSetError, lookuptable::LutError, spacecraft::SpacecraftData},
+    NaifId,
 };
 
+#[cfg(feature = "python")]
+use pyo3::pymethods;
+
+#[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
     /// Returns the SpacecraftData from its ID, searching through all loaded spacecraft datasets in reverse order.
     pub fn spacecraft_data_from_id(&self, id: NaifId) -> AlmanacResult<SpacecraftData> {
@@ -31,11 +35,6 @@ impl Almanac {
                 source: LutError::UnknownId { id },
             },
         })
-    }
-
-    /// Alias for [Self::spacecraft_data_from_id].
-    pub fn spacecraft_from_id(&self, id: NaifId) -> AlmanacResult<SpacecraftData> {
-        self.spacecraft_data_from_id(id)
     }
 
     /// Returns the SpacecraftData from its name, searching through all loaded spacecraft datasets in reverse order.
@@ -56,18 +55,13 @@ impl Almanac {
             },
         })
     }
-
-    /// Alias for [Self::spacecraft_data_from_name].
-    pub fn spacecraft_from_name(&self, name: &str) -> AlmanacResult<SpacecraftData> {
-        self.spacecraft_data_from_name(name)
-    }
 }
 
 #[cfg(test)]
 mod ut_spacecraft {
     use crate::prelude::Almanac;
-    use crate::structure::SpacecraftDataSet;
     use crate::structure::spacecraft::{DragData, Inertia, Mass, SRPData, SpacecraftData};
+    use crate::structure::SpacecraftDataSet;
 
     #[test]
     fn test_spacecraft_retrieval() {

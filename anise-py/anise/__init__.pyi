@@ -312,6 +312,12 @@ Note: the output AER will be chronologically sorted, regardless of transmitter.
 
 Refer to [solar_eclipsing] for details."""
 
+    def spacecraft_data_from_id(self, id: typing.Any) -> typing.Any:
+        """Returns the SpacecraftData from its ID, searching through all loaded spacecraft datasets in reverse order."""
+
+    def spacecraft_data_from_name(self, name: typing.Any) -> typing.Any:
+        """Returns the SpacecraftData from its name, searching through all loaded spacecraft datasets in reverse order."""
+
     def spk_domain(self, id: int) -> typing.Tuple:
         """Returns the applicable domain of the request id, i.e. start and end epoch that the provided id has loaded data."""
 

@@ -12,7 +12,7 @@ from anise import (
     LocationDhallSet,
     LocationDhallSetEntry,
     MetaAlmanac,
-    MetaFile,
+    MetaFile
 )
 from anise.analysis import OrbitalElement
 from anise.astro import (
@@ -30,6 +30,14 @@ from anise.astro import (
     Location,
     Orbit,
     TerrainMask,
+    SpacecraftData,
+    Mass,
+    SRPData,
+    DragData,
+    Inertia,
+    SpacecraftDataSet,
+    SpacecraftDhallSet,
+    SpacecraftDhallSetEntry,
 )
 from anise.constants import Frames, Orientations
 from anise.rotation import DCM, Quaternion
@@ -573,6 +581,31 @@ def test_frame_uid():
     uid = FrameUid(399, 399)
     assert isinstance(uid.to_frame(), Frame)
 
+def test_spacecraft_data():
+    inertia = Inertia(orientation_id=-159, i_xx_kgm2=15.0, i_yy_kgm2=16.0, i_zz_kgm2=17.0, i_xy_kgm2=18.0, i_xz_kgm2=19.0, i_yz_kgm2=20.0)
+    srp = SRPData(area_m2=23.4, coeff_reflectivity= 1.23)
+    drag = DragData(area_m2=12.3, coeff_drag=1.23)
+    mass = Mass(dry_mass_kg=15.0, prop_mass_kg=16.0, extra_mass_kg=17.0)
+
+    sc_data = SpacecraftData(mass, srp, drag, inertia)
+
+    # Add it to a Dhall Set by creating the entry first.
+    entry = SpacecraftDhallSetEntry(value=sc_data, id=20, name="my spacecraft config")
+
+    dhallset = SpacecraftDhallSet([entry])
+
+    # Convert to the binary data set representation
+    dataset = dhallset.to_dataset()
+    dataset.save_as("pytest_spacecraft_kernel.ska", True)
+
+    # Check that we can load it
+    almanac = Almanac("pytest_spacecraft_kernel.ska")
+    sc_data_from_id = almanac.spacecraft_data_from_id(20)
+    sc_data_from_name = almanac.spacecraft_data_from_name("my spacecraft config")
+
+    assert sc_data_from_id == sc_data
+    assert sc_data_from_name == sc_data
+
 
 if __name__ == "__main__":
     # test_meta_load()
@@ -581,4 +614,5 @@ if __name__ == "__main__":
     # test_convert_tpc()
     # test_state_transformation()
     # test_location()
-    test_oem()
+    # test_oem()
+    test_spacecraft_data()

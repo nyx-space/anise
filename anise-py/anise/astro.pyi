@@ -1824,6 +1824,143 @@ class SRPData:
         """Return str(self)."""
 
 @typing.final
+class SpacecraftData:
+    """Spacecraft constants can store the some of the spacecraft constant data as the CCSDS Orbit Parameter Message (OPM) and CCSDS Attitude Parameter Messages (APM)"""
+
+    drag_data: typing.Any
+    inertia: typing.Any
+    mass: typing.Any
+    srp_data: typing.Any
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(
+        cls,
+        mass: typing.Any = None,
+        srp_data: typing.Any = None,
+        drag_data: typing.Any = None,
+        inertia: typing.Any = None,
+    ) -> SpacecraftData:
+        """Spacecraft constants can store the some of the spacecraft constant data as the CCSDS Orbit Parameter Message (OPM) and CCSDS Attitude Parameter Messages (APM)"""
+
+    @staticmethod
+    def from_asn1(data: bytes) -> SpacecraftData:
+        """Decodes an ASN.1 DER encoded byte array into a SpacecraftData object."""
+
+    def to_asn1(self) -> bytes:
+        """Encodes this SpacecraftData object into an ASN.1 DER encoded byte array."""
+
+    def __eq__(self, value: typing.Any) -> bool:
+        """Return self==value."""
+
+    def __ge__(self, value: typing.Any) -> bool:
+        """Return self>=value."""
+
+    def __gt__(self, value: typing.Any) -> bool:
+        """Return self>value."""
+
+    def __le__(self, value: typing.Any) -> bool:
+        """Return self<=value."""
+
+    def __lt__(self, value: typing.Any) -> bool:
+        """Return self<value."""
+
+    def __ne__(self, value: typing.Any) -> bool:
+        """Return self!=value."""
+
+    def __repr__(self) -> str:
+        """Return repr(self)."""
+
+    def __str__(self) -> str:
+        """Return str(self)."""
+
+@typing.final
+class SpacecraftDataSet:
+    """A wrapper around a location dataset kernel (PyO3 does not handle type aliases).
+    Use this class to load and unload kernels. Manipulate using its SpacecraftDhallSet representation."""
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls) -> SpacecraftDataSet:
+        """A wrapper around a location dataset kernel (PyO3 does not handle type aliases).
+        Use this class to load and unload kernels. Manipulate using its SpacecraftDhallSet representation."""
+
+    @staticmethod
+    def load(path: str) -> SpacecraftDataSet:
+        """Loads a Location Dataset kernel from the provided path"""
+
+    def save_as(self, path: str, overwrite: typing.Optional[bool] = False) -> None:
+        """Save this dataset as a kernel, optionally specifying whether to overwrite the existing file."""
+
+    def to_dhallset(self) -> SpacecraftDhallSet:
+        """Converts this location dataset into a manipulable location Dhall set."""
+
+@typing.final
+class SpacecraftDhallSet:
+    """A Dhall-serializable Location DataSet that serves as an optional intermediate to the SpacecraftDataSet kernels."""
+
+    data: list
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls, data: list) -> SpacecraftDhallSet:
+        """A Dhall-serializable Location DataSet that serves as an optional intermediate to the SpacecraftDataSet kernels."""
+
+    def dumps(self) -> str:
+        """Returns the Dhall representation of this SpacecraftDhallSet. Equivalent to to_dhall."""
+
+    @staticmethod
+    def from_dhall(repr: str) -> SpacecraftDhallSet:
+        """Loads this Location dataset from its Dhall representation as a string"""
+
+    @staticmethod
+    def loads(repr: str) -> SpacecraftDhallSet:
+        """Loads this Location dataset from its Dhall representation as a string. Equivalent to from_dhall."""
+
+    def to_dataset(self) -> SpacecraftDataSet:
+        """Converts this location Dhall set into a Python-compatible Location DataSet."""
+
+    def to_dhall(self) -> str:
+        """Returns the Dhall representation of this Location"""
+
+@typing.final
+class SpacecraftDhallSetEntry:
+    """Entry of a Location Dhall set"""
+
+    id: typing.Any
+    name: typing.Any
+    value: typing.Any
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(
+        cls, value: Location, id: typing.Optional[int] = None, name: typing.Any = None
+    ) -> SpacecraftDhallSetEntry:
+        """Entry of a Location Dhall set"""
+
+    def __eq__(self, value: typing.Any) -> bool:
+        """Return self==value."""
+
+    def __ge__(self, value: typing.Any) -> bool:
+        """Return self>=value."""
+
+    def __gt__(self, value: typing.Any) -> bool:
+        """Return self>value."""
+
+    def __le__(self, value: typing.Any) -> bool:
+        """Return self<=value."""
+
+    def __lt__(self, value: typing.Any) -> bool:
+        """Return self<value."""
+
+    def __ne__(self, value: typing.Any) -> bool:
+        """Return self!=value."""
+
+@typing.final
 class TerrainMask:
     """TerrainMask is used to compute obstructions during AER calculations."""
 

@@ -7,15 +7,15 @@
  *
  * Documentation: https://nyxspace.com/
  */
-use super::SpacecraftDataSet;
 use super::dataset::DataSetT;
+use super::SpacecraftDataSet;
 use der::{Decode, Encode, Reader, Writer};
 pub use drag::DragData;
 pub use inertia::Inertia;
 pub use mass::Mass;
 use serde::{Deserialize, Serialize};
 pub use srp::SRPData;
-use tabled::{Table, Tabled, settings::Style};
+use tabled::{settings::Style, Table, Tabled};
 
 mod drag;
 mod inertia;
@@ -34,6 +34,7 @@ use pyo3::types::{PyBytes, PyType};
     feature = "python",
     pyclass(from_py_object, get_all, set_all, module = "anise.astro")
 )]
+#[cfg_attr(feature = "metaload", derive(serde_dhall::StaticType))]
 #[derive(Copy, Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SpacecraftData {
     /// Mass of the spacecraft in kg
@@ -71,6 +72,10 @@ impl SpacecraftData {
 
     fn __repr__(&self) -> String {
         format!("{self:?} @ {self:p}")
+    }
+
+    fn __eq__(&self, other: &Self) -> bool {
+        self == other
     }
 
     /// Decodes an ASN.1 DER encoded byte array into a SpacecraftData object.

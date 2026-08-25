@@ -9,19 +9,19 @@
  */
 use self::error::{DataDecodingSnafu, DataSetLutSnafu};
 use super::{
-    ANISE_VERSION,
     lookuptable::{LookUpTable, LutError},
     metadata::Metadata,
     semver::Semver,
+    ANISE_VERSION,
 };
 use crate::{
-    NaifId,
     errors::{DecodingError, IntegrityError},
     structure::dataset::error::DataSetIntegritySnafu,
+    NaifId,
 };
 use core::fmt;
 use core::ops::Deref;
-use der::{Decode, Encode, Reader, Writer, asn1::OctetString};
+use der::{asn1::OctetString, Decode, Encode, Reader, Writer};
 use log::error;
 use snafu::prelude::*;
 
@@ -41,6 +41,8 @@ mod error;
 #[cfg(feature = "analysis")]
 pub mod location_dhall;
 mod pretty_print;
+#[cfg(feature = "analysis")]
+pub mod spacecraft_dhall;
 
 pub use datatype::DataSetType;
 pub use error::DataSetError;
@@ -573,8 +575,8 @@ mod dataset_ut {
     use std::mem::size_of;
 
     use crate::structure::{
-        SpacecraftDataSet,
         spacecraft::{DragData, Inertia, Mass, SRPData, SpacecraftData},
+        SpacecraftDataSet,
     };
 
     use super::{DataSet, Decode, Encode};
@@ -738,12 +740,10 @@ mod dataset_ut {
             .rename("SRP spacecraft", "Renamed SRP spacecraft")
             .unwrap();
         // Calling this a second time will lead to an error
-        assert!(
-            dataset
-                .lut
-                .rename("SRP spacecraft", "Renamed SRP spacecraft")
-                .is_err()
-        );
+        assert!(dataset
+            .lut
+            .rename("SRP spacecraft", "Renamed SRP spacecraft")
+            .is_err());
         // Calling the original will lead to an error
         assert!(dataset.get_by_name("SRP spacecraft").is_err());
         // Check that we can fetch that data as we modified it.

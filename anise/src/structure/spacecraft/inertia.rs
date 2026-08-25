@@ -26,6 +26,7 @@ use crate::NaifId;
     pyclass(from_py_object, get_all, set_all, module = "anise.astro")
 )]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "metaload", derive(serde_dhall::StaticType))]
 pub struct Inertia {
     /// Inertia tensor reference frame hash
     pub orientation_id: NaifId,
