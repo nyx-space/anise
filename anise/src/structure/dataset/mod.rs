@@ -41,6 +41,8 @@ mod error;
 #[cfg(feature = "analysis")]
 pub mod location_dhall;
 mod pretty_print;
+#[cfg(feature = "metaload")]
+pub mod spacecraft_dhall;
 
 pub use datatype::DataSetType;
 pub use error::DataSetError;

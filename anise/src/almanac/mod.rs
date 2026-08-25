@@ -40,6 +40,7 @@ pub mod eclipse;
 pub mod instrument;
 pub mod planetary;
 pub mod solar;
+pub mod spacecraft;
 pub mod spk;
 pub mod transform;
 
