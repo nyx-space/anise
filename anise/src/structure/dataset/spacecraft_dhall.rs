@@ -162,7 +162,7 @@ impl SpacecraftDhallSet {
     ///
     /// :rtype: SpacecraftDataSet
     #[pyo3(name = "to_dataset")]
-    fn py_to_dataset(&mut self) -> Result<PySpacecraftDataSet, PyErr> {
+    fn py_to_dataset(&self) -> Result<PySpacecraftDataSet, PyErr> {
         Ok(PySpacecraftDataSet {
             inner: self
                 .to_dataset()
@@ -178,7 +178,7 @@ impl SpacecraftDataSet {
 
         for (id, pos) in &self.lut.by_id {
             many_me.insert(
-                pos,
+                *pos,
                 SpacecraftDhallSetEntry {
                     id: Some(*id),
                     name: None,
@@ -192,7 +192,7 @@ impl SpacecraftDataSet {
                 entry.name = Some(name.to_string());
             } else {
                 many_me.insert(
-                    pos,
+                    *pos,
                     SpacecraftDhallSetEntry {
                         id: None,
                         name: Some(name.clone()),

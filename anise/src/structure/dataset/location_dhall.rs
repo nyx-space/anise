@@ -208,7 +208,7 @@ impl LocationDataSet {
 
         for (id, pos) in &self.lut.by_id {
             many_me.insert(
-                pos,
+                *pos,
                 LocationDhallSetEntry {
                     id: Some(*id),
                     alias: None,
@@ -222,7 +222,7 @@ impl LocationDataSet {
                 entry.alias = Some(name.to_string());
             } else {
                 many_me.insert(
-                    pos,
+                    *pos,
                     LocationDhallSetEntry {
                         id: None,
                         alias: Some(name.clone()),
