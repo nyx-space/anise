@@ -103,11 +103,15 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
         let num_records = slice[slice.len() - 1] as usize;
 
         let record_data = &slice[0..slice.len() - 4];
+        // num_records is an untrusted f64 cast to usize, so a crafted footer value saturates the
+        // cast and the record-area size multiply overflows before the length check runs. Match the
+        // Type 12 Hermite decoder and compute the size with saturating_mul.
+        let need = num_records.saturating_mul(6);
         ensure!(
-            record_data.len() == 6 * num_records,
+            record_data.len() == need,
             TooFewDoublesSnafu {
                 dataset: Self::DATASET_NAME,
-                need: 6 * num_records,
+                need,
                 got: record_data.len(),
             }
         );
@@ -320,7 +324,10 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
             });
         }
         // NOTE: The ::SIZE returns the C representation memory size of this, but we only want the number of doubles.
-        let state_data_end_idx = PositionVelocityRecord::SIZE / DBL_SIZE * num_records;
+        // num_records is an untrusted f64 cast to usize, so a crafted footer value saturates the
+        // cast and this record-area size multiply overflows; saturate so the .get below rejects it.
+        let state_data_end_idx =
+            (PositionVelocityRecord::SIZE / DBL_SIZE).saturating_mul(num_records);
         let state_data =
             slice
                 .get(0..state_data_end_idx)
@@ -608,6 +615,30 @@ mod ut_lagrange {
                     },
                 }
             ),
+        }
+    }
+
+    #[test]
+    fn rejects_oversized_num_records_without_overflow() {
+        // num_records is read from the footer as an f64 and cast to usize, so a huge finite value
+        // saturates the cast and the record-area size multiply `6 * num_records` used to overflow
+        // and panic during decode. The equal-step Type 8 decoder builds the record slice length
+        // from that product directly.
+        let mut slice = vec![0.0_f64; 20];
+        slice[18] = 2.0; // degree
+        slice[19] = 6e18; // num_records: 6 * 6e18 exceeds usize::MAX
+        match LagrangeSetType8::from_f64_slice(&slice) {
+            Ok(_) => panic!("an oversized record count must be rejected"),
+            Err(e) => assert!(matches!(e, DecodingError::TooFewDoubles { .. })),
+        }
+
+        // The unequal-step Type 9 decoder slices the state area with the same product.
+        let mut slice = vec![0.0_f64; 20];
+        slice[18] = 2.0; // degree
+        slice[19] = 6e18; // num_records
+        match LagrangeSetType9::from_f64_slice(&slice) {
+            Ok(_) => panic!("an oversized record count must be rejected"),
+            Err(e) => assert!(matches!(e, DecodingError::InaccessibleBytes { .. })),
         }
     }
 

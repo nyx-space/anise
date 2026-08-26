@@ -364,7 +364,10 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
             });
         }
         // NOTE: The ::SIZE returns the C representation memory size of this, but we only want the number of doubles.
-        let state_data_end_idx = PositionVelocityRecord::SIZE / DBL_SIZE * num_records;
+        // num_records is an untrusted f64 cast to usize, so a crafted footer value saturates the
+        // cast and this record-area size multiply overflows; saturate so the .get below rejects it.
+        let state_data_end_idx =
+            (PositionVelocityRecord::SIZE / DBL_SIZE).saturating_mul(num_records);
         let state_data =
             slice
                 .get(0..state_data_end_idx)
@@ -655,6 +658,21 @@ mod hermite_ut {
                     },
                 }
             ),
+        }
+    }
+
+    #[test]
+    fn rejects_oversized_num_records_without_overflow() {
+        // num_records is read from the footer as an f64 and cast to usize, so a huge finite value
+        // saturates the cast and the state-area size multiply `6 * num_records` used to overflow
+        // and panic during decode. The equal-step Type 12 decoder already guards this with
+        // saturating_mul, so only Type 13 was affected.
+        let mut slice = vec![0.0_f64; 20];
+        slice[18] = 2.0; // window size minus one
+        slice[19] = 6e18; // num_records: 6 * 6e18 exceeds usize::MAX
+        match HermiteSetType13::from_f64_slice(&slice) {
+            Ok(_) => panic!("an oversized record count must be rejected"),
+            Err(e) => assert!(matches!(e, DecodingError::InaccessibleBytes { .. })),
         }
     }
 
