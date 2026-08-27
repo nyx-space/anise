@@ -40,7 +40,29 @@ pub mod time {
             .floor()
             .rem_euclid(f64::from(i32::MAX)) as i32;
 
-        (id * 10_000).wrapping_add(wrapped_days)
+        id.wrapping_mul(10_000).wrapping_add(wrapped_days)
+    }
+
+    #[cfg(test)]
+    mod ut_uuid_from_epoch {
+        use super::{Epoch, uuid_from_epoch};
+
+        #[test]
+        fn large_orientation_id_does_not_overflow() {
+            // `orientation_id` is read from a loaded kernel (a PCA body id, a BPC frame id,
+            // a location/instrument dataset frame), so it can exceed the ~214_748 point where
+            // `id * 10_000` overflows i32. A body-fixed frame for a high-numbered body (e.g.
+            // an asteroid at 2_000_001) reaches this through the topocentric / RIC / VNC DCM
+            // helpers on an Orbit. The multiply must wrap like the neighbouring add rather than
+            // panicking in debug or diverging from the release result.
+            let epoch = Epoch::from_tdb_seconds(0.0);
+            let big = 2_000_001;
+            let offset = uuid_from_epoch(0, epoch); // only the epoch term
+            assert_eq!(
+                uuid_from_epoch(big, epoch),
+                big.wrapping_mul(10_000).wrapping_add(offset)
+            );
+        }
     }
 }
 
