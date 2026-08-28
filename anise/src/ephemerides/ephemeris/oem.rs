@@ -24,7 +24,96 @@ use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
 use std::str::FromStr;
 
-use super::{Covariance, Ephemeris, EphemerisRecord, LocalFrame};
+use super::{Covariance, Ephemeris, EphemerisRecord, EphemerisSegment, LocalFrame};
+
+type MetadataEpoch = Option<(usize, String)>;
+
+fn parse_metadata_epoch(
+    value: &MetadataEpoch,
+    time_system: &str,
+    field: &'static str,
+) -> Result<Option<Epoch>, EphemerisError> {
+    value
+        .as_ref()
+        .map(|(lno, value)| {
+            let epoch_str = format!("{value} {time_system}");
+            Epoch::from_str(epoch_str.trim()).context(OEMTimeParsingSnafu {
+                line: *lno,
+                details: format!("`{epoch_str}` for {field}"),
+            })
+        })
+        .transpose()
+}
+
+#[allow(clippy::too_many_arguments)]
+fn finish_segment(
+    segments: &mut Vec<EphemerisSegment>,
+    state_data: &mut BTreeMap<Epoch, EphemerisRecord>,
+    interpolation: DataType,
+    degree: usize,
+    time_system: &str,
+    useable_start: &MetadataEpoch,
+    useable_end: &MetadataEpoch,
+) -> Result<(), EphemerisError> {
+    if state_data.is_empty() {
+        return Ok(());
+    }
+
+    let raw_start = *state_data
+        .first_key_value()
+        .expect("state_data is not empty")
+        .0;
+    let raw_end = *state_data
+        .last_key_value()
+        .expect("state_data is not empty")
+        .0;
+    let (useable_start, useable_end) = match (useable_start, useable_end) {
+        (None, None) => (raw_start, raw_end),
+        (Some(_), Some(_)) => (
+            parse_metadata_epoch(useable_start, time_system, "USEABLE_START_TIME")?
+                .expect("Some metadata epoch parses to Some"),
+            parse_metadata_epoch(useable_end, time_system, "USEABLE_STOP_TIME")?
+                .expect("Some metadata epoch parses to Some"),
+        ),
+        _ => {
+            return Err(EphemerisError::OEMParsingError {
+                lno: 0,
+                details: "USEABLE_START_TIME and USEABLE_STOP_TIME must be provided together"
+                    .to_string(),
+            });
+        }
+    };
+
+    if useable_start >= useable_end {
+        return Err(EphemerisError::OEMParsingError {
+            lno: 0,
+            details: "USEABLE_START_TIME must be strictly before USEABLE_STOP_TIME".to_string(),
+        });
+    }
+    if let Some(previous) = segments.last()
+        && previous.useable_end > useable_start
+    {
+        return Err(EphemerisError::OEMParsingError {
+            lno: 0,
+            details: "OEM useable intervals may share one endpoint but must not overlap"
+                .to_string(),
+        });
+    }
+
+    segments.push(EphemerisSegment {
+        interpolation,
+        degree,
+        // Raw states remain the source of truth for total coverage, as they were
+        // before segmentation. Include a declared useable endpoint when an OEM
+        // legitimately relies on extrapolating from support states inside the block.
+        total_start: raw_start.min(useable_start),
+        total_end: raw_end.max(useable_end),
+        useable_start,
+        useable_end,
+        state_data: std::mem::take(state_data),
+    });
+    Ok(())
+}
 
 impl Ephemeris {
     /// Initialize a new ephemeris from the path to a CCSDS OEM file.
@@ -39,13 +128,17 @@ impl Ephemeris {
 
         let mut in_state_data = false;
         let mut in_cov_data = false;
+        let mut in_metadata = false;
 
         // Define header variables we care about.
         let mut time_system = String::new();
+        let mut message_time_system: Option<String> = None;
         let mut center_name = None;
         let mut orient_name = None;
         let mut interpolation = DataType::Type9LagrangeUnequalStep;
         let mut degree = 5;
+        let mut useable_start: MetadataEpoch = None;
+        let mut useable_end: MetadataEpoch = None;
         let mut object_id: Option<String> = None;
         let mut cov_epoch = None;
         let mut cov_mat = None;
@@ -55,6 +148,8 @@ impl Ephemeris {
         // Store the temporary data in a BTreeMap so we have O(1) access when adding the covariance information
         // and we can iterate in order when building the vector.
         let mut state_data = BTreeMap::new();
+        let mut segment_state_data = BTreeMap::new();
+        let mut segments = Vec::new();
 
         let parse_one_val = |lno: usize, line: &str, err: &str| -> Result<String, EphemerisError> {
             let parts: Vec<&str> = line.split('=').collect();
@@ -77,6 +172,87 @@ impl Ephemeris {
             let line = line.trim();
             if line.is_empty() {
                 continue;
+            }
+
+            // Track metadata blocks explicitly. Without this state, a dangling
+            // META_START at EOF is silently dropped, while metadata for a later
+            // block that omits META_START can mutate and merge into the active one.
+            if line.starts_with("META_START") {
+                if in_metadata {
+                    return Err(EphemerisError::OEMParsingError {
+                        lno,
+                        details: "nested META_START is not allowed".to_string(),
+                    });
+                }
+                if in_cov_data {
+                    return Err(EphemerisError::OEMParsingError {
+                        lno,
+                        details: "META_START cannot abandon an open covariance section".to_string(),
+                    });
+                }
+                finish_segment(
+                    &mut segments,
+                    &mut segment_state_data,
+                    interpolation,
+                    degree,
+                    &time_system,
+                    &useable_start,
+                    &useable_end,
+                )?;
+                in_metadata = true;
+                in_state_data = false;
+                center_name = None;
+                orient_name = None;
+                time_system.clear();
+                interpolation = DataType::Type9LagrangeUnequalStep;
+                degree = 5;
+                useable_start = None;
+                useable_end = None;
+                continue;
+            }
+            if line.starts_with("META_STOP") {
+                if !in_metadata {
+                    return Err(EphemerisError::OEMParsingError {
+                        lno,
+                        details: "META_STOP without META_START".to_string(),
+                    });
+                }
+                if in_cov_data {
+                    return Err(EphemerisError::OEMParsingError {
+                        lno,
+                        details: "META_STOP cannot appear inside a covariance section".to_string(),
+                    });
+                }
+                in_metadata = false;
+                in_state_data = true;
+                continue;
+            }
+
+            let metadata_key = line.split_once('=').map(|(key, _)| key.trim());
+            if matches!(
+                metadata_key,
+                Some(
+                    "OBJECT_NAME"
+                        | "OBJECT_ID"
+                        | "CENTER_NAME"
+                        | "REF_FRAME"
+                        | "TIME_SYSTEM"
+                        | "START_TIME"
+                        | "USEABLE_START_TIME"
+                        | "USEABLE_STOP_TIME"
+                        | "STOP_TIME"
+                        | "INTERPOLATION"
+                        | "INTERPOLATION_DEGREE"
+                )
+            ) && !in_metadata
+            {
+                return Err(EphemerisError::OEMParsingError {
+                    lno,
+                    details: format!(
+                        "metadata field {} appears outside META_START/META_STOP",
+                        metadata_key.expect("matched metadata key")
+                    ),
+                });
             }
 
             if line.starts_with("CCSDS_OEM_VERS") {
@@ -120,7 +296,30 @@ impl Ephemeris {
             } else if line.starts_with("REF_FRAME") {
                 orient_name = Some(parse_one_val(lno, line, "no value for REF_FRAME")?);
             } else if line.starts_with("TIME_SYSTEM") {
-                time_system = parse_one_val(lno, line, "no value for TIME_SYSTEM")?;
+                let parsed = parse_one_val(lno, line, "no value for TIME_SYSTEM")?;
+                if let Some(expected) = &message_time_system {
+                    if parsed != *expected {
+                        return Err(EphemerisError::OEMParsingError {
+                            lno,
+                            details: format!(
+                                "TIME_SYSTEM must remain {expected} throughout the OEM, found {parsed}"
+                            ),
+                        });
+                    }
+                } else {
+                    message_time_system = Some(parsed.clone());
+                }
+                time_system = parsed;
+            } else if line.starts_with("USEABLE_START_TIME") {
+                useable_start = Some((
+                    lno,
+                    parse_one_val(lno, line, "no value for USEABLE_START_TIME")?,
+                ));
+            } else if line.starts_with("USEABLE_STOP_TIME") {
+                useable_end = Some((
+                    lno,
+                    parse_one_val(lno, line, "no value for USEABLE_STOP_TIME")?,
+                ));
             } else if line.starts_with("INTERPOLATION_DEGREE") {
                 let interp_str =
                     parse_one_val(lno, line, "no value for INTERPOLATION_DEGREE")?.to_lowercase();
@@ -153,22 +352,42 @@ impl Ephemeris {
                         warn!("unsupported interpolation `{interp_str}` using Hermite")
                     }
                 };
-            } else if line.starts_with("META_STOP") {
-                // We can start parsing now
-                in_state_data = true;
-                in_cov_data = false;
-            } else if line.starts_with("META_START") {
-                in_state_data = false;
-                in_cov_data = false;
             } else if line.starts_with("COVARIANCE_START") {
+                if in_metadata {
+                    return Err(EphemerisError::OEMParsingError {
+                        lno,
+                        details: "COVARIANCE_START cannot appear inside metadata".to_string(),
+                    });
+                }
+                if in_cov_data {
+                    return Err(EphemerisError::OEMParsingError {
+                        lno,
+                        details: "nested COVARIANCE_START is not allowed".to_string(),
+                    });
+                }
                 in_state_data = false;
                 in_cov_data = true;
                 // Start each block from a clean slate so a stray data row before this
                 // block's own EPOCH line cannot latch onto a previous block's matrix.
                 cov_epoch = None;
                 cov_mat = None;
+                cov_frame = None;
                 cov_row = 0;
             } else if line.starts_with("COVARIANCE_STOP") {
+                if !in_cov_data {
+                    return Err(EphemerisError::OEMParsingError {
+                        lno,
+                        details: "COVARIANCE_STOP without COVARIANCE_START".to_string(),
+                    });
+                }
+                if cov_epoch.is_some() {
+                    return Err(EphemerisError::OEMParsingError {
+                        lno,
+                        details: format!(
+                            "incomplete covariance matrix: expected six rows but got {cov_row}"
+                        ),
+                    });
+                }
                 in_state_data = false;
                 in_cov_data = false;
             } else if line.starts_with("COMMENT") {
@@ -262,9 +481,21 @@ impl Ephemeris {
 
                 // We only reach this point if the state data is fully parsed.
                 let orbit = Orbit::from_cartesian_pos_vel(state_vec, epoch, frame);
-                state_data.insert(epoch, EphemerisRecord { orbit, covar: None });
+                let record = EphemerisRecord { orbit, covar: None };
+                segment_state_data.insert(epoch, record);
+                // Preserve the historical flat view, where later blocks replace earlier
+                // records at duplicate epochs, while the segment map above stays lossless.
+                state_data.insert(epoch, record);
             } else if in_cov_data {
                 if line.starts_with("EPOCH") {
+                    if cov_epoch.is_some() {
+                        return Err(EphemerisError::OEMParsingError {
+                            lno,
+                            details: format!(
+                                "incomplete covariance matrix before next EPOCH: expected six rows but got {cov_row}"
+                            ),
+                        });
+                    }
                     let state_epoch = parse_one_val(lno, line, "no `=` sign for covariance epoch")?;
                     let epoch_str = format!("{state_epoch} {time_system}");
                     let epoch = Epoch::from_str(epoch_str.trim()).context(OEMTimeParsingSnafu {
@@ -273,7 +504,7 @@ impl Ephemeris {
                     })?;
 
                     // Check that we have associated state data
-                    if !state_data.contains_key(&epoch) {
+                    if !segment_state_data.contains_key(&epoch) {
                         return Err(EphemerisError::OEMParsingError {
                             lno,
                             details: format!(
@@ -371,9 +602,13 @@ impl Ephemeris {
                                     matrix: mat,
                                     local_frame: cov_frame.unwrap_or(LocalFrame::Inertial),
                                 });
-                                state_data
+                                segment_state_data
                                     .get_mut(&cov_epoch)
                                     .expect("epoch was valid but now no?")
+                                    .covar = covar;
+                                state_data
+                                    .get_mut(&cov_epoch)
+                                    .expect("flat state view is updated with each segment record")
                                     .covar = covar;
                             }
                             None => {
@@ -394,6 +629,37 @@ impl Ephemeris {
             }
         }
 
+        if cov_epoch.is_some() {
+            return Err(EphemerisError::OEMParsingError {
+                lno: 0,
+                details: format!(
+                    "incomplete covariance matrix at end of file: expected six rows but got {cov_row}"
+                ),
+            });
+        }
+        if in_cov_data {
+            return Err(EphemerisError::OEMParsingError {
+                lno: 0,
+                details: "unterminated COVARIANCE_START section at end of file".to_string(),
+            });
+        }
+        if in_metadata {
+            return Err(EphemerisError::OEMParsingError {
+                lno: 0,
+                details: "unterminated META_START section at end of file".to_string(),
+            });
+        }
+
+        finish_segment(
+            &mut segments,
+            &mut segment_state_data,
+            interpolation,
+            degree,
+            &time_system,
+            &useable_start,
+            &useable_end,
+        )?;
+
         if state_data.is_empty() {
             return Err(EphemerisError::OEMParsingError {
                 lno: 0,
@@ -408,6 +674,7 @@ impl Ephemeris {
                 degree,
                 interpolation,
                 state_data,
+                segments,
             })
         } else {
             Err(EphemerisError::OEMParsingError {
@@ -476,148 +743,136 @@ impl Ephemeris {
         )
         .map_err(err_hdlr)?;
 
-        writeln!(writer, "META_START").map_err(err_hdlr)?;
         let object_name = object_name
             .as_deref()
             .map(str::trim)
             .filter(|name| !name.is_empty())
             .unwrap_or("UNKNOWN");
-        writeln!(writer, "OBJECT_NAME = {object_name}").map_err(err_hdlr)?;
-        writeln!(writer, "OBJECT_ID = {}", self.object_id).map_err(err_hdlr)?;
+        for segment in self.segment_views() {
+            let first_orbit = segment
+                .state_data
+                .first_key_value()
+                .expect("empty segment is never constructed")
+                .1
+                .orbit;
+            let first_frame = first_orbit.frame;
+            let center = format!("{first_frame:e}");
+            let ref_frame = format!("{first_frame:o}");
 
-        let first_orbit = self
-            .state_data
-            .first_key_value()
-            .expect("state_data is not empty, checked above")
-            .1
-            .orbit;
-        let first_frame = first_orbit.frame;
-        let last_orbit = self
-            .state_data
-            .last_key_value()
-            .expect("state_data is not empty, checked above")
-            .1
-            .orbit;
-
-        let center = format!("{first_frame:e}");
-        let ref_frame = format!("{first_frame:o}");
-        writeln!(writer, "CENTER_NAME = {center}",).map_err(err_hdlr)?;
-        writeln!(
-            writer,
-            "REF_FRAME = {}",
-            match ref_frame.trim() {
-                "J2000" => "EME2000",
-                _ => ref_frame.trim(),
-            }
-        )
-        .map_err(err_hdlr)?;
-
-        writeln!(writer, "TIME_SYSTEM = {}", first_orbit.epoch.time_scale).map_err(err_hdlr)?;
-        writeln!(
-            writer,
-            "START_TIME = {}",
-            Formatter::new(first_orbit.epoch, iso8601_no_ts),
-        )
-        .map_err(err_hdlr)?;
-        writeln!(
-            writer,
-            "USEABLE_START_TIME = {}",
-            Formatter::new(first_orbit.epoch, iso8601_no_ts),
-        )
-        .map_err(err_hdlr)?;
-        writeln!(
-            writer,
-            "USEABLE_STOP_TIME = {}",
-            Formatter::new(last_orbit.epoch, iso8601_no_ts),
-        )
-        .map_err(err_hdlr)?;
-        writeln!(
-            writer,
-            "STOP_TIME = {}",
-            Formatter::new(last_orbit.epoch, iso8601_no_ts),
-        )
-        .map_err(err_hdlr)?;
-        writeln!(
-            writer,
-            "INTERPOLATION = {}",
-            match self.interpolation {
-                DataType::Type9LagrangeUnequalStep => "LAGRANGE",
-                DataType::Type13HermiteUnequalStep => "HERMITE",
-                _ => unreachable!(),
-            }
-        )
-        .map_err(err_hdlr)?;
-
-        writeln!(writer, "INTERPOLATION_DEGREE = {}", self.degree).map_err(err_hdlr)?;
-
-        writeln!(writer, "META_STOP\n").map_err(err_hdlr)?;
-
-        for (epoch, entry) in self.state_data.iter() {
-            let orbit = entry.orbit;
+            writeln!(writer, "META_START").map_err(err_hdlr)?;
+            writeln!(writer, "OBJECT_NAME = {object_name}").map_err(err_hdlr)?;
+            writeln!(writer, "OBJECT_ID = {}", self.object_id).map_err(err_hdlr)?;
+            writeln!(writer, "CENTER_NAME = {center}").map_err(err_hdlr)?;
             writeln!(
                 writer,
-                "{} {:E} {:E} {:E} {:E} {:E} {:E}",
-                Formatter::new(*epoch, iso8601_no_ts),
-                orbit.radius_km.x,
-                orbit.radius_km.y,
-                orbit.radius_km.z,
-                orbit.velocity_km_s.x,
-                orbit.velocity_km_s.y,
-                orbit.velocity_km_s.z
+                "REF_FRAME = {}",
+                match ref_frame.trim() {
+                    "J2000" => "EME2000",
+                    _ => ref_frame.trim(),
+                }
             )
             .map_err(err_hdlr)?;
-        }
-
-        #[allow(clippy::writeln_empty_string)]
-        writeln!(writer, "").map_err(err_hdlr)?;
-
-        // Add covariance if available
-        let mut cov_started = false;
-        for (epoch, entry) in self.state_data.iter() {
-            if let Some(covar) = &entry.covar {
-                if !cov_started {
-                    writeln!(writer, "COVARIANCE_START").map_err(err_hdlr)?;
-                    cov_started = true;
+            writeln!(writer, "TIME_SYSTEM = {}", first_orbit.epoch.time_scale).map_err(err_hdlr)?;
+            writeln!(
+                writer,
+                "START_TIME = {}",
+                Formatter::new(segment.total_start, iso8601_no_ts),
+            )
+            .map_err(err_hdlr)?;
+            writeln!(
+                writer,
+                "USEABLE_START_TIME = {}",
+                Formatter::new(segment.useable_start, iso8601_no_ts),
+            )
+            .map_err(err_hdlr)?;
+            writeln!(
+                writer,
+                "USEABLE_STOP_TIME = {}",
+                Formatter::new(segment.useable_end, iso8601_no_ts),
+            )
+            .map_err(err_hdlr)?;
+            writeln!(
+                writer,
+                "STOP_TIME = {}",
+                Formatter::new(segment.total_end, iso8601_no_ts),
+            )
+            .map_err(err_hdlr)?;
+            writeln!(
+                writer,
+                "INTERPOLATION = {}",
+                match segment.interpolation {
+                    DataType::Type9LagrangeUnequalStep => "LAGRANGE",
+                    DataType::Type13HermiteUnequalStep | DataType::Type12HermiteEqualStep => {
+                        "HERMITE"
+                    }
+                    _ => unreachable!(),
                 }
-                writeln!(writer, "EPOCH = {}", Formatter::new(*epoch, iso8601_no_ts),)
-                    .map_err(err_hdlr)?;
+            )
+            .map_err(err_hdlr)?;
+            writeln!(writer, "INTERPOLATION_DEGREE = {}", segment.degree).map_err(err_hdlr)?;
+            writeln!(writer, "META_STOP\n").map_err(err_hdlr)?;
 
+            for (epoch, entry) in segment.state_data {
+                let orbit = entry.orbit;
                 writeln!(
                     writer,
-                    "COV_REF_FRAME = {}",
-                    match covar.local_frame {
-                        LocalFrame::Inertial => "EME2000",
-                        LocalFrame::RIC => "RTN",
-                        LocalFrame::VNC => "TNW",
-                        LocalFrame::RCN =>
-                            return Err(EphemerisError::OEMWritingError {
-                                details: "RCN frame is not supported for OEM covariance export"
-                                    .to_string(),
-                            }),
-                    }
+                    "{} {:E} {:E} {:E} {:E} {:E} {:E}",
+                    Formatter::new(*epoch, iso8601_no_ts),
+                    orbit.radius_km.x,
+                    orbit.radius_km.y,
+                    orbit.radius_km.z,
+                    orbit.velocity_km_s.x,
+                    orbit.velocity_km_s.y,
+                    orbit.velocity_km_s.z
                 )
                 .map_err(err_hdlr)?;
-
-                // Write the matrix
-                // 1
-                // 2 3
-                // 4 5 6
-                // ...
-                for row in 0..6 {
-                    let mut line = String::new();
-                    for col in 0..row + 1 {
-                        line.push_str(&format!("{:E} ", covar.matrix[(col, row)]));
-                    }
-                    writeln!(writer, "{}", line.trim()).map_err(err_hdlr)?;
-                }
-
-                #[allow(clippy::writeln_empty_string)]
-                writeln!(writer, "").map_err(err_hdlr)?;
             }
-        }
 
-        if cov_started {
-            writeln!(writer, "COVARIANCE_STOP").map_err(err_hdlr)?;
+            #[allow(clippy::writeln_empty_string)]
+            writeln!(writer, "").map_err(err_hdlr)?;
+
+            let mut cov_started = false;
+            for (epoch, entry) in segment.state_data {
+                if let Some(covar) = &entry.covar {
+                    if !cov_started {
+                        writeln!(writer, "COVARIANCE_START").map_err(err_hdlr)?;
+                        cov_started = true;
+                    }
+                    writeln!(writer, "EPOCH = {}", Formatter::new(*epoch, iso8601_no_ts))
+                        .map_err(err_hdlr)?;
+                    writeln!(
+                        writer,
+                        "COV_REF_FRAME = {}",
+                        match covar.local_frame {
+                            LocalFrame::Inertial => "EME2000",
+                            LocalFrame::RIC => "RTN",
+                            LocalFrame::VNC => "TNW",
+                            LocalFrame::RCN => {
+                                return Err(EphemerisError::OEMWritingError {
+                                    details: "RCN frame is not supported for OEM covariance export"
+                                        .to_string(),
+                                });
+                            }
+                        }
+                    )
+                    .map_err(err_hdlr)?;
+
+                    for row in 0..6 {
+                        let mut line = String::new();
+                        for col in 0..=row {
+                            line.push_str(&format!("{:E} ", covar.matrix[(col, row)]));
+                        }
+                        writeln!(writer, "{}", line.trim()).map_err(err_hdlr)?;
+                    }
+
+                    #[allow(clippy::writeln_empty_string)]
+                    writeln!(writer, "").map_err(err_hdlr)?;
+                }
+            }
+
+            if cov_started {
+                writeln!(writer, "COVARIANCE_STOP\n").map_err(err_hdlr)?;
+            }
         }
         Ok(())
     }

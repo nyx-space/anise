@@ -50,10 +50,16 @@ impl Ephemeris {
         match interp.to_lowercase().as_str() {
             "lagrange" => {
                 self.interpolation = DataType::Type9LagrangeUnequalStep;
+                for segment in &mut self.segments {
+                    segment.interpolation = self.interpolation;
+                }
                 Ok(())
             }
             "hermite" => {
                 self.interpolation = DataType::Type13HermiteUnequalStep;
+                for segment in &mut self.segments {
+                    segment.interpolation = self.interpolation;
+                }
                 Ok(())
             }
             _ => Err(PyValueError::new_err(
@@ -75,6 +81,9 @@ impl Ephemeris {
             Err(PyValueError::new_err("degree must be strictly positive"))
         } else {
             self.degree = degree;
+            for segment in &mut self.segments {
+                segment.degree = degree;
+            }
             Ok(())
         }
     }
@@ -92,6 +101,7 @@ impl Ephemeris {
             object_id,
             interpolation: DafDataType::Type13HermiteUnequalStep,
             degree: 7,
+            segments: Vec::new(),
         }
     }
 

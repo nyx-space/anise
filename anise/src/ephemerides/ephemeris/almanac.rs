@@ -49,6 +49,7 @@ impl Almanac {
             interpolation: crate::naif::daf::DafDataType::Type13HermiteUnequalStep,
             degree: 7,
             state_data: BTreeMap::new(),
+            segments: Vec::new(),
         };
 
         for state in states {

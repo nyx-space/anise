@@ -418,6 +418,7 @@ impl Ephemeris {
             degree,
             interpolation,
             state_data,
+            segments: Vec::new(),
         })
     }
 }
