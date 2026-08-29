@@ -413,12 +413,11 @@ impl Ephemeris {
             samples_m1.saturating_mul(2).saturating_add(1)
         };
 
-        Ok(Ephemeris {
+        Ok(Ephemeris::from_state_data(
             object_id,
-            degree,
             interpolation,
+            degree,
             state_data,
-            segments: Vec::new(),
-        })
+        ))
     }
 }

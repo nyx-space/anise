@@ -177,8 +177,7 @@ impl Ephemeris {
             // or last raw support node, so materialize only those boundary states
             // from the owning segment's interpolation before serialization.
             if segment.useable_start < raw_start {
-                let orbit = Self::orbit_at_in_with_window(
-                    output_view,
+                let orbit = output_view.orbit_at_with_window(
                     segment.useable_start,
                     required_raw_states,
                     &interpolation_almanac,
@@ -189,8 +188,7 @@ impl Ephemeris {
                 );
             }
             if segment.useable_end > raw_end {
-                let orbit = Self::orbit_at_in_with_window(
-                    output_view,
+                let orbit = output_view.orbit_at_with_window(
                     segment.useable_end,
                     required_raw_states,
                     &interpolation_almanac,

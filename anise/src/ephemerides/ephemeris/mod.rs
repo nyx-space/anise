@@ -13,17 +13,14 @@ use crate::ephemerides::EphemInterpolationSnafu;
 use crate::errors::{AlmanacError, AlmanacPhysicsSnafu, OrientationSnafu};
 use crate::frames::Frame;
 use crate::math::Vector6;
-use crate::math::interpolation::{hermite_eval, lagrange_eval};
+use crate::math::interpolation::{InterpolationError, hermite_eval, lagrange_eval};
 use crate::naif::daf::data_types::DataType;
 use crate::prelude::{Almanac, Orbit};
 use core::fmt;
 use covariance::interpolate_covar_log_euclidean;
 use hifitime::{Epoch, TimeSeries};
 use snafu::ResultExt;
-use std::collections::{
-    BTreeMap,
-    btree_map::{IntoValues, Values},
-};
+use std::collections::BTreeMap;
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
@@ -52,25 +49,16 @@ pub use record::EphemerisRecord;
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Ephemeris {
     pub object_id: String,
-    pub interpolation: DataType,
-    pub degree: usize,
-    state_data: BTreeMap<Epoch, EphemerisRecord>,
     segments: Vec<EphemerisSegment>,
 }
 
 /// Block-local interpolation metadata and raw state ownership for one CCSDS OEM block.
-///
-/// `Ephemeris::state_data` remains the backwards-compatible, epoch-keyed view used by
-/// iterators and constructors. OEM parsing additionally retains these blocks so duplicate
-/// epochs and block-local interpolation semantics are not discarded.
 #[derive(Clone, Debug, PartialEq)]
 struct EphemerisSegment {
     interpolation: DataType,
     degree: usize,
-    total_start: Epoch,
-    total_end: Epoch,
-    useable_start: Epoch,
-    useable_end: Epoch,
+    useable_start: Option<Epoch>,
+    useable_end: Option<Epoch>,
     state_data: BTreeMap<Epoch, EphemerisRecord>,
 }
 
@@ -85,193 +73,87 @@ struct EphemerisSegmentView<'a> {
     state_data: &'a BTreeMap<Epoch, EphemerisRecord>,
 }
 
-impl Ephemeris {
-    pub fn new(object_id: String) -> Self {
+impl EphemerisSegment {
+    fn new(interpolation: DataType, degree: usize) -> Self {
         Self {
-            object_id,
-            interpolation: DataType::Type13HermiteUnequalStep,
-            degree: 7,
-            state_data: BTreeMap::new(),
-            segments: Vec::new(),
-        }
-    }
-
-    /// Returns the interpolation used
-    pub fn interpolation(&self) -> DataType {
-        self.interpolation
-    }
-
-    fn segment_settings(&self, segment: &EphemerisSegment) -> (DataType, usize) {
-        let last = self
-            .segments
-            .last()
-            .expect("segment_settings is only used for parsed OEM segments");
-
-        // These fields were already public before OEM segmentation. A direct Rust
-        // assignment that changes their parsed value therefore remains a global
-        // override, while untouched OEMs retain their block-local metadata.
-        let interpolation = if self.interpolation != last.interpolation {
-            self.interpolation
-        } else {
-            segment.interpolation
-        };
-        let degree = if self.degree != last.degree {
-            self.degree
-        } else {
-            segment.degree
-        };
-        (interpolation, degree)
-    }
-
-    fn segment_view<'a>(&self, segment: &'a EphemerisSegment) -> EphemerisSegmentView<'a> {
-        let (interpolation, degree) = self.segment_settings(segment);
-        EphemerisSegmentView {
             interpolation,
             degree,
-            total_start: segment.total_start,
-            total_end: segment.total_end,
-            useable_start: segment.useable_start,
-            useable_end: segment.useable_end,
-            state_data: &segment.state_data,
+            useable_start: None,
+            useable_end: None,
+            state_data: BTreeMap::new(),
         }
     }
 
-    fn segment_views(&self) -> Vec<EphemerisSegmentView<'_>> {
-        if self.segments.is_empty() {
-            let Some((&total_start, _)) = self.state_data.first_key_value() else {
-                return Vec::new();
-            };
-            let total_end = *self
-                .state_data
-                .last_key_value()
-                .expect("state_data has a first entry")
-                .0;
-            vec![EphemerisSegmentView {
-                interpolation: self.interpolation,
-                degree: self.degree,
-                total_start,
-                total_end,
-                useable_start: total_start,
-                useable_end: total_end,
-                state_data: &self.state_data,
-            }]
-        } else {
-            self.segments
-                .iter()
-                .map(|segment| self.segment_view(segment))
-                .collect()
+    fn from_state_data(
+        interpolation: DataType,
+        degree: usize,
+        state_data: BTreeMap<Epoch, EphemerisRecord>,
+    ) -> Self {
+        Self {
+            interpolation,
+            degree,
+            useable_start: None,
+            useable_end: None,
+            state_data,
         }
     }
 
-    fn segment_index_at(&self, epoch: Epoch) -> Option<usize> {
-        if self.segments.len() == 1 {
-            let segment = self.segments.first().expect("segments has one entry");
-            let raw_start = *segment
-                .state_data
-                .first_key_value()
-                .expect("empty segment is never constructed")
-                .0;
-            let raw_end = *segment
-                .state_data
-                .last_key_value()
-                .expect("empty segment is never constructed")
-                .0;
-            (raw_start..=raw_end).contains(&epoch).then_some(0)
-        } else {
-            self.segments
-                .iter()
-                .rposition(|segment| (segment.useable_start..=segment.useable_end).contains(&epoch))
-        }
+    fn view(&self) -> Option<EphemerisSegmentView<'_>> {
+        let (&raw_start, _) = self.state_data.first_key_value()?;
+        let (&raw_end, _) = self.state_data.last_key_value()?;
+        let useable_start = self.useable_start.unwrap_or(raw_start);
+        let useable_end = self.useable_end.unwrap_or(raw_end);
+        Some(EphemerisSegmentView {
+            interpolation: self.interpolation,
+            degree: self.degree,
+            total_start: raw_start.min(useable_start),
+            total_end: raw_end.max(useable_end),
+            useable_start,
+            useable_end,
+            state_data: &self.state_data,
+        })
     }
+}
 
-    fn segment_at(&self, epoch: Epoch) -> Option<EphemerisSegmentView<'_>> {
-        if self.segments.is_empty() {
-            let view = self.segment_views().into_iter().next()?;
-            (view.useable_start..=view.useable_end)
-                .contains(&epoch)
-                .then_some(view)
-        } else {
-            // Later OEM blocks have priority at the one endpoint that adjacent useable
-            // intervals are allowed to share, matching SPICE segment precedence.
-            let segment = self.segments.get(self.segment_index_at(epoch)?)?;
-            let mut view = self.segment_view(segment);
-            if self.segments.len() == 1 {
-                view.useable_start = *segment
-                    .state_data
-                    .first_key_value()
-                    .expect("empty segment is never constructed")
-                    .0;
-                view.useable_end = *segment
-                    .state_data
-                    .last_key_value()
-                    .expect("empty segment is never constructed")
-                    .0;
+impl EphemerisSegmentView<'_> {
+    fn nearest_before(&self, epoch: Epoch, almanac: &Almanac) -> Option<EphemerisRecord> {
+        self.state_data.range(..=epoch).next_back().map(|entry| {
+            let mut record = *entry.1;
+            if let Ok(frame) = almanac.frame_info(record.orbit.frame) {
+                record.orbit.frame = frame;
             }
-            Some(view)
-        }
+            record
+        })
     }
 
-    fn interpolation_domain(&self) -> Result<(Epoch, Epoch), EphemerisError> {
-        if self.segments.is_empty() {
-            self.domain()
-        } else {
-            Ok((
-                self.segments
-                    .first()
-                    .expect("segments is not empty")
-                    .useable_start,
-                self.segments
-                    .last()
-                    .expect("segments is not empty")
-                    .useable_end,
-            ))
-        }
+    fn nearest_after(&self, epoch: Epoch, almanac: &Almanac) -> Option<EphemerisRecord> {
+        self.state_data.range(epoch..).next().map(|entry| {
+            let mut record = *entry.1;
+            if let Ok(frame) = almanac.frame_info(record.orbit.frame) {
+                record.orbit.frame = frame;
+            }
+            record
+        })
     }
 
-    fn record_in_frame(record: &EphemerisRecord, almanac: &Almanac) -> EphemerisRecord {
-        let mut record = *record;
-        if let Ok(frame) = almanac.frame_info(record.orbit.frame) {
-            record.orbit.frame = frame;
-        }
-        record
-    }
-
-    fn nearest_before_in(
-        state_data: &BTreeMap<Epoch, EphemerisRecord>,
-        epoch: Epoch,
-        almanac: &Almanac,
-    ) -> Option<EphemerisRecord> {
-        state_data
-            .range(..=epoch)
-            .next_back()
-            .map(|(_, record)| Self::record_in_frame(record, almanac))
-    }
-
-    fn nearest_after_in(
-        state_data: &BTreeMap<Epoch, EphemerisRecord>,
-        epoch: Epoch,
-        almanac: &Almanac,
-    ) -> Option<EphemerisRecord> {
-        state_data
-            .range(epoch..)
-            .next()
-            .map(|(_, record)| Self::record_in_frame(record, almanac))
-    }
-
-    fn covar_at_in(
-        state_data: &BTreeMap<Epoch, EphemerisRecord>,
+    fn covar_at(
+        &self,
         epoch: Epoch,
         local_frame: LocalFrame,
         almanac: &Almanac,
     ) -> Result<Option<Covariance>, EphemerisError> {
-        if !state_data.values().any(|record| record.covar.is_some()) {
+        if !self
+            .state_data
+            .values()
+            .any(|record| record.covar.is_some())
+        {
             return Ok(None);
         }
 
-        let Some(prev_record) = Self::nearest_before_in(state_data, epoch, almanac) else {
+        let Some(prev_record) = self.nearest_before(epoch, almanac) else {
             return Ok(None);
         };
-        let Some(next_record) = Self::nearest_after_in(state_data, epoch, almanac) else {
+        let Some(next_record) = self.nearest_after(epoch, almanac) else {
             return Ok(None);
         };
 
@@ -310,14 +192,10 @@ impl Ephemeris {
         )
     }
 
-    fn orbit_at_in(
-        segment: EphemerisSegmentView<'_>,
-        epoch: Epoch,
-        almanac: &Almanac,
-    ) -> Result<Orbit, EphemerisError> {
-        let n = segment.degree;
+    fn orbit_at(&self, epoch: Epoch, almanac: &Almanac) -> Result<Orbit, EphemerisError> {
+        let n = self.degree;
         let prev_states: Vec<EphemerisRecord> = {
-            let mut states = segment
+            let mut states = self
                 .state_data
                 .range(..epoch)
                 .rev()
@@ -327,7 +205,7 @@ impl Ephemeris {
             states.reverse();
             states
         };
-        let next_states = segment
+        let next_states = self
             .state_data
             .range(epoch..)
             .take(n)
@@ -337,29 +215,28 @@ impl Ephemeris {
             .into_iter()
             .chain(next_states)
             .collect::<Vec<_>>();
-        Self::interpolate_orbit_records(segment.interpolation, &states, epoch, almanac)
+        Self::interpolate_orbit_records(self.interpolation, &states, epoch, almanac)
     }
 
-    fn orbit_at_in_with_window(
-        segment: EphemerisSegmentView<'_>,
+    fn orbit_at_with_window(
+        &self,
         epoch: Epoch,
         window_len: usize,
         almanac: &Almanac,
     ) -> Result<Orbit, EphemerisError> {
-        let raw_start = *segment
+        let raw_start = *self
             .state_data
             .first_key_value()
             .expect("empty segment is never constructed")
             .0;
         let states = if epoch < raw_start {
-            segment
-                .state_data
+            self.state_data
                 .values()
                 .take(window_len)
                 .copied()
                 .collect::<Vec<_>>()
         } else {
-            let mut states = segment
+            let mut states = self
                 .state_data
                 .values()
                 .rev()
@@ -369,7 +246,7 @@ impl Ephemeris {
             states.reverse();
             states
         };
-        Self::interpolate_orbit_records(segment.interpolation, &states, epoch, almanac)
+        Self::interpolate_orbit_records(self.interpolation, &states, epoch, almanac)
     }
 
     fn interpolate_orbit_records(
@@ -379,7 +256,7 @@ impl Ephemeris {
         almanac: &Almanac,
     ) -> Result<Orbit, EphemerisError> {
         let template = states.first().ok_or(EphemerisError::EphemInterpolation {
-            source: crate::math::interpolation::InterpolationError::EmptyInterpolationData {},
+            source: InterpolationError::EmptyInterpolationData {},
         })?;
         let xs = states
             .iter()
@@ -427,74 +304,193 @@ impl Ephemeris {
         Ok(orbit)
     }
 
-    fn record_at_in(
-        segment: EphemerisSegmentView<'_>,
-        epoch: Epoch,
-        almanac: &Almanac,
-    ) -> Result<EphemerisRecord, EphemerisError> {
+    fn at(&self, epoch: Epoch, almanac: &Almanac) -> Result<EphemerisRecord, EphemerisError> {
         Ok(EphemerisRecord {
-            orbit: Self::orbit_at_in(segment, epoch, almanac)?,
-            covar: Self::covar_at_in(segment.state_data, epoch, LocalFrame::Inertial, almanac)?,
+            orbit: self.orbit_at(epoch, almanac)?,
+            covar: self.covar_at(epoch, LocalFrame::Inertial, almanac)?,
+        })
+    }
+}
+
+impl Ephemeris {
+    pub fn new(object_id: String) -> Self {
+        Self {
+            object_id,
+            segments: vec![EphemerisSegment::new(DataType::Type13HermiteUnequalStep, 7)],
+        }
+    }
+
+    fn from_state_data(
+        object_id: String,
+        interpolation: DataType,
+        degree: usize,
+        state_data: BTreeMap<Epoch, EphemerisRecord>,
+    ) -> Self {
+        Self {
+            object_id,
+            segments: vec![EphemerisSegment::from_state_data(
+                interpolation,
+                degree,
+                state_data,
+            )],
+        }
+    }
+
+    /// Returns the interpolation method when it is uniform across all segments.
+    pub fn interpolation(&self) -> Result<DataType, EphemerisError> {
+        let first = self
+            .segments
+            .first()
+            .ok_or(EphemerisError::EphemInterpolation {
+                source: InterpolationError::EmptyInterpolationData {},
+            })?
+            .interpolation;
+        if self
+            .segments
+            .iter()
+            .all(|segment| segment.interpolation == first)
+        {
+            Ok(first)
+        } else {
+            Err(EphemerisError::MixedInterpolation)
+        }
+    }
+
+    /// Returns the interpolation degree when it is uniform across all segments.
+    pub fn degree(&self) -> Result<usize, EphemerisError> {
+        let first = self
+            .segments
+            .first()
+            .ok_or(EphemerisError::EphemInterpolation {
+                source: InterpolationError::EmptyInterpolationData {},
+            })?
+            .degree;
+        if self.segments.iter().all(|segment| segment.degree == first) {
+            Ok(first)
+        } else {
+            Err(EphemerisError::MixedInterpolationDegree)
+        }
+    }
+
+    /// Returns the interpolation method for the segment valid at `epoch`.
+    pub fn interpolation_at(&self, epoch: Epoch) -> Result<DataType, EphemerisError> {
+        Ok(self.segment_at_or_error(epoch)?.interpolation)
+    }
+
+    /// Returns the interpolation degree for the segment valid at `epoch`.
+    pub fn degree_at(&self, epoch: Epoch) -> Result<usize, EphemerisError> {
+        Ok(self.segment_at_or_error(epoch)?.degree)
+    }
+
+    /// Applies one interpolation method to every segment.
+    pub fn set_interpolation(&mut self, interpolation: DataType) {
+        for segment in &mut self.segments {
+            segment.interpolation = interpolation;
+        }
+    }
+
+    /// Applies one strictly positive interpolation degree to every segment.
+    pub fn set_degree(&mut self, degree: usize) -> Result<(), EphemerisError> {
+        if degree == 0 {
+            return Err(EphemerisError::InvalidInterpolationDegree { degree });
+        }
+        for segment in &mut self.segments {
+            segment.degree = degree;
+        }
+        Ok(())
+    }
+
+    fn segment_views(&self) -> Vec<EphemerisSegmentView<'_>> {
+        self.segments
+            .iter()
+            .filter_map(EphemerisSegment::view)
+            .collect()
+    }
+
+    fn segment_index_at(&self, epoch: Epoch) -> Option<usize> {
+        if self.segments.len() == 1 && self.segments[0].view().is_some() {
+            return Some(0);
+        }
+        self.segments.iter().rposition(|segment| {
+            segment
+                .view()
+                .is_some_and(|view| (view.useable_start..=view.useable_end).contains(&epoch))
+        })
+    }
+
+    fn segment_at(&self, epoch: Epoch) -> Option<EphemerisSegmentView<'_>> {
+        self.segments.get(self.segment_index_at(epoch)?)?.view()
+    }
+
+    fn interpolation_domain(&self) -> Result<(Epoch, Epoch), EphemerisError> {
+        let views = self.segment_views();
+        let first = views.first().ok_or(EphemerisError::EphemInterpolation {
+            source: InterpolationError::EmptyInterpolationData {},
+        })?;
+        if views.len() == 1 {
+            return Ok((first.total_start, first.total_end));
+        }
+        let last = views.last().expect("views has a first item");
+        Ok((first.useable_start, last.useable_end))
+    }
+
+    fn segment_at_or_error(
+        &self,
+        epoch: Epoch,
+    ) -> Result<EphemerisSegmentView<'_>, EphemerisError> {
+        let (start, end) = self.interpolation_domain()?;
+        if (start..=end).contains(&epoch)
+            && let Some(segment) = self.segment_at(epoch)
+        {
+            return Ok(segment);
+        }
+        Err(EphemerisError::EphemInterpolation {
+            source: InterpolationError::NoInterpolationData {
+                req: epoch,
+                start,
+                end,
+            },
         })
     }
 
     fn insert_preserving_segments(&mut self, record: EphemerisRecord) {
-        if self.segments.is_empty() {
-            self.state_data.insert(record.orbit.epoch, record);
+        let epoch = record.orbit.epoch;
+        let segment_idx = self
+            .segment_index_at(epoch)
+            .or_else(|| {
+                self.segments.iter().rposition(|segment| {
+                    segment
+                        .view()
+                        .is_some_and(|view| (view.total_start..=view.total_end).contains(&epoch))
+                })
+            })
+            .or_else(|| {
+                (self.segments.len() == 1
+                    && self.segments[0].useable_start.is_none()
+                    && self.segments[0].useable_end.is_none())
+                .then_some(0)
+            });
+
+        if let Some(segment_idx) = segment_idx {
+            self.segments[segment_idx].state_data.insert(epoch, record);
             return;
         }
 
-        let epoch = record.orbit.epoch;
-        let segment_idx = self.segment_index_at(epoch).or_else(|| {
-            self.segments
-                .iter()
-                .rposition(|segment| (segment.total_start..=segment.total_end).contains(&epoch))
-        });
-
-        // Materialize any direct public-field override before changing which
-        // segment supplies the backwards-compatible field projection.
-        let settings = self
-            .segments
-            .iter()
-            .map(|segment| self.segment_settings(segment))
-            .collect::<Vec<_>>();
-        for (segment, (interpolation, degree)) in self.segments.iter_mut().zip(settings) {
-            segment.interpolation = interpolation;
-            segment.degree = degree;
+        if self.segments.len() == 1 && self.segments[0].state_data.is_empty() {
+            self.segments[0].state_data.insert(epoch, record);
+            return;
         }
 
-        if let Some(segment_idx) = segment_idx {
-            let segment = &mut self.segments[segment_idx];
-            segment.total_start = segment.total_start.min(epoch);
-            segment.total_end = segment.total_end.max(epoch);
-            segment.state_data.insert(epoch, record);
-        } else {
-            self.segments.push(EphemerisSegment {
-                interpolation: self.interpolation,
-                degree: self.degree,
-                total_start: epoch,
-                total_end: epoch,
-                useable_start: epoch,
-                useable_end: epoch,
-                state_data: BTreeMap::from([(epoch, record)]),
-            });
-            self.segments.sort_by_key(|segment| segment.useable_start);
-        }
-
-        // Rebuild in file/segment order so a duplicate shared endpoint remains
-        // owned by the later segment in the compatibility map.
-        self.state_data.clear();
-        for segment in &self.segments {
-            for (&record_epoch, &segment_record) in &segment.state_data {
-                self.state_data.insert(record_epoch, segment_record);
-            }
-        }
-        let last = self
+        let (interpolation, degree) = self
             .segments
             .last()
-            .expect("a segmented ephemeris remains segmented after insertion");
-        self.interpolation = last.interpolation;
-        self.degree = last.degree;
+            .map(|segment| (segment.interpolation, segment.degree))
+            .unwrap_or((DataType::Type13HermiteUnequalStep, 7));
+        let mut segment = EphemerisSegment::new(interpolation, degree);
+        segment.state_data.insert(epoch, record);
+        self.segments.push(segment);
+        self.segments
+            .sort_by_key(|segment| segment.state_data.first_key_value().map(|entry| *entry.0));
     }
 }
 
@@ -504,23 +500,21 @@ impl Ephemeris {
     ///
     /// :rtype: tuple
     pub fn domain(&self) -> Result<(Epoch, Epoch), EphemerisError> {
-        if self.state_data.is_empty() {
-            Err(EphemerisError::EphemInterpolation {
-                source: crate::math::interpolation::InterpolationError::EmptyInterpolationData {},
-            })
-        } else {
-            Ok((
-                *self
-                    .state_data
-                    .first_key_value()
-                    .expect("state_data is not empty, checked above")
-                    .0,
-                *self
-                    .state_data
-                    .last_key_value()
-                    .expect("state_data is not empty, checked above")
-                    .0,
-            ))
+        let start = self
+            .segments
+            .iter()
+            .filter_map(|segment| segment.state_data.first_key_value().map(|entry| *entry.0))
+            .min();
+        let end = self
+            .segments
+            .iter()
+            .filter_map(|segment| segment.state_data.last_key_value().map(|entry| *entry.0))
+            .max();
+        match (start, end) {
+            (Some(start), Some(end)) => Ok((start, end)),
+            _ => Err(EphemerisError::EphemInterpolation {
+                source: InterpolationError::EmptyInterpolationData {},
+            }),
         }
     }
 
@@ -539,24 +533,32 @@ impl Ephemeris {
         &self.object_id
     }
 
+    /// Returns the number of records across all segments.
+    pub fn len(&self) -> usize {
+        self.segments
+            .iter()
+            .map(|segment| segment.state_data.len())
+            .sum()
+    }
+
+    /// Returns true when no segment contains a record.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Returns true if all of the data in this ephemeris includes covariance.
     ///
     /// This is a helper function which isn't used in other functions.
     ///
     /// :rtype: bool
     pub fn includes_covariance(&self) -> bool {
-        if self.segments.is_empty() {
-            !self.state_data.is_empty()
-                && self.state_data.values().all(|entry| entry.covar.is_some())
-        } else {
-            self.segments.iter().all(|segment| {
-                !segment.state_data.is_empty()
-                    && segment
-                        .state_data
-                        .values()
-                        .all(|entry| entry.covar.is_some())
+        !self.is_empty()
+            && self.segments.iter().all(|segment| {
+                segment
+                    .state_data
+                    .values()
+                    .all(|entry| entry.covar.is_some())
             })
-        }
     }
 
     /// Inserts a new ephemeris entry to this ephemeris (it is automatically sorted chronologically).
@@ -583,18 +585,10 @@ impl Ephemeris {
         epoch: Epoch,
         almanac: &Almanac,
     ) -> Result<EphemerisRecord, EphemerisError> {
-        self.state_data
-            .range(..=epoch)
-            .next_back()
-            .map(|e| {
-                let mut record = *e.1;
-                if let Ok(frame) = almanac.frame_info(record.orbit.frame) {
-                    record.orbit.frame = frame;
-                }
-                record
-            })
+        self.segment_at_or_error(epoch)?
+            .nearest_before(epoch, almanac)
             .ok_or(EphemerisError::EphemInterpolation {
-                source: crate::math::interpolation::InterpolationError::EmptyInterpolationData {},
+                source: InterpolationError::EmptyInterpolationData {},
             })
     }
 
@@ -608,18 +602,10 @@ impl Ephemeris {
         epoch: Epoch,
         almanac: &Almanac,
     ) -> Result<EphemerisRecord, EphemerisError> {
-        self.state_data
-            .range(epoch..)
-            .next()
-            .map(|e| {
-                let mut record = *e.1;
-                if let Ok(frame) = almanac.frame_info(record.orbit.frame) {
-                    record.orbit.frame = frame;
-                }
-                record
-            })
+        self.segment_at_or_error(epoch)?
+            .nearest_after(epoch, almanac)
             .ok_or(EphemerisError::EphemInterpolation {
-                source: crate::math::interpolation::InterpolationError::EmptyInterpolationData {},
+                source: InterpolationError::EmptyInterpolationData {},
             })
     }
 
@@ -707,18 +693,7 @@ impl Ephemeris {
     /// :type almanac: Almanac
     /// :rtype: EphemerisRecord
     pub fn at(&self, epoch: Epoch, almanac: &Almanac) -> Result<EphemerisRecord, EphemerisError> {
-        let Some(segment) = self.segment_at(epoch) else {
-            let (start, end) = self.interpolation_domain()?;
-            return Err(EphemerisError::EphemInterpolation {
-                source: crate::math::interpolation::InterpolationError::NoInterpolationData {
-                    req: epoch,
-                    start,
-                    end,
-                },
-            });
-        };
-
-        Self::record_at_in(segment, epoch, almanac)
+        self.segment_at_or_error(epoch)?.at(epoch, almanac)
     }
 
     /// Interpolate the ephemeris at the provided epoch, returning only the orbit.
@@ -749,102 +724,57 @@ impl Ephemeris {
         local_frame: LocalFrame,
         almanac: &Almanac,
     ) -> Result<Option<Covariance>, EphemerisError> {
-        let Some(segment) = self.segment_at(epoch) else {
-            let (start, end) = self.interpolation_domain()?;
-            return Err(EphemerisError::EphemInterpolation {
-                source: crate::math::interpolation::InterpolationError::NoInterpolationData {
-                    req: epoch,
-                    start,
-                    end,
-                },
-            });
-        };
-        Self::covar_at_in(segment.state_data, epoch, local_frame, almanac)
+        self.segment_at_or_error(epoch)?
+            .covar_at(epoch, local_frame, almanac)
     }
 
-    /// Resample this ephemeris, with covariance, at the provided time series
+    /// Resample this ephemeris, with covariance, at the provided nonempty time series.
     ///
     /// :type ts: TimeSeries
     /// :type almanac: Almanac
     /// :rtype: Ephemeris
     pub fn resample(&self, ts: TimeSeries, almanac: &Almanac) -> Result<Self, EphemerisError> {
         let epochs = ts.collect::<Vec<_>>();
-        let mut me = self.clone();
-        me.state_data.clear();
+        if epochs.is_empty() {
+            return Err(EphemerisError::EphemInterpolation {
+                source: InterpolationError::EmptyInterpolationData {},
+            });
+        }
+        for &epoch in &epochs {
+            self.segment_at_or_error(epoch)?;
+        }
 
-        if self.segments.is_empty() {
-            for epoch in epochs {
-                let record = self.at(epoch, almanac)?;
-                me.state_data.insert(epoch, record);
-            }
-        } else {
+        let mut me = Self {
+            object_id: self.object_id.clone(),
+            segments: Vec::new(),
+        };
+        for source_segment in &self.segments {
+            let Some(view) = source_segment.view() else {
+                continue;
+            };
+            let (sampling_start, sampling_end) = if self.segments.len() == 1 {
+                (view.total_start, view.total_end)
+            } else {
+                (view.useable_start, view.useable_end)
+            };
+            let mut sampled_segment = EphemerisSegment::new(view.interpolation, view.degree);
             for &epoch in &epochs {
-                if self.segment_at(epoch).is_none() {
-                    let (start, end) = self.interpolation_domain()?;
-                    return Err(EphemerisError::EphemInterpolation {
-                        source:
-                            crate::math::interpolation::InterpolationError::NoInterpolationData {
-                                req: epoch,
-                                start,
-                                end,
-                            },
-                    });
+                if (sampling_start..=sampling_end).contains(&epoch) {
+                    sampled_segment
+                        .state_data
+                        .insert(epoch, view.at(epoch, almanac)?);
                 }
             }
-            me.segments.clear();
-            for source_segment in &self.segments {
-                let mut view = self.segment_view(source_segment);
-                if self.segments.len() == 1 {
-                    view.useable_start = *source_segment
-                        .state_data
-                        .first_key_value()
-                        .expect("empty segment is never constructed")
-                        .0;
-                    view.useable_end = *source_segment
-                        .state_data
-                        .last_key_value()
-                        .expect("empty segment is never constructed")
-                        .0;
-                }
-
-                let mut sampled_segment = source_segment.clone();
-                sampled_segment.interpolation = view.interpolation;
-                sampled_segment.degree = view.degree;
-                sampled_segment.state_data.clear();
-                for &epoch in &epochs {
-                    if (view.useable_start..=view.useable_end).contains(&epoch) {
-                        sampled_segment
-                            .state_data
-                            .insert(epoch, Self::record_at_in(view, epoch, almanac)?);
-                    }
-                }
-                if !sampled_segment.state_data.is_empty() {
-                    let start = *sampled_segment
-                        .state_data
-                        .first_key_value()
-                        .expect("sampled segment is not empty")
-                        .0;
-                    let end = *sampled_segment
-                        .state_data
-                        .last_key_value()
-                        .expect("sampled segment is not empty")
-                        .0;
-                    sampled_segment.total_start = start;
-                    sampled_segment.total_end = end;
-                    sampled_segment.useable_start = start;
-                    sampled_segment.useable_end = end;
-                    me.segments.push(sampled_segment);
-                }
-            }
-
-            for segment in &me.segments {
-                for (&epoch, &record) in &segment.state_data {
-                    me.state_data.insert(epoch, record);
-                }
-            }
-            if let Some(last) = me.segments.last() {
-                me.interpolation = last.interpolation;
-                me.degree = last.degree;
+            if !sampled_segment.state_data.is_empty() {
+                sampled_segment.useable_start = sampled_segment
+                    .state_data
+                    .first_key_value()
+                    .map(|entry| *entry.0);
+                sampled_segment.useable_end = sampled_segment
+                    .state_data
+                    .last_key_value()
+                    .map(|entry| *entry.0);
+                me.segments.push(sampled_segment);
             }
         }
 
@@ -894,38 +824,11 @@ impl Ephemeris {
             Ok(new_record)
         };
 
-        // Build the transformed compatibility map from segment order so later
-        // blocks continue to own duplicate epochs. Programmatic ephemerides have
-        // no segment metadata and use the original flat-map path.
         let mut me = self.clone();
-        me.state_data.clear();
-        if self.segments.is_empty() {
-            for (epoch, orig_record) in &self.state_data {
-                me.state_data
-                    .insert(*epoch, transform_record(*epoch, orig_record)?);
+        for segment in &mut me.segments {
+            for (epoch, record) in &mut segment.state_data {
+                *record = transform_record(*epoch, record)?;
             }
-        } else {
-            me.segments.clear();
-            for source_segment in &self.segments {
-                let mut transformed_segment = source_segment.clone();
-                (
-                    transformed_segment.interpolation,
-                    transformed_segment.degree,
-                ) = self.segment_settings(source_segment);
-                transformed_segment.state_data.clear();
-                for (epoch, orig_record) in &source_segment.state_data {
-                    let new_record = transform_record(*epoch, orig_record)?;
-                    transformed_segment.state_data.insert(*epoch, new_record);
-                    me.state_data.insert(*epoch, new_record);
-                }
-                me.segments.push(transformed_segment);
-            }
-            let last = me
-                .segments
-                .last()
-                .expect("a parsed ephemeris has at least one segment");
-            me.interpolation = last.interpolation;
-            me.degree = last.degree;
         }
 
         Ok(me)
@@ -934,18 +837,18 @@ impl Ephemeris {
 
 impl fmt::Display for Ephemeris {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.state_data.is_empty() {
+        if self.is_empty() {
             write!(f, "empty ephem for {}", self.object_id)
         } else {
             let (start, stop) = self
                 .domain()
-                .expect("state_data is not empty, checked in if branch above");
+                .expect("ephemeris is not empty, checked in if branch above");
             let span = stop - start;
             write!(
                 f,
                 "{} ephem from {start} to {stop} ({} states, spans {span})",
                 self.object_id,
-                self.state_data.len()
+                self.len()
             )
         }
     }
@@ -953,25 +856,37 @@ impl fmt::Display for Ephemeris {
 
 impl<'a> IntoIterator for &'a Ephemeris {
     type Item = &'a EphemerisRecord;
-    type IntoIter = Values<'a, Epoch, EphemerisRecord>;
+    type IntoIter = std::vec::IntoIter<&'a EphemerisRecord>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.state_data.values()
+        let mut records = self
+            .segments
+            .iter()
+            .flat_map(|segment| segment.state_data.values())
+            .collect::<Vec<_>>();
+        records.sort_by_key(|record| record.orbit.epoch);
+        records.into_iter()
     }
 }
 
 impl IntoIterator for Ephemeris {
     type Item = EphemerisRecord;
-    type IntoIter = IntoValues<Epoch, EphemerisRecord>;
+    type IntoIter = std::vec::IntoIter<EphemerisRecord>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.state_data.into_values()
+        let mut records = self
+            .segments
+            .into_iter()
+            .flat_map(|segment| segment.state_data.into_values())
+            .collect::<Vec<_>>();
+        records.sort_by_key(|record| record.orbit.epoch);
+        records.into_iter()
     }
 }
 
 #[cfg(test)]
 mod ut_oem {
-    use super::{Almanac, DataType, Ephemeris, EphemerisRecord, LocalFrame};
+    use super::{Almanac, DataType, Ephemeris, EphemerisError, EphemerisRecord, LocalFrame};
     use crate::analysis::prelude::OrbitalElement;
     use crate::constants::frames::EARTH_J2000;
     use crate::naif::daf::datatypes::LagrangeSetType9;
@@ -1012,17 +927,20 @@ mod ut_oem {
 
         let start = Epoch::from_gregorian_utc_at_noon(2020, 6, 1);
 
-        assert_eq!(ephem.state_data.len(), 361);
+        assert_eq!(ephem.len(), 361);
         assert_eq!(
             ephem.domain().unwrap(),
             (start, Epoch::from_gregorian_utc_hms(2020, 6, 1, 13, 0, 0))
         );
-        assert_eq!(ephem.interpolation, DataType::Type9LagrangeUnequalStep);
-        assert_eq!(ephem.degree, 7);
+        assert_eq!(
+            ephem.interpolation().unwrap(),
+            DataType::Type9LagrangeUnequalStep
+        );
+        assert_eq!(ephem.degree().unwrap(), 7);
 
         println!("{ephem}");
 
-        assert_eq!((&ephem).into_iter().count(), ephem.state_data.len());
+        assert_eq!((&ephem).into_iter().count(), ephem.len());
 
         // Check that we can interpolate
         let epoch = start + Unit::Second * 5;
@@ -1041,7 +959,7 @@ mod ut_oem {
         let ephem = Ephemeris::from_ccsds_oem_file("../data/tests/ccsds/oem/MEO_60s.oem")
             .expect("could not parse");
 
-        assert_eq!(ephem.state_data.len(), 61);
+        assert_eq!(ephem.len(), 61);
         assert_eq!(
             ephem.domain().unwrap(),
             (
@@ -1049,8 +967,11 @@ mod ut_oem {
                 Epoch::from_gregorian_utc_hms(2020, 6, 1, 13, 0, 0)
             )
         );
-        assert_eq!(ephem.interpolation, DataType::Type9LagrangeUnequalStep);
-        assert_eq!(ephem.degree, 5);
+        assert_eq!(
+            ephem.interpolation().unwrap(),
+            DataType::Type9LagrangeUnequalStep
+        );
+        assert_eq!(ephem.degree().unwrap(), 5);
 
         println!("{ephem}");
 
@@ -1095,13 +1016,13 @@ mod ut_oem {
         let boundary = Epoch::from_gregorian_utc_hms(2020, 6, 1, 12, 33, 0);
         let mut output_view = ephem.segment_at(boundary).unwrap();
         output_view.interpolation = DataType::Type13HermiteUnequalStep;
-        let expected = Ephemeris::orbit_at_in_with_window(
-            output_view,
-            boundary,
-            output_view.degree.div_ceil(2),
-            &Almanac::default(),
-        )
-        .unwrap();
+        let expected = output_view
+            .orbit_at_with_window(
+                boundary,
+                output_view.degree.div_ceil(2),
+                &Almanac::default(),
+            )
+            .unwrap();
         let from_bsp = Almanac::from_spk(my_spk.clone())
             .translate_geometric(Frame::from_ephem_j2000(-159), EARTH_J2000, boundary)
             .unwrap();
@@ -1195,9 +1116,14 @@ COVARIANCE_STOP
         drop(file);
 
         let ephem = Ephemeris::from_ccsds_oem_file(&input_path).unwrap();
-        // The existing flat iterator remains source compatible: a duplicate epoch is
-        // represented once there, while both raw records remain in their OEM segments.
-        assert_eq!((&ephem).into_iter().count(), 5);
+        // Segment-owned iteration preserves both records at a shared boundary.
+        assert_eq!((&ephem).into_iter().count(), 6);
+        assert_eq!(ephem.len(), 6);
+        let iter_epochs = (&ephem)
+            .into_iter()
+            .map(|record| record.orbit.epoch)
+            .collect::<Vec<_>>();
+        assert!(iter_epochs.windows(2).all(|window| window[0] <= window[1]));
         assert_eq!(
             ephem
                 .segments
@@ -1208,6 +1134,24 @@ COVARIANCE_STOP
         );
 
         let boundary = Epoch::from_gregorian_utc_hms(2020, 1, 1, 0, 1, 0);
+        assert_eq!(
+            ephem.interpolation(),
+            Err(EphemerisError::MixedInterpolation)
+        );
+        assert_eq!(
+            ephem.degree(),
+            Err(EphemerisError::MixedInterpolationDegree)
+        );
+        assert_eq!(
+            ephem.interpolation_at(boundary - Unit::Second).unwrap(),
+            DataType::Type9LagrangeUnequalStep
+        );
+        assert_eq!(ephem.degree_at(boundary - Unit::Second).unwrap(), 1);
+        assert_eq!(
+            ephem.interpolation_at(boundary).unwrap(),
+            DataType::Type13HermiteUnequalStep
+        );
+        assert_eq!(ephem.degree_at(boundary).unwrap(), 3);
         let before = ephem
             .orbit_at(boundary - Unit::Second * 15, &Almanac::default())
             .unwrap();
@@ -1305,11 +1249,10 @@ COVARIANCE_STOP
                 > 900.0
         );
 
-        // The public Rust fields predate segment-local metadata. Changing them
-        // directly still acts as a global override for parsed OEMs.
+        // Explicit setters apply a deliberate global override to every segment.
         let mut overridden = ephem.clone();
-        overridden.interpolation = DataType::Type9LagrangeUnequalStep;
-        overridden.degree = 1;
+        overridden.set_interpolation(DataType::Type9LagrangeUnequalStep);
+        overridden.set_degree(1).unwrap();
         assert!(overridden.segment_views().iter().all(|segment| {
             segment.interpolation == DataType::Type9LagrangeUnequalStep && segment.degree == 1
         }));
@@ -1553,11 +1496,66 @@ META_STOP
     }
 
     #[test]
+    fn resample_single_segment_uses_its_raw_support_domain() {
+        let start = Epoch::from_gregorian_utc_at_midnight(2020, 1, 1);
+        let middle = start + Unit::Minute;
+        let end = middle + Unit::Minute;
+        let state_data = [start, middle, end]
+            .into_iter()
+            .enumerate()
+            .map(|(idx, epoch)| {
+                let orbit = Orbit::from_cartesian_pos_vel(
+                    Vector6::new(idx as f64, 0.0, 0.0, 0.0, 0.0, 0.0),
+                    epoch,
+                    EARTH_J2000,
+                );
+                (epoch, EphemerisRecord { orbit, covar: None })
+            })
+            .collect();
+        let ephem = Ephemeris {
+            object_id: "TEST".to_string(),
+            segments: vec![super::EphemerisSegment {
+                interpolation: DataType::Type9LagrangeUnequalStep,
+                degree: 1,
+                useable_start: Some(middle),
+                useable_end: Some(end),
+                state_data,
+            }],
+        };
+
+        let resampled = ephem
+            .resample(
+                TimeSeries::inclusive(start, middle, Unit::Minute * 1),
+                &Almanac::default(),
+            )
+            .unwrap();
+
+        assert_eq!(resampled.len(), 2);
+        assert_eq!(resampled.start_epoch().unwrap(), start);
+        assert_eq!(
+            resampled
+                .orbit_at(start, &Almanac::default())
+                .unwrap()
+                .radius_km
+                .x,
+            0.0
+        );
+        assert!(
+            ephem
+                .resample(
+                    TimeSeries::exclusive(start, start, Unit::Minute * 1),
+                    &Almanac::default(),
+                )
+                .is_err()
+        );
+    }
+
+    #[test]
     fn bsp_writer_uses_spice_epoch_registry_boundaries() {
         let epoch = Epoch::from_gregorian_utc_at_midnight(2020, 1, 1);
         let mut ephem = Ephemeris::new("TEST".to_string());
-        ephem.interpolation = DataType::Type9LagrangeUnequalStep;
-        ephem.degree = 1;
+        ephem.set_interpolation(DataType::Type9LagrangeUnequalStep);
+        ephem.set_degree(1).unwrap();
 
         for idx in 0..100 {
             ephem.insert_orbit(Orbit::from_cartesian_pos_vel(
@@ -1590,13 +1588,13 @@ META_STOP
         let data: LagrangeSetType9<'_> = spk.nth_data(None, 0).unwrap();
         assert_eq!(data.epoch_registry.len(), 2);
 
-        ephem.degree = 16;
+        ephem.set_degree(16).unwrap();
         assert!(ephem.to_spice_bsp(-159, None).is_err());
-        ephem.interpolation = DataType::Type13HermiteUnequalStep;
-        ephem.degree = 2;
+        ephem.set_interpolation(DataType::Type13HermiteUnequalStep);
+        ephem.set_degree(2).unwrap();
         assert!(ephem.to_spice_bsp(-159, None).is_err());
-        ephem.degree = 3;
-        ephem.interpolation = DataType::Type12HermiteEqualStep;
+        ephem.set_degree(3).unwrap();
+        ephem.set_interpolation(DataType::Type12HermiteEqualStep);
         assert!(ephem.to_spice_bsp(-159, None).is_err());
         assert!(
             ephem
@@ -1707,10 +1705,13 @@ COV_REF_FRAME = EME2000
                 hifitime::TimeScale::TDB,
             ),
         );
-        assert_eq!(ephem.state_data.len(), 4);
+        assert_eq!(ephem.len(), 4);
         assert_eq!(ephem.domain().unwrap(), (start, end));
-        assert_eq!(ephem.interpolation, DataType::Type13HermiteUnequalStep);
-        assert_eq!(ephem.degree, 7);
+        assert_eq!(
+            ephem.interpolation().unwrap(),
+            DataType::Type13HermiteUnequalStep
+        );
+        assert_eq!(ephem.degree().unwrap(), 7);
 
         println!("{ephem}");
 
@@ -1767,10 +1768,13 @@ COV_REF_FRAME = EME2000
         let start = Epoch::from_gregorian_utc_at_midnight(2024, 1, 1);
         let end = start + Unit::Minute * 3;
 
-        assert_eq!(ephem.state_data.len(), 4);
+        assert_eq!(ephem.len(), 4);
         assert_eq!(ephem.domain().unwrap(), (start, end));
-        assert_eq!(ephem.interpolation, DataType::Type13HermiteUnequalStep);
-        assert_eq!(ephem.degree, 7);
+        assert_eq!(
+            ephem.interpolation().unwrap(),
+            DataType::Type13HermiteUnequalStep
+        );
+        assert_eq!(ephem.degree().unwrap(), 7);
 
         // We have data from Nyx showing the proper covariance in between the data in the OEM.
         // So we'll check that the interpolator somewhat matches that data.
@@ -1882,10 +1886,13 @@ COV_REF_FRAME = EME2000
         let start = Epoch::from_gregorian_utc_at_midnight(2024, 1, 1);
         let end = start + Unit::Minute * 3;
 
-        assert_eq!(ephem.state_data.len(), 4);
+        assert_eq!(ephem.len(), 4);
         assert_eq!(ephem.domain().unwrap(), (start, end));
-        assert_eq!(ephem.interpolation, DataType::Type13HermiteUnequalStep);
-        assert_eq!(ephem.degree, 7);
+        assert_eq!(
+            ephem.interpolation().unwrap(),
+            DataType::Type13HermiteUnequalStep
+        );
+        assert_eq!(ephem.degree().unwrap(), 7);
 
         // We have data from Nyx showing the proper covariance in between the data in the OEM.
         // So we'll check that the interpolator somewhat matches that data.
@@ -1924,7 +1931,7 @@ COV_REF_FRAME = EME2000
 
         // Check metadata
         assert_eq!(
-            format!("{:?}", ephem.interpolation()),
+            format!("{:?}", ephem.interpolation().unwrap()),
             "Type9LagrangeUnequalStep"
         );
         assert_eq!(ephem.object_id(), "test_v12");
@@ -1949,7 +1956,7 @@ COV_REF_FRAME = EME2000
             "End epoch mismatch: {end} vs {expected_end}",
         );
 
-        assert_eq!(ephem.state_data.len(), 34);
+        assert_eq!(ephem.len(), 34);
 
         let record = ephem.at(expected_end, &almanac).unwrap();
         assert!(record.covar.is_none());
@@ -1963,7 +1970,7 @@ COV_REF_FRAME = EME2000
 
         // Check metadata
         assert_eq!(
-            format!("{:?}", ephem.interpolation()),
+            format!("{:?}", ephem.interpolation().unwrap()),
             "Type9LagrangeUnequalStep"
         );
 
@@ -2068,10 +2075,13 @@ COV_REF_FRAME = EME2000
         state_data.insert(epoch, EphemerisRecord { orbit, covar: None });
         let ephem = Ephemeris {
             object_id: "TEST".to_string(),
-            degree: 0,
-            interpolation: DataType::Type13HermiteUnequalStep,
-            state_data,
-            segments: Vec::new(),
+            segments: vec![super::EphemerisSegment {
+                interpolation: DataType::Type13HermiteUnequalStep,
+                degree: 0,
+                useable_start: None,
+                useable_end: None,
+                state_data,
+            }],
         };
         assert!(ephem.to_spice_bsp(-999, None).is_err());
 
@@ -2093,16 +2103,11 @@ COV_REF_FRAME = EME2000
         ]);
         let ephem = Ephemeris {
             object_id: "TEST".to_string(),
-            degree: 1,
-            interpolation: DataType::Type9LagrangeUnequalStep,
-            state_data: state_data.clone(),
             segments: vec![super::EphemerisSegment {
                 interpolation: DataType::Type9LagrangeUnequalStep,
                 degree: 1,
-                total_start: epoch,
-                total_end: next_epoch,
-                useable_start: epoch,
-                useable_end: epoch,
+                useable_start: Some(epoch),
+                useable_end: Some(epoch),
                 state_data,
             }],
         };

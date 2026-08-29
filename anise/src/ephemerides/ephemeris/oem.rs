@@ -26,19 +26,28 @@ use std::str::FromStr;
 
 use super::{Covariance, Ephemeris, EphemerisRecord, EphemerisSegment, LocalFrame};
 
-type MetadataEpoch = Option<(usize, String)>;
+type MetadataEpoch = Option<String>;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum OemParserState {
+    Header,
+    Metadata,
+    States,
+    Covariance,
+}
 
 fn parse_metadata_epoch(
     value: &MetadataEpoch,
     time_system: &str,
     field: &'static str,
+    line: usize,
 ) -> Result<Option<Epoch>, EphemerisError> {
     value
         .as_ref()
-        .map(|(lno, value)| {
+        .map(|value| {
             let epoch_str = format!("{value} {time_system}");
             Epoch::from_str(epoch_str.trim()).context(OEMTimeParsingSnafu {
-                line: *lno,
+                line,
                 details: format!("`{epoch_str}` for {field}"),
             })
         })
@@ -54,6 +63,7 @@ fn finish_segment(
     time_system: &str,
     useable_start: &MetadataEpoch,
     useable_end: &MetadataEpoch,
+    lno: usize,
 ) -> Result<(), EphemerisError> {
     if state_data.is_empty() {
         return Ok(());
@@ -70,9 +80,9 @@ fn finish_segment(
     let (useable_start, useable_end) = match (useable_start, useable_end) {
         (None, None) => (raw_start, raw_end),
         (Some(_), Some(_)) => (
-            parse_metadata_epoch(useable_start, time_system, "USEABLE_START_TIME")?
+            parse_metadata_epoch(useable_start, time_system, "USEABLE_START_TIME", lno)?
                 .expect("Some metadata epoch parses to Some"),
-            parse_metadata_epoch(useable_end, time_system, "USEABLE_STOP_TIME")?
+            parse_metadata_epoch(useable_end, time_system, "USEABLE_STOP_TIME", lno)?
                 .expect("Some metadata epoch parses to Some"),
         ),
         _ => {
@@ -91,7 +101,10 @@ fn finish_segment(
         });
     }
     if let Some(previous) = segments.last()
-        && previous.useable_end > useable_start
+        && previous
+            .useable_end
+            .expect("parsed segments have a useable end")
+            > useable_start
     {
         return Err(EphemerisError::OEMParsingError {
             lno: 0,
@@ -103,13 +116,8 @@ fn finish_segment(
     segments.push(EphemerisSegment {
         interpolation,
         degree,
-        // Raw states remain the source of truth for total coverage, as they were
-        // before segmentation. Include a declared useable endpoint when an OEM
-        // legitimately relies on extrapolating from support states inside the block.
-        total_start: raw_start.min(useable_start),
-        total_end: raw_end.max(useable_end),
-        useable_start,
-        useable_end,
+        useable_start: Some(useable_start),
+        useable_end: Some(useable_end),
         state_data: std::mem::take(state_data),
     });
     Ok(())
@@ -126,9 +134,7 @@ impl Ephemeris {
 
         let reader = BufReader::new(file);
 
-        let mut in_state_data = false;
-        let mut in_cov_data = false;
-        let mut in_metadata = false;
+        let mut parser_state = OemParserState::Header;
 
         // Define header variables we care about.
         let mut time_system = String::new();
@@ -147,7 +153,6 @@ impl Ephemeris {
 
         // Store the temporary data in a BTreeMap so we have O(1) access when adding the covariance information
         // and we can iterate in order when building the vector.
-        let mut state_data = BTreeMap::new();
         let mut segment_state_data = BTreeMap::new();
         let mut segments = Vec::new();
 
@@ -178,17 +183,21 @@ impl Ephemeris {
             // META_START at EOF is silently dropped, while metadata for a later
             // block that omits META_START can mutate and merge into the active one.
             if line.starts_with("META_START") {
-                if in_metadata {
-                    return Err(EphemerisError::OEMParsingError {
-                        lno,
-                        details: "nested META_START is not allowed".to_string(),
-                    });
-                }
-                if in_cov_data {
-                    return Err(EphemerisError::OEMParsingError {
-                        lno,
-                        details: "META_START cannot abandon an open covariance section".to_string(),
-                    });
+                match parser_state {
+                    OemParserState::Metadata => {
+                        return Err(EphemerisError::OEMParsingError {
+                            lno,
+                            details: "nested META_START is not allowed".to_string(),
+                        });
+                    }
+                    OemParserState::Covariance => {
+                        return Err(EphemerisError::OEMParsingError {
+                            lno,
+                            details: "META_START cannot abandon an open covariance section"
+                                .to_string(),
+                        });
+                    }
+                    OemParserState::Header | OemParserState::States => {}
                 }
                 finish_segment(
                     &mut segments,
@@ -198,9 +207,9 @@ impl Ephemeris {
                     &time_system,
                     &useable_start,
                     &useable_end,
+                    lno,
                 )?;
-                in_metadata = true;
-                in_state_data = false;
+                parser_state = OemParserState::Metadata;
                 center_name = None;
                 orient_name = None;
                 time_system.clear();
@@ -211,20 +220,13 @@ impl Ephemeris {
                 continue;
             }
             if line.starts_with("META_STOP") {
-                if !in_metadata {
+                if parser_state != OemParserState::Metadata {
                     return Err(EphemerisError::OEMParsingError {
                         lno,
                         details: "META_STOP without META_START".to_string(),
                     });
                 }
-                if in_cov_data {
-                    return Err(EphemerisError::OEMParsingError {
-                        lno,
-                        details: "META_STOP cannot appear inside a covariance section".to_string(),
-                    });
-                }
-                in_metadata = false;
-                in_state_data = true;
+                parser_state = OemParserState::States;
                 continue;
             }
 
@@ -244,7 +246,7 @@ impl Ephemeris {
                         | "INTERPOLATION"
                         | "INTERPOLATION_DEGREE"
                 )
-            ) && !in_metadata
+            ) && parser_state != OemParserState::Metadata
             {
                 return Err(EphemerisError::OEMParsingError {
                     lno,
@@ -311,15 +313,9 @@ impl Ephemeris {
                 }
                 time_system = parsed;
             } else if line.starts_with("USEABLE_START_TIME") {
-                useable_start = Some((
-                    lno,
-                    parse_one_val(lno, line, "no value for USEABLE_START_TIME")?,
-                ));
+                useable_start = Some(parse_one_val(lno, line, "no value for USEABLE_START_TIME")?);
             } else if line.starts_with("USEABLE_STOP_TIME") {
-                useable_end = Some((
-                    lno,
-                    parse_one_val(lno, line, "no value for USEABLE_STOP_TIME")?,
-                ));
+                useable_end = Some(parse_one_val(lno, line, "no value for USEABLE_STOP_TIME")?);
             } else if line.starts_with("INTERPOLATION_DEGREE") {
                 let interp_str =
                     parse_one_val(lno, line, "no value for INTERPOLATION_DEGREE")?.to_lowercase();
@@ -353,20 +349,28 @@ impl Ephemeris {
                     }
                 };
             } else if line.starts_with("COVARIANCE_START") {
-                if in_metadata {
-                    return Err(EphemerisError::OEMParsingError {
-                        lno,
-                        details: "COVARIANCE_START cannot appear inside metadata".to_string(),
-                    });
+                match parser_state {
+                    OemParserState::Metadata => {
+                        return Err(EphemerisError::OEMParsingError {
+                            lno,
+                            details: "COVARIANCE_START cannot appear inside metadata".to_string(),
+                        });
+                    }
+                    OemParserState::Covariance => {
+                        return Err(EphemerisError::OEMParsingError {
+                            lno,
+                            details: "nested COVARIANCE_START is not allowed".to_string(),
+                        });
+                    }
+                    OemParserState::Header => {
+                        return Err(EphemerisError::OEMParsingError {
+                            lno,
+                            details: "COVARIANCE_START must follow an OEM state block".to_string(),
+                        });
+                    }
+                    OemParserState::States => {}
                 }
-                if in_cov_data {
-                    return Err(EphemerisError::OEMParsingError {
-                        lno,
-                        details: "nested COVARIANCE_START is not allowed".to_string(),
-                    });
-                }
-                in_state_data = false;
-                in_cov_data = true;
+                parser_state = OemParserState::Covariance;
                 // Start each block from a clean slate so a stray data row before this
                 // block's own EPOCH line cannot latch onto a previous block's matrix.
                 cov_epoch = None;
@@ -374,7 +378,7 @@ impl Ephemeris {
                 cov_frame = None;
                 cov_row = 0;
             } else if line.starts_with("COVARIANCE_STOP") {
-                if !in_cov_data {
+                if parser_state != OemParserState::Covariance {
                     return Err(EphemerisError::OEMParsingError {
                         lno,
                         details: "COVARIANCE_STOP without COVARIANCE_START".to_string(),
@@ -388,11 +392,10 @@ impl Ephemeris {
                         ),
                     });
                 }
-                in_state_data = false;
-                in_cov_data = false;
+                parser_state = OemParserState::Header;
             } else if line.starts_with("COMMENT") {
                 // Ignore
-            } else if in_state_data {
+            } else if parser_state == OemParserState::States {
                 let center_name_str =
                     center_name
                         .as_ref()
@@ -483,10 +486,7 @@ impl Ephemeris {
                 let orbit = Orbit::from_cartesian_pos_vel(state_vec, epoch, frame);
                 let record = EphemerisRecord { orbit, covar: None };
                 segment_state_data.insert(epoch, record);
-                // Preserve the historical flat view, where later blocks replace earlier
-                // records at duplicate epochs, while the segment map above stays lossless.
-                state_data.insert(epoch, record);
-            } else if in_cov_data {
+            } else if parser_state == OemParserState::Covariance {
                 if line.starts_with("EPOCH") {
                     if cov_epoch.is_some() {
                         return Err(EphemerisError::OEMParsingError {
@@ -606,10 +606,6 @@ impl Ephemeris {
                                     .get_mut(&cov_epoch)
                                     .expect("epoch was valid but now no?")
                                     .covar = covar;
-                                state_data
-                                    .get_mut(&cov_epoch)
-                                    .expect("flat state view is updated with each segment record")
-                                    .covar = covar;
                             }
                             None => {
                                 return Err(EphemerisError::OEMParsingError {
@@ -637,13 +633,13 @@ impl Ephemeris {
                 ),
             });
         }
-        if in_cov_data {
+        if parser_state == OemParserState::Covariance {
             return Err(EphemerisError::OEMParsingError {
                 lno: 0,
                 details: "unterminated COVARIANCE_START section at end of file".to_string(),
             });
         }
-        if in_metadata {
+        if parser_state == OemParserState::Metadata {
             return Err(EphemerisError::OEMParsingError {
                 lno: 0,
                 details: "unterminated META_START section at end of file".to_string(),
@@ -658,9 +654,10 @@ impl Ephemeris {
             &time_system,
             &useable_start,
             &useable_end,
+            0,
         )?;
 
-        if state_data.is_empty() {
+        if segments.is_empty() {
             return Err(EphemerisError::OEMParsingError {
                 lno: 0,
                 details: "ephemeris file contains no state data".to_string(),
@@ -671,9 +668,6 @@ impl Ephemeris {
         if let Some(object_id) = object_id {
             Ok(Ephemeris {
                 object_id,
-                degree,
-                interpolation,
-                state_data,
                 segments,
             })
         } else {
@@ -691,7 +685,7 @@ impl Ephemeris {
         originator: Option<String>,
         object_name: Option<String>,
     ) -> Result<(), EphemerisError> {
-        if self.state_data.is_empty() {
+        if self.is_empty() {
             return Err(EphemerisError::OEMParsingError {
                 lno: 0,
                 details: "ephemeris file contains no state data".to_string(),
