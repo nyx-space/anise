@@ -218,37 +218,6 @@ impl EphemerisSegmentView<'_> {
         Self::interpolate_orbit_records(self.interpolation, &states, epoch, almanac)
     }
 
-    fn orbit_at_with_window(
-        &self,
-        epoch: Epoch,
-        window_len: usize,
-        almanac: &Almanac,
-    ) -> Result<Orbit, EphemerisError> {
-        let raw_start = *self
-            .state_data
-            .first_key_value()
-            .expect("empty segment is never constructed")
-            .0;
-        let states = if epoch < raw_start {
-            self.state_data
-                .values()
-                .take(window_len)
-                .copied()
-                .collect::<Vec<_>>()
-        } else {
-            let mut states = self
-                .state_data
-                .values()
-                .rev()
-                .take(window_len)
-                .copied()
-                .collect::<Vec<_>>();
-            states.reverse();
-            states
-        };
-        Self::interpolate_orbit_records(self.interpolation, &states, epoch, almanac)
-    }
-
     fn interpolate_orbit_records(
         interpolation: DataType,
         states: &[EphemerisRecord],
@@ -1010,20 +979,24 @@ mod ut_oem {
                 < Unit::Microsecond * 0.05
         );
 
-        // The second checked-in OEM block advertises 12:33 as useable but its
-        // first raw state is at 12:34. The BSP must materialize that boundary so
-        // its descriptor can actually be evaluated there.
-        let boundary = Epoch::from_gregorian_utc_hms(2020, 6, 1, 12, 33, 0);
-        let mut output_view = ephem.segment_at(boundary).unwrap();
-        output_view.interpolation = DataType::Type13HermiteUnequalStep;
-        let expected = output_view
-            .orbit_at_with_window(
-                boundary,
-                output_view.degree.div_ceil(2),
-                &Almanac::default(),
-            )
-            .unwrap();
-        let from_bsp = Almanac::from_spk(my_spk.clone())
+        // The second OEM block advertises 12:33 but starts at 12:34. Export
+        // clips coverage to that first existing state instead of extrapolating.
+        let unavailable = Epoch::from_gregorian_utc_hms(2020, 6, 1, 12, 33, 30);
+        let boundary = Epoch::from_gregorian_utc_hms(2020, 6, 1, 12, 34, 0);
+        assert!((summaries[1].start_epoch() - boundary).abs() < Unit::Microsecond * 0.05);
+        let almanac = Almanac::from_spk(my_spk.clone());
+        assert!(
+            almanac
+                .translate_geometric(Frame::from_ephem_j2000(-159), EARTH_J2000, unavailable)
+                .is_err()
+        );
+        let expected = ephem.segments[1]
+            .state_data
+            .first_key_value()
+            .unwrap()
+            .1
+            .orbit;
+        let from_bsp = almanac
             .translate_geometric(Frame::from_ephem_j2000(-159), EARTH_J2000, boundary)
             .unwrap();
         assert!((from_bsp.radius_km - expected.radius_km).norm() < 1e-9);
@@ -1049,72 +1022,10 @@ mod ut_oem {
 
     #[test]
     fn multisegment_oem_preserves_domains_metadata_and_covariance() {
-        let input_path = std::env::temp_dir().join("anise_segmented_oem_input.oem");
+        // Synthetic overlapping raw spans, a discontinuity, mixed interpolation,
+        // and distinct covariance blocks are checked in for review and reuse.
+        let input_path = "../data/tests/ccsds/oem/multisegment_discontinuous.oem";
         let rebuilt_path = std::env::temp_dir().join("anise_segmented_oem_rebuilt.oem");
-        let mut file = File::create(&input_path).unwrap();
-        file.write_all(
-            br#"CCSDS_OEM_VERS = 3.0
-CREATION_DATE = 2020-01-01T00:00:00
-ORIGINATOR = ANISE TEST
-
-META_START
-OBJECT_NAME = TEST
-OBJECT_ID = TEST
-CENTER_NAME = EARTH
-REF_FRAME = EME2000
-TIME_SYSTEM = UTC
-START_TIME = 2020-01-01T00:00:00.000000
-USEABLE_START_TIME = 2020-01-01T00:00:30.000000
-USEABLE_STOP_TIME = 2020-01-01T00:01:00.000000
-STOP_TIME = 2020-01-01T00:02:00.000000
-INTERPOLATION = LAGRANGE
-INTERPOLATION_DEGREE = 1
-META_STOP
-2020-01-01T00:00:00.000000 0 0 0 0 0 0
-2020-01-01T00:01:00.000000 1 0 0 0 0 0
-2020-01-01T00:02:00.000000 2 0 0 0 0 0
-COVARIANCE_START
-EPOCH = 2020-01-01T00:01:00.000000
-COV_REF_FRAME = EME2000
-1
-0 1
-0 0 1
-0 0 0 1
-0 0 0 0 1
-0 0 0 0 0 1
-COVARIANCE_STOP
-
-META_START
-OBJECT_NAME = TEST
-OBJECT_ID = TEST
-CENTER_NAME = EARTH
-REF_FRAME = EME2000
-TIME_SYSTEM = UTC
-START_TIME = 2020-01-01T00:01:00.000000
-USEABLE_START_TIME = 2020-01-01T00:01:00.000000
-USEABLE_STOP_TIME = 2020-01-01T00:02:30.000000
-STOP_TIME = 2020-01-01T00:03:00.000000
-INTERPOLATION = HERMITE
-INTERPOLATION_DEGREE = 3
-META_STOP
-2020-01-01T00:01:00.000000 1000 0 0 0 0 0
-2020-01-01T00:02:30.000000 1001 0 0 0 0 0
-2020-01-01T00:03:00.000000 1002 0 0 0 0 0
-COVARIANCE_START
-EPOCH = 2020-01-01T00:01:00.000000
-COV_REF_FRAME = EME2000
-2
-0 2
-0 0 2
-0 0 0 2
-0 0 0 0 2
-0 0 0 0 0 2
-COVARIANCE_STOP
-"#,
-        )
-        .unwrap();
-        drop(file);
-
         let ephem = Ephemeris::from_ccsds_oem_file(&input_path).unwrap();
         // Segment-owned iteration preserves both records at a shared boundary.
         assert_eq!((&ephem).into_iter().count(), 6);
@@ -1346,7 +1257,6 @@ COVARIANCE_STOP
             1.0
         );
 
-        let _ = std::fs::remove_file(input_path);
         let _ = std::fs::remove_file(rebuilt_path);
     }
 
@@ -1588,19 +1498,11 @@ META_STOP
         let data: LagrangeSetType9<'_> = spk.nth_data(None, 0).unwrap();
         assert_eq!(data.epoch_registry.len(), 2);
 
-        ephem.set_degree(16).unwrap();
+        ephem.set_degree(28).unwrap();
         assert!(ephem.to_spice_bsp(-159, None).is_err());
         ephem.set_interpolation(DataType::Type13HermiteUnequalStep);
         ephem.set_degree(2).unwrap();
         assert!(ephem.to_spice_bsp(-159, None).is_err());
-        ephem.set_degree(3).unwrap();
-        ephem.set_interpolation(DataType::Type12HermiteEqualStep);
-        assert!(ephem.to_spice_bsp(-159, None).is_err());
-        assert!(
-            ephem
-                .to_spice_bsp(-159, Some(DataType::Type12HermiteEqualStep))
-                .is_err()
-        );
     }
 
     #[test]
@@ -2061,6 +1963,199 @@ COV_REF_FRAME = EME2000
             assert!(Ephemeris::from_ccsds_oem_file(path).is_err());
             let _ = std::fs::remove_file(path);
         }
+    }
+
+    fn linear_spk_ephemeris(interpolation: DataType, degree: usize, count: usize) -> Ephemeris {
+        let mut ephem = Ephemeris::new("SYNTHETIC".to_string());
+        ephem.set_interpolation(interpolation);
+        ephem.set_degree(degree).unwrap();
+        for idx in 0..count {
+            ephem.insert_orbit(Orbit::from_cartesian_pos_vel(
+                Vector6::new(idx as f64, 0.0, 0.0, 1.0, 0.0, 0.0),
+                Epoch::from_et_seconds(idx as f64),
+                EARTH_J2000,
+            ));
+        }
+        ephem
+    }
+
+    #[test]
+    fn bsp_writer_type12_has_equal_step_layout_and_round_trip() {
+        use crate::naif::daf::datatypes::HermiteSetType12;
+
+        let mut ephem = linear_spk_ephemeris(DataType::Type12HermiteEqualStep, 3, 4);
+        for override_type in [None, Some(DataType::Type12HermiteEqualStep)] {
+            let spk = ephem.to_spice_bsp(-159, override_type).unwrap();
+            let summary = spk.data_summaries(None).unwrap()[0];
+            assert_eq!(
+                summary.data_type().unwrap(),
+                DataType::Type12HermiteEqualStep
+            );
+            assert_eq!(summary.end_idx - summary.start_idx + 1, 6 * 4 + 4);
+            let data: HermiteSetType12<'_> = spk.nth_data(None, 0).unwrap();
+            assert_eq!(data.num_records, 4);
+            assert_eq!(data.samples, 2);
+            assert_eq!(data.first_state_epoch, Epoch::from_et_seconds(0.0));
+            assert_eq!(data.step_size, Unit::Second * 1);
+            let state = Almanac::from_spk(spk)
+                .translate_geometric(
+                    Frame::from_ephem_j2000(-159),
+                    EARTH_J2000,
+                    Epoch::from_et_seconds(1.5),
+                )
+                .unwrap();
+            assert!((state.radius_km.x - 1.5).abs() < 1e-12);
+            assert!((state.velocity_km_s.x - 1.0).abs() < 1e-12);
+            ephem.set_interpolation(DataType::Type9LagrangeUnequalStep);
+        }
+    }
+
+    #[test]
+    fn bsp_writer_accepts_naif_maximum_degrees() {
+        use crate::naif::daf::datatypes::{HermiteSetType12, HermiteSetType13};
+
+        for interpolation in [
+            DataType::Type9LagrangeUnequalStep,
+            DataType::Type12HermiteEqualStep,
+            DataType::Type13HermiteUnequalStep,
+        ] {
+            let count = if interpolation == DataType::Type9LagrangeUnequalStep {
+                28
+            } else {
+                14
+            };
+            let ephem = linear_spk_ephemeris(interpolation, 27, count);
+            let spk = ephem.to_spice_bsp(-159, None).unwrap();
+            match interpolation {
+                DataType::Type9LagrangeUnequalStep => {
+                    let data: LagrangeSetType9<'_> = spk.nth_data(None, 0).unwrap();
+                    assert_eq!(data.degree, 27);
+                }
+                DataType::Type12HermiteEqualStep => {
+                    let data: HermiteSetType12<'_> = spk.nth_data(None, 0).unwrap();
+                    assert_eq!(data.samples, 14);
+                }
+                DataType::Type13HermiteUnequalStep => {
+                    let data: HermiteSetType13<'_> = spk.nth_data(None, 0).unwrap();
+                    assert_eq!(data.samples, 14);
+                }
+                _ => unreachable!(),
+            }
+            let query = (count as f64 - 1.0) / 2.0;
+            let state = Almanac::from_spk(spk)
+                .translate_geometric(
+                    Frame::from_ephem_j2000(-159),
+                    EARTH_J2000,
+                    Epoch::from_et_seconds(query),
+                )
+                .unwrap();
+            assert!((state.radius_km.x - query).abs() < 1e-10);
+            assert!((state.velocity_km_s.x - 1.0).abs() < 1e-10);
+            // Keep enough states so the upper-degree guard, not sample count,
+            // is responsible for rejecting these unsupported degrees.
+            let mut invalid = linear_spk_ephemeris(interpolation, 27, 32);
+            invalid
+                .set_degree(if interpolation == DataType::Type9LagrangeUnequalStep {
+                    28
+                } else {
+                    29
+                })
+                .unwrap();
+            assert!(invalid.to_spice_bsp(-159, None).is_err());
+        }
+    }
+
+    #[test]
+    fn bsp_writer_type12_rejects_unequal_spacing_and_invalid_windows() {
+        let mut ephem = linear_spk_ephemeris(DataType::Type12HermiteEqualStep, 3, 4);
+        let last = Epoch::from_et_seconds(3.0);
+        let mut record = ephem.segments[0].state_data.remove(&last).unwrap();
+        record.orbit.epoch = Epoch::from_et_seconds(3.5);
+        ephem.segments[0]
+            .state_data
+            .insert(record.orbit.epoch, record);
+        assert!(ephem.to_spice_bsp(-159, None).is_err());
+        assert!(
+            linear_spk_ephemeris(DataType::Type12HermiteEqualStep, 2, 4)
+                .to_spice_bsp(-159, None)
+                .is_err()
+        );
+        assert!(
+            linear_spk_ephemeris(DataType::Type12HermiteEqualStep, 7, 3)
+                .to_spice_bsp(-159, None)
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn bsp_writer_preserves_two_type12_segments_at_large_et() {
+        let mut ephem = linear_spk_ephemeris(DataType::Type12HermiteEqualStep, 3, 4);
+        let mut second = ephem.segments[0].clone();
+        second.state_data.pop_last();
+        let start_et = 1_000_000_000.0;
+        for (segment_idx, segment) in [&mut ephem.segments[0], &mut second]
+            .into_iter()
+            .enumerate()
+        {
+            segment.state_data = segment
+                .state_data
+                .values()
+                .enumerate()
+                .map(|(idx, record)| {
+                    let mut record = *record;
+                    let step = 0.1 * (segment_idx + 1) as f64;
+                    record.orbit.epoch = Epoch::from_et_seconds(
+                        start_et + 10.0 * segment_idx as f64 + step * idx as f64,
+                    );
+                    record.orbit.radius_km.x = 1000.0 * segment_idx as f64 + step * idx as f64;
+                    (record.orbit.epoch, record)
+                })
+                .collect();
+        }
+        ephem.segments.push(second);
+        let spk = ephem.to_spice_bsp(-159, None).unwrap();
+        assert_eq!(spk.daf_summary(None).unwrap().num_summaries(), 2);
+        for idx in 0..2 {
+            let data: crate::naif::daf::datatypes::HermiteSetType12<'_> =
+                spk.nth_data(None, idx).unwrap();
+            assert_eq!(data.num_records, 4 - idx);
+            assert_eq!(data.samples, 2);
+        }
+        let almanac = Almanac::from_spk(spk);
+        for idx in 0..2 {
+            let query = Epoch::from_et_seconds(start_et + 10.0 * idx as f64 + 0.15);
+            let state = almanac
+                .translate_geometric(Frame::from_ephem_j2000(-159), EARTH_J2000, query)
+                .unwrap();
+            assert!((state.radius_km.x - (1000.0 * idx as f64 + 0.15)).abs() < 1e-6);
+        }
+        let segment = &mut ephem.segments[1];
+        let epoch = *segment.state_data.keys().nth(1).unwrap();
+        let mut record = segment.state_data.remove(&epoch).unwrap();
+        record.orbit.epoch = epoch + Unit::Millisecond;
+        segment.state_data.insert(record.orbit.epoch, record);
+        assert!(ephem.to_spice_bsp(-159, None).is_err());
+    }
+
+    #[test]
+    fn bsp_writer_clips_unsupported_bounds_without_adding_states() {
+        let mut ephem = linear_spk_ephemeris(DataType::Type9LagrangeUnequalStep, 1, 4);
+        ephem.segments[0].useable_start = Some(Epoch::from_et_seconds(-1.0));
+        ephem.segments[0].useable_end = Some(Epoch::from_et_seconds(4.0));
+        let spk = ephem.to_spice_bsp(-159, None).unwrap();
+        let summary = spk.data_summaries(None).unwrap()[0];
+        assert_eq!(
+            summary.start_epoch_et_s,
+            Epoch::from_et_seconds(0.0).to_et_seconds()
+        );
+        assert_eq!(
+            summary.end_epoch_et_s,
+            Epoch::from_et_seconds(3.0).to_et_seconds()
+        );
+        let data: LagrangeSetType9<'_> = spk.nth_data(None, 0).unwrap();
+        assert_eq!(data.num_records, 4);
+        ephem.segments[0].useable_start = Some(Epoch::from_et_seconds(3.5));
+        assert!(ephem.to_spice_bsp(-159, None).is_err());
     }
 
     #[test]
