@@ -569,6 +569,9 @@ class Ephemeris:
     def domain(self) -> tuple:
         """Returns the time domain of this ephemeris."""
 
+    def degree_at(self, epoch: time.Epoch) -> int:
+        """Returns the interpolation degree for the segment valid at the provided epoch."""
+
     def end_epoch(self) -> time.Epoch: ...
     @staticmethod
     def from_ccsds_oem_file(path: str) -> Ephemeris:
@@ -589,6 +592,9 @@ class Ephemeris:
 
     def insert_orbit(self, orbit: Orbit) -> None:
         """Inserts a new orbit (without covariance) to this ephemeris (it is automatically sorted chronologically)."""
+
+    def interpolation_at(self, epoch: time.Epoch) -> str:
+        """Returns the interpolation method for the segment valid at the provided epoch."""
 
     def len(self) -> int:
         """Returns the number of states"""

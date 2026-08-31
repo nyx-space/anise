@@ -59,6 +59,16 @@ pub enum EphemerisError {
         #[snafu(backtrace)]
         source: InterpolationError,
     },
+    #[snafu(display(
+        "ephemeris segments use different interpolation methods; query interpolation_at(epoch)"
+    ))]
+    MixedInterpolation,
+    #[snafu(display(
+        "ephemeris segments use different interpolation degrees; query degree_at(epoch)"
+    ))]
+    MixedInterpolationDegree,
+    #[snafu(display("interpolation degree must be strictly positive, got {degree}"))]
+    InvalidInterpolationDegree { degree: usize },
     #[snafu(display("{ab_corr} corrects epoch from {epoch} to {epoch_lt}, but {source}"))]
     LightTimeCorrection {
         epoch: Epoch,

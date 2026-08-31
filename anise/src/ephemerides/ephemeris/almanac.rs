@@ -14,7 +14,6 @@ use crate::prelude::{Almanac, Frame, Orbit};
 use hifitime::TimeSeries;
 use log::warn;
 use rayon::prelude::*;
-use std::collections::BTreeMap;
 
 impl Almanac {
     /// Builds the ephemeris of the target seen from the observer with the provided aberration throughout the time series.
@@ -44,12 +43,7 @@ impl Almanac {
             warn!("empty ephemeris created");
         }
 
-        let mut ephem = Ephemeris {
-            object_id,
-            interpolation: crate::naif::daf::DafDataType::Type13HermiteUnequalStep,
-            degree: 7,
-            state_data: BTreeMap::new(),
-        };
+        let mut ephem = Ephemeris::new(object_id);
 
         for state in states {
             ephem.insert_orbit(state);
