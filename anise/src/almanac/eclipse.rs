@@ -9,7 +9,6 @@
  */
 
 use hifitime::{Duration, Unit};
-use log::error;
 
 use crate::{
     astro::{Aberration, Occultation},
@@ -347,12 +346,6 @@ fn compute_occultation_percentage(
         let d2 = (d_prime.powi(2) + r_ls_prime.powi(2) - r_fobj_prime.powi(2)) / (2.0 * d_prime);
 
         let shadow_area = circ_seg_area(r_fobj_prime, d1) + circ_seg_area(r_ls_prime, d2);
-        if shadow_area.is_nan() {
-            error!(
-                "Shadow area is NaN! Please file a bug with initial states, eclipsing bodies, etc."
-            );
-            return Ok(100.0);
-        }
         // Compute the nominal area of the back object
         let nominal_area = core::f64::consts::PI * r_ls_prime.powi(2);
         // And return the percentage (between 0 and 1) of the eclipse.
@@ -366,7 +359,15 @@ fn compute_occultation_percentage(
 
 /// Compute the area of the circular segment of radius r and chord length d
 fn circ_seg_area(r: f64, d: f64) -> f64 {
-    r.powi(2) * (d / r).acos() - d * (r.powi(2) - d.powi(2)).sqrt()
+    if d >= r {
+        0.0
+    } else if d <= -r {
+        core::f64::consts::PI * r.powi(2)
+    } else {
+        // Clamp the argument to acos strictly to [-1.0, 1.0] to prevent NaN
+        let cos_theta = (d / r).clamp(-1.0, 1.0);
+        r.powi(2) * cos_theta.acos() - d * (r.powi(2) - d.powi(2)).sqrt()
+    }
 }
 
 #[cfg(test)]
