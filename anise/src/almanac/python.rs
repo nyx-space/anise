@@ -984,6 +984,22 @@ impl Almanac {
         self.location_from_name(name)
     }
 
+    /// Returns a list of all location IDs present in the loaded location datasets, searching in reverse order of datasets loaded.
+    ///
+    /// :rtype: typing.List[int]
+    #[pyo3(name = "location_ids")]
+    pub fn py_location_ids(&self) -> Vec<i32> {
+        self.location_ids()
+    }
+
+    /// Returns a list of all location names present in the loaded location datasets, searching in reverse order of datasets loaded.
+    ///
+    /// :rtype: typing.List[str]
+    #[pyo3(name = "location_names")]
+    pub fn py_location_names(&self) -> Vec<String> {
+        self.location_names()
+    }
+
     /// Inserts the provided location info, as a DhallSetEntry, into the Almanac. Use this to build a location kernel in memory.
     /// Set the optional parameter `replace` to True to replace any preexisting location with this ID.
     /// If replace is unset or false, and the location ID is already taken, this function will raise an error.

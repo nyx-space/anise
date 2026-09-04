@@ -45,6 +45,28 @@ impl Almanac {
         })
     }
 
+    /// Returns a list of all location IDs present in the loaded location datasets, searching in reverse order of datasets loaded.
+    pub fn location_ids(&self) -> Vec<i32> {
+        let mut ids = Vec::new();
+        for data in self.location_data.values().rev() {
+            for id in data.lut.by_id.keys() {
+                ids.push(*id);
+            }
+        }
+        ids
+    }
+
+    /// Returns a list of all location names present in the loaded location datasets, searching in reverse order of datasets loaded.
+    pub fn location_names(&self) -> Vec<String> {
+        let mut names = Vec::new();
+        for data in self.location_data.values().rev() {
+            for name in data.lut.by_name.keys() {
+                names.push(name.clone());
+            }
+        }
+        names
+    }
+
     /// Returns the Location from its name, searching through all loaded location datasets in reverse order.
     pub fn location_from_name(&self, name: &str) -> AlmanacResult<Location> {
         for data in self.location_data.values().rev() {
@@ -533,6 +555,38 @@ mod ut_aer {
     /// [anise/src/almanac/aer.rs:583:21] aer.range_km - expect = -2.6448764982487774
     /// [anise/src/almanac/aer.rs:583:21] aer.range_km - expect = -3.600219391970313
     /// [anise/src/almanac/aer.rs:583:21] aer.range_km - expect = -4.453339810104808
+    #[test]
+    fn test_location_ids_and_names() {
+        let loc1 = Location {
+            latitude_deg: 10.0,
+            longitude_deg: 20.0,
+            height_km: 0.1,
+            frame: EARTH_ITRF93.into(),
+            terrain_mask: vec![],
+            terrain_mask_ignored: true,
+        };
+        let loc2 = Location {
+            latitude_deg: 30.0,
+            longitude_deg: 40.0,
+            height_km: 0.2,
+            frame: EARTH_ITRF93.into(),
+            terrain_mask: vec![],
+            terrain_mask_ignored: true,
+        };
+
+        let mut dataset = LocationDataSet::default();
+        dataset.push(loc1, Some(100), Some("Loc1")).unwrap();
+        dataset.push(loc2, Some(200), Some("Loc2")).unwrap();
+
+        let almanac = Almanac::default().with_location_data(dataset);
+
+        assert_eq!(almanac.location_ids(), vec![100, 200]);
+        assert_eq!(
+            almanac.location_names(),
+            vec!["Loc1".to_string(), "Loc2".to_string()]
+        );
+    }
+
     #[cfg(feature = "metaload")]
     #[test]
     fn gmat_verif_location() {
