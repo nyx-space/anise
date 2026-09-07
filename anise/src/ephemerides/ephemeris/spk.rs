@@ -175,8 +175,7 @@ impl Ephemeris {
             ensure!(
                 start_epoch < end_epoch,
                 SPKWritingSnafu {
-                    details: "SPK segment useable bounds do not overlap its raw state coverage"
-                        .to_string()
+                    details: "SPK segment useable bounds do not overlap".to_string()
                 }
             );
             if start_epoch != segment.useable_start {

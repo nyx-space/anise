@@ -18,7 +18,7 @@ use crate::naif::daf::data_types::DataType;
 use crate::prelude::{Almanac, Orbit};
 use core::fmt;
 use covariance::interpolate_covar_log_euclidean;
-use hifitime::{Epoch, TimeSeries};
+use hifitime::{Epoch, TimeSeries, Unit};
 use snafu::ResultExt;
 use std::collections::BTreeMap;
 
@@ -176,11 +176,11 @@ impl EphemerisSegmentView<'_> {
 
         let t0 = prev_record.orbit.epoch;
         let t1 = next_record.orbit.epoch;
-        let total_dt = (t1 - t0).to_seconds();
-        if total_dt.abs() < 1e-9 {
+        if (t1 - t0).abs() < Unit::Millisecond * 1 {
             return Ok(Some(prev_covar));
         }
 
+        let total_dt = (t1 - t0).to_seconds();
         let alpha = (epoch - t0).to_seconds() / total_dt;
         Ok(
             interpolate_covar_log_euclidean(prev_covar.matrix, next_covar.matrix, alpha).map(
@@ -285,7 +285,7 @@ impl Ephemeris {
     pub fn new(object_id: String) -> Self {
         Self {
             object_id,
-            segments: vec![EphemerisSegment::new(DataType::Type13HermiteUnequalStep, 7)],
+            segments: vec![EphemerisSegment::new(DataType::Type13HermiteUnequalStep, 5)],
         }
     }
 
@@ -343,12 +343,12 @@ impl Ephemeris {
 
     /// Returns the interpolation method for the segment valid at `epoch`.
     pub fn interpolation_at(&self, epoch: Epoch) -> Result<DataType, EphemerisError> {
-        Ok(self.segment_at_or_error(epoch)?.interpolation)
+        Ok(self.segment_at(epoch)?.interpolation)
     }
 
     /// Returns the interpolation degree for the segment valid at `epoch`.
     pub fn degree_at(&self, epoch: Epoch) -> Result<usize, EphemerisError> {
-        Ok(self.segment_at_or_error(epoch)?.degree)
+        Ok(self.segment_at(epoch)?.degree)
     }
 
     /// Applies one interpolation method to every segment.
@@ -387,7 +387,7 @@ impl Ephemeris {
         })
     }
 
-    fn segment_at(&self, epoch: Epoch) -> Option<EphemerisSegmentView<'_>> {
+    fn maybe_segment_at(&self, epoch: Epoch) -> Option<EphemerisSegmentView<'_>> {
         self.segments.get(self.segment_index_at(epoch)?)?.view()
     }
 
@@ -403,13 +403,10 @@ impl Ephemeris {
         Ok((first.useable_start, last.useable_end))
     }
 
-    fn segment_at_or_error(
-        &self,
-        epoch: Epoch,
-    ) -> Result<EphemerisSegmentView<'_>, EphemerisError> {
+    fn segment_at(&self, epoch: Epoch) -> Result<EphemerisSegmentView<'_>, EphemerisError> {
         let (start, end) = self.interpolation_domain()?;
         if (start..=end).contains(&epoch)
-            && let Some(segment) = self.segment_at(epoch)
+            && let Some(segment) = self.maybe_segment_at(epoch)
         {
             return Ok(segment);
         }
@@ -454,7 +451,7 @@ impl Ephemeris {
             .segments
             .last()
             .map(|segment| (segment.interpolation, segment.degree))
-            .unwrap_or((DataType::Type13HermiteUnequalStep, 7));
+            .unwrap_or((DataType::Type13HermiteUnequalStep, 5));
         let mut segment = EphemerisSegment::new(interpolation, degree);
         segment.state_data.insert(epoch, record);
         self.segments.push(segment);
@@ -554,7 +551,7 @@ impl Ephemeris {
         epoch: Epoch,
         almanac: &Almanac,
     ) -> Result<EphemerisRecord, EphemerisError> {
-        self.segment_at_or_error(epoch)?
+        self.segment_at(epoch)?
             .nearest_before(epoch, almanac)
             .ok_or(EphemerisError::EphemInterpolation {
                 source: InterpolationError::EmptyInterpolationData {},
@@ -571,11 +568,11 @@ impl Ephemeris {
         epoch: Epoch,
         almanac: &Almanac,
     ) -> Result<EphemerisRecord, EphemerisError> {
-        self.segment_at_or_error(epoch)?
-            .nearest_after(epoch, almanac)
-            .ok_or(EphemerisError::EphemInterpolation {
+        self.segment_at(epoch)?.nearest_after(epoch, almanac).ok_or(
+            EphemerisError::EphemInterpolation {
                 source: InterpolationError::EmptyInterpolationData {},
-            })
+            },
+        )
     }
 
     /// Returns the nearest orbit before the provided time
@@ -662,7 +659,7 @@ impl Ephemeris {
     /// :type almanac: Almanac
     /// :rtype: EphemerisRecord
     pub fn at(&self, epoch: Epoch, almanac: &Almanac) -> Result<EphemerisRecord, EphemerisError> {
-        self.segment_at_or_error(epoch)?.at(epoch, almanac)
+        self.segment_at(epoch)?.at(epoch, almanac)
     }
 
     /// Interpolate the ephemeris at the provided epoch, returning only the orbit.
@@ -693,7 +690,7 @@ impl Ephemeris {
         local_frame: LocalFrame,
         almanac: &Almanac,
     ) -> Result<Option<Covariance>, EphemerisError> {
-        self.segment_at_or_error(epoch)?
+        self.segment_at(epoch)?
             .covar_at(epoch, local_frame, almanac)
     }
 
@@ -710,7 +707,7 @@ impl Ephemeris {
             });
         }
         for &epoch in &epochs {
-            self.segment_at_or_error(epoch)?;
+            self.segment_at(epoch)?;
         }
 
         let mut me = Self {
@@ -727,7 +724,7 @@ impl Ephemeris {
                 (view.useable_start, view.useable_end)
             };
             let mut sampled_segment = EphemerisSegment::new(view.interpolation, view.degree);
-            for &epoch in &epochs {
+            for epoch in epochs.iter().copied() {
                 if (sampling_start..=sampling_end).contains(&epoch) {
                     sampled_segment
                         .state_data
@@ -889,6 +886,53 @@ mod ut_oem {
         Almanac::default().load("../data/pck11.pca").unwrap()
     }
 
+    #[test]
+    fn review_default_interpolation_degree_is_five() {
+        let ephem = Ephemeris::new("review-default".to_string());
+        assert_eq!(ephem.degree().unwrap(), 5);
+        assert_eq!(
+            ephem.interpolation().unwrap(),
+            DataType::Type13HermiteUnequalStep
+        );
+    }
+
+    #[rstest]
+    #[case(500, 1.0)]
+    #[case(1_000, 2.0)]
+    #[case(2_000, 2.0)]
+    fn review_covariance_millisecond_threshold(
+        #[case] separation_microseconds: i64,
+        #[case] expected_variance: f64,
+    ) {
+        let start = Epoch::from_gregorian_utc_at_midnight(2020, 1, 1);
+        let gap = separation_microseconds * Unit::Microsecond;
+        let mut ephem = Ephemeris::new("review-covariance".to_string());
+        for (epoch, variance) in [(start, 1.0), (start + gap, 4.0)] {
+            ephem.insert(EphemerisRecord {
+                orbit: Orbit::from_cartesian_pos_vel(Vector6::zeros(), epoch, EARTH_J2000),
+                covar: Some(super::Covariance {
+                    matrix: Matrix6::identity() * variance,
+                    local_frame: LocalFrame::Inertial,
+                }),
+            });
+        }
+        let almanac = Almanac::default();
+        let covariance = ephem
+            .covar_at(start + gap / 2, LocalFrame::Inertial, &almanac)
+            .unwrap()
+            .unwrap();
+        assert!(
+            (covariance.matrix - Matrix6::identity() * expected_variance).norm() < 1e-12,
+            "unexpected covariance for a {separation_microseconds} microsecond separation"
+        );
+        // An exact node still returns that node's own covariance.
+        let endpoint = ephem
+            .covar_at(start + gap, LocalFrame::Inertial, &almanac)
+            .unwrap()
+            .unwrap();
+        assert_eq!(endpoint.matrix, Matrix6::identity() * 4.0);
+    }
+
     #[rstest]
     fn test_parse_oem_leo(almanac: Almanac) {
         let ephem = Ephemeris::from_ccsds_oem_file("../data/tests/ccsds/oem/LEO_10s.oem")
@@ -1027,6 +1071,7 @@ mod ut_oem {
         let input_path = "../data/tests/ccsds/oem/multisegment_discontinuous.oem";
         let rebuilt_path = std::env::temp_dir().join("anise_segmented_oem_rebuilt.oem");
         let ephem = Ephemeris::from_ccsds_oem_file(&input_path).unwrap();
+        let almanac = Almanac::default();
         // Segment-owned iteration preserves both records at a shared boundary.
         assert_eq!((&ephem).into_iter().count(), 6);
         assert_eq!(ephem.len(), 6);
@@ -1064,16 +1109,22 @@ mod ut_oem {
         );
         assert_eq!(ephem.degree_at(boundary).unwrap(), 3);
         let before = ephem
-            .orbit_at(boundary - Unit::Second * 15, &Almanac::default())
+            .orbit_at(boundary - Unit::Second * 15, &almanac)
             .unwrap();
         let after = ephem
-            .orbit_at(boundary + Unit::Second * 30, &Almanac::default())
+            .orbit_at(boundary + Unit::Second * 30, &almanac)
             .unwrap();
-        assert!(before.radius_km.x < 10.0);
-        assert!(after.radius_km.x > 900.0);
+        assert!(
+            before.radius_km.x < 10.0,
+            "X in first segment is no more than 2 and yet..."
+        );
+        assert!(
+            after.radius_km.x >= 1000.0,
+            "X in second segment is always geq to 1000 and yet..."
+        );
         assert_eq!(
             ephem
-                .covar_at(boundary, LocalFrame::Inertial, &Almanac::default())
+                .covar_at(boundary, LocalFrame::Inertial, &almanac)
                 .unwrap()
                 .unwrap()
                 .matrix[(0, 0)],
@@ -1086,19 +1137,12 @@ mod ut_oem {
                 .matrix[(0, 0)],
             1.0
         );
-        assert!(
-            ephem
-                .orbit_at(boundary, &Almanac::default())
-                .unwrap()
-                .radius_km
-                .x
-                > 900.0
-        );
+        assert!(ephem.orbit_at(boundary, &almanac).unwrap().radius_km.x > 900.0);
         assert!(
             ephem
                 .at(
                     Epoch::from_gregorian_utc_hms(2020, 1, 1, 0, 2, 45),
-                    &Almanac::default()
+                    &almanac
                 )
                 .is_err()
         );
@@ -1112,13 +1156,13 @@ mod ut_oem {
                     Epoch::from_gregorian_utc_hms(2020, 1, 1, 0, 2, 30),
                     Unit::Second * 15,
                 ),
-                &Almanac::default(),
+                &almanac,
             )
             .unwrap();
         assert_eq!(resampled.segments.len(), 2);
         assert!(
             resampled
-                .orbit_at(boundary - Unit::Second * 15, &Almanac::default())
+                .orbit_at(boundary - Unit::Second * 15, &almanac)
                 .unwrap()
                 .radius_km
                 .x
@@ -1126,7 +1170,7 @@ mod ut_oem {
         );
         assert!(
             resampled
-                .orbit_at(boundary + Unit::Second * 30, &Almanac::default())
+                .orbit_at(boundary + Unit::Second * 30, &almanac)
                 .unwrap()
                 .radius_km
                 .x
@@ -1134,14 +1178,14 @@ mod ut_oem {
         );
         assert!(
             resampled
-                .orbit_at(boundary - Unit::Second * 7.5, &Almanac::default())
+                .orbit_at(boundary - Unit::Second * 7.5, &almanac)
                 .unwrap()
                 .radius_km
                 .x
                 < 10.0
         );
 
-        let transformed = ephem.transform(EARTH_J2000, &Almanac::default()).unwrap();
+        let transformed = ephem.transform(EARTH_J2000, &almanac).unwrap();
         assert_eq!(transformed.segments.len(), 2);
         assert_eq!(
             transformed
@@ -1153,7 +1197,7 @@ mod ut_oem {
         );
         assert!(
             transformed
-                .orbit_at(boundary + Unit::Second * 30, &Almanac::default())
+                .orbit_at(boundary + Unit::Second * 30, &almanac)
                 .unwrap()
                 .radius_km
                 .x
@@ -1178,7 +1222,7 @@ mod ut_oem {
         assert_eq!(inserted.segments.len(), 2);
         assert_eq!(
             inserted
-                .orbit_at(inserted_epoch, &Almanac::default())
+                .orbit_at(inserted_epoch, &almanac)
                 .unwrap()
                 .radius_km
                 .x,
@@ -1243,7 +1287,7 @@ mod ut_oem {
         assert_eq!(rebuilt_spk.daf_summary(None).unwrap().num_summaries(), 2);
         assert_eq!(
             reparsed
-                .covar_at(boundary, LocalFrame::Inertial, &Almanac::default())
+                .covar_at(boundary, LocalFrame::Inertial, &almanac)
                 .unwrap()
                 .unwrap()
                 .matrix[(0, 0)],
@@ -2144,14 +2188,8 @@ COV_REF_FRAME = EME2000
         ephem.segments[0].useable_end = Some(Epoch::from_et_seconds(4.0));
         let spk = ephem.to_spice_bsp(-159, None).unwrap();
         let summary = spk.data_summaries(None).unwrap()[0];
-        assert_eq!(
-            summary.start_epoch_et_s,
-            Epoch::from_et_seconds(0.0).to_et_seconds()
-        );
-        assert_eq!(
-            summary.end_epoch_et_s,
-            Epoch::from_et_seconds(3.0).to_et_seconds()
-        );
+        assert_eq!(summary.start_epoch_et_s, 0.0);
+        assert_eq!(summary.end_epoch_et_s, 3.0);
         let data: LagrangeSetType9<'_> = spk.nth_data(None, 0).unwrap();
         assert_eq!(data.num_records, 4);
         ephem.segments[0].useable_start = Some(Epoch::from_et_seconds(3.5));

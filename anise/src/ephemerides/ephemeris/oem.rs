@@ -752,20 +752,16 @@ impl Ephemeris {
             let first_frame = first_orbit.frame;
             let center = format!("{first_frame:e}");
             let ref_frame = format!("{first_frame:o}");
+            let ref_frame = match ref_frame.trim() {
+                "J2000" => "EME2000",
+                other => other,
+            };
 
             writeln!(writer, "META_START").map_err(err_hdlr)?;
             writeln!(writer, "OBJECT_NAME = {object_name}").map_err(err_hdlr)?;
             writeln!(writer, "OBJECT_ID = {}", self.object_id).map_err(err_hdlr)?;
             writeln!(writer, "CENTER_NAME = {center}").map_err(err_hdlr)?;
-            writeln!(
-                writer,
-                "REF_FRAME = {}",
-                match ref_frame.trim() {
-                    "J2000" => "EME2000",
-                    _ => ref_frame.trim(),
-                }
-            )
-            .map_err(err_hdlr)?;
+            writeln!(writer, "REF_FRAME = {ref_frame}").map_err(err_hdlr)?;
             writeln!(writer, "TIME_SYSTEM = {}", first_orbit.epoch.time_scale).map_err(err_hdlr)?;
             writeln!(
                 writer,
@@ -838,7 +834,7 @@ impl Ephemeris {
                         writer,
                         "COV_REF_FRAME = {}",
                         match covar.local_frame {
-                            LocalFrame::Inertial => "EME2000",
+                            LocalFrame::Inertial => ref_frame,
                             LocalFrame::RIC => "RTN",
                             LocalFrame::VNC => "TNW",
                             LocalFrame::RCN => {
@@ -869,5 +865,74 @@ impl Ephemeris {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::constants::frames::{EARTH_ECLIPJ2000, EARTH_J2000};
+    use hifitime::Unit;
+
+    #[test]
+    fn review_oem_inertial_covariance_uses_each_segments_reference_frame() {
+        let start = Epoch::from_gregorian_utc_at_midnight(2020, 1, 1);
+        let segments = [EARTH_J2000, EARTH_ECLIPJ2000]
+            .into_iter()
+            .enumerate()
+            .map(|(segment_index, frame)| {
+                let state_data = (0..2)
+                    .map(|index| {
+                        let epoch = start + (segment_index * 2 + index) as f64 * Unit::Minute;
+                        let orbit = Orbit::from_cartesian_pos_vel(
+                            Vector6::new(7000.0, 0.0, 0.0, 0.0, 7.5, 0.0),
+                            epoch,
+                            frame,
+                        );
+                        (
+                            epoch,
+                            EphemerisRecord {
+                                orbit,
+                                covar: Some(Covariance {
+                                    matrix: Matrix6::identity(),
+                                    local_frame: LocalFrame::Inertial,
+                                }),
+                            },
+                        )
+                    })
+                    .collect();
+                EphemerisSegment::from_state_data(DataType::Type9LagrangeUnequalStep, 1, state_data)
+            })
+            .collect();
+        let ephemeris = Ephemeris {
+            object_id: "COVARIANCE-FRAMES".to_string(),
+            segments,
+        };
+        let path = std::env::temp_dir().join(format!(
+            "anise-oem-covariance-frames-{}.oem",
+            std::process::id()
+        ));
+        ephemeris.write_ccsds_oem(&path, None, None).unwrap();
+        let output = std::fs::read_to_string(&path).unwrap();
+        std::fs::remove_file(path).unwrap();
+
+        // Check the writer directly: the reader does not yet accept every
+        // non-J2000 inertial covariance frame that the writer can emit.
+        let frames: Vec<_> = output
+            .lines()
+            .filter(|line| line.starts_with("REF_FRAME = ") || line.starts_with("COV_REF_FRAME = "))
+            .collect();
+        assert_eq!(
+            frames,
+            [
+                "REF_FRAME = EME2000",
+                "COV_REF_FRAME = EME2000",
+                "COV_REF_FRAME = EME2000",
+                "REF_FRAME = ECLIPJ2000",
+                "COV_REF_FRAME = ECLIPJ2000",
+                "COV_REF_FRAME = ECLIPJ2000",
+            ],
+            "each inertial covariance must use its segment's exported reference frame"
+        );
     }
 }
