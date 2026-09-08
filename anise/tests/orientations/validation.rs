@@ -12,7 +12,7 @@ use anise::{
     constants::{
         celestial_objects::EARTH,
         frames::*,
-        orientations::{ECLIPJ2000, FK4, ITRF93, J2000},
+        orientations::{ECLIPJ2000, FK4, ICRS, ITRF93},
     },
     math::{
         Matrix3, Vector3,
@@ -70,7 +70,7 @@ fn validate_iau_rotation_to_parent() {
         .enumerate()
         {
             let dcm = almanac
-                .rotate(frame.with_orient(J2000), frame, epoch)
+                .rotate(frame.with_orient(ICRS), frame, epoch)
                 .unwrap();
 
             let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];
@@ -85,7 +85,7 @@ fn validate_iau_rotation_to_parent() {
 
             // Parent rotation of Earth IAU frame is 3 not J2000, etc.
             assert!(
-                [J2000, FK4, 4, 5, 6].contains(&dcm.from),
+                [ICRS, FK4, 4, 5, 6].contains(&dcm.from),
                 "unexpected DCM from frame {}",
                 dcm.from
             );
@@ -190,7 +190,7 @@ fn validate_iau_rotation_to_parent() {
 
             // Check the transpose
             let dcm_t = almanac
-                .rotate(frame, frame.with_orient(J2000), epoch)
+                .rotate(frame, frame.with_orient(ICRS), epoch)
                 .unwrap();
             assert_eq!(dcm.transpose(), dcm_t);
         }
@@ -320,7 +320,7 @@ fn validate_bpc_rotation_to_parent() {
     }
 }
 
-/// Ensure that our rotation for [ECLIPJ2000] to [J2000] matches the one from SPICE.
+/// Ensure that our rotation for [ECLIPJ2000] to [ICRS] matches the one from SPICE.
 #[ignore = "Requires Rust SPICE -- must be executed serially"]
 #[test]
 fn validate_j2000_ecliptic() {
@@ -346,7 +346,7 @@ fn validate_j2000_ecliptic() {
             );
         }
 
-        assert_eq!(dcm.from, J2000);
+        assert_eq!(dcm.from, ICRS);
         assert_eq!(dcm.to, ECLIPJ2000);
 
         // Confirmed that the M3x3 below is the correct representation from SPICE by using the mxv spice function and compare that to the nalgebra equivalent computation.
@@ -420,7 +420,7 @@ fn validate_bpc_rotations() {
     let start = Epoch::from_gregorian_utc_at_midnight(2000, 1, 2);
     let end = Epoch::from_gregorian_at_midnight(2023, 1, 1, TimeScale::ET);
     for (num, epoch) in TimeSeries::inclusive(start, end, 1.days()).enumerate() {
-        let dcm = almanac.rotate(EARTH_ITRF93, EME2000, epoch).unwrap();
+        let dcm = almanac.rotate(EARTH_ITRF93, GCRF, epoch).unwrap();
 
         let mut rot_data: [[f64; 6]; 6] = [[0.0; 6]; 6];
         unsafe {
@@ -460,7 +460,7 @@ fn validate_bpc_rotations() {
         let spice_dcm = DCM {
             rot_mat,
             from: ITRF93,
-            to: J2000,
+            to: ICRS,
             rot_mat_dt,
         };
 

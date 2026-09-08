@@ -44,7 +44,7 @@ impl Almanac {
                     if !summary.is_empty() && summary.inertial_frame_id.abs() < common_center.abs()
                     {
                         common_center = summary.inertial_frame_id;
-                        if common_center == J2000 {
+                        if common_center == ICRS {
                             // there is nothing higher up
                             return Ok(common_center);
                         }
@@ -61,7 +61,7 @@ impl Almanac {
                     && pc.parent_id < common_center
                 {
                     common_center = pc.parent_id;
-                    if common_center == J2000 {
+                    if common_center == ICRS {
                         // there is nothing higher up
                         return Ok(common_center);
                     }
@@ -69,9 +69,9 @@ impl Almanac {
             }
         }
 
-        if common_center == ECLIPJ2000 || common_center == ICRS {
-            // Rotation from ecliptic J2000 / ICRS to J2000 is embedded.
-            common_center = J2000;
+        if common_center == ECLIPJ2000 || common_center == J2000 {
+            // Rotation from ecliptic J2000 / J2000 to ICRS is embedded.
+            common_center = ICRS;
         }
 
         Ok(common_center)
@@ -95,8 +95,8 @@ impl Almanac {
 
         // Grab the summary data, which we use to find the paths
         // Let's see if this orientation is defined in the loaded BPC files
-        let mut inertial_frame_id = if source.orient_origin_id_match(ICRS) {
-            J2000
+        let mut inertial_frame_id = if source.orient_origin_id_match(J2000) {
+            ICRS
         } else if let Ok(dyn_frame) = DynamicFrame::try_from(source.orientation_id as u32)
             && matches!(
                 dyn_frame,
@@ -145,8 +145,8 @@ impl Almanac {
 
         // Hop the embedded constant rotations up to the common root.
         // Future embedded constant-rotation parents should be added here.
-        if inertial_frame_id == ECLIPJ2000 || inertial_frame_id == ICRS {
-            inertial_frame_id = J2000;
+        if inertial_frame_id == ECLIPJ2000 || inertial_frame_id == J2000 {
+            inertial_frame_id = ICRS;
             of_path[of_path_len] = Some(inertial_frame_id);
             of_path_len += 1;
         }

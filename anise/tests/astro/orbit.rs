@@ -1,7 +1,7 @@
 extern crate pretty_env_logger as pel;
 
 use anise::astro::orbit::ECC_EPSILON;
-use anise::constants::frames::{EARTH_J2000, MOON_J2000};
+use anise::constants::frames::{EARTH_ICRS, MOON_ICRS};
 use anise::errors::PhysicsError;
 use anise::math::Vector3;
 use anise::math::angles::{between_0_360, between_pm_180};
@@ -26,14 +26,14 @@ fn epoch() -> Epoch {
 
 #[fixture]
 fn frame(almanac: Almanac) -> Frame {
-    almanac.frame_info(EARTH_J2000).unwrap()
+    almanac.frame_info(EARTH_ICRS).unwrap()
 }
 
 #[rstest]
 fn val_state_def_circ_inc(almanac: Almanac) {
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
     let eme2k = almanac
-        .frame_info(EARTH_J2000)
+        .frame_info(EARTH_ICRS)
         .unwrap()
         .with_mu_km3_s2(398_600.441_5);
 
@@ -231,7 +231,7 @@ fn val_state_def_circ_inc(almanac: Almanac) {
 fn val_state_def_elliptical(almanac: Almanac) {
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
     let eme2k = almanac
-        .frame_info(EARTH_J2000)
+        .frame_info(EARTH_ICRS)
         .unwrap()
         .with_mu_km3_s2(398_600.441_5);
 
@@ -339,7 +339,7 @@ fn val_state_def_elliptical(almanac: Almanac) {
 fn val_state_def_circ_eq(almanac: Almanac) {
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
     let eme2k = almanac
-        .frame_info(EARTH_J2000)
+        .frame_info(EARTH_ICRS)
         .unwrap()
         .with_mu_km3_s2(398_600.441_5);
 
@@ -445,7 +445,7 @@ fn val_state_def_circ_eq(almanac: Almanac) {
 fn val_state_def_equatorial(almanac: Almanac) {
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
     let eme2k = almanac
-        .frame_info(EARTH_J2000)
+        .frame_info(EARTH_ICRS)
         .unwrap()
         .with_mu_km3_s2(398_600.441_5);
 
@@ -496,7 +496,7 @@ fn val_state_def_equatorial(almanac: Almanac) {
 fn val_state_def_reciprocity(almanac: Almanac) {
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
     let eme2k = almanac
-        .frame_info(EARTH_J2000)
+        .frame_info(EARTH_ICRS)
         .unwrap()
         .with_mu_km3_s2(398_600.441_5);
 
@@ -570,7 +570,7 @@ fn val_state_def_reciprocity(almanac: Almanac) {
 
 #[rstest]
 fn verif_geodetic_vallado(almanac: Almanac) {
-    let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+    let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
 
     let epoch = Epoch::from_mjd_tai(51_545.0);
     // Test case from Vallado, 4th Ed., page 173, Example 3-3
@@ -634,7 +634,7 @@ fn verif_geodetic_vallado(almanac: Almanac) {
 
 #[rstest]
 fn verif_with_init(almanac: Almanac) {
-    let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+    let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
 
     let epoch = Epoch::from_gregorian_tai_at_midnight(2021, 3, 4);
     let kep = Orbit::keplerian(
@@ -725,7 +725,7 @@ fn verif_with_init(almanac: Almanac) {
 
 #[rstest]
 fn verif_orbit_at_epoch(almanac: Almanac) {
-    let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+    let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
     let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 1, 10);
     let circ_incl = Orbit::keplerian(
         8_191.93, 1e-8, 12.85, 306.614, 314.19, 99.887_7, epoch, eme2k,
@@ -793,7 +793,7 @@ fn b_plane_davis(almanac: Almanac) {
     // This is a simple test from Dr. Davis' IMD class at CU Boulder.
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
     let eme2k = almanac
-        .frame_info(EARTH_J2000)
+        .frame_info(EARTH_ICRS)
         .unwrap()
         .with_mu_km3_s2(398_600.441_5);
 
@@ -824,7 +824,7 @@ fn b_plane_davis(almanac: Almanac) {
 
 #[rstest]
 fn gh_regression_340(almanac: Almanac) {
-    let moon_j2k = almanac.frame_info(MOON_J2000).unwrap();
+    let moon_j2k = almanac.frame_info(MOON_ICRS).unwrap();
 
     let start = Epoch::from_str("2024-10-16").unwrap();
 
@@ -844,7 +844,7 @@ fn gh_regression_340(almanac: Almanac) {
 
 #[rstest]
 fn misc_verif(almanac: Almanac) {
-    let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+    let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
 
     // Blue Ghost landing day!
     let epoch = Epoch::from_gregorian_utc_at_noon(2025, 3, 2);

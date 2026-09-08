@@ -1,17 +1,16 @@
-use std::path::PathBuf;
-
 use anise::constants::frames::{
-    EARTH_ITRF93, EARTH_J2000, EME2000, GCRF, IAU_JUPITER_FRAME, IAU_MOON_FRAME,
-    JUPITER_BARYCENTER_J2000, MOON_J2000, MOON_ME_DE440_ME421_FRAME, MOON_PA_DE421_FRAME,
+    EARTH_ICRS, EARTH_ITRF93, EME2000, GCRF, IAU_JUPITER_FRAME, IAU_MOON_FRAME,
+    JUPITER_BARYCENTER_ICRS, MOON_ICRS, MOON_ME_DE440_ME421_FRAME, MOON_PA_DE421_FRAME,
     MOON_PA_DE440_FRAME,
 };
 use anise::constants::orientations::{
-    ECLIPJ2000, IAU_JUPITER, IAU_MOON, ITRF93, J2000, MOON_PA_DE440,
+    ECLIPJ2000, IAU_JUPITER, IAU_MOON, ICRS, ITRF93, MOON_PA_DE440,
 };
 use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
 use anise::math::rotation::{DCM, EulerParameter};
 use anise::math::{Matrix3, Vector3};
 use anise::naif::kpl::parser::convert_tpc;
+use std::path::PathBuf;
 
 use anise::f64_eq_tol;
 use anise::structure::PlanetaryDataSet;
@@ -37,7 +36,7 @@ fn test_find_root_from_pca() {
 
     let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
 
-    assert_eq!(almanac.try_find_orientation_root(), Ok(J2000));
+    assert_eq!(almanac.try_find_orientation_root(), Ok(ICRS));
 
     let planetary_data = convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap();
     // Serialize to disk
@@ -138,11 +137,11 @@ fn test_itrf93_to_j2k() {
 
     let epoch = Epoch::from_str("2019-03-01T04:02:51.0 ET").unwrap();
 
-    let dcm = almanac.rotate(EARTH_ITRF93, EME2000, epoch).unwrap();
+    let dcm = almanac.rotate(EARTH_ITRF93, GCRF, epoch).unwrap();
 
     let spice_dcm = DCM {
         from: ITRF93,
-        to: J2000,
+        to: ICRS,
         rot_mat: Matrix3::new(
             -0.7787074378266214,
             0.6273845404742724,
@@ -168,7 +167,7 @@ fn test_itrf93_to_j2k() {
     };
 
     assert_eq!(dcm.from, ITRF93);
-    assert_eq!(dcm.to, J2000);
+    assert_eq!(dcm.to, ICRS);
 
     assert!(
         (dcm.rot_mat - spice_dcm.rot_mat).norm() < 2.9e-9,
@@ -208,11 +207,11 @@ fn test_j2k_to_itrf93() {
 
     let epoch = Epoch::from_str("2019-03-01T04:02:51.0 ET").unwrap();
 
-    let dcm = almanac.rotate(EME2000, EARTH_ITRF93, epoch).unwrap();
+    let dcm = almanac.rotate(GCRF, EARTH_ITRF93, epoch).unwrap();
 
     let spice_dcm_t = DCM {
         from: ITRF93,
-        to: J2000,
+        to: ICRS,
         rot_mat: Matrix3::new(
             -0.7787074378266214,
             0.6273845404742724,
@@ -240,7 +239,7 @@ fn test_j2k_to_itrf93() {
     let spice_dcm = spice_dcm_t.transpose();
 
     assert_eq!(dcm.to, ITRF93);
-    assert_eq!(dcm.from, J2000);
+    assert_eq!(dcm.from, ICRS);
 
     assert!(
         (dcm.rot_mat - spice_dcm.rot_mat).norm() < 2.9e-9,
@@ -276,10 +275,10 @@ fn regression_test_issue_112_test_iau_moon() {
 
     let epoch = Epoch::from_str("2030-01-01 00:00:00").unwrap();
 
-    let dcm = almanac.rotate(MOON_J2000, IAU_MOON_FRAME, epoch).unwrap();
+    let dcm = almanac.rotate(MOON_ICRS, IAU_MOON_FRAME, epoch).unwrap();
 
     let spice_dcm = DCM {
-        from: J2000,
+        from: ICRS,
         to: IAU_MOON,
         rot_mat: Matrix3::new(
             0.5256992783481783,
@@ -296,7 +295,7 @@ fn regression_test_issue_112_test_iau_moon() {
     };
 
     assert_eq!(dcm.to, IAU_MOON);
-    assert_eq!(dcm.from, J2000);
+    assert_eq!(dcm.from, ICRS);
 
     assert!(
         (dcm.rot_mat - spice_dcm.rot_mat).norm() < 1e-5,
@@ -317,11 +316,11 @@ fn regression_test_issue_112_test_iau_jupiter() {
     let epoch = Epoch::from_str("2030-01-01 00:00:00").unwrap();
 
     let dcm = almanac
-        .rotate(JUPITER_BARYCENTER_J2000, IAU_JUPITER_FRAME, epoch)
+        .rotate(JUPITER_BARYCENTER_ICRS, IAU_JUPITER_FRAME, epoch)
         .unwrap();
 
     let spice_dcm = DCM {
-        from: J2000,
+        from: ICRS,
         to: IAU_JUPITER,
         rot_mat: Matrix3::new(
             -0.1371949263739366,
@@ -338,7 +337,7 @@ fn regression_test_issue_112_test_iau_jupiter() {
     };
 
     assert_eq!(dcm.to, IAU_JUPITER);
-    assert_eq!(dcm.from, J2000);
+    assert_eq!(dcm.from, ICRS);
 
     assert!(
         (dcm.rot_mat - spice_dcm.rot_mat).norm() < 1e-9,
@@ -366,7 +365,7 @@ fn regression_test_issue_357_test_moon_me_j2k() {
     let epoch = Epoch::from_str("2024-01-01 22:28:39").unwrap();
 
     let dcm = almanac
-        .rotate(MOON_PA_DE440_FRAME, MOON_J2000, epoch)
+        .rotate(MOON_PA_DE440_FRAME, MOON_ICRS, epoch)
         .unwrap();
 
     /*
@@ -389,7 +388,7 @@ fn regression_test_issue_357_test_moon_me_j2k() {
 
     let spice_dcm = DCM {
         from: MOON_PA_DE440,
-        to: J2000,
+        to: ICRS,
         rot_mat: Matrix3::new(
             9.78289320e-01,
             2.07027066e-01,
@@ -488,7 +487,7 @@ fn regression_test_issue_357_test_moon_me_j2k() {
 
     let spice_dcm = DCM {
         from: MOON_PA_DE440,
-        to: J2000,
+        to: ICRS,
         rot_mat: Matrix3::new(
             9.99999873e-01,
             -3.28958658e-04,
@@ -524,11 +523,11 @@ fn regression_test_issue_357_test_moon_me_j2k() {
         -0.181449,
         -1.584180,
         epoch,
-        MOON_J2000,
+        MOON_ICRS,
     );
     // Transform to Earth J2000.
     let orbit_earth_j2k = almanac
-        .transform_to(orbit_moon_j2k, EARTH_J2000, None)
+        .transform_to(orbit_moon_j2k, EARTH_ICRS, None)
         .unwrap();
     // Compute the LLA in the Moon ME frame, used for cartography.
     let orbit_moon_me = almanac
@@ -554,14 +553,14 @@ fn regression_test_issue_431_test() {
     let epoch = Epoch::from_str("2022-06-29 00:00:00 TDB").unwrap();
 
     let expected = almanac
-        .translate(EARTH_J2000, MOON_PA_DE421_FRAME, epoch, None)
+        .translate(EARTH_ICRS, MOON_PA_DE421_FRAME, epoch, None)
         .unwrap();
 
     let computed = almanac
         .translate_state_to(
             Vector3::zeros(),
             Vector3::zeros(),
-            EARTH_J2000,
+            EARTH_ICRS,
             MOON_PA_DE421_FRAME,
             epoch,
             None,
@@ -627,29 +626,31 @@ fn icrs_chain_to_itrf93_differs_from_j2000_by_bias() {
 #[cfg(feature = "validation")]
 #[test]
 fn icrs_matches_sofa_iaubp00() {
-    use anise::constants::frames::{EME2000, GCRF};
+    use anise::constants::{
+        frames::{EME2000, GCRF},
+        orientations::J2000,
+    };
     use core::str::FromStr;
 
     let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
     let epoch = Epoch::from_str("2020-06-15T12:00:00 TDB").unwrap();
 
-    // SOFA bp00 returns (rb, rp, rbp). We want rb (the bias-only matrix).
-    // At J2000.0 TT the bias matrix is time-independent.
+    // SOFA bp00 returns (rb, rp, rbp). We want rb (the bias-only matrix)
+    // which transforms vectors from GCRS to mean J2000.0 by applying
+    // frame bias. The matrix is time independent.
     let (rb, _rp, _rbp) = sofars::pnp::bp00(2451545.0, 0.0);
 
-    let dcm = almanac.rotate(EME2000, GCRF, epoch).unwrap();
+    let dcm = almanac.rotate(GCRF, EME2000, epoch).unwrap();
 
     for i in 0..3 {
         for j in 0..3 {
-            let err = (dcm.rot_mat[(i, j)] - rb[i][j]).abs();
-            assert!(
-                err < 1e-14,
-                "B[{i}][{j}]: anise={a:.18e}, sofa={s:.18e}, err={err:.3e}",
-                a = dcm.rot_mat[(i, j)],
-                s = rb[i][j],
-            );
+            assert_abs_diff_eq!(dcm.rot_mat[(i, j)], rb[i][j], epsilon = f64::EPSILON);
         }
     }
+
+    assert_eq!(dcm.rot_mat_dt, None);
+    assert_eq!(dcm.from, ICRS);
+    assert_eq!(dcm.to, J2000);
 }
 
 #[test]
@@ -777,7 +778,7 @@ fn earth_mean_of_date_mean_of_epoch() {
     // Must freeze at a different epoch than the evaluation epoch for this test
     of_epoch.frozen_epoch = Some(epoch - Unit::Day * 365.25);
     let dcm_moe = almanac.rotate(of_epoch, GCRF, epoch).unwrap();
-    // We compare the exactly rotation matrices because the DCM structure itself has a larger epsilon.
+    // We compare the exact rotation matrices because the DCM structure itself has a larger epsilon.
     assert_ne!(dcm_moe.rot_mat, dcm_mod.rot_mat);
     assert!(dcm_mod.rot_mat_dt.is_none());
     // Note that the printed rotation name in the DCM structure only looses the knowledge that this
@@ -786,7 +787,7 @@ fn earth_mean_of_date_mean_of_epoch() {
 
     // Validation test case
     let epoch = Epoch::from_gregorian_utc_hms(2026, 5, 7, 18, 0, 0);
-    let orbit = Orbit::new(7000.0, 0.0, 0.0, 0.0, 6.0, 0.0, epoch, EARTH_J2000);
+    let orbit = Orbit::new(7000.0, 0.0, 0.0, 0.0, 6.0, 0.0, epoch, EME2000);
     let orbit_xf = almanac
         .transform_to(orbit, EARTH_MOD_LEGACY_FRAME, None)
         .unwrap();
@@ -854,7 +855,7 @@ fn earth_true_of_date_true_of_epoch() {
 
     // Validation test case
     let epoch = Epoch::from_gregorian_utc_hms(2026, 5, 7, 18, 0, 0);
-    let orbit = Orbit::new(7000.0, 0.0, 0.0, 0.0, 6.0, 0.0, epoch, EARTH_J2000);
+    let orbit = Orbit::new(7000.0, 0.0, 0.0, 0.0, 6.0, 0.0, epoch, EME2000);
     let orbit_xf = almanac
         .transform_to(orbit, EARTH_TOD_LEGACY_FRAME, None)
         .unwrap();
@@ -908,7 +909,7 @@ fn earth_teme() {
 
     // Validation test case
     let epoch = Epoch::from_gregorian_utc_hms(2026, 5, 7, 18, 0, 0);
-    let orbit = Orbit::new(7000.0, 0.0, 0.0, 0.0, 6.0, 0.0, epoch, EARTH_J2000);
+    let orbit = Orbit::new(7000.0, 0.0, 0.0, 0.0, 6.0, 0.0, epoch, EME2000);
     let orbit_xf = almanac
         .transform_to(orbit, EARTH_TEME_LEGACY_FRAME, None)
         .unwrap();

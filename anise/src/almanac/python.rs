@@ -9,7 +9,7 @@
  */
 
 use super::{Almanac, planetary::PlanetaryDataError};
-use crate::constants::orientations::J2000;
+use crate::constants::orientations::ICRS;
 use crate::ephemerides::ephemeris::Ephemeris;
 use crate::errors::{AlmanacError, EphemerisSnafu};
 use crate::structure::LocationDataSet;
@@ -849,7 +849,7 @@ impl Almanac {
         from_frame: Frame,
         epoch: Epoch,
     ) -> Result<Bound<'py, PyArray1<f64>>, OrientationError> {
-        self.py_angular_velocity_rad_s(py, from_frame, from_frame.with_orient(J2000), epoch)
+        self.py_angular_velocity_rad_s(py, from_frame, from_frame.with_orient(ICRS), epoch)
     }
 
     /// Returns the angular velocity vector in deg/s of the from_frame wrt to the to_frame.
@@ -892,7 +892,7 @@ impl Almanac {
         from_frame: Frame,
         epoch: Epoch,
     ) -> Result<Bound<'py, PyArray1<f64>>, OrientationError> {
-        self.py_angular_velocity_deg_s(py, from_frame, from_frame.with_orient(J2000), epoch)
+        self.py_angular_velocity_deg_s(py, from_frame, from_frame.with_orient(ICRS), epoch)
     }
 
     /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the

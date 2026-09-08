@@ -18,7 +18,7 @@ use std::path::Path;
 
 use log::{error, info, warn};
 
-use crate::constants::orientations::J2000;
+use crate::constants::orientations::ICRS;
 use crate::math::Matrix3;
 use crate::math::rotation::{DCM, Quaternion, r1, r2, r3};
 use crate::naif::kpl::Parameter;
@@ -294,11 +294,11 @@ pub fn convert_tpc_items(
                                         PlanetaryData {
                                             object_id,
                                             parent_id: if [199, 299].contains(&object_id) {
-                                                J2000
+                                                ICRS
                                             } else if object_id > 100 {
                                                 object_id / 100
                                             } else {
-                                                J2000
+                                                ICRS
                                             },
                                             mu_km3_s2: *mu_km3_s2,
                                             shape: ellipsoid,
@@ -324,7 +324,7 @@ pub fn convert_tpc_items(
                                     object_id,
                                     mu_km3_s2: *mu_km3_s2,
                                     shape: ellipsoid,
-                                    parent_id: J2000,
+                                    parent_id: ICRS,
                                     ..Default::default()
                                 }
                             }

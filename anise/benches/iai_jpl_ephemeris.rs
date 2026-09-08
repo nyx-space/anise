@@ -1,5 +1,5 @@
 use anise::{
-    constants::frames::{EARTH_J2000, MOON_J2000},
+    constants::frames::{EARTH_ICRS, MOON_ICRS},
     file2heap,
     prelude::*,
 };
@@ -34,7 +34,7 @@ fn benchmark_anise_single_hop_type2_cheby() {
     let ctx = Almanac::from_spk(spk);
 
     black_box(
-        ctx.translate_geometric(EARTH_J2000, MOON_J2000, epoch)
+        ctx.translate_geometric(EARTH_ICRS, MOON_ICRS, epoch)
             .unwrap(),
     );
 }

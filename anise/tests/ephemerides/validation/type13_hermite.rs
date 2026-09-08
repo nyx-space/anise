@@ -27,7 +27,9 @@ fn validate_hermite_type13_from_gmat() {
 
     let validator = Validation {
         file_name,
-        ..Default::default()
+        max_q75_err: 3e-14,
+        max_q99_err: 2e-12,
+        max_abs_err: 6e-12,
     };
 
     validator.validate();

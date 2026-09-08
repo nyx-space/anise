@@ -366,7 +366,7 @@ mod ut_spk1 {
         let almanac = Almanac::default().load("../data/mro.bsp").unwrap();
 
         let state = almanac
-            .translate_to_parent(Frame::from_ephem_j2000(-74), epoch)
+            .translate_to_parent(Frame::from_ephem_icrs(-74), epoch)
             .unwrap();
 
         let expct_radius_km = Vector3::new(

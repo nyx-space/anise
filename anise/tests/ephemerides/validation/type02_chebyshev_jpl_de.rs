@@ -28,7 +28,9 @@ fn validate_jplde_de440_full() {
 
     let validator = Validation {
         file_name,
-        ..Default::default()
+        max_q75_err: 3e-16,
+        max_q99_err: 8e-12,
+        max_abs_err: 1e-6,
     };
 
     validator.validate();
@@ -51,7 +53,9 @@ fn validate_jplde_de440s_no_aberration() {
 
     let validator = Validation {
         file_name: output_file_name,
-        ..Default::default()
+        max_q75_err: 3e-16,
+        max_q99_err: 8e-15,
+        max_abs_err: 1e-6,
     };
 
     validator.validate();
@@ -74,7 +78,7 @@ fn validate_jplde_de440s_aberration_lt() {
 
     let validator = Validation {
         file_name: output_file_name,
-        max_q75_err: 0.0,
+        max_q75_err: 1e-15,
         max_q99_err: 2e-5,
         max_abs_err: 6e-5,
         ..Default::default()

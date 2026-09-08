@@ -546,7 +546,7 @@ impl IntoIterator for Ephemeris {
 mod ut_oem {
     use super::{Almanac, DataType, Ephemeris, EphemerisRecord, LocalFrame};
     use crate::analysis::prelude::OrbitalElement;
-    use crate::constants::frames::EARTH_J2000;
+    use crate::constants::frames::EARTH_ICRS;
     use crate::prelude::{NAIFSummaryRecord, Orbit};
     use hifitime::{Epoch, TimeSeries, Unit};
     use nalgebra::{Matrix6, SymmetricEigen, Vector6};
@@ -1055,7 +1055,7 @@ mod ut_oem {
         let orbit = Orbit::from_cartesian_pos_vel(
             Vector6::new(7000.0, 0.0, 0.0, 0.0, 7.5, 0.0),
             epoch,
-            EARTH_J2000,
+            EARTH_ICRS,
         );
         let mut state_data = BTreeMap::new();
         state_data.insert(epoch, EphemerisRecord { orbit, covar: None });

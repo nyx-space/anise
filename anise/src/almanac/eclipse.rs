@@ -12,7 +12,7 @@ use hifitime::{Duration, Unit};
 
 use crate::{
     astro::{Aberration, Occultation},
-    constants::{frames::SUN_J2000, orientations::J2000},
+    constants::{frames::SUN_ICRS, orientations::ICRS},
     ephemerides::EphemerisPhysicsSnafu,
     errors::{AlmanacError, EphemerisSnafu, OrientationSnafu},
     frames::Frame,
@@ -167,17 +167,17 @@ impl Almanac {
 
         // Ensure that the observer is in the J2000 frame.
         observer = self
-            .rotate_to(observer, observer.frame.with_orient(J2000))
+            .rotate_to(observer, observer.frame.with_orient(ICRS))
             .context(OrientationSnafu {
                 action: "computing eclipse state",
             })?;
         let r_eb = self
-            .transform_to(observer, front_frame.with_orient(J2000), ab_corr)?
+            .transform_to(observer, front_frame.with_orient(ICRS), ab_corr)?
             .radius_km;
 
         // Get the radius vector of the back object to the spacecraft
         let r_ls = -self
-            .transform_to(observer, back_frame.with_orient(J2000), ab_corr)?
+            .transform_to(observer, back_frame.with_orient(ICRS), ab_corr)?
             .radius_km;
 
         // Compute the apparent radii of the back object and front object (preventing any NaN)
@@ -230,7 +230,7 @@ impl Almanac {
         observer: Orbit,
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<Occultation> {
-        self.occultation(SUN_J2000, eclipsing_frame, observer, ab_corr)
+        self.occultation(SUN_ICRS, eclipsing_frame, observer, ab_corr)
     }
 
     /// Computes the Beta angle (β) for a given orbital state, in degrees. A Beta angle of 0° indicates that the orbit plane is edge-on to the Sun, leading to maximum eclipse time. Conversely, a Beta angle of +90° or -90° means the orbit plane is face-on to the Sun, resulting in continuous sunlight exposure and no eclipses.
@@ -287,7 +287,7 @@ impl Almanac {
     /// :type ab_corr: Aberration, optional
     /// :rtype: Duration
     pub fn ltan(&self, orbit: Orbit, ab_corr: Option<Aberration>) -> AlmanacResult<Duration> {
-        let sun_state = self.transform(SUN_J2000, orbit.frame, orbit.epoch, ab_corr)?;
+        let sun_state = self.transform(SUN_ICRS, orbit.frame, orbit.epoch, ab_corr)?;
         let ra_sun_deg = sun_state.right_ascension_deg();
         let raan_orbit_deg = orbit.raan_deg().map_err(|e| AlmanacError::GenericError {
             err: format!("{e}"),
@@ -372,7 +372,7 @@ fn circ_seg_area(r: f64, d: f64) -> f64 {
 
 #[cfg(test)]
 mod ut_los {
-    use crate::constants::frames::{EARTH_J2000, MOON_J2000};
+    use crate::constants::frames::{EARTH_ICRS, MOON_ICRS};
 
     use super::*;
     use crate::math::Vector3;
@@ -404,8 +404,8 @@ mod ut_los {
 
     #[rstest]
     fn los_edge_case(almanac: Almanac) {
-        let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
-        let luna = almanac.frame_info(MOON_J2000).unwrap();
+        let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
+        let luna = almanac.frame_info(MOON_ICRS).unwrap();
 
         let dt1 = Epoch::from_gregorian_tai_hms(2020, 1, 1, 6, 7, 40);
         let dt2 = Epoch::from_gregorian_tai_hms(2020, 1, 1, 6, 7, 50);
@@ -502,7 +502,7 @@ mod ut_los {
 
     #[rstest]
     fn los_earth_eclipse(almanac: Almanac) {
-        let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+        let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
 
         let dt = Epoch::from_gregorian_tai_at_midnight(2020, 1, 1);
 

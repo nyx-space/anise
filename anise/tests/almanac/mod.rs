@@ -1,6 +1,6 @@
 // Start by creating the ANISE planetary data
 use anise::{
-    constants::frames::{EARTH_ITRF93, EARTH_J2000, SUN_J2000},
+    constants::frames::{EARTH_ICRS, EARTH_ITRF93, SUN_ICRS},
     naif::kpl::parser::convert_tpc,
     prelude::{Aberration, Almanac, BPC, Orbit, SPK},
 };
@@ -80,7 +80,7 @@ fn test_state_transformation() {
         .unwrap();
     // Let's build an orbit
     // Start by grabbing a copy of the frame.
-    let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+    let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
     // Define an epoch
     let epoch = Epoch::from_str("2021-10-29 12:34:56 TDB").unwrap();
 
@@ -106,7 +106,7 @@ fn test_state_transformation() {
     // Convert back.
     // Note that the Aberration correction constants are actually options!
     let from_state_itrf93_to_eme2k = almanac
-        .transform_to(state_itrf93, EARTH_J2000, None)
+        .transform_to(state_itrf93, EARTH_ICRS, None)
         .unwrap();
 
     println!("{from_state_itrf93_to_eme2k}");
@@ -126,14 +126,14 @@ fn test_type3_state_transformation() {
 
     let epoch = Epoch::from_str("2021-10-29 12:34:56 TDB").unwrap();
 
-    let to_parent = almanac.translate_to_parent(EARTH_J2000, epoch).unwrap();
+    let to_parent = almanac.translate_to_parent(EARTH_ICRS, epoch).unwrap();
 
     println!("{to_parent}");
 
     // Ensure that we can query the type 3 chebyshev DE440 file
 
     let state = almanac
-        .translate(EARTH_J2000, SUN_J2000, epoch, None)
+        .translate(EARTH_ICRS, SUN_ICRS, epoch, None)
         .expect("type 3 chebyshev could not be queried");
 
     println!("{state:x}");
