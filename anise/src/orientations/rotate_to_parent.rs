@@ -46,18 +46,18 @@ impl Almanac {
             epoch = frozen_epoch;
         }
 
-        if source.orient_origin_id_match(J2000) {
-            // The parent of Earth ecliptic J2000 is the J2000 inertial frame.
-            return Ok(DCM::identity(J2000, J2000));
+        if source.orient_origin_id_match(ICRS) {
+            // The parent of the ICRS inertial frame is itself.
+            return Ok(DCM::identity(ICRS, ICRS));
         } else if source.orient_origin_id_match(ECLIPJ2000) {
-            // The parent of Earth ecliptic J2000 is the J2000 inertial frame.
+            // The parent of Earth ecliptic J2000 is the ICRS inertial frame.
             return Ok(DCM {
                 rot_mat: r1(J2000_TO_ECLIPJ2000_ANGLE_RAD),
                 rot_mat_dt: None,
-                from: J2000,
+                from: ICRS,
                 to: ECLIPJ2000,
             });
-        } else if source.orient_origin_id_match(ICRS) {
+        } else if source.orient_origin_id_match(J2000) {
             // SOFA iauBi00 / iauBp00 frame bias matrix.
             // Reference: IERS Conventions 2010 (TN36) eq. 5.18,
             // USNO Circular 179 eq. 3.4, SOFA iauBp00.c.
@@ -73,8 +73,8 @@ impl Almanac {
             return Ok(DCM {
                 rot_mat,
                 rot_mat_dt: None,
-                from: J2000,
-                to: ICRS,
+                from: ICRS,
+                to: J2000,
             });
         } else if let Ok(dyn_frame) = DynamicFrame::try_from(source.orientation_id as u32) {
             // Dynamic frames are dispatched differently.

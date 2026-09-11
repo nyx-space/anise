@@ -623,7 +623,7 @@ mod cartesian_state_ut {
     use der::{Decode, Encode};
     use hifitime::{Duration, Epoch, TimeUnits};
 
-    use crate::constants::frames::{EARTH_J2000, VENUS_J2000};
+    use crate::constants::frames::{EARTH_ICRS, VENUS_ICRS};
     use crate::errors::PhysicsError;
     use crate::math::Vector6;
 
@@ -632,7 +632,7 @@ mod cartesian_state_ut {
     #[test]
     fn test_der_encoding() {
         let e = Epoch::now().unwrap();
-        let frame = EARTH_J2000.with_mu_km3_s2(398600.4418);
+        let frame = EARTH_ICRS.with_mu_km3_s2(398600.4418);
         let state = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
 
         let mut buf = vec![];
@@ -648,7 +648,7 @@ mod cartesian_state_ut {
     fn add_wrong_epoch() {
         let e = Epoch::now().unwrap();
         let e2 = e + 1.seconds();
-        let frame = EARTH_J2000;
+        let frame = EARTH_ICRS;
         let s1 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
         let s2 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e2, frame);
 
@@ -665,8 +665,8 @@ mod cartesian_state_ut {
     #[test]
     fn add_wrong_frame() {
         let e = Epoch::now().unwrap();
-        let frame = EARTH_J2000;
-        let frame2 = VENUS_J2000;
+        let frame = EARTH_ICRS;
+        let frame2 = VENUS_ICRS;
         let s1 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
         let s2 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame2);
 
@@ -683,7 +683,7 @@ mod cartesian_state_ut {
     #[test]
     fn add_nominal() {
         let e = Epoch::now().unwrap();
-        let frame = EARTH_J2000;
+        let frame = EARTH_ICRS;
         let s1 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
         let s2 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
         let s3 = CartesianState::new(20.0, 40.0, 60.0, 2.0, 4.0, 4.0, e, frame);
@@ -693,13 +693,13 @@ mod cartesian_state_ut {
         assert_eq!(
             format!("{s1}"),
             format!(
-                "[Earth J2000] {e}\tposition = [10.000000, 20.000000, 30.000000] km\tvelocity = [1.000000, 2.000000, 2.000000] km/s"
+                "[Earth ICRS] {e}\tposition = [10.000000, 20.000000, 30.000000] km\tvelocity = [1.000000, 2.000000, 2.000000] km/s"
             )
         );
         assert_eq!(
             format!("{s1:e}"),
             format!(
-                "[Earth J2000] {e}\tposition = [1.000000e1, 2.000000e1, 3.000000e1] km\tvelocity = [1.000000e0, 2.000000e0, 2.000000e0] km/s"
+                "[Earth ICRS] {e}\tposition = [1.000000e1, 2.000000e1, 3.000000e1] km\tvelocity = [1.000000e0, 2.000000e0, 2.000000e0] km/s"
             )
         );
     }
@@ -707,7 +707,7 @@ mod cartesian_state_ut {
     #[test]
     fn distance() {
         let e = Epoch::now().unwrap();
-        let frame = EARTH_J2000;
+        let frame = EARTH_ICRS;
         let s1 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
         let s2 = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
 
@@ -725,7 +725,7 @@ mod cartesian_state_ut {
     #[test]
     fn zeros() {
         let e = Epoch::now().unwrap();
-        let frame = EARTH_J2000;
+        let frame = EARTH_ICRS;
         let s = CartesianState::zero(frame);
 
         // We cannot call the orbital momentum magnitude if the radius is zero.
@@ -740,7 +740,7 @@ mod cartesian_state_ut {
     #[test]
     fn test_serde() {
         let e = Epoch::now().unwrap();
-        let frame = EARTH_J2000;
+        let frame = EARTH_ICRS;
         let state = CartesianState::new(10.0, 20.0, 30.0, 1.0, 2.0, 2.0, e, frame);
 
         let serialized = serde_yml::to_string(&state).unwrap();

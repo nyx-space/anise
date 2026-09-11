@@ -148,7 +148,7 @@ impl Almanac {
         to_frame: Frame,
         epoch_et_s: f64,
     ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH], NaifId), EphemerisError> {
-        if from_frame == to_frame {
+        if from_frame.ephemeris_id == to_frame.ephemeris_id {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
             return Ok((0, [None; MAX_TREE_DEPTH], from_frame.ephemeris_id));
         }
@@ -279,7 +279,7 @@ mod path_depth_ut {
         let spk = SPK::parse(&bytes[..]).unwrap();
         let almanac = Almanac::from_spk(spk);
 
-        let source = Frame::from_ephem_j2000(10);
+        let source = Frame::from_ephem_icrs(10);
         let epoch = Epoch::from_et_seconds(0.0);
 
         let result = almanac.ephemeris_path_to_root(source, epoch.to_et_seconds());
@@ -334,8 +334,8 @@ mod path_depth_ut {
         let spk = SPK::parse(&bytes[..]).unwrap();
         let almanac = Almanac::from_spk(spk);
 
-        let from = Frame::from_ephem_j2000(5);
-        let to = Frame::from_ephem_j2000(8);
+        let from = Frame::from_ephem_icrs(5);
+        let to = Frame::from_ephem_icrs(8);
         let epoch = Epoch::from_et_seconds(0.0);
 
         // The accumulated `items` counter runs past the fixed common-path buffer before the

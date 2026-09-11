@@ -1,4 +1,4 @@
-use anise::{constants::frames::EARTH_J2000, file2heap, prelude::*};
+use anise::{constants::frames::EARTH_ICRS, file2heap, prelude::*};
 use iai_callgrind::{library_benchmark, library_benchmark_group, main};
 use std::hint::black_box;
 
@@ -35,10 +35,10 @@ fn benchmark_anise_single_hop_type13_hermite() {
 
     let ctx = Almanac::from_spk(spk).with_spk(spacecraft);
 
-    let my_sc_j2k = Frame::from_ephem_j2000(-85);
+    let my_sc_j2k = Frame::from_ephem_icrs(-85);
 
     black_box(
-        ctx.translate_geometric(my_sc_j2k, EARTH_J2000, epoch)
+        ctx.translate_geometric(my_sc_j2k, EARTH_ICRS, epoch)
             .unwrap(),
     );
 }

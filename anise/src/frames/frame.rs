@@ -24,7 +24,7 @@ use crate::astro::PhysicsResult;
 use crate::constants::celestial_objects::{
     SOLAR_SYSTEM_BARYCENTER, celestial_name_from_id, id_from_celestial_name,
 };
-use crate::constants::orientations::{J2000, id_from_orientation_name, orientation_name_from_id};
+use crate::constants::orientations::{ICRS, id_from_orientation_name, orientation_name_from_id};
 use crate::errors::{AlmanacError, EphemerisSnafu, OrientationSnafu, PhysicsError};
 use crate::frames::DynamicFrame;
 #[cfg(feature = "python")]
@@ -79,8 +79,8 @@ impl Frame {
         }
     }
 
-    pub const fn from_ephem_j2000(ephemeris_id: NaifId) -> Self {
-        Self::new(ephemeris_id, J2000)
+    pub const fn from_ephem_icrs(ephemeris_id: NaifId) -> Self {
+        Self::new(ephemeris_id, ICRS)
     }
 
     pub const fn from_orient_ssb(orientation_id: NaifId) -> Self {
@@ -118,7 +118,7 @@ impl Frame {
         self
     }
 
-    /// Returns a copy of this frame with the graviational parameter and the shape information from this frame.
+    /// Returns a copy of this frame with the gravitational parameter and the shape information from this frame.
     /// Use this to prevent astrodynamical computations.
     ///
     /// :rtype: None
@@ -665,7 +665,8 @@ mod frame_ut {
     use hifitime::Epoch;
 
     use super::Frame;
-    use crate::constants::frames::EME2000;
+    use crate::constants::frames::{EME2000, GCRF};
+    use crate::constants::orientations::ICRS;
 
     #[test]
     fn format_frame() {
@@ -678,24 +679,30 @@ mod frame_ut {
     #[cfg(feature = "metaload")]
     #[test]
     fn dhall_serde() {
-        let serialized = serde_dhall::serialize(&EME2000)
-            .static_type_annotation()
-            .to_string()
-            .unwrap();
-        assert_eq!(
-            serialized,
-            "{ ephemeris_id = +399, force_inertial = False, frozen_epoch = None Text, mu_km3_s2 = None Double, orientation_id = +1, shape = None { polar_radius_km : Double, semi_major_equatorial_radius_km : Double, semi_minor_equatorial_radius_km : Double } }"
-        );
-        assert_eq!(
-            serde_dhall::from_str(&serialized).parse::<Frame>().unwrap(),
-            EME2000
-        );
+        let frames = [GCRF, EME2000];
+        let ids = [1, 22];
+        for i in 0..2 {
+            let serialized = serde_dhall::serialize(&frames[i])
+                .static_type_annotation()
+                .to_string()
+                .unwrap();
+            assert_eq!(
+                serialized,
+                format!(
+                    "{{ ephemeris_id = +399, force_inertial = False, frozen_epoch = None Text, mu_km3_s2 = None Double, orientation_id = +{}, shape = None {{ polar_radius_km : Double, semi_major_equatorial_radius_km : Double, semi_minor_equatorial_radius_km : Double }} }}",
+                    ids[i]
+                )
+            );
+            assert_eq!(
+                serde_dhall::from_str(&serialized).parse::<Frame>().unwrap(),
+                frames[i],
+            );
+        }
     }
 
     #[test]
     fn ccsds_name_to_frame() {
         use crate::constants::celestial_objects::EARTH;
-        use crate::constants::orientations::ICRS;
         // "ICRF" now correctly resolves to bias-corrected GCRF (EARTH + ICRS),
         // not EARTH_J2000. See #686.
         assert_eq!(
@@ -713,5 +720,31 @@ mod frame_ut {
             Epoch::from_et_seconds(0.0)
         );
         assert_eq!(format!("{MARS_INERTIAL_FRAME}"), "Mars inertial @ J2000");
+    }
+
+    #[test]
+    fn orientation_id_from_frame_id() {
+        use crate::constants::frames::{
+            EARTH_ICRS, EARTH_J2000, EARTH_MOON_BARYCENTER_ICRS, EARTH_MOON_BARYCENTER_J2000, GCRF,
+            ICRF, SSB_ICRS, SSB_J2000,
+        };
+        use crate::constants::orientations::{ICRS, J2000};
+
+        assert_eq!(ICRF.orient_origin_id_match(ICRS), true);
+        assert_eq!(SSB_ICRS.orient_origin_id_match(ICRS), true);
+        assert_eq!(SSB_J2000.orient_origin_id_match(J2000), true);
+
+        assert_eq!(GCRF.orient_origin_id_match(ICRS), true);
+        assert_eq!(EARTH_ICRS.orient_origin_id_match(ICRS), true);
+        assert_eq!(EARTH_J2000.orient_origin_id_match(J2000), true);
+
+        assert_eq!(
+            EARTH_MOON_BARYCENTER_ICRS.orient_origin_id_match(ICRS),
+            true
+        );
+        assert_eq!(
+            EARTH_MOON_BARYCENTER_J2000.orient_origin_id_match(J2000),
+            true
+        );
     }
 }

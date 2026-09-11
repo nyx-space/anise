@@ -13,7 +13,7 @@ use snafu::ResultExt;
 use super::OrientationError;
 use super::OrientationPhysicsSnafu;
 use crate::almanac::Almanac;
-use crate::constants::orientations::J2000;
+use crate::constants::orientations::ICRS;
 use crate::hifitime::Epoch;
 use crate::math::Vector3;
 use crate::math::cartesian::CartesianState;
@@ -77,7 +77,7 @@ impl Almanac {
         // Traverse the orientation tree from both the `from` and `to` frames up to the common ancestor.
         for cur_node_id in path.iter().take(node_count) {
             let next_parent = cur_node_id.expect("path entry within node_count must be Some");
-            if next_parent == J2000 {
+            if next_parent == ICRS {
                 // The parent rotation of J2000 is itself, so we can skip this.
                 continue;
             }
@@ -165,7 +165,7 @@ impl Almanac {
         from_frame: Frame,
         epoch: Epoch,
     ) -> Result<Vector3, OrientationError> {
-        self.angular_velocity_rad_s(from_frame, from_frame.with_orient(J2000), epoch)
+        self.angular_velocity_rad_s(from_frame, from_frame.with_orient(ICRS), epoch)
     }
 
     /// Returns the angular velocity vector in deg/s of the from_frame wrt to the to_frame.
@@ -196,7 +196,7 @@ impl Almanac {
         from_frame: Frame,
         epoch: Epoch,
     ) -> Result<Vector3, OrientationError> {
-        self.angular_velocity_deg_s(from_frame, from_frame.with_orient(J2000), epoch)
+        self.angular_velocity_deg_s(from_frame, from_frame.with_orient(ICRS), epoch)
     }
 
     /// Rotates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame

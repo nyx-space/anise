@@ -130,8 +130,9 @@ pub mod celestial_objects {
 pub mod orientations {
     use crate::{NaifId, orientations::OrientationError};
 
-    /// Earth mean equator, dynamical equinox of J2000. The root reference frame for SPICE.
-    pub const J2000: NaifId = 1;
+    /// ICRS orientation axes (International Celestial Reference System).
+    /// The root reference frame for SPICE, where it is called J2000.
+    pub const ICRS: NaifId = 1;
     /// Earth mean equator, dynamical equinox of B1950.
     /// The B1950 reference frame is obtained by precessing the J2000 frame backwards from Julian year 2000 to Besselian year 1950, using the 1976 IAU precession model.
     /// The rotation from B1950 to J2000 is
@@ -233,13 +234,13 @@ pub mod orientations {
     /// The DE-403 frame is treated as equivalent to the J2000 frame.
     pub const DE143: NaifId = 21;
 
-    /// ICRS orientation axes (International Celestial Reference System).
+    /// Earth mean equator, dynamical equinox of J2000 (EME2000).
     ///
-    /// Related to J2000 (EME2000) by the IERS 2006 frame bias of ~23 mas
+    /// Related to ICRS by the IERS 2000 frame bias of ~23 mas
     /// (~0.7 m at Earth's surface). ID 22 is the next sequential ID after
     /// the SPICE built-in inertial frames (1-21); SPICE itself does not
-    /// define a separate ICRS orientation.
-    pub const ICRS: NaifId = 22;
+    /// define a separate J2000 orientation.
+    pub const J2000: NaifId = 22;
 
     /// SOFA `iauBi00` longitude bias, arcseconds.
     /// Source: Chapront et al. (2002); IERS Conventions 2010 Ch. 5.
@@ -314,7 +315,7 @@ pub mod orientations {
     /// Source: <https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/frames.html#Appendix.%20%60%60Built%20in''%20Inertial%20Reference%20Frames>
     pub const fn orientation_name_from_id(id: NaifId) -> Option<&'static str> {
         match id {
-            J2000 => Some("J2000"),
+            ICRS => Some("ICRS"),
             B1950 => Some("B1950"),
             FK4 => Some("FK4"),
             GALACTIC => Some("Galactic"),
@@ -327,7 +328,7 @@ pub mod orientations {
             IAU_MOON => Some("IAU_MOON"),
             MOON_ME => Some("MOON_ME"),
             MOON_PA => Some("MOON_PA"),
-            ICRS => Some("ICRS"),
+            J2000 => Some("J2000"),
             ITRF93 => Some("ITRF93"),
             IAU_MARS => Some("IAU_MARS"),
             IAU_JUPITER => Some("IAU_JUPITER"),
@@ -349,8 +350,8 @@ pub mod orientations {
     /// Converts the provided ID to its human name. Only works for the common celestial bodies. Should be compatible with CCSDS OEM names
     pub fn id_from_orientation_name(name: &str) -> Result<NaifId, OrientationError> {
         match name {
-            "J2000" | "EME2000" => Ok(J2000),
             "ICRS" | "GCRF" | "ICRF" => Ok(ICRS),
+            "J2000" | "EME2000" => Ok(J2000),
             "B1950" => Ok(B1950),
             "FK4" => Ok(FK4),
             "Galactic" => Ok(GALACTIC),
@@ -383,12 +384,32 @@ pub mod frames {
 
     use super::{celestial_objects::*, orientations::*};
 
+    /// Reference frames aligned with ICRS axes
+    pub const SSB_ICRS: Frame = Frame::new(SOLAR_SYSTEM_BARYCENTER, ICRS);
+    pub const MERCURY_ICRS: Frame = Frame::new(MERCURY_BARYCENTER, ICRS);
+    pub const VENUS_ICRS: Frame = Frame::new(VENUS_BARYCENTER, ICRS);
+    pub const EARTH_MOON_BARYCENTER_ICRS: Frame = Frame::new(EARTH_MOON_BARYCENTER, ICRS);
+    pub const MARS_BARYCENTER_ICRS: Frame = Frame::new(MARS_BARYCENTER, ICRS);
+    pub const JUPITER_BARYCENTER_ICRS: Frame = Frame::new(JUPITER_BARYCENTER, ICRS);
+    pub const SATURN_BARYCENTER_ICRS: Frame = Frame::new(SATURN_BARYCENTER, ICRS);
+    pub const URANUS_BARYCENTER_ICRS: Frame = Frame::new(URANUS_BARYCENTER, ICRS);
+    pub const NEPTUNE_BARYCENTER_ICRS: Frame = Frame::new(NEPTUNE_BARYCENTER, ICRS);
+    pub const PLUTO_BARYCENTER_ICRS: Frame = Frame::new(PLUTO_BARYCENTER, ICRS);
+    pub const SUN_ICRS: Frame = Frame::new(SUN, ICRS);
+    pub const MOON_ICRS: Frame = Frame::new(MOON, ICRS);
+    pub const EARTH_ICRS: Frame = Frame::new(EARTH, ICRS);
+    /// The Mars frame is not available in the standard DE files, and requires a Mars specific BSP.
+    pub const MARS_ICRS: Frame = Frame::new(MARS, ICRS);
+    /// International Celestial Reference Frame (SSB-centered, ICRS axes).
+    pub const ICRF: Frame = Frame::new(SOLAR_SYSTEM_BARYCENTER, ICRS);
+    /// Geocentric Celestial Reference Frame (Earth-centered, ICRS axes).
+    pub const GCRF: Frame = Frame::new(EARTH, ICRS);
+
+    /// Reference frames aligned with J2000 axes
     pub const SSB_J2000: Frame = Frame::new(SOLAR_SYSTEM_BARYCENTER, J2000);
     pub const MERCURY_J2000: Frame = Frame::new(MERCURY_BARYCENTER, J2000);
     pub const VENUS_J2000: Frame = Frame::new(VENUS_BARYCENTER, J2000);
     pub const EARTH_MOON_BARYCENTER_J2000: Frame = Frame::new(EARTH_MOON_BARYCENTER, J2000);
-    /// The Mars frame is not available in the standard DE files, and requires a Mars specific BSP.
-    pub const MARS_J2000: Frame = Frame::new(MARS, J2000);
     pub const MARS_BARYCENTER_J2000: Frame = Frame::new(MARS_BARYCENTER, J2000);
     pub const JUPITER_BARYCENTER_J2000: Frame = Frame::new(JUPITER_BARYCENTER, J2000);
     pub const SATURN_BARYCENTER_J2000: Frame = Frame::new(SATURN_BARYCENTER, J2000);
@@ -398,12 +419,12 @@ pub mod frames {
     pub const SUN_J2000: Frame = Frame::new(SUN, J2000);
     pub const MOON_J2000: Frame = Frame::new(MOON, J2000);
     pub const EARTH_J2000: Frame = Frame::new(EARTH, J2000);
+    /// The Mars frame is not available in the standard DE files, and requires a Mars specific BSP.
+    pub const MARS_J2000: Frame = Frame::new(MARS, J2000);
+    /// Earth Mean Equator and Mean Equinox of the J2000 epoch
     pub const EME2000: Frame = Frame::new(EARTH, J2000);
+
     pub const EARTH_ECLIPJ2000: Frame = Frame::new(EARTH, ECLIPJ2000);
-    /// Geocentric Celestial Reference Frame (Earth-centered, ICRS axes).
-    pub const GCRF: Frame = Frame::new(EARTH, ICRS);
-    /// International Celestial Reference Frame (SSB-centered, ICRS axes).
-    pub const ICRF: Frame = Frame::new(SOLAR_SYSTEM_BARYCENTER, ICRS);
 
     /// Body fixed IAU rotation
     pub const IAU_MERCURY_FRAME: Frame = Frame::new(MERCURY, IAU_MERCURY);
@@ -577,13 +598,14 @@ pub mod usual_planetary_constants {
 #[cfg(test)]
 mod constants_ut {
     use crate::constants::orientations::{
-        B1950, ECLIPB1950, ECLIPJ2000, FK4, J2000, MARSIAU, orientation_name_from_id,
+        B1950, ECLIPB1950, ECLIPJ2000, FK4, ICRS, J2000, MARSIAU, orientation_name_from_id,
     };
 
     use crate::constants::celestial_objects::*;
 
     #[test]
     fn orient_name_from_id() {
+        assert_eq!(orientation_name_from_id(ICRS).unwrap(), "ICRS");
         assert_eq!(orientation_name_from_id(J2000).unwrap(), "J2000");
         assert_eq!(orientation_name_from_id(B1950).unwrap(), "B1950");
         assert_eq!(orientation_name_from_id(ECLIPB1950).unwrap(), "ECLIPB1950");
@@ -637,11 +659,7 @@ mod constants_ut {
 
     #[test]
     fn icrs_orientation_name_round_trip() {
-        use crate::constants::orientations::{
-            ICRS, J2000, id_from_orientation_name, orientation_name_from_id,
-        };
-
-        assert_eq!(orientation_name_from_id(ICRS).unwrap(), "ICRS");
+        use crate::constants::orientations::{ICRS, J2000, id_from_orientation_name};
 
         assert_eq!(id_from_orientation_name("ICRS").unwrap(), ICRS);
         assert_eq!(id_from_orientation_name("GCRF").unwrap(), ICRS);

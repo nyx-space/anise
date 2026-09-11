@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use anise::constants::frames::VENUS_J2000;
+use anise::constants::frames::VENUS_ICRS;
 use anise::file2heap;
 use anise::math::Vector3;
 use anise::prelude::*;
@@ -57,7 +57,7 @@ fn de440s_parent_translation_verif() {
     ['9.5205530594596043e+07', '-4.6160758818180226e+07', '-2.6779476581501361e+07', '1.6612048969243794e+01', '2.8272067093941200e+01', '1.1668575714409423e+01']
     */
 
-    let state = ctx.translate_to_parent(VENUS_J2000, epoch).unwrap();
+    let state = ctx.translate_to_parent(VENUS_ICRS, epoch).unwrap();
 
     let pos_km = state.radius_km;
     let vel_km_s = state.velocity_km_s;

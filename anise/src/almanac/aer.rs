@@ -45,6 +45,28 @@ impl Almanac {
         })
     }
 
+    /// Returns a list of all location IDs present in the loaded location datasets, searching in reverse order of datasets loaded.
+    pub fn location_ids(&self) -> Vec<i32> {
+        let mut ids = Vec::new();
+        for data in self.location_data.values().rev() {
+            for id in data.lut.by_id.keys() {
+                ids.push(*id);
+            }
+        }
+        ids
+    }
+
+    /// Returns a list of all location names present in the loaded location datasets, searching in reverse order of datasets loaded.
+    pub fn location_names(&self) -> Vec<String> {
+        let mut names = Vec::new();
+        for data in self.location_data.values().rev() {
+            for name in data.lut.by_name.keys() {
+                names.push(name.clone());
+            }
+        }
+        names
+    }
+
     /// Returns the Location from its name, searching through all loaded location datasets in reverse order.
     pub fn location_from_name(&self, name: &str) -> AlmanacResult<Location> {
         for data in self.location_data.values().rev() {
@@ -245,14 +267,14 @@ impl Almanac {
 
 #[cfg(test)]
 mod ut_aer {
+    use approx::assert_abs_diff_eq;
     use core::str::FromStr;
-    use std::path::Path;
-
     use hifitime::Unit;
+    use std::path::Path;
 
     use crate::astro::AzElRange;
     use crate::astro::orbit::Orbit;
-    use crate::constants::frames::{EARTH_ITRF93, EARTH_J2000, IAU_EARTH_FRAME};
+    use crate::constants::frames::{EARTH_ICRS, EARTH_ITRF93, IAU_EARTH_FRAME};
     use crate::math::cartesian::CartesianState;
     use crate::prelude::{Almanac, Epoch};
     use crate::structure::LocationDataSet;
@@ -292,7 +314,7 @@ mod ut_aer {
         let orbit_iau = Orbit::try_latlongalt(0.0, 0.0, 35_786.00, epoch, iau_earth).unwrap();
 
         println!("{orbit_iau:x}");
-        let orbit = almanac.transform_to(orbit_iau, EARTH_J2000, None).unwrap();
+        let orbit = almanac.transform_to(orbit_iau, EARTH_ICRS, None).unwrap();
 
         println!("{orbit:x}");
         assert!(orbit.sma_km().unwrap() >= 0.0);
@@ -317,7 +339,7 @@ mod ut_aer {
             .unwrap();
 
         let iau_earth = almanac.frame_info(IAU_EARTH_FRAME).unwrap();
-        let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+        let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
 
         // Now iterate the trajectory to generate the measurements.
         let gmat_ranges_km = [
@@ -466,7 +488,32 @@ mod ut_aer {
             // Let's confirm that the data is not garbage compared to GMAT...
             assert!((aer.range_km - expect).abs() < 5.0);
             // ... and assert a regression check too
-            assert_eq!(aer, regression_data[sno], "{sno} differ");
+            assert_eq!(aer.epoch, regression_data[sno].epoch, "{sno} differ");
+            assert_abs_diff_eq!(
+                aer.azimuth_deg,
+                regression_data[sno].azimuth_deg,
+                epsilon = 1e-14
+            );
+            assert_abs_diff_eq!(
+                aer.elevation_deg,
+                regression_data[sno].elevation_deg,
+                epsilon = 1e-14
+            );
+            assert_abs_diff_eq!(aer.range_km, regression_data[sno].range_km, epsilon = 1e-14);
+            assert_abs_diff_eq!(
+                aer.range_rate_km_s,
+                regression_data[sno].range_rate_km_s,
+                epsilon = 1e-14
+            );
+            assert_eq!(aer.mask_deg, regression_data[sno].mask_deg, "{sno} differ");
+            assert_eq!(
+                aer.obstructed_by, regression_data[sno].obstructed_by,
+                "{sno} differ"
+            );
+            assert_eq!(
+                aer.light_time, regression_data[sno].light_time,
+                "{sno} differ"
+            );
         }
 
         // Ensure that if the state are in another frame, the results are (nearly) identical.
@@ -533,6 +580,38 @@ mod ut_aer {
     /// [anise/src/almanac/aer.rs:583:21] aer.range_km - expect = -2.6448764982487774
     /// [anise/src/almanac/aer.rs:583:21] aer.range_km - expect = -3.600219391970313
     /// [anise/src/almanac/aer.rs:583:21] aer.range_km - expect = -4.453339810104808
+    #[test]
+    fn test_location_ids_and_names() {
+        let loc1 = Location {
+            latitude_deg: 10.0,
+            longitude_deg: 20.0,
+            height_km: 0.1,
+            frame: EARTH_ITRF93.into(),
+            terrain_mask: vec![],
+            terrain_mask_ignored: true,
+        };
+        let loc2 = Location {
+            latitude_deg: 30.0,
+            longitude_deg: 40.0,
+            height_km: 0.2,
+            frame: EARTH_ITRF93.into(),
+            terrain_mask: vec![],
+            terrain_mask_ignored: true,
+        };
+
+        let mut dataset = LocationDataSet::default();
+        dataset.push(loc1, Some(100), Some("Loc1")).unwrap();
+        dataset.push(loc2, Some(200), Some("Loc2")).unwrap();
+
+        let almanac = Almanac::default().with_location_data(dataset);
+
+        assert_eq!(almanac.location_ids(), vec![100, 200]);
+        assert_eq!(
+            almanac.location_names(),
+            vec!["Loc1".to_string(), "Loc2".to_string()]
+        );
+    }
+
     #[cfg(feature = "metaload")]
     #[test]
     fn gmat_verif_location() {
@@ -578,7 +657,7 @@ mod ut_aer {
                 .unwrap();
         almanac = almanac.with_location_data(loc_data);
 
-        let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+        let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
         // Data from another test case
         // Now iterate the trajectory to generate the measurements.
         let gmat_ranges_km = [

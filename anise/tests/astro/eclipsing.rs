@@ -10,7 +10,7 @@
 
 use core::f64;
 
-use anise::constants::frames::EARTH_J2000;
+use anise::constants::frames::EARTH_ICRS;
 use anise::prelude::*;
 
 use rstest::*;
@@ -44,7 +44,7 @@ pub fn almanac() -> Almanac {
 #[rstest]
 fn verif_beta_angle_eclipse_time(almanac: Almanac) {
     let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 1, 1);
-    let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+    let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
     let raan_deg = 72.0;
     let aop_deg = 45.0;
     let ta_deg = 270.0;
@@ -70,7 +70,7 @@ fn verif_beta_angle_eclipse_time(almanac: Almanac) {
                 // Compute the solar eclipsing
                 let occult = almanac
                     .solar_eclipsing(
-                        EARTH_J2000,
+                        EARTH_ICRS,
                         orbit.at_epoch(new_epoch).expect("two body prop failed"),
                         None,
                     )

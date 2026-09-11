@@ -23,4 +23,5 @@ anise-py/anise/_anise.*
 .vscode/
 *.swp
 *.lka
+*.ska
 cspice

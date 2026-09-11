@@ -234,7 +234,9 @@ mod ut_analysis {
     use crate::analysis::report::ReportScalars;
     use crate::analysis::specs::{OrthogonalFrame, Plane};
     use crate::astro::{Aberration, Location, TerrainMask};
-    use crate::constants::frames::{EME2000, IAU_EARTH_FRAME, MOON_J2000, SUN_J2000, VENUS_J2000};
+    use crate::constants::frames::{
+        EME2000, GCRF, IAU_EARTH_FRAME, MOON_ICRS, SUN_ICRS, VENUS_ICRS,
+    };
     use crate::ephemerides::ephemeris::Ephemeris;
     use crate::prelude::{Almanac, Frame, Orbit};
     use crate::structure::LocationDataSet;
@@ -309,7 +311,7 @@ mod ut_analysis {
     #[test]
     fn test_displays() {
         let from_frame = FrameSpec::Loaded(EME2000);
-        let to_frame = FrameSpec::Loaded(SUN_J2000);
+        let to_frame = FrameSpec::Loaded(SUN_ICRS);
 
         let state = StateSpec {
             target_frame: from_frame,
@@ -317,7 +319,7 @@ mod ut_analysis {
             ab_corr: Aberration::NONE,
         };
 
-        assert_eq!(format!("{state}"), "Earth J2000 -> Sun J2000");
+        assert_eq!(format!("{state}"), "Earth J2000 -> Sun ICRS");
 
         let r = VectorExpr::Radius(state.clone());
         let v = VectorExpr::Velocity(state.clone());
@@ -331,8 +333,8 @@ mod ut_analysis {
     #[rstest]
     fn test_analysis_gen_report(almanac: Almanac) {
         // Try to compute the SMA of the Earth with respect to the Sun.
-        let target_frame = FrameSpec::Loaded(EME2000);
-        let observer_frame = FrameSpec::Loaded(MOON_J2000);
+        let target_frame = FrameSpec::Loaded(GCRF);
+        let observer_frame = FrameSpec::Loaded(MOON_ICRS);
 
         let state = StateSpec {
             target_frame: target_frame.clone(),
@@ -349,7 +351,7 @@ mod ut_analysis {
 
         let sun_state = StateSpec {
             target_frame,
-            observer_frame: FrameSpec::Loaded(SUN_J2000),
+            observer_frame: FrameSpec::Loaded(SUN_ICRS),
             ab_corr: Aberration::LT,
         };
 
@@ -365,7 +367,7 @@ mod ut_analysis {
         println!("{proj}");
 
         // Rebuild the Local Solar Time calculation
-        let sun_frame = FrameSpec::Loaded(SUN_J2000);
+        let sun_frame = FrameSpec::Loaded(SUN_ICRS);
         let earth_sun = StateSpec {
             target_frame: sun_frame,
             observer_frame: observer_frame.clone(),
@@ -426,7 +428,7 @@ mod ut_analysis {
             ScalarExpr::Element(OrbitalElement::Rmag),
             ScalarExpr::BetaAngle,
             ScalarExpr::SolarEclipsePercentage {
-                eclipsing_frame: VENUS_J2000,
+                eclipsing_frame: VENUS_ICRS,
             },
             ScalarExpr::Norm(VectorExpr::Radius(state.clone())),
             ScalarExpr::DotProduct {
@@ -523,7 +525,7 @@ mod ut_analysis {
         // Test that we correctly computed the norm of the cross product
         assert_eq!(
             last_row["Hmag (km)"],
-            last_row["|Radius(Earth J2000 -> Moon J2000) ⨯ Velocity(Earth J2000 -> Moon J2000)|"]
+            last_row["|Radius(Earth ICRS -> Moon ICRS) ⨯ Velocity(Earth ICRS -> Moon ICRS)|"]
         );
 
         assert!(
@@ -549,7 +551,7 @@ mod ut_analysis {
         // The one-way light time from a ground location is just the range to that
         // location divided by the speed of light, so the two expressions must agree.
         let state = StateSpec {
-            target_frame: FrameSpec::Loaded(Frame::from_ephem_j2000(-85)),
+            target_frame: FrameSpec::Loaded(Frame::from_ephem_icrs(-85)),
             observer_frame: FrameSpec::Loaded(EME2000),
             ab_corr: Aberration::NONE,
         };
@@ -595,11 +597,11 @@ mod ut_analysis {
     fn test_analysis_event(mut almanac: Almanac) {
         use crate::analysis::event_ops::find_arc_intersections;
 
-        let lro_frame = Frame::from_ephem_j2000(-85);
+        let lro_frame = Frame::from_ephem_icrs(-85);
 
         let lro_state_spec = StateSpec {
             target_frame: FrameSpec::Loaded(lro_frame),
-            observer_frame: FrameSpec::Loaded(MOON_J2000),
+            observer_frame: FrameSpec::Loaded(MOON_ICRS),
             ab_corr: None,
         };
 
@@ -633,8 +635,8 @@ mod ut_analysis {
         let apolune = Event::apoapsis();
         let perilune = Event::periapsis();
 
-        let eclipse = Event::total_eclipse(MOON_J2000);
-        let penumbras = Event::penumbra(MOON_J2000);
+        let eclipse = Event::total_eclipse(MOON_ICRS);
+        let penumbras = Event::penumbra(MOON_ICRS);
 
         let (start_epoch, mut end_epoch) = almanac.spk_domain(-85).unwrap();
         assert!(
@@ -645,7 +647,7 @@ mod ut_analysis {
         end_epoch = Epoch::from_gregorian_str("2024-01-09T00:01:09.184137727 ET").unwrap();
 
         let start_orbit = almanac
-            .transform(lro_frame, MOON_J2000, start_epoch, None)
+            .transform(lro_frame, MOON_ICRS, start_epoch, None)
             .unwrap();
         let period = start_orbit.period().unwrap();
 
@@ -660,7 +662,7 @@ mod ut_analysis {
                         (ScalarExpr::SunAngle { observer_id: -85 }, None),
                         (
                             ScalarExpr::SolarEclipsePercentage {
-                                eclipsing_frame: MOON_J2000,
+                                eclipsing_frame: MOON_ICRS,
                             },
                             None,
                         ),
@@ -1266,7 +1268,7 @@ mod ut_analysis {
             .with_location_data_as(corrupt, Some("corrupt".to_string()));
 
         let state_spec = StateSpec {
-            target_frame: FrameSpec::Loaded(MOON_J2000),
+            target_frame: FrameSpec::Loaded(MOON_ICRS),
             observer_frame: FrameSpec::Loaded(EME2000),
             ab_corr: Aberration::NONE,
         };
