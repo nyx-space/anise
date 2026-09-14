@@ -381,7 +381,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                     return Ok((data_summary, idx, summary_idx));
                 }
                 Err(e) => {
-                    if summary.is_final_record() {
+                    if summary.is_final_record() || summary.is_corrupt() {
                         return Err(e);
                     } else {
                         idx = Some(summary.next_record());
@@ -423,7 +423,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 }
             }
             let summary = self.daf_summary(idx)?;
-            if summary.is_final_record() {
+            if summary.is_final_record() || summary.is_corrupt() {
                 break;
             } else {
                 idx = Some(summary.next_record());
@@ -476,7 +476,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                     }
                 }
                 let summary = self.daf_summary(blk_idx)?;
-                if summary.is_final_record() {
+                if summary.is_final_record() || summary.is_corrupt() {
                     break;
                 } else {
                     blk_idx = Some(summary.next_record());
@@ -505,7 +505,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 }
             }
             let summary = self.daf_summary(daf_idx)?;
-            if summary.is_final_record() {
+            if summary.is_final_record() || summary.is_corrupt() {
                 break;
             } else {
                 daf_idx = Some(summary.next_record());
@@ -774,7 +774,7 @@ impl<'a, R: NAIFSummaryRecord> Iterator for DafBlockIterator<'a, R> {
         let data = self.daf.data_summaries(Some(curr));
 
         // 4. Update state for the NEXT iteration
-        if summary.is_final_record() {
+        if summary.is_final_record() || summary.is_corrupt() {
             self.next_idx = None;
         } else {
             self.next_idx = Some(summary.next_record());
@@ -1247,6 +1247,74 @@ mod daf_ut {
             Err(DAFError::DecodingSummary { .. }) => {}
             Ok(_) => panic!("unexpected success for a forward pointer below 2"),
             Err(e) => panic!("unexpected error: {e}"),
+        }
+    }
+
+    #[test]
+    fn fractional_next_record_pointer_terminates_walkers() {
+        use crate::naif::daf::FileRecord;
+        use crate::naif::daf::summary_record::SummaryRecord;
+        use crate::naif::pretty_print::NAIFPrettyPrint;
+        use crate::naif::spk::summary::SPKSummaryRecord;
+        use std::sync::mpsc;
+        use std::time::Duration;
+        use zerocopy::IntoBytes;
+
+        let mut file_record = FileRecord::spk("TEST");
+        file_record.forward = 2;
+        file_record.nd = 2;
+        file_record.ni = 6;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(file_record.as_bytes());
+        bytes.resize(1024, 0);
+
+        // A fractional next-record pointer is flagged by is_corrupt(), so parse() stops walking
+        // the chain there and accepts the file. The other walkers only checked is_final_record()
+        // and truncated the pointer to 2, which is this very record, so they followed it forever.
+        let summary_header = SummaryRecord {
+            next_record: 2.5,
+            prev_record: 0.0,
+            num_summaries: 1.0,
+        };
+        let summary = SPKSummaryRecord {
+            data_type_i: 13,
+            start_idx: 1,
+            end_idx: 5,
+            ..Default::default()
+        };
+
+        let mut summary_record = Vec::new();
+        summary_record.extend_from_slice(summary_header.as_bytes());
+        summary_record.extend_from_slice(summary.as_bytes());
+        summary_record.resize(1024, 0);
+        bytes.extend(summary_record);
+
+        // Name record (record 3).
+        bytes.extend(vec![0u8; 1024]);
+
+        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+
+        // The chain holds a single block, so the iterator must stop after it.
+        assert_eq!(daf.iter_summary_blocks().take(4).count(), 1);
+
+        // The lookups used to spin forever, so run them on a thread with a deadline.
+        let (tx, rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+            let by_id = daf.summary_from_id(123).is_err();
+            let by_name = daf.summary_from_name("nope").is_err();
+            let by_epoch = daf.summary_from_id_at_epoch(123, 0.0).is_err();
+            let data = daf.data_from_name::<HermiteSetType13>("nope").is_err();
+            let described = !daf.describe().is_empty();
+            let _ = tx.send(by_id && by_name && by_epoch && data && described);
+        });
+        match rx.recv_timeout(Duration::from_secs(10)) {
+            Ok(all_returned) => assert!(all_returned),
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                panic!("summary chain walkers did not terminate")
+            }
+            Err(e) => panic!("{e}"),
         }
     }
 }
