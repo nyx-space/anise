@@ -126,6 +126,12 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             }
 
             for (summary_idx, cur_sum) in me.data_summaries(blk_idx)?.iter().enumerate() {
+                // A summary record is physically padded to its fixed record size.
+                // Do not index those empty slots: their default ID is zero and can
+                // otherwise displace a valid, chronologically ordered ID 0 segment.
+                if cur_sum.is_empty() {
+                    continue;
+                }
                 if let Some(prev_summaries) = index.get_mut(&cur_sum.id()) {
                     let prev_sum: &R =
                         &prev_summaries.last().expect("there must be at least one").0;
