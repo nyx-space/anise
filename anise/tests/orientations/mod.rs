@@ -719,6 +719,54 @@ fn body_inertial_frames() {
 }
 
 #[test]
+fn mars_inertial_to_iau_mars() {
+    use anise::constants::frames::{IAU_MARS_FRAME, MARS_INERTIAL_FRAME};
+    let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
+
+    // Epoch matching frozen epoch (J2000)
+    let epoch_j2000 = Epoch::from_et_seconds(0.0);
+    let dcm_j2000 = almanac
+        .rotate(IAU_MARS_FRAME, MARS_INERTIAL_FRAME, epoch_j2000)
+        .unwrap();
+
+    // At J2000, 3x3 rotation matrix must be identity
+    assert!(
+        (dcm_j2000.rot_mat - Matrix3::identity()).norm() < 1e-12,
+        "Rotation at J2000 should be identity matrix, got: {}",
+        dcm_j2000.rot_mat
+    );
+
+    // But time derivative must be non-zero because IAU_MARS_FRAME is non-inertial
+    assert!(
+        dcm_j2000.rot_mat_dt.is_some(),
+        "DCM derivative must be present for non-inertial frame rotation"
+    );
+    let dt_norm = dcm_j2000.rot_mat_dt.unwrap().norm();
+    assert!(
+        dt_norm > 1e-6,
+        "DCM derivative norm at J2000 must be non-zero, got: {dt_norm:.3e}"
+    );
+
+    // Epoch NOT matching frozen epoch (e.g., 1 day after J2000)
+    let epoch_other = Epoch::from_et_seconds(86400.0);
+    let dcm_other = almanac
+        .rotate(IAU_MARS_FRAME, MARS_INERTIAL_FRAME, epoch_other)
+        .unwrap();
+
+    // Away from J2000, 3x3 rotation matrix must NOT be identity
+    let diff_norm = (dcm_other.rot_mat - Matrix3::identity()).norm();
+    assert!(
+        diff_norm > 1e-4,
+        "Rotation away from J2000 must not be identity, got diff norm: {diff_norm:.3e}"
+    );
+
+    assert!(
+        dcm_other.rot_mat_dt.is_some(),
+        "DCM derivative must be present for non-inertial frame rotation"
+    );
+}
+
+#[test]
 fn moon_tod_mod() {
     use anise::constants::frames::{MOON_MOD_FRAME, MOON_TOD_FRAME};
     let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
