@@ -120,9 +120,6 @@ fn apparent_local_solar_time_limited(almanac: Almanac) {
         almanac.frame_info(EARTH_ICRS).unwrap(),
     );
 
-    let mut max_err_found = 0.nanoseconds();
-    let mut max_case = "".to_string();
-
     // These results are ordered in the same was as the tests.
     let spice_rslt = [
         4.hours() + 42.minutes() + 37.seconds(),
