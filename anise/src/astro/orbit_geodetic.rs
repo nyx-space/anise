@@ -367,7 +367,11 @@ impl CartesianState {
     ///
     /// :rtype: float
     pub fn longitude_deg(&self) -> f64 {
-        between_pm_180(self.radius_km.y.atan2(self.radius_km.x).to_degrees())
+        if self.radius_km.x.is_nan() || self.radius_km.y.is_nan() {
+            0.0
+        } else {
+            between_pm_180(self.radius_km.y.atan2(self.radius_km.x).to_degrees())
+        }
     }
 
     /// Returns the geodetic longitude (λ) in degrees. Value is between 0 and 360 degrees.
@@ -377,7 +381,11 @@ impl CartesianState {
     ///
     /// :rtype: float
     pub fn longitude_360_deg(&self) -> f64 {
-        between_0_360(self.radius_km.y.atan2(self.radius_km.x).to_degrees())
+        if self.radius_km.x.is_nan() || self.radius_km.y.is_nan() {
+            0.0
+        } else {
+            between_0_360(self.radius_km.y.atan2(self.radius_km.x).to_degrees())
+        }
     }
 
     /// Returns the geodetic latitude (φ) in degrees. Value is between -180 and +180 degrees.

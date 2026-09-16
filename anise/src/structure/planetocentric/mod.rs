@@ -64,6 +64,8 @@ pub const MAX_NUT_PREC_ANGLES: usize = 32;
 /// t = ephemeris time, expressed as seconds past the reference epoch
 /// for this body or planetary system
 ///
+/// NOTE: ANISE refers to W as the prime meridian (or `twist` in some comments), but never as W.
+///
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct PlanetaryData {
     /// The NAIF ID of this object

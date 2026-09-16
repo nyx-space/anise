@@ -12,7 +12,7 @@ use hifitime::{Duration, Unit};
 
 use crate::{
     astro::{Aberration, Occultation},
-    constants::{frames::SUN_ICRS, orientations::ICRS},
+    constants::{celestial_objects::SUN, frames::SUN_ICRS, orientations::ICRS},
     ephemerides::EphemerisPhysicsSnafu,
     errors::{AlmanacError, EphemerisSnafu, OrientationSnafu},
     frames::Frame,
@@ -316,6 +316,54 @@ impl Almanac {
         }
 
         Ok(Unit::Hour * ltdn_h)
+    }
+
+    /// Compute the apparent solar time on the provided frame for the provided state, returned as a Duration between 0 and 24 hours.
+    ///
+    /// This function transforms the input state to the body fixed frame, and then computes the apparent solar time.
+    /// The position of the Sun is computed with the LT+S aberration flag as in SPICE's et2lst
+    pub fn apparent_solar_time(
+        &self,
+        state: Orbit,
+        observer_frame: Frame,
+    ) -> AlmanacResult<Duration> {
+        if observer_frame.ephemeris_id == SUN {
+            // It's always noon on the surface of the sun.
+            return Ok(Unit::Hour * 12);
+        }
+        // Transform to the desired frame.
+        let state_body_fixed = self.transform_to(state, observer_frame, Aberration::LT_S)?;
+        // As per et2lst from CSPICE
+        // We fetch the rotation sense of the body and invert the angle if the rotation is retrograde.
+        // We determine this by looking at the sign of the first coefficient of the prime meridian
+        // of this planetary data.
+        // To simplify the logic, we define a multiplicative factor of 1.0 is prograde rotations
+        // and -1 in retrograde rotations.
+        let rot_sign = self
+            .get_planetary_data_from_id(state_body_fixed.frame.orientation_id)
+            .map(|planetary_data| {
+                planetary_data
+                    .prime_meridian
+                    .map(|pm| pm.rate_deg.signum())
+                    .unwrap_or(1.0)
+            })
+            .unwrap_or(1.0);
+        // Compute the longitude in degrees of the state
+        let long_deg = state_body_fixed.longitude_deg();
+        let sun_state = self.state_of(
+            SUN,
+            observer_frame,
+            state_body_fixed.epoch,
+            Aberration::LT_S,
+        )?;
+
+        let sun_long_deg = sun_state.longitude_deg();
+        // Angle between meridians
+        let delta_lon_deg = (long_deg - sun_long_deg) * rot_sign;
+        // Convert to hours (24 hours in 360 degrees), offset by 12 hours for noon definition
+        // SPICE 12 + (SITLNG - SUNLNG) / 15
+        let lst_h = (12.0 + (delta_lon_deg / 15.0)).rem_euclid(24.0);
+        Ok(Unit::Hour * lst_h)
     }
 }
 
