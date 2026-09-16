@@ -334,11 +334,11 @@ impl Almanac {
         // Transform to the desired frame.
         let state_body_fixed = self.transform_to(state, observer_frame, Aberration::LT_S)?;
         // As per et2lst from CSPICE
-        // We fetch the rotation sense of the body and invert the angle if the rotation is retrograde.
+        // We fetch the rotation sense of the body and oppose the angle if the rotation is retrograde.
         // We determine this by looking at the sign of the first coefficient of the prime meridian
         // of this planetary data.
-        // To simplify the logic, we define a multiplicative factor of 1.0 is prograde rotations
-        // and -1 in retrograde rotations.
+        // To simplify the logic, we define a multiplicative factor of 1.0 for prograde rotations
+        // and -1 for retrograde rotations.
         let rot_sign = self
             .get_planetary_data_from_id(state_body_fixed.frame.orientation_id)
             .map(|planetary_data| {
@@ -362,8 +362,8 @@ impl Almanac {
         let delta_lon_deg = (long_deg - sun_long_deg) * rot_sign;
         // Convert to hours (24 hours in 360 degrees), offset by 12 hours for noon definition
         // SPICE 12 + (SITLNG - SUNLNG) / 15
-        let lst_h = (12.0 + (delta_lon_deg / 15.0)).rem_euclid(24.0);
-        Ok(Unit::Hour * lst_h)
+        let ast_h = (12.0 + (delta_lon_deg / 15.0)).rem_euclid(24.0);
+        Ok(Unit::Hour * ast_h)
     }
 }
 

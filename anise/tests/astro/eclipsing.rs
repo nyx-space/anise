@@ -120,7 +120,7 @@ fn apparent_local_solar_time_limited(almanac: Almanac) {
         almanac.frame_info(EARTH_ICRS).unwrap(),
     );
 
-    // These results are ordered in the same was as the tests.
+    // These results have the same order as the frames in the tests.
     let spice_rslt = [
         4.hours() + 42.minutes() + 37.seconds(),
         15.hours() + 11.minutes() + 55.seconds(),
@@ -183,7 +183,7 @@ for idx in range(len(epochs)):
 
 for (et_s, this_case) in cases.items():
     for frame_id, long_deg in this_case:
-        lst = sp.et2lst(et_s, frame_id, long_deg, "PLANETOCENTRIC", 256, 256)
+        lst = sp.et2lst(et_s, frame_id, radians(long_deg), "PLANETOCENTRIC", 256, 256)
         print(f"{et_s} {frame_id} -> {lst}")
 ```
 */
