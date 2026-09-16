@@ -104,9 +104,10 @@ impl Almanac {
             }
         }
 
-        // If the ID is not present at all, bpc_domain will report it.
-        let (start, end) = self.bpc_domain(id)?;
-        error!("Almanac: summary {id} valid from {start} to {end} but not at requested {epoch}");
+        // If the ID is not present at all, bpc_domain_and_gap will report it.
+        let (start, end, has_gap) = self.bpc_domain_and_gap(id)?;
+        let gap_str = if has_gap { " (with gaps)" } else { "" };
+        error!("Almanac: summary {id} valid from {start} to {end}{gap_str} but not at requested {epoch}");
         // If we're reached this point, there is no relevant summary at this epoch.
         Err(OrientationError::BPC {
             action: "searching for SPK summary",
@@ -116,6 +117,7 @@ impl Almanac {
                 epoch,
                 start,
                 end,
+                has_gap,
             },
         })
     }
@@ -199,22 +201,37 @@ impl Almanac {
     /// :type id: int
     /// :rtype: typing.Tuple
     pub fn bpc_domain(&self, id: NaifId) -> Result<(Epoch, Epoch), OrientationError> {
-        let summaries = self.bpc_summaries(id)?;
+        let (start, end, _) = self.bpc_domain_and_gap(id)?;
+        Ok((start, end))
+    }
 
-        // We know that the summaries is non-empty because if it is, the previous function call returns an error.
-        let start = summaries
-            .iter()
-            .min_by_key(|summary| summary.start_epoch())
-            .expect("summaries is non-empty, guaranteed by bpc_summaries")
-            .start_epoch();
+    pub(crate) fn bpc_domain_and_gap(
+        &self,
+        id: NaifId,
+    ) -> Result<(Epoch, Epoch, bool), OrientationError> {
+        let mut summaries = self.bpc_summaries(id)?;
+        summaries.sort_by_key(|summary| summary.start_epoch());
 
+        let start = summaries.first().expect("summaries is non-empty").start_epoch();
         let end = summaries
             .iter()
-            .max_by_key(|summary| summary.end_epoch())
-            .expect("summaries is non-empty, guaranteed by bpc_summaries")
-            .end_epoch();
+            .map(|s| s.end_epoch())
+            .max()
+            .expect("summaries is non-empty");
 
-        Ok((start, end))
+        let mut has_gap = false;
+        let mut max_covered = summaries[0].end_epoch();
+        for summary in summaries.iter().skip(1) {
+            if summary.start_epoch() > max_covered {
+                has_gap = true;
+                break;
+            }
+            if summary.end_epoch() > max_covered {
+                max_covered = summary.end_epoch();
+            }
+        }
+
+        Ok((start, end, has_gap))
     }
 
     /// Returns a map of each loaded BPC ID to its domain validity.
@@ -279,6 +296,61 @@ mod ut_almanac_bpc {
                 .bpc_summary_from_name_at_epoch("invalid name", e)
                 .is_err(),
             "empty Almanac should report an error"
+        );
+    }
+
+    #[test]
+    fn bpc_domain_gap_error_message() {
+        use crate::naif::daf::{FileRecord, SummaryRecord};
+        use crate::naif::pck::BPCSummaryRecord;
+        use crate::naif::BPC;
+        use bytes::BytesMut;
+        use zerocopy::IntoBytes;
+
+        fn craft_bpc(start_et: f64, end_et: f64) -> BPC {
+            let mut file_record = FileRecord::bpc("TEST");
+            file_record.forward = 2;
+            file_record.nd = 2;
+            file_record.ni = 5;
+
+            let mut bytes = Vec::new();
+            bytes.extend_from_slice(file_record.as_bytes());
+            bytes.resize(1024, 0);
+
+            let summary_header = SummaryRecord {
+                next_record: 0.0,
+                prev_record: 0.0,
+                num_summaries: 1.0,
+            };
+            let summary = BPCSummaryRecord {
+                frame_id: 3000,
+                start_epoch_et_s: start_et,
+                end_epoch_et_s: end_et,
+                ..Default::default()
+            };
+
+            let mut summary_record = Vec::new();
+            summary_record.extend_from_slice(summary_header.as_bytes());
+            summary_record.extend_from_slice(summary.as_bytes());
+            summary_record.resize(1024, 0);
+            bytes.extend(summary_record);
+
+            bytes.extend(vec![0u8; 1024]);
+
+            BPC::parse(BytesMut::from_iter(bytes)).unwrap()
+        }
+
+        let bpc1 = craft_bpc(0.0, 86400.0);
+        let bpc2 = craft_bpc(864000.0, 950400.0);
+
+        let almanac = Almanac::from_bpc(bpc1).with_bpc(bpc2);
+
+        let query_epoch = Epoch::from_et_seconds(432000.0);
+        let err = almanac.bpc_summary_at_epoch(3000, query_epoch).unwrap_err();
+        let err_msg = format!("{err}");
+        assert!(
+            err_msg.contains("(with gaps)"),
+            "Error message should indicate domain gap: {err_msg}"
         );
     }
 }
