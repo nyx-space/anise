@@ -9,7 +9,7 @@ fn main() {
     };
 
     let client: ureq::Agent = ureq::Agent::config_builder()
-        .timeout_global(Some(Duration::from_secs(180)))
+        .timeout_global(Some(Duration::from_secs(30)))
         .build()
         .into();
 
