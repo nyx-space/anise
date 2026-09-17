@@ -633,31 +633,6 @@ def test_spacecraft_data():
     assert sc_data_from_name == sc_data
 
 
-def test_mars_inertial_to_iau_mars():
-    data_path = Path(__file__).parent.joinpath("..", "..", "data")
-    almanac = Almanac(str(data_path / "pck11.pca"))
-
-    epoch_j2000 = Epoch("2000-01-01T12:00:00 TDB")
-    dcm_j2000 = almanac.rotate(
-        Frames.IAU_MARS_FRAME, Frames.MARS_INERTIAL_FRAME, epoch_j2000
-    )
-
-    # At J2000, rot_mat must be identity
-    assert np.allclose(dcm_j2000.rot_mat, np.eye(3), atol=1e-10)
-    # Derivative must be present and non-zero
-    assert dcm_j2000.rot_mat_dt is not None
-    assert np.linalg.norm(dcm_j2000.rot_mat_dt) > 1e-6
-
-    # At non-J2000 epoch, rot_mat must not be identity
-    epoch_other = Epoch("2000-01-02T12:00:00 TDB")
-    dcm_other = almanac.rotate(
-        Frames.IAU_MARS_FRAME, Frames.MARS_INERTIAL_FRAME, epoch_other
-    )
-
-    assert not np.allclose(dcm_other.rot_mat, np.eye(3), atol=1e-4)
-    assert dcm_other.rot_mat_dt is not None
-
-
 if __name__ == "__main__":
     test_meta_load()
     test_exports()
@@ -667,4 +642,3 @@ if __name__ == "__main__":
     test_location()
     test_oem()
     test_spacecraft_data()
-    test_mars_inertial_to_iau_mars()

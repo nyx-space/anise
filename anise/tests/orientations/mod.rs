@@ -706,6 +706,16 @@ fn body_inertial_frames() {
         // Fetch the DCM and ensure the DCM derivative is zero and matches the DCM at J2000.
         let dcm = almanac.rotate(frame, GCRF, epoch).unwrap();
         assert!(dcm.rot_mat_dt.is_none());
+        // Prime meridian should be ignored
+        assert_eq!(dcm.rot_mat[(2, 0)], 0.0);
+        // The orientation should be a DynamicFrame
+        let as_dyn_frame = DynamicFrame::try_from(frame.orientation_id as u32).unwrap();
+        match as_dyn_frame {
+            DynamicFrame::BodyTrueOfDate { source_id } => {
+                assert_eq!(source_id, frame.ephemeris_id)
+            }
+            _ => panic!("body inertial frames should be TOD"),
+        }
 
         let mut ref_dcm = almanac
             .rotate(frame, GCRF, Epoch::from_et_seconds(0.0))
@@ -715,46 +725,6 @@ fn body_inertial_frames() {
         assert_eq!(ref_dcm, dcm);
 
         println!("{frame}");
-    }
-}
-
-#[test]
-fn body_inertial_to_icrf_and_iau() {
-    use anise::constants::frames::{
-        JUPITER_INERTIAL_FRAME, MARS_INERTIAL_FRAME, MERCURY_INERTIAL_FRAME,
-        NEPTUNE_INERTIAL_FRAME, SATURN_INERTIAL_FRAME, URANUS_INERTIAL_FRAME, VENUS_INERTIAL_FRAME,
-    };
-    let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
-
-    // Check that all these frames are defined for their respective bodies, are dynamic, and ignore the prime meridian.
-
-    for frame in [
-        MARS_INERTIAL_FRAME,
-        JUPITER_INERTIAL_FRAME,
-        MERCURY_INERTIAL_FRAME,
-        NEPTUNE_INERTIAL_FRAME,
-        SATURN_INERTIAL_FRAME,
-        URANUS_INERTIAL_FRAME,
-        VENUS_INERTIAL_FRAME,
-    ] {
-        for offset_s in [0.0, 8640000.0] {
-            let epoch = Epoch::from_et_seconds(offset_s);
-
-            let dcm = almanac.rotate(frame, EARTH_ICRS, epoch).unwrap();
-            // Frames are inertial
-            assert!(dcm.rot_mat_dt.is_none());
-            assert!(frame.force_inertial);
-            assert_eq!(frame.frozen_epoch.unwrap(), Epoch::from_et_seconds(0.0));
-            // Prime meridian should be ignored
-            assert_eq!(dcm.rot_mat[(2, 0)], 0.0);
-            let as_dyn_frame = DynamicFrame::try_from(frame.orientation_id as u32).unwrap();
-            match as_dyn_frame {
-                DynamicFrame::BodyTrueOfDate { source_id } => {
-                    assert_eq!(source_id, frame.ephemeris_id)
-                }
-                _ => panic!("body inertial frames should be TOD"),
-            }
-        }
     }
 }
 

@@ -513,7 +513,7 @@ pub mod frames {
     /// Ansys STK users: ANISE Moon Inertial may be slightly different than the [STK counterpart](https://help.agi.com/stk/#stk/referenceFramesCBdescriptions.htm#moonInertial) because the STK implementation uses the IAU2003 model.
     pub const MOON_INERTIAL_FRAME: Frame = Frame {
         ephemeris_id: MOON,
-        orientation_id: IAU_MOON,
+        orientation_id: MOON_TOD,
         force_inertial: true,
         frozen_epoch: Some(hifitime::Epoch {
             duration: Duration::ZERO,
