@@ -311,6 +311,15 @@ pub mod orientations {
     /// Moon True of Date (TOD) orientation uses the loaded IAU model from the planetary constants kernel, ignoring only the prime meridian.
     pub const MOON_TOD: NaifId = 0xA0B1_012D_u32 as i32;
 
+    /// Body True of Date orientation are frozen at J2000 to create the respective Body Inertial frame. These ignore only the prime meridian at J2000.
+    pub const MERCURY_TOD: NaifId = 0xA0B1_00C7_u32 as i32;
+    pub const VENUS_TOD: NaifId = 0xA0B1_012B_u32 as i32;
+    pub const MARS_TOD: NaifId = 0xA0B1_01F3_u32 as i32;
+    pub const JUPITER_TOD: NaifId = 0xA0B1_0257_u32 as i32;
+    pub const SATURN_TOD: NaifId = 0xA0B1_02BB_u32 as i32;
+    pub const URANUS_TOD: NaifId = 0xA0B1_031F_u32 as i32;
+    pub const NEPTUNE_TOD: NaifId = 0xA0B1_0383_u32 as i32;
+
     /// Given the frame ID, try to return a human name
     /// Source: <https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/frames.html#Appendix.%20%60%60Built%20in''%20Inertial%20Reference%20Frames>
     pub const fn orientation_name_from_id(id: NaifId) -> Option<&'static str> {
@@ -477,7 +486,7 @@ pub mod frames {
     /// Mercury Centered Inertial Frame, defined as IAU_MERCURY inertially frozen at J2000 ET/TDB
     pub const MERCURY_INERTIAL_FRAME: Frame = Frame {
         ephemeris_id: MERCURY,
-        orientation_id: IAU_MERCURY,
+        orientation_id: MERCURY_TOD,
         force_inertial: true,
         frozen_epoch: Some(hifitime::Epoch {
             duration: Duration::ZERO,
@@ -490,7 +499,7 @@ pub mod frames {
     /// Venus Centered Inertial Frame, defined as IAU_VENUS inertially frozen at J2000 ET/TDB
     pub const VENUS_INERTIAL_FRAME: Frame = Frame {
         ephemeris_id: VENUS,
-        orientation_id: IAU_VENUS,
+        orientation_id: VENUS_TOD,
         force_inertial: true,
         frozen_epoch: Some(hifitime::Epoch {
             duration: Duration::ZERO,
@@ -504,7 +513,7 @@ pub mod frames {
     /// Ansys STK users: ANISE Moon Inertial may be slightly different than the [STK counterpart](https://help.agi.com/stk/#stk/referenceFramesCBdescriptions.htm#moonInertial) because the STK implementation uses the IAU2003 model.
     pub const MOON_INERTIAL_FRAME: Frame = Frame {
         ephemeris_id: MOON,
-        orientation_id: IAU_MOON,
+        orientation_id: MOON_TOD,
         force_inertial: true,
         frozen_epoch: Some(hifitime::Epoch {
             duration: Duration::ZERO,
@@ -517,7 +526,7 @@ pub mod frames {
     /// Mars Centered Inertial Frame, defined as IAU_MARS inertially frozen at J2000 ET/TDB
     pub const MARS_INERTIAL_FRAME: Frame = Frame {
         ephemeris_id: MARS,
-        orientation_id: IAU_MARS,
+        orientation_id: MARS_TOD,
         force_inertial: true,
         frozen_epoch: Some(hifitime::Epoch {
             duration: Duration::ZERO,
@@ -530,7 +539,7 @@ pub mod frames {
     /// Jupiter Centered Inertial Frame, defined as IAU_JUPITER inertially frozen at J2000 ET/TDB
     pub const JUPITER_INERTIAL_FRAME: Frame = Frame {
         ephemeris_id: JUPITER,
-        orientation_id: IAU_JUPITER,
+        orientation_id: JUPITER_TOD,
         force_inertial: true,
         frozen_epoch: Some(hifitime::Epoch {
             duration: Duration::ZERO,
@@ -543,7 +552,7 @@ pub mod frames {
     /// Saturn Centered Inertial Frame, defined as IAU_SATURN inertially frozen at J2000 ET/TDB
     pub const SATURN_INERTIAL_FRAME: Frame = Frame {
         ephemeris_id: SATURN,
-        orientation_id: IAU_SATURN,
+        orientation_id: SATURN_TOD,
         force_inertial: true,
         frozen_epoch: Some(hifitime::Epoch {
             duration: Duration::ZERO,
@@ -556,7 +565,7 @@ pub mod frames {
     /// Uranus Centered Inertial Frame, defined as IAU_URANUS inertially frozen at J2000 ET/TDB
     pub const URANUS_INERTIAL_FRAME: Frame = Frame {
         ephemeris_id: URANUS,
-        orientation_id: IAU_URANUS,
+        orientation_id: URANUS_TOD,
         force_inertial: true,
         frozen_epoch: Some(hifitime::Epoch {
             duration: Duration::ZERO,
@@ -569,7 +578,7 @@ pub mod frames {
     /// Neptune Centered Inertial Frame, defined as IAU_NEPTUNE inertially frozen at J2000 ET/TDB
     pub const NEPTUNE_INERTIAL_FRAME: Frame = Frame {
         ephemeris_id: NEPTUNE,
-        orientation_id: IAU_NEPTUNE,
+        orientation_id: NEPTUNE_TOD,
         force_inertial: true,
         frozen_epoch: Some(hifitime::Epoch {
             duration: Duration::ZERO,
