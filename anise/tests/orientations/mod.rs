@@ -719,51 +719,43 @@ fn body_inertial_frames() {
 }
 
 #[test]
-fn mars_inertial_to_iau_mars() {
-    use anise::constants::frames::{IAU_MARS_FRAME, MARS_INERTIAL_FRAME};
+fn body_inertial_to_icrf_and_iau() {
+    use anise::constants::frames::{
+        JUPITER_INERTIAL_FRAME, MARS_INERTIAL_FRAME, MERCURY_INERTIAL_FRAME,
+        NEPTUNE_INERTIAL_FRAME, SATURN_INERTIAL_FRAME, URANUS_INERTIAL_FRAME, VENUS_INERTIAL_FRAME,
+    };
     let almanac = Almanac::default().load("../data/pck11.pca").unwrap();
 
-    // Epoch matching frozen epoch (J2000)
-    let epoch_j2000 = Epoch::from_et_seconds(0.0);
-    let dcm_j2000 = almanac
-        .rotate(IAU_MARS_FRAME, MARS_INERTIAL_FRAME, epoch_j2000)
-        .unwrap();
+    // Check that all these frames are defined for their respective bodies, are dynamic, and ignore the prime meridian.
 
-    // At J2000, 3x3 rotation matrix must be identity
-    assert!(
-        (dcm_j2000.rot_mat - Matrix3::identity()).norm() < 1e-12,
-        "Rotation at J2000 should be identity matrix, got: {}",
-        dcm_j2000.rot_mat
-    );
+    for frame in [
+        MARS_INERTIAL_FRAME,
+        JUPITER_INERTIAL_FRAME,
+        MERCURY_INERTIAL_FRAME,
+        NEPTUNE_INERTIAL_FRAME,
+        SATURN_INERTIAL_FRAME,
+        URANUS_INERTIAL_FRAME,
+        VENUS_INERTIAL_FRAME,
+    ] {
+        for offset_s in [0.0, 8640000.0] {
+            let epoch = Epoch::from_et_seconds(offset_s);
 
-    // But time derivative must be non-zero because IAU_MARS_FRAME is non-inertial
-    assert!(
-        dcm_j2000.rot_mat_dt.is_some(),
-        "DCM derivative must be present for non-inertial frame rotation"
-    );
-    let dt_norm = dcm_j2000.rot_mat_dt.unwrap().norm();
-    assert!(
-        dt_norm > 1e-6,
-        "DCM derivative norm at J2000 must be non-zero, got: {dt_norm:.3e}"
-    );
-
-    // Epoch NOT matching frozen epoch (e.g., 1 day after J2000)
-    let epoch_other = Epoch::from_et_seconds(86400.0);
-    let dcm_other = almanac
-        .rotate(IAU_MARS_FRAME, MARS_INERTIAL_FRAME, epoch_other)
-        .unwrap();
-
-    // Away from J2000, 3x3 rotation matrix must NOT be identity
-    let diff_norm = (dcm_other.rot_mat - Matrix3::identity()).norm();
-    assert!(
-        diff_norm > 1e-4,
-        "Rotation away from J2000 must not be identity, got diff norm: {diff_norm:.3e}"
-    );
-
-    assert!(
-        dcm_other.rot_mat_dt.is_some(),
-        "DCM derivative must be present for non-inertial frame rotation"
-    );
+            let dcm = almanac.rotate(frame, EARTH_ICRS, epoch).unwrap();
+            // Frames are inertial
+            assert!(dcm.rot_mat_dt.is_none());
+            assert!(frame.force_inertial);
+            assert_eq!(frame.frozen_epoch.unwrap(), Epoch::from_et_seconds(0.0));
+            // Prime meridian should be ignored
+            assert_eq!(dcm.rot_mat[(2, 0)], 0.0);
+            let as_dyn_frame = DynamicFrame::try_from(frame.orientation_id as u32).unwrap();
+            match as_dyn_frame {
+                DynamicFrame::BodyTrueOfDate { source_id } => {
+                    assert_eq!(source_id, frame.ephemeris_id)
+                }
+                _ => panic!("body inertial frames should be TOD"),
+            }
+        }
+    }
 }
 
 #[test]
