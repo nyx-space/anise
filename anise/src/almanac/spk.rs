@@ -244,7 +244,10 @@ impl Almanac {
         let mut summaries = self.spk_summaries(id)?;
         summaries.sort_by_key(|summary| summary.start_epoch());
 
-        let start = summaries.first().expect("summaries is non-empty").start_epoch();
+        let start = summaries
+            .first()
+            .expect("summaries is non-empty")
+            .start_epoch();
         let end = summaries
             .iter()
             .map(|s| s.end_epoch())
@@ -378,7 +381,9 @@ mod ut_almanac_spk {
         let almanac = Almanac::from_spk(spk1).with_spk(spk2);
 
         let query_epoch = start1 + Unit::Day * 5;
-        let err = almanac.spk_summary_at_epoch(-159, query_epoch.to_et_seconds()).unwrap_err();
+        let err = almanac
+            .spk_summary_at_epoch(-159, query_epoch.to_et_seconds())
+            .unwrap_err();
         let err_msg = format!("{err}");
         assert!(
             err_msg.contains("(with gaps)"),

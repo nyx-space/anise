@@ -107,7 +107,9 @@ impl Almanac {
         // If the ID is not present at all, bpc_domain_and_gap will report it.
         let (start, end, has_gap) = self.bpc_domain_and_gap(id)?;
         let gap_str = if has_gap { " (with gaps)" } else { "" };
-        error!("Almanac: summary {id} valid from {start} to {end}{gap_str} but not at requested {epoch}");
+        error!(
+            "Almanac: summary {id} valid from {start} to {end}{gap_str} but not at requested {epoch}"
+        );
         // If we're reached this point, there is no relevant summary at this epoch.
         Err(OrientationError::BPC {
             action: "searching for SPK summary",
@@ -212,7 +214,10 @@ impl Almanac {
         let mut summaries = self.bpc_summaries(id)?;
         summaries.sort_by_key(|summary| summary.start_epoch());
 
-        let start = summaries.first().expect("summaries is non-empty").start_epoch();
+        let start = summaries
+            .first()
+            .expect("summaries is non-empty")
+            .start_epoch();
         let end = summaries
             .iter()
             .map(|s| s.end_epoch())
@@ -301,9 +306,9 @@ mod ut_almanac_bpc {
 
     #[test]
     fn bpc_domain_gap_error_message() {
+        use crate::naif::BPC;
         use crate::naif::daf::{FileRecord, SummaryRecord};
         use crate::naif::pck::BPCSummaryRecord;
-        use crate::naif::BPC;
         use bytes::BytesMut;
         use zerocopy::IntoBytes;
 
