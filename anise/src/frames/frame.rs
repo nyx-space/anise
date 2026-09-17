@@ -719,7 +719,10 @@ mod frame_ut {
             MARS_INERTIAL_FRAME.frozen_epoch.unwrap(),
             Epoch::from_et_seconds(0.0)
         );
-        assert_eq!(format!("{MARS_INERTIAL_FRAME}"), "Mars inertial @ J2000");
+        assert_eq!(
+            format!("{MARS_INERTIAL_FRAME}"),
+            "Mars inertial TOE @ J2000"
+        );
     }
 
     #[test]
