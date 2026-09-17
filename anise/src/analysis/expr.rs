@@ -112,12 +112,8 @@ pub enum ScalarExpr {
     },
     /// Computes the beta angle, in degrees. Aberration correction is that of the state spec.
     BetaAngle,
-    /// Compute the orbital local solar time, in hours
+    /// Compute the local solar time, in hours
     LocalSolarTime,
-    /// Compute the apparent (local) solar time, in hours
-    ApparentSolarTime {
-        obs_frame: Frame,
-    },
     /// Computes the local time of the ascending node, in hours
     LocalTimeAscNode,
     /// Computes the local time of the descending node, in hours
@@ -316,13 +312,6 @@ impl ScalarExpr {
                 }),
             Self::LocalSolarTime => Ok(almanac
                 .local_solar_time(orbit, ab_corr)
-                .context(AlmanacExprSnafu {
-                    expr: Box::new(self.clone()),
-                    state: orbit,
-                })?
-                .to_unit(hifitime::Unit::Hour)),
-            Self::ApparentSolarTime { obs_frame } => Ok(almanac
-                .apparent_solar_time(orbit, *obs_frame)
                 .context(AlmanacExprSnafu {
                     expr: Box::new(self.clone()),
                     state: orbit,
@@ -608,9 +597,6 @@ impl fmt::Display for ScalarExpr {
             ),
             Self::BetaAngle => write!(f, "beta angle (deg)"),
             Self::LocalSolarTime => write!(f, "local solar time (h)"),
-            Self::ApparentSolarTime { obs_frame } => {
-                write!(f, "apparent solar time on {obs_frame:o} (h)")
-            }
             Self::LocalTimeAscNode => write!(f, "local time asc. node (h)"),
             Self::LocalTimeDescNode => write!(f, "local time desc. node (h)"),
             Self::SunAngle { observer_id } => write!(f, "sun angle for obs={observer_id} (deg)"),

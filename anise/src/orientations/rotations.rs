@@ -47,10 +47,7 @@ impl Almanac {
             to_frame = to_frame_info;
         }
 
-        if from_frame.orient_origin_match(to_frame)
-            && from_frame.force_inertial == to_frame.force_inertial
-            && from_frame.frozen_epoch == to_frame.frozen_epoch
-        {
+        if from_frame.orient_origin_match(to_frame) {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
             return Ok(DCM::identity(
                 from_frame.orientation_id,

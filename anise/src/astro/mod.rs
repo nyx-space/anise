@@ -84,16 +84,12 @@ impl AzElRange {
         self.obstructed_by.is_some() || self.elevation_above_mask_deg() < 0.0
     }
 
-    /// Returns the elevation above the terrain mask for this azimuth, in degrees, pr -90.0 if obstructed by an obstructing body.
+    /// Returns the elevation above the terrain mask for this azimuth, in degrees.
     /// If the terrain mask was zero at this azimuth, then the elevation above mask is equal to the elevation_deg field.
     ///
     /// :rtype: float
     pub fn elevation_above_mask_deg(&self) -> f64 {
-        if self.obstructed_by.is_some() {
-            -90.0
-        } else {
-            self.elevation_deg - self.mask_deg.unwrap_or(0.0)
-        }
+        self.elevation_deg - self.mask_deg.unwrap_or(0.0)
     }
 }
 

@@ -928,7 +928,7 @@ mod ut_analysis {
             .unwrap();
         comms_report.to_csv("comms_verif.csv".into()).unwrap();
 
-        let comm = Event::visible_from_location_id(1, None, None);
+        let comm = Event::visible_from_location_id(1, None);
         let mut comm_boundary = comm.clone();
         comm_boundary.condition = Condition::Equals(0.0);
 
@@ -943,7 +943,7 @@ mod ut_analysis {
         assert!(comm_arcs.len() == 3);
 
         // Build another comms report with the mask enabled.
-        let comm_mask = Event::visible_from_location_id(2, None, None);
+        let comm_mask = Event::visible_from_location_id(2, None);
         let mut comm_boundary_mask = comm_mask.clone();
         comm_boundary_mask.condition = Condition::Equals(0.0);
 
@@ -1281,46 +1281,5 @@ mod ut_analysis {
         almanac
             .report_visibility_arcs(&state_spec, 42, start, end, Unit::Minute * 10, None)
             .unwrap();
-    }
-
-    #[rstest]
-    fn test_visibility_arcs_aberration_and_occultation(almanac: Almanac) {
-        let lro_frame = Frame::from_ephem_icrs(-85);
-
-        let lro_state_spec = StateSpec {
-            target_frame: FrameSpec::Loaded(lro_frame),
-            observer_frame: FrameSpec::Loaded(MOON_ICRS),
-            ab_corr: Aberration::LT,
-        };
-
-        let start_epoch = Epoch::from_gregorian_utc_at_midnight(2024, 1, 1);
-        let end_epoch = start_epoch + Unit::Day * 1;
-
-        // Compute visibility arcs with aberration and obstructing body
-        let vis_arcs = almanac
-            .report_visibility_arcs(
-                &lro_state_spec,
-                123,
-                start_epoch,
-                end_epoch,
-                Unit::Minute * 10,
-                Some(MOON_ICRS),
-            )
-            .unwrap();
-
-        for (i, arc) in vis_arcs.iter().enumerate() {
-            assert!(!arc.aer_data.is_empty());
-            for aer in &arc.aer_data {
-                assert!(aer.obstructed_by.is_none());
-            }
-            println!("{}", arc.duration());
-            if i > 0 {
-                assert!(
-                    (arc.duration() - (Unit::Hour * 1 + Unit::Minute * 11)).abs()
-                        < Unit::Minute * 2,
-                    "all arcs should be about 1h 11min +/- 2 min"
-                )
-            }
-        }
     }
 }

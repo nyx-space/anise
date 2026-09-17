@@ -129,7 +129,7 @@ impl CxxEpoch {
         }
     }
     fn to_string(&self) -> String {
-        self.0.to_string()
+        format!("{}", self.0)
     }
     fn epoch_add_duration(&self, duration: &CxxDuration) -> Box<CxxEpoch> {
         Box::new(CxxEpoch(self.0 + duration.0))
