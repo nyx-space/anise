@@ -336,6 +336,7 @@ mod ut_almanac_spk {
         );
     }
 
+    #[cfg(feature = "analysis")]
     #[test]
     fn spk_domain_gap_error_message() {
         use crate::constants::frames::EARTH_ICRS;
