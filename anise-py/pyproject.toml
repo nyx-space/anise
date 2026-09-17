@@ -21,7 +21,10 @@ module-name = "anise._anise"
 
 [dependency-groups]
 dev = [
+    "maturin>=1.15.0",
     "notebook>=7.5.7",
     "numpy>=2.0.2",
     "pytest>=8.4.2",
+    "ruff>=0.16.8",
+    "spiceypy>=6.0.0",
 ]

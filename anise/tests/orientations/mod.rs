@@ -706,6 +706,16 @@ fn body_inertial_frames() {
         // Fetch the DCM and ensure the DCM derivative is zero and matches the DCM at J2000.
         let dcm = almanac.rotate(frame, GCRF, epoch).unwrap();
         assert!(dcm.rot_mat_dt.is_none());
+        // Prime meridian should be ignored
+        assert_eq!(dcm.rot_mat[(2, 0)], 0.0);
+        // The orientation should be a DynamicFrame
+        let as_dyn_frame = DynamicFrame::try_from(frame.orientation_id as u32).unwrap();
+        match as_dyn_frame {
+            DynamicFrame::BodyTrueOfDate { source_id } => {
+                assert_eq!(source_id, frame.ephemeris_id)
+            }
+            _ => panic!("body inertial frames should be TOD"),
+        }
 
         let mut ref_dcm = almanac
             .rotate(frame, GCRF, Epoch::from_et_seconds(0.0))

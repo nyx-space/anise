@@ -24,7 +24,9 @@ use crate::astro::PhysicsResult;
 use crate::constants::celestial_objects::{
     SOLAR_SYSTEM_BARYCENTER, celestial_name_from_id, id_from_celestial_name,
 };
-use crate::constants::orientations::{ICRS, id_from_orientation_name, orientation_name_from_id};
+use crate::constants::orientations::{
+    ICRS, J2000, id_from_orientation_name, orientation_name_from_id,
+};
 use crate::errors::{AlmanacError, EphemerisSnafu, OrientationSnafu, PhysicsError};
 use crate::frames::DynamicFrame;
 #[cfg(feature = "python")]
@@ -81,6 +83,10 @@ impl Frame {
 
     pub const fn from_ephem_icrs(ephemeris_id: NaifId) -> Self {
         Self::new(ephemeris_id, ICRS)
+    }
+
+    pub const fn from_ephem_j2000(ephemeris_id: NaifId) -> Self {
+        Self::new(ephemeris_id, J2000)
     }
 
     pub const fn from_orient_ssb(orientation_id: NaifId) -> Self {
@@ -719,7 +725,10 @@ mod frame_ut {
             MARS_INERTIAL_FRAME.frozen_epoch.unwrap(),
             Epoch::from_et_seconds(0.0)
         );
-        assert_eq!(format!("{MARS_INERTIAL_FRAME}"), "Mars inertial @ J2000");
+        assert_eq!(
+            format!("{MARS_INERTIAL_FRAME}"),
+            "Mars inertial TOE @ J2000"
+        );
     }
 
     #[test]
@@ -730,21 +739,15 @@ mod frame_ut {
         };
         use crate::constants::orientations::{ICRS, J2000};
 
-        assert_eq!(ICRF.orient_origin_id_match(ICRS), true);
-        assert_eq!(SSB_ICRS.orient_origin_id_match(ICRS), true);
-        assert_eq!(SSB_J2000.orient_origin_id_match(J2000), true);
+        assert!(ICRF.orient_origin_id_match(ICRS));
+        assert!(SSB_ICRS.orient_origin_id_match(ICRS));
+        assert!(SSB_J2000.orient_origin_id_match(J2000));
 
-        assert_eq!(GCRF.orient_origin_id_match(ICRS), true);
-        assert_eq!(EARTH_ICRS.orient_origin_id_match(ICRS), true);
-        assert_eq!(EARTH_J2000.orient_origin_id_match(J2000), true);
+        assert!(GCRF.orient_origin_id_match(ICRS));
+        assert!(EARTH_ICRS.orient_origin_id_match(ICRS));
+        assert!(EARTH_J2000.orient_origin_id_match(J2000));
 
-        assert_eq!(
-            EARTH_MOON_BARYCENTER_ICRS.orient_origin_id_match(ICRS),
-            true
-        );
-        assert_eq!(
-            EARTH_MOON_BARYCENTER_J2000.orient_origin_id_match(J2000),
-            true
-        );
+        assert!(EARTH_MOON_BARYCENTER_ICRS.orient_origin_id_match(ICRS),);
+        assert!(EARTH_MOON_BARYCENTER_J2000.orient_origin_id_match(J2000),);
     }
 }
