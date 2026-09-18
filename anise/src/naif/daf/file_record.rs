@@ -174,6 +174,7 @@ impl FileRecord {
         }
     }
 
+    #[cfg(test)]
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn bpc(filename: &str) -> Self {
         let mut internal_filename = [0u8; 60];
