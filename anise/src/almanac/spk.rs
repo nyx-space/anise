@@ -120,10 +120,11 @@ impl Almanac {
             }
         }
 
-        // If the ID is not present at all, spk_domain will report it.
-        let (start, end) = self.spk_domain(id)?;
+        // If the ID is not present at all, spk_domain_and_gap will report it.
+        let (start, end, has_gap) = self.spk_domain_and_gap(id)?;
+        let gap_str = if has_gap { " (with gaps)" } else { "" };
         error!(
-            "Almanac: summary {id} valid from {start} to {end} but not at requested {epoch_et_s}"
+            "Almanac: summary {id} valid from {start} to {end}{gap_str} but not at requested {epoch_et_s}"
         );
         // If we're reached this point, there is no relevant summary at this epoch.
         Err(EphemerisError::SPK {
@@ -134,6 +135,7 @@ impl Almanac {
                 epoch: Epoch::from_et_seconds(epoch_et_s),
                 start,
                 end,
+                has_gap,
             },
         })
     }
@@ -231,22 +233,40 @@ impl Almanac {
     /// :type id: int
     /// :rtype: typing.Tuple
     pub fn spk_domain(&self, id: NaifId) -> Result<(Epoch, Epoch), EphemerisError> {
-        let summaries = self.spk_summaries(id)?;
+        let (start, end, _) = self.spk_domain_and_gap(id)?;
+        Ok((start, end))
+    }
 
-        // We know that the summaries is non-empty because if it is, the previous function call returns an error.
+    pub(crate) fn spk_domain_and_gap(
+        &self,
+        id: NaifId,
+    ) -> Result<(Epoch, Epoch, bool), EphemerisError> {
+        let mut summaries = self.spk_summaries(id)?;
+        summaries.sort_by_key(|summary| summary.start_epoch());
+
         let start = summaries
-            .iter()
-            .min_by_key(|summary| summary.start_epoch())
-            .expect("summaries is non-empty, guaranteed by spk_summaries")
+            .first()
+            .expect("summaries is non-empty")
             .start_epoch();
-
         let end = summaries
             .iter()
-            .max_by_key(|summary| summary.end_epoch())
-            .expect("summaries is non-empty, guaranteed by spk_summaries")
-            .end_epoch();
+            .map(|s| s.end_epoch())
+            .max()
+            .expect("summaries is non-empty");
 
-        Ok((start, end))
+        let mut has_gap = false;
+        let mut max_covered = summaries[0].end_epoch();
+        for summary in summaries.iter().skip(1) {
+            if summary.start_epoch() > max_covered {
+                has_gap = true;
+                break;
+            }
+            if summary.end_epoch() > max_covered {
+                max_covered = summary.end_epoch();
+            }
+        }
+
+        Ok((start, end, has_gap))
     }
 
     /// Returns a map of each loaded SPK ID to its domain validity.
@@ -313,6 +333,62 @@ mod ut_almanac_spk {
                 .spk_summary_from_name_at_epoch("invalid name", e)
                 .is_err(),
             "empty Almanac should report an error"
+        );
+    }
+
+    #[cfg(feature = "analysis")]
+    #[test]
+    fn spk_domain_gap_error_message() {
+        use crate::constants::frames::EARTH_ICRS;
+        use crate::ephemerides::ephemeris::Ephemeris;
+        use crate::math::Vector6;
+        use crate::prelude::Orbit;
+        use hifitime::Unit;
+
+        let start1 = Epoch::from_gregorian_utc_at_midnight(2020, 1, 1);
+        let end1 = start1 + Unit::Day * 1;
+        let start2 = start1 + Unit::Day * 10;
+        let end2 = start2 + Unit::Day * 1;
+
+        let mut ephem1 = Ephemeris::new("TEST1".to_string());
+        ephem1.set_degree(1).unwrap();
+        ephem1.insert_orbit(Orbit::from_cartesian_pos_vel(
+            Vector6::zeros(),
+            start1,
+            EARTH_ICRS,
+        ));
+        ephem1.insert_orbit(Orbit::from_cartesian_pos_vel(
+            Vector6::zeros(),
+            end1,
+            EARTH_ICRS,
+        ));
+
+        let mut ephem2 = Ephemeris::new("TEST2".to_string());
+        ephem2.set_degree(1).unwrap();
+        ephem2.insert_orbit(Orbit::from_cartesian_pos_vel(
+            Vector6::zeros(),
+            start2,
+            EARTH_ICRS,
+        ));
+        ephem2.insert_orbit(Orbit::from_cartesian_pos_vel(
+            Vector6::zeros(),
+            end2,
+            EARTH_ICRS,
+        ));
+
+        let spk1 = ephem1.to_spice_bsp(-159, None).unwrap();
+        let spk2 = ephem2.to_spice_bsp(-159, None).unwrap();
+
+        let almanac = Almanac::from_spk(spk1).with_spk(spk2);
+
+        let query_epoch = start1 + Unit::Day * 5;
+        let err = almanac
+            .spk_summary_at_epoch(-159, query_epoch.to_et_seconds())
+            .unwrap_err();
+        let err_msg = format!("{err}");
+        assert!(
+            err_msg.contains("(with gaps)"),
+            "Error message should indicate domain gap: {err_msg}"
         );
     }
 
