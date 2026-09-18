@@ -13,6 +13,7 @@ use core::fmt;
 use core::str::FromStr;
 use der::{Decode, Encode, Reader, Writer, asn1::Utf8StringRef};
 use hifitime::Epoch;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use super::{ANISE_VERSION, dataset::DataSetType, semver::Semver};
 
@@ -90,7 +91,16 @@ impl<'a> Decode<'a> for Metadata {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         let anise_version = decoder.decode()?;
         let dataset_type = decoder.decode()?;
-        let creation_date = Epoch::from_str(decoder.decode::<Utf8StringRef<'a>>()?.as_str())
+        let raw_epoch = decoder.decode::<Utf8StringRef<'a>>()?.to_string();
+        let creation_date = catch_unwind(AssertUnwindSafe(|| Epoch::from_str(&raw_epoch)))
+            .map_err(|_| {
+                der::Error::new(
+                    der::ErrorKind::Value {
+                        tag: der::Tag::Utf8String,
+                    },
+                    der::Length::ONE,
+                )
+            })?
             .map_err(|_| {
                 der::Error::new(
                     der::ErrorKind::Value {
@@ -128,8 +138,8 @@ impl fmt::Display for Metadata {
 #[cfg(test)]
 mod metadata_ut {
 
-    use super::Metadata;
-    use der::{Decode, Encode};
+    use super::{DataSetType, Metadata, Semver};
+    use der::{Decode, Encode, asn1::Utf8StringRef};
 
     #[test]
     fn meta_encdec_min_repr() {
@@ -172,6 +182,26 @@ Creation date: {}
         assert!(
             Metadata::decode_header(&buf[..4]).is_err(),
             "should not have enough for version"
+        );
+    }
+
+    #[test]
+    fn meta_invalid_epoch_does_not_panic() {
+        let mut buf = Vec::new();
+        Semver::default().encode_to_vec(&mut buf).unwrap();
+        DataSetType::NotApplicable.encode_to_vec(&mut buf).unwrap();
+        Utf8StringRef::new("not-a-valid-epoch")
+            .unwrap()
+            .encode_to_vec(&mut buf)
+            .unwrap();
+        Utf8StringRef::new("ANISE by Nyx Space")
+            .unwrap()
+            .encode_to_vec(&mut buf)
+            .unwrap();
+
+        assert!(
+            Metadata::from_der(&buf).is_err(),
+            "malformed metadata epoch should decode as an error"
         );
     }
 
