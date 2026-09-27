@@ -18,6 +18,7 @@ use std::path::Path;
 
 use log::{error, info, warn};
 
+use crate::constants::celestial_objects::{MERCURY, MERCURY_BARYCENTER, VENUS, VENUS_BARYCENTER};
 use crate::constants::orientations::ICRS;
 use crate::math::Matrix3;
 use crate::math::rotation::{DCM, Quaternion, r1, r2, r3};
@@ -293,7 +294,7 @@ pub fn convert_tpc_items(
 
                                         PlanetaryData {
                                             object_id,
-                                            parent_id: if [199, 299].contains(&object_id) {
+                                            parent_id: if [MERCURY, VENUS].contains(&object_id) {
                                                 ICRS
                                             } else if object_id > 100 {
                                                 object_id / 100
@@ -418,6 +419,22 @@ pub fn convert_tpc_items(
             None => {
                 warn!("skipping {object_id}: no gravity data")
             }
+        }
+    }
+
+    // Add Mercury and Venus aliases last so explicit barycenter entries take
+    // precedence regardless of input order.
+    for (body_id, system_id) in [(MERCURY, MERCURY_BARYCENTER), (VENUS, VENUS_BARYCENTER)] {
+        if !dataset.lut.by_id.contains_key(&system_id)
+            && let Some(&index) = dataset.lut.by_id.get(&body_id)
+        {
+            dataset
+                .lut
+                .append_id(system_id, index)
+                .map_err(|source| DataSetError::DataSetLut {
+                    action: "adding planetary system alias",
+                    source,
+                })?;
         }
     }
 
@@ -641,6 +658,61 @@ pub fn convert_fk_items(
 #[cfg(test)]
 mod tpc_conversion_ut {
     use super::*;
+
+    fn planetary_items_with_gravity(ids: &[i32]) -> HashMap<i32, TPCItem> {
+        ids.iter()
+            .copied()
+            .map(|id| {
+                let mut item = TPCItem {
+                    body_id: Some(id),
+                    ..Default::default()
+                };
+                item.data.insert(
+                    Parameter::GravitationalParameter,
+                    KPLValue::Float(f64::from(id)),
+                );
+                (id, item)
+            })
+            .collect()
+    }
+
+    #[rstest::rstest]
+    #[case::aliases(&[199, 299, 399], [199, 299])]
+    #[case::mercury_barycenter(&[1, 199, 299], [1, 299])]
+    #[case::venus_barycenter(&[2, 199, 299], [199, 2])]
+    #[case::both_barycenters(&[1, 2, 199, 299], [1, 2])]
+    #[case::barycenters_without_planets(&[1, 2], [1, 2])]
+    fn gh850_tpc_system_aliases(#[case] ids: &[i32], #[case] expected_ids: [i32; 2]) {
+        let planetary = planetary_items_with_gravity(ids);
+        let dataset = convert_tpc_items(planetary, HashMap::new()).unwrap();
+
+        assert_eq!(dataset.data.len(), ids.len());
+        for &id in ids {
+            assert_eq!(dataset.get_by_id(id).unwrap().object_id, id);
+        }
+        for (system_id, expected_id) in [1, 2].into_iter().zip(expected_ids) {
+            assert_eq!(dataset.get_by_id(system_id).unwrap().object_id, expected_id);
+        }
+        assert!(dataset.get_by_id(3).is_err());
+    }
+
+    #[test]
+    fn gh850_skipped_barycenter_uses_body_alias() {
+        let mut planetary = planetary_items_with_gravity(&[1, 199]);
+        // A parsed barycenter without gravity data is skipped during conversion.
+        planetary
+            .get_mut(&1)
+            .unwrap()
+            .data
+            .remove(&Parameter::GravitationalParameter);
+        let dataset = convert_tpc_items(planetary, HashMap::new()).unwrap();
+
+        assert_eq!(dataset.data.len(), 1);
+        assert_eq!(
+            dataset.get_by_id(1).unwrap(),
+            dataset.get_by_id(199).unwrap()
+        );
+    }
 
     /// Builds the minimal TPC data for body 599 that reaches the nutation precession
     /// angle conversion, with the provided MAX_PHASE_DEGREE.

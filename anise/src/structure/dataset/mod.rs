@@ -182,28 +182,12 @@ impl<T: DataSetT> DataSet<T> {
                         self.lut.append(id, name, index).context(DataSetLutSnafu {
                             action: "pushing data with ID and name",
                         })?;
-                        // If the ID is the body of a system with a single object, also insert it for the system ID.
-                        if [199, 299].contains(&id) {
-                            self.lut.append(id / 100, name, index).context({
-                                DataSetLutSnafu {
-                                    action: "pushing data with ID and name",
-                                }
-                            })?;
-                        }
                     }
                     None => {
                         // Only an ID and no name
                         self.lut.append_id(id, index).context(DataSetLutSnafu {
                             action: "pushing data with ID only",
                         })?;
-                        // If the ID is the body of a system with a single object, also insert it for the system ID.
-                        if [199, 299].contains(&id) {
-                            self.lut.append_id(id / 100, index).context({
-                                DataSetLutSnafu {
-                                    action: "pushing data with ID and name",
-                                }
-                            })?;
-                        }
                     }
                 }
             }
@@ -574,12 +558,41 @@ impl<T: DataSetT> fmt::Display for DataSet<T> {
 mod dataset_ut {
     use std::mem::size_of;
 
+    use crate::math::rotation::Quaternion;
     use crate::structure::{
         SpacecraftDataSet,
+        instrument::Instrument,
+        location::Location,
         spacecraft::{DragData, Inertia, Mass, SRPData, SpacecraftData},
     };
 
-    use super::{DataSet, Decode, Encode};
+    use super::{DataSet, DataSetT, Decode, Encode};
+
+    #[test]
+    fn gh850_nonplanetary_ids_are_independent() {
+        fn check_ids<T: DataSetT>() {
+            for ids in [[1, 2, 199, 299], [299, 199, 2, 1]] {
+                for with_names in [false, true] {
+                    let mut dataset = DataSet::<T>::default();
+                    for (index, id) in ids.iter().enumerate() {
+                        let name = format!("Entry {id}");
+                        dataset
+                            .push(T::default(), Some(*id), with_names.then_some(name.as_str()))
+                            .unwrap();
+                        assert_eq!(dataset.lut.by_id.len(), index + 1, "{}", T::NAME);
+                    }
+                    for (index, id) in ids.iter().enumerate() {
+                        assert_eq!(dataset.lut.by_id[id], index as u32, "{}", T::NAME);
+                    }
+                }
+            }
+        }
+
+        check_ids::<Location>();
+        check_ids::<SpacecraftData>();
+        check_ids::<Quaternion>();
+        check_ids::<Instrument>();
+    }
 
     #[test]
     fn zero_repr() {
