@@ -787,18 +787,18 @@ impl Ephemeris {
                 Formatter::new(segment.total_end, iso8601_no_ts),
             )
             .map_err(err_hdlr)?;
-            writeln!(
-                writer,
-                "INTERPOLATION = {}",
-                match segment.interpolation {
-                    DataType::Type9LagrangeUnequalStep => "LAGRANGE",
-                    DataType::Type13HermiteUnequalStep | DataType::Type12HermiteEqualStep => {
-                        "HERMITE"
-                    }
-                    _ => unreachable!(),
+            let interp_str = match segment.interpolation {
+                DataType::Type9LagrangeUnequalStep => "LAGRANGE",
+                DataType::Type13HermiteUnequalStep | DataType::Type12HermiteEqualStep => "HERMITE",
+                dtype => {
+                    return Err(EphemerisError::OEMWritingError {
+                        details: format!(
+                            "interpolation type {dtype} is not supported by CCSDS OEM"
+                        ),
+                    });
                 }
-            )
-            .map_err(err_hdlr)?;
+            };
+            writeln!(writer, "INTERPOLATION = {interp_str}").map_err(err_hdlr)?;
             writeln!(writer, "INTERPOLATION_DEGREE = {}", segment.degree).map_err(err_hdlr)?;
             writeln!(writer, "META_STOP\n").map_err(err_hdlr)?;
 

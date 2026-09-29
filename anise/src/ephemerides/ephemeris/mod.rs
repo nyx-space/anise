@@ -262,7 +262,7 @@ impl EphemerisSegmentView<'_> {
                     orbit_data[i + 3] = derivative;
                 }
             }
-            _ => unreachable!(),
+            dtype => return Err(EphemerisError::UnsupportedInterpolation { dtype }),
         }
 
         let mut orbit = template.orbit.with_cartesian_pos_vel(orbit_data);
@@ -884,6 +884,39 @@ mod ut_oem {
     #[fixture]
     fn almanac() -> Almanac {
         Almanac::default().load("../data/pck11.pca").unwrap()
+    }
+
+    #[test]
+    fn unsupported_interpolation_type_errors_not_panics() {
+        // set_interpolation stores any DataType without validation, so an ephemeris can end up
+        // with an interpolation that is neither Lagrange (type 9) nor Hermite (type 12/13).
+        // Querying it used to hit `unreachable!()` in interpolate_orbit_records and panic; it must
+        // return an error instead, matching how the SPK translation path reports unsupported types.
+        let mut ephem =
+            Ephemeris::from_ccsds_oem_file("../data/tests/ccsds/oem/GEO_20s.oem").unwrap();
+        let (start, end) = ephem.domain().unwrap();
+        let mid = start + (end - start) * 0.5;
+
+        ephem.set_interpolation(DataType::Type2ChebyshevTriplet);
+
+        let almanac = Almanac::default();
+        let err = ephem
+            .at(mid, &almanac)
+            .expect_err("querying an unsupported interpolation type must error, not panic");
+        assert_eq!(
+            err,
+            EphemerisError::UnsupportedInterpolation {
+                dtype: DataType::Type2ChebyshevTriplet
+            }
+        );
+
+        // The CCSDS OEM writer must likewise error rather than panic.
+        let out = std::env::temp_dir().join("anise_unsupported_interp.oem");
+        assert!(
+            ephem.write_ccsds_oem(&out, None, None).is_err(),
+            "writing an unsupported interpolation type must error, not panic"
+        );
+        let _ = std::fs::remove_file(&out);
     }
 
     #[test]
