@@ -13,7 +13,7 @@ use snafu::prelude::*;
 
 use crate::{
     NaifId, astro::Aberration, errors::PhysicsError, math::interpolation::InterpolationError,
-    naif::daf::DAFError, prelude::FrameUid,
+    naif::daf::DAFError, naif::daf::data_types::DataType, prelude::FrameUid,
 };
 
 #[cfg(feature = "analysis")]
@@ -69,6 +69,8 @@ pub enum EphemerisError {
     MixedInterpolationDegree,
     #[snafu(display("interpolation degree must be strictly positive, got {degree}"))]
     InvalidInterpolationDegree { degree: usize },
+    #[snafu(display("interpolation type {dtype} is not supported for in-memory ephemeris query"))]
+    UnsupportedInterpolation { dtype: DataType },
     #[snafu(display("{ab_corr} corrects epoch from {epoch} to {epoch_lt}, but {source}"))]
     LightTimeCorrection {
         epoch: Epoch,
