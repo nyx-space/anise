@@ -311,7 +311,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
         }
         let degree = degree_f64 as usize;
         // A non-empty segment must carry at least a full interpolation window of states.
-        // With fewer, evaluate() recentres the window with `last_idx - 2 * num_left`, which
+        // With fewer, evaluate() recentres the window with `last_idx - group_size`, which
         // underflows and panics when the segment is queried at an interior epoch.
         if num_records > 0 && num_records < degree + 1 {
             return Err(DecodingError::Integrity {
@@ -482,7 +482,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
 
                 // Check that we have enough samples
                 if last_idx == self.num_records {
-                    first_idx = last_idx - 2 * num_left;
+                    first_idx = last_idx - group_size;
                 }
 
                 // Statically allocated arrays of the maximum number of samples
@@ -645,7 +645,7 @@ mod ut_lagrange {
     #[test]
     fn rejects_window_larger_than_records_type9() {
         // num_records = 4 but the declared window is degree + 1 = 7. evaluate() would recentre
-        // the window with `last_idx - 2 * num_left` and underflow when queried at an interior
+        // the window with `last_idx - group_size` and underflow when queried at an interior
         // epoch, so the segment must be rejected at decode time.
         let mut slice = vec![0.0_f64; 30];
         slice[28] = 6.0; // degree => window size 7
@@ -865,5 +865,26 @@ mod ut_lagrange {
             dataset.evaluate(0.0, &summary).is_err(),
             "a non-finite epoch must error, not panic"
         );
+    }
+
+    #[test]
+    fn type9_odd_window_at_segment_end() {
+        // An odd window (even degree) was one record short at the end of the segment.
+        let epoch_data = [100.0, 110.0, 120.0, 130.0];
+        let state_data: Vec<f64> = epoch_data
+            .iter()
+            .flat_map(|t| [t + 1000.0, 0.0, 0.0, 1.0, 0.0, 0.0])
+            .collect();
+        let dataset = LagrangeSetType9 {
+            degree: 2,
+            num_records: 4,
+            state_data: &state_data,
+            epoch_data: &epoch_data,
+            epoch_registry: &[],
+        };
+        let summary = SPKSummaryRecord::default();
+        let (pos, vel) = dataset.evaluate(125.0, &summary).unwrap();
+        assert!((pos.x - 1125.0).abs() < 1e-12);
+        assert!((vel.x - 1.0).abs() < 1e-12);
     }
 }

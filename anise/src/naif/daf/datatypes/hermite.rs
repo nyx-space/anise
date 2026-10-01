@@ -351,7 +351,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
 
         let samples = num_samples_f64 as usize + 1;
         // A non-empty segment must carry at least a full interpolation window of states.
-        // With fewer, evaluate() recentres the window with `last_idx - 2 * num_left`, which
+        // With fewer, evaluate() recentres the window with `last_idx - samples`, which
         // underflows and panics when the segment is queried at an interior epoch.
         if num_records > 0 && num_records < samples {
             return Err(DecodingError::Integrity {
@@ -522,7 +522,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
 
                 // Check that we have enough samples
                 if last_idx == self.num_records {
-                    first_idx = last_idx - 2 * num_left;
+                    first_idx = last_idx - self.samples;
                 }
 
                 // Statically allocated arrays of the maximum number of samples
@@ -772,7 +772,7 @@ mod hermite_ut {
     #[test]
     fn rejects_window_larger_than_records_type13() {
         // num_records = 4 but the declared window is samples = 7. evaluate() would recentre the
-        // window with `last_idx - 2 * num_left` and underflow when queried at an interior epoch,
+        // window with `last_idx - samples` and underflow when queried at an interior epoch,
         // so the segment must be rejected at decode time.
         let mut slice = vec![0.0_f64; 30];
         slice[28] = 6.0; // window size - 1 => samples = 7
@@ -1022,5 +1022,27 @@ mod hermite_ut {
             dataset.evaluate(0.0, &summary).is_err(),
             "a non-finite epoch must error, not panic"
         );
+    }
+
+    #[test]
+    fn type13_odd_window_at_segment_end() {
+        use crate::naif::spk::summary::SPKSummaryRecord;
+        // An odd window was one record short at the end of the segment.
+        let epoch_data = [100.0, 110.0, 120.0, 130.0];
+        let state_data: Vec<f64> = epoch_data
+            .iter()
+            .flat_map(|t| [t + 1000.0, 0.0, 0.0, 1.0, 0.0, 0.0])
+            .collect();
+        let dataset = HermiteSetType13 {
+            samples: 3,
+            num_records: 4,
+            state_data: &state_data,
+            epoch_data: &epoch_data,
+            epoch_registry: &[],
+        };
+        let summary = SPKSummaryRecord::default();
+        let (pos, vel) = dataset.evaluate(125.0, &summary).unwrap();
+        assert!((pos.x - 1125.0).abs() < 1e-12);
+        assert!((vel.x - 1.0).abs() < 1e-12);
     }
 }
