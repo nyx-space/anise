@@ -53,3 +53,4 @@ download_if_missing "http://public-data.nyxspace.com/anise/ci/earth_latest_high_
 download_if_missing "http://public-data.nyxspace.com/nyx/examples/lrorg_2023349_2024075_v01_LE.bsp" "lro.bsp"
 download_if_missing "http://public-data.nyxspace.com/anise/ci/mro.bsp" "mro.bsp"
 download_if_missing "http://public-data.nyxspace.com/anise/ci/earth_2025_250826_2125_predict.bpc" "earth_2025_250826_2125_predict.bpc"
+download_if_missing "https://raw.githubusercontent.com/duncaneddy/brahe/0d9830bfb56569699cf737fbf85575df19cffc3d/test_assets/ceres_horizons_type21.bsp" "ceres_horizons_type21.bsp"

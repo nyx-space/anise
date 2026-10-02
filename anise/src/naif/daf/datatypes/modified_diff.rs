@@ -24,6 +24,8 @@ use crate::{
 
 // Length of a single modified difference type 1 record.
 const MD1_RCRD_LEN: usize = 71;
+// Largest difference line dimension (MAXDIM) supported by SPICE, cf. MAXTRM in spke21.c.
+const MAXTRM: usize = 25;
 
 #[derive(PartialEq)]
 pub struct ModifiedDiffType1<'a> {
@@ -93,23 +95,7 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
     }
 
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError> {
-        if self.num_records == 0 {
-            return Err(DecodingError::InaccessibleBytes {
-                start: n,
-                end: n + 1,
-                size: 0,
-            });
-        }
-        let rcrd_len = self.record_data.len() / self.num_records;
-        Ok(Self::RecordKind::from_slice_f64(
-            self.record_data
-                .get(n * rcrd_len..(n + 1) * rcrd_len)
-                .ok_or(DecodingError::InaccessibleBytes {
-                    start: n * rcrd_len,
-                    end: (n + 1) * rcrd_len,
-                    size: self.record_data.len(),
-                })?,
-        ))
+        nth_record(self.record_data, self.num_records, n)
     }
 
     fn evaluate<S: NAIFSummaryRecord>(
@@ -117,106 +103,218 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
         epoch_et_s: f64,
         summary: &S,
     ) -> Result<Self::StateKind, InterpolationError> {
-        // Start by doing a binary search on the epoch registry to limit the search space in the total number of epochs.
-        if self.epoch_data.is_empty() {
-            return Err(InterpolationError::MissingInterpolationData {
-                epoch: Epoch::from_et_seconds(epoch_et_s),
-            });
-        }
-        // Each epoch ends its record, so the segment starts before the first epoch.
-        if epoch_et_s < summary.start_epoch_et_s().next_down()
-            || epoch_et_s > summary.end_epoch_et_s().next_up()
-        {
-            return Err(InterpolationError::NoInterpolationData {
-                req: Epoch::from_et_seconds(epoch_et_s),
-                start: summary.start_epoch(),
-                end: summary.end_epoch(),
-            });
-        }
-
-        // NOTE: We do NOT use the epoch registry. Despite the code being strictly identical to the zero-error
-        // Hermite registry search, it led here to extremely large interpolation errors.
-
-        // Like SPKR01, use the first record that ends at or after the epoch, or the last record.
-        let rcrd_idx = self
-            .epoch_data
-            .partition_point(|&epoch_et| epoch_et < epoch_et_s)
-            .min(self.epoch_data.len() - 1);
-
+        let rcrd_idx = record_index(self.epoch_data, summary, epoch_et_s)?;
         let record = self.nth_record(rcrd_idx).context(InterpDecodingSnafu)?;
-
-        // kqmax1 and the per-component integration orders (kq) are read straight from the
-        // file and drive the indexing into the fixed-size work buffers (fc, wc, w) and the
-        // 3x15 difference array in to_pos_vel. Reject any record whose orders fall outside
-        // those bounds so a crafted Type 1 segment cannot index past them.
-        // Check the orders on the raw f64 values rather than casting to usize first: a NaN
-        // or negative value would saturate to 0 on cast and slip past the kq check.
-        if !(2.0..=15.0).contains(&record.kqmax1) {
-            return Err(InterpolationError::CorruptedData {
-                what: "modified difference kqmax1 outside the supported range (2.0..=15.0)",
-            });
-        }
-        if record
-            .kq
-            .iter()
-            .any(|&order| !(1.0..=15.0).contains(&order))
-        {
-            return Err(InterpolationError::CorruptedData {
-                what: "modified difference integration order (kq) outside the supported range (1.0..=15.0)",
-            });
-        }
-
-        // to_pos_vel divides by the first `kqmax1 - 2` interpolation nodes in the recurrence
-        // relation, and the nodes are read verbatim from the file. A zero node yields a
-        // non-finite state instead of an error. Every other interpolator rejects its divisor
-        // (hermite/lagrange reject duplicate abscissae, chebyshev a zero radius, the equal-step
-        // decoders a zero step size), so reject a zero node here too.
-        let touched_nodes = (record.kqmax1 - 2.0).max(0.0) as usize;
-        if record
-            .nodes
-            .iter()
-            .take(touched_nodes)
-            .any(|node| node.abs() < f64::EPSILON)
-        {
-            return Err(InterpolationError::InterpMath {
-                source: MathError::DivisionByZero {
-                    action: "modified difference interpolation node is zero",
-                },
-            });
-        }
-
+        record.check_orders_and_nodes()?;
         Ok(record.to_pos_vel(epoch_et_s))
     }
 
     fn check_integrity(&self) -> Result<(), IntegrityError> {
-        for val in self.record_data {
-            if !val.is_finite() {
-                return Err(IntegrityError::SubNormal {
-                    dataset: Self::DATASET_NAME,
-                    variable: "one of the record data",
-                });
-            }
-        }
-
-        for val in self.epoch_data {
-            if !val.is_finite() {
-                return Err(IntegrityError::SubNormal {
-                    dataset: Self::DATASET_NAME,
-                    variable: "one of the epoch data",
-                });
-            }
-        }
-
-        for val in self.epoch_registry {
-            if !val.is_finite() {
-                return Err(IntegrityError::SubNormal {
-                    dataset: Self::DATASET_NAME,
-                    variable: "one of the epoch registry",
-                });
-            }
-        }
-        Ok(())
+        check_integrity(
+            Self::DATASET_NAME,
+            self.record_data,
+            self.epoch_data,
+            self.epoch_registry,
+        )
     }
+}
+
+#[derive(PartialEq)]
+pub struct ModifiedDiffType21<'a> {
+    pub maxdim: usize,
+    pub num_records: usize,
+    pub epoch_data: &'a [f64],
+    pub epoch_registry: &'a [f64],
+    pub record_data: &'a [f64],
+}
+
+impl fmt::Display for ModifiedDiffType21<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Extended Modified Differences Type 21 from {:E} to {:E} with {} items of dimension {} ({} epoch directories)",
+            Epoch::from_et_seconds(*self.epoch_data.first().unwrap_or(&0.0)),
+            Epoch::from_et_seconds(*self.epoch_data.last().unwrap_or(&0.0)),
+            self.num_records,
+            self.maxdim,
+            self.epoch_registry.len()
+        )
+    }
+}
+
+/// SPK Type 21 is Type 1 with a per-segment difference line dimension (MAXDIM), cf. spke21.c
+impl<'a> NAIFDataSet<'a> for ModifiedDiffType21<'a> {
+    type StateKind = (Vector3, Vector3);
+    type RecordKind = ModifiedDiffRecord<'a>;
+    const DATASET_NAME: &'static str = "Extended Modified Differences Type 21";
+
+    fn from_f64_slice(slice: &'a [f64]) -> Result<Self, DecodingError> {
+        ensure!(
+            // 1: MAXDIM; 1: Num Records.
+            slice.len() >= 2,
+            TooFewDoublesSnafu {
+                dataset: Self::DATASET_NAME,
+                need: 2_usize,
+                got: slice.len()
+            }
+        );
+        // Bound MAXDIM on the raw f64, which also rejects NaN.
+        let maxdim_f64 = slice[slice.len() - 2];
+        if !(1.0..=MAXTRM as f64).contains(&maxdim_f64) {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::InvalidValue {
+                    dataset: Self::DATASET_NAME,
+                    variable: "difference line dimension (MAXDIM)",
+                    value: maxdim_f64,
+                    reason: "must be between 1 and MAXTRM (25)",
+                },
+            });
+        }
+        let maxdim = maxdim_f64 as usize;
+        let rcrd_len = 4 * maxdim + 11;
+        let num_records = slice[slice.len() - 1] as usize;
+        ensure!(
+            num_records < slice.len(),
+            InaccessibleBytesSnafu {
+                start: 0_usize,
+                end: num_records,
+                size: slice.len()
+            }
+        );
+        let idx = num_records * rcrd_len;
+        ensure!(
+            idx + num_records <= slice.len() - 2,
+            InaccessibleBytesSnafu {
+                start: 0_usize,
+                end: idx + num_records + 2,
+                size: slice.len(),
+            }
+        );
+        let record_data = &slice[..idx];
+        let epoch_data = &slice[idx..idx + num_records];
+        let epoch_registry = &slice[idx + num_records..slice.len() - 2];
+
+        Ok(Self {
+            maxdim,
+            num_records,
+            record_data,
+            epoch_data,
+            epoch_registry,
+        })
+    }
+
+    fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError> {
+        nth_record(self.record_data, self.num_records, n)
+    }
+
+    fn evaluate<S: NAIFSummaryRecord>(
+        &self,
+        epoch_et_s: f64,
+        summary: &S,
+    ) -> Result<Self::StateKind, InterpolationError> {
+        let rcrd_idx = record_index(self.epoch_data, summary, epoch_et_s)?;
+        let record = self.nth_record(rcrd_idx).context(InterpDecodingSnafu)?;
+        record.check_orders_and_nodes()?;
+        Ok(record.to_pos_vel(epoch_et_s))
+    }
+
+    fn check_integrity(&self) -> Result<(), IntegrityError> {
+        check_integrity(
+            Self::DATASET_NAME,
+            self.record_data,
+            self.epoch_data,
+            self.epoch_registry,
+        )
+    }
+}
+
+fn nth_record<'a>(
+    record_data: &'a [f64],
+    num_records: usize,
+    n: usize,
+) -> Result<ModifiedDiffRecord<'a>, DecodingError> {
+    if num_records == 0 {
+        return Err(DecodingError::InaccessibleBytes {
+            start: n,
+            end: n + 1,
+            size: 0,
+        });
+    }
+    let rcrd_len = record_data.len() / num_records;
+    Ok(ModifiedDiffRecord::from_slice_f64(
+        record_data.get(n * rcrd_len..(n + 1) * rcrd_len).ok_or(
+            DecodingError::InaccessibleBytes {
+                start: n * rcrd_len,
+                end: (n + 1) * rcrd_len,
+                size: record_data.len(),
+            },
+        )?,
+    ))
+}
+
+fn record_index<S: NAIFSummaryRecord>(
+    epoch_data: &[f64],
+    summary: &S,
+    epoch_et_s: f64,
+) -> Result<usize, InterpolationError> {
+    if epoch_data.is_empty() {
+        return Err(InterpolationError::MissingInterpolationData {
+            epoch: Epoch::from_et_seconds(epoch_et_s),
+        });
+    }
+    // Each epoch ends its record, so the segment starts before the first epoch.
+    if epoch_et_s < summary.start_epoch_et_s().next_down()
+        || epoch_et_s > summary.end_epoch_et_s().next_up()
+    {
+        return Err(InterpolationError::NoInterpolationData {
+            req: Epoch::from_et_seconds(epoch_et_s),
+            start: summary.start_epoch(),
+            end: summary.end_epoch(),
+        });
+    }
+
+    // NOTE: We do NOT use the epoch registry. Despite the code being strictly identical to the zero-error
+    // Hermite registry search, it led here to extremely large interpolation errors.
+
+    // Like SPKR01, use the first record that ends at or after the epoch, or the last record.
+    Ok(epoch_data
+        .partition_point(|&epoch_et| epoch_et < epoch_et_s)
+        .min(epoch_data.len() - 1))
+}
+
+fn check_integrity(
+    dataset: &'static str,
+    record_data: &[f64],
+    epoch_data: &[f64],
+    epoch_registry: &[f64],
+) -> Result<(), IntegrityError> {
+    for val in record_data {
+        if !val.is_finite() {
+            return Err(IntegrityError::SubNormal {
+                dataset,
+                variable: "one of the record data",
+            });
+        }
+    }
+
+    for val in epoch_data {
+        if !val.is_finite() {
+            return Err(IntegrityError::SubNormal {
+                dataset,
+                variable: "one of the epoch data",
+            });
+        }
+    }
+
+    for val in epoch_registry {
+        if !val.is_finite() {
+            return Err(IntegrityError::SubNormal {
+                dataset,
+                variable: "one of the epoch registry",
+            });
+        }
+    }
+    Ok(())
 }
 
 #[derive(Copy, Clone, Default, Debug)]
@@ -247,7 +345,53 @@ pub struct ModifiedDiffRecord<'a> {
 }
 
 impl<'a> ModifiedDiffRecord<'a> {
+    fn check_orders_and_nodes(&self) -> Result<(), InterpolationError> {
+        // kqmax1 and the per-component integration orders (kq) are read straight from the
+        // file and drive the indexing into the fixed-size work buffers (fc, wc, w) and the
+        // 3 x MAXDIM difference array in to_pos_vel. Reject any record whose orders fall outside
+        // those bounds so a crafted segment cannot index past them.
+        // Check the orders on the raw f64 values rather than casting to usize first: a NaN
+        // or negative value would saturate to 0 on cast and slip past the kq check.
+        let maxdim = self.nodes.len() as f64;
+        if !(2.0..=maxdim).contains(&self.kqmax1) {
+            return Err(InterpolationError::CorruptedData {
+                what: "modified difference kqmax1 outside the supported range (2..=MAXDIM)",
+            });
+        }
+        if self
+            .kq
+            .iter()
+            .any(|&order| !(1.0..=maxdim).contains(&order))
+        {
+            return Err(InterpolationError::CorruptedData {
+                what: "modified difference integration order (kq) outside the supported range (1..=MAXDIM)",
+            });
+        }
+
+        // to_pos_vel divides by the first `kqmax1 - 2` interpolation nodes in the recurrence
+        // relation, and the nodes are read verbatim from the file. A zero node yields a
+        // non-finite state instead of an error. Every other interpolator rejects its divisor
+        // (hermite/lagrange reject duplicate abscissae, chebyshev a zero radius, the equal-step
+        // decoders a zero step size), so reject a zero node here too.
+        let touched_nodes = (self.kqmax1 - 2.0).max(0.0) as usize;
+        if self
+            .nodes
+            .iter()
+            .take(touched_nodes)
+            .any(|node| node.abs() < f64::EPSILON)
+        {
+            return Err(InterpolationError::InterpMath {
+                source: MathError::DivisionByZero {
+                    action: "modified difference interpolation node is zero",
+                },
+            });
+        }
+        Ok(())
+    }
+
     pub fn to_pos_vel(&self, epoch_et_s: f64) -> (Vector3, Vector3) {
+        let maxdim = self.nodes.len();
+
         //  Set up for the computation of the various differences.
         let delta = epoch_et_s - self.ref_epoch; // Time delta from reference epoch
         let mut tp = delta;
@@ -257,8 +401,8 @@ impl<'a> ModifiedDiffRecord<'a> {
         let mq2 = self.kqmax1 - 2.0;
 
         // Initialize lists for the recurrence relation coefficients.
-        let mut fc = [0.0; 14];
-        let mut wc = [0.0; 13];
+        let mut fc = [0.0; MAXTRM - 1];
+        let mut wc = [0.0; MAXTRM - 2];
 
         for j in 0..mq2.max(0.0) as usize {
             fc[j] = tp / self.nodes[j];
@@ -267,7 +411,7 @@ impl<'a> ModifiedDiffRecord<'a> {
         }
 
         // 3. Compute the W(k) terms for position interpolation.
-        let mut w = [0.0; 17];
+        let mut w = [0.0; MAXTRM + 2];
 
         // Initialize the first set of W terms with reciprocals.
         for (j, mut_w) in w.iter_mut().enumerate().take(self.kqmax1 as usize) {
@@ -294,9 +438,8 @@ impl<'a> ModifiedDiffRecord<'a> {
 
             for j in 0..component_order {
                 // Access dt value from the flat record array.
-                // The index is equivalent to dt[i, j] in a 3x15 reshaped array.
-                // The dt data block starts at record index 22.
-                let dt_idx = i * 15 + j;
+                // The index is equivalent to dt[i, j] in a 3 x MAXDIM reshaped array.
+                let dt_idx = i * maxdim + j;
                 poly_sum += self.mod_diff_array[dt_idx] * w[j + ks]
             }
 
@@ -325,7 +468,7 @@ impl<'a> ModifiedDiffRecord<'a> {
 
             for j in 0..component_order {
                 // The index into the flat dt block is the same as for position.
-                let dt_idx = i * 15 + j;
+                let dt_idx = i * maxdim + j;
                 poly_sum_vel += self.mod_diff_array[dt_idx] * w[j + ks];
             }
 
@@ -352,18 +495,21 @@ impl<'a> fmt::Display for ModifiedDiffRecord<'a> {
 
 impl<'a> NAIFDataRecord<'a> for ModifiedDiffRecord<'a> {
     fn from_slice_f64(slice: &'a [f64]) -> Self {
+        // A record holds 4 * MAXDIM + 11 doubles, and Type 1 records always have MAXDIM = 15.
+        let maxdim = (slice.len() - 11) / 4;
+        let kqmax1_idx = 4 * maxdim + 7;
         Self {
             ref_epoch: slice[0],
-            nodes: &slice[1..16],
-            ref_x_km: slice[16],
-            ref_y_km: slice[18],
-            ref_z_km: slice[20],
-            ref_vx_km_s: slice[17],
-            ref_vy_km_s: slice[19],
-            ref_vz_km_s: slice[21],
-            mod_diff_array: &slice[22..67],
-            kqmax1: slice[67],
-            kq: &slice[68..71],
+            nodes: &slice[1..=maxdim],
+            ref_x_km: slice[maxdim + 1],
+            ref_y_km: slice[maxdim + 3],
+            ref_z_km: slice[maxdim + 5],
+            ref_vx_km_s: slice[maxdim + 2],
+            ref_vy_km_s: slice[maxdim + 4],
+            ref_vz_km_s: slice[maxdim + 6],
+            mod_diff_array: &slice[maxdim + 7..kqmax1_idx],
+            kqmax1: slice[kqmax1_idx],
+            kq: &slice[kqmax1_idx + 1..kqmax1_idx + 4],
         }
     }
 }
@@ -494,5 +640,31 @@ mod ut_spk1 {
         let valid = build(1.0);
         let set = ModifiedDiffType1::from_f64_slice(&valid).unwrap();
         assert!(set.evaluate(0.0, &summary).is_ok());
+    }
+}
+
+#[cfg(test)]
+mod ut_spk21 {
+    use super::ModifiedDiffType21;
+    use crate::errors::DecodingError;
+    use crate::naif::daf::NAIFDataSet;
+
+    /// SPICE rejects a MAXDIM above 25, which would also overflow the work buffers.
+    #[test]
+    fn spk21_out_of_range_maxdim_is_rejected() {
+        // One record of dimension 26 (115 doubles) + one epoch + MAXDIM + num_records.
+        let mut slice = [0.0_f64; 118];
+        slice[116] = 26.0; // MAXDIM
+        slice[117] = 1.0; // num_records
+        assert!(matches!(
+            ModifiedDiffType21::from_f64_slice(&slice),
+            Err(DecodingError::Integrity { .. })
+        ));
+
+        slice[116] = 0.0;
+        assert!(matches!(
+            ModifiedDiffType21::from_f64_slice(&slice),
+            Err(DecodingError::Integrity { .. })
+        ));
     }
 }

@@ -109,7 +109,7 @@ jobs:
         run: RUST_BACKTRACE=1 cargo test validate_lagrange_type9_with_varying_segment_sizes --features validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
 
       - name: Rust-SPICE Modified Difference validation
-        run: RUST_BACKTRACE=1 cargo test validate_modified_diff_type01 --features validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
+        run: RUST_BACKTRACE=1 cargo test validate_modified_diff_type --features validation --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --include-ignored --test-threads 1
 
       - name: Rust-SPICE PCK validation
         run: RUST_BACKTRACE=1 cargo test validate_iau_rotation_to_parent --release --workspace --exclude anise-gui --exclude anise-py -- --nocapture --ignored
@@ -168,6 +168,7 @@ jobs:
           cargo llvm-cov test --no-report validate_hermite_type13_from_gmat --features validation -- --nocapture --ignored
           cargo llvm-cov test --no-report validate_lagrange_type9_with_varying_segment_sizes --features validation -- --nocapture --ignored
           cargo llvm-cov test --no-report validate_modified_diff_type01 --features validation -- --nocapture --ignored
+          cargo llvm-cov test --no-report validate_modified_diff_type21_ceres --features validation -- --nocapture --ignored
           cargo llvm-cov test --no-report ut_embed --features embed_ephem
           cargo llvm-cov report --lcov > ../lcov.txt
 
