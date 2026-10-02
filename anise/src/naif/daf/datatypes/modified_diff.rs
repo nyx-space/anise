@@ -12,7 +12,9 @@ use core::fmt;
 use hifitime::Epoch;
 use snafu::{ResultExt, ensure};
 
-use crate::errors::{DecodingError, InaccessibleBytesSnafu, IntegrityError, TooFewDoublesSnafu};
+use crate::errors::{
+    DecodingError, InaccessibleBytesSnafu, IntegrityError, MathError, TooFewDoublesSnafu,
+};
 use crate::math::interpolation::{InterpDecodingSnafu, InterpolationError};
 use crate::naif::daf::NAIFSummaryRecord;
 use crate::{
@@ -165,6 +167,25 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
         {
             return Err(InterpolationError::CorruptedData {
                 what: "modified difference integration order (kq) outside the supported range (1.0..=15.0)",
+            });
+        }
+
+        // to_pos_vel divides by the first `kqmax1 - 2` interpolation nodes in the recurrence
+        // relation, and the nodes are read verbatim from the file. A zero node yields a
+        // non-finite state instead of an error. Every other interpolator rejects its divisor
+        // (hermite/lagrange reject duplicate abscissae, chebyshev a zero radius, the equal-step
+        // decoders a zero step size), so reject a zero node here too.
+        let touched_nodes = (record.kqmax1 - 2.0).max(0.0) as usize;
+        if record
+            .nodes
+            .iter()
+            .take(touched_nodes)
+            .any(|node| node.abs() < f64::EPSILON)
+        {
+            return Err(InterpolationError::InterpMath {
+                source: MathError::DivisionByZero {
+                    action: "modified difference interpolation node is zero",
+                },
             });
         }
 
@@ -421,5 +442,43 @@ mod ut_spk1 {
         let oversized_kq = build(2.0, 100.0);
         let set = ModifiedDiffType1::from_f64_slice(&oversized_kq).unwrap();
         assert!(set.evaluate(-1e-3, &summary).is_err());
+    }
+
+    /// A crafted Type 1 segment with a zero interpolation node must be rejected rather than
+    /// dividing by it in to_pos_vel and returning a non-finite state.
+    #[test]
+    fn spk1_zero_node_is_rejected() {
+        use super::ModifiedDiffType1;
+        use crate::naif::daf::NAIFDataSet;
+        use crate::naif::spk::summary::SPKSummaryRecord;
+
+        // One record (71 doubles) + one epoch + two trailing metadata doubles.
+        // kqmax1 = 3 means the recurrence divides by the first node (slice[1]).
+        let build = |node0: f64| {
+            let mut slice = [0.0_f64; 74];
+            for n in slice.iter_mut().take(16).skip(1) {
+                *n = 1.0;
+            }
+            slice[1] = node0; // first interpolation node
+            slice[67] = 3.0; // kqmax1
+            slice[68] = 1.0; // kq[0]
+            slice[69] = 1.0; // kq[1]
+            slice[70] = 1.0; // kq[2]
+            slice[71] = 0.0; // single epoch at 0 ET seconds
+            slice[73] = 1.0; // num_records
+            slice
+        };
+
+        let summary = SPKSummaryRecord::default();
+
+        // A zero first node is divided by in the recurrence, so it must be rejected.
+        let zero_node = build(0.0);
+        let set = ModifiedDiffType1::from_f64_slice(&zero_node).unwrap();
+        assert!(set.evaluate(-1e-3, &summary).is_err());
+
+        // A non-zero node evaluates without error.
+        let valid = build(1.0);
+        let set = ModifiedDiffType1::from_f64_slice(&valid).unwrap();
+        assert!(set.evaluate(-1e-3, &summary).is_ok());
     }
 }
