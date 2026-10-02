@@ -115,7 +115,7 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
     fn evaluate<S: NAIFSummaryRecord>(
         &self,
         epoch_et_s: f64,
-        _: &S,
+        summary: &S,
     ) -> Result<Self::StateKind, InterpolationError> {
         // Start by doing a binary search on the epoch registry to limit the search space in the total number of epochs.
         if self.epoch_data.is_empty() {
@@ -123,29 +123,25 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
                 epoch: Epoch::from_et_seconds(epoch_et_s),
             });
         }
-        // Check that we even have interpolation data for that time
-        let last_epoch =
-            *self
-                .epoch_data
-                .last()
-                .ok_or(InterpolationError::MissingInterpolationData {
-                    epoch: Epoch::from_et_seconds(epoch_et_s),
-                })?;
-        if epoch_et_s < self.epoch_data[0] - 1e-2 || epoch_et_s > last_epoch + 1e-2 {
+        // Each epoch ends its record, so the segment starts before the first epoch.
+        if epoch_et_s < summary.start_epoch_et_s().next_down()
+            || epoch_et_s > summary.end_epoch_et_s().next_up()
+        {
             return Err(InterpolationError::NoInterpolationData {
                 req: Epoch::from_et_seconds(epoch_et_s),
-                start: Epoch::from_et_seconds(self.epoch_data[0]),
-                end: Epoch::from_et_seconds(last_epoch),
+                start: summary.start_epoch(),
+                end: summary.end_epoch(),
             });
         }
 
         // NOTE: We do NOT use the epoch registry. Despite the code being strictly identical to the zero-error
         // Hermite registry search, it led here to extremely large interpolation errors.
 
-        // We want the index of the first element that is > epoch.
+        // Like SPKR01, use the first record that ends at or after the epoch, or the last record.
         let rcrd_idx = self
             .epoch_data
-            .partition_point(|&epoch_et| epoch_et <= epoch_et_s);
+            .partition_point(|&epoch_et| epoch_et < epoch_et_s)
+            .min(self.epoch_data.len() - 1);
 
         let record = self.nth_record(rcrd_idx).context(InterpDecodingSnafu)?;
 
@@ -407,11 +403,25 @@ mod ut_spk1 {
         assert_eq!(state.velocity_km_s, expct_velocity_km_s);
     }
 
+    /// Each Type 1 epoch ends its record, so the segment's final epoch falls in the last record.
+    #[test]
+    fn spk1_last_epoch_is_evaluated() {
+        let almanac = Almanac::default().load("../data/mro.bsp").unwrap();
+        let epoch = Epoch::from_et_seconds(812411100.0);
+
+        assert!(
+            almanac
+                .translate_to_parent(Frame::from_ephem_icrs(-74), epoch)
+                .is_ok()
+        );
+    }
+
     /// A crafted Type 1 segment whose kqmax1 / kq orders exceed the work-buffer sizes must be
     /// rejected at evaluation rather than indexing past the fixed fc/wc/w buffers in to_pos_vel.
     #[test]
     fn spk1_out_of_range_orders_are_rejected() {
         use super::ModifiedDiffType1;
+        use crate::math::interpolation::InterpolationError;
         use crate::naif::daf::NAIFDataSet;
         use crate::naif::spk::summary::SPKSummaryRecord;
 
@@ -432,16 +442,20 @@ mod ut_spk1 {
         };
 
         let summary = SPKSummaryRecord::default();
-        // Query just inside the lower bound so record index 0 is selected.
-        // let epoch = Epoch::from_et_seconds(-1e-3);
 
         let oversized_kqmax1 = build(100.0, 1.0);
         let set = ModifiedDiffType1::from_f64_slice(&oversized_kqmax1).unwrap();
-        assert!(set.evaluate(-1e-3, &summary).is_err());
+        assert!(matches!(
+            set.evaluate(0.0, &summary),
+            Err(InterpolationError::CorruptedData { .. })
+        ));
 
         let oversized_kq = build(2.0, 100.0);
         let set = ModifiedDiffType1::from_f64_slice(&oversized_kq).unwrap();
-        assert!(set.evaluate(-1e-3, &summary).is_err());
+        assert!(matches!(
+            set.evaluate(0.0, &summary),
+            Err(InterpolationError::CorruptedData { .. })
+        ));
     }
 
     /// A crafted Type 1 segment with a zero interpolation node must be rejected rather than
@@ -474,11 +488,11 @@ mod ut_spk1 {
         // A zero first node is divided by in the recurrence, so it must be rejected.
         let zero_node = build(0.0);
         let set = ModifiedDiffType1::from_f64_slice(&zero_node).unwrap();
-        assert!(set.evaluate(-1e-3, &summary).is_err());
+        assert!(set.evaluate(0.0, &summary).is_err());
 
         // A non-zero node evaluates without error.
         let valid = build(1.0);
         let set = ModifiedDiffType1::from_f64_slice(&valid).unwrap();
-        assert!(set.evaluate(-1e-3, &summary).is_ok());
+        assert!(set.evaluate(0.0, &summary).is_ok());
     }
 }
