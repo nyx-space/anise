@@ -16,7 +16,7 @@ use crate::ephemerides::EphemInterpolationSnafu;
 use crate::hifitime::Epoch;
 use crate::math::Vector3;
 use crate::math::cartesian::CartesianState;
-use crate::naif::daf::datatypes::modified_diff::ModifiedDiffType1;
+use crate::naif::daf::datatypes::modified_diff::{ModifiedDiffType1, ModifiedDiffType21};
 use crate::naif::daf::datatypes::{
     HermiteSetType12, HermiteSetType13, LagrangeSetType8, LagrangeSetType9, Type2ChebyshevSet,
     Type3ChebyshevSet,
@@ -113,6 +113,15 @@ impl Almanac {
             DafDataType::Type13HermiteUnequalStep => {
                 let data = spk_data
                     .nth_data::<HermiteSetType13>(daf_idx, idx_in_spk)
+                    .context(SPKSnafu {
+                        action: "fetching data for interpolation",
+                    })?;
+                data.evaluate(epoch_et_s, summary)
+                    .context(EphemInterpolationSnafu)?
+            }
+            DafDataType::Type21ExtendedModifiedDifferenceArray => {
+                let data = spk_data
+                    .nth_data::<ModifiedDiffType21>(daf_idx, idx_in_spk)
                     .context(SPKSnafu {
                         action: "fetching data for interpolation",
                     })?;
