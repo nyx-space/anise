@@ -37,11 +37,14 @@ pub struct ModifiedDiffType1<'a> {
 
 impl fmt::Display for ModifiedDiffType1<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (Some(first), Some(last)) = (self.epoch_data.first(), self.epoch_data.last()) else {
+            return write!(f, "Modified Differences Type 1 (empty)");
+        };
         write!(
             f,
             "Modified Differences Type 1 from {:E} to {:E} with {} items ({} epoch directories)",
-            Epoch::from_et_seconds(*self.epoch_data.first().unwrap_or(&0.0)),
-            Epoch::from_et_seconds(*self.epoch_data.last().unwrap_or(&0.0)),
+            Epoch::from_et_seconds(*first),
+            Epoch::from_et_seconds(*last),
             self.num_records,
             self.epoch_registry.len()
         )
@@ -130,11 +133,14 @@ pub struct ModifiedDiffType21<'a> {
 
 impl fmt::Display for ModifiedDiffType21<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (Some(first), Some(last)) = (self.epoch_data.first(), self.epoch_data.last()) else {
+            return write!(f, "Extended Modified Differences Type 21 (empty)");
+        };
         write!(
             f,
             "Extended Modified Differences Type 21 from {:E} to {:E} with {} items of dimension {} ({} epoch directories)",
-            Epoch::from_et_seconds(*self.epoch_data.first().unwrap_or(&0.0)),
-            Epoch::from_et_seconds(*self.epoch_data.last().unwrap_or(&0.0)),
+            Epoch::from_et_seconds(*first),
+            Epoch::from_et_seconds(*last),
             self.num_records,
             self.maxdim,
             self.epoch_registry.len()
