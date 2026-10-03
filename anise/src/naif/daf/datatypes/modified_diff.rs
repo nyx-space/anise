@@ -353,9 +353,9 @@ impl<'a> ModifiedDiffRecord<'a> {
         // Check the orders on the raw f64 values rather than casting to usize first: a NaN
         // or negative value would saturate to 0 on cast and slip past the kq check.
         let maxdim = self.nodes.len() as f64;
-        if !(2.0..=maxdim).contains(&self.kqmax1) {
+        if !(2.0..=maxdim + 1.0).contains(&self.kqmax1) {
             return Err(InterpolationError::CorruptedData {
-                what: "modified difference kqmax1 outside the supported range (2..=MAXDIM)",
+                what: "modified difference kqmax1 outside the supported range (2..=MAXDIM+1)",
             });
         }
         if self
@@ -401,8 +401,8 @@ impl<'a> ModifiedDiffRecord<'a> {
         let mq2 = self.kqmax1 - 2.0;
 
         // Initialize lists for the recurrence relation coefficients.
-        let mut fc = [0.0; MAXTRM - 1];
-        let mut wc = [0.0; MAXTRM - 2];
+        let mut fc = [0.0; MAXTRM];
+        let mut wc = [0.0; MAXTRM - 1];
 
         for j in 0..mq2.max(0.0) as usize {
             fc[j] = tp / self.nodes[j];
@@ -648,6 +648,7 @@ mod ut_spk21 {
     use super::ModifiedDiffType21;
     use crate::errors::DecodingError;
     use crate::naif::daf::NAIFDataSet;
+    use crate::naif::spk::summary::SPKSummaryRecord;
 
     /// SPICE rejects a MAXDIM above 25, which would also overflow the work buffers.
     #[test]
@@ -666,5 +667,22 @@ mod ut_spk21 {
             ModifiedDiffType21::from_f64_slice(&slice),
             Err(DecodingError::Integrity { .. })
         ));
+    }
+
+    /// kqmax1 is the highest order plus one, so a full-order record reaches MAXDIM + 1.
+    #[test]
+    fn spk21_full_order_record_is_evaluated() {
+        // One record of dimension 25 (111 doubles) + one epoch + MAXDIM + num_records.
+        let mut slice = [0.0_f64; 114];
+        for node in slice.iter_mut().take(26).skip(1) {
+            *node = 1.0;
+        }
+        slice[107] = 26.0; // kqmax1
+        slice[108..111].fill(25.0); // kq
+        slice[112] = 25.0; // MAXDIM
+        slice[113] = 1.0; // num_records
+
+        let set = ModifiedDiffType21::from_f64_slice(&slice).unwrap();
+        assert!(set.evaluate(0.0, &SPKSummaryRecord::default()).is_ok());
     }
 }
