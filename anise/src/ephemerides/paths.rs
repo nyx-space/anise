@@ -46,7 +46,9 @@ impl Almanac {
                 };
                 for summary in these_summaries {
                     // This summary exists, so we need to follow the branch of centers up the tree.
-                    if !summary.is_empty() && summary.center_id.abs() < common_center.abs() {
+                    if !summary.is_empty()
+                        && summary.center_id.unsigned_abs() < common_center.unsigned_abs()
+                    {
                         common_center = summary.center_id;
                         if common_center == SOLAR_SYSTEM_BARYCENTER {
                             // We're at the SSB, there is nothing higher up
@@ -346,5 +348,48 @@ mod path_depth_ut {
             result.is_err(),
             "a common path that overruns the buffer must error, not panic"
         );
+    }
+
+    #[test]
+    fn ephemeris_root_i32_min_center_does_not_panic() {
+        // A summary's center_id is read verbatim from the file, and try_find_ephemeris_root
+        // compares magnitudes with `center_id.abs()`. i32::MIN has no positive counterpart, so
+        // `.abs()` overflows and panics under overflow checks on a crafted kernel.
+        let mut file_record = FileRecord::spk("IMIN");
+        file_record.forward = 2;
+        file_record.nd = 2;
+        file_record.ni = 6;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(file_record.as_bytes());
+        bytes.resize(1024, 0);
+
+        let header = SummaryRecord {
+            next_record: 0.0,
+            prev_record: 0.0,
+            num_summaries: 1.0,
+        };
+        let mut summary_block = Vec::new();
+        summary_block.extend_from_slice(header.as_bytes());
+        let summary = SPKSummaryRecord {
+            start_epoch_et_s: -1e9,
+            end_epoch_et_s: 1e9,
+            target_id: 10,
+            center_id: i32::MIN,
+            frame_id: 1,
+            data_type_i: 2,
+            start_idx: 1,
+            end_idx: 100,
+        };
+        summary_block.extend_from_slice(summary.as_bytes());
+        summary_block.resize(1024, 0);
+        bytes.extend(summary_block);
+        bytes.extend(vec![0u8; 1024]);
+
+        let spk = SPK::parse(&bytes[..]).unwrap();
+        let almanac = Almanac::from_spk(spk);
+
+        // Must not panic while scanning the summaries for the root.
+        assert!(almanac.try_find_ephemeris_root().is_ok());
     }
 }

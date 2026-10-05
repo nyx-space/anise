@@ -41,7 +41,8 @@ impl Almanac {
             for these_summaries in bpc.iter_summary_blocks().flatten() {
                 for summary in these_summaries {
                     // This summary exists, so we need to follow the branch of centers up the tree.
-                    if !summary.is_empty() && summary.inertial_frame_id.abs() < common_center.abs()
+                    if !summary.is_empty()
+                        && summary.inertial_frame_id.unsigned_abs() < common_center.unsigned_abs()
                     {
                         common_center = summary.inertial_frame_id;
                         if common_center == ICRS {
@@ -246,5 +247,58 @@ impl Almanac {
 
             Ok((items, common_path, common_node))
         }
+    }
+}
+
+#[cfg(test)]
+mod orientation_root_ut {
+    use crate::almanac::Almanac;
+    use crate::naif::daf::{FileRecord, SummaryRecord};
+    use crate::naif::pck::BPCSummaryRecord;
+    use crate::prelude::BPC;
+    use zerocopy::IntoBytes;
+
+    #[test]
+    fn orientation_root_i32_min_frame_does_not_panic() {
+        // A summary's inertial_frame_id is read verbatim from the file, and
+        // try_find_orientation_root compares magnitudes with `inertial_frame_id.abs()`.
+        // i32::MIN has no positive counterpart, so `.abs()` overflows and panics under
+        // overflow checks on a crafted BPC.
+        let mut file_record = FileRecord::bpc("IMIN");
+        file_record.forward = 2;
+        file_record.nd = 2;
+        file_record.ni = 5;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(file_record.as_bytes());
+        bytes.resize(1024, 0);
+
+        let header = SummaryRecord {
+            next_record: 0.0,
+            prev_record: 0.0,
+            num_summaries: 1.0,
+        };
+        let mut summary_block = Vec::new();
+        summary_block.extend_from_slice(header.as_bytes());
+        let summary = BPCSummaryRecord {
+            start_epoch_et_s: -1e9,
+            end_epoch_et_s: 1e9,
+            frame_id: 3000,
+            inertial_frame_id: i32::MIN,
+            data_type_i: 2,
+            start_idx: 1,
+            end_idx: 100,
+            unused: 0,
+        };
+        summary_block.extend_from_slice(summary.as_bytes());
+        summary_block.resize(1024, 0);
+        bytes.extend(summary_block);
+        bytes.extend(vec![0u8; 1024]);
+
+        let bpc = BPC::parse(&bytes[..]).unwrap();
+        let almanac = Almanac::from_bpc(bpc);
+
+        // Must not panic while scanning the summaries for the root.
+        assert!(almanac.try_find_orientation_root().is_ok());
     }
 }
