@@ -266,11 +266,14 @@ pub struct LagrangeSetType9<'a> {
 
 impl fmt::Display for LagrangeSetType9<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (Some(first), Some(last)) = (self.epoch_data.first(), self.epoch_data.last()) else {
+            return write!(f, "Lagrange Type 9 (empty)");
+        };
         write!(
             f,
             "Lagrange Type 9 from {:E} to {:E} with degree {} ({} items, {} epoch directories)",
-            Epoch::from_et_seconds(*self.epoch_data.first().unwrap_or(&0.0)),
-            Epoch::from_et_seconds(*self.epoch_data.last().unwrap_or(&0.0)),
+            Epoch::from_et_seconds(*first),
+            Epoch::from_et_seconds(*last),
             self.degree,
             self.epoch_data.len(),
             self.epoch_registry.len()
