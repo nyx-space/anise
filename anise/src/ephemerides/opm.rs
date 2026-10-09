@@ -349,8 +349,17 @@ impl Opm {
                     cur_man = Some(ManeuverBuilder::new(ignition));
                 }
                 "MAN_DURATION" => {
+                    // Duration::from_seconds asserts on a non-finite input, so reject it
+                    // here as a parse error instead of letting hifitime abort.
+                    let duration_s = as_f64(val)?;
+                    if !duration_s.is_finite() {
+                        return Err(EphemerisError::OPMParsingError {
+                            lno,
+                            details: format!("MAN_DURATION must be finite but was `{val}`"),
+                        });
+                    }
                     man_field(&mut cur_man, lno, key)?.duration =
-                        Some(Duration::from_seconds(as_f64(val)?))
+                        Some(Duration::from_seconds(duration_s))
                 }
                 "MAN_DELTA_MASS" => {
                     man_field(&mut cur_man, lno, key)?.delta_mass_kg = Some(as_f64(val)?)
@@ -842,6 +851,48 @@ mod ut_opm {
         assert_eq!(opm.maneuvers[0].ref_frame, LocalFrame::Inertial);
         assert_eq!(opm.maneuvers[0].delta_mass_kg, -18.418);
         assert_eq!(opm.maneuvers[1].ref_frame, LocalFrame::RIC);
+    }
+
+    #[test]
+    fn test_opm_rejects_non_finite_man_duration() {
+        // A crafted OPM carrying a non-finite MAN_DURATION used to abort the process:
+        // the parsed value went straight into hifitime's Duration::from_seconds, which
+        // asserts on non-finite input, instead of being rejected as a parse error.
+        use std::io::Write;
+
+        for (idx, bad) in ["inf", "-inf", "NaN"].iter().enumerate() {
+            let path = std::env::temp_dir().join(format!(
+                "anise-opm-non-finite-man-duration-{idx}-{}.opm",
+                std::process::id()
+            ));
+            let mut file = std::fs::File::create(&path).expect("could not create temp OPM");
+            write!(
+                file,
+                "CCSDS_OPM_VERS = 2.0\n\
+                 OBJECT_NAME = ANISE TESTSAT\n\
+                 OBJECT_ID = 1998-999A\n\
+                 CENTER_NAME = EARTH\n\
+                 REF_FRAME = ICRF\n\
+                 TIME_SYSTEM = UTC\n\
+                 EPOCH = 1998-12-18T14:28:15.1172\n\
+                 X = 6503.514000\n\
+                 Y = 1239.647000\n\
+                 Z = -717.490000\n\
+                 X_DOT = -0.873160\n\
+                 Y_DOT = 8.740420\n\
+                 Z_DOT = -4.191076\n\
+                 MAN_EPOCH_IGNITION = 1998-12-18T14:28:25.1172\n\
+                 MAN_DURATION = {bad}\n"
+            )
+            .expect("could not write temp OPM");
+
+            let result = Opm::from_ccsds_opm_file(&path);
+            std::fs::remove_file(&path).expect("could not remove temp OPM");
+            assert!(
+                result.is_err(),
+                "MAN_DURATION = {bad} must be a parse error, not a panic"
+            );
+        }
     }
 
     #[test]
