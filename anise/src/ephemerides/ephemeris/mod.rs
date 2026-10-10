@@ -14,7 +14,7 @@ use crate::errors::{AlmanacError, AlmanacPhysicsSnafu, OrientationSnafu};
 use crate::frames::Frame;
 use crate::math::Vector6;
 use crate::math::interpolation::{InterpolationError, hermite_eval, lagrange_eval};
-use crate::naif::daf::data_types::DataType;
+pub use crate::naif::daf::data_types::DataType;
 use crate::prelude::{Almanac, Orbit};
 use core::fmt;
 use covariance::interpolate_covar_log_euclidean;
@@ -49,17 +49,17 @@ pub use record::EphemerisRecord;
 #[cfg_attr(feature = "python", pyo3(module = "anise.astro"))]
 pub struct Ephemeris {
     pub object_id: String,
-    segments: Vec<EphemerisSegment>,
+    pub segments: Vec<EphemerisSegment>,
 }
 
 /// Block-local interpolation metadata and raw state ownership for one CCSDS OEM block.
 #[derive(Clone, Debug, PartialEq)]
-struct EphemerisSegment {
-    interpolation: DataType,
-    degree: usize,
-    useable_start: Option<Epoch>,
-    useable_end: Option<Epoch>,
-    state_data: BTreeMap<Epoch, EphemerisRecord>,
+pub struct EphemerisSegment {
+    pub interpolation: DataType,
+    pub degree: usize,
+    pub useable_start: Option<Epoch>,
+    pub useable_end: Option<Epoch>,
+    pub state_data: BTreeMap<Epoch, EphemerisRecord>,
 }
 
 #[derive(Clone, Copy)]
@@ -84,7 +84,7 @@ impl EphemerisSegment {
         }
     }
 
-    fn from_state_data(
+    pub fn from_state_data(
         interpolation: DataType,
         degree: usize,
         state_data: BTreeMap<Epoch, EphemerisRecord>,
