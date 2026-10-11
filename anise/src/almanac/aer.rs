@@ -175,8 +175,9 @@ impl Almanac {
         // For the elevation, we need to perform a quadrant check because it's measured from 0 to 360 degrees.
         let azimuth_deg = between_0_360((rho_sez.y.atan2(-rho_sez.x)).to_degrees());
 
-        // A non-finite range (e.g. from a corrupt kernel state) has no representable light
-        // time, and hifitime asserts on a non-finite value, so guard it like Orbit::light_time.
+        // rho_sez picks up a non-finite value when a caller passes rx or tx with a
+        // non-finite position, since the DCM multiply propagates it rather than rejecting
+        // it. hifitime asserts on a non-finite value, so guard it like Orbit::light_time.
         let range_km = rho_sez.norm();
         let light_time = if range_km.is_finite() {
             (range_km / SPEED_OF_LIGHT_KM_S).seconds()
