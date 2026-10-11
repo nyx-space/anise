@@ -22,7 +22,7 @@ use crate::{
 use super::Almanac;
 use crate::errors::AlmanacResult;
 
-use hifitime::TimeUnits;
+use hifitime::{Duration, TimeUnits};
 use log::warn;
 
 use snafu::ResultExt;
@@ -175,15 +175,24 @@ impl Almanac {
         // For the elevation, we need to perform a quadrant check because it's measured from 0 to 360 degrees.
         let azimuth_deg = between_0_360((rho_sez.y.atan2(-rho_sez.x)).to_degrees());
 
+        // A non-finite range (e.g. from a corrupt kernel state) has no representable light
+        // time, and hifitime asserts on a non-finite value, so guard it like Orbit::light_time.
+        let range_km = rho_sez.norm();
+        let light_time = if range_km.is_finite() {
+            (range_km / SPEED_OF_LIGHT_KM_S).seconds()
+        } else {
+            Duration::ZERO
+        };
+
         Ok(AzElRange {
             epoch: tx.epoch,
             azimuth_deg,
             elevation_deg,
-            range_km: rho_sez.norm(),
+            range_km,
             range_rate_km_s,
             obstructed_by,
             mask_deg: None,
-            light_time: (rho_sez.norm() / SPEED_OF_LIGHT_KM_S).seconds(),
+            light_time,
         })
     }
 
