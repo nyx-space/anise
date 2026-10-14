@@ -16,6 +16,7 @@ use crate::{
     ephemerides::EphemerisPhysicsSnafu,
     errors::{AlmanacError, EphemerisSnafu, OrientationSnafu},
     frames::Frame,
+    math::Vector3,
     prelude::Orbit,
 };
 
@@ -203,7 +204,7 @@ impl Almanac {
         };
 
         // Compute the apparent separation of both circles
-        let d_prime = (-(r_ls.dot(&r_eb)) / (r_eb.norm() * r_ls.norm())).acos();
+        let d_prime = apparent_separation_rad(r_ls, r_eb);
 
         let percentage = compute_occultation_percentage(d_prime, r_ls_prime, r_fobj_prime)?;
 
@@ -248,7 +249,7 @@ impl Almanac {
             err: format!("{e}"),
         })?;
 
-        Ok(u_hvec.dot(&u_sun).asin().to_degrees())
+        Ok(u_hvec.dot(&u_sun).clamp(-1.0, 1.0).asin().to_degrees())
     }
 
     /// Compute the local solar time, returned as a Duration between 0 and 24 hours.
@@ -418,6 +419,19 @@ fn circ_seg_area(r: f64, d: f64) -> f64 {
     }
 }
 
+/// Returns the apparent angular separation (radians) of the back and front objects as seen from the observer.
+/// The cosine is a dot product over the two norms: rounding pushes it just past 1.0 for (anti)parallel vectors
+/// (a total eclipse) and the division is undefined when the observer sits on either body, so guard the norm and
+/// clamp before acos as circ_seg_area already does. Otherwise the separation is NaN and compute_occultation_percentage
+/// falls through to the annular branch, silently reporting a total eclipse as a wrong, finite percentage.
+fn apparent_separation_rad(r_ls: Vector3, r_eb: Vector3) -> f64 {
+    let denom = r_eb.norm() * r_ls.norm();
+    if denom < f64::EPSILON {
+        return 0.0;
+    }
+    (-(r_ls.dot(&r_eb)) / denom).clamp(-1.0, 1.0).acos()
+}
+
 #[cfg(test)]
 mod ut_los {
     use crate::constants::frames::{EARTH_ICRS, MOON_ICRS};
@@ -426,6 +440,38 @@ mod ut_los {
     use crate::math::Vector3;
     use hifitime::Epoch;
     use rstest::*;
+
+    #[test]
+    fn apparent_separation_is_finite_for_degenerate_geometry() {
+        // Anti-parallel vectors (observer, back and front objects collinear, i.e. a total
+        // eclipse). The cosine rounds to 1.0000000000000002 here, so the un-clamped acos
+        // used to return NaN, which compute_occultation_percentage turned into a wrong,
+        // finite "annular" percentage instead of 100%.
+        let r_ls = Vector3::new(1.0, 1.0, 1.0);
+        let r_eb = Vector3::new(-1.0, -1.0, -1.0);
+        let raw = -(r_ls.dot(&r_eb)) / (r_eb.norm() * r_ls.norm());
+        assert!(raw > 1.0, "expected the raw cosine to overflow 1.0");
+        assert!(
+            raw.acos().is_nan(),
+            "expected the un-clamped acos to be NaN"
+        );
+
+        let sep = apparent_separation_rad(r_ls, r_eb);
+        assert!(sep.is_finite(), "separation must be finite, got {sep}");
+        assert!(sep.abs() < 1e-9, "collinear objects are at zero separation");
+
+        // Observer coincident with a body: the norm is zero, so the division is undefined.
+        let sep_zero = apparent_separation_rad(Vector3::zeros(), r_eb);
+        assert!(
+            sep_zero.is_finite(),
+            "separation with a zero vector must be finite, got {sep_zero}"
+        );
+
+        // A well defined geometry still returns the right angle.
+        let sep_perp =
+            apparent_separation_rad(Vector3::new(1.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0));
+        assert!((sep_perp - core::f64::consts::FRAC_PI_2).abs() < 1e-12);
+    }
 
     #[fixture]
     pub fn almanac() -> Almanac {
