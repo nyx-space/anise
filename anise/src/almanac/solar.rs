@@ -94,6 +94,7 @@ impl Almanac {
         Ok(obs_to_sun
             .r_hat()
             .dot(&obs_to_target.r_hat())
+            .clamp(-1.0, 1.0)
             .acos()
             .to_degrees())
     }

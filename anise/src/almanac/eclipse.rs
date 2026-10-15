@@ -203,7 +203,9 @@ impl Almanac {
         };
 
         // Compute the apparent separation of both circles
-        let d_prime = (-(r_ls.dot(&r_eb)) / (r_eb.norm() * r_ls.norm())).acos();
+        let d_prime = (-(r_ls.dot(&r_eb)) / (r_eb.norm() * r_ls.norm()))
+            .clamp(-1.0, 1.0)
+            .acos();
 
         let percentage = compute_occultation_percentage(d_prime, r_ls_prime, r_fobj_prime)?;
 
@@ -248,7 +250,7 @@ impl Almanac {
             err: format!("{e}"),
         })?;
 
-        Ok(u_hvec.dot(&u_sun).asin().to_degrees())
+        Ok(u_hvec.dot(&u_sun).clamp(-1.0, 1.0).asin().to_degrees())
     }
 
     /// Compute the local solar time, returned as a Duration between 0 and 24 hours.
