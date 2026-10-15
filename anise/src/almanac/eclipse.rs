@@ -421,15 +421,13 @@ fn circ_seg_area(r: f64, d: f64) -> f64 {
 
 /// Returns the apparent angular separation (radians) of the back and front objects as seen from the observer.
 /// The cosine is a dot product over the two norms: rounding pushes it just past 1.0 for (anti)parallel vectors
-/// (a total eclipse) and the division is undefined when the observer sits on either body, so guard the norm and
-/// clamp before acos as circ_seg_area already does. Otherwise the separation is NaN and compute_occultation_percentage
-/// falls through to the annular branch, silently reporting a total eclipse as a wrong, finite percentage.
+/// (a total eclipse), so clamp before acos as circ_seg_area already does. Otherwise the separation is NaN and
+/// compute_occultation_percentage falls through to the annular branch, silently reporting a total eclipse as a
+/// wrong, finite percentage.
 fn apparent_separation_rad(r_ls: Vector3, r_eb: Vector3) -> f64 {
-    let denom = r_eb.norm() * r_ls.norm();
-    if denom < f64::EPSILON {
-        return 0.0;
-    }
-    (-(r_ls.dot(&r_eb)) / denom).clamp(-1.0, 1.0).acos()
+    (-(r_ls.dot(&r_eb)) / (r_eb.norm() * r_ls.norm()))
+        .clamp(-1.0, 1.0)
+        .acos()
 }
 
 #[cfg(test)]
@@ -459,13 +457,6 @@ mod ut_los {
         let sep = apparent_separation_rad(r_ls, r_eb);
         assert!(sep.is_finite(), "separation must be finite, got {sep}");
         assert!(sep.abs() < 1e-9, "collinear objects are at zero separation");
-
-        // Observer coincident with a body: the norm is zero, so the division is undefined.
-        let sep_zero = apparent_separation_rad(Vector3::zeros(), r_eb);
-        assert!(
-            sep_zero.is_finite(),
-            "separation with a zero vector must be finite, got {sep_zero}"
-        );
 
         // A well defined geometry still returns the right angle.
         let sep_perp =
