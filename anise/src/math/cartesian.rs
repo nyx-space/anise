@@ -343,7 +343,15 @@ impl CartesianState {
     ///
     /// :rtype: Duration
     pub fn light_time(&self) -> Duration {
-        (self.radius_km.norm() / SPEED_OF_LIGHT_KM_S).seconds()
+        let range_km = self.radius_km.norm();
+        if !range_km.is_finite() {
+            // The position can be non-finite because a caller can inject nan/inf
+            // straight into it (it also arrives this way from a corrupt SPK coefficient
+            // or a CCSDS state carrying nan/inf). hifitime asserts on a non-finite value
+            // instead of returning one, so fall back to a zero duration rather than aborting.
+            return Duration::ZERO;
+        }
+        (range_km / SPEED_OF_LIGHT_KM_S).seconds()
     }
 
     /// Returns the absolute position difference in kilometer between this orbit and another.
@@ -735,6 +743,19 @@ mod cartesian_state_ut {
         assert!(s.hmag().is_err());
 
         assert_eq!(s.light_time(), Duration::ZERO);
+    }
+
+    #[test]
+    fn light_time_non_finite_radius() {
+        // A state whose radius is non-finite (e.g. from a corrupt SPK coefficient or a
+        // CCSDS state carrying `nan`/`inf`) used to abort the process: `light_time`
+        // handed the non-finite range to hifitime, which asserts on non-finite input.
+        let e = Epoch::now().unwrap();
+        let frame = EARTH_ICRS;
+        for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            let s = CartesianState::new(bad, 0.0, 0.0, 0.0, 0.0, 0.0, e, frame);
+            assert_eq!(s.light_time(), Duration::ZERO);
+        }
     }
 
     #[test]
