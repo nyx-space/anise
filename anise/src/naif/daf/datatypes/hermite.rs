@@ -437,6 +437,13 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 .ok_or(InterpolationError::MissingInterpolationData {
                     epoch: Epoch::from_et_seconds(epoch_et_s),
                 })?;
+        // The out-of-domain error below builds epochs from these bounds, and hifitime panics on
+        // a non-finite value. check_integrity is not run on the query path, so reject them here.
+        if !self.epoch_data[0].is_finite() || !last_epoch.is_finite() {
+            return Err(InterpolationError::CorruptedData {
+                what: "epoch data contains a non-finite value",
+            });
+        }
         if epoch_et_s < self.epoch_data[0].next_down() || epoch_et_s > last_epoch.next_up() {
             return Err(InterpolationError::NoInterpolationData {
                 req: Epoch::from_et_seconds(epoch_et_s),
@@ -1047,5 +1054,31 @@ mod hermite_ut {
         let (pos, vel) = dataset.evaluate(125.0, &summary).unwrap();
         assert!((pos.x - 1125.0).abs() < 1e-12);
         assert!((vel.x - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn non_finite_bounding_epoch_is_rejected() {
+        use crate::naif::spk::summary::SPKSummaryRecord;
+        // The out-of-domain error is built from the first and last epochs, which hifitime
+        // panics on when non-finite. Query outside the finite bound of each crafted segment.
+        let state_data = [0.0_f64; 12];
+        let summary = SPKSummaryRecord::default();
+        for (epoch_data, query) in [
+            ([f64::NAN, 10.0], 20.0),
+            ([f64::NEG_INFINITY, 10.0], 20.0),
+            ([10.0, f64::INFINITY], 0.0),
+        ] {
+            let dataset = HermiteSetType13 {
+                samples: 1,
+                num_records: 2,
+                state_data: &state_data,
+                epoch_data: &epoch_data,
+                epoch_registry: &[],
+            };
+            assert!(
+                dataset.evaluate(query, &summary).is_err(),
+                "a non-finite bounding epoch must error, not panic"
+            );
+        }
     }
 }
