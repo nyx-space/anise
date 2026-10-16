@@ -224,6 +224,21 @@ impl MetaFile {
                                                                     }
                                                                 })?;
                                                             let crc32 = crc32fast::hash(&bytes);
+                                                            if let Some(expected) = self.crc32
+                                                                && crc32 != expected
+                                                            {
+                                                                drop(file);
+                                                                let _ = remove_file(&dest_path);
+                                                                del_lock_file();
+                                                                return Err(
+                                                                    MetaAlmanacError::FetchError {
+                                                                        error: format!(
+                                                                            "CRC32 mismatch (got 0x{crc32:x}, expected 0x{expected:x})"
+                                                                        ),
+                                                                        uri: self.uri.clone(),
+                                                                    },
+                                                                );
+                                                            }
                                                             file.write_all(&bytes).map_err(
                                                                 |e| MetaAlmanacError::MetaIO {
                                                                     path: dest_path
@@ -428,6 +443,50 @@ mod ut_metafile {
         };
         mf.process(true).unwrap();
         assert_eq!(mf.uri, "/Users/me/meta.dhall");
+    }
+
+    #[test]
+    fn downloaded_file_must_match_crc32() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        use std::thread;
+
+        let body = b"not the kernel that was pinned";
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 1024];
+            let _ = stream.read(&mut buf);
+            let header = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            );
+            stream.write_all(header.as_bytes()).unwrap();
+            stream.write_all(body).unwrap();
+        });
+
+        let pinned = crc32fast::hash(body) ^ 1;
+        let mut mf = MetaFile {
+            uri: format!("http://127.0.0.1:{port}/anise-crc32-mismatch-test.bin"),
+            crc32: Some(pinned),
+        };
+        let err = mf
+            .process(true)
+            .expect_err("a download whose CRC32 differs from the pinned one must be rejected");
+        server.join().unwrap();
+
+        assert!(format!("{err}").contains("CRC32 mismatch"), "{err}");
+        // The rejected bytes must not be handed back as the file to load.
+        assert_eq!(mf.crc32, Some(pinned));
+        assert!(mf.uri.starts_with("http://"));
+        let app_dir = platform_dirs::AppDirs::new(Some("nyx-space/anise"), true).unwrap();
+        assert!(
+            !app_dir
+                .data_dir
+                .join("anise-crc32-mismatch-test.bin")
+                .exists()
+        );
     }
 
     #[test]
