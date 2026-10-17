@@ -788,10 +788,6 @@ impl Orbit {
     /// :rtype: Duration
     pub fn period(&self) -> PhysicsResult<Duration> {
         let period2_s2 = self.sma_km()?.powi(3) / self.frame.mu_km3_s2()?;
-        // A near-zero gravitational parameter (e.g. from a crafted planetary constants kernel) or
-        // an extreme semi-major axis overflows this ratio to an infinity, which the `> 0.0` test
-        // lets through. `seconds()` then builds a hifitime Duration from a non-finite value, which
-        // panics. Treat a non-finite period like the existing non-positive (hyperbolic) case.
         if period2_s2 > 0.0 && period2_s2.is_finite() {
             Ok(TAU * period2_s2.sqrt().seconds())
         } else {
