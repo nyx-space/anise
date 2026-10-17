@@ -227,16 +227,10 @@ impl MetaFile {
                                                             if let Some(expected) = self.crc32
                                                                 && crc32 != expected
                                                             {
-                                                                drop(file);
-                                                                let _ = remove_file(&dest_path);
-                                                                del_lock_file();
-                                                                return Err(
-                                                                    MetaAlmanacError::FetchError {
-                                                                        error: format!(
-                                                                            "CRC32 mismatch (got 0x{crc32:x}, expected 0x{expected:x})"
-                                                                        ),
-                                                                        uri: self.uri.clone(),
-                                                                    },
+                                                                let dest_path_s =
+                                                                    dest_path.to_string_lossy();
+                                                                warn!(
+                                                                    "{dest_path_s} remote file CRC32 mismatch (got 0x{crc32:x}, expected 0x{expected:x}), file will be downloaded again on next load"
                                                                 );
                                                             }
                                                             file.write_all(&bytes).map_err(
@@ -446,7 +440,7 @@ mod ut_metafile {
     }
 
     #[test]
-    fn downloaded_file_must_match_crc32() {
+    fn downloaded_crc32_mismatch_only_warns() {
         use std::io::{Read, Write};
         use std::net::TcpListener;
         use std::thread;
@@ -466,27 +460,18 @@ mod ut_metafile {
             stream.write_all(body).unwrap();
         });
 
-        let pinned = crc32fast::hash(body) ^ 1;
         let mut mf = MetaFile {
             uri: format!("http://127.0.0.1:{port}/anise-crc32-mismatch-test.bin"),
-            crc32: Some(pinned),
+            crc32: Some(crc32fast::hash(body) ^ 1),
         };
-        let err = mf
-            .process(true)
-            .expect_err("a download whose CRC32 differs from the pinned one must be rejected");
+        // A CRC32 mismatch on download is only a warning: the file is still used.
+        mf.process(true)
+            .expect("a CRC32 mismatch on download must not prevent using the file");
         server.join().unwrap();
 
-        assert!(format!("{err}").contains("CRC32 mismatch"), "{err}");
-        // The rejected bytes must not be handed back as the file to load.
-        assert_eq!(mf.crc32, Some(pinned));
-        assert!(mf.uri.starts_with("http://"));
-        let app_dir = platform_dirs::AppDirs::new(Some("nyx-space/anise"), true).unwrap();
-        assert!(
-            !app_dir
-                .data_dir
-                .join("anise-crc32-mismatch-test.bin")
-                .exists()
-        );
+        assert_eq!(mf.crc32, Some(crc32fast::hash(body)));
+        assert!(std::path::Path::new(&mf.uri).exists());
+        let _ = std::fs::remove_file(&mf.uri);
     }
 
     #[test]
