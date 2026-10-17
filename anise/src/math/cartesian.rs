@@ -653,6 +653,31 @@ mod cartesian_state_ut {
     }
 
     #[test]
+    fn period_with_tiny_mu_does_not_panic() {
+        let e = Epoch::from_tdb_seconds(0.0);
+
+        // A near-zero (but finite and positive) gravitational parameter passes every integrity
+        // and CRC check a planetary constants kernel is subjected to, yet makes sma^3 / mu
+        // overflow to +inf. The `> 0.0` guard in `period` used to let that infinity reach
+        // hifitime's `seconds()`, which panics on a non-finite value.
+        let frame = EARTH_ICRS.with_mu_km3_s2(1e-300);
+        let orbit =
+            CartesianState::try_keplerian(7000.0, 0.01, 30.0, 40.0, 50.0, 60.0, e, frame).unwrap();
+        assert_eq!(
+            orbit.period().unwrap(),
+            Duration::ZERO,
+            "a non-finite period must fall back to zero, not panic"
+        );
+
+        // A valid orbit is unaffected: its period is still finite and strictly positive.
+        let earth = EARTH_ICRS.with_mu_km3_s2(398_600.435_5);
+        let orbit =
+            CartesianState::try_keplerian(7000.0, 0.01, 30.0, 40.0, 50.0, 60.0, e, earth).unwrap();
+        let period = orbit.period().unwrap();
+        assert!(period.to_seconds().is_finite() && period > Duration::ZERO);
+    }
+
+    #[test]
     fn add_wrong_epoch() {
         let e = Epoch::now().unwrap();
         let e2 = e + 1.seconds();
