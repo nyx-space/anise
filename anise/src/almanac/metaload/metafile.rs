@@ -224,6 +224,15 @@ impl MetaFile {
                                                                     }
                                                                 })?;
                                                             let crc32 = crc32fast::hash(&bytes);
+                                                            if let Some(expected) = self.crc32
+                                                                && crc32 != expected
+                                                            {
+                                                                let dest_path_s =
+                                                                    dest_path.to_string_lossy();
+                                                                warn!(
+                                                                    "{dest_path_s} remote file CRC32 mismatch (got 0x{crc32:x}, expected 0x{expected:x}), file will be downloaded again on next load"
+                                                                );
+                                                            }
                                                             file.write_all(&bytes).map_err(
                                                                 |e| MetaAlmanacError::MetaIO {
                                                                     path: dest_path
@@ -428,6 +437,41 @@ mod ut_metafile {
         };
         mf.process(true).unwrap();
         assert_eq!(mf.uri, "/Users/me/meta.dhall");
+    }
+
+    #[test]
+    fn downloaded_crc32_mismatch_only_warns() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        use std::thread;
+
+        let body = b"not the kernel that was pinned";
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 1024];
+            let _ = stream.read(&mut buf);
+            let header = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            );
+            stream.write_all(header.as_bytes()).unwrap();
+            stream.write_all(body).unwrap();
+        });
+
+        let mut mf = MetaFile {
+            uri: format!("http://127.0.0.1:{port}/anise-crc32-mismatch-test.bin"),
+            crc32: Some(crc32fast::hash(body) ^ 1),
+        };
+        // A CRC32 mismatch on download is only a warning: the file is still used.
+        mf.process(true)
+            .expect("a CRC32 mismatch on download must not prevent using the file");
+        server.join().unwrap();
+
+        assert_eq!(mf.crc32, Some(crc32fast::hash(body)));
+        assert!(std::path::Path::new(&mf.uri).exists());
+        let _ = std::fs::remove_file(&mf.uri);
     }
 
     #[test]
