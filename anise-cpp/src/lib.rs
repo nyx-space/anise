@@ -128,6 +128,8 @@ impl CxxEpoch {
             _ => self.0.to_tai_days(),
         }
     }
+
+    #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
         self.0.to_string()
     }

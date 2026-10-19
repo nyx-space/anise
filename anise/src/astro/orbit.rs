@@ -1593,6 +1593,41 @@ impl Orbit {
         rslt.frame.strip();
         Ok(rslt)
     }
+    /// Returns a Cartesian state representing the RIC difference between self and other, in position and velocity (with transport theorem).
+    /// Refer to dcm_from_ric_to_inertial for details on the RIC frame.
+    /// The `unchecked` variant does not check that both epochs match!
+    ///
+    /// # Algorithm
+    /// 1. Compute the difference between `other` and `self`
+    /// 2. Compute the RIC DCM of `self`
+    /// 3. Rotate the difference into the RIC frame of `self`
+    /// 4. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`
+    ///
+    /// :type other: Orbit
+    /// :rtype: Orbit
+    pub fn ric_difference_unchecked(&self, other: &Self) -> PhysicsResult<Self> {
+        let mut rslt = (self.dcm_from_ric_to_inertial()?.transpose() * other.sub_unchecked(self))?;
+        rslt.frame.strip();
+        Ok(rslt)
+    }
+
+    /// Returns a Cartesian state representing the VNC difference between self and other, in position and velocity (with transport theorem).
+    /// Refer to dcm_from_vnc_to_inertial for details on the VNC frame.
+    /// The `unchecked` variant does not check that both epochs match!
+    ///
+    /// # Algorithm
+    /// 1. Compute the difference between `other` and `self`
+    /// 2. Compute the VNC DCM of `self`
+    /// 3. Rotate the difference into the VNC frame of `self`
+    /// 4. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`
+    ///
+    /// :type other: Orbit
+    /// :rtype: Orbit
+    pub fn vnc_difference_unchecked(&self, other: &Self) -> PhysicsResult<Self> {
+        let mut rslt = (self.dcm_from_vnc_to_inertial()?.transpose() * other.sub_unchecked(self))?;
+        rslt.frame.strip();
+        Ok(rslt)
+    }
 }
 
 #[allow(clippy::format_in_format_args)]

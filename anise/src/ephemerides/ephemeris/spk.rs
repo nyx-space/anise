@@ -114,36 +114,38 @@ impl Ephemeris {
         let mut segment_data = Vec::with_capacity(segments.len());
         for segment in &segments {
             let interpolation = data_type.unwrap_or(segment.interpolation);
+            let mut degree = segment.degree;
             let required_raw_states = match interpolation {
                 DataType::Type9LagrangeUnequalStep => {
                     ensure!(
-                        segment.degree <= MAX_SPK_INTERPOLATION_DEGREE,
+                        degree <= MAX_SPK_INTERPOLATION_DEGREE,
                         SPKWritingSnafu {
                             details: "SPK Type 9 interpolation degree must not exceed 27"
                                 .to_string()
                         }
                     );
-                    segment.degree.checked_add(1).ok_or_else(|| {
-                        EphemerisError::SPKWritingError {
+                    degree
+                        .checked_add(1)
+                        .ok_or_else(|| EphemerisError::SPKWritingError {
                             details: "Lagrange interpolation degree is too large".to_string(),
-                        }
-                    })?
+                        })?
                 }
                 DataType::Type12HermiteEqualStep | DataType::Type13HermiteUnequalStep => {
+                    if degree % 2 != 1 || degree < 3 {
+                        let new_degree = (degree.saturating_sub(1)).max(3);
+                        warn!(
+                            "Hermite interpolation degree must be odd and at least 3; adjusted to {new_degree}"
+                        );
+                        degree = new_degree;
+                    }
                     ensure!(
-                        segment.degree % 2 == 1,
-                        SPKWritingSnafu {
-                            details: "Hermite interpolation degree must be odd".to_string()
-                        }
-                    );
-                    ensure!(
-                        segment.degree <= MAX_SPK_INTERPOLATION_DEGREE,
+                        degree <= MAX_SPK_INTERPOLATION_DEGREE,
                         SPKWritingSnafu {
                             details: "SPK Hermite interpolation degree must not exceed 27"
                                 .to_string()
                         }
                     );
-                    segment.degree.div_ceil(2)
+                    degree.div_ceil(2)
                 }
                 _ => unreachable!(),
             };
@@ -267,11 +269,11 @@ impl Ephemeris {
                 data_bytes.extend_from_slice(&registry_bytes);
             }
             let samples_m1 = match interpolation {
-                DataType::Type9LagrangeUnequalStep => segment.degree,
+                DataType::Type9LagrangeUnequalStep => degree,
                 DataType::Type12HermiteEqualStep | DataType::Type13HermiteUnequalStep => {
-                    (segment.degree - 1) / 2
+                    (degree - 1) / 2
                 }
-                _ => segment.degree,
+                _ => degree,
             };
             data_bytes.extend_from_slice(&(samples_m1 as f64).to_ne_bytes());
             data_bytes.extend_from_slice(&(num_states as f64).to_ne_bytes());

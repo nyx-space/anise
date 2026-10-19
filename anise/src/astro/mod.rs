@@ -114,8 +114,6 @@ impl AzElRange {
         use crate::constants::SPEED_OF_LIGHT_KM_S;
         use hifitime::TimeUnits;
 
-        // A non-finite range has no representable light time, and hifitime asserts on a
-        // non-finite value, so guard it like Orbit::light_time rather than aborting.
         let light_time = if range_km.is_finite() {
             (range_km / SPEED_OF_LIGHT_KM_S).seconds()
         } else {
@@ -182,8 +180,6 @@ impl AzElRange {
         use hifitime::TimeUnits;
 
         self.range_km = range_km;
-        // A non-finite range has no representable light time, and hifitime asserts on a
-        // non-finite value, so guard it like Orbit::light_time rather than aborting.
         self.light_time = if range_km.is_finite() {
             (range_km / SPEED_OF_LIGHT_KM_S).seconds()
         } else {
