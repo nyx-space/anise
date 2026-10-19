@@ -131,9 +131,11 @@ impl Ephemeris {
                         })?
                 }
                 DataType::Type12HermiteEqualStep | DataType::Type13HermiteUnequalStep => {
-                    if degree % 2 != 1 {
-                        let new_degree = (degree.saturating_sub(1)).max(1);
-                        warn!("Hermite interpolation degree must be odd; reduced to {new_degree}");
+                    if degree % 2 != 1 || degree < 3 {
+                        let new_degree = (degree.saturating_sub(1)).max(3);
+                        warn!(
+                            "Hermite interpolation degree must be odd and at least 3; adjusted to {new_degree}"
+                        );
                         degree = new_degree;
                     }
                     ensure!(
