@@ -1591,8 +1591,10 @@ META_STOP
         ephem.set_degree(28).unwrap();
         assert!(ephem.to_spice_bsp(-159, None).is_err());
         ephem.set_interpolation(DataType::Type13HermiteUnequalStep);
+        // Setting the degree to 2 is no problem when converting to BSP
+        // because it's automatically fixed.
         ephem.set_degree(2).unwrap();
-        assert!(ephem.to_spice_bsp(-159, None).is_err());
+        assert!(ephem.to_spice_bsp(-159, None).is_ok());
     }
 
     #[test]
@@ -2260,18 +2262,6 @@ COV_REF_FRAME = EME2000
         let spk_hermite12 = ephem_hermite12.to_spice_bsp(-159, None).unwrap();
         let data_hermite12: HermiteSetType12<'_> = spk_hermite12.nth_data(None, 0).unwrap();
         assert_eq!(data_hermite12.samples, 2);
-
-        // Lagrange with even degree 6 should be reduced to 5
-        let ephem_lagrange = linear_spk_ephemeris(DataType::Type9LagrangeUnequalStep, 6, 10);
-        let spk_lagrange = ephem_lagrange.to_spice_bsp(-159, None).unwrap();
-        let data_lagrange: LagrangeSetType9<'_> = spk_lagrange.nth_data(None, 0).unwrap();
-        assert_eq!(data_lagrange.degree, 5);
-
-        // Lagrange with even degree 2 should be reduced to max(1, 1) = 1
-        let ephem_lagrange2 = linear_spk_ephemeris(DataType::Type9LagrangeUnequalStep, 2, 10);
-        let spk_lagrange2 = ephem_lagrange2.to_spice_bsp(-159, None).unwrap();
-        let data_lagrange2: LagrangeSetType9<'_> = spk_lagrange2.nth_data(None, 0).unwrap();
-        assert_eq!(data_lagrange2.degree, 1);
     }
 
     #[test]

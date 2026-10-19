@@ -117,13 +117,6 @@ impl Ephemeris {
             let mut degree = segment.degree;
             let required_raw_states = match interpolation {
                 DataType::Type9LagrangeUnequalStep => {
-                    if degree % 2 == 0 {
-                        let new_degree = (degree.saturating_sub(1)).max(1);
-                        warn!(
-                            "Lagrange interpolation degree {degree} must be odd; reduced to {new_degree}"
-                        );
-                        degree = new_degree;
-                    }
                     ensure!(
                         degree <= MAX_SPK_INTERPOLATION_DEGREE,
                         SPKWritingSnafu {
