@@ -61,7 +61,7 @@ impl Assignment {
         if vec.len() > 1 {
             KPLValue::Matrix(
                 vec.iter()
-                    .map(|s| s.parse::<f64>().unwrap_or(0.0))
+                    .map(|s| s.trim().replace("D", "E").parse::<f64>().unwrap_or(0.0))
                     .collect(),
             )
         } else if vec.is_empty() {
@@ -775,5 +775,19 @@ mod tpc_conversion_ut {
         let (planetary, gravity) = tpc_items(1);
         let dataset = convert_tpc_items(planetary, gravity).unwrap();
         assert_eq!(dataset.get_by_id(599).unwrap().num_nut_prec_angles, 1);
+    }
+
+    #[test]
+    fn vector_values_accept_d_exponent() {
+        // SPICE text kernels allow the Fortran `D` exponent marker in vectors as well
+        // as in single values.
+        let assignment = Assignment {
+            keyword: "BODY399_RADII".to_string(),
+            value: "( 6378.1366D0 6.3781366D+03 6356.7519 )".to_string(),
+        };
+        assert_eq!(
+            assignment.to_value(),
+            KPLValue::Matrix(vec![6378.1366, 6378.1366, 6356.7519])
+        );
     }
 }
