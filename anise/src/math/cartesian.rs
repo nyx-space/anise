@@ -345,10 +345,6 @@ impl CartesianState {
     pub fn light_time(&self) -> Duration {
         let range_km = self.radius_km.norm();
         if !range_km.is_finite() {
-            // The position can be non-finite because a caller can inject nan/inf
-            // straight into it (it also arrives this way from a corrupt SPK coefficient
-            // or a CCSDS state carrying nan/inf). hifitime asserts on a non-finite value
-            // instead of returning one, so fall back to a zero duration rather than aborting.
             return Duration::ZERO;
         }
         (range_km / SPEED_OF_LIGHT_KM_S).seconds()

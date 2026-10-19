@@ -490,6 +490,12 @@ fn val_state_def_equatorial(almanac: Almanac) {
         4.01e-8,
         "RIC RSS velocity"
     );
+
+    // Change the epoch of the other, make sure that the standard RIC diff fails
+    let mut cart2 = cart;
+    cart2.epoch += Unit::Second * 1.23456;
+    assert!(cart.ric_difference(&cart2).is_err());
+    assert!(cart.ric_difference_unchecked(&cart2).is_ok());
 }
 
 #[rstest]
