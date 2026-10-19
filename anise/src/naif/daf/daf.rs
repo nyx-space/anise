@@ -448,7 +448,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         // If the summaries are ordered in the DAF file, then they are in the index, so we can run a binary search to find the proper index.
         if let Some(idx_data) = self.index.get(&id) {
             let idx = idx_data.partition_point(|(summary, _blk_idx, _summary_idx)| {
-                summary.start_epoch_et_s() - 100e-9 <= epoch_et_s
+                summary.start_epoch_et_s().next_down() <= epoch_et_s
             });
             if idx == 0 {
                 Err(DAFError::InterpolationDataErrorFromId {
@@ -458,7 +458,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 })
             } else {
                 let (summary, blk_idx, summary_idx) = &idx_data[idx - 1];
-                if epoch_et_s <= summary.end_epoch_et_s() + 100e-9 {
+                if epoch_et_s <= summary.end_epoch_et_s().next_up() {
                     Ok((summary, *blk_idx, *summary_idx))
                 } else {
                     Err(DAFError::InterpolationDataErrorFromId {
@@ -475,8 +475,8 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             loop {
                 for (summary_idx, summary) in self.data_summaries(blk_idx)?.iter().enumerate() {
                     if summary.id() == id
-                        && epoch_et_s >= summary.start_epoch_et_s() - 100e-9
-                        && epoch_et_s <= summary.end_epoch_et_s() + 100e-9
+                        && epoch_et_s >= summary.start_epoch_et_s().next_down()
+                        && epoch_et_s <= summary.end_epoch_et_s().next_up()
                     {
                         return Ok((summary, blk_idx, summary_idx));
                     }

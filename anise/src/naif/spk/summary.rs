@@ -9,7 +9,7 @@
  */
 
 use core::fmt;
-use hifitime::Epoch;
+use hifitime::{Epoch, TimeUnits};
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 #[cfg(feature = "python")]
@@ -182,11 +182,11 @@ impl NAIFSummaryRecord for SPKSummaryRecord {
     }
 
     fn start_epoch(&self) -> Epoch {
-        Epoch::from_et_seconds(self.start_epoch_et_s.next_up())
+        Epoch::from_et_seconds(self.start_epoch_et_s) + 1_i64.nanoseconds()
     }
 
     fn end_epoch(&self) -> Epoch {
-        Epoch::from_et_seconds(self.end_epoch_et_s.next_down())
+        Epoch::from_et_seconds(self.end_epoch_et_s) - 1_i64.nanoseconds()
     }
 
     fn id(&self) -> i32 {
