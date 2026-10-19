@@ -855,7 +855,7 @@ mod ut_oem {
     use super::{Almanac, DataType, Ephemeris, EphemerisError, EphemerisRecord, LocalFrame};
     use crate::analysis::prelude::OrbitalElement;
     use crate::constants::frames::{EARTH_ICRS, EARTH_J2000};
-    use crate::naif::daf::datatypes::LagrangeSetType9;
+    use crate::naif::daf::datatypes::{HermiteSetType12, HermiteSetType13, LagrangeSetType9};
     use crate::prelude::{Frame, NAIFSummaryRecord, Orbit};
     use hifitime::{Epoch, TimeSeries, Unit};
     use nalgebra::{Matrix6, SymmetricEigen, Vector6};
@@ -1110,7 +1110,7 @@ mod ut_oem {
         // and distinct covariance blocks are checked in for review and reuse.
         let input_path = "../data/tests/ccsds/oem/multisegment_discontinuous.oem";
         let rebuilt_path = std::env::temp_dir().join("anise_segmented_oem_rebuilt.oem");
-        let ephem = Ephemeris::from_ccsds_oem_file(&input_path).unwrap();
+        let ephem = Ephemeris::from_ccsds_oem_file(input_path).unwrap();
         let almanac = Almanac::default();
         // Segment-owned iteration preserves both records at a shared boundary.
         assert_eq!((&ephem).into_iter().count(), 6);
@@ -2167,11 +2167,13 @@ COV_REF_FRAME = EME2000
             .state_data
             .insert(record.orbit.epoch, record);
         assert!(ephem.to_spice_bsp(-159, None).is_err());
+        // Even Hermite should automatically correct to odd number.
         assert!(
             linear_spk_ephemeris(DataType::Type12HermiteEqualStep, 2, 4)
                 .to_spice_bsp(-159, None)
-                .is_err()
+                .is_ok()
         );
+        // But this call falls because there are only three states but degree is 7
         assert!(
             linear_spk_ephemeris(DataType::Type12HermiteEqualStep, 7, 3)
                 .to_spice_bsp(-159, None)
@@ -2242,6 +2244,34 @@ COV_REF_FRAME = EME2000
         assert_eq!(data.num_records, 4);
         ephem.segments[0].useable_start = Some(Epoch::from_et_seconds(3.5));
         assert!(ephem.to_spice_bsp(-159, None).is_err());
+    }
+
+    #[test]
+    fn bsp_writer_adjusts_invalid_odd_even_degrees() {
+        // Hermite with even degree 4 should be reduced to 3
+        let ephem_hermite = linear_spk_ephemeris(DataType::Type13HermiteUnequalStep, 4, 10);
+        let spk_hermite = ephem_hermite.to_spice_bsp(-159, None).unwrap();
+        let data_hermite: HermiteSetType13<'_> = spk_hermite.nth_data(None, 0).unwrap();
+        // samples = (3 - 1) / 2 + 1 = 2 (which corresponds to samples_m1 = 1)
+        assert_eq!(data_hermite.samples, 2);
+
+        // Hermite Type 12 with even degree 4 should be reduced to 3
+        let ephem_hermite12 = linear_spk_ephemeris(DataType::Type12HermiteEqualStep, 4, 10);
+        let spk_hermite12 = ephem_hermite12.to_spice_bsp(-159, None).unwrap();
+        let data_hermite12: HermiteSetType12<'_> = spk_hermite12.nth_data(None, 0).unwrap();
+        assert_eq!(data_hermite12.samples, 2);
+
+        // Lagrange with even degree 6 should be reduced to 5
+        let ephem_lagrange = linear_spk_ephemeris(DataType::Type9LagrangeUnequalStep, 6, 10);
+        let spk_lagrange = ephem_lagrange.to_spice_bsp(-159, None).unwrap();
+        let data_lagrange: LagrangeSetType9<'_> = spk_lagrange.nth_data(None, 0).unwrap();
+        assert_eq!(data_lagrange.degree, 5);
+
+        // Lagrange with even degree 2 should be reduced to max(1, 1) = 1
+        let ephem_lagrange2 = linear_spk_ephemeris(DataType::Type9LagrangeUnequalStep, 2, 10);
+        let spk_lagrange2 = ephem_lagrange2.to_spice_bsp(-159, None).unwrap();
+        let data_lagrange2: LagrangeSetType9<'_> = spk_lagrange2.nth_data(None, 0).unwrap();
+        assert_eq!(data_lagrange2.degree, 1);
     }
 
     #[test]
