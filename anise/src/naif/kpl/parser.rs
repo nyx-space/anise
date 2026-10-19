@@ -61,7 +61,7 @@ impl Assignment {
         if vec.len() > 1 {
             KPLValue::Matrix(
                 vec.iter()
-                    .map(|s| s.replace("D", "E").parse::<f64>().unwrap_or(0.0))
+                    .map(|s| s.trim().replace("D", "E").parse::<f64>().unwrap_or(0.0))
                     .collect(),
             )
         } else if vec.is_empty() {
