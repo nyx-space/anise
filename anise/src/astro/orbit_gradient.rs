@@ -433,7 +433,7 @@ impl OrbitGrad {
         let denom =
             (OHyperdual::from(1.0) + OHyperdual::from(2.0) * ecc * nu.cos() + ecc.powi(2)).sqrt();
         let sin_fpa = ecc * nu.sin() / denom;
-        let cos_fpa = OHyperdual::from(1.0) + ecc * nu.cos() / denom;
+        let cos_fpa = (OHyperdual::from(1.0) + ecc * nu.cos()) / denom;
         Ok(OrbitalElementPartials {
             dual: sin_fpa.atan2(cos_fpa).to_degrees(),
             oe: OrbitalElement::FlightPathAngle,

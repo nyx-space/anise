@@ -1077,3 +1077,39 @@ fn test_duration_to_radius_error_conditions(epoch: Epoch, frame: Frame) {
     // If sma_km() returns Inf, then sma_km.abs().powi(3) is Inf, then n_rad_s is 0. Caught.
     // If sma_km() returns some error that leads to NaN sma, then n_rad_s is NaN. Caught.
 }
+
+/// The flight path angle is the angle between the velocity vector and the local horizontal,
+/// so it must match asin(r . v / (|r| |v|)) for every true anomaly and eccentricity.
+#[rstest]
+fn val_fpa_matches_geometric_definition(epoch: Epoch, frame: Frame) {
+    for ecc in [0.1, 0.5, 0.9] {
+        for ta_deg in [0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0] {
+            let orbit = create_orbit(20_000.0, ecc, ta_deg, epoch, frame);
+            let r = orbit.radius_km;
+            let v = orbit.velocity_km_s;
+            let expected_deg = (r.dot(&v) / (r.norm() * v.norm())).asin().to_degrees();
+            f64_eq_tol!(
+                orbit.fpa_deg().unwrap(),
+                expected_deg,
+                1e-9,
+                format!("fpa for ecc = {ecc} at ta = {ta_deg} deg")
+            );
+
+            #[cfg(feature = "analysis")]
+            {
+                use anise::analysis::prelude::OrbitalElement;
+                use anise::astro::orbit_gradient::OrbitGrad;
+
+                let grad = OrbitGrad::from(orbit);
+                f64_eq_tol!(
+                    grad.partial_for(OrbitalElement::FlightPathAngle)
+                        .unwrap()
+                        .real(),
+                    expected_deg,
+                    1e-9,
+                    format!("fpa partials for ecc = {ecc} at ta = {ta_deg} deg")
+                );
+            }
+        }
+    }
+}

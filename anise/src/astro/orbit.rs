@@ -1204,7 +1204,7 @@ impl Orbit {
         let ecc = self.ecc()?;
         let denom = (1.0 + 2.0 * ecc * nu.cos() + ecc.powi(2)).sqrt();
         let sin_fpa = ecc * nu.sin() / denom;
-        let cos_fpa = 1.0 + ecc * nu.cos() / denom;
+        let cos_fpa = (1.0 + ecc * nu.cos()) / denom;
         Ok(sin_fpa.atan2(cos_fpa).to_degrees())
     }
 
