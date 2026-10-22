@@ -276,11 +276,13 @@ impl OrbitGrad {
             OHyperdual::from(1.0),
         )
         .cross(&self.hvec());
-        let aop = (n.dot(&self.evec()?) / (norm(&n) * self.ecc()?.dual)).acos();
+        let cos_aop = n.dot(&self.evec()?) / (norm(&n) * self.ecc()?.dual);
+        let aop = cos_aop.acos();
         if aop.is_nan() {
             warn!("AoP is NaN");
+            // acos has no derivative at +/-1, so a cosine at or past -1 means an AoP of 180 deg
             Ok(OrbitalElementPartials {
-                dual: OHyperdual::from(0.0),
+                dual: OHyperdual::from(if cos_aop.real() < 0.0 { 180.0 } else { 0.0 }),
                 oe: OrbitalElement::AoP,
             })
         } else if self.evec()?[2].real() < 0.0 {
@@ -304,11 +306,13 @@ impl OrbitGrad {
             OHyperdual::from(1.0),
         )
         .cross(&self.hvec());
-        let raan = (n[(0, 0)] / norm(&n)).acos();
+        let cos_raan = n[(0, 0)] / norm(&n);
+        let raan = cos_raan.acos();
         if raan.is_nan() {
             warn!("RAAN is NaN");
+            // acos has no derivative at +/-1, so a cosine at or past -1 means a RAAN of 180 deg
             OrbitalElementPartials {
-                dual: OHyperdual::from(0.0),
+                dual: OHyperdual::from(if cos_raan.real() < 0.0 { 180.0 } else { 0.0 }),
                 oe: OrbitalElement::RAAN,
             }
         } else if n[(1, 0)] < 0.0 {
@@ -342,7 +346,7 @@ impl OrbitGrad {
 
         if ta.real().is_nan() {
             // Handle the numerical noise edge cases
-            if cos_nu.real() > 1.0 {
+            if cos_nu.real() < -1.0 {
                 Ok(OrbitalElementPartials {
                     dual: OHyperdual::from(180.0),
                     oe: OrbitalElement::TrueAnomaly,
