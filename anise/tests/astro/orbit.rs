@@ -974,6 +974,168 @@ fn test_duration_to_radius_hyperbolic(epoch: Epoch, frame: Frame) {
 }
 
 #[rstest]
+fn test_duration_to_and_since_radius_hyperbolic(epoch: Epoch, frame: Frame) {
+    let sma_km: f64 = -5000.0;
+    let ecc: f64 = 2.0;
+    let p_km = sma_km * (1.0 - ecc.powi(2)); // 15000 km
+
+    // Outbound at 50000 km. Reversing its velocity gives the inbound state at the same radius and
+    // reverses time: the inbound state at epoch + dt is at the radius of the outbound state at
+    // epoch - dt, so the inbound leg is checked with `at_epoch` on the outbound leg.
+    let ta_deg = ((p_km / 50_000.0 - 1.0) / ecc).acos().to_degrees();
+    let outbound = create_orbit(sma_km, ecc, ta_deg, epoch, frame);
+    let mut inbound = outbound;
+    inbound.velocity_km_s = -outbound.velocity_km_s;
+
+    // Test 5a: Inbound. 20000 km is next crossed on the inbound leg, before periapsis.
+    let dt = inbound.duration_to_radius(20_000.0).unwrap();
+    f64_eq_tol!(dt.to_seconds(), 3030.343, TEST_EPS_DURATION_S, "5a");
+    f64_eq_tol!(
+        outbound.at_epoch(epoch - dt).unwrap().rmag_km(),
+        20_000.0,
+        TEST_EPS_RADIUS_KM,
+        "5a"
+    );
+
+    // Test 5b: Inbound. 80000 km is next crossed on the outbound leg.
+    let dt = inbound.duration_to_radius(80_000.0).unwrap();
+    f64_eq_tol!(dt.to_seconds(), 12588.373, TEST_EPS_DURATION_S, "5b");
+    f64_eq_tol!(
+        inbound.at_epoch(epoch + dt).unwrap().rmag_km(),
+        80_000.0,
+        TEST_EPS_RADIUS_KM,
+        "5b"
+    );
+
+    // Test 5c: Outbound to 100000 km, where the hyperbolic mean anomaly exceeds 2 PI.
+    let dt = outbound.duration_to_radius(100_000.0).unwrap();
+    f64_eq_tol!(dt.to_seconds(), 5283.672, TEST_EPS_DURATION_S, "5c");
+    f64_eq_tol!(
+        outbound.at_epoch(epoch + dt).unwrap().rmag_km(),
+        100_000.0,
+        TEST_EPS_RADIUS_KM,
+        "5c"
+    );
+
+    // Test 5d: Outbound. Both crossings of 20000 km are in the past.
+    assert!(matches!(
+        outbound.duration_to_radius(20_000.0),
+        Err(PhysicsError::RadiusError { .. })
+    ));
+
+    // Test 5e: Outbound. 20000 km was last crossed on the outbound leg.
+    let dt = outbound.duration_since_radius(20_000.0).unwrap();
+    f64_eq_tol!(dt.to_seconds(), 3030.343, TEST_EPS_DURATION_S, "5e");
+    f64_eq_tol!(
+        outbound.at_epoch(epoch - dt).unwrap().rmag_km(),
+        20_000.0,
+        TEST_EPS_RADIUS_KM,
+        "5e"
+    );
+
+    // Test 5f: Inbound. 80000 km was last crossed on the inbound leg.
+    let dt = inbound.duration_since_radius(80_000.0).unwrap();
+    f64_eq_tol!(dt.to_seconds(), 3150.031, TEST_EPS_DURATION_S, "5f");
+    f64_eq_tol!(
+        outbound.at_epoch(epoch + dt).unwrap().rmag_km(),
+        80_000.0,
+        TEST_EPS_RADIUS_KM,
+        "5f"
+    );
+
+    // Test 5g: Inbound. Both crossings of 20000 km are in the future.
+    assert!(matches!(
+        inbound.duration_since_radius(20_000.0),
+        Err(PhysicsError::RadiusError { .. })
+    ));
+
+    // Test 5h: duration_since_radius requires a hyperbolic orbit.
+    let elliptical = create_orbit(10_000.0, 0.1, 0.0, epoch, frame);
+    assert!(matches!(
+        elliptical.duration_since_radius(10_000.0),
+        Err(PhysicsError::NotHyperbolic { .. })
+    ));
+
+    // Test 5i: Outbound near the asymptote, about 1e8 km out. A radius 1 m below was crossed
+    // 1 m / (dr/dt) ago, and both of its crossings are in the past.
+    let ecc_far: f64 = 1.001;
+    let ta_far_deg = 0.999 * (-1.0 / ecc_far).acos().to_degrees();
+    let far = Orbit::keplerian(
+        -7000.0 / (ecc_far - 1.0),
+        ecc_far,
+        40.0,
+        30.0,
+        20.0,
+        ta_far_deg,
+        epoch,
+        frame,
+    );
+    let target_km = far.rmag_km() - 1e-3;
+    let rdot_km_s = far.radius_km.dot(&far.velocity_km_s) / far.rmag_km();
+    assert!(matches!(
+        far.duration_to_radius(target_km),
+        Err(PhysicsError::RadiusError { .. })
+    ));
+    f64_eq_tol!(
+        far.duration_since_radius(target_km).unwrap().to_seconds(),
+        (far.rmag_km() - target_km) / rdot_km_s,
+        1e-6,
+        "5i"
+    );
+
+    // Test 5j: Nearly parabolic, at periapsis. Barker's equation gives the time from periapsis to a
+    // radius, which is both the time to its next crossing and since its last one.
+    let ecc_para = 1.0 + 2.0 * ECC_EPSILON;
+    let at_periapsis = create_orbit(7000.0 / (1.0 - ecc_para), ecc_para, 0.0, epoch, frame);
+    let q_km = at_periapsis.rmag_km();
+    let mu_km3_s2 = frame.mu_km3_s2().unwrap();
+    for radius_km in [q_km + 1e-3, 8000.0] {
+        let d = (radius_km / q_km - 1.0).sqrt();
+        let barker_s = (2.0 * q_km.powi(3) / mu_km3_s2).sqrt() * (d + d.powi(3) / 3.0);
+        f64_eq_tol!(
+            at_periapsis
+                .duration_to_radius(radius_km)
+                .unwrap()
+                .to_seconds(),
+            barker_s,
+            1e-6,
+            format!("5j to {radius_km} km")
+        );
+        f64_eq_tol!(
+            at_periapsis
+                .duration_since_radius(radius_km)
+                .unwrap()
+                .to_seconds(),
+            barker_s,
+            1e-6,
+            format!("5j since {radius_km} km")
+        );
+    }
+
+    // Test 5k: Heliocentric, on both legs, where the mean motion is about 1.5e-7 rad/s, so 1 ns is
+    // 1.5e-16 rad of mean anomaly. The current radius is crossed now.
+    let sun_frame = frame.with_mu_km3_s2(132_712_440_041.939_38);
+    for ta_deg in [80.3, 89.8, 95.1] {
+        let outbound = Orbit::keplerian(-1.8e8, 1.2, 40.0, 30.0, 20.0, ta_deg, epoch, sun_frame);
+        let mut inbound = outbound;
+        inbound.velocity_km_s = -outbound.velocity_km_s;
+        for (leg, orbit) in [("outbound", outbound), ("inbound", inbound)] {
+            let radius_km = orbit.rmag_km();
+            assert_eq!(
+                orbit.duration_to_radius(radius_km).unwrap(),
+                Duration::ZERO,
+                "5k to, {leg} at {ta_deg} deg"
+            );
+            assert_eq!(
+                orbit.duration_since_radius(radius_km).unwrap(),
+                Duration::ZERO,
+                "5k since, {leg} at {ta_deg} deg"
+            );
+        }
+    }
+}
+
+#[rstest]
 fn test_duration_to_radius_error_conditions(epoch: Epoch, frame: Frame) {
     let sma_elliptical: f64 = 10000.0;
     let ecc_elliptical = 0.1;

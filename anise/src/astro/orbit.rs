@@ -327,6 +327,82 @@ impl Orbit {
                 / self.frame.mu_km3_s2()?,
         )
     }
+
+    /// Returns the signed durations in seconds to the inbound and outbound crossings of `radius_km`
+    /// on this hyperbolic orbit, in that order. Negative durations are in the past.
+    fn hyperbolic_radius_crossings_s(&self, radius_km: f64) -> PhysicsResult<(f64, f64)> {
+        let ecc = self.ecc()?;
+        if ecc <= 1.0 {
+            return Err(PhysicsError::NotHyperbolic { ecc });
+        }
+        ensure!(
+            ecc - 1.0 >= ECC_EPSILON,
+            ParabolicEccentricitySnafu { limit: ECC_EPSILON }
+        );
+        ensure!(
+            radius_km >= self.periapsis_km()?,
+            RadiusSnafu {
+                action: "radius below periapsis for hyperbolic orbit"
+            }
+        );
+
+        let mu_km3_s2 = self.frame.mu_km3_s2()?;
+        // |a| = p / (e^2 - 1), with p = h^2 / mu
+        let sma_abs_km = self.hmag()?.powi(2) / mu_km3_s2 / ((ecc - 1.0) * (ecc + 1.0));
+        // r . v = e sqrt(mu |a|) sinh(H)
+        let sinh_h0 =
+            self.radius_km.dot(&self.velocity_km_s) / (ecc * (mu_km3_s2 * sma_abs_km).sqrt());
+        let h0_rad = sinh_h0.asinh();
+        // The radius is crossed at -h_rad (inbound) and +h_rad (outbound). At the current radius,
+        // h_rad = |H0| exactly, so that one crossing is now.
+        let h_rad = if radius_km == self.rmag_km() {
+            h0_rad.abs()
+        } else {
+            // r = |a| (e cosh(H) - 1), so x = cosh(h_rad) - 1 = cosh(H0) - 1 + (r - r0) / (e |a|),
+            // with cosh(H0) - 1 = sinh(H0)^2 / (1 + cosh(H0)); x < 0 is roundoff at periapsis.
+            let x = (sinh_h0 * (sinh_h0 / (1.0 + sinh_h0.hypot(1.0)))
+                + (radius_km - self.rmag_km()) / (ecc * sma_abs_km))
+                .max(0.0);
+            // acosh(1 + x) = ln(1 + x + sqrt(x (2 + x)))
+            (x + x.sqrt() * (2.0 + x).sqrt()).ln_1p()
+        };
+        // Unwrapped M = e sinh(H) - H = (e - 1) sinh(H) + (sinh(H) - H), with the series of
+        // sinh(H) - H for small H.
+        let mean_anomaly_rad = |h: f64| {
+            let sinh_minus_h = if h.abs() < 0.1 {
+                let h2 = h * h;
+                h * h2 / 6.0 * (1.0 + h2 / 20.0 * (1.0 + h2 / 42.0 * (1.0 + h2 / 72.0)))
+            } else {
+                h.sinh() - h
+            };
+            (ecc - 1.0) * h.sinh() + sinh_minus_h
+        };
+        let m_rad = mean_anomaly_rad(h_rad);
+        let m_current_rad = mean_anomaly_rad(h0_rad);
+
+        let n_rad_s = (mu_km3_s2 / sma_abs_km.powi(3)).sqrt();
+        if !n_rad_s.is_finite() || n_rad_s <= 0.0 {
+            return Err(PhysicsError::AppliedMath {
+                source: MathError::DomainError {
+                    value: n_rad_s,
+                    msg: "mean motion computation failed",
+                },
+            });
+        }
+
+        let inbound_s = (-m_rad - m_current_rad) / n_rad_s;
+        let outbound_s = (m_rad - m_current_rad) / n_rad_s;
+        if !inbound_s.is_finite() || !outbound_s.is_finite() {
+            return Err(PhysicsError::AppliedMath {
+                source: MathError::DomainError {
+                    value: outbound_s,
+                    msg: "delta time computation failed",
+                },
+            });
+        }
+
+        Ok((inbound_s, outbound_s))
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1440,11 +1516,8 @@ impl Orbit {
     ///   of the orbit), this function calculates the time to reach the radius corresponding to the
     ///   true anomaly in `[0, PI]` (typically the ascending part or up to apoapsis if starting past periapsis).
     /// - For circular orbits, if the radius is within the apoapse and periapse, then a duration of zero is returned.
-    /// - For hyperbolic/parabolic orbits, the true anomaly at radius is also computed in `[0, PI]`. If this
-    ///   point is in the past, the function returns an error, as it doesn't look for solutions on the
-    ///   departing leg if `nu > PI` would be required (unless current TA is already > PI and target radius is further along).
-    ///   The current implementation strictly uses the `acos` result, so `nu_rad_at_radius` is always `0 <= nu <= PI`.
-    ///   This means it finds the time to reach the radius on the path from periapsis up to the point where true anomaly is PI.
+    /// - For hyperbolic orbits, the radius is crossed once inbound and once outbound: this function returns the
+    ///   time to the next of these two crossings, or an error if both are in the past (cf. `duration_since_radius`).
     ///
     /// :type radius_km: float
     /// :rtype: Duration
@@ -1475,13 +1548,20 @@ impl Orbit {
                 return Ok(Duration::from_seconds(0.0));
             }
         } else {
-            // Hyperbolic
+            // Hyperbolic: the next of the inbound and outbound crossings
+            let (inbound_s, outbound_s) = self.hyperbolic_radius_crossings_s(radius_km)?;
+            let delta_t_s = if inbound_s >= -1e-9 {
+                inbound_s
+            } else {
+                outbound_s
+            };
             ensure!(
-                radius_km >= rp_km,
+                delta_t_s >= -1e-9,
                 RadiusSnafu {
-                    action: "radius below periapsis for hyperbolic orbit"
+                    action: "both crossings of radius in the past for hyperbolic orbit"
                 }
             );
+            return Ok(Duration::from_seconds(delta_t_s.max(0.0)));
         }
 
         // Retrieve semi-latus rectum
@@ -1531,17 +1611,8 @@ impl Orbit {
 
         // Step 15: Adjust delta_t_s
         if delta_t_s < -1e-9 {
-            if ecc < 1.0 {
-                // Elliptical: target radius (on the 0->PI true anomaly arc) will be reached in the next orbit.
-                delta_t_s += self.period()?.to_seconds();
-            } else {
-                // Hyperbolic/Parabolic: nu_rad_at_radius is on the [0, PI] arc.
-                // This specific point (on the 0->PI arc) is in the past.
-                return RadiusSnafu {
-                    action: "Radius (on [0,PI] TA arc) in past for hyperbolic orbit",
-                }
-                .fail();
-            }
+            // Elliptical: target radius (on the 0->PI true anomaly arc) will be reached in the next orbit.
+            delta_t_s += self.period()?.to_seconds();
         } else if delta_t_s < 0.0 {
             // If delta_t_s is negative but very close to zero (-1e-9 < delta_t_s < 0.0)
             delta_t_s = 0.0;
@@ -1558,6 +1629,31 @@ impl Orbit {
 
         // Step 16: Return Ok(Duration::from_seconds(delta_t_s))
         Ok(Duration::from_seconds(delta_t_s))
+    }
+
+    /// Calculates the duration elapsed since this hyperbolic orbit crossed a specific radius.
+    ///
+    /// The radius is crossed once inbound and once outbound: this function returns the time since the
+    /// most recent of these two crossings, assuming pure Keplerian motion. It is the companion of
+    /// `duration_to_radius`, and returns an error if the orbit is not hyperbolic or if both crossings
+    /// are in the future.
+    ///
+    /// :type radius_km: float
+    /// :rtype: Duration
+    pub fn duration_since_radius(&self, radius_km: f64) -> PhysicsResult<Duration> {
+        let (inbound_s, outbound_s) = self.hyperbolic_radius_crossings_s(radius_km)?;
+        let delta_t_s = if outbound_s <= 1e-9 {
+            outbound_s
+        } else {
+            inbound_s
+        };
+        ensure!(
+            delta_t_s <= 1e-9,
+            RadiusSnafu {
+                action: "both crossings of radius in the future for hyperbolic orbit"
+            }
+        );
+        Ok(Duration::from_seconds((-delta_t_s).max(0.0)))
     }
 
     /// Returns a Cartesian state representing the RIC difference between self and other, in position and velocity (with transport theorem).
