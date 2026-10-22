@@ -906,7 +906,7 @@ impl Orbit {
         let cos_aop = n.dot(&self.evec()?) / (n.norm() * self.ecc()?);
         let aop = cos_aop.acos();
         if aop.is_nan() {
-            if cos_aop > 1.0 { Ok(180.0) } else { Ok(0.0) }
+            if cos_aop < -1.0 { Ok(180.0) } else { Ok(0.0) }
         } else if self.evec()?[2] < 0.0 {
             Ok((TAU - aop).to_degrees())
         } else {
@@ -963,7 +963,7 @@ impl Orbit {
         let cos_raan = n[0] / n.norm();
         let raan = cos_raan.acos();
         if raan.is_nan() {
-            if cos_raan > 1.0 { Ok(180.0) } else { Ok(0.0) }
+            if cos_raan < -1.0 { Ok(180.0) } else { Ok(0.0) }
         } else if n[1] < 0.0 {
             Ok((TAU - raan).to_degrees())
         } else {

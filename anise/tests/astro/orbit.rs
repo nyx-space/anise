@@ -1113,3 +1113,61 @@ fn val_fpa_matches_geometric_definition(epoch: Epoch, frame: Frame) {
         }
     }
 }
+
+/// On apsis or node aligned states, rounding can push the cosine used for the AoP, RAAN or true
+/// anomaly past +/-1. acos then returns NaN and the fallback must return 0 deg past +1 and 180 deg
+/// past -1.
+#[rstest]
+fn val_apsis_aligned_angles(epoch: Epoch, frame: Frame) {
+    for sma_km in [7_000.0, 12_345.6, 42_164.0] {
+        for ecc in [0.01, 0.1, 0.5, 0.9] {
+            for inc_deg in [28.5, 51.6, 98.7] {
+                for raan_deg in [0.0, 45.0, 180.0] {
+                    for aop_deg in [0.0, 180.0] {
+                        for ta_deg in [0.0, 180.0] {
+                            let orbit = Orbit::keplerian(
+                                sma_km, ecc, inc_deg, raan_deg, aop_deg, ta_deg, epoch, frame,
+                            );
+                            let case = format!(
+                                "sma = {sma_km}, ecc = {ecc}, inc = {inc_deg}, raan = {raan_deg}, aop = {aop_deg}, ta = {ta_deg}"
+                            );
+                            f64_eq_tol!(
+                                between_pm_180(orbit.aop_deg().unwrap() - aop_deg),
+                                0.0,
+                                1e-3,
+                                format!("aop for {case}")
+                            );
+                            f64_eq_tol!(
+                                between_pm_180(orbit.raan_deg().unwrap() - raan_deg),
+                                0.0,
+                                1e-3,
+                                format!("raan for {case}")
+                            );
+
+                            #[cfg(feature = "analysis")]
+                            {
+                                use anise::analysis::prelude::OrbitalElement;
+                                use anise::astro::orbit_gradient::OrbitGrad;
+
+                                let grad = OrbitGrad::from(orbit);
+                                for (oe, expected_deg) in [
+                                    (OrbitalElement::AoP, aop_deg),
+                                    (OrbitalElement::RAAN, raan_deg),
+                                    (OrbitalElement::TrueAnomaly, ta_deg),
+                                ] {
+                                    let got_deg = grad.partial_for(oe).unwrap().real();
+                                    f64_eq_tol!(
+                                        between_pm_180(got_deg - expected_deg),
+                                        0.0,
+                                        1e-3,
+                                        format!("{oe:?} partials for {case}")
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
