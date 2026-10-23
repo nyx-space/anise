@@ -202,4 +202,18 @@ mod meta_test {
 
         assert_eq!(from_str, default);
     }
+
+    #[test]
+    fn from_dhall_rejects_imports() {
+        // A Dhall string is data rather than a configuration file on disk, so it must not be
+        // able to pull the host's environment or files into the parsed value, nor reach out
+        // to the network: the uri it yields is what `process` later requests.
+        for repr in [
+            "{ files = [ { crc32 = None Natural, uri = env:CARGO_MANIFEST_DIR as Text } ] }",
+            "{ files = [ { crc32 = None Natural, uri = ./Cargo.toml as Text } ] }",
+            "{ files = [ { crc32 = None Natural, uri = https://example.com/meta as Text } ] }",
+        ] {
+            assert!(MetaAlmanac::from_dhall(repr).is_err(), "{repr}");
+        }
+    }
 }

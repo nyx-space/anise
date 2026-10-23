@@ -117,8 +117,12 @@ impl LocationDhallSet {
     }
 
     /// Deserialize the Dhall string of a Location data set into its Dhall representation structure.
+    ///
+    /// Imports are not resolved: the string is data rather than a configuration file, so it
+    /// must not be able to read the environment or files of the host, nor reach the network.
     pub fn from_dhall(repr: &str) -> Result<Self, String> {
         let me: Self = serde_dhall::from_str(repr)
+            .imports(false)
             .static_type_annotation()
             .parse()
             .map_err(|e| e.to_string())?;
@@ -379,5 +383,28 @@ mod ut_loc_dhall {
 
         let to_dataset = from_dhall.to_dataset().unwrap();
         println!("{to_dataset}");
+    }
+
+    #[test]
+    fn from_dhall_rejects_imports() {
+        let set = LocationDhallSet {
+            data: vec![LocationDhallSetEntry {
+                id: Some(1),
+                alias: Some("DSS65".to_string()),
+                value: Location {
+                    frame: EARTH_ITRF93.into(),
+                    ..Default::default()
+                },
+            }],
+        };
+        let as_dhall = set.to_dhall().unwrap();
+        assert!(as_dhall.contains("\"DSS65\""));
+
+        // A Dhall string is data rather than a configuration file on disk, so an import must
+        // not be able to pull the host's environment or files into the parsed value.
+        let with_env = as_dhall.replace("\"DSS65\"", "(env:CARGO_MANIFEST_DIR as Text)");
+        assert!(LocationDhallSet::from_dhall(&with_env).is_err());
+        let with_remote = as_dhall.replace("\"DSS65\"", "(https://example.com/alias as Text)");
+        assert!(LocationDhallSet::from_dhall(&with_remote).is_err());
     }
 }
