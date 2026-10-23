@@ -328,13 +328,10 @@ impl Orbit {
         )
     }
 
-    /// Returns the signed durations in seconds to the inbound and outbound crossings of `radius_km`
-    /// on this hyperbolic orbit, in that order. Negative durations are in the past.
-    fn hyperbolic_radius_crossings_s(&self, radius_km: f64) -> PhysicsResult<(f64, f64)> {
+    /// Returns the signed durations to the inbound and outbound crossings of `radius_km` on this
+    /// hyperbolic orbit, in that order. Negative durations are in the past.
+    fn hyperbolic_radius_crossings(&self, radius_km: f64) -> PhysicsResult<(Duration, Duration)> {
         let ecc = self.ecc()?;
-        if ecc <= 1.0 {
-            return Err(PhysicsError::NotHyperbolic { ecc });
-        }
         ensure!(
             ecc - 1.0 >= ECC_EPSILON,
             ParabolicEccentricitySnafu { limit: ECC_EPSILON }
@@ -401,7 +398,10 @@ impl Orbit {
             });
         }
 
-        Ok((inbound_s, outbound_s))
+        Ok((
+            Duration::from_seconds(inbound_s),
+            Duration::from_seconds(outbound_s),
+        ))
     }
 }
 
@@ -1549,19 +1549,19 @@ impl Orbit {
             }
         } else {
             // Hyperbolic: the next of the inbound and outbound crossings
-            let (inbound_s, outbound_s) = self.hyperbolic_radius_crossings_s(radius_km)?;
-            let delta_t_s = if inbound_s >= -1e-9 {
-                inbound_s
+            let (inbound, outbound) = self.hyperbolic_radius_crossings(radius_km)?;
+            let delta_t = if inbound >= Duration::ZERO {
+                inbound
             } else {
-                outbound_s
+                outbound
             };
             ensure!(
-                delta_t_s >= -1e-9,
+                delta_t >= Duration::ZERO,
                 RadiusSnafu {
                     action: "both crossings of radius in the past for hyperbolic orbit"
                 }
             );
-            return Ok(Duration::from_seconds(delta_t_s.max(0.0)));
+            return Ok(delta_t);
         }
 
         // Retrieve semi-latus rectum
@@ -1631,29 +1631,104 @@ impl Orbit {
         Ok(Duration::from_seconds(delta_t_s))
     }
 
-    /// Calculates the duration elapsed since this hyperbolic orbit crossed a specific radius.
+    /// Calculates the duration elapsed since the orbit was last at a specific radius.
     ///
-    /// The radius is crossed once inbound and once outbound: this function returns the time since the
-    /// most recent of these two crossings, assuming pure Keplerian motion. It is the companion of
-    /// `duration_to_radius`, and returns an error if the orbit is not hyperbolic or if both crossings
-    /// are in the future.
+    /// This function is the converse of `duration_to_radius`: it computes the time elapsed since
+    /// the orbiting body was last at the given `radius_km`.
+    ///
+    /// # Assumptions & Limitations
+    ///
+    /// - Assumes pure Keplerian motion.
+    /// - For elliptical orbits, the radius is crossed at the true anomalies `nu` and `2 PI - nu`, with `nu` in
+    ///   `[0, PI]`: this function returns the time since the most recent of these crossings.
+    /// - For circular orbits, if the radius is within the apoapse and periapse, then a duration of zero is returned.
+    /// - For hyperbolic orbits, the radius is crossed once inbound and once outbound: this function returns the
+    ///   time since the most recent of these two crossings, or an error if both are in the future.
     ///
     /// :type radius_km: float
     /// :rtype: Duration
     pub fn duration_since_radius(&self, radius_km: f64) -> PhysicsResult<Duration> {
-        let (inbound_s, outbound_s) = self.hyperbolic_radius_crossings_s(radius_km)?;
-        let delta_t_s = if outbound_s <= 1e-9 {
-            outbound_s
-        } else {
-            inbound_s
-        };
-        ensure!(
-            delta_t_s <= 1e-9,
-            RadiusSnafu {
-                action: "both crossings of radius in the future for hyperbolic orbit"
+        let ecc = self.ecc()?;
+
+        if ecc < 1.0 {
+            // Elliptical
+            ensure!(
+                radius_km >= self.periapsis_km()? && radius_km <= self.apoapsis_km()?,
+                RadiusSnafu {
+                    action: "radius not within apoapse and periapse"
+                }
+            );
+            ensure!(
+                1.0 - ecc >= ECC_EPSILON,
+                ParabolicEccentricitySnafu { limit: ECC_EPSILON }
+            );
+            // A circular orbit is always at the radius. The current radius is crossed now, which
+            // the anomalies below only reproduce to within roundoff.
+            if ecc < ECC_EPSILON || radius_km == self.rmag_km() {
+                return Ok(Duration::ZERO);
             }
-        );
-        Ok(Duration::from_seconds((-delta_t_s).max(0.0)))
+        } else {
+            // Hyperbolic: the last of the inbound and outbound crossings
+            let (inbound, outbound) = self.hyperbolic_radius_crossings(radius_km)?;
+            let delta_t = if outbound <= Duration::ZERO {
+                outbound
+            } else {
+                inbound
+            };
+            ensure!(
+                delta_t <= Duration::ZERO,
+                RadiusSnafu {
+                    action: "both crossings of radius in the future for hyperbolic orbit"
+                }
+            );
+            return Ok(-delta_t);
+        }
+
+        let mu_km3_s2 = self.frame.mu_km3_s2()?;
+        // a = p / (1 - e^2), with p = h^2 / mu
+        let sma_km = self.hmag()?.powi(2) / mu_km3_s2 / ((1.0 - ecc) * (1.0 + ecc));
+        // r . v = e sqrt(mu a) sin(E0) and r = a (1 - e cos(E0)), so E0 < 0 before periapsis.
+        let ea0_rad = (self.radius_km.dot(&self.velocity_km_s) / (mu_km3_s2 * sma_km).sqrt())
+            .atan2(1.0 - self.rmag_km() / sma_km);
+        // The radius is crossed at -E and +E. With r = a (1 - e cos(E)), taking sin(E / 2)^2 and
+        // cos(E / 2)^2 as those of E0 plus and minus (r - r0) / (2 a e) keeps radii near the
+        // current one on the correct side of E0. Values below zero are roundoff at the apsides.
+        let shift = (radius_km - self.rmag_km()) / (2.0 * sma_km * ecc);
+        let (sin_half_e0, cos_half_e0) = (ea0_rad / 2.0).sin_cos();
+        let ea_rad = 2.0
+            * (sin_half_e0.powi(2) + shift)
+                .max(0.0)
+                .sqrt()
+                .atan2((cos_half_e0.powi(2) - shift).max(0.0).sqrt());
+        // Signed M = E - e sin(E) = (1 - e) sin(E) + (E - sin(E)), with the series of E - sin(E)
+        // for small E.
+        let mean_anomaly_rad = |ea: f64| {
+            let ea_minus_sin = if ea.abs() < 0.1 {
+                let ea2 = ea * ea;
+                ea * ea2 / 6.0 * (1.0 - ea2 / 20.0 * (1.0 - ea2 / 42.0 * (1.0 - ea2 / 72.0)))
+            } else {
+                ea - ea.sin()
+            };
+            (1.0 - ecc) * ea.sin() + ea_minus_sin
+        };
+        let m_rad = mean_anomaly_rad(ea_rad);
+        let m_current_rad = mean_anomaly_rad(ea0_rad);
+
+        let n_rad_s = (mu_km3_s2 / sma_km.powi(3)).sqrt();
+        if !n_rad_s.is_finite() || n_rad_s <= 0.0 {
+            return Err(PhysicsError::AppliedMath {
+                source: MathError::DomainError {
+                    value: n_rad_s,
+                    msg: "mean motion computation failed",
+                },
+            });
+        }
+
+        // The crossings at M and -M were last reached M0 - M and M0 + M ago, modulo one revolution.
+        let delta_m_rad = (m_current_rad - m_rad)
+            .rem_euclid(TAU)
+            .min((m_current_rad + m_rad).rem_euclid(TAU));
+        Ok(Duration::from_seconds(delta_m_rad / n_rad_s))
     }
 
     /// Returns a Cartesian state representing the RIC difference between self and other, in position and velocity (with transport theorem).

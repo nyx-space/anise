@@ -643,8 +643,10 @@ def test_duration_to_since_radius():
     assert abs(orbit.duration_since_radius(10_000.0).to_seconds() - 713.237) < 1e-2
 
     elliptical = Orbit.from_keplerian(10_000.0, 0.1, 0.0, 0.0, 0.0, 0.0, epoch, eme2k)
-    with np.testing.assert_raises(Exception):
-        elliptical.duration_since_radius(10_000.0)
+    assert abs(elliptical.duration_to_radius(10_000.0).to_seconds() - 2329.612) < 1e-2
+    assert (
+        abs(elliptical.duration_since_radius(10_000.0).to_seconds() - 2329.612) < 1e-2
+    )
 
 
 if __name__ == "__main__":

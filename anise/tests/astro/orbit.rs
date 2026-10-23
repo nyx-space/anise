@@ -1049,13 +1049,6 @@ fn test_duration_to_and_since_radius_hyperbolic(epoch: Epoch, frame: Frame) {
         Err(PhysicsError::RadiusError { .. })
     ));
 
-    // Test 5h: duration_since_radius requires a hyperbolic orbit.
-    let elliptical = create_orbit(10_000.0, 0.1, 0.0, epoch, frame);
-    assert!(matches!(
-        elliptical.duration_since_radius(10_000.0),
-        Err(PhysicsError::NotHyperbolic { .. })
-    ));
-
     // Test 5i: Outbound near the asymptote, about 1e8 km out. A radius 1 m below was crossed
     // 1 m / (dr/dt) ago, and both of its crossings are in the past.
     let ecc_far: f64 = 1.001;
@@ -1133,6 +1126,125 @@ fn test_duration_to_and_since_radius_hyperbolic(epoch: Epoch, frame: Frame) {
             );
         }
     }
+}
+
+#[rstest]
+fn test_duration_since_radius_elliptical(epoch: Epoch, frame: Frame) {
+    let sma_km: f64 = 10000.0;
+    let ecc = 0.1;
+
+    // Tests 6a to 6d: From both halves of the orbit, to radii last crossed on either half. 9200 km
+    // is crossed at true anomalies of 40.5 and 319.5 deg, and 10500 km at 124.9 and 235.1 deg.
+    for (test, ta_deg, radius_km, expected_s) in [
+        ("6a", 60.0, 9200.0, 470.397),
+        ("6b", 60.0, 10500.0, 4574.779),
+        ("6c", 250.0, 10500.0, 444.311),
+        ("6d", 250.0, 9200.0, 6291.944),
+    ] {
+        let orbit = create_orbit(sma_km, ecc, ta_deg, epoch, frame);
+        let dt = orbit.duration_since_radius(radius_km).unwrap();
+        f64_eq_tol!(dt.to_seconds(), expected_s, TEST_EPS_DURATION_S, test);
+        f64_eq_tol!(
+            orbit.at_epoch(epoch - dt).unwrap().rmag_km(),
+            radius_km,
+            TEST_EPS_RADIUS_KM,
+            test
+        );
+        // No later crossing: since then, the radius stays on the same side of the target as now.
+        let side = (orbit.rmag_km() - radius_km).signum();
+        for i in 0..100 {
+            let rmag_km = orbit
+                .at_epoch(epoch - dt * (i as f64 / 100.0))
+                .unwrap()
+                .rmag_km();
+            assert_eq!((rmag_km - radius_km).signum(), side, "{test} at {i}%");
+        }
+    }
+
+    // Test 6e: Heliocentric, where the mean motion is about 2e-7 rad/s, so 1 ns is 2e-16 rad of
+    // mean anomaly. The current radius is crossed now, on both halves.
+    let sun_frame = frame.with_mu_km3_s2(132_712_440_041.939_38);
+    for ta_deg in [21.5, 238.5, 284.5] {
+        let orbit = Orbit::keplerian(1.5e8, 0.2, 40.0, 30.0, 20.0, ta_deg, epoch, sun_frame);
+        assert_eq!(
+            orbit.duration_since_radius(orbit.rmag_km()).unwrap(),
+            Duration::ZERO,
+            "6e at {ta_deg} deg"
+        );
+    }
+
+    // Test 6f: As for duration_to_radius, zero on a circular orbit and an error outside the apsides.
+    // The apsides are crossed once per revolution: periapsis 1394.612 s before a true anomaly of
+    // 60 deg, and apoapsis 2240.151 s before 250 deg.
+    let circ_orbit = create_orbit(sma_km, ECC_EPSILON / 10.0, 0.0, epoch, frame);
+    assert_eq!(
+        circ_orbit.duration_since_radius(sma_km).unwrap(),
+        Duration::ZERO
+    );
+    let orbit = create_orbit(sma_km, ecc, 60.0, epoch, frame);
+    assert!(matches!(
+        orbit.duration_since_radius(orbit.apoapsis_km().unwrap() + 100.0),
+        Err(PhysicsError::RadiusError { .. })
+    ));
+    let dt = orbit.duration_since_radius(orbit.periapsis_km().unwrap());
+    f64_eq_tol!(
+        dt.unwrap().to_seconds(),
+        1394.612,
+        TEST_EPS_DURATION_S,
+        "6f periapsis"
+    );
+    let orbit = create_orbit(sma_km, ecc, 250.0, epoch, frame);
+    let dt = orbit.duration_since_radius(orbit.apoapsis_km().unwrap());
+    f64_eq_tol!(
+        dt.unwrap().to_seconds(),
+        2240.151,
+        TEST_EPS_DURATION_S,
+        "6f apoapsis"
+    );
+
+    // Tests 6g and 6h: Nearly parabolic, where Barker's equation gives the time from periapsis to a
+    // radius. 6g is at periapsis. 6h is inbound at a true anomaly of 300 deg, 139.945 s after
+    // crossing 10000 km, with a mean anomaly of -8e-17 rad.
+    let ecc_near_para = 1.0 - 2.0 * ECC_EPSILON;
+    let sma_near_para = 7000.0 / (1.0 - ecc_near_para);
+    let at_periapsis = create_orbit(sma_near_para, ecc_near_para, 0.0, epoch, frame);
+    let q_km = at_periapsis.rmag_km();
+    let mu_km3_s2 = frame.mu_km3_s2().unwrap();
+    let barker_s = |radius_km: f64| {
+        let d = (radius_km / q_km - 1.0).sqrt();
+        (2.0 * q_km.powi(3) / mu_km3_s2).sqrt() * (d + d.powi(3) / 3.0)
+    };
+    f64_eq_tol!(
+        at_periapsis
+            .duration_since_radius(8000.0)
+            .unwrap()
+            .to_seconds(),
+        barker_s(8000.0),
+        1e-6,
+        "6g"
+    );
+    let inbound = create_orbit(sma_near_para, ecc_near_para, 300.0, epoch, frame);
+    f64_eq_tol!(
+        inbound
+            .duration_since_radius(10_000.0)
+            .unwrap()
+            .to_seconds(),
+        barker_s(10_000.0) - barker_s(inbound.rmag_km()),
+        1e-6,
+        "6h"
+    );
+
+    // Test 6i: Outbound on the same orbit, about 1e7 km out. A radius 1 m below was crossed
+    // 1 m / (dr/dt) ago.
+    let far = create_orbit(sma_near_para, ecc_near_para, 177.0, epoch, frame);
+    let target_km = far.rmag_km() - 1e-3;
+    let rdot_km_s = far.radius_km.dot(&far.velocity_km_s) / far.rmag_km();
+    f64_eq_tol!(
+        far.duration_since_radius(target_km).unwrap().to_seconds(),
+        (far.rmag_km() - target_km) / rdot_km_s,
+        1e-6,
+        "6i"
+    );
 }
 
 #[rstest]

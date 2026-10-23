@@ -1267,12 +1267,19 @@ Further note that most astrodynamics tools do *not* account for the time derivat
         """Returns the distance in kilometers between this state and another state, if both frame match (epoch does not need to match)."""
 
     def duration_since_radius(self, radius_km: float) -> time.Duration:
-        """Calculates the duration elapsed since this hyperbolic orbit crossed a specific radius.
+        """Calculates the duration elapsed since the orbit was last at a specific radius.
 
-The radius is crossed once inbound and once outbound: this function returns the time since the
-most recent of these two crossings, assuming pure Keplerian motion. It is the companion of
-`duration_to_radius`, and returns an error if the orbit is not hyperbolic or if both crossings
-are in the future."""
+This function is the converse of `duration_to_radius`: it computes the time elapsed since
+the orbiting body was last at the given `radius_km`.
+
+# Assumptions & Limitations
+
+- Assumes pure Keplerian motion.
+- For elliptical orbits, the radius is crossed at the true anomalies `nu` and `2 PI - nu`, with `nu` in
+`[0, PI]`: this function returns the time since the most recent of these crossings.
+- For circular orbits, if the radius is within the apoapse and periapse, then a duration of zero is returned.
+- For hyperbolic orbits, the radius is crossed once inbound and once outbound: this function returns the
+time since the most recent of these two crossings, or an error if both are in the future."""
 
     def duration_to_radius(self, radius_km: float) -> time.Duration:
         """Calculates the duration to reach a specific radius in the orbit.
