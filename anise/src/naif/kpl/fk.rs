@@ -239,6 +239,52 @@ mod fk_ut {
     }
 
     #[test]
+    fn test_convert_fk_angle_units() {
+        use crate::math::rotation::{DCM, r1, r2, r3};
+        use crate::naif::kpl::parser::{convert_fk_items, parse_bytes};
+
+        let fk_with_units = |angles: &str, units: &str| {
+            let fk = format!(
+                "\\begindata\n\
+                 FRAME_TEST_TK = 1400001\n\
+                 FRAME_1400001_NAME = 'TEST_TK'\n\
+                 FRAME_1400001_CLASS_ID = 1400001\n\
+                 FRAME_1400001_CENTER = 399\n\
+                 TKFRAME_1400001_SPEC = 'ANGLES'\n\
+                 TKFRAME_1400001_ANGLES = ( {angles} )\n\
+                 TKFRAME_1400001_AXES = ( 3, 2, 1 )\n\
+                 TKFRAME_1400001_UNITS = '{units}'\n\
+                 \\begintext\n"
+            );
+            let assignments = parse_bytes::<_, FKItem>(&mut fk.as_bytes(), false).unwrap();
+            convert_fk_items(assignments)
+        };
+
+        let expected =
+            r3(30.0_f64.to_radians()) * r2(15.0_f64.to_radians()) * r1(1.0_f64.to_radians());
+
+        for (angles, units) in [
+            ("30.0 15.0 1.0", "DEGREES"),
+            (
+                "0.5235987755982988 0.2617993877991494 0.017453292519943295",
+                "RADIANS",
+            ),
+            ("1800.0 900.0 60.0", "ARCMINUTES"),
+            ("108000.0 54000.0 3600.0", "ARCSECONDS"),
+            ("2.0 1.0 0.06666666666666667", "HOURANGLE"),
+        ] {
+            let dataset = fk_with_units(angles, units).unwrap();
+            let q = dataset.get_by_name("TEST_TK").unwrap();
+            assert!(
+                (DCM::from(q).rot_mat - expected).norm() < 1e-12,
+                "wrong rotation for {units}"
+            );
+        }
+
+        assert!(fk_with_units("30.0 15.0 1.0", "FURLONGS").is_err());
+    }
+
+    #[test]
     fn build_de440_moon_fk() {
         use std::path::PathBuf;
         use std::str::FromStr;
