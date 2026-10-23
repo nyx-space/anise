@@ -164,6 +164,26 @@ mod meta_test {
     }
 
     #[test]
+    fn default_downloads_use_authenticated_transport() {
+        // The default kernels are fetched and then trusted (the Moon frame kernel and planetary
+        // constants are loaded as data, and the GUI binary the Python bindings fetch is executed),
+        // while the CRC32 pins are only warned on, not enforced. So every default URI must use a
+        // transport that authenticates the source: https, never plain http.
+        for file in MetaAlmanac::default().files {
+            assert!(
+                file.uri.starts_with("https://"),
+                "default kernel uri is not fetched over https: {}",
+                file.uri
+            );
+            assert!(
+                !file.uri.contains("http://public-data.nyxspace.com"),
+                "default kernel uri uses the plaintext nyxspace host: {}",
+                file.uri
+            );
+        }
+    }
+
+    #[test]
     fn test_from_dhall() {
         let default = MetaAlmanac::default();
 
@@ -183,10 +203,10 @@ mod meta_test {
     , uri = "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp"
     }
   , { crc32 = Some 0x1edb3eac
-    , uri = "http://public-data.nyxspace.com/anise/v0.10/pck11.pca"
+    , uri = "https://storage.googleapis.com/public-data.nyxspace.com/anise/v0.10/pck11.pca"
     }
   , { crc32 = Some 0xc6c252fa
-    , uri = "http://public-data.nyxspace.com/anise/v0.10/moon_fk_de440.epa"
+    , uri = "https://storage.googleapis.com/public-data.nyxspace.com/anise/v0.10/moon_fk_de440.epa"
     }
   , { crc32 = Some 0xcde5ca7d
     , uri = "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/moon_pa_de440_200625.bpc"

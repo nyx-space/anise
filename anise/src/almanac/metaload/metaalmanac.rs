@@ -75,8 +75,8 @@ impl MetaAlmanac {
     ///
     /// # File list
     /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp>
-    /// - <http://public-data.nyxspace.com/anise/v0.10/pck11.pca>
-    /// - <http://public-data.nyxspace.com/anise/v0.10/moon_fk_de440.epa>
+    /// - <https://storage.googleapis.com/public-data.nyxspace.com/anise/v0.10/pck11.pca>
+    /// - <https://storage.googleapis.com/public-data.nyxspace.com/anise/v0.10/moon_fk_de440.epa>
     /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/moon_pa_de440_200625.bpc>
     /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc>
     ///
@@ -132,8 +132,8 @@ impl MetaAlmanac {
 ///
 /// # File list
 /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp>
-/// - <http://public-data.nyxspace.com/anise/v0.10/pck11.pca>
-/// - <http://public-data.nyxspace.com/anise/v0.10/moon_fk_de440.epa>
+/// - <https://storage.googleapis.com/public-data.nyxspace.com/anise/v0.10/pck11.pca>
+/// - <https://storage.googleapis.com/public-data.nyxspace.com/anise/v0.10/moon_fk_de440.epa>
 /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/moon_pa_de440_200625.bpc>
 /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc>
 ///
@@ -143,8 +143,12 @@ impl MetaAlmanac {
 /// if queried at some future time, the Earth rotation parameters may have changed between two queries.
 impl Default for MetaAlmanac {
     fn default() -> Self {
+        // The nyxspace bucket presents a valid certificate under storage.googleapis.com; the
+        // bare public-data.nyxspace.com host only answers plain HTTP, over which these kernels
+        // could be swapped in transit (the CRC32 below is only warned on, not enforced).
         let nyx_cloud_stor =
-            Url::parse("http://public-data.nyxspace.com/anise/").expect("static URL is valid");
+            Url::parse("https://storage.googleapis.com/public-data.nyxspace.com/anise/")
+                .expect("static URL is valid");
         let jpl_cloud_stor = Url::parse("https://naif.jpl.nasa.gov/pub/naif/generic_kernels/")
             .expect("static URL is valid");
 
