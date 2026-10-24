@@ -454,14 +454,13 @@ impl OrbitGrad {
         } else {
             debug!("computing the hyperbolic anomaly");
             // From GMAT's TrueToHyperbolicAnomaly
+            let ecc = self.ecc()?.dual;
+            let (sin_ta, cos_ta) = self.ta_deg()?.dual.to_radians().sin_cos();
+            let sinh_h = ((ecc.powi(2) - OHyperdual::from(1.0)).sqrt() * sin_ta)
+                / (OHyperdual::from(1.0) + ecc * cos_ta);
+            // Hyperbolic Kepler Equation: M_h = e * sinh(H) - H
             Ok(OrbitalElementPartials {
-                dual: ((self.ta_deg()?.dual.to_radians().sin()
-                    * (self.ecc()?.dual.powi(2) - OHyperdual::from(1.0)))
-                .sqrt()
-                    / (OHyperdual::from(1.0)
-                        + self.ecc()?.dual * self.ta_deg()?.dual.to_radians().cos()))
-                .asinh()
-                .to_degrees(),
+                dual: (ecc * sinh_h - sinh_h.asinh()).to_degrees(),
                 oe: OrbitalElement::MeanAnomaly,
             })
         }
