@@ -1266,6 +1266,21 @@ Further note that most astrodynamics tools do *not* account for the time derivat
     def distance_to_km(self, other: Orbit) -> float:
         """Returns the distance in kilometers between this state and another state, if both frame match (epoch does not need to match)."""
 
+    def duration_since_radius(self, radius_km: float) -> time.Duration:
+        """Calculates the duration elapsed since the orbit was last at a specific radius.
+
+This function is the converse of `duration_to_radius`: it computes the time elapsed since
+the orbiting body was last at the given `radius_km`.
+
+# Assumptions & Limitations
+
+- Assumes pure Keplerian motion.
+- For elliptical orbits, the radius is crossed at the true anomalies `nu` and `2 PI - nu`, with `nu` in
+`[0, PI]`: this function returns the time since the most recent of these crossings.
+- For circular orbits, if the radius is within the apoapse and periapse, then a duration of zero is returned.
+- For hyperbolic orbits, the radius is crossed once inbound and once outbound: this function returns the
+time since the most recent of these two crossings, or an error if both are in the future."""
+
     def duration_to_radius(self, radius_km: float) -> time.Duration:
         """Calculates the duration to reach a specific radius in the orbit.
 
@@ -1280,11 +1295,8 @@ two-body dynamics and considers the direction of motion.
 of the orbit), this function calculates the time to reach the radius corresponding to the
 true anomaly in `[0, PI]` (typically the ascending part or up to apoapsis if starting past periapsis).
 - For circular orbits, if the radius is within the apoapse and periapse, then a duration of zero is returned.
-- For hyperbolic/parabolic orbits, the true anomaly at radius is also computed in `[0, PI]`. If this
-point is in the past, the function returns an error, as it doesn't look for solutions on the
-departing leg if `nu > PI` would be required (unless current TA is already > PI and target radius is further along).
-The current implementation strictly uses the `acos` result, so `nu_rad_at_radius` is always `0 <= nu <= PI`.
-This means it finds the time to reach the radius on the path from periapsis up to the point where true anomaly is PI."""
+- For hyperbolic orbits, the radius is crossed once inbound and once outbound: this function returns the
+time to the next of these two crossings, or an error if both are in the past (cf. `duration_since_radius`)."""
 
     def ea_deg(self) -> float:
         """Returns the eccentric anomaly in degrees
