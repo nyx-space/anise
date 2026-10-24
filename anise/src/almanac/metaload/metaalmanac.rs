@@ -89,8 +89,12 @@ impl MetaAlmanac {
     }
 
     /// Loads this Meta Almanac from its Dhall string representation
+    ///
+    /// Imports are not resolved: the string is data rather than a configuration file, so it
+    /// must not be able to read the environment or files of the host, nor reach the network.
     pub fn from_dhall(repr: &str) -> Result<Self, MetaAlmanacError> {
         serde_dhall::from_str(repr)
+            .imports(false)
             .static_type_annotation()
             .parse::<Self>()
             .map_err(|e| MetaAlmanacError::ParseDhall {

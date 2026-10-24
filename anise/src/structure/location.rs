@@ -56,8 +56,12 @@ pub struct Location {
 #[cfg(feature = "analysis")]
 impl Location {
     /// Rebuild a Location from its Dhall representation
+    ///
+    /// Imports are not resolved: the string is data rather than a configuration file, so it
+    /// must not be able to read the environment or files of the host, nor reach the network.
     pub fn from_dhall(repr: &str) -> Result<Self, String> {
         serde_dhall::from_str(repr)
+            .imports(false)
             .static_type_annotation()
             .parse::<Self>()
             .map_err(|e| e.to_string())
@@ -422,5 +426,25 @@ mod ut_loc {
         assert!((dss65.elevation_mask_at_azimuth_deg(361.0) - 5.0).abs() < f64::EPSILON);
         // Check azimuth below 0 wraps around
         assert!((dss65.elevation_mask_at_azimuth_deg(-1.0) - 3.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn from_dhall_rejects_imports() {
+        use crate::constants::frames::EARTH_ITRF93;
+
+        let loc = Location {
+            frame: EARTH_ITRF93.into(),
+            ..Default::default()
+        };
+        let as_dhall = loc.to_dhall().unwrap();
+        assert!(as_dhall.contains("terrain_mask_ignored = False"));
+
+        // A Dhall string is data rather than a configuration file on disk, so an import must
+        // not be resolved: a remote one aborts inside the dhall crate instead of erroring.
+        let with_remote = as_dhall.replace(
+            "terrain_mask_ignored = False",
+            "terrain_mask_ignored = https://example.com/mask.dhall",
+        );
+        assert!(Location::from_dhall(&with_remote).is_err());
     }
 }
