@@ -185,19 +185,19 @@ impl OrbitalElement {
                 .energy_km2_s2()
                 .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::EquinoctialH => orbit
-                .equinoctial_h()
+                .walker_equinoctial_h()
                 .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::EquinoctialK => orbit
-                .equinoctial_k()
+                .walker_equinoctial_k()
                 .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::EquinoctialP => orbit
-                .equinoctial_p()
+                .walker_equinoctial_p()
                 .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::EquinoctialQ => orbit
-                .equinoctial_q()
+                .walker_equinoctial_q()
                 .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::EquinoctialLambda => orbit
-                .equinoctial_lambda_mean_deg()
+                .walker_equinoctial_lambda_mean_deg()
                 .context(PhysicsOrbitElSnafu { el: self, orbit }),
             Self::FlightPathAngle => orbit
                 .fpa_deg()

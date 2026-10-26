@@ -9,7 +9,7 @@
  */
 
 use super::utils::mean_anomaly_to_true_anomaly_rad;
-use super::{PhysicsResult, orbit::Orbit, orbit_equinoctial::equinoctial_to_keplerian};
+use super::{PhysicsResult, orbit::Orbit, orbit_equinoctial::walker_equinoctial_to_keplerian};
 
 use crate::{
     errors::MeanElementSnafu,
@@ -344,23 +344,23 @@ impl Orbit {
             // Set *both* targets from the flipped state
             cart = flipped_orbit_state.to_cartesian_pos_vel();
             aeq = [
-                flipped_orbit_state.equinoctial_a_km()?,
-                flipped_orbit_state.equinoctial_h()?,
-                flipped_orbit_state.equinoctial_k()?,
-                flipped_orbit_state.equinoctial_p()?,
-                flipped_orbit_state.equinoctial_q()?,
-                flipped_orbit_state.equinoctial_lambda_mean_deg()?,
+                flipped_orbit_state.walker_equinoctial_a_km()?,
+                flipped_orbit_state.walker_equinoctial_h()?,
+                flipped_orbit_state.walker_equinoctial_k()?,
+                flipped_orbit_state.walker_equinoctial_p()?,
+                flipped_orbit_state.walker_equinoctial_q()?,
+                flipped_orbit_state.walker_equinoctial_lambda_mean_deg()?,
             ];
         } else {
             // Set *both* targets from the original state (`self`)
             cart = self.to_cartesian_pos_vel();
             aeq = [
-                self.equinoctial_a_km()?,
-                self.equinoctial_h()?,
-                self.equinoctial_k()?,
-                self.equinoctial_p()?,
-                self.equinoctial_q()?,
-                self.equinoctial_lambda_mean_deg()?,
+                self.walker_equinoctial_a_km()?,
+                self.walker_equinoctial_h()?,
+                self.walker_equinoctial_k()?,
+                self.walker_equinoctial_p()?,
+                self.walker_equinoctial_q()?,
+                self.walker_equinoctial_lambda_mean_deg()?,
             ];
         };
 
@@ -410,7 +410,7 @@ impl Orbit {
                 aeqmean2[5],
             );
             let (sma_km, ecc, inc_deg, raan_deg, aop_deg, ma_deg) =
-                equinoctial_to_keplerian(a, h, k, p, q, lambda_deg);
+                walker_equinoctial_to_keplerian(a, h, k, p, q, lambda_deg);
 
             // `kep2` (C++) is the osculating state from `blmean2`
             let kep2 = brouwer_mean_short_to_osculating_kep(
@@ -466,7 +466,7 @@ impl Orbit {
 
         // --- 5. Final Conversion & Post-Processing ---
         let (sma_km, mut ecc, mut inc_deg, mut raan_deg, mut aop_deg, mut ma_deg) =
-            equinoctial_to_keplerian(
+            walker_equinoctial_to_keplerian(
                 aeqmean2[0],
                 aeqmean2[1],
                 aeqmean2[2],
