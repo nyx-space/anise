@@ -1387,3 +1387,58 @@ fn val_fpa_matches_geometric_definition(epoch: Epoch, frame: Frame) {
         }
     }
 }
+
+/// The hyperbolic mean anomaly partials must match Orbit::ma_deg, on both the outbound and the
+/// inbound leg, and their gradient must match a finite difference of Orbit::ma_deg.
+#[cfg(feature = "analysis")]
+#[rstest]
+fn val_hyperbolic_ma_partials_match_orbit(epoch: Epoch, frame: Frame) {
+    use anise::analysis::prelude::OrbitalElement;
+    use anise::astro::orbit_gradient::OrbitGrad;
+
+    for ecc in [1.2, 1.5, 3.0] {
+        for ta_deg in [10.0, 45.0, 80.0] {
+            for inbound in [false, true] {
+                let mut orbit =
+                    Orbit::keplerian(-20_000.0, ecc, 30.0, 10.0, 20.0, ta_deg, epoch, frame);
+                if inbound {
+                    orbit.velocity_km_s = -orbit.velocity_km_s;
+                }
+
+                let partials = OrbitGrad::from(orbit)
+                    .partial_for(OrbitalElement::MeanAnomaly)
+                    .unwrap();
+                f64_eq_tol!(
+                    partials.real(),
+                    orbit.ma_deg().unwrap(),
+                    1e-9,
+                    format!(
+                        "ma partials for ecc = {ecc} at ta = {ta_deg} deg (inbound: {inbound})"
+                    )
+                );
+
+                let gradient = [
+                    partials.wrt_x(),
+                    partials.wrt_y(),
+                    partials.wrt_z(),
+                    partials.wrt_vx(),
+                    partials.wrt_vy(),
+                    partials.wrt_vz(),
+                ];
+                for (i, wrt) in gradient.into_iter().enumerate() {
+                    let step = if i < 3 { 1e-3 } else { 1e-6 };
+                    let mut state = orbit.to_cartesian_pos_vel();
+                    state[i] += step;
+                    let plus = orbit.with_cartesian_pos_vel(state).ma_deg().unwrap();
+                    state[i] -= 2.0 * step;
+                    let minus = orbit.with_cartesian_pos_vel(state).ma_deg().unwrap();
+                    let finite_diff = (plus - minus) / (2.0 * step);
+                    assert!(
+                        (wrt - finite_diff).abs() <= 1e-5 * finite_diff.abs().max(1.0),
+                        "d(ma)/d(state[{i}]) for ecc = {ecc} at ta = {ta_deg} deg (inbound: {inbound}): got {wrt} want {finite_diff}"
+                    );
+                }
+            }
+        }
+    }
+}
