@@ -9,15 +9,15 @@
  */
 
 use super::{AnalysisError, Event};
-use hifitime::{Epoch, Unit};
+use hifitime::{Duration, Epoch, Unit};
 
 /// A Brent method's root finder to find where, within the provided start/stop epoch brackets, the evaluator function evaluates to zero.
-/// The event's epoch precision is used for convergence.
+/// The provided epoch precision is used for convergence.
 /// This method finds at most one zero crossing, so ensure that only one such event happens in the provided bracket.
 /// This method will error immediately if the evaluator evaluates to the same sign on both sides of the bracket.
 pub fn brent_solver<F>(
     evaluator: F,
-    event: &Event,
+    epoch_precision: Duration,
     start_epoch: Epoch,
     end_epoch: Epoch,
 ) -> Result<Epoch, AnalysisError>
@@ -27,7 +27,7 @@ where
     let max_iter = 50;
 
     // Convergence criteria is strictly on the epoch bracketing.
-    let has_converged = |xa: f64, xb: f64| (xa - xb).abs() <= event.epoch_precision.to_seconds();
+    let has_converged = |xa: f64, xb: f64| (xa - xb).abs() <= epoch_precision.to_seconds();
 
     let xa_e = start_epoch;
     let xb_e = end_epoch;
@@ -49,10 +49,9 @@ where
     // If the root is not bracketed, there is no point in iterating, return an error.
     if ya * yb >= 0.0 {
         // The event isn't in the bracket
-        return Err(AnalysisError::EventNotFound {
+        return Err(AnalysisError::ZeroCrossingNotFound {
             start: start_epoch,
             end: end_epoch,
-            event: Box::new(event.clone()),
         });
     }
 
@@ -116,10 +115,9 @@ where
             std::mem::swap(&mut ya, &mut yb);
         }
     }
-    Err(AnalysisError::EventNotFound {
+    Err(AnalysisError::ZeroCrossingNotFound {
         start: start_epoch,
         end: end_epoch,
-        event: Box::new(event.clone()),
     })
 }
 
