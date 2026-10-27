@@ -101,10 +101,7 @@ pub enum AnalysisError {
         source: Box<MathError>,
     },
     #[snafu(display("zero crossing not found in [{start}; {end}]"))]
-    ZeroCrossingNotFound {
-        start: Epoch,
-        end: Epoch,
-    },
+    ZeroCrossingNotFound { start: Epoch, end: Epoch },
     #[snafu(display("all scalars failed for {spec}"))]
     AllScalarsFailed { spec: String },
     #[snafu(display("invalid call to the event evaluator: {err}"))]
