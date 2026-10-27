@@ -239,6 +239,8 @@ pub enum PhysicsError {
     PartialsNotYetDefined,
     #[snafu(display("{action} is not valid for circular orbits (eccentricity < {limit:e})"))]
     Circular { action: &'static str, limit: f64 },
+    #[snafu(display("inclination ({inclination_deg:}deg) is too close (within {tolerance_deg:}deg) to 180deg where equinoctial elements degrade"))]
+    EquinoctialInclinationError { inclination_deg: f64, tolerance_deg: f64},
 }
 
 impl From<IOErrorKind> for InputOutputError {
