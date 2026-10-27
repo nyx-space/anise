@@ -12,6 +12,7 @@ use super::{EphemerisError, OEMTimeParsingSnafu};
 use crate::math::{Matrix6, Vector6};
 use crate::naif::daf::data_types::DataType;
 use crate::prelude::{Frame, Orbit};
+use crate::time::truncate_subseconds;
 use hifitime::{
     Epoch,
     efmt::{Format, Formatter},
@@ -46,7 +47,7 @@ fn parse_metadata_epoch(
         .as_ref()
         .map(|value| {
             let epoch_str = format!("{value} {time_system}");
-            Epoch::from_str(epoch_str.trim()).context(OEMTimeParsingSnafu {
+            Epoch::from_str(&truncate_subseconds(epoch_str.trim())).context(OEMTimeParsingSnafu {
                 line,
                 details: format!("`{epoch_str}` for {field}"),
             })
@@ -443,10 +444,12 @@ impl Ephemeris {
                 let epoch = match parts.first() {
                     Some(state_epoch) => {
                         let epoch_str = format!("{state_epoch} {time_system}");
-                        Epoch::from_str(epoch_str.trim()).context(OEMTimeParsingSnafu {
-                            line: lno,
-                            details: format!("`{epoch_str}` for state epoch"),
-                        })?
+                        Epoch::from_str(&truncate_subseconds(epoch_str.trim())).context(
+                            OEMTimeParsingSnafu {
+                                line: lno,
+                                details: format!("`{epoch_str}` for state epoch"),
+                            },
+                        )?
                     }
                     None => {
                         return Err(EphemerisError::OEMParsingError {
@@ -498,10 +501,12 @@ impl Ephemeris {
                     }
                     let state_epoch = parse_one_val(lno, line, "no `=` sign for covariance epoch")?;
                     let epoch_str = format!("{state_epoch} {time_system}");
-                    let epoch = Epoch::from_str(epoch_str.trim()).context(OEMTimeParsingSnafu {
-                        line: lno,
-                        details: format!("`{epoch_str}` for covariance epoch"),
-                    })?;
+                    let epoch = Epoch::from_str(&truncate_subseconds(epoch_str.trim())).context(
+                        OEMTimeParsingSnafu {
+                            line: lno,
+                            details: format!("`{epoch_str}` for covariance epoch"),
+                        },
+                    )?;
 
                     // Check that we have associated state data
                     if !segment_state_data.contains_key(&epoch) {

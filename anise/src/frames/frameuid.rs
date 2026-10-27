@@ -13,7 +13,7 @@ use crate::{
     constants::{
         celestial_objects::celestial_name_from_id, orientations::orientation_name_from_id,
     },
-    time::Epoch,
+    time::{Epoch, truncate_subseconds},
 };
 use core::fmt;
 use core::str::FromStr;
@@ -166,7 +166,7 @@ impl<'a> Decode<'a> for FrameUid {
         let flags: u8 = decoder.decode()?;
         let frozen_epoch = if flags & (1 << 0) != 0 {
             let epoch_str: String = decoder.decode()?;
-            match Epoch::from_str(&epoch_str) {
+            match Epoch::from_str(&truncate_subseconds(&epoch_str)) {
                 Ok(epoch) => Some(epoch),
                 Err(e) => {
                     error!("frozen epoch in frame kernel invalid: {e}");

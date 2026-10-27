@@ -31,6 +31,45 @@ pub mod structure;
 pub mod time {
     pub use core::str::FromStr;
     pub use hifitime::*;
+    use std::borrow::Cow;
+
+    /// Truncates the fractional seconds of a time string to the nanosecond resolution of hifitime.
+    ///
+    /// CCSDS time codes (and the frozen epoch strings stored in frame kernels) may carry any
+    /// number of fractional second digits. hifitime's parsers scale the fraction with
+    /// `9 - digits`, so ten or more digits underflow: this panics in overflow-checked builds
+    /// and silently zeroes the fraction in release. Drop the digits beyond the ninth before
+    /// handing the string to hifitime; the fraction is the run of digits after the `.` that
+    /// follows the seconds field (`:SS.`), so a Julian date fraction is left untouched.
+    pub(crate) fn truncate_subseconds(epoch_str: &str) -> Cow<'_, str> {
+        const MAX_SUBSEC_DIGITS: usize = 9;
+        let bytes = epoch_str.as_bytes();
+        for (dot, _) in bytes.iter().enumerate().filter(|(_, b)| **b == b'.') {
+            // Walk back over the seconds digits and require the `:` separator before them.
+            let mut sec_start = dot;
+            while sec_start > 0 && bytes[sec_start - 1].is_ascii_digit() {
+                sec_start -= 1;
+            }
+            if sec_start == dot || sec_start == 0 || bytes[sec_start - 1] != b':' {
+                continue;
+            }
+            let frac_digits = bytes[dot + 1..]
+                .iter()
+                .take_while(|b| b.is_ascii_digit())
+                .count();
+            if frac_digits <= MAX_SUBSEC_DIGITS {
+                return Cow::Borrowed(epoch_str);
+            }
+            // Both cuts fall on ASCII digits, so they are char boundaries.
+            let keep_until = dot + 1 + MAX_SUBSEC_DIGITS;
+            let resume_from = dot + 1 + frac_digits;
+            let mut truncated = String::with_capacity(epoch_str.len() - (resume_from - keep_until));
+            truncated.push_str(&epoch_str[..keep_until]);
+            truncated.push_str(&epoch_str[resume_from..]);
+            return Cow::Owned(truncated);
+        }
+        Cow::Borrowed(epoch_str)
+    }
 
     // Stupid but safe algo to find a new frame ID that only collides on the same microsecond
     pub(crate) fn uuid_from_epoch(id: i32, epoch: Epoch) -> i32 {
@@ -61,6 +100,59 @@ pub mod time {
             assert_eq!(
                 uuid_from_epoch(big, epoch),
                 big.wrapping_mul(10_000).wrapping_add(offset)
+            );
+        }
+    }
+
+    #[cfg(test)]
+    mod ut_truncate_subseconds {
+        use super::{Epoch, FromStr, truncate_subseconds};
+
+        #[test]
+        fn leaves_nanosecond_or_coarser_fractions_alone() {
+            for s in [
+                "2020-06-01T12:00:00 UTC",
+                "2020-06-01T12:00:00.1 UTC",
+                "2020-06-01T12:00:00.123456789 TDB",
+                "1 Jun 2020 12:00:00.000000",
+                "JD 2451545.1234567890123 TDB",
+                "SEC 1234567890.1234567890 TAI",
+                "2020-06-01T12:00:00.",
+                "",
+            ] {
+                assert_eq!(truncate_subseconds(s), s);
+            }
+        }
+
+        #[test]
+        fn truncates_fractions_beyond_nanoseconds() {
+            assert_eq!(
+                truncate_subseconds("2020-06-01T12:00:00.1234567891 UTC"),
+                "2020-06-01T12:00:00.123456789 UTC"
+            );
+            assert_eq!(
+                truncate_subseconds("2020-06-01T12:00:00.0000000000000000001"),
+                "2020-06-01T12:00:00.000000000"
+            );
+            assert_eq!(
+                truncate_subseconds("1 Jun 2020 12:00:00.0000000001"),
+                "1 Jun 2020 12:00:00.000000000"
+            );
+            assert_eq!(
+                truncate_subseconds("2020-06-01T12:00:5.1234567891 UTC"),
+                "2020-06-01T12:00:5.123456789 UTC"
+            );
+        }
+
+        #[test]
+        fn hifitime_parses_the_truncated_string() {
+            // hifitime computes `9 - digits` for the fraction, which panics on this input under
+            // overflow checks and zeroes the fraction in release.
+            let epoch = Epoch::from_str(&truncate_subseconds("2020-06-01T12:00:00.1234567891 UTC"))
+                .unwrap();
+            assert_eq!(
+                epoch,
+                Epoch::from_str("2020-06-01T12:00:00.123456789 UTC").unwrap()
             );
         }
     }

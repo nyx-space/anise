@@ -32,7 +32,7 @@ use crate::frames::DynamicFrame;
 #[cfg(feature = "python")]
 use crate::frames::FrameUid;
 use crate::structure::planetocentric::ellipsoid::Ellipsoid;
-use crate::time::{Epoch, TimeScale, Unit};
+use crate::time::{Epoch, TimeScale, Unit, truncate_subseconds};
 
 #[cfg(feature = "python")]
 use pyo3::exceptions::{PyTypeError, PyValueError};
@@ -540,7 +540,7 @@ impl<'a> Decode<'a> for Frame {
 
         let frozen_epoch = if data_flags & (1 << 2) != 0 {
             let epoch_str: String = decoder.decode()?;
-            match Epoch::from_str(&epoch_str) {
+            match Epoch::from_str(&truncate_subseconds(&epoch_str)) {
                 Ok(epoch) => Some(epoch),
                 Err(e) => {
                     error!("frozen epoch in frame kernel invalid: {e}");
@@ -704,6 +704,38 @@ mod frame_ut {
                 frames[i],
             );
         }
+    }
+
+    #[test]
+    fn frozen_epoch_beyond_nanosecond_precision_decodes() {
+        // The frozen epoch is stored as a string in frame kernels, so a crafted file can carry
+        // more fractional digits than hifitime handles: its parser used to panic on these
+        // under overflow checks. Encode the fields the way Frame and FrameUid do, with such a
+        // string in place of the epoch.
+        use crate::frames::FrameUid;
+        use core::str::FromStr;
+        use der::{Decode, Encode};
+
+        let epoch_str = "2020-06-01T12:00:00.1234567891 UTC".to_string();
+        let expected = Epoch::from_str("2020-06-01T12:00:00.123456789 UTC").unwrap();
+
+        let mut buf = vec![];
+        399_i32.encode_to_vec(&mut buf).unwrap();
+        1_i32.encode_to_vec(&mut buf).unwrap();
+        false.encode_to_vec(&mut buf).unwrap();
+        (1_u8 << 2).encode_to_vec(&mut buf).unwrap(); // only the frozen epoch is set
+        epoch_str.encode_to_vec(&mut buf).unwrap();
+        let frame = Frame::from_der(&buf).unwrap();
+        assert_eq!(frame.frozen_epoch, Some(expected));
+
+        let mut buf = vec![];
+        399_i32.encode_to_vec(&mut buf).unwrap();
+        1_i32.encode_to_vec(&mut buf).unwrap();
+        false.encode_to_vec(&mut buf).unwrap();
+        1_u8.encode_to_vec(&mut buf).unwrap();
+        epoch_str.encode_to_vec(&mut buf).unwrap();
+        let uid = FrameUid::from_der(&buf).unwrap();
+        assert_eq!(uid.frozen_epoch, Some(expected));
     }
 
     #[test]

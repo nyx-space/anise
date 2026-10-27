@@ -12,6 +12,7 @@ use super::EphemerisError;
 use crate::math::{Matrix6, Vector6};
 use crate::naif::daf::data_types::DataType;
 use crate::prelude::{Frame, Orbit};
+use crate::time::truncate_subseconds;
 use hifitime::{Epoch, Unit};
 use log::warn;
 use std::collections::BTreeMap;
@@ -121,7 +122,10 @@ impl Ephemeris {
                 // Parse using hifitime's from_format_str
                 // STK format: "16 Feb 2027 14:05:57.645126" -> "%d %b %Y %H:%M:%S.%f"
                 // Assuming UTC as per instructions.
-                match Epoch::from_format_str(&epoch_str, "%d %b %Y %H:%M:%S.%f") {
+                match Epoch::from_format_str(
+                    &truncate_subseconds(&epoch_str),
+                    "%d %b %Y %H:%M:%S.%f",
+                ) {
                     Ok(e) => scenario_epoch = Some(e),
                     Err(e) => {
                         return Err(EphemerisError::STKEParsingError {

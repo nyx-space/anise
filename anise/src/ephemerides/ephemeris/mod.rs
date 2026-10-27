@@ -2029,6 +2029,50 @@ COV_REF_FRAME = EME2000
     }
 
     #[test]
+    fn oem_epochs_beyond_nanosecond_precision_are_truncated() {
+        // CCSDS time codes may carry any number of fractional second digits, but hifitime scales
+        // the fraction with `9 - digits`: ten or more digits used to panic the parser under
+        // overflow checks and silently zero the fraction in release.
+        let path = std::env::temp_dir().join("anise_oem_long_subseconds.oem");
+        std::fs::write(
+            &path,
+            "CCSDS_OEM_VERS = 2.0\nMETA_START\nOBJECT_ID = TEST\nCENTER_NAME = EARTH\nREF_FRAME = EME2000\nTIME_SYSTEM = UTC\nSTART_TIME = 2020-06-01T12:00:00.0000000001\nSTOP_TIME = 2020-06-01T12:01:00.1234567891\nINTERPOLATION = LAGRANGE\nINTERPOLATION_DEGREE = 1\nMETA_STOP\n2020-06-01T12:00:00.0000000001 7000 0 0 0 7.5 0\n2020-06-01T12:01:00.1234567891 7001 0 0 0 7.5 0\nCOVARIANCE_START\nEPOCH = 2020-06-01T12:01:00.1234567891\nCOV_REF_FRAME = EME2000\n1\n0 1\n0 0 1\n0 0 0 1\n0 0 0 0 1\n0 0 0 0 0 1\nCOVARIANCE_STOP\n",
+        )
+        .unwrap();
+
+        let ephem = Ephemeris::from_ccsds_oem_file(&path).unwrap();
+        let _ = std::fs::remove_file(&path);
+
+        let (start, end) = ephem.domain().unwrap();
+        assert_eq!(start, Epoch::from_gregorian_utc_at_noon(2020, 6, 1));
+        assert_eq!(
+            end,
+            Epoch::from_gregorian_utc_hms(2020, 6, 1, 12, 1, 0) + Unit::Nanosecond * 123_456_789
+        );
+        // The covariance epoch is truncated the same way, so it still matches its state.
+        let records = (&ephem).into_iter().collect::<Vec<_>>();
+        assert!(records[0].covar.is_none());
+        assert!(records[1].covar.is_some());
+    }
+
+    #[test]
+    fn stk_scenario_epoch_beyond_nanosecond_precision_is_truncated() {
+        // Same hifitime fraction scaling as the OEM epochs, reached through from_format_str.
+        let path = std::env::temp_dir().join("anise_stk_long_subseconds.e");
+        std::fs::write(
+            &path,
+            "stk.v.12.0\nBEGIN Ephemeris\nNumberOfEphemerisPoints 2\nScenarioEpoch 1 Jun 2020 12:00:00.0000000001\nCentralBody Earth\nCoordinateSystem J2000\nEphemerisTimePosVel\n0.0 7000 0 0 0 7.5 0\n60.0 7001 0 0 0 7.5 0\nEND Ephemeris\n",
+        )
+        .unwrap();
+
+        let ephem = Ephemeris::from_stk_e_file(&path).unwrap();
+        let _ = std::fs::remove_file(&path);
+
+        let (start, _) = ephem.domain().unwrap();
+        assert_eq!(start, Epoch::from_gregorian_utc_at_noon(2020, 6, 1));
+    }
+
+    #[test]
     fn oem_rejects_invalid_metadata_transitions_and_zero_length_domains() {
         let dangling_path = std::env::temp_dir().join("anise_oem_dangling_metadata.oem");
         let missing_start_path = std::env::temp_dir().join("anise_oem_missing_metadata_start.oem");

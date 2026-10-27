@@ -13,6 +13,7 @@ use crate::ephemerides::ephemeris::{Covariance, LocalFrame};
 use crate::math::{Matrix6, Vector3, Vector6};
 use crate::prelude::{Frame, Orbit};
 use crate::structure::spacecraft::{DragData, Mass, SRPData, SpacecraftData};
+use crate::time::truncate_subseconds;
 use hifitime::{
     Duration, Epoch,
     efmt::{Formatter, consts::ISO8601_STD},
@@ -317,12 +318,14 @@ impl Opm {
                 "TIME_SYSTEM" => time_system = val.to_string(),
                 "EPOCH" => {
                     let epoch_str = format!("{val} {time_system}");
-                    epoch = Some(Epoch::from_str(epoch_str.trim()).context(
-                        OPMTimeParsingSnafu {
-                            line: lno,
-                            details: format!("`{epoch_str}` for state epoch"),
-                        },
-                    )?);
+                    epoch = Some(
+                        Epoch::from_str(&truncate_subseconds(epoch_str.trim())).context(
+                            OPMTimeParsingSnafu {
+                                line: lno,
+                                details: format!("`{epoch_str}` for state epoch"),
+                            },
+                        )?,
+                    );
                 }
                 "X" => state[0] = as_f64(val)?,
                 "Y" => state[1] = as_f64(val)?,
@@ -341,8 +344,8 @@ impl Opm {
                         maneuvers.push(builder.finalize());
                     }
                     let epoch_str = format!("{val} {time_system}");
-                    let ignition =
-                        Epoch::from_str(epoch_str.trim()).context(OPMTimeParsingSnafu {
+                    let ignition = Epoch::from_str(&truncate_subseconds(epoch_str.trim()))
+                        .context(OPMTimeParsingSnafu {
                             line: lno,
                             details: format!("`{epoch_str}` for maneuver ignition"),
                         })?;
@@ -893,6 +896,36 @@ mod ut_opm {
                 "MAN_DURATION = {bad} must be a parse error, not a panic"
             );
         }
+    }
+
+    #[test]
+    fn test_opm_epochs_beyond_nanosecond_precision_are_truncated() {
+        // Ten or more fractional second digits used to underflow hifitime's fraction scaling,
+        // panicking under overflow checks and zeroing the fraction in release.
+        use hifitime::Epoch;
+        use std::str::FromStr;
+
+        let path = std::env::temp_dir().join(format!(
+            "anise-opm-long-subseconds-{}.opm",
+            std::process::id()
+        ));
+        std::fs::write(
+            &path,
+            "CCSDS_OPM_VERS = 2.0\nOBJECT_NAME = ANISE TESTSAT\nOBJECT_ID = 1998-999A\nCENTER_NAME = EARTH\nREF_FRAME = ICRF\nTIME_SYSTEM = UTC\nEPOCH = 1998-12-18T14:28:15.1234567891\nX = 6503.514000\nY = 1239.647000\nZ = -717.490000\nX_DOT = -0.873160\nY_DOT = 8.740420\nZ_DOT = -4.191076\nMAN_EPOCH_IGNITION = 1998-12-18T14:28:25.0000000000001\nMAN_DURATION = 10.0\n",
+        )
+        .expect("could not write temp OPM");
+
+        let opm = Opm::from_ccsds_opm_file(&path).expect("could not parse OPM");
+        std::fs::remove_file(&path).expect("could not remove temp OPM");
+
+        assert_eq!(
+            opm.orbit.epoch,
+            Epoch::from_str("1998-12-18T14:28:15.123456789 UTC").unwrap()
+        );
+        assert_eq!(
+            opm.maneuvers[0].epoch_ignition,
+            Epoch::from_str("1998-12-18T14:28:25 UTC").unwrap()
+        );
     }
 
     #[test]
