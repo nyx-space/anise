@@ -57,11 +57,12 @@ pub struct Location {
 impl Location {
     /// Rebuild a Location from its Dhall representation
     ///
-    /// Imports are not resolved: the string is data rather than a configuration file, so it
-    /// must not be able to read the environment or files of the host, nor reach the network.
+    /// Only environment variable imports (`env:MY_VAR as Text`) are resolved: the string is data
+    /// rather than a configuration file, so it must not be able to read files of the host nor
+    /// reach the network.
     pub fn from_dhall(repr: &str) -> Result<Self, String> {
+        crate::structure::dhall::check_imports(repr)?;
         serde_dhall::from_str(repr)
-            .imports(false)
             .static_type_annotation()
             .parse::<Self>()
             .map_err(|e| e.to_string())
@@ -439,8 +440,14 @@ mod ut_loc {
         let as_dhall = loc.to_dhall().unwrap();
         assert!(as_dhall.contains("terrain_mask_ignored = False"));
 
-        // A Dhall string is data rather than a configuration file on disk, so an import must
-        // not be resolved: a remote one aborts inside the dhall crate instead of erroring.
+        // A Dhall string is data rather than a configuration file on disk, so a file or remote
+        // import must not be resolved: a remote one aborts inside the dhall crate instead of
+        // erroring.
+        let with_file = as_dhall.replace(
+            "terrain_mask_ignored = False",
+            "terrain_mask_ignored = ./mask.dhall",
+        );
+        assert!(Location::from_dhall(&with_file).is_err());
         let with_remote = as_dhall.replace(
             "terrain_mask_ignored = False",
             "terrain_mask_ignored = https://example.com/mask.dhall",

@@ -13,6 +13,8 @@
  * All other computations are at a higher level module.
  */
 pub mod dataset;
+#[cfg(feature = "metaload")]
+pub(crate) mod dhall;
 pub mod instrument;
 pub mod location;
 pub mod lookuptable;

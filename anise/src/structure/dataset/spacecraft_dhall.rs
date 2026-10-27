@@ -88,11 +88,12 @@ impl SpacecraftDhallSet {
 
     /// Deserialize the Dhall string of a Spacecraft data set into its Dhall representation structure.
     ///
-    /// Imports are not resolved: the string is data rather than a configuration file, so it
-    /// must not be able to read the environment or files of the host, nor reach the network.
+    /// Only environment variable imports (`env:MY_VAR as Text`) are resolved: the string is data
+    /// rather than a configuration file, so it must not be able to read files of the host nor
+    /// reach the network.
     pub fn from_dhall(repr: &str) -> Result<Self, String> {
+        crate::structure::dhall::check_imports(repr)?;
         let me: Self = serde_dhall::from_str(repr)
-            .imports(false)
             .static_type_annotation()
             .parse()
             .map_err(|e| e.to_string())?;
@@ -379,10 +380,18 @@ mod ut_sc_dhall {
         let as_dhall = set.to_dhall().unwrap();
         assert!(as_dhall.contains("\"probe\""));
 
-        // A Dhall string is data rather than a configuration file on disk, so an import must
-        // not be able to pull the host's environment or files into the parsed value.
+        // Environment variable imports are still resolved when parsing a string.
         let with_env = as_dhall.replace("\"probe\"", "(env:CARGO_MANIFEST_DIR as Text)");
-        assert!(SpacecraftDhallSet::from_dhall(&with_env).is_err());
+        let from_env = SpacecraftDhallSet::from_dhall(&with_env).unwrap();
+        assert_eq!(
+            from_env.data[0].name.as_deref(),
+            Some(env!("CARGO_MANIFEST_DIR"))
+        );
+
+        // A Dhall string is data rather than a configuration file on disk, so an import must
+        // not be able to pull the host's files into the parsed value nor reach the network.
+        let with_file = as_dhall.replace("\"probe\"", "(./Cargo.toml as Text)");
+        assert!(SpacecraftDhallSet::from_dhall(&with_file).is_err());
         let with_remote = as_dhall.replace("\"probe\"", "(https://example.com/name as Text)");
         assert!(SpacecraftDhallSet::from_dhall(&with_remote).is_err());
     }
