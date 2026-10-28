@@ -829,6 +829,33 @@ fn b_plane_davis(almanac: Almanac) {
 }
 
 #[rstest]
+fn vinf_turn_angle_uses_excess_velocity(almanac: Almanac) {
+    let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
+    let epoch = Epoch::from_gregorian_utc_at_midnight(2016, 1, 1);
+
+    // The turn angle of a hyperbola only depends on its eccentricity: sin(turn / 2) = 1 / e.
+    // It must not depend on where along the trajectory the state is evaluated.
+    for ta_deg in [0.0, 30.0, 90.0, 120.0] {
+        let orbit = Orbit::keplerian(-20_000.0, 1.5, 28.5, 10.0, 20.0, ta_deg, epoch, eme2k);
+        let ecc = orbit.ecc().unwrap();
+        let rp_km = orbit.periapsis_km().unwrap();
+        let expected_turn_deg = (2.0 * (1.0 / ecc).asin()).to_degrees();
+
+        let turn_deg = orbit.vinf_turn_angle_deg(rp_km).unwrap();
+        assert!(
+            (turn_deg - expected_turn_deg).abs() < 1e-9,
+            "ta = {ta_deg}: turn angle {turn_deg} != {expected_turn_deg}"
+        );
+
+        let periapsis_km = orbit.vinf_periapsis_km(expected_turn_deg).unwrap();
+        assert!(
+            (periapsis_km - rp_km).abs() < 1e-6,
+            "ta = {ta_deg}: periapsis {periapsis_km} != {rp_km}"
+        );
+    }
+}
+
+#[rstest]
 fn gh_regression_340(almanac: Almanac) {
     let moon_j2k = almanac.frame_info(MOON_ICRS).unwrap();
 
