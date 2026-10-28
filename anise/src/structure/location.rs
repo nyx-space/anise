@@ -73,17 +73,6 @@ impl Location {
 
     /// Ensures that the terrain mask is ordered by azimuth, and remove duplicate azimuths
     pub fn sanitize_mask(&mut self) {
-        use log::warn;
-        // A non-finite azimuth has no position in the mask, and comparing it does not
-        // yield a total order, which the standard library sort rejects by panicking
-        // once the mask holds more than a few entries. Drop such entries first.
-        let num_entries = self.terrain_mask.len();
-        self.terrain_mask
-            .retain(|mask| mask.azimuth_deg.is_finite());
-        let num_dropped = num_entries - self.terrain_mask.len();
-        if num_dropped > 0 {
-            warn!("dropped {num_dropped} terrain mask entries with a non-finite azimuth");
-        }
         self.terrain_mask
             .sort_by(|mask1, mask2| mask1.azimuth_deg.total_cmp(&mask2.azimuth_deg));
         self.terrain_mask.dedup_by_key(|mask| mask.azimuth_deg);
@@ -432,12 +421,13 @@ mod ut_loc {
 
     #[test]
     #[cfg(feature = "analysis")]
-    fn sanitize_mask_drops_non_finite_azimuths() {
+    fn sanitize_mask_sorts_non_finite_azimuths() {
         use crate::{constants::frames::EARTH_ITRF93, structure::location::TerrainMask};
 
         // Every third entry carries a NaN azimuth. The comparator used to map that to
         // `Less` in both directions, which the standard library sort rejects by
-        // panicking once the mask holds more than a few entries.
+        // panicking once the mask holds more than a few entries. With total_cmp the
+        // NaN entries sort after the finite ones.
         let mut loc = Location {
             frame: EARTH_ITRF93.into(),
             terrain_mask: (0..48)
@@ -455,9 +445,14 @@ mod ut_loc {
 
         loc.sanitize_mask();
 
-        assert_eq!(loc.terrain_mask.len(), 32);
+        assert_eq!(loc.terrain_mask.len(), 48);
         assert!(
-            loc.terrain_mask
+            loc.terrain_mask[32..]
+                .iter()
+                .all(|mask| mask.azimuth_deg.is_nan())
+        );
+        assert!(
+            loc.terrain_mask[..32]
                 .windows(2)
                 .all(|pair| pair[0].azimuth_deg < pair[1].azimuth_deg)
         );
