@@ -11,7 +11,7 @@
 use crate::analysis::prelude::OrbitalElement;
 use crate::astro::PhysicsResult;
 use crate::astro::orbit::ECC_EPSILON;
-use crate::errors::PhysicsError;
+use crate::errors::{InfiniteValueSnafu, NotHyperbolicSnafu, PhysicsError};
 use crate::prelude::{Frame, Orbit};
 use crate::time::Epoch;
 use core::f64::consts::TAU;
@@ -20,6 +20,7 @@ use hyperdual::linalg::norm;
 use hyperdual::{Float, OHyperdual};
 use log::{debug, error, warn};
 use nalgebra::{U7, Vector3};
+use snafu::ensure;
 
 /// Define the gradient of an Orbit with respect to its of its Cartesian elements.
 #[derive(Copy, Clone, Debug)]
@@ -174,7 +175,7 @@ impl OrbitGrad {
             OrbitalElement::Height => self.height_km(),
             OrbitalElement::Latitude => self.latitude_deg(),
             OrbitalElement::Longitude => Ok(self.longitude_deg()),
-            OrbitalElement::C3 => self.c3(),
+            OrbitalElement::C3 => self.c3_km2_s2(),
             OrbitalElement::RightAscension => Ok(self.right_ascension_deg()),
             OrbitalElement::Declination => Ok(self.declination_deg()),
             OrbitalElement::HyperbolicAnomaly => self.hyperbolic_anomaly_deg(),
@@ -182,6 +183,11 @@ impl OrbitGrad {
             OrbitalElement::SemiMinorAxis => self.semi_minor_axis_km(),
             OrbitalElement::TrueAnomaly => self.ta_deg(),
             OrbitalElement::Period => self.period_s(),
+            OrbitalElement::BPlaneAngle => self.b_plane_angle_deg(),
+            OrbitalElement::BPlaneBT => self.b_t_km(),
+            OrbitalElement::BPlaneBR => self.b_r_km(),
+            OrbitalElement::BPlaneMag => self.b_plane_mag_km(),
+            OrbitalElement::BPlaneLTOF => self.b_ltof_s(),
             _ => Err(PhysicsError::PartialsNotYetDefined),
         }
     }
@@ -595,7 +601,7 @@ impl OrbitGrad {
     }
 
     /// Returns the $C_3$ of this orbit
-    pub fn c3(&self) -> PhysicsResult<OrbitalElementPartials> {
+    pub fn c3_km2_s2(&self) -> PhysicsResult<OrbitalElementPartials> {
         Ok(OrbitalElementPartials {
             dual: -OHyperdual::from(self.frame.mu_km3_s2()?) / self.sma_km()?.dual,
             oe: OrbitalElement::C3,
@@ -643,5 +649,125 @@ impl OrbitGrad {
                 * (self.sma_km()?.dual.powi(3) / OHyperdual::from(self.frame.mu_km3_s2()?)).sqrt(),
             oe: OrbitalElement::ApoapsisRadius,
         })
+    }
+
+    /// Component of the impact parameter vector along the $\hat{\mathbf{R}}$ axis ($\mathbf{B} \cdot \hat{\mathbf{R}}$), in kilometers.
+    /// Negative values indicate a flyby over the northern hemisphere relative to the frame's $+Z$ pole.
+    /// :rtype: float
+    pub fn b_r_km(&self) -> PhysicsResult<OrbitalElementPartials> {
+        Ok(BPlaneGrad::new(*self)?.b_r_km)
+    }
+
+    /// Component of the impact parameter vector along the $\hat{\mathbf{T}}$ axis ($\mathbf{B} \cdot \hat{\mathbf{T}}$), in kilometers.
+    /// Positive values indicate a prograde pass; negative values indicate a retrograde pass.
+    /// :rtype: float
+    pub fn b_t_km(&self) -> PhysicsResult<OrbitalElementPartials> {
+        Ok(BPlaneGrad::new(*self)?.b_t_km)
+    }
+
+    /// Linearized Time of Flight (LTOF) along the incoming asymptote to B-Plane crossing:
+    /// $\text{LTOF} = -(\mathbf{r} \cdot \hat{\mathbf{S}}) / v_\infty$.
+    /// Positive when the spacecraft is inbound (prior to B-Plane crossing) and negative after crossing.
+    /// :rtype: float
+    pub fn b_ltof_s(&self) -> PhysicsResult<OrbitalElementPartials> {
+        Ok(BPlaneGrad::new(*self)?.ltof_s)
+    }
+
+    /// Returns the B plane angle in degrees between -180 and 180
+    /// :rtype: float
+    pub fn b_plane_angle_deg(&self) -> PhysicsResult<OrbitalElementPartials> {
+        Ok(BPlaneGrad::new(*self)?.angle_deg())
+    }
+
+    /// Returns the B plane vector magnitude, in kilometers
+    /// :rtype: float
+    pub fn b_plane_mag_km(&self) -> PhysicsResult<OrbitalElementPartials> {
+        Ok(BPlaneGrad::new(*self)?.magnitude_km())
+    }
+}
+
+/// Duplicate of BPlane struct with gradient (original implementation in Nyx)
+#[derive(Copy, Clone, Debug)]
+struct BPlaneGrad {
+    pub b_r_km: OrbitalElementPartials,
+    pub b_t_km: OrbitalElementPartials,
+    pub ltof_s: OrbitalElementPartials,
+}
+
+impl BPlaneGrad {
+    fn new(orbit: OrbitGrad) -> PhysicsResult<Self> {
+        let ecc = orbit.ecc()?;
+
+        ensure!(ecc.real() > 1.0, NotHyperbolicSnafu { ecc: ecc.real() });
+
+        let e_hat = orbit.evec()? / ecc.dual;
+        let h_hat = orbit.hvec() / orbit.hmag().dual;
+        let n_hat = h_hat.cross(&e_hat);
+
+        let cos_nu_inf = OHyperdual::from(1.0) / ecc.dual;
+        let sin_nu_inf = (OHyperdual::from(1.0) - cos_nu_inf.powi(2)).sqrt();
+
+        // let s = cos_nu_inf * e_hat + sin_nu_inf * n_hat;
+        let s = Vector3::new(
+            cos_nu_inf * e_hat[0] + sin_nu_inf * n_hat[0],
+            cos_nu_inf * e_hat[1] + sin_nu_inf * n_hat[1],
+            cos_nu_inf * e_hat[2] + sin_nu_inf * n_hat[2],
+        );
+
+        let s_hat = s / norm(&s);
+
+        let b_vec = Vector3::new(
+            orbit.semi_minor_axis_km()?.dual * (sin_nu_inf * e_hat[0] - cos_nu_inf * n_hat[0]),
+            orbit.semi_minor_axis_km()?.dual * (sin_nu_inf * e_hat[1] - cos_nu_inf * n_hat[1]),
+            orbit.semi_minor_axis_km()?.dual * (sin_nu_inf * e_hat[2] - cos_nu_inf * n_hat[2]),
+        );
+
+        // Cross product with k_ref = [0, 0, 1]: s_hat x k_ref = [s_y, -s_x, 0]
+        let t = Vector3::new(s_hat.y, -s_hat.x, OHyperdual::from(0.0));
+        let t_norm = norm(&t);
+        ensure!(
+            t_norm.real() > 1e-12,
+            InfiniteValueSnafu {
+                action: "computing incoming asymptote; is it parallel to the [0, 0, 1] reference axis?"
+            }
+        );
+
+        let t_hat = t / t_norm;
+        let r_hat = s_hat.cross(&t_hat);
+
+        let b_r_km = b_vec.dot(&r_hat);
+        let b_t_km = b_vec.dot(&t_hat);
+
+        let v_inf_km_s = orbit.c3_km2_s2()?.dual.sqrt();
+        let ltof_s = -orbit.radius_km().dot(&s_hat) / v_inf_km_s;
+
+        Ok(Self {
+            b_r_km: OrbitalElementPartials {
+                oe: OrbitalElement::BPlaneBR,
+                dual: b_r_km,
+            },
+            b_t_km: OrbitalElementPartials {
+                oe: OrbitalElement::BPlaneBT,
+                dual: b_t_km,
+            },
+            ltof_s: OrbitalElementPartials {
+                oe: OrbitalElement::BPlaneLTOF,
+                dual: ltof_s,
+            },
+        })
+    }
+
+    fn angle_deg(&self) -> OrbitalElementPartials {
+        OrbitalElementPartials {
+            dual: self.b_r_km.dual.atan2(self.b_t_km.dual).to_degrees(),
+            oe: OrbitalElement::BPlaneAngle,
+        }
+    }
+
+    fn magnitude_km(&self) -> OrbitalElementPartials {
+        OrbitalElementPartials {
+            dual: (self.b_t_km.dual.powi(2) + self.b_r_km.dual.powi(2)).sqrt(),
+            oe: OrbitalElement::BPlaneMag,
+        }
     }
 }
