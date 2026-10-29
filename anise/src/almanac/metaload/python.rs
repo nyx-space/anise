@@ -137,7 +137,7 @@ impl Almanac {
     /// :type autodelete: bool, optional
     /// :rtype: Almanac
     #[classmethod]
-    #[pyo3(name = "from_meta")]
+    #[pyo3(name = "from_meta", signature=(path, autodelete = None))]
     fn py_from_meta(
         _cls: Bound<'_, PyType>,
         path: &str,

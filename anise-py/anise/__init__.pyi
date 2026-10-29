@@ -244,7 +244,7 @@ class Almanac:
         """Initializes a new Almanac from a file path to CCSDS OEM file, after converting to to SPICE SPK/BSP"""
 
     @staticmethod
-    def from_meta(path: str, autodelete: typing.Optional[bool]) -> Almanac:
+    def from_meta(path: str, autodelete: typing.Optional[bool] = None) -> Almanac:
         """Loads the provided path as a MetaAlmanac Dhall file and attempts to load that MetaAlmanac, returning an error if the loading failed.
         Refer to MetaAlmanac.process for details."""
 
