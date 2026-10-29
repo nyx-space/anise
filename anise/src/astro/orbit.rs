@@ -1361,7 +1361,7 @@ impl Orbit {
             Err(PhysicsError::NotHyperbolic { ecc })
         } else {
             let cos_rho = (0.5 * (PI - turn_angle_degrees.to_radians())).cos();
-            Ok((1.0 / cos_rho - 1.0) * self.frame.mu_km3_s2()? / self.vmag_km_s().powi(2))
+            Ok((1.0 / cos_rho - 1.0) * self.frame.mu_km3_s2()? / self.c3_km2_s2()?)
         }
     }
 
@@ -1375,25 +1375,9 @@ impl Orbit {
         if ecc <= 1.0 {
             Err(PhysicsError::NotHyperbolic { ecc })
         } else {
-            let rho = (1.0
-                / (1.0 + self.vmag_km_s().powi(2) * (periapsis_km / self.frame.mu_km3_s2()?)))
-            .acos();
+            let rho =
+                (1.0 / (1.0 + self.c3_km2_s2()? * (periapsis_km / self.frame.mu_km3_s2()?))).acos();
             Ok(between_0_360((PI - 2.0 * rho).to_degrees()))
-        }
-    }
-
-    /// Returns the hyperbolic anomaly in degrees between 0 and 360.0
-    /// Returns an error if the orbit is not hyperbolic.
-    ///
-    /// :rtype: float
-    pub fn hyperbolic_anomaly_deg(&self) -> PhysicsResult<f64> {
-        let ecc = self.ecc()?;
-        if ecc <= 1.0 {
-            Err(PhysicsError::NotHyperbolic { ecc })
-        } else {
-            let (sin_ta, cos_ta) = self.ta_deg()?.to_radians().sin_cos();
-            let sinh_h = (sin_ta * (ecc.powi(2) - 1.0).sqrt()) / (1.0 + ecc * cos_ta);
-            Ok(between_0_360(sinh_h.asinh().to_degrees()))
         }
     }
 

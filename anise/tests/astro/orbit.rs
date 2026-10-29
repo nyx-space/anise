@@ -16,7 +16,10 @@ use rstest::{fixture, rstest};
 
 #[fixture]
 fn almanac() -> Almanac {
-    Almanac::new("../data/pck08.pca").unwrap()
+    Almanac::new("../data/pck08.pca")
+        .unwrap()
+        .load("../data/de440s.bsp")
+        .unwrap()
 }
 
 #[fixture]
@@ -829,6 +832,33 @@ fn b_plane_davis(almanac: Almanac) {
 }
 
 #[rstest]
+fn vinf_turn_angle_uses_excess_velocity(almanac: Almanac) {
+    let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
+    let epoch = Epoch::from_gregorian_utc_at_midnight(2016, 1, 1);
+
+    // The turn angle of a hyperbola only depends on its eccentricity: sin(turn / 2) = 1 / e.
+    // It must not depend on where along the trajectory the state is evaluated.
+    for ta_deg in [0.0, 30.0, 90.0, 120.0] {
+        let orbit = Orbit::keplerian(-20_000.0, 1.5, 28.5, 10.0, 20.0, ta_deg, epoch, eme2k);
+        let ecc = orbit.ecc().unwrap();
+        let rp_km = orbit.periapsis_km().unwrap();
+        let expected_turn_deg = (2.0 * (1.0 / ecc).asin()).to_degrees();
+
+        let turn_deg = orbit.vinf_turn_angle_deg(rp_km).unwrap();
+        assert!(
+            (turn_deg - expected_turn_deg).abs() < 1e-9,
+            "ta = {ta_deg}: turn angle {turn_deg} != {expected_turn_deg}"
+        );
+
+        let periapsis_km = orbit.vinf_periapsis_km(expected_turn_deg).unwrap();
+        assert!(
+            (periapsis_km - rp_km).abs() < 1e-6,
+            "ta = {ta_deg}: periapsis {periapsis_km} != {rp_km}"
+        );
+    }
+}
+
+#[rstest]
 fn gh_regression_340(almanac: Almanac) {
     let moon_j2k = almanac.frame_info(MOON_ICRS).unwrap();
 
@@ -1204,4 +1234,50 @@ fn val_hyperbolic_ma_partials_match_orbit(epoch: Epoch, frame: Frame) {
             }
         }
     }
+}
+
+#[rstest]
+fn val_b_plane_gmat(almanac: Almanac) {
+    // This is a reproduction of the B-plane computation from the `Ex_LunarTransfer.script` file from GMAT
+    const GMAT_EARTH_MU: f64 = 398_600.441_5;
+    // Define the orbit in the ICRS frame
+    let epoch = Epoch::from_gregorian_tai(2014, 7, 22, 11, 29, 10, 811_000);
+    let orbit = Orbit::cartesian(
+        -137380.386760,
+        75679.517105,
+        21487.708113,
+        -0.232442,
+        -0.446282,
+        0.085610,
+        epoch,
+        almanac
+            .frame_info(EARTH_ICRS)
+            .expect("GCRF should be loaded (needed for c3 validation)")
+            .with_mu_km3_s2(GMAT_EARTH_MU),
+    );
+    // Transform into the Moon ICRS frame
+    let orbit_moon_icrs = almanac.transform_to(orbit, MOON_ICRS, None).unwrap();
+
+    println!("{orbit}\n{orbit_moon_icrs}");
+    assert!(
+        (orbit.c3_km2_s2().unwrap() - -4.775126658014266).abs() < 1e-5,
+        "invalid c3",
+    );
+
+    assert!(
+        (orbit_moon_icrs.b_r_km().unwrap() - 103578.8265522861).abs() < 1.0,
+        "invalid b dot R",
+    );
+    assert!(
+        (orbit_moon_icrs.b_t_km().unwrap() - 390913.1533788401).abs() < 1.0,
+        "invalid b dot T",
+    );
+    assert!(
+        (orbit_moon_icrs.b_plane_angle_deg().unwrap() - 14.84148076633666).abs() < 0.01,
+        "invalid b vector angle",
+    );
+    assert!(
+        (orbit_moon_icrs.b_plane_mag_km().unwrap() - 404402.3436889349).abs() < 1.0,
+        "invalid b mag",
+    );
 }
