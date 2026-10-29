@@ -716,10 +716,12 @@ impl BPlaneGrad {
 
         let s_hat = s / norm(&s);
 
+        let b_mag = orbit.semi_minor_axis_km()?.dual;
+
         let b_vec = Vector3::new(
-            orbit.semi_minor_axis_km()?.dual * (sin_nu_inf * e_hat[0] - cos_nu_inf * n_hat[0]),
-            orbit.semi_minor_axis_km()?.dual * (sin_nu_inf * e_hat[1] - cos_nu_inf * n_hat[1]),
-            orbit.semi_minor_axis_km()?.dual * (sin_nu_inf * e_hat[2] - cos_nu_inf * n_hat[2]),
+            b_mag * (sin_nu_inf * e_hat[0] - cos_nu_inf * n_hat[0]),
+            b_mag * (sin_nu_inf * e_hat[1] - cos_nu_inf * n_hat[1]),
+            b_mag * (sin_nu_inf * e_hat[2] - cos_nu_inf * n_hat[2]),
         );
 
         // Cross product with k_ref = [0, 0, 1]: s_hat x k_ref = [s_y, -s_x, 0]

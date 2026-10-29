@@ -66,7 +66,7 @@ impl Orbit {
     /// Linearized Time of Flight (LTOF) along the incoming asymptote to B-Plane crossing:
     /// $\text{LTOF} = -(\mathbf{r} \cdot \hat{\mathbf{S}}) / v_\infty$.
     /// Positive when the spacecraft is inbound (prior to B-Plane crossing) and negative after crossing.
-    /// :rtype: float
+    /// :rtype: time.Duration
     pub fn b_ltof(&self) -> PhysicsResult<Duration> {
         Ok(BPlane::new(*self)?.ltof)
     }
