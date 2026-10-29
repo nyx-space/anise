@@ -35,6 +35,7 @@ pub mod orbit_equinoctial;
 pub mod orbit_geodetic;
 #[cfg(feature = "analysis")]
 pub mod orbit_gradient;
+pub mod orbit_hyperbolic;
 pub mod orbit_mean_elements;
 
 pub use crate::structure::location::{Location, TerrainMask};

@@ -1380,21 +1380,6 @@ impl Orbit {
         }
     }
 
-    /// Returns the hyperbolic anomaly in degrees between 0 and 360.0
-    /// Returns an error if the orbit is not hyperbolic.
-    ///
-    /// :rtype: float
-    pub fn hyperbolic_anomaly_deg(&self) -> PhysicsResult<f64> {
-        let ecc = self.ecc()?;
-        if ecc <= 1.0 {
-            Err(PhysicsError::NotHyperbolic { ecc })
-        } else {
-            let (sin_ta, cos_ta) = self.ta_deg()?.to_radians().sin_cos();
-            let sinh_h = (sin_ta * (ecc.powi(2) - 1.0).sqrt()) / (1.0 + ecc * cos_ta);
-            Ok(between_0_360(sinh_h.asinh().to_degrees()))
-        }
-    }
-
     /// Adjusts the equinoctial mean longitude this orbit via the mean motion.
     ///
     /// # Astrodynamics note
