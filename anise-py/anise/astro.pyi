@@ -1463,11 +1463,11 @@ class Orbit:
         """Returns the distance in kilometers between this state and another state, if both frame match (epoch does not need to match)."""
 
     def duration_to_radius(self, radius_km: float) -> typing.Tuple:
-        """Calculates the shortest and the longest durations to reach a specific radius in the orbit, respectively the first and second return values.
+        """Calculates the durations to the two crossings of a specific radius in the orbit, the earliest first.
 
-        This function computes the time it will take for the orbiting body to reach
-        the given `radius_km` from its current position. The calculation assumes
-        two-body dynamics and considers the direction of motion.
+        This function computes the time from the current position to each crossing
+        of the given `radius_km`. The calculation assumes two-body dynamics and
+        considers the direction of motion.
 
         # Assumptions & Limitations
 
@@ -1476,8 +1476,7 @@ class Orbit:
         The durations are to the next crossing at each, so both are within one period.
         - For circular orbits, if the radius is within the apoapse and periapse, then both durations are zero.
         - For hyperbolic orbits, the radius is reached once at `-nu` (inbound) and once at `nu` (outbound), which coincide at periapsis.
-        The durations are to the crossings at or after the current epoch, both to the outbound one if only it remains,
-        and an error is returned if both are in the past."""
+        The inbound crossing is returned first. A negative duration denotes a past crossing, and its magnitude is the time elapsed since that crossing."""
 
     def ea_deg(self) -> float:
         """Returns the eccentric anomaly in degrees

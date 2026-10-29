@@ -1412,11 +1412,11 @@ impl Orbit {
         )
     }
 
-    /// Calculates the shortest and the longest durations to reach a specific radius in the orbit, respectively the first and second return values.
+    /// Calculates the durations to the two crossings of a specific radius in the orbit, the earliest first.
     ///
-    /// This function computes the time it will take for the orbiting body to reach
-    /// the given `radius_km` from its current position. The calculation assumes
-    /// two-body dynamics and considers the direction of motion.
+    /// This function computes the time from the current position to each crossing
+    /// of the given `radius_km`. The calculation assumes two-body dynamics and
+    /// considers the direction of motion.
     ///
     /// # Assumptions & Limitations
     ///
@@ -1425,8 +1425,7 @@ impl Orbit {
     ///   The durations are to the next crossing at each, so both are within one period.
     /// - For circular orbits, if the radius is within the apoapse and periapse, then both durations are zero.
     /// - For hyperbolic orbits, the radius is reached once at `-nu` (inbound) and once at `nu` (outbound), which coincide at periapsis.
-    ///   The durations are to the crossings at or after the current epoch, both to the outbound one if only it remains,
-    ///   and an error is returned if both are in the past.
+    ///   The inbound crossing is returned first. A negative duration denotes a past crossing, and its magnitude is the time elapsed since that crossing.
     ///
     /// :type radius_km: float
     /// :rtype: typing.Tuple
@@ -1499,34 +1498,33 @@ impl Orbit {
             });
         }
 
-        // Time until the crossing at mean anomaly m_rad, or None if it is in the past on a hyperbolic orbit
-        let delta_t_s = |m_rad: f64| match (m_rad - m_current_rad) / n_rad_s {
-            dt_s if !dt_s.is_finite() => Err(PhysicsError::AppliedMath {
-                source: MathError::DomainError {
-                    value: dt_s,
-                    msg: "delta time computation failed",
-                },
-            }),
-            // If dt_s is negative but very close to zero (-1e-9 < dt_s < 0.0), the crossing is now
-            dt_s if dt_s >= -1e-9 => Ok(Some(dt_s.max(0.0))),
-            // Elliptical: this crossing will be reached in the next orbit.
-            dt_s if ecc < 1.0 => Ok(Some(dt_s + self.period()?.to_seconds())),
-            // Hyperbolic: this crossing is in the past.
-            _ => Ok(None),
-        };
-
-        let (shortest_s, longest_s) = match (delta_t_s(m_in_rad)?, delta_t_s(m_out_rad)?) {
-            (Some(in_s), Some(out_s)) => (in_s.min(out_s), in_s.max(out_s)),
-            // Hyperbolic: only the outbound crossing remains
-            (None, Some(out_s)) => (out_s, out_s),
-            (_, None) => {
-                return Err(PhysicsError::RadiusError {
-                    action: "both radius crossings in the past for hyperbolic orbit",
-                });
+        // Signed time from now to the crossing at mean anomaly m_rad
+        let delta_t_s = |m_rad: f64| {
+            let dt_s = (m_rad - m_current_rad) / n_rad_s;
+            if !dt_s.is_finite() {
+                Err(PhysicsError::AppliedMath {
+                    source: MathError::DomainError {
+                        value: dt_s,
+                        msg: "delta time computation failed",
+                    },
+                })
+            } else if dt_s >= -1e-9 {
+                // If dt_s is negative but very close to zero (-1e-9 < dt_s < 0.0), the crossing is now
+                Ok(dt_s.max(0.0))
+            } else if ecc < 1.0 {
+                // Elliptical: this crossing will be reached in the next orbit
+                Ok(dt_s + TAU / n_rad_s)
+            } else {
+                // Hyperbolic: this crossing is in the past
+                Ok(dt_s)
             }
         };
 
-        Ok((shortest_s.seconds(), longest_s.seconds()))
+        let in_s = delta_t_s(m_in_rad)?;
+        let out_s = delta_t_s(m_out_rad)?;
+
+        // Earliest crossing first
+        Ok((in_s.min(out_s).seconds(), in_s.max(out_s).seconds()))
     }
 
     /// Returns a Cartesian state representing the RIC difference between self and other, in position and velocity (with transport theorem).
