@@ -21,21 +21,21 @@ use dhall::syntax::{Expr, ExprKind, ImportTarget};
 /// Imports between Dhall files remain available when loading a configuration file from disk.
 pub(crate) fn check_imports(repr: &str) -> Result<(), String> {
     let parsed = Parsed::parse_str(repr).map_err(|e| e.to_string())?;
-    check_expr(&parsed.to_expr())
+    check_expr(&parsed.to_expr()).map_err(|e| e.to_string())
 }
 
-fn check_expr(expr: &Expr) -> Result<(), String> {
+fn check_expr(expr: &Expr) -> Result<(), &'static str> {
     if let ExprKind::Import(import) = expr.kind() {
         match &import.location {
             ImportTarget::Env(_) => {}
             ImportTarget::Local(_, _) => {
-                return Err("local file imports are not allowed in a Dhall string".to_string());
+                return Err("local file imports are not allowed in a Dhall string");
             }
             ImportTarget::Remote(_) => {
-                return Err("remote imports are not allowed in a Dhall string".to_string());
+                return Err("remote imports are not allowed in a Dhall string");
             }
             ImportTarget::Missing => {
-                return Err("missing imports are not allowed in a Dhall string".to_string());
+                return Err("missing imports are not allowed in a Dhall string");
             }
         }
     }
