@@ -171,6 +171,7 @@ class Almanac:
         rx_tx_states: typing.List[astro.Orbit],
         obstructing_body: typing.Optional[astro.Frame] = None,
         ab_corr: typing.Optional[Aberration] = None,
+        suppress_error: typing.Optional[bool] = None,
     ) -> typing.List[astro.AzElRange]:
         """Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
         receiver states (first item in tuple) seen from the transmitter state (second item in states tuple), once converted into the SEZ frame of the transmitter.
@@ -196,6 +197,7 @@ class Almanac:
     def bpc_domain(self, id: int) -> typing.Tuple:
         """Returns the applicable domain of the request id, i.e. start and end epoch that the provided id has loaded data."""
 
+    def bpc_domain_and_gap(self, id: typing.Any) -> typing.Any: ...
     def bpc_domains(self) -> typing.Dict:
         """Returns a map of each loaded BPC ID to its domain validity.
 
@@ -240,6 +242,11 @@ class Almanac:
     @staticmethod
     def from_ccsds_oem_file(path: str, naif_id: int) -> Almanac:
         """Initializes a new Almanac from a file path to CCSDS OEM file, after converting to to SPICE SPK/BSP"""
+
+    @staticmethod
+    def from_meta(path: str, autodelete: typing.Optional[bool] = None) -> Almanac:
+        """Loads the provided path as a MetaAlmanac Dhall file and attempts to load that MetaAlmanac, returning an error if the loading failed.
+        Refer to MetaAlmanac.process for details."""
 
     def insert_location(
         self, location: LocationDhallSetEntry, replace: typing.Optional[bool] = None
@@ -416,6 +423,7 @@ class Almanac:
         eclipsing_frame: astro.Frame,
         observers: typing.List[astro.Orbit],
         ab_corr: typing.Optional[Aberration] = None,
+        suppress_error: typing.Optional[bool] = None,
     ) -> typing.List[astro.Occultation]:
         """Computes the solar eclipsing of all the observers due to the eclipsing_frame, computed in parallel under the hood.
 
@@ -439,6 +447,7 @@ class Almanac:
     def spk_domain(self, id: int) -> typing.Tuple:
         """Returns the applicable domain of the request id, i.e. start and end epoch that the provided id has loaded data."""
 
+    def spk_domain_and_gap(self, id: typing.Any) -> typing.Any: ...
     def spk_domains(self) -> typing.Dict:
         """Returns a map of each loaded SPK ID to its domain validity.
 
@@ -575,6 +584,7 @@ Obs. -- Target
         observer_frame: astro.Frame,
         time_series: time.TimeSeries,
         ab_corr: typing.Optional[Aberration] = None,
+        suppress_error: typing.Optional[bool] = None,
     ) -> typing.List[astro.Orbit]:
         """Returns a chronologically sorted list of the Cartesian states that transform the `from_frame` to the `to_frame` for each epoch of the time series, computed in parallel under the hood.
         Note: if any transformation fails, the error will be printed to the stderr.
@@ -586,6 +596,7 @@ Obs. -- Target
         states: typing.List[astro.Orbit],
         observer_frame: astro.Frame,
         ab_corr: typing.Optional[Aberration] = None,
+        suppress_error: typing.Optional[bool] = None,
     ) -> typing.List[astro.Orbit]:
         """Returns a chronologically sorted list of the provided states as seen from the observer frame, given the aberration.
         Note: if any transformation fails, the error will be printed to the stderr.
@@ -879,4 +890,4 @@ class PyReportScalars:
 def exec_gui() -> typing.Any: ...
 
 __author__: str = "Christopher Rabotin <christopher.rabotin@gmail.com>"
-__version__: str = "1.0.0"
+__version__: str = "1.0.0-beta"
