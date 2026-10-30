@@ -901,6 +901,52 @@ fn create_orbit(sma_km: f64, ecc: f64, ta_deg: f64, epoch: Epoch, frame: Frame) 
 }
 
 #[rstest]
+fn hyperbolic_inbound_true_anomaly_is_accepted(epoch: Epoch, frame: Frame) {
+    // The inbound leg of a hyperbola has a true anomaly in ]-nu_inf, 0[, which ta_deg reports in
+    // ]360 - nu_inf, 360[. Both forms must build, and the setters must work from an inbound state.
+    let sma_km: f64 = -5000.0;
+    let ecc: f64 = 2.0; // nu_inf = acos(-1/e) = 120 deg
+
+    for ta_deg in [-30.0, 330.0, -119.0] {
+        let orbit = Orbit::try_keplerian(sma_km, ecc, 10.0, 20.0, 30.0, ta_deg, epoch, frame);
+        assert!(orbit.is_ok(), "ta = {ta_deg}: {:?}", orbit.err());
+        let orbit = orbit.unwrap();
+        f64_eq!(orbit.ta_deg().unwrap(), between_0_360(ta_deg), "ta");
+        assert!(
+            orbit.radius_km.dot(&orbit.velocity_km_s) < 0.0,
+            "ta = {ta_deg} is not inbound"
+        );
+    }
+
+    // Past the asymptote is still rejected on both legs.
+    for ta_deg in [-121.0, 239.0, 121.0] {
+        let orbit = Orbit::try_keplerian(sma_km, ecc, 10.0, 20.0, 30.0, ta_deg, epoch, frame);
+        assert!(
+            matches!(orbit, Err(PhysicsError::HyperbolicTrueAnomaly { .. })),
+            "ta = {ta_deg}: {orbit:?}"
+        );
+    }
+
+    // Mirror an outbound state onto the inbound leg by reversing its velocity, as a Cartesian
+    // state would arrive from an ephemeris, and check the Keplerian setters work from it.
+    let outbound = Orbit::keplerian(sma_km, ecc, 10.0, 20.0, 30.0, 30.0, epoch, frame);
+    let r = outbound.radius_km;
+    let v = outbound.velocity_km_s;
+    let inbound = Orbit::new(r.x, r.y, r.z, -v.x, -v.y, -v.z, epoch, frame);
+    f64_eq!(inbound.ta_deg().unwrap(), 330.0, "inbound ta");
+
+    let incl = inbound.with_inc_deg(15.0).unwrap();
+    f64_eq!(incl.inc_deg().unwrap(), 15.0, "inc");
+    f64_eq!(incl.ta_deg().unwrap(), 330.0, "ta after with_inc_deg");
+
+    let sma = inbound.with_sma_km(-6000.0).unwrap();
+    f64_eq_tol!(sma.sma_km().unwrap(), -6000.0, 1e-6, "sma");
+
+    let moved = outbound.with_ta_deg(-30.0).unwrap();
+    f64_eq!(moved.ta_deg().unwrap(), 330.0, "with_ta_deg(-30)");
+}
+
+#[rstest]
 fn test_duration_to_radius_elliptical(epoch: Epoch, frame: Frame) {
     let sma_km: f64 = 10000.0;
     let ecc = 0.1;
