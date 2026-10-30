@@ -1511,12 +1511,12 @@ class Orbit:
     ) -> Orbit:
         """Attempts to create a new Orbit from the Modified Equinoctial orbital elements.
 
-        + `semi_parameter_km`: semi-latus rectum, in km
-        + `f`: eccentricity vector (x-component)
-        + `g`: eccentricity vector (y-component)
-        + `h`: orbit plane tilt (x-component)
-        + `k`: orbit plane tilt (y-component)
-        + `true_longitude_deg`: true longitude, in degrees"""
+        + `semi_parameter_km`: the semi-latus rectum, in km: `p = a(1 - e²)`
+        + `f`: eccentricity vector (x-component): `f = e cos(ω + Ω)`
+        + `g`: eccentricity vector (y-component): `g = e sin(ω + Ω)`
+        + `h`: orbit plane tilt (x-component): `h = tan(i/2) cos(Ω)`
+        + `k`: orbit plane tilt (y-component): `k = tan(i/2) sin(Ω)`
+        + `true_longitude_deg`: the true longitude, in degrees: `L = ω + Ω + ν`"""
 
     @staticmethod
     def from_walker_equinoctial(
@@ -1531,12 +1531,12 @@ class Orbit:
     ) -> Orbit:
         """Attempts to create a new Orbit from the Walker equinoctial orbital elements, by computing the Keplerian elements and calling [Orbit::try_keplerian_mean_anomaly].
 
-        + `sma_km`: semi-major axis, in km
-        + `h`: eccentricity vector (y-component)
-        + `k`: eccentricity vector (x-component)
-        + `p`: orbit plane tilt (y-component)
-        + `q`: orbit plane tilt (x-component)
-        + `lambda_deg`: mean longitude, in degrees"""
+        + `sma_km`: the semi-major axis, in km: `a = (r_apo + r_peri) / 2`
+        + `h`: eccentricity vector (y-component): `h = e sin(ω + Ω)`
+        + `k`: eccentricity vector (x-component): `k = e cos(ω + Ω)`
+        + `p`: orbit plane tilt (y-component): `p = sin(i/2) sin(Ω)`
+        + `q`: orbit plane tilt (x-component): `q = sin(i/2) cos(Ω)`
+        + `lambda_deg`: the mean longitude, in degrees: `λ = M + ω + Ω`"""
 
     def height_km(self) -> float:
         """Returns the geodetic height in km.
@@ -1619,12 +1619,12 @@ class Orbit:
         """Returns the six Modified Equinoctial elements, computed directly from the Cartesian state
         so that they stay well conditioned for circular and equatorial orbits.
 
-        + `p`: the semi-latus rectum, in km, finite for a parabolic orbit
-        + `f`: eccentricity vector (x-component)
-        + `g`: eccentricity vector (y-component)
-        + `h`: orbit plane tilt (x-component), diverges at an inclination of 180 degrees
-        + `k`: orbit plane tilt (y-component), diverges at an inclination of 180 degrees
-        + `L`: the true longitude, in degrees"""
+        + `p`: the semi-latus rectum, in km: `p = a(1 - e²)` (finite for a parabolic orbit)
+        + `f`: eccentricity vector (x-component): `f = e cos(ω + Ω)`
+        + `g`: eccentricity vector (y-component): `g = e sin(ω + Ω)`
+        + `h`: orbit plane tilt (x-component): `h = tan(i/2) cos(Ω)` (diverges at i = 180°)
+        + `k`: orbit plane tilt (y-component): `k = tan(i/2) sin(Ω)` (diverges at i = 180°)
+        + `L`: the true longitude, in degrees: `L = ω + Ω + ν`"""
 
     def periapsis_altitude_km(self) -> float:
         """Returns the altitude of periapsis (or perigee around Earth), in kilometers."""
@@ -1770,14 +1770,14 @@ class Orbit:
         """Returns the Walker equinoctial semi-major axis (a) in km."""
 
     def walker_equinoctial_elements(self) -> list[float]:
-        """Returns the six Walker equinoctial elements in order: sma (km), h, k, p, q, lambda (deg).
+        """Returns Walker equinoctial elements in order as a vector.
 
-        + `sma`: the semi-major axis, in km
-        + `h`: eccentricity vector (y-component)
-        + `k`: eccentricity vector (x-component)
-        + `p`: orbit plane tilt (y-component), bounded at an inclination of 180 degrees
-        + `q`: orbit plane tilt (x-component), bounded at an inclination of 180 degrees
-        + `lambda`: the mean longitude, in degrees
+        + `sma`: the semi-major axis, in km: `a = (r_apo + r_peri) / 2`
+        + `h`: eccentricity vector (y-component): `h = e sin(ω + Ω)`
+        + `k`: eccentricity vector (x-component): `k = e cos(ω + Ω)`
+        + `p`: orbit plane tilt (y-component): `p = sin(i/2) sin(Ω)` (bounded at i = 180°)
+        + `q`: orbit plane tilt (x-component): `q = sin(i/2) cos(Ω)` (bounded at i = 180°)
+        + `lambda`: the mean longitude, in degrees: `λ = M + ω + Ω`
 
         These are derived from the Keplerian elements, so this returns an error for an exactly
         circular orbit; use [Orbit::modified_equinoctial_elements] there."""
