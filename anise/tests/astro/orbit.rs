@@ -864,6 +864,47 @@ fn verif_orbit_at_epoch_zero_aop_issue821(almanac: Almanac) {
     );
 }
 
+/// Round-trips a circular, zero-inclination GEO orbit defined directly in Cartesian coordinates
+/// through one full orbital period and checks that the propagated position and velocity return to
+/// within 1 m and 1 mm/s of the original state.
+#[rstest]
+fn verif_orbit_at_epoch_geo_circular_period_roundtrip(almanac: Almanac) {
+    let eme2000 = almanac.frame_info(EARTH_J2000).unwrap();
+    let epoch = Epoch::from_gregorian_utc_hms(2026, 8, 26, 12, 0, 0);
+
+    let r_geo_km = 42_164.0;
+    let v_geo_km_s = (eme2000.mu_km3_s2().unwrap() / r_geo_km).sqrt();
+
+    let orbit_initial_eme2000 = Orbit::new(
+        r_geo_km,    // x_km
+        0.0,         // y_km
+        0.0,         // z_km
+        0.0,         // vx_km_s
+        v_geo_km_s,  // vy_km_s
+        0.0,         // vz_km_s
+        epoch,
+        eme2000,
+    );
+
+    let orbit_later_eme2000 = orbit_initial_eme2000.at_epoch(
+        epoch + orbit_initial_eme2000.period().unwrap()
+    ).unwrap();
+
+    // Should come back to the original position and velocity after 1 period
+    f64_eq_tol!(
+        (orbit_later_eme2000.radius_km - orbit_initial_eme2000.radius_km).norm(),
+        0.0,
+        1e-3,  // 1 m tolerance
+        "Position drifted"
+    );
+    f64_eq_tol!(
+        (orbit_later_eme2000.velocity_km_s - orbit_initial_eme2000.velocity_km_s).norm(),
+        0.0,
+        1e-3, // 1 m/s tolerance
+        "Velocity drifted"
+    );
+}
+
 /// Exercises `at_epoch` on the geometries where the Keplerian intermediate used to fail. The
 /// circular cases are the regression for <https://github.com/nyx-space/nyx/issues/821>, where
 /// `at_epoch` errored out on an orbit with no well defined argument of periapsis.

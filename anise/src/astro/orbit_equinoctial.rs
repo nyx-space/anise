@@ -11,7 +11,7 @@
 use super::{PhysicsResult, orbit::INC_EPSILON_DEG, orbit::Orbit};
 
 use crate::errors::{
-    EquinoctialInclinationSnafu, HyperbolicSnafu, InfiniteValueSnafu, ParabolicSemiParamSnafu,
+    EquinoctialInclinationSnafu, InfiniteValueSnafu, ParabolicSemiParamSnafu,
     RadiusSnafu, VelocitySnafu,
 };
 use crate::math::{Vector3, angles::between_0_360};
@@ -147,12 +147,6 @@ pub(crate) fn modified_equinoctial_to_cartesian(
         RadiusSnafu { action: "semi-latus rectum must be positive" }
     );
 
-    // Cannot compute orbit angle of a hyperbolic orbit
-    let ecc = (f.powi(2) + g.powi(2)).sqrt();
-    ensure!(
-        ecc > f64::EPSILON,
-        HyperbolicSnafu { ecc }
-    );
     let (sin_l, cos_l) = true_lon_deg.to_radians().sin_cos();
     let w = 1.0 + f * cos_l + g * sin_l;
     let r_mag_km = p_km / w;
