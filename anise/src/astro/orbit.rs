@@ -1410,6 +1410,7 @@ impl Orbit {
             return Ok(*self);
         }
 
+        // Concert cartesian state to equinoctial
         let mu_km3_s2 = self.frame.mu_km3_s2()?;
         let [p_km, f, g, h, k, true_lon_deg] = cartesian_to_modified_equinoctial(
             self.radius_km,
@@ -1417,24 +1418,20 @@ impl Orbit {
             mu_km3_s2,
         )?;
 
-        // The sixth element is a true longitude, which is not linear in time, so step the mean
-        // anomaly instead. For a circular orbit the longitude of periapsis below is zero and both
-        // conversions are the identity.
-        let eccentricity = (f.powi(2) + g.powi(2)).sqrt();
-        let longitude_peri_rad = g.atan2(f); // aop + raan
-        let true_anomaly_rad = true_lon_deg.to_radians() - longitude_peri_rad;
-
+        // Advance orbit angle
         let mean_motion_rad_s = modified_equinoctial_to_mean_motion(mu_km3_s2, p_km, f, g)?;
-
-        let mean_anomaly_rad = true_anomaly_to_mean_anomaly_rad(
-            true_anomaly_rad, eccentricity
-        ).map_err(|e| PhysicsError::AppliedMath { source: e })?
+        let longitude_peri_rad = g.atan2(f); // aop + raan
+        let true_anomaly_old_rad = true_lon_deg.to_radians() - longitude_peri_rad;
+        let eccentricity = (f.powi(2) + g.powi(2)).sqrt();
+        let mean_anomaly_old_rad = true_anomaly_to_mean_anomaly_rad(
+            true_anomaly_old_rad, eccentricity
+        ).map_err(|e| PhysicsError::AppliedMath { source: e })?;
+        let mean_anomaly_new_rad = mean_anomaly_old_rad
             + mean_motion_rad_s * (new_epoch - self.epoch).to_seconds();
-
-        let new_true_lon_deg =
-            (mean_anomaly_to_true_anomaly_rad(
-                mean_anomaly_rad, eccentricity
-            )? + longitude_peri_rad).to_degrees();
+        let true_anomaly_new_rad = mean_anomaly_to_true_anomaly_rad(
+            mean_anomaly_new_rad, eccentricity
+        )?;
+        let new_true_lon_deg = (true_anomaly_new_rad + longitude_peri_rad).to_degrees();
 
         Self::try_from_modified_equinoctial(
             p_km,
