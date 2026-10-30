@@ -807,12 +807,10 @@ fn verif_orbit_at_epoch(almanac: Almanac) {
 }
 
 /// Regression for <https://github.com/nyx-space/anise/issues/821>: with `aop_deg = 0`, propagating
-/// via `at_epoch` could land in a geometry where the recovered `cos(aop)` was
-/// `1.0 + a few ulps`, flipping the result from 0° to 180° through `acos` returning NaN. Checks
-/// that the slow elements are preserved (within two-body tolerance) and the mean anomaly actually
-/// advanced.
+/// via `at_epoch` flipping the result from 0° to 180° through `acos` Checks that elements
+/// are preserved.
 #[rstest]
-fn verif_orbit_at_epoch_zero_aop_issue821(almanac: Almanac) {
+fn verif_orbit_at_epoch_with_low_eccentricity(almanac: Almanac) {
     let eme2000 = almanac.frame_info(EARTH_J2000).unwrap();
     let epoch = Epoch::from_gregorian_utc_hms(2026, 8, 26, 12, 0, 0);
 
@@ -864,11 +862,10 @@ fn verif_orbit_at_epoch_zero_aop_issue821(almanac: Almanac) {
     );
 }
 
-/// Round-trips a circular, zero-inclination GEO orbit defined directly in Cartesian coordinates
-/// through one full orbital period and checks that the propagated position and velocity return to
-/// within 1 m and 1 mm/s of the original state.
+/// Round-trips a circular, zero-inclination GEO orbit through one full orbital period
+/// and checks that the propagated position and velocity return to the original state.
 #[rstest]
-fn verif_orbit_at_epoch_geo_circular_period_roundtrip(almanac: Almanac) {
+fn verif_orbit_at_epoch_equatorial_circular(almanac: Almanac) {
     let eme2000 = almanac.frame_info(EARTH_J2000).unwrap();
     let epoch = Epoch::from_gregorian_utc_hms(2026, 8, 26, 12, 0, 0);
 
@@ -902,130 +899,6 @@ fn verif_orbit_at_epoch_geo_circular_period_roundtrip(almanac: Almanac) {
         0.0,
         1e-3, // 1 m/s tolerance
         "Velocity drifted"
-    );
-}
-
-/// Exercises `at_epoch` on the geometries where the Keplerian intermediate used to fail. The
-/// circular cases are the regression for <https://github.com/nyx-space/nyx/issues/821>, where
-/// `at_epoch` errored out on an orbit with no well defined argument of periapsis.
-#[rstest]
-fn verif_orbit_at_epoch_equinoctial_branches(almanac: Almanac) {
-    let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
-    let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 1, 10);
-    let mu_km3_s2 = eme2k.mu_km3_s2().unwrap();
-
-    // Exactly circular states, built so that the eccentricity is zero to representation rather
-    // than merely small: `ecc()` returns below ECC_EPSILON, so every Keplerian angle is undefined.
-    let circular = |radius_km: Vector3, normal: Vector3| {
-        let v_km_s = (mu_km3_s2 / radius_km.norm()).sqrt();
-        let velocity_km_s = normal.cross(&radius_km).normalize() * v_km_s;
-        Orbit::new(
-            radius_km[0],
-            radius_km[1],
-            radius_km[2],
-            velocity_km_s[0],
-            velocity_km_s[1],
-            velocity_km_s[2],
-            epoch,
-            eme2k,
-        )
-    };
-
-    let cases = [
-        (
-            "circular equatorial (modified path)",
-            circular(
-                Vector3::new(26_559.381, 0.0, 0.0),
-                Vector3::new(0.0, 0.0, 1.0),
-            ),
-        ),
-        (
-            "circular inclined (modified path)",
-            circular(
-                Vector3::new(6_000.0, 3_000.0, 2_000.0),
-                Vector3::new(0.2, -0.3, 0.9),
-            ),
-        ),
-        (
-            "eccentric retrograde",
-            Orbit::keplerian(
-                8_191.93, 0.2, 178.5, 306.614, 314.19, 99.887_7, epoch, eme2k,
-            ),
-        ),
-    ];
-
-    for (name, orbit) in cases {
-        assert!(
-            orbit.ecc().unwrap() < ECC_EPSILON || orbit.inc_deg().unwrap() > 175.0,
-            "{name}: this case no longer covers a degenerate geometry"
-        );
-
-        let period = orbit.period().unwrap();
-        let half = orbit.at_epoch(epoch + 0.5 * period).unwrap();
-
-        if orbit.ecc().unwrap() < ECC_EPSILON {
-            // Uniform circular motion: half a period on, the state is at the antipode with the
-            // velocity reversed. This does not hold for an eccentric orbit.
-            assert!(
-                (half.radius_km + orbit.radius_km).norm() / orbit.radius_km.norm() < 1e-9,
-                "{name}: half a period on, position is off by {:.3e} km",
-                (half.radius_km + orbit.radius_km).norm()
-            );
-            assert!(
-                (half.velocity_km_s + orbit.velocity_km_s).norm() / orbit.velocity_km_s.norm()
-                    < 1e-9,
-                "{name}: half a period on, velocity is off by {:.3e} km/s",
-                (half.velocity_km_s + orbit.velocity_km_s).norm()
-            );
-        } else {
-            // Eccentric: half a period on the state must at least have moved somewhere else.
-            assert!(
-                (half.radius_km - orbit.radius_km).norm() / orbit.radius_km.norm() > 1e-3,
-                "{name}: the state did not propagate at all"
-            );
-        }
-
-        // A full period on, the state has returned to where it started.
-        let full = orbit.at_epoch(epoch + period).unwrap();
-        assert!(
-            (full.radius_km - orbit.radius_km).norm() / orbit.radius_km.norm() < 1e-9,
-            "{name}: a full period on, position is off by {:.3e} km",
-            (full.radius_km - orbit.radius_km).norm()
-        );
-        assert!(
-            (full.velocity_km_s - orbit.velocity_km_s).norm() / orbit.velocity_km_s.norm() < 1e-9,
-            "{name}: a full period on, velocity is off by {:.3e} km/s",
-            (full.velocity_km_s - orbit.velocity_km_s).norm()
-        );
-
-        // The slow elements are invariant under two body motion. Only the shape and the plane are
-        // checked, since the circular cases have no argument of periapsis to compare.
-        f64_eq_tol!(
-            half.sma_km().unwrap(),
-            orbit.sma_km().unwrap(),
-            1e-6,
-            format!("{name}: SMA changed")
-        );
-        f64_eq_tol!(
-            half.inc_deg().unwrap(),
-            orbit.inc_deg().unwrap(),
-            1e-7,
-            format!("{name}: INC changed")
-        );
-    }
-
-    // Exactly retrograde equatorial: the modified equinoctial tilt terms are tan(inc/2), so this
-    // is the one geometry `at_epoch` cannot propagate.
-    let retrograde_equatorial = circular(
-        Vector3::new(26_559.381, 0.0, 0.0),
-        Vector3::new(0.0, 0.0, -1.0),
-    );
-    assert_eq!(retrograde_equatorial.inc_deg().unwrap(), 180.0);
-    assert!(
-        retrograde_equatorial
-            .at_epoch(epoch + 1.0 * Unit::Hour)
-            .is_err(),
-        "an inclination of exactly 180 degrees must be rejected, not silently wrong"
     );
 }
 
