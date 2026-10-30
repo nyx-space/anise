@@ -261,7 +261,7 @@ impl Orbit {
     /// and equatorial orbits.
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::neg_multiply)]
-    pub fn try_walker_equinoctial(
+    pub fn try_from_walker_equinoctial(
         sma_km: f64,
         h: f64,
         k: f64,
@@ -364,12 +364,12 @@ impl Orbit {
 
     /// Returns Walker equinoctial elements in order as a vector.
     ///
-    /// + `sma`: the semi-major axis, in km
-    /// + `h`: eccentricity vector (y-component)
-    /// + `k`: eccentricity vector (x-component)
-    /// + `p`: orbit plane tilt (y-component), bounded at an inclination of 180 degrees
-    /// + `q`: orbit plane tilt (x-component), bounded at an inclination of 180 degrees
-    /// + `lambda`: the mean longitude, in degrees
+    /// + `sma`: the semi-major axis, in km: `a = (r_apo + r_peri) / 2`
+    /// + `h`: eccentricity vector (y-component): `h = e sin(ω + Ω)`
+    /// + `k`: eccentricity vector (x-component): `k = e cos(ω + Ω)`
+    /// + `p`: orbit plane tilt (y-component): `p = sin(i/2) sin(Ω)` (bounded at i = 180°)
+    /// + `q`: orbit plane tilt (x-component): `q = sin(i/2) cos(Ω)` (bounded at i = 180°)
+    /// + `lambda`: the mean longitude, in degrees: `λ = M + ω + Ω`
     ///
     /// These are derived from the Keplerian elements, so this returns an error for an exactly
     /// circular orbit; use [Orbit::modified_equinoctial_elements] there.
@@ -410,16 +410,7 @@ impl Orbit {
 #[cfg(feature = "python")]
 #[cfg_attr(feature = "python", pymethods)]
 impl Orbit {
-    /// Attempts to create a new Orbit from the Walker equinoctial orbital elements, by computing
-    /// the Keplerian elements and calling [Orbit::try_keplerian_mean_anomaly].
-    ///
-    /// + `sma_km`: the semi-major axis, in km: `a = (r_apo + r_peri) / 2`
-    /// + `h`: eccentricity vector (y-component): `h = e sin(ω + Ω)`
-    /// + `k`: eccentricity vector (x-component): `k = e cos(ω + Ω)`
-    /// + `p`: orbit plane tilt (y-component): `p = sin(i/2) sin(Ω)`
-    /// + `q`: orbit plane tilt (x-component): `q = sin(i/2) cos(Ω)`
-    /// + `lambda_deg`: the mean longitude, in degrees: `λ = M + ω + Ω`
-
+    /// Python bind for [Orbit::try_from_walker_equinoctial].
     #[cfg(feature = "python")]
     #[classmethod]
     #[allow(clippy::too_many_arguments)]
@@ -434,17 +425,10 @@ impl Orbit {
         epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
-        Self::try_walker_equinoctial(sma_km, h, k, p, q, lambda_deg, epoch, frame)
+        Self::try_from_walker_equinoctial(sma_km, h, k, p, q, lambda_deg, epoch, frame)
     }
 
-    /// Attempts to create a new Orbit from the Modified Equinoctial orbital elements.
-    ///
-    /// + `semi_parameter_km`: the semi-latus rectum, in km: `p = a(1 - e²)`
-    /// + `f`: eccentricity vector (x-component): `f = e cos(ω + Ω)`
-    /// + `g`: eccentricity vector (y-component): `g = e sin(ω + Ω)`
-    /// + `h`: orbit plane tilt (x-component): `h = tan(i/2) cos(Ω)`
-    /// + `k`: orbit plane tilt (y-component): `k = tan(i/2) sin(Ω)`
-    /// + `true_longitude_deg`: the true longitude, in degrees: `L = ω + Ω + ν`
+    /// Python bind for [Orbit::try_from_modified_equinoctial].
     #[cfg(feature = "python")]
     #[classmethod]
     #[allow(clippy::too_many_arguments)]
