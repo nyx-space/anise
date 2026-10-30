@@ -57,12 +57,12 @@ pub(crate) fn walker_equinoctial_to_keplerian(
 
 /// Converts a Cartesian state into the Modified Equinoctial elements `[p_km, f, g, h, k, L_deg]`.
 ///
-/// + `p_km`: the semi-latus rectum, in km
-/// + `f`: eccentricity vector (x-component)
-/// + `g`: eccentricity vector (y-component)
-/// + `h`: orbit plane tilt (x-component)
-/// + `k`: orbit plane tilt (y-component)
-/// + `true_lon_deg`: the true longitude, in degrees
+/// + `p_km`: the semi-latus rectum, in km: `p = a(1 - e²)`
+/// + `f`: eccentricity vector (x-component): `f = e cos(ω + Ω)`
+/// + `g`: eccentricity vector (y-component): `g = e sin(ω + Ω)`
+/// + `h`: orbit plane tilt (x-component): `h = tan(i/2) cos(Ω)`
+/// + `k`: orbit plane tilt (y-component): `k = tan(i/2) sin(Ω)`
+/// + `true_lon_deg`: the true longitude, in degrees: `L = ω + Ω + ν`
 ///
 /// This function uses the same formulas from FortranAstrodynamicsToolkit from Jacob Williams:
 /// https://github.com/jacobwilliams/Fortran-Astrodynamics-Toolkit/blob/ab8d9c017835d3f52bd691835bd4e8ad10da8467/src/modified_equinoctial_module.f90#L55
@@ -122,15 +122,15 @@ pub(crate) fn cartesian_to_modified_equinoctial(
 
 /// Converts Modified Equinoctial elements into a Cartesian position (km) and velocity (km/s).
 ///
-/// + `p_km`: the semi-latus rectum, in km
-/// + `f`: eccentricity vector (x-component)
-/// + `g`: eccentricity vector (y-component)
-/// + `h`: orbit plane tilt (x-component)
-/// + `k`: orbit plane tilt (y-component)
-/// + `true_lon_deg`: the true longitude, in degrees
+/// + `p_km`: the semi-latus rectum, in km: `p = a(1 - e²)`
+/// + `f`: eccentricity vector (x-component): `f = e cos(ω + Ω)`
+/// + `g`: eccentricity vector (y-component): `g = e sin(ω + Ω)`
+/// + `h`: orbit plane tilt (x-component): `h = tan(i/2) cos(Ω)`
+/// + `k`: orbit plane tilt (y-component): `k = tan(i/2) sin(Ω)`
+/// + `true_lon_deg`: the true longitude, in degrees: `L = ω + Ω + ν`
 /// + `mu_km3_s2`: the gravitational parameter of the central body, in km^3/s^2
 ///
-/// This is the inverse of [cartesian_to_modified_equinoctial], from the same source.
+/// Reference:
 /// https://github.com/jacobwilliams/Fortran-Astrodynamics-Toolkit/blob/ab8d9c017835d3f52bd691835bd4e8ad10da8467/src/modified_equinoctial_module.f90#L105
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn modified_equinoctial_to_cartesian(
@@ -183,30 +183,21 @@ pub(crate) fn modified_equinoctial_to_cartesian(
 
 /// A state in Modified Equinoctial elements, parameterized at an epoch and frame.
 ///
-/// + `p_km`: the semi-latus rectum, in km (must be strictly positive)
-/// + `f`: eccentricity vector (x-component), where `f² + g² = e²`
-/// + `g`: eccentricity vector (y-component), where `f² + g² = e²`
-/// + `h`: orbit plane tilt (x-component), where `h² + k² = tan²(i/2)`
-/// + `k`: orbit plane tilt (y-component), where `h² + k² = tan²(i/2)`
-/// + `true_lon_deg`: the true longitude (ω + Ω + ν), in degrees
+/// + `p_km`: the semi-latus rectum, in km: `p = a(1 - e²)` (must be strictly positive)
+/// + `f`: eccentricity vector (x-component): `f = e cos(ω + Ω)`
+/// + `g`: eccentricity vector (y-component): `g = e sin(ω + Ω)`
+/// + `h`: orbit plane tilt (x-component): `h = tan(i/2) cos(Ω)`
+/// + `k`: orbit plane tilt (y-component): `k = tan(i/2) sin(Ω)`
+/// + `true_lon_deg`: the true longitude, in degrees: `L = ω + Ω + ν`
 ///
-/// Modified equinoctial elements are singular for retrograde equatorial orbits
-/// (inclination within [INC_EPSILON_DEG] of 180°). Parabolic orbits (`e = 1`) are
-/// representable; operations that depend on the semi-major axis (e.g. mean motion)
-/// will reject them separately.
+/// NOTE: Modified equinoctial elements are singular for 180deg inclination
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ModifiedEquinoctialState {
-    /// Semi-latus rectum, in km: `p = a(1 - e²)`
     pub p_km: f64,
-    /// Eccentricity vector x-component: `f = e cos(ω + Ω)`
     pub f: f64,
-    /// Eccentricity vector y-component: `g = e sin(ω + Ω)`
     pub g: f64,
-    /// Orbit plane tilt x-component: `h = tan(i/2) cos(Ω)`
     pub h: f64,
-    /// Orbit plane tilt y-component: `k = tan(i/2) sin(Ω)`
     pub k: f64,
-    /// True longitude, in degrees: `L = ω + Ω + ν`
     pub true_lon_deg: f64,
     pub epoch: Epoch,
     pub frame: Frame,
@@ -214,12 +205,6 @@ pub struct ModifiedEquinoctialState {
 
 impl ModifiedEquinoctialState {
     /// Attempts to construct a [ModifiedEquinoctialState] with range validation.
-    ///
-    /// Returns an error if:
-    /// - any element is non-finite (NaN or infinity),
-    /// - `p_km` is not strictly positive, or
-    /// - the inclination implied by `(h, k)` is within [INC_EPSILON_DEG] of 180°
-    ///   (the singular retrograde equatorial case).
     #[allow(clippy::too_many_arguments)]
     pub fn try_new(
         p_km: f64,
@@ -264,7 +249,16 @@ impl ModifiedEquinoctialState {
 }
 
 impl Orbit {
-    /// Attempts to create a new Orbit from the Walker equinoctial orbital elements, by computing the Keplerian elements and calling [Orbit::try_keplerian_mean_anomaly].
+    /// Attempts to create a new Orbit from the Walker equinoctial orbital elements
+    ///
+    /// + `sma_km`: the semi-major axis, in km: `a = (r_apo + r_peri) / 2`
+    /// + `h`: eccentricity vector (y-component): `h = e sin(ω + Ω)`
+    /// + `k`: eccentricity vector (x-component): `k = e cos(ω + Ω)`
+    /// + `p`: orbit plane tilt (y-component): `p = sin(i/2) sin(Ω)`
+    /// + `q`: orbit plane tilt (x-component): `q = sin(i/2) cos(Ω)`
+    /// + `lambda_deg`: the mean longitude, in degrees: `λ = M + ω + Ω`
+    /// NOTE: It routes through the Keplerian elements, so it is singular for circular
+    /// and equatorial orbits.
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::neg_multiply)]
     pub fn try_walker_equinoctial(
@@ -286,6 +280,13 @@ impl Orbit {
     }
 
     /// Attempts to create a new Orbit from the Modified Equinoctial orbital elements.
+    ///
+    /// + `semi_parameter_km`: the semi-latus rectum, in km: `p = a(1 - e²)`
+    /// + `f`: eccentricity vector (x-component): `f = e cos(ω + Ω)`
+    /// + `g`: eccentricity vector (y-component): `g = e sin(ω + Ω)`
+    /// + `h`: orbit plane tilt (x-component): `h = tan(i/2) cos(Ω)`
+    /// + `k`: orbit plane tilt (y-component): `k = tan(i/2) sin(Ω)`
+    /// + `true_longitude_deg`: the true longitude, in degrees: `L = ω + Ω + ν`
     #[allow(clippy::too_many_arguments)]
     pub fn try_from_modified_equinoctial(
         semi_parameter_km: f64,
@@ -361,7 +362,7 @@ impl Orbit {
         Ok(self.raan_deg()? + self.aop_deg()? + self.ma_deg()?)
     }
 
-    /// Returns the six Walker equinoctial elements in order: sma (km), h, k, p, q, lambda (deg).
+    /// Returns Walker equinoctial elements in order as a vector.
     ///
     /// + `sma`: the semi-major axis, in km
     /// + `h`: eccentricity vector (y-component)
@@ -388,12 +389,12 @@ impl Orbit {
     /// Returns the six Modified Equinoctial elements, computed directly from the Cartesian state
     /// so that they stay well conditioned for circular and equatorial orbits.
     ///
-    /// + `p`: the semi-latus rectum, in km, finite for a parabolic orbit
-    /// + `f`: eccentricity vector (x-component)
-    /// + `g`: eccentricity vector (y-component)
-    /// + `h`: orbit plane tilt (x-component), diverges at an inclination of 180 degrees
-    /// + `k`: orbit plane tilt (y-component), diverges at an inclination of 180 degrees
-    /// + `L`: the true longitude, in degrees
+    /// + `p`: the semi-latus rectum, in km: `p = a(1 - e²)` (finite for a parabolic orbit)
+    /// + `f`: eccentricity vector (x-component): `f = e cos(ω + Ω)`
+    /// + `g`: eccentricity vector (y-component): `g = e sin(ω + Ω)`
+    /// + `h`: orbit plane tilt (x-component): `h = tan(i/2) cos(Ω)` (diverges at i = 180°)
+    /// + `k`: orbit plane tilt (y-component): `k = tan(i/2) sin(Ω)` (diverges at i = 180°)
+    /// + `L`: the true longitude, in degrees: `L = ω + Ω + ν`
     ///
     /// :rtype: list[float]
     pub fn modified_equinoctial_elements(&self) -> PhysicsResult<Vec<f64>> {
@@ -409,24 +410,16 @@ impl Orbit {
 #[cfg(feature = "python")]
 #[cfg_attr(feature = "python", pymethods)]
 impl Orbit {
-    /// Attempts to create a new Orbit from the Walker equinoctial orbital elements, by computing the Keplerian elements and calling [Orbit::try_keplerian_mean_anomaly].
+    /// Attempts to create a new Orbit from the Walker equinoctial orbital elements, by computing
+    /// the Keplerian elements and calling [Orbit::try_keplerian_mean_anomaly].
     ///
-    /// + `sma_km`: semi-major axis, in km
-    /// + `h`: eccentricity vector (y-component)
-    /// + `k`: eccentricity vector (x-component)
-    /// + `p`: orbit plane tilt (y-component)
-    /// + `q`: orbit plane tilt (x-component)
-    /// + `lambda_deg`: mean longitude, in degrees
-    ///
-    /// :type sma_km: float
-    /// :type h: float
-    /// :type k: float
-    /// :type p: float
-    /// :type q: float
-    /// :type lambda_deg: float
-    /// :type epoch: Epoch
-    /// :type frame: Frame
-    /// :rtype: Orbit
+    /// + `sma_km`: the semi-major axis, in km: `a = (r_apo + r_peri) / 2`
+    /// + `h`: eccentricity vector (y-component): `h = e sin(ω + Ω)`
+    /// + `k`: eccentricity vector (x-component): `k = e cos(ω + Ω)`
+    /// + `p`: orbit plane tilt (y-component): `p = sin(i/2) sin(Ω)`
+    /// + `q`: orbit plane tilt (x-component): `q = sin(i/2) cos(Ω)`
+    /// + `lambda_deg`: the mean longitude, in degrees: `λ = M + ω + Ω`
+
     #[cfg(feature = "python")]
     #[classmethod]
     #[allow(clippy::too_many_arguments)]
@@ -446,22 +439,12 @@ impl Orbit {
 
     /// Attempts to create a new Orbit from the Modified Equinoctial orbital elements.
     ///
-    /// + `semi_parameter_km`: semi-latus rectum, in km
-    /// + `f`: eccentricity vector (x-component)
-    /// + `g`: eccentricity vector (y-component)
-    /// + `h`: orbit plane tilt (x-component)
-    /// + `k`: orbit plane tilt (y-component)
-    /// + `true_longitude_deg`: true longitude, in degrees
-    ///
-    /// :type semi_parameter_km: float
-    /// :type f: float
-    /// :type g: float
-    /// :type h: float
-    /// :type k: float
-    /// :type true_longitude_deg: float
-    /// :type epoch: Epoch
-    /// :type frame: Frame
-    /// :rtype: Orbit
+    /// + `semi_parameter_km`: the semi-latus rectum, in km: `p = a(1 - e²)`
+    /// + `f`: eccentricity vector (x-component): `f = e cos(ω + Ω)`
+    /// + `g`: eccentricity vector (y-component): `g = e sin(ω + Ω)`
+    /// + `h`: orbit plane tilt (x-component): `h = tan(i/2) cos(Ω)`
+    /// + `k`: orbit plane tilt (y-component): `k = tan(i/2) sin(Ω)`
+    /// + `true_longitude_deg`: the true longitude, in degrees: `L = ω + Ω + ν`
     #[cfg(feature = "python")]
     #[classmethod]
     #[allow(clippy::too_many_arguments)]
