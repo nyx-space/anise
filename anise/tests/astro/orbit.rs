@@ -806,6 +806,64 @@ fn verif_orbit_at_epoch(almanac: Almanac) {
     }
 }
 
+/// Regression for <https://github.com/nyx-space/anise/issues/821>: with `aop_deg = 0`, propagating
+/// via `at_epoch` could land in a geometry where the recovered `cos(aop)` was
+/// `1.0 + a few ulps`, flipping the result from 0° to 180° through `acos` returning NaN. Checks
+/// that the slow elements are preserved (within two-body tolerance) and the mean anomaly actually
+/// advanced.
+#[rstest]
+fn verif_orbit_at_epoch_zero_aop_issue821(almanac: Almanac) {
+    let eme2000 = almanac.frame_info(EARTH_J2000).unwrap();
+    let epoch = Epoch::from_gregorian_utc_hms(2026, 8, 26, 12, 0, 0);
+
+    let orbit_initial_eme2000 = Orbit::try_keplerian(
+        26_560.0, // sma_km
+        0.02,     // ecc
+        55.0,      // inc_deg
+        120.0,      // raan_deg
+        0.0,      // aop_deg
+        240.0,      // ta_deg
+        epoch,
+        eme2000,
+    ).unwrap();
+
+    let orbit_later_eme2000 = orbit_initial_eme2000.at_epoch(
+        epoch + 1 * Unit::Day + 6 * Unit::Hour
+    ).unwrap();
+
+    // regression on issue #821
+    f64_eq_tol!(
+        orbit_initial_eme2000.aop_deg().unwrap(),
+        orbit_later_eme2000.aop_deg().unwrap(),
+        1e-6,
+        "Argument of perigee changed"
+    );
+    f64_eq_tol!(
+        orbit_initial_eme2000.sma_km().unwrap(),
+        orbit_later_eme2000.sma_km().unwrap(),
+        1e-6,
+        "SMA changed"
+    );
+    f64_eq_tol!(
+        orbit_initial_eme2000.ecc().unwrap(),
+        orbit_later_eme2000.ecc().unwrap(),
+        1e-6,
+        "ECC changed"
+    );
+    f64_eq_tol!(
+        orbit_initial_eme2000.inc_deg().unwrap(),
+        orbit_later_eme2000.inc_deg().unwrap(),
+        1e-6,
+        "INC changed"
+    );
+    f64_eq_tol!(
+        orbit_initial_eme2000.raan_deg().unwrap(),
+        orbit_later_eme2000.raan_deg().unwrap(),
+        1e-6,
+        "RAAN changed"
+    );
+}
+
 /// Exercises `at_epoch` on the geometries where the Keplerian intermediate used to fail. The
 /// circular cases are the regression for <https://github.com/nyx-space/nyx/issues/821>, where
 /// `at_epoch` errored out on an orbit with no well defined argument of periapsis.
