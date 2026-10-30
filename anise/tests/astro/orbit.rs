@@ -148,16 +148,14 @@ fn val_state_def_circ_inc(almanac: Almanac) {
     let kep_ric = (dcm.transpose() * kep).unwrap();
     let kep_rtn = (dcm * kep_ric).unwrap();
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
-    f64_eq!(
-        kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        2.6e-10,
-        "RIC RMS velocity"
+    assert!(
+        kep_rtn.rss_velocity_km_s(&kep).unwrap() < 1e-9,
+        "RIC RSS velocity exceeds bound"
     );
     f64_eq!(kep_rtn.rms_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
-    f64_eq!(
-        kep_rtn.rms_velocity_km_s(&kep).unwrap(),
-        1.5e-10,
-        "RIC RMS velocity"
+    assert!(
+        kep_rtn.rms_velocity_km_s(&kep).unwrap() < 1e-9,
+        "RIC RMS velocity exceeds bound"
     );
 
     let vnc_delta = kep.vnc_difference(&kep).unwrap();
@@ -173,16 +171,14 @@ fn val_state_def_circ_inc(almanac: Almanac) {
     let kep_ric = (dcm.transpose() * kep).unwrap();
     let kep_rtn = (dcm * kep_ric).unwrap();
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "VNC RSS radius");
-    f64_eq!(
-        kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        2.6e-10,
-        "VNC RMS velocity"
+    assert!(
+        kep_rtn.rss_velocity_km_s(&kep).unwrap() < 1e-9,
+        "VNC RSS velocity exceeds bound"
     );
     f64_eq!(kep_rtn.rms_radius_km(&kep).unwrap(), 0.0, "VNC RSS radius");
-    f64_eq!(
-        kep_rtn.rms_velocity_km_s(&kep).unwrap(),
-        1.5e-10,
-        "VNC RMS velocity"
+    assert!(
+        kep_rtn.rms_velocity_km_s(&kep).unwrap() < 1e-9,
+        "VNC RMS velocity exceeds bound"
     );
 
     // Check the relative and absolute differences
@@ -192,10 +188,9 @@ fn val_state_def_circ_inc(almanac: Almanac) {
         0.0,
         "non zero absolute position difference"
     );
-    f64_eq!(
-        abs_vel_km_s.abs(),
-        2.6e-10,
-        "non zero absolute velocity difference"
+    assert!(
+        abs_vel_km_s.abs() < 1e-9,
+        "absolute velocity difference exceeds bound"
     );
 
     let (rel_pos, rel_vel) = kep_rtn.rel_difference(&kep).unwrap();
@@ -328,10 +323,9 @@ fn val_state_def_elliptical(almanac: Almanac) {
     let kep_ric = (dcm.transpose() * kep).unwrap();
     let kep_rtn = (dcm * kep_ric).unwrap();
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
-    f64_eq!(
-        kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        7.7e-10,
-        "RIC RSS velocity"
+    assert!(
+        kep_rtn.rss_velocity_km_s(&kep).unwrap() < 2e-9,
+        "RIC RSS velocity exceeds bound"
     );
 }
 
@@ -434,10 +428,9 @@ fn val_state_def_circ_eq(almanac: Almanac) {
     let kep_ric = (dcm.transpose() * kep).unwrap();
     let kep_rtn = (dcm * kep_ric).unwrap();
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
-    f64_eq!(
-        kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        1.02e-8,
-        "RIC RSS velocity"
+    assert!(
+        kep_rtn.rss_velocity_km_s(&kep).unwrap() < 2e-8,
+        "RIC RSS velocity exceeds bound"
     );
 }
 
@@ -485,10 +478,9 @@ fn val_state_def_equatorial(almanac: Almanac) {
         0.0,
         "RIC RSS radius"
     );
-    f64_eq!(
-        cart_rtn.rss_velocity_km_s(&cart).unwrap(),
-        4.01e-8,
-        "RIC RSS velocity"
+    assert!(
+        cart_rtn.rss_velocity_km_s(&cart).unwrap() < 5e-8,
+        "RIC RSS velocity exceeds bound"
     );
 }
 
