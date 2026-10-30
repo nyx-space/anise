@@ -10,7 +10,10 @@
 
 use super::{PhysicsResult, orbit::INC_EPSILON_DEG, orbit::Orbit};
 
-use crate::errors::{MathError, ParabolicSemiParamSnafu, PhysicsError, VelocitySnafu, EquinoctialInclinationSnafu, RadiusSnafu, HyperbolicSnafu};
+use crate::errors::{
+    EquinoctialInclinationSnafu, HyperbolicSnafu, InfiniteValueSnafu, ParabolicSemiParamSnafu,
+    RadiusSnafu, VelocitySnafu,
+};
 use crate::math::{Vector3, angles::between_0_360};
 use crate::prelude::Frame;
 
@@ -178,6 +181,88 @@ pub(crate) fn modified_equinoctial_to_cartesian(
     Ok((x * f_hat + y * g_hat, x_dot * f_hat + y_dot * g_hat))
 }
 
+/// A state in Modified Equinoctial elements, parameterized at an epoch and frame.
+///
+/// + `p_km`: the semi-latus rectum, in km (must be strictly positive)
+/// + `f`: eccentricity vector (x-component), where `f² + g² = e²`
+/// + `g`: eccentricity vector (y-component), where `f² + g² = e²`
+/// + `h`: orbit plane tilt (x-component), where `h² + k² = tan²(i/2)`
+/// + `k`: orbit plane tilt (y-component), where `h² + k² = tan²(i/2)`
+/// + `true_lon_deg`: the true longitude (ω + Ω + ν), in degrees
+///
+/// Modified equinoctial elements are singular for retrograde equatorial orbits
+/// (inclination within [INC_EPSILON_DEG] of 180°). Parabolic orbits (`e = 1`) are
+/// representable; operations that depend on the semi-major axis (e.g. mean motion)
+/// will reject them separately.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct ModifiedEquinoctialState {
+    /// Semi-latus rectum, in km: `p = a(1 - e²)`
+    pub p_km: f64,
+    /// Eccentricity vector x-component: `f = e cos(ω + Ω)`
+    pub f: f64,
+    /// Eccentricity vector y-component: `g = e sin(ω + Ω)`
+    pub g: f64,
+    /// Orbit plane tilt x-component: `h = tan(i/2) cos(Ω)`
+    pub h: f64,
+    /// Orbit plane tilt y-component: `k = tan(i/2) sin(Ω)`
+    pub k: f64,
+    /// True longitude, in degrees: `L = ω + Ω + ν`
+    pub true_lon_deg: f64,
+    pub epoch: Epoch,
+    pub frame: Frame,
+}
+
+impl ModifiedEquinoctialState {
+    /// Attempts to construct a [ModifiedEquinoctialState] with range validation.
+    ///
+    /// Returns an error if:
+    /// - any element is non-finite (NaN or infinity),
+    /// - `p_km` is not strictly positive, or
+    /// - the inclination implied by `(h, k)` is within [INC_EPSILON_DEG] of 180°
+    ///   (the singular retrograde equatorial case).
+    #[allow(clippy::too_many_arguments)]
+    pub fn try_new(
+        p_km: f64,
+        f: f64,
+        g: f64,
+        h: f64,
+        k: f64,
+        true_lon_deg: f64,
+        epoch: Epoch,
+        frame: Frame,
+    ) -> PhysicsResult<Self> {
+        ensure!(
+            [p_km, f, g, h, k, true_lon_deg].iter().all(|v| v.is_finite()),
+            InfiniteValueSnafu {
+                action: "construct ModifiedEquinoctialState"
+            }
+        );
+
+        ensure!(p_km > f64::EPSILON, ParabolicSemiParamSnafu { p_km });
+
+        // Modified eoe are invalid at 180deg inclination since tan(180/2) = inf
+        let inc_rad = 2.0 * (h.powi(2) + k.powi(2)).sqrt().atan();
+        ensure!(
+            (PI - inc_rad).abs() > INC_EPSILON_DEG.to_radians(),
+            EquinoctialInclinationSnafu {
+                inclination_deg: inc_rad.to_degrees(),
+                tolerance_deg: INC_EPSILON_DEG,
+            }
+        );
+
+        Ok(Self {
+            p_km,
+            f,
+            g,
+            h,
+            k,
+            true_lon_deg,
+            epoch,
+            frame,
+        })
+    }
+}
+
 impl Orbit {
     /// Attempts to create a new Orbit from the Walker equinoctial orbital elements, by computing the Keplerian elements and calling [Orbit::try_keplerian_mean_anomaly].
     #[allow(clippy::too_many_arguments)]
@@ -202,7 +287,7 @@ impl Orbit {
 
     /// Attempts to create a new Orbit from the Modified Equinoctial orbital elements.
     #[allow(clippy::too_many_arguments)]
-    pub fn try_modified_equinoctial(
+    pub fn try_from_modified_equinoctial(
         semi_parameter_km: f64,
         f: f64,
         g: f64,
@@ -391,7 +476,7 @@ impl Orbit {
         epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
-        Self::try_modified_equinoctial(
+        Self::try_from_modified_equinoctial(
             semi_parameter_km,
             f,
             g,

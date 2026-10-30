@@ -10,12 +10,41 @@
 
 use std::f64::consts::{PI, TAU};
 
-use crate::errors::{MathError, PhysicsError};
+use crate::errors::{MathError, ParabolicEccentricitySnafu, ParabolicSemiParamSnafu, PhysicsError};
+use snafu::ensure;
 
 use super::PhysicsResult;
 
 /// Mean anomaly f64::EPSILON
 pub const MA_EPSILON: f64 = 1e-12;
+
+/// Semi-major axis is not defined for parabolic orbits
+pub const MEAN_MOTION_PARABOLIC_LIMIT: f64 = 1e-9;
+
+/// Computes the mean motion from modified equinoctial elements
+/// * `mu_km3_s2` - Standard gravitational parameter of the central body, in km³/s².
+/// * `p_km` - Semi-latus rectum, in km: `p = a(1 - e²)`
+/// * `f` - Eccentricity vector x-component: `f = e cos(ω + Ω)`
+/// * `g` - Eccentricity vector y-component: `g = e sin(ω + Ω)`
+pub fn modified_equinoctial_to_mean_motion(
+    mu_km3_s2: f64,
+    p_km: f64,
+    f: f64,
+    g: f64,
+) -> PhysicsResult<f64> {
+    ensure!(p_km.abs() >= f64::EPSILON, ParabolicSemiParamSnafu { p_km });
+
+    let ecc_sq = f.powi(2) + g.powi(2);
+    ensure!(
+        (1.0 - ecc_sq).abs() >= MEAN_MOTION_PARABOLIC_LIMIT,
+        ParabolicEccentricitySnafu {
+            limit: MEAN_MOTION_PARABOLIC_LIMIT
+        }
+    );
+
+    let sma_km = p_km / (1.0 - ecc_sq);
+    Ok((mu_km3_s2 / sma_km.abs().powi(3)).sqrt())
+}
 
 #[macro_export]
 macro_rules! f64_eq {

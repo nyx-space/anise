@@ -13,7 +13,7 @@ use super::orbit_equinoctial::cartesian_to_modified_equinoctial;
 use super::utils::mean_anomaly_to_true_anomaly_rad;
 
 use crate::{
-    astro::utils::true_anomaly_to_mean_anomaly_rad,
+    astro::utils::{modified_equinoctial_to_mean_motion, true_anomaly_to_mean_anomaly_rad},
     errors::{
         HyperbolicTrueAnomalySnafu, InfiniteValueSnafu, MathError, ParabolicEccentricitySnafu,
         ParabolicSemiParamSnafu, PhysicsError, RadiusSnafu, VelocitySnafu,
@@ -1410,10 +1410,11 @@ impl Orbit {
             return Ok(*self);
         }
 
+        let mu_km3_s2 = self.frame.mu_km3_s2()?;
         let [p_km, f, g, h, k, true_lon_deg] = cartesian_to_modified_equinoctial(
             self.radius_km,
             self.velocity_km_s,
-            self.frame.mu_km3_s2()?,
+            mu_km3_s2,
         )?;
 
         // The sixth element is a true longitude, which is not linear in time, so step the mean
@@ -1423,17 +1424,19 @@ impl Orbit {
         let longitude_peri_rad = g.atan2(f); // aop + raan
         let true_anomaly_rad = true_lon_deg.to_radians() - longitude_peri_rad;
 
+        let mean_motion_rad_s = modified_equinoctial_to_mean_motion(mu_km3_s2, p_km, f, g)?;
+
         let mean_anomaly_rad = true_anomaly_to_mean_anomaly_rad(
             true_anomaly_rad, eccentricity
         ).map_err(|e| PhysicsError::AppliedMath { source: e })?
-            + (self.mean_motion_deg_s()? * (new_epoch - self.epoch).to_seconds()).to_radians();
+            + mean_motion_rad_s * (new_epoch - self.epoch).to_seconds();
 
         let new_true_lon_deg =
             (mean_anomaly_to_true_anomaly_rad(
                 mean_anomaly_rad, eccentricity
             )? + longitude_peri_rad).to_degrees();
 
-        Self::try_modified_equinoctial(
+        Self::try_from_modified_equinoctial(
             p_km,
             f,
             g,
