@@ -915,7 +915,7 @@ fn test_duration_to_radius_elliptical(epoch: Epoch, frame: Frame) {
     let res1a = orbit_at_peri.duration_to_radius(orbit_at_peri.apoapsis_km().unwrap());
     assert!(res1a.is_ok(), "Test 1a failed: {:?}", res1a.err());
     f64_eq_tol!(
-        res1a.unwrap().to_seconds(),
+        res1a.unwrap().0.to_seconds(),
         period_s / 2.0,
         TEST_EPS_DURATION_S,
         "1a"
@@ -928,7 +928,7 @@ fn test_duration_to_radius_elliptical(epoch: Epoch, frame: Frame) {
     let res1b = orbit_at_ta90.duration_to_radius(orbit_at_ta90.apoapsis_km().unwrap());
     assert!(res1b.is_ok(), "Test 1b failed: {:?}", res1b.err());
     f64_eq_tol!(
-        res1b.unwrap().to_seconds(),
+        res1b.unwrap().0.to_seconds(),
         2804.257,
         TEST_EPS_DURATION_S,
         "1b"
@@ -937,24 +937,40 @@ fn test_duration_to_radius_elliptical(epoch: Epoch, frame: Frame) {
     // Test 1c: Orbit at TA=0. Target radius_km = rp. Expected duration: 0.0.
     let res1c = orbit_at_peri.duration_to_radius(rp_km);
     assert!(res1c.is_ok(), "Test 1c failed: {:?}", res1c.err());
-    f64_eq_tol!(res1c.unwrap().to_seconds(), 0.0, TEST_EPS_DURATION_S, "1c");
+    let (shortest, _) = res1c.unwrap();
+    f64_eq_tol!(shortest.to_seconds(), 0.0, TEST_EPS_DURATION_S, "1c");
 
     // Test 1d: Orbit at TA=0. Target radius_km = 9000.0 + TEST_EPS_RADIUS (slightly after periapsis).
     // Expected: small positive duration.
     let target_r_slightly_after_peri = rp_km + TEST_EPS_RADIUS_KM;
     let res1d = orbit_at_peri.duration_to_radius(target_r_slightly_after_peri);
     assert!(res1d.is_ok(), "Test 1d failed: {:?}", res1d.err());
-    f64_eq_tol!(res1d.unwrap().to_seconds(), 2.01, TEST_EPS_DURATION_S, "1d");
+    let (shortest, _) = res1d.unwrap();
+    f64_eq_tol!(shortest.to_seconds(), 2.01, TEST_EPS_DURATION_S, "1d");
 
     // Test 1e: Orbit at TA=180 deg (apoapsis). Time to periapsis.
     let res1e = orbit_at_apo.duration_to_radius(rp_km);
     assert!(res1e.is_ok(), "Test 1e failed: {:?}", res1e.err());
     f64_eq_tol!(
-        res1e.unwrap().to_seconds(),
+        res1e.unwrap().0.to_seconds(),
         period_s / 2.0,
         TEST_EPS_DURATION_S,
         "1e"
     );
+
+    // Test 1f: Orbit at TA=200 deg. 9900 km is reached inbound at TA=270 deg, then outbound at TA=90 deg.
+    let orbit_at_ta200 = create_orbit(sma_km, ecc, 200.0, epoch, frame);
+    let (shortest, longest) = orbit_at_ta200.duration_to_radius(9900.0).unwrap();
+    f64_eq_tol!(shortest.to_seconds(), 2134.888, TEST_EPS_DURATION_S, "1f");
+    f64_eq_tol!(longest.to_seconds(), 6478.388, TEST_EPS_DURATION_S, "1f");
+
+    // Test 1g: Orbit at TA=270 deg. Its current radius is reached now, then outbound at TA=90 deg.
+    let orbit_at_ta270 = create_orbit(sma_km, ecc, 270.0, epoch, frame);
+    let (shortest, longest) = orbit_at_ta270
+        .duration_to_radius(orbit_at_ta270.rmag_km())
+        .unwrap();
+    f64_eq_tol!(shortest.to_seconds(), 0.0, TEST_EPS_DURATION_S, "1g");
+    f64_eq_tol!(longest.to_seconds(), 4343.500, TEST_EPS_DURATION_S, "1g");
 }
 
 #[rstest]
@@ -966,7 +982,9 @@ fn test_duration_to_radius_circular(epoch: Epoch, frame: Frame) {
     let circ_orbit = create_orbit(sma_km, ecc_near_circular, 0.0, epoch, frame);
     let res2a = circ_orbit.duration_to_radius(sma_km);
     assert!(res2a.is_ok(), "Test 2a failed: {:?}", res2a.err());
-    f64_eq_tol!(res2a.unwrap().to_seconds(), 0.0, TEST_EPS_DURATION_S, "");
+    let (shortest, longest) = res2a.unwrap();
+    f64_eq_tol!(shortest.to_seconds(), 0.0, TEST_EPS_DURATION_S, "");
+    f64_eq_tol!(longest.to_seconds(), 0.0, TEST_EPS_DURATION_S, "");
 
     // Test 2b: Target radius_km different from sma_km. Expected: RadiusError.
     let res2b = circ_orbit.duration_to_radius(circ_orbit.apoapsis_km().unwrap() + 1.0);
@@ -980,27 +998,45 @@ fn test_duration_to_radius_hyperbolic(epoch: Epoch, frame: Frame) {
     let ecc: f64 = 2.0;
     let rp_km = sma_km.abs() * (ecc - 1.0); // 5000 * (2-1) = 5000 km
 
-    // Test 3a: From periapsis (TA=0) to radius_km = 10000 km.
+    // Test 3a: From periapsis (TA=0) to radius_km = 10000 km, crossed inbound in the past and outbound ahead.
     let orbit_at_peri = create_orbit(sma_km, ecc, 0.0, epoch, frame);
     let res3a = orbit_at_peri.duration_to_radius(10000.0);
     assert!(res3a.is_ok(), "Test 3a failed: {:?}", res3a.err());
-    f64_eq_tol!(
-        res3a.unwrap().to_seconds(),
-        713.237,
-        TEST_EPS_DURATION_S,
-        "test 3a"
-    );
+    let (shortest, longest) = res3a.unwrap();
+    f64_eq_tol!(shortest.to_seconds(), -713.237, TEST_EPS_DURATION_S, "3a");
+    f64_eq_tol!(longest.to_seconds(), 713.237, TEST_EPS_DURATION_S, "3a");
 
     // Test 3b: Target radius_km = rp_km. Expected duration: 0.0.
     let res3b = orbit_at_peri.duration_to_radius(rp_km);
     assert!(res3b.is_ok(), "Test 3b failed: {:?}", res3b.err());
-    f64_eq_tol!(res3b.unwrap().to_seconds(), 0.0, TEST_EPS_DURATION_S, "");
+    f64_eq_tol!(res3b.unwrap().0.to_seconds(), 0.0, TEST_EPS_DURATION_S, "");
 
-    // Test 3c: Orbit at TA=30 deg. Target radius rp_km. Expected: RadiusError (past).
+    // Test 3c: Orbit at TA=30 deg. Target radius rp_km, a single crossing at periapsis, in the past.
     let orbit_at_ta30 = create_orbit(sma_km, ecc, 30.0, epoch, frame);
-    let res3c = orbit_at_ta30.duration_to_radius(rp_km);
-    assert!(res3c.is_err());
-    matches!(res3c.err().unwrap(), PhysicsError::RadiusError { .. });
+    let (shortest, longest) = orbit_at_ta30.duration_to_radius(rp_km).unwrap();
+    f64_eq_tol!(shortest.to_seconds(), -180.358, TEST_EPS_DURATION_S, "3c");
+    f64_eq_tol!(longest.to_seconds(), -180.358, TEST_EPS_DURATION_S, "3c");
+
+    // Test 3d: Inbound at 50000 km (velocity reversed). Both crossings of 20000 km are ahead.
+    let cos_ta = (sma_km * (1.0 - ecc.powi(2)) / 50_000.0 - 1.0) / ecc;
+    let outbound = create_orbit(sma_km, ecc, cos_ta.acos().to_degrees(), epoch, frame);
+    let inbound = outbound.with_velocity_km_s(-outbound.velocity_km_s);
+    let (shortest, longest) = inbound.duration_to_radius(20_000.0).unwrap();
+    f64_eq_tol!(shortest.to_seconds(), 3030.343, TEST_EPS_DURATION_S, "3d");
+    f64_eq_tol!(longest.to_seconds(), 6407.998, TEST_EPS_DURATION_S, "3d");
+
+    // Test 3e: Inbound at 50000 km. 80000 km was crossed inbound in the past and is crossed outbound ahead.
+    let (shortest, longest) = inbound.duration_to_radius(80_000.0).unwrap();
+    f64_eq_tol!(shortest.to_seconds(), -3150.031, TEST_EPS_DURATION_S, "3e");
+    f64_eq_tol!(longest.to_seconds(), 12_588.373, TEST_EPS_DURATION_S, "3e");
+
+    // Test 3f: Outbound at 50000 km, the reverse of 3d and 3e. Both crossings of 20000 km are in the past.
+    let (shortest, longest) = outbound.duration_to_radius(80_000.0).unwrap();
+    f64_eq_tol!(shortest.to_seconds(), -12588.373, TEST_EPS_DURATION_S, "3f");
+    f64_eq_tol!(longest.to_seconds(), 3150.031, TEST_EPS_DURATION_S, "3f");
+    let (shortest, longest) = outbound.duration_to_radius(20_000.0).unwrap();
+    f64_eq_tol!(shortest.to_seconds(), -6407.998, TEST_EPS_DURATION_S, "3f");
+    f64_eq_tol!(longest.to_seconds(), -3030.343, TEST_EPS_DURATION_S, "3f");
 }
 
 #[rstest]
@@ -1073,7 +1109,7 @@ fn test_duration_to_radius_error_conditions(epoch: Epoch, frame: Frame) {
         "Test 4f1 (near-para ell) failed: {:?}",
         res4f1.err()
     );
-    assert!(res4f1.unwrap().to_seconds() > 0.0);
+    assert!(res4f1.unwrap().0.to_seconds() > 0.0);
 
     // Case 2: Hyperbolic, ecc = 1.0 + 2*ECC_EPSILON
     let ecc_near_para_hyp = 1.0 + 2.0 * ECC_EPSILON; // Still hyperbolic
@@ -1088,7 +1124,7 @@ fn test_duration_to_radius_error_conditions(epoch: Epoch, frame: Frame) {
         "Test 4f2 (near-para hyp) failed: {:?}",
         res4f2.err()
     );
-    assert!(res4f2.unwrap().to_seconds() > 0.0);
+    assert!(res4f2.unwrap().1.to_seconds() > 0.0);
 
     // Test 4f-alternative for InfiniteValue (parabolic orbit sma->inf, n->0)
     // Orbit::try_keplerian ensures (1.0 - ecc).abs() >= ECC_EPSILON, so ecc cannot be exactly 1.0.
