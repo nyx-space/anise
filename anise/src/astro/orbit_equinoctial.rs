@@ -112,8 +112,6 @@ pub(crate) fn cartesian_to_modified_equinoctial(
     let ecc_vec = velocity_km_s.cross(&h_vec_km2_per_s) / mu_km3_s2 - r_hat;
     let f = ecc_vec.dot(&f_hat);
     let g = ecc_vec.dot(&g_hat);
-
-    // True longitude, recovered without ever evaluating the argument of periapsis.
     let true_lon_rad = (r_hat[1] - transverse_dir[0]).atan2(r_hat[0] + transverse_dir[1]);
 
     Ok([p_km, f, g, h, k, between_0_360(true_lon_rad.to_degrees())])

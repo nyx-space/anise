@@ -1180,7 +1180,7 @@ class Orbit:
         """Returns the radius of apoapsis (or apogee around Earth), in kilometers."""
 
     def at_epoch(self, new_epoch: time.Epoch) -> Orbit:
-        """Adjusts the equinoctial mean longitude this orbit via the mean motion.
+        """Adjusts the equinoctial longitude of this orbit via the mean motion.
 
         # Astrodynamics note
         This is not a true propagation of the orbit. This is akin to a two body propagation ONLY without any other force models applied.
@@ -1358,27 +1358,6 @@ class Orbit:
     ) -> bool:
         """Returns whether this orbit and another are equal within the specified radial and velocity absolute tolerances"""
 
-    def equinoctial_a_km(self) -> float:
-        """Returns the equinoctial semi-major axis (a) in km."""
-
-    def equinoctial_elements(self) -> list[float]:
-        """Returns the six equinoctial elements in order: sma (km), h, k, p, q, lambda (deg)"""
-
-    def equinoctial_h(self) -> float:
-        """Returns the equinoctial element h (ecc * sin(aop + raan))."""
-
-    def equinoctial_k(self) -> float:
-        """Returns the equinoctial element k (ecc * cos(aop + raan))."""
-
-    def equinoctial_lambda_mean_deg(self) -> float:
-        """Returns the equinoctial mean longitude (lambda = raan + aop + ma) in degrees."""
-
-    def equinoctial_p(self) -> float:
-        """Returns the equinoctial element p (sin(inc/2) * sin(raan))."""
-
-    def equinoctial_q(self) -> float:
-        """Returns the equinoctial element q (sin(inc/2) * cos(raan))."""
-
     def fpa_deg(self) -> float:
         """Returns the flight path angle in degrees"""
 
@@ -1408,23 +1387,6 @@ class Orbit:
         """Creates a new Cartesian state from a numpy array, an epoch, and a frame.
 
         **Units:** km, km, km, km/s, km/s, km/s"""
-
-    @staticmethod
-    def from_equinoctial(
-        sma_km: float,
-        h: float,
-        k: float,
-        p: float,
-        q: float,
-        lambda_deg: float,
-        epoch: time.Epoch,
-        frame: Frame,
-    ) -> Orbit:
-        """Attempts to create a new Orbit from the Equinoctial orbital elements.
-
-        # Implementation notes
-        Note that this function computes the Keplerian elements from the equinoctial and then
-        calls the try_keplerian_mean_anomaly initializer."""
 
     @staticmethod
     def from_keplerian(
@@ -1536,6 +1498,46 @@ class Orbit:
         NOTE: This computation differs from the spherical coordinates because we consider the flattening of body.
         Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016"""
 
+    @staticmethod
+    def from_modified_equinoctial(
+        semi_parameter_km: float,
+        f: float,
+        g: float,
+        h: float,
+        k: float,
+        true_longitude_deg: float,
+        epoch: time.Epoch,
+        frame: Frame,
+    ) -> Orbit:
+        """Attempts to create a new Orbit from the Modified Equinoctial orbital elements.
+
+        + `semi_parameter_km`: semi-latus rectum, in km
+        + `f`: eccentricity vector (x-component)
+        + `g`: eccentricity vector (y-component)
+        + `h`: orbit plane tilt (x-component)
+        + `k`: orbit plane tilt (y-component)
+        + `true_longitude_deg`: true longitude, in degrees"""
+
+    @staticmethod
+    def from_walker_equinoctial(
+        sma_km: float,
+        h: float,
+        k: float,
+        p: float,
+        q: float,
+        lambda_deg: float,
+        epoch: time.Epoch,
+        frame: Frame,
+    ) -> Orbit:
+        """Attempts to create a new Orbit from the Walker equinoctial orbital elements, by computing the Keplerian elements and calling [Orbit::try_keplerian_mean_anomaly].
+
+        + `sma_km`: semi-major axis, in km
+        + `h`: eccentricity vector (y-component)
+        + `k`: eccentricity vector (x-component)
+        + `p`: orbit plane tilt (y-component)
+        + `q`: orbit plane tilt (x-component)
+        + `lambda_deg`: mean longitude, in degrees"""
+
     def height_km(self) -> float:
         """Returns the geodetic height in km.
 
@@ -1612,6 +1614,17 @@ class Orbit:
 
     def mean_motion_deg_s(self) -> float:
         """Returns the mean motion in degrees per seconds"""
+
+    def modified_equinoctial_elements(self) -> list[float]:
+        """Returns the six Modified Equinoctial elements, computed directly from the Cartesian state
+        so that they stay well conditioned for circular and equatorial orbits.
+
+        + `p`: the semi-latus rectum, in km, finite for a parabolic orbit
+        + `f`: eccentricity vector (x-component)
+        + `g`: eccentricity vector (y-component)
+        + `h`: orbit plane tilt (x-component), diverges at an inclination of 180 degrees
+        + `k`: orbit plane tilt (y-component), diverges at an inclination of 180 degrees
+        + `L`: the true longitude, in degrees"""
 
     def periapsis_altitude_km(self) -> float:
         """Returns the altitude of periapsis (or perigee around Earth), in kilometers."""
@@ -1752,6 +1765,37 @@ class Orbit:
         2. Compute the VNC DCM of `self`
         3. Rotate the difference into the VNC frame of `self`
         4. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`"""
+
+    def walker_equinoctial_a_km(self) -> float:
+        """Returns the Walker equinoctial semi-major axis (a) in km."""
+
+    def walker_equinoctial_elements(self) -> list[float]:
+        """Returns the six Walker equinoctial elements in order: sma (km), h, k, p, q, lambda (deg).
+
+        + `sma`: the semi-major axis, in km
+        + `h`: eccentricity vector (y-component)
+        + `k`: eccentricity vector (x-component)
+        + `p`: orbit plane tilt (y-component), bounded at an inclination of 180 degrees
+        + `q`: orbit plane tilt (x-component), bounded at an inclination of 180 degrees
+        + `lambda`: the mean longitude, in degrees
+
+        These are derived from the Keplerian elements, so this returns an error for an exactly
+        circular orbit; use [Orbit::modified_equinoctial_elements] there."""
+
+    def walker_equinoctial_h(self) -> float:
+        """Returns the Walker equinoctial element h (ecc * sin(aop + raan))."""
+
+    def walker_equinoctial_k(self) -> float:
+        """Returns the Walker equinoctial element k (ecc * cos(aop + raan))."""
+
+    def walker_equinoctial_lambda_mean_deg(self) -> float:
+        """Returns the Walker equinoctial mean longitude (lambda = raan + aop + ma) in degrees."""
+
+    def walker_equinoctial_p(self) -> float:
+        """Returns the Walker equinoctial element p (sin(inc/2) * sin(raan))."""
+
+    def walker_equinoctial_q(self) -> float:
+        """Returns the Walker equinoctial element q (sin(inc/2) * cos(raan))."""
 
     def with_aop_deg(self, new_aop_deg: float) -> Orbit:
         """Returns a copy of the state with a new AOP"""
