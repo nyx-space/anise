@@ -905,10 +905,8 @@ impl Orbit {
     pub fn aop_deg(&self) -> PhysicsResult<f64> {
         let n = Vector3::new(0.0, 0.0, 1.0).cross(&self.hvec()?);
         let cos_aop = n.dot(&self.evec()?) / (n.norm() * self.ecc()?);
-        let aop = cos_aop.acos();
-        if aop.is_nan() {
-            if cos_aop > 1.0 { Ok(180.0) } else { Ok(0.0) }
-        } else if self.evec()?[2] < 0.0 {
+        let aop = if cos_aop.is_nan() { 0.0 } else { cos_aop.clamp(-1.0, 1.0) }.acos();
+        if self.evec()?[2] < 0.0 {
             Ok((TAU - aop).to_degrees())
         } else {
             Ok(aop.to_degrees())
