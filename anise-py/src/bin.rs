@@ -26,13 +26,9 @@ pub(crate) fn exec_gui() -> Result<(), MetaAlmanacError> {
             _ => unreachable!(),
         };
         // Attempt to download from the public site. This binary is made executable and run
-        // below, so it must be fetched over a transport that authenticates the source: the
-        // nyxspace bucket is served with a valid certificate under storage.googleapis.com,
-        // whereas the bare public-data.nyxspace.com host only answers plain HTTP.
+        // below, so it must be fetched over https.
         let mut gui = MetaFile {
-            uri: format!(
-                "https://storage.googleapis.com/public-data.nyxspace.com/anise/v0.10/anise-gui-{OS}.exe"
-            ),
+            uri: format!("https://public-data.nyxspace.com/anise/v0.10/anise-gui-{OS}.exe"),
             crc32,
         };
         gui.process(true)?;
@@ -45,9 +41,7 @@ pub(crate) fn exec_gui() -> Result<(), MetaAlmanacError> {
     } else {
         Err(MetaAlmanacError::FetchError {
             error: format!("{OS} not supported by ANISE GUI"),
-            uri: format!(
-                "https://storage.googleapis.com/public-data.nyxspace.com/anise/v0.9/anise-gui-{OS}.exe"
-            ),
+            uri: format!("https://public-data.nyxspace.com/anise/v0.9/anise-gui-{OS}.exe"),
         })
     }
 }
