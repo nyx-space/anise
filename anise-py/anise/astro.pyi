@@ -1519,7 +1519,7 @@ class Orbit:
         + `true_longitude_deg`: the true longitude, in degrees: `L = ω + Ω + ν`"""
 
     @staticmethod
-    def from_walker_equinoctial(
+    def from_equinoctial(
         sma_km: float,
         h: float,
         k: float,
@@ -1766,10 +1766,10 @@ class Orbit:
         3. Rotate the difference into the VNC frame of `self`
         4. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`"""
 
-    def walker_equinoctial_a_km(self) -> float:
+    def equinoctial_a_km(self) -> float:
         """Returns the Walker equinoctial semi-major axis (a) in km."""
 
-    def walker_equinoctial_elements(self) -> list[float]:
+    def equinoctial_elements(self) -> list[float]:
         """Returns Walker equinoctial elements in order as a vector.
 
         + `sma`: the semi-major axis, in km: `a = (r_apo + r_peri) / 2`
@@ -1782,19 +1782,19 @@ class Orbit:
         These are derived from the Keplerian elements, so this returns an error for an exactly
         circular orbit; use [Orbit::modified_equinoctial_elements] there."""
 
-    def walker_equinoctial_h(self) -> float:
+    def equinoctial_h(self) -> float:
         """Returns the Walker equinoctial element h (ecc * sin(aop + raan))."""
 
-    def walker_equinoctial_k(self) -> float:
+    def equinoctial_k(self) -> float:
         """Returns the Walker equinoctial element k (ecc * cos(aop + raan))."""
 
-    def walker_equinoctial_lambda_mean_deg(self) -> float:
+    def equinoctial_lambda_mean_deg(self) -> float:
         """Returns the Walker equinoctial mean longitude (lambda = raan + aop + ma) in degrees."""
 
-    def walker_equinoctial_p(self) -> float:
+    def equinoctial_p(self) -> float:
         """Returns the Walker equinoctial element p (sin(inc/2) * sin(raan))."""
 
-    def walker_equinoctial_q(self) -> float:
+    def equinoctial_q(self) -> float:
         """Returns the Walker equinoctial element q (sin(inc/2) * cos(raan))."""
 
     def with_aop_deg(self, new_aop_deg: float) -> Orbit:

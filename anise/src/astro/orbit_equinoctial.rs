@@ -26,7 +26,7 @@ use pyo3::prelude::*;
 #[cfg(feature = "python")]
 use pyo3::types::PyType;
 
-pub(crate) fn walker_equinoctial_to_keplerian(
+pub(crate) fn equinoctial_to_keplerian(
     sma_km: f64,
     h: f64,
     k: f64,
@@ -255,7 +255,7 @@ impl Orbit {
     /// and equatorial orbits.
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::neg_multiply)]
-    pub fn try_from_walker_equinoctial(
+    pub fn try_equinoctial(
         sma_km: f64,
         h: f64,
         k: f64,
@@ -266,7 +266,7 @@ impl Orbit {
         frame: Frame,
     ) -> PhysicsResult<Self> {
         let (sma_km, ecc, inc_deg, raan_deg, aop_deg, ma_deg) =
-            walker_equinoctial_to_keplerian(sma_km, h, k, p, q, lambda_deg);
+            equinoctial_to_keplerian(sma_km, h, k, p, q, lambda_deg);
 
         Self::try_keplerian_mean_anomaly(
             sma_km, ecc, inc_deg, raan_deg, aop_deg, ma_deg, epoch, frame,
@@ -316,42 +316,42 @@ impl Orbit {
     /// Returns the Walker equinoctial semi-major axis (a) in km.
     ///
     /// :rtype: float
-    pub fn walker_equinoctial_a_km(&self) -> PhysicsResult<f64> {
+    pub fn equinoctial_a_km(&self) -> PhysicsResult<f64> {
         self.sma_km()
     }
 
     /// Returns the Walker equinoctial element h (ecc * sin(aop + raan)).
     ///
     /// :rtype: float
-    pub fn walker_equinoctial_h(&self) -> PhysicsResult<f64> {
+    pub fn equinoctial_h(&self) -> PhysicsResult<f64> {
         Ok(self.ecc()? * (self.aop_deg()?.to_radians() + self.raan_deg()?.to_radians()).sin())
     }
 
     /// Returns the Walker equinoctial element k (ecc * cos(aop + raan)).
     ///
     /// :rtype: float
-    pub fn walker_equinoctial_k(&self) -> PhysicsResult<f64> {
+    pub fn equinoctial_k(&self) -> PhysicsResult<f64> {
         Ok(self.ecc()? * (self.aop_deg()?.to_radians() + self.raan_deg()?.to_radians()).cos())
     }
 
     /// Returns the Walker equinoctial element p (sin(inc/2) * sin(raan)).
     ///
     /// :rtype: float
-    pub fn walker_equinoctial_p(&self) -> PhysicsResult<f64> {
+    pub fn equinoctial_p(&self) -> PhysicsResult<f64> {
         Ok((self.inc_deg()?.to_radians() / 2.0).sin() * self.raan_deg()?.to_radians().sin())
     }
 
     /// Returns the Walker equinoctial element q (sin(inc/2) * cos(raan)).
     ///
     /// :rtype: float
-    pub fn walker_equinoctial_q(&self) -> PhysicsResult<f64> {
+    pub fn equinoctial_q(&self) -> PhysicsResult<f64> {
         Ok((self.inc_deg()?.to_radians() / 2.0).sin() * self.raan_deg()?.to_radians().cos())
     }
 
     /// Returns the Walker equinoctial mean longitude (lambda = raan + aop + ma) in degrees.
     ///
     /// :rtype: float
-    pub fn walker_equinoctial_lambda_mean_deg(&self) -> PhysicsResult<f64> {
+    pub fn equinoctial_lambda_mean_deg(&self) -> PhysicsResult<f64> {
         // C++ version `aeq[5]=kep[3]+kep[4]+kep[5]` sums degrees.
         Ok(self.raan_deg()? + self.aop_deg()? + self.ma_deg()?)
     }
@@ -369,14 +369,14 @@ impl Orbit {
     /// circular orbit; use [Orbit::modified_equinoctial_elements] there.
     ///
     /// :rtype: list[float]
-    pub fn walker_equinoctial_elements(&self) -> PhysicsResult<Vec<f64>> {
+    pub fn equinoctial_elements(&self) -> PhysicsResult<Vec<f64>> {
         Ok(vec![
-            self.walker_equinoctial_a_km()?,
-            self.walker_equinoctial_h()?,
-            self.walker_equinoctial_k()?,
-            self.walker_equinoctial_p()?,
-            self.walker_equinoctial_q()?,
-            self.walker_equinoctial_lambda_mean_deg()?,
+            self.equinoctial_a_km()?,
+            self.equinoctial_h()?,
+            self.equinoctial_k()?,
+            self.equinoctial_p()?,
+            self.equinoctial_q()?,
+            self.equinoctial_lambda_mean_deg()?,
         ])
     }
 
@@ -404,11 +404,11 @@ impl Orbit {
 #[cfg(feature = "python")]
 #[cfg_attr(feature = "python", pymethods)]
 impl Orbit {
-    /// Python bind for [Orbit::try_from_walker_equinoctial].
+    /// Python bind for [Orbit::try_equinoctial].
     #[cfg(feature = "python")]
     #[classmethod]
     #[allow(clippy::too_many_arguments)]
-    pub fn from_walker_equinoctial(
+    pub fn from_equinoctial(
         _cls: &Bound<'_, PyType>,
         sma_km: f64,
         h: f64,
@@ -419,7 +419,7 @@ impl Orbit {
         epoch: Epoch,
         frame: Frame,
     ) -> PhysicsResult<Self> {
-        Self::try_from_walker_equinoctial(sma_km, h, k, p, q, lambda_deg, epoch, frame)
+        Self::try_equinoctial(sma_km, h, k, p, q, lambda_deg, epoch, frame)
     }
 
     /// Python bind for [Orbit::try_from_modified_equinoctial].
