@@ -1694,7 +1694,7 @@ class Orbit:
         """Returns the orbital momentum value on the Y axis"""
 
     def hyperbolic_anomaly_deg(self) -> float:
-        """Returns the hyperbolic anomaly in degrees between 0 and 360.0
+        """Returns the hyperbolic anomaly in degrees, negative on the inbound leg and unbounded.
         Returns an error if the orbit is not hyperbolic."""
 
     def hz(self) -> float:
