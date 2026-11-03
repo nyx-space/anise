@@ -97,9 +97,11 @@ impl Orbit {
             ParabolicEccentricitySnafu { limit: ECC_EPSILON }
         );
         if ecc > 1.0 {
-            let ta_deg = between_0_360(ta_deg);
+            // The true anomaly of a hyperbola is bounded by the asymptotes on both legs, so compare
+            // its magnitude in [-180, 180]: wrapping to [0, 360) would reject every inbound state.
+            let ta_deg = between_pm_180(ta_deg);
             ensure!(
-                ta_deg <= (PI - (1.0 / ecc).acos()).to_degrees(),
+                ta_deg.abs() <= (PI - (1.0 / ecc).acos()).to_degrees(),
                 HyperbolicTrueAnomalySnafu { ta_deg }
             );
         }
