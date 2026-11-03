@@ -1462,25 +1462,21 @@ class Orbit:
     def distance_to_km(self, other: Orbit) -> float:
         """Returns the distance in kilometers between this state and another state, if both frame match (epoch does not need to match)."""
 
-    def duration_to_radius(self, radius_km: float) -> time.Duration:
-        """Calculates the duration to reach a specific radius in the orbit.
+    def duration_to_radius(self, radius_km: float) -> typing.Tuple:
+        """Calculates the durations to the two crossings of a specific radius in the orbit, the earliest first.
 
-        This function computes the time it will take for the orbiting body to reach
-        the given `radius_km` from its current position. The calculation assumes
-        two-body dynamics and considers the direction of motion.
+        This function computes the time from the current position to each crossing
+        of the given `radius_km`. The calculation assumes two-body dynamics and
+        considers the direction of motion.
 
         # Assumptions & Limitations
 
         - Assumes pure Keplerian motion.
-        - For elliptical orbits, if the radius is reachable at two points (ascending and descending parts
-        of the orbit), this function calculates the time to reach the radius corresponding to the
-        true anomaly in `[0, PI]` (typically the ascending part or up to apoapsis if starting past periapsis).
-        - For circular orbits, if the radius is within the apoapse and periapse, then a duration of zero is returned.
-        - For hyperbolic/parabolic orbits, the true anomaly at radius is also computed in `[0, PI]`. If this
-        point is in the past, the function returns an error, as it doesn't look for solutions on the
-        departing leg if `nu > PI` would be required (unless current TA is already > PI and target radius is further along).
-        The current implementation strictly uses the `acos` result, so `nu_rad_at_radius` is always `0 <= nu <= PI`.
-        This means it finds the time to reach the radius on the path from periapsis up to the point where true anomaly is PI."""
+        - For elliptical orbits, the radius is reached at true anomalies `nu` and `-nu`, which coincide at an apsis.
+        The durations are to the next crossing at each, so both are within one period.
+        - For circular orbits, if the radius is within the apoapse and periapse, then both durations are zero.
+        - For hyperbolic orbits, the radius is reached once at `-nu` (inbound) and once at `nu` (outbound), which coincide at periapsis.
+        The inbound crossing is returned first. A negative duration denotes a past crossing, and its magnitude is the time elapsed since that crossing."""
 
     def ea_deg(self) -> float:
         """Returns the eccentric anomaly in degrees
