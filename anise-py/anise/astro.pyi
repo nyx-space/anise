@@ -35,7 +35,7 @@ class AzElRange:
         """A structure that stores the result of Azimuth, Elevation, Range, Range rate calculation."""
 
     def elevation_above_mask_deg(self) -> float:
-        """Returns the elevation above the terrain mask for this azimuth, in degrees.
+        """Returns the elevation above the terrain mask for this azimuth, in degrees, pr -90.0 if obstructed by an obstructing body.
         If the terrain mask was zero at this azimuth, then the elevation above mask is equal to the elevation_deg field."""
 
     def is_obstructed(self) -> bool:
@@ -70,6 +70,118 @@ class AzElRange:
 
     def __str__(self) -> str:
         """Return str(self)."""
+
+@typing.final
+class BPlane:
+    """Defines a planetary targeting B-Plane (Body Plane) for a hyperbolic trajectory.
+
+    The B-Plane is an analytical target frame attached to the
+    central body's center of mass and oriented perpendicular to the incoming hyperbolic asymptote.
+    It linearizes the nonlinear two-body gravity well at the sphere of influence: the impact parameter
+    vector $\\mathbf{B}$ points from the central body's focus to the point where the unperturbed incoming
+    asymptote pierces the B-Plane.
+
+    # Reference Triad ($\\hat{\\mathbf{S}}, \\hat{\\mathbf{T}}, \\hat{\\mathbf{R}}$)
+
+    Given a hyperbolic `Orbit` with eccentricity vector $\\mathbf{e} = e \\hat{\\mathbf{e}}$, angular
+    momentum unit vector $\\hat{\\mathbf{h}}$, semi-minor axis $b = -a \\sqrt{e^2 - 1}$, and in-plane
+    normal $\\hat{\\mathbf{n}} = \\hat{\\mathbf{h}} \\times \\hat{\\mathbf{e}}$, the orthonormal right-handed
+    B-Plane triad is constructed relative to the frame's reference pole $\\hat{\\mathbf{k}} = [0, 0, 1]^T$:
+
+    1. **Incoming Asymptote ($\\hat{\\mathbf{S}}$):** Unit vector parallel to the incoming hyperbolic
+    excess velocity $\\mathbf{v}_{\\infty}^{-}$, normal to the B-Plane:
+    $$\\hat{\\mathbf{S}} = \\frac{1}{e}\\hat{\\mathbf{e}} + \\sqrt{1 - \\frac{1}{e^2}}\\hat{\\mathbf{n}}$$
+    2. **Transverse Axis ($\\hat{\\mathbf{T}}$):** Lies in the reference equatorial plane (orthogonal to
+    both $\\hat{\\mathbf{S}}$ and the reference pole $\\hat{\\mathbf{k}} = [0, 0, 1]^T$), pointing eastward:
+    $$\\hat{\\mathbf{T}} = \\frac{\\hat{\\mathbf{S}} \\times \\hat{\\mathbf{k}}}{\\|\\hat{\\mathbf{S}} \\times \\hat{\\mathbf{k}}\\|}$$
+    3. **Radial / Meridian Axis ($\\hat{\\mathbf{R}}$):** Completes the right-handed triad
+    ($\\hat{\\mathbf{S}} \\times \\hat{\\mathbf{T}} = \\hat{\\mathbf{R}}$):
+    $$\\hat{\\mathbf{R}} = \\hat{\\mathbf{S}} \\times \\hat{\\mathbf{T}}$$
+
+    **Hemisphere Sign Convention:** Because $(\\hat{\\mathbf{S}}, \\hat{\\mathbf{T}}, \\hat{\\mathbf{R}})$ is
+    right-handed and $\\hat{\\mathbf{T}} \\propto \\hat{\\mathbf{S}} \\times \\hat{\\mathbf{k}}$, the $\\hat{\\mathbf{R}}$
+    axis points generally **southward** ($\\hat{\\mathbf{R}} \\cdot \\hat{\\mathbf{k}} < 0$), matching JPL Monte,
+    NASA GMAT, and AGI STK conventions. Consequently:
+    * **Northern hemisphere flyby:** $B_R < 0$
+    * **Southern hemisphere flyby:** $B_R > 0$
+    * **Prograde equatorial flyby:** $B_T > 0$, $B_R = 0$
+    * **Retrograde equatorial flyby:** $B_T < 0$, $B_R = 0$
+
+    # Impact Parameter Vector ($\\mathbf{B}$)
+
+    The impact parameter vector lies strictly within the $(\\hat{\\mathbf{T}}, \\hat{\\mathbf{R}})$ plane
+    ($\\mathbf{B} \\cdot \\hat{\\mathbf{S}} \\equiv 0$) with magnitude equal to the hyperbolic semi-minor axis $b$:
+    $$\\mathbf{B} = b \\left(\\sqrt{1 - \\frac{1}{e^2}}\\hat{\\mathbf{e}} - \\frac{1}{e}\\hat{\\mathbf{n}}\\right) = B_T \\hat{\\mathbf{T}} + B_R \\hat{\\mathbf{R}}$$
+
+    # Frame Requirements Warning
+
+    The input `Orbit` **must** be expressed in an inertial (or pseudo-inertial, frozen at epoch) frame
+    whose Z-axis $[0, 0, 1]^T$ corresponds to the desired reference pole (e.g., EME2000, Moon ICRS, or
+    ECLIPJ2000). **Never** pass an `Orbit` transformed into a rotating body-fixed frame via the transport
+    theorem, as the rotational velocity term corrupts the osculating angular momentum, eccentricity, and $C_3$."""
+
+    b_r_km: typing.Any
+    b_t_km: typing.Any
+    epoch: typing.Any
+    frame: typing.Any
+    ltof: typing.Any
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+
+    def __new__(cls) -> BPlane:
+        """Defines a planetary targeting B-Plane (Body Plane) for a hyperbolic trajectory.
+
+        The B-Plane is an analytical target frame attached to the
+        central body's center of mass and oriented perpendicular to the incoming hyperbolic asymptote.
+        It linearizes the nonlinear two-body gravity well at the sphere of influence: the impact parameter
+        vector $\\mathbf{B}$ points from the central body's focus to the point where the unperturbed incoming
+        asymptote pierces the B-Plane.
+
+        # Reference Triad ($\\hat{\\mathbf{S}}, \\hat{\\mathbf{T}}, \\hat{\\mathbf{R}}$)
+
+        Given a hyperbolic `Orbit` with eccentricity vector $\\mathbf{e} = e \\hat{\\mathbf{e}}$, angular
+        momentum unit vector $\\hat{\\mathbf{h}}$, semi-minor axis $b = -a \\sqrt{e^2 - 1}$, and in-plane
+        normal $\\hat{\\mathbf{n}} = \\hat{\\mathbf{h}} \\times \\hat{\\mathbf{e}}$, the orthonormal right-handed
+        B-Plane triad is constructed relative to the frame's reference pole $\\hat{\\mathbf{k}} = [0, 0, 1]^T$:
+
+        1. **Incoming Asymptote ($\\hat{\\mathbf{S}}$):** Unit vector parallel to the incoming hyperbolic
+        excess velocity $\\mathbf{v}_{\\infty}^{-}$, normal to the B-Plane:
+        $$\\hat{\\mathbf{S}} = \\frac{1}{e}\\hat{\\mathbf{e}} + \\sqrt{1 - \\frac{1}{e^2}}\\hat{\\mathbf{n}}$$
+        2. **Transverse Axis ($\\hat{\\mathbf{T}}$):** Lies in the reference equatorial plane (orthogonal to
+        both $\\hat{\\mathbf{S}}$ and the reference pole $\\hat{\\mathbf{k}} = [0, 0, 1]^T$), pointing eastward:
+        $$\\hat{\\mathbf{T}} = \\frac{\\hat{\\mathbf{S}} \\times \\hat{\\mathbf{k}}}{\\|\\hat{\\mathbf{S}} \\times \\hat{\\mathbf{k}}\\|}$$
+        3. **Radial / Meridian Axis ($\\hat{\\mathbf{R}}$):** Completes the right-handed triad
+        ($\\hat{\\mathbf{S}} \\times \\hat{\\mathbf{T}} = \\hat{\\mathbf{R}}$):
+        $$\\hat{\\mathbf{R}} = \\hat{\\mathbf{S}} \\times \\hat{\\mathbf{T}}$$
+
+        **Hemisphere Sign Convention:** Because $(\\hat{\\mathbf{S}}, \\hat{\\mathbf{T}}, \\hat{\\mathbf{R}})$ is
+        right-handed and $\\hat{\\mathbf{T}} \\propto \\hat{\\mathbf{S}} \\times \\hat{\\mathbf{k}}$, the $\\hat{\\mathbf{R}}$
+        axis points generally **southward** ($\\hat{\\mathbf{R}} \\cdot \\hat{\\mathbf{k}} < 0$), matching JPL Monte,
+        NASA GMAT, and AGI STK conventions. Consequently:
+        * **Northern hemisphere flyby:** $B_R < 0$
+        * **Southern hemisphere flyby:** $B_R > 0$
+        * **Prograde equatorial flyby:** $B_T > 0$, $B_R = 0$
+        * **Retrograde equatorial flyby:** $B_T < 0$, $B_R = 0$
+
+        # Impact Parameter Vector ($\\mathbf{B}$)
+
+        The impact parameter vector lies strictly within the $(\\hat{\\mathbf{T}}, \\hat{\\mathbf{R}})$ plane
+        ($\\mathbf{B} \\cdot \\hat{\\mathbf{S}} \\equiv 0$) with magnitude equal to the hyperbolic semi-minor axis $b$:
+        $$\\mathbf{B} = b \\left(\\sqrt{1 - \\frac{1}{e^2}}\\hat{\\mathbf{e}} - \\frac{1}{e}\\hat{\\mathbf{n}}\\right) = B_T \\hat{\\mathbf{T}} + B_R \\hat{\\mathbf{R}}$$
+
+        # Frame Requirements Warning
+
+        The input `Orbit` **must** be expressed in an inertial (or pseudo-inertial, frozen at epoch) frame
+        whose Z-axis $[0, 0, 1]^T$ corresponds to the desired reference pole (e.g., EME2000, Moon ICRS, or
+        ECLIPJ2000). **Never** pass an `Orbit` transformed into a rotating body-fixed frame via the transport
+        theorem, as the rotational velocity term corrupts the osculating angular momentum, eccentricity, and $C_3$."""
+
+    def angle_deg(self) -> float:
+        """Returns the B plane angle in degrees between -180 and 180"""
+
+    def magnitude_km(self) -> float:
+        """Returns the B plane vector magnitude, in kilometers"""
 
 @typing.final
 class Covariance:
@@ -566,6 +678,9 @@ class Ephemeris:
         2. Rotates BOTH endpoints into the requested `local_frame`.
         3. Interpolates between the two stable matrices using Log-Euclidean Riemannian interpolation."""
 
+    def degree_at(self, epoch: time.Epoch) -> int:
+        """Returns the interpolation degree for the segment valid at the provided epoch."""
+
     def domain(self) -> tuple:
         """Returns the time domain of this ephemeris."""
 
@@ -590,8 +705,14 @@ class Ephemeris:
     def insert_orbit(self, orbit: Orbit) -> None:
         """Inserts a new orbit (without covariance) to this ephemeris (it is automatically sorted chronologically)."""
 
-    def len(self) -> int:
-        """Returns the number of states"""
+    def interpolation_at(self, epoch: time.Epoch) -> str:
+        """Returns the interpolation method for the segment valid at the provided epoch."""
+
+    def is_empty(self) -> typing.Any:
+        """Returns true when no segment contains a record."""
+
+    def len(self) -> typing.Any:
+        """Returns the number of records across all segments."""
 
     def nearest_after(self, epoch: time.Epoch, almanac: Almanac) -> EphemerisRecord:
         """Returns the nearest entry after the provided time"""
@@ -616,7 +737,7 @@ class Ephemeris:
         """Interpolate the ephemeris at the provided epoch, returning only the orbit."""
 
     def resample(self, ts: time.TimeSeries, almanac: Almanac) -> Ephemeris:
-        """Resample this ephemeris, with covariance, at the provided time series"""
+        """Resample this ephemeris, with covariance, at the provided nonempty time series."""
 
     def set_object_id(self, object_id: str) -> typing.Any: ...
     def start_epoch(self) -> time.Epoch: ...
@@ -1186,6 +1307,28 @@ class Orbit:
         This is not a true propagation of the orbit. This is akin to a two body propagation ONLY without any other force models applied.
         Use Nyx for high fidelity propagation. This implementation uses equinoctial elements and should be well behaved for circular equatorial orbits."""
 
+    def b_ltof(self) -> float:
+        """Linearized Time of Flight (LTOF) along the incoming asymptote to B-Plane crossing:
+        $\\text{LTOF} = -(\\mathbf{r} \\cdot \\hat{\\mathbf{S}}) / v_\\infty$.
+        Positive when the spacecraft is inbound (prior to B-Plane crossing) and negative after crossing."""
+
+    def b_plane(self) -> BPlane:
+        """Computes the planetary targeting B-Plane (Body Plane) for a hyperbolic trajectory. Refer to [BPlane] for details."""
+
+    def b_plane_angle_deg(self) -> float:
+        """Returns the B plane angle in degrees between -180 and 180"""
+
+    def b_plane_mag_km(self) -> float:
+        """Returns the B plane vector magnitude, in kilometers"""
+
+    def b_r_km(self) -> float:
+        """Component of the impact parameter vector along the $\\hat{\\mathbf{R}}$ axis ($\\mathbf{B} \\cdot \\hat{\\mathbf{R}}$), in kilometers.
+        Negative values indicate a flyby over the northern hemisphere relative to the frame's $+Z$ pole."""
+
+    def b_t_km(self) -> float:
+        """Component of the impact parameter vector along the $\\hat{\\mathbf{T}}$ axis ($\\mathbf{B} \\cdot \\hat{\\mathbf{T}}$), in kilometers.
+        Positive values indicate a prograde pass; negative values indicate a retrograde pass."""
+
     def c3_km2_s2(self) -> float:
         """Returns the $C_3$ of this orbit in km^2/s^2"""
 
@@ -1639,9 +1782,16 @@ class Orbit:
         """Returns the Brouwer-short mean Mean Anomaly in degrees."""
 
     def ma_deg(self) -> float:
-        """Returns the mean anomaly in degrees
+        """Returns the mean anomaly in degrees.
 
-        This is a conversion from GMAT's StateConversionUtil::TrueToMeanAnomaly"""
+        - For elliptic orbits (e < 1.0 - ECC_EPSILON), returns M in [0.0, 360.0[.
+        - For hyperbolic orbits (e > 1.0 + ECC_EPSILON), returns M_h in ]-inf, +inf[ degrees.
+
+        This is a mostly conversion from GMAT's StateConversionUtil::TrueToMeanAnomaly
+
+        # Errors
+        Returns `PhysicsError::ParabolicEccentricity` if `|e - 1.0| < ECC_EPSILON`.
+        Returns `PhysicsError::Circular` if `e < ECC_EPSILON` (propagated from `ea_deg`/`ta_deg`)."""
 
     def mean_motion_deg_s(self) -> float:
         """Returns the mean motion in degrees per seconds"""
@@ -1692,6 +1842,17 @@ class Orbit:
     def ric_difference(self, other: Orbit) -> Orbit:
         """Returns a Cartesian state representing the RIC difference between self and other, in position and velocity (with transport theorem).
         Refer to dcm_from_ric_to_inertial for details on the RIC frame.
+
+        # Algorithm
+        1. Compute the difference between `other` and `self`
+        2. Compute the RIC DCM of `self`
+        3. Rotate the difference into the RIC frame of `self`
+        4. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`"""
+
+    def ric_difference_unchecked(self, other: Orbit) -> Orbit:
+        """Returns a Cartesian state representing the RIC difference between self and other, in position and velocity (with transport theorem).
+        Refer to dcm_from_ric_to_inertial for details on the RIC frame.
+        The `unchecked` variant does not check that both epochs match!
 
         # Algorithm
         1. Compute the difference between `other` and `self`
@@ -1753,12 +1914,8 @@ class Orbit:
     def ta_deg(self) -> float:
         """Returns the true anomaly in degrees between 0 and 360.0
 
-        NOTE: This function will emit a warning stating that the TA should be avoided if in a very near circular orbit
-        Code from <https://github.com/ChristopherRabotin/GMAT/blob/80bde040e12946a61dae90d9fc3538f16df34190/src/gmatutil/util/StateConversionUtil.cpp#L6835>
-
-        LIMITATION: For an orbit whose true anomaly is (very nearly) 0.0 or 180.0, this function may return either 0.0 or 180.0 with a very small time increment.
-        This is due to the precision of the cosine calculation: if the arccosine calculation is out of bounds, the sign of the cosine of the true anomaly is used
-        to determine whether the true anomaly should be 0.0 or 180.0. **In other words**, there is an ambiguity in the computation in the true anomaly exactly at 180.0 and 0.0."""
+        NOTE: This function will return a PhysicsError::Circular if the eccentricity is less than [ECC_EPSILON] (1e-11) because the line of apses is not defined,
+        and therefore the periapsis location is not defined."""
 
     def ta_dot_deg_s(self) -> float:
         """Returns the time derivative of the true anomaly computed as the 360.0 degrees divided by the orbital period (in seconds)."""
@@ -1789,6 +1946,17 @@ class Orbit:
     def vnc_difference(self, other: Orbit) -> Orbit:
         """Returns a Cartesian state representing the VNC difference between self and other, in position and velocity (with transport theorem).
         Refer to dcm_from_vnc_to_inertial for details on the VNC frame.
+
+        # Algorithm
+        1. Compute the difference between `other` and `self`
+        2. Compute the VNC DCM of `self`
+        3. Rotate the difference into the VNC frame of `self`
+        4. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`"""
+
+    def vnc_difference_unchecked(self, other: Orbit) -> Orbit:
+        """Returns a Cartesian state representing the VNC difference between self and other, in position and velocity (with transport theorem).
+        Refer to dcm_from_vnc_to_inertial for details on the VNC frame.
+        The `unchecked` variant does not check that both epochs match!
 
         # Algorithm
         1. Compute the difference between `other` and `self`

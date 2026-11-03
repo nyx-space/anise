@@ -2,15 +2,14 @@ use pyo3::exceptions::{PyException, PyTypeError};
 use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
 use pyo3::types::PyType;
+use snafu::ResultExt;
 
 use std::str::FromStr;
 
-use crate::errors::AlmanacResult;
+use crate::errors::{AlmanacResult, MetaSnafu};
 
 use super::{Almanac, MetaAlmanac, MetaAlmanacError, MetaFile};
 
-// Python only methods
-#[cfg(feature = "python")]
 #[cfg_attr(feature = "python", pymethods)]
 impl MetaAlmanac {
     /// Loads the provided path as a Dhall file. If no path is provided, creates an empty MetaAlmanac that can store MetaFiles.
@@ -126,5 +125,29 @@ impl MetaAlmanac {
     fn set_files(&mut self, files: Vec<MetaFile>) -> PyResult<()> {
         self.files = files;
         Ok(())
+    }
+}
+
+#[cfg_attr(feature = "python", pymethods)]
+impl Almanac {
+    /// Loads the provided path as a MetaAlmanac Dhall file and attempts to load that MetaAlmanac, returning an error if the loading failed.
+    /// Refer to MetaAlmanac.process for details.
+    ///
+    /// :type path: str
+    /// :type autodelete: bool, optional
+    /// :rtype: Almanac
+    #[classmethod]
+    #[pyo3(name = "from_meta", signature=(path, autodelete = None))]
+    fn py_from_meta(
+        _cls: Bound<'_, PyType>,
+        path: &str,
+        autodelete: Option<bool>,
+    ) -> AlmanacResult<Self> {
+        MetaAlmanac::new(path)
+            .context(MetaSnafu {
+                fno: 0_usize,
+                file: None,
+            })?
+            .process(autodelete.unwrap_or_default())
     }
 }

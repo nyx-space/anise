@@ -35,6 +35,7 @@ pub mod orbit_equinoctial;
 pub mod orbit_geodetic;
 #[cfg(feature = "analysis")]
 pub mod orbit_gradient;
+pub mod orbit_hyperbolic;
 pub mod orbit_mean_elements;
 
 pub use crate::structure::location::{Location, TerrainMask};
@@ -84,12 +85,16 @@ impl AzElRange {
         self.obstructed_by.is_some() || self.elevation_above_mask_deg() < 0.0
     }
 
-    /// Returns the elevation above the terrain mask for this azimuth, in degrees.
+    /// Returns the elevation above the terrain mask for this azimuth, in degrees, pr -90.0 if obstructed by an obstructing body.
     /// If the terrain mask was zero at this azimuth, then the elevation above mask is equal to the elevation_deg field.
     ///
     /// :rtype: float
     pub fn elevation_above_mask_deg(&self) -> f64 {
-        self.elevation_deg - self.mask_deg.unwrap_or(0.0)
+        if self.obstructed_by.is_some() {
+            -90.0
+        } else {
+            self.elevation_deg - self.mask_deg.unwrap_or(0.0)
+        }
     }
 }
 
@@ -110,6 +115,12 @@ impl AzElRange {
         use crate::constants::SPEED_OF_LIGHT_KM_S;
         use hifitime::TimeUnits;
 
+        let light_time = if range_km.is_finite() {
+            (range_km / SPEED_OF_LIGHT_KM_S).seconds()
+        } else {
+            Duration::ZERO
+        };
+
         Self {
             epoch,
             azimuth_deg,
@@ -118,7 +129,7 @@ impl AzElRange {
             range_rate_km_s,
             obstructed_by,
             mask_deg,
-            light_time: (range_km / SPEED_OF_LIGHT_KM_S).seconds(),
+            light_time,
         }
     }
 
@@ -170,7 +181,11 @@ impl AzElRange {
         use hifitime::TimeUnits;
 
         self.range_km = range_km;
-        self.light_time = (range_km / SPEED_OF_LIGHT_KM_S).seconds();
+        self.light_time = if range_km.is_finite() {
+            (range_km / SPEED_OF_LIGHT_KM_S).seconds()
+        } else {
+            Duration::ZERO
+        };
         Ok(())
     }
 

@@ -13,6 +13,7 @@ mod type02_chebyshev_jpl_de;
 mod type03_chebyshev_jpl_de;
 mod type09_lagrange;
 mod type13_hermite;
+mod type21_extended_modified_diff;
 
 mod compare;
 mod validate;

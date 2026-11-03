@@ -281,11 +281,14 @@ impl HermiteSetType13<'_> {
 
 impl fmt::Display for HermiteSetType13<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (Some(first), Some(last)) = (self.epoch_data.first(), self.epoch_data.last()) else {
+            return write!(f, "Hermite Type 13 (empty)");
+        };
         write!(
             f,
             "Hermite Type 13 from {:E} to {:E} with degree {} ({} items, {} epoch directories)",
-            Epoch::from_et_seconds(*self.epoch_data.first().unwrap_or(&0.0)),
-            Epoch::from_et_seconds(*self.epoch_data.last().unwrap_or(&0.0)),
+            Epoch::from_et_seconds(*first),
+            Epoch::from_et_seconds(*last),
             self.degree(),
             self.epoch_data.len(),
             self.epoch_registry.len()
@@ -351,7 +354,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
 
         let samples = num_samples_f64 as usize + 1;
         // A non-empty segment must carry at least a full interpolation window of states.
-        // With fewer, evaluate() recentres the window with `last_idx - 2 * num_left`, which
+        // With fewer, evaluate() recentres the window with `last_idx - samples`, which
         // underflows and panics when the segment is queried at an interior epoch.
         if num_records > 0 && num_records < samples {
             return Err(DecodingError::Integrity {
@@ -434,6 +437,13 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
                 .ok_or(InterpolationError::MissingInterpolationData {
                     epoch: Epoch::from_et_seconds(epoch_et_s),
                 })?;
+        // The out-of-domain error below builds epochs from these bounds, and hifitime panics on
+        // a non-finite value. check_integrity is not run on the query path, so reject them here.
+        if !self.epoch_data[0].is_finite() || !last_epoch.is_finite() {
+            return Err(InterpolationError::CorruptedData {
+                what: "epoch data contains a non-finite value",
+            });
+        }
         if epoch_et_s < self.epoch_data[0].next_down() || epoch_et_s > last_epoch.next_up() {
             return Err(InterpolationError::NoInterpolationData {
                 req: Epoch::from_et_seconds(epoch_et_s),
@@ -522,7 +532,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
 
                 // Check that we have enough samples
                 if last_idx == self.num_records {
-                    first_idx = last_idx - 2 * num_left;
+                    first_idx = last_idx - self.samples;
                 }
 
                 // Statically allocated arrays of the maximum number of samples
@@ -772,7 +782,7 @@ mod hermite_ut {
     #[test]
     fn rejects_window_larger_than_records_type13() {
         // num_records = 4 but the declared window is samples = 7. evaluate() would recentre the
-        // window with `last_idx - 2 * num_left` and underflow when queried at an interior epoch,
+        // window with `last_idx - samples` and underflow when queried at an interior epoch,
         // so the segment must be rejected at decode time.
         let mut slice = vec![0.0_f64; 30];
         slice[28] = 6.0; // window size - 1 => samples = 7
@@ -1022,5 +1032,53 @@ mod hermite_ut {
             dataset.evaluate(0.0, &summary).is_err(),
             "a non-finite epoch must error, not panic"
         );
+    }
+
+    #[test]
+    fn type13_odd_window_at_segment_end() {
+        use crate::naif::spk::summary::SPKSummaryRecord;
+        // An odd window was one record short at the end of the segment.
+        let epoch_data = [100.0, 110.0, 120.0, 130.0];
+        let state_data: Vec<f64> = epoch_data
+            .iter()
+            .flat_map(|t| [t + 1000.0, 0.0, 0.0, 1.0, 0.0, 0.0])
+            .collect();
+        let dataset = HermiteSetType13 {
+            samples: 3,
+            num_records: 4,
+            state_data: &state_data,
+            epoch_data: &epoch_data,
+            epoch_registry: &[],
+        };
+        let summary = SPKSummaryRecord::default();
+        let (pos, vel) = dataset.evaluate(125.0, &summary).unwrap();
+        assert!((pos.x - 1125.0).abs() < 1e-12);
+        assert!((vel.x - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn non_finite_bounding_epoch_is_rejected() {
+        use crate::naif::spk::summary::SPKSummaryRecord;
+        // The out-of-domain error is built from the first and last epochs, which hifitime
+        // panics on when non-finite. Query outside the finite bound of each crafted segment.
+        let state_data = [0.0_f64; 12];
+        let summary = SPKSummaryRecord::default();
+        for (epoch_data, query) in [
+            ([f64::NAN, 10.0], 20.0),
+            ([f64::NEG_INFINITY, 10.0], 20.0),
+            ([10.0, f64::INFINITY], 0.0),
+        ] {
+            let dataset = HermiteSetType13 {
+                samples: 1,
+                num_records: 2,
+                state_data: &state_data,
+                epoch_data: &epoch_data,
+                epoch_registry: &[],
+            };
+            assert!(
+                dataset.evaluate(query, &summary).is_err(),
+                "a non-finite bounding epoch must error, not panic"
+            );
+        }
     }
 }

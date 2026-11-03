@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use anise::constants::frames::{EARTH_J2000, EARTH_MOON_BARYCENTER_J2000, MOON_J2000, VENUS_J2000};
+use anise::constants::frames::{EARTH_ICRS, EARTH_MOON_BARYCENTER_ICRS, MOON_ICRS, VENUS_ICRS};
 use anise::file2heap;
 use anise::math::Vector3;
 use anise::prelude::*;
@@ -47,8 +47,8 @@ fn de440s_translation_verif_venus2emb() {
 
     let state = ctx
         .translate(
-            VENUS_J2000,
-            EARTH_MOON_BARYCENTER_J2000,
+            VENUS_ICRS,
+            EARTH_MOON_BARYCENTER_ICRS,
             epoch,
             Aberration::NONE,
         )
@@ -83,7 +83,7 @@ fn de440s_translation_verif_venus2emb() {
 
     // Test the opposite translation
     let state = ctx
-        .translate_geometric(EARTH_MOON_BARYCENTER_J2000, VENUS_J2000, epoch)
+        .translate_geometric(EARTH_MOON_BARYCENTER_ICRS, VENUS_ICRS, epoch)
         .unwrap();
 
     // We expect exactly the same output as SPICE to machine precision.
@@ -133,7 +133,7 @@ fn de438s_translation_verif_venus2moon() {
     */
 
     let state = ctx
-        .translate(VENUS_J2000, MOON_J2000, epoch, Aberration::NONE)
+        .translate(VENUS_ICRS, MOON_ICRS, epoch, Aberration::NONE)
         .unwrap();
 
     let pos_expct_km = Vector3::new(
@@ -169,7 +169,7 @@ fn de438s_translation_verif_venus2moon() {
 
     // Test the opposite translation
     let state = ctx
-        .translate_geometric(MOON_J2000, VENUS_J2000, epoch)
+        .translate_geometric(MOON_ICRS, VENUS_ICRS, epoch)
         .unwrap();
 
     // We expect exactly the same output as SPICE to machine precision.
@@ -223,15 +223,15 @@ fn de438s_translation_verif_emb2moon() {
 
     let state = ctx
         .translate(
-            EARTH_MOON_BARYCENTER_J2000,
-            MOON_J2000,
+            EARTH_MOON_BARYCENTER_ICRS,
+            MOON_ICRS,
             epoch,
             Aberration::NONE,
         )
         .unwrap();
 
     // Check that we correctly set the output frame
-    assert_eq!(state.frame, MOON_J2000);
+    assert_eq!(state.frame, MOON_ICRS);
 
     let pos_expct_km = Vector3::new(
         8.157_659_049_800_408e4,
@@ -267,8 +267,8 @@ fn de438s_translation_verif_emb2moon() {
     // Try the opposite
     let state = ctx
         .translate(
-            MOON_J2000,
-            EARTH_MOON_BARYCENTER_J2000,
+            MOON_ICRS,
+            EARTH_MOON_BARYCENTER_ICRS,
             epoch,
             Aberration::NONE,
         )
@@ -305,15 +305,15 @@ fn type13_hermite_verif() {
 
     let epoch = Epoch::from_gregorian_hms(2000, 1, 1, 14, 0, 0, TimeScale::UTC);
 
-    let my_sc_j2k = Frame::from_ephem_j2000(-10000001);
+    let my_sc_j2k = Frame::from_ephem_icrs(-10000001);
 
     let state = ctx
-        .translate_geometric(my_sc_j2k, EARTH_J2000, epoch)
+        .translate_geometric(my_sc_j2k, EARTH_ICRS, epoch)
         .unwrap();
     println!("{state:?}");
 
     // Check that we correctly set the output frame
-    assert_eq!(state.frame, EARTH_J2000);
+    assert_eq!(state.frame, EARTH_ICRS);
 
     let pos_expct_km = Vector3::new(
         2.592_009_077_500_681e3,
@@ -367,7 +367,7 @@ fn multithread_query() {
     let epochs: Vec<Epoch> = time_it.collect();
     epochs.into_par_iter().for_each(|epoch| {
         let state = ctx
-            .translate_geometric(MOON_J2000, EARTH_MOON_BARYCENTER_J2000, epoch)
+            .translate_geometric(MOON_ICRS, EARTH_MOON_BARYCENTER_ICRS, epoch)
             .unwrap();
         println!("{state:?}");
     });
@@ -385,7 +385,7 @@ fn type13_hermite_query() {
     println!("{summary}");
 
     let mut ctx = Almanac::from_spk(traj);
-    // Also load the plantery data
+    // Also load the planetary data
     ctx = ctx
         .with_planetary_data(convert_tpc("../data/pck00008.tpc", "../data/gm_de431.tpc").unwrap());
 
@@ -415,7 +415,7 @@ fn type13_hermite_query() {
     // This tests that we've loaded the frame info from the Almanac, otherwise we cannot compute the orbital elements.
     assert_eq!(
         format!("{state:x}"),
-        "[Earth J2000] 2000-01-01T13:40:32.183929398 ET\tsma = 7192.041350 km\tecc = 0.024628\tinc = 12.851841 deg\traan = 306.170038 deg\taop = 315.085528 deg\tta = 96.135384 deg"
+        "[Earth ICRS] 2000-01-01T13:40:32.183929398 ET\tsma = 7192.041350 km\tecc = 0.024628\tinc = 12.851841 deg\traan = 306.170038 deg\taop = 315.085528 deg\tta = 96.135384 deg"
     );
 
     // Fetch the state at the start of this spline to make sure we don't glitch.
@@ -581,8 +581,8 @@ fn de440s_translation_verif_aberrations() {
     for (cno, case) in cases.iter().enumerate() {
         let state = ctx
             .translate(
-                MOON_J2000,
-                EARTH_MOON_BARYCENTER_J2000,
+                MOON_ICRS,
+                EARTH_MOON_BARYCENTER_ICRS,
                 epoch,
                 case.correction,
             )
@@ -632,7 +632,7 @@ fn de440s_translation_verif_aberrations() {
 #[test]
 fn type9_lagrange_query() {
     use anise::almanac::metaload::MetaFile;
-    use anise::constants::frames::EARTH_J2000;
+    use anise::constants::frames::EARTH_ICRS;
     use anise::prelude::Frame;
 
     let lagrange_meta = MetaFile {
@@ -645,7 +645,7 @@ fn type9_lagrange_query() {
         .unwrap();
 
     let obj_id = -10000001;
-    let obj_frame = Frame::from_ephem_j2000(obj_id);
+    let obj_frame = Frame::from_ephem_icrs(obj_id);
 
     let (start, end) = almanac.spk_domain(obj_id).unwrap();
 
@@ -653,7 +653,7 @@ fn type9_lagrange_query() {
     let state = almanac
         .translate(
             obj_frame,
-            EARTH_J2000,
+            EARTH_ICRS,
             start + (end - start) * 0.5,
             Aberration::NONE,
         )
@@ -683,7 +683,7 @@ fn type9_lagrange_query() {
 
     // Query near the end, but not in the registry either
     let state = almanac
-        .translate(obj_frame, EARTH_J2000, end, Aberration::NONE)
+        .translate(obj_frame, EARTH_ICRS, end, Aberration::NONE)
         .unwrap();
 
     let expected_pos_km = Vector3::new(7047.357439588854, -821.0037354278901, 1196.005310897085);

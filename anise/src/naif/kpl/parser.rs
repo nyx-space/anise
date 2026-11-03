@@ -18,7 +18,8 @@ use std::path::Path;
 
 use log::{error, info, warn};
 
-use crate::constants::orientations::J2000;
+use crate::constants::celestial_objects::{MERCURY, MERCURY_BARYCENTER, VENUS, VENUS_BARYCENTER};
+use crate::constants::orientations::ICRS;
 use crate::math::Matrix3;
 use crate::math::rotation::{DCM, Quaternion, r1, r2, r3};
 use crate::naif::kpl::Parameter;
@@ -60,7 +61,7 @@ impl Assignment {
         if vec.len() > 1 {
             KPLValue::Matrix(
                 vec.iter()
-                    .map(|s| s.parse::<f64>().unwrap_or(0.0))
+                    .map(|s| s.trim().replace("D", "E").parse::<f64>().unwrap_or(0.0))
                     .collect(),
             )
         } else if vec.is_empty() {
@@ -293,12 +294,12 @@ pub fn convert_tpc_items(
 
                                         PlanetaryData {
                                             object_id,
-                                            parent_id: if [199, 299].contains(&object_id) {
-                                                J2000
+                                            parent_id: if [MERCURY, VENUS].contains(&object_id) {
+                                                ICRS
                                             } else if object_id > 100 {
                                                 object_id / 100
                                             } else {
-                                                J2000
+                                                ICRS
                                             },
                                             mu_km3_s2: *mu_km3_s2,
                                             shape: ellipsoid,
@@ -324,7 +325,7 @@ pub fn convert_tpc_items(
                                     object_id,
                                     mu_km3_s2: *mu_km3_s2,
                                     shape: ellipsoid,
-                                    parent_id: J2000,
+                                    parent_id: ICRS,
                                     ..Default::default()
                                 }
                             }
@@ -397,6 +398,8 @@ pub fn convert_tpc_items(
                                 coeffs[i] = PhaseAngle::<0> {
                                     offset_deg: nut_prec[0],
                                     rate_deg: nut_prec[1],
+                                    // Present when MAX_PHASE_DEGREE is 2, e.g. Phobos' tidal term.
+                                    accel_deg: nut_prec.get(2).copied().unwrap_or(0.0),
                                     ..Default::default()
                                 };
                                 num += 1;
@@ -418,6 +421,22 @@ pub fn convert_tpc_items(
             None => {
                 warn!("skipping {object_id}: no gravity data")
             }
+        }
+    }
+
+    // Add Mercury and Venus aliases last so explicit barycenter entries take
+    // precedence regardless of input order.
+    for (body_id, system_id) in [(MERCURY, MERCURY_BARYCENTER), (VENUS, VENUS_BARYCENTER)] {
+        if !dataset.lut.by_id.contains_key(&system_id)
+            && let Some(&index) = dataset.lut.by_id.get(&body_id)
+        {
+            dataset
+                .lut
+                .append_id(system_id, index)
+                .map_err(|source| DataSetError::DataSetLut {
+                    action: "adding planetary system alias",
+                    source,
+                })?;
         }
     }
 
@@ -480,11 +499,26 @@ pub fn convert_fk_items(
             let mut angle_data = angles.to_vec_f64().map_err(|_| DataSetError::Conversion {
                 action: format!("Angle data must be a Matrix but was {angles:?}"),
             })?;
-            if unit == &KPLValue::String("ARCSECONDS".to_string()) {
-                // Convert the angles data into degrees
-                for item in &mut angle_data {
-                    *item /= 3600.0;
+            // Convert the angles data into degrees, using the angle units SPICE accepts for TK frames.
+            let unit_str = unit.to_string().map_err(|_| DataSetError::Conversion {
+                action: format!("Units must be a String but was {unit:?}"),
+            })?;
+            let units_per_deg = match unit_str.trim().to_ascii_uppercase().as_str() {
+                "DEGREES" => 1.0,
+                "RADIANS" => 1.0_f64.to_radians(),
+                "ARCMINUTES" => 60.0,
+                "ARCSECONDS" => 3600.0,
+                "HOURANGLE" => 1.0 / 15.0,
+                "MINUTEANGLE" => 4.0,
+                "SECONDANGLE" => 240.0,
+                _ => {
+                    return Err(DataSetError::Conversion {
+                        action: format!("unsupported angle units `{unit_str}` for FK ID {id}"),
+                    });
                 }
+            };
+            for item in &mut angle_data {
+                *item /= units_per_deg;
             }
             // Build the quaternion from the Euler matrices
             let from = id;
@@ -642,6 +676,61 @@ pub fn convert_fk_items(
 mod tpc_conversion_ut {
     use super::*;
 
+    fn planetary_items_with_gravity(ids: &[i32]) -> HashMap<i32, TPCItem> {
+        ids.iter()
+            .copied()
+            .map(|id| {
+                let mut item = TPCItem {
+                    body_id: Some(id),
+                    ..Default::default()
+                };
+                item.data.insert(
+                    Parameter::GravitationalParameter,
+                    KPLValue::Float(f64::from(id)),
+                );
+                (id, item)
+            })
+            .collect()
+    }
+
+    #[rstest::rstest]
+    #[case::aliases(&[199, 299, 399], [199, 299])]
+    #[case::mercury_barycenter(&[1, 199, 299], [1, 299])]
+    #[case::venus_barycenter(&[2, 199, 299], [199, 2])]
+    #[case::both_barycenters(&[1, 2, 199, 299], [1, 2])]
+    #[case::barycenters_without_planets(&[1, 2], [1, 2])]
+    fn gh850_tpc_system_aliases(#[case] ids: &[i32], #[case] expected_ids: [i32; 2]) {
+        let planetary = planetary_items_with_gravity(ids);
+        let dataset = convert_tpc_items(planetary, HashMap::new()).unwrap();
+
+        assert_eq!(dataset.data.len(), ids.len());
+        for &id in ids {
+            assert_eq!(dataset.get_by_id(id).unwrap().object_id, id);
+        }
+        for (system_id, expected_id) in [1, 2].into_iter().zip(expected_ids) {
+            assert_eq!(dataset.get_by_id(system_id).unwrap().object_id, expected_id);
+        }
+        assert!(dataset.get_by_id(3).is_err());
+    }
+
+    #[test]
+    fn gh850_skipped_barycenter_uses_body_alias() {
+        let mut planetary = planetary_items_with_gravity(&[1, 199]);
+        // A parsed barycenter without gravity data is skipped during conversion.
+        planetary
+            .get_mut(&1)
+            .unwrap()
+            .data
+            .remove(&Parameter::GravitationalParameter);
+        let dataset = convert_tpc_items(planetary, HashMap::new()).unwrap();
+
+        assert_eq!(dataset.data.len(), 1);
+        assert_eq!(
+            dataset.get_by_id(1).unwrap(),
+            dataset.get_by_id(199).unwrap()
+        );
+    }
+
     /// Builds the minimal TPC data for body 599 that reaches the nutation precession
     /// angle conversion, with the provided MAX_PHASE_DEGREE.
     fn tpc_items(max_phase_degree: i32) -> (HashMap<i32, TPCItem>, HashMap<i32, TPCItem>) {
@@ -703,5 +792,43 @@ mod tpc_conversion_ut {
         let (planetary, gravity) = tpc_items(1);
         let dataset = convert_tpc_items(planetary, gravity).unwrap();
         assert_eq!(dataset.get_by_id(599).unwrap().num_nut_prec_angles, 1);
+    }
+
+    #[test]
+    fn keep_quadratic_nut_prec_term() {
+        // With MAX_PHASE_DEGREE = 2 each angle carries a T^2 coefficient, which was dropped.
+        let (mut planetary, gravity) = tpc_items(2);
+        planetary.get_mut(&599).unwrap().data.insert(
+            Parameter::NutPrecAngles,
+            KPLValue::Matrix(vec![
+                190.72646643,
+                15917.10818695,
+                0.0,
+                189.63271560,
+                41215158.18420050,
+                12.711923222,
+            ]),
+        );
+        let dataset = convert_tpc_items(planetary, gravity).unwrap();
+        let system = dataset.get_by_id(599).unwrap();
+        assert_eq!(system.num_nut_prec_angles, 2);
+        assert_eq!(system.nut_prec_angles[0].accel_deg, 0.0);
+        assert_eq!(system.nut_prec_angles[1].offset_deg, 189.63271560);
+        assert_eq!(system.nut_prec_angles[1].rate_deg, 41215158.18420050);
+        assert_eq!(system.nut_prec_angles[1].accel_deg, 12.711923222);
+    }
+
+    #[test]
+    fn vector_values_accept_d_exponent() {
+        // SPICE text kernels allow the Fortran `D` exponent marker in vectors as well
+        // as in single values.
+        let assignment = Assignment {
+            keyword: "BODY399_RADII".to_string(),
+            value: "( 6378.1366D0 6.3781366D+03 6356.7519 )".to_string(),
+        };
+        assert_eq!(
+            assignment.to_value(),
+            KPLValue::Matrix(vec![6378.1366, 6378.1366, 6356.7519])
+        );
     }
 }

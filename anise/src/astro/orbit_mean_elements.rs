@@ -544,7 +544,7 @@ impl Orbit {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constants::frames::EARTH_J2000;
+    use crate::constants::frames::EARTH_ICRS;
     use crate::prelude::{Almanac, Frame};
     use hifitime::Epoch;
     use rstest::{fixture, rstest};
@@ -561,7 +561,7 @@ mod tests {
 
     #[fixture]
     fn eme2k(almanac: Almanac) -> Frame {
-        almanac.frame_info(EARTH_J2000).unwrap()
+        almanac.frame_info(EARTH_ICRS).unwrap()
     }
 
     // Helper function to check all elements at once.

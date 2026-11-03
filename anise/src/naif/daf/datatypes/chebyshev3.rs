@@ -177,15 +177,27 @@ impl<'a> NAIFDataSet<'a> for Type3ChebyshevSet<'a> {
     }
 
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError> {
-        Ok(Self::RecordKind::from_slice_f64(
-            self.record_data
-                .get(n * self.rsize..(n + 1) * self.rsize)
-                .ok_or(DecodingError::InaccessibleBytes {
-                    start: n * self.rsize,
-                    end: (n + 1) * self.rsize,
-                    size: self.record_data.len(),
-                })?,
-        ))
+        let rcrd = self
+            .record_data
+            .get(n * self.rsize..(n + 1) * self.rsize)
+            .ok_or(DecodingError::InaccessibleBytes {
+                start: n * self.rsize,
+                end: (n + 1) * self.rsize,
+                size: self.record_data.len(),
+            })?;
+        // The record midpoint and radius are turned into a hifitime Epoch and Duration during
+        // evaluation and truncation, and hifitime panics when either is built from a non-finite
+        // value. check_integrity rejects such records but is not run on the query path, so reject
+        // them here rather than letting the conversion abort.
+        if !rcrd[0].is_finite() || !rcrd[1].is_finite() {
+            return Err(DecodingError::Integrity {
+                source: IntegrityError::SubNormal {
+                    dataset: Self::DATASET_NAME,
+                    variable: "record midpoint or radius",
+                },
+            });
+        }
+        Ok(Self::RecordKind::from_slice_f64(rcrd))
     }
 
     fn evaluate<S: NAIFSummaryRecord>(
@@ -562,6 +574,65 @@ mod chebyshev_ut {
         assert_eq!(dataset.spline_idx(epoch, &summary).unwrap(), 1);
         // The full evaluate path must not panic on this input.
         let _ = dataset.evaluate(epoch, &summary);
+    }
+
+    #[test]
+    fn evaluate_rejects_non_finite_record() {
+        // A crafted segment whose single record carries a non-finite radius decodes fine (the
+        // footer is valid and the record data is only checked by check_integrity, which does not
+        // run on the query path). Building the hifitime Duration from that radius used to panic
+        // in nth_record before the clamp; it must return an error instead.
+        let summary = SPKSummaryRecord {
+            start_epoch_et_s: 0.0,
+            end_epoch_et_s: 1e6,
+            target_id: 301,
+            center_id: 3,
+            frame_id: 1,
+            data_type_i: 3,
+            start_idx: 1,
+            end_idx: 12,
+        };
+
+        // [midpoint, radius, x3, vx3, init_epoch, interval, rsize, num_records]
+        let non_finite_radius = [
+            0.0,
+            f64::INFINITY,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            8.0,
+            1.0,
+        ];
+        let dataset = Type3ChebyshevSet::from_f64_slice(&non_finite_radius).unwrap();
+        assert!(
+            dataset.evaluate(0.5, &summary).is_err(),
+            "a non-finite record radius must error, not panic"
+        );
+
+        let non_finite_midpoint = [
+            f64::NAN,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            8.0,
+            1.0,
+        ];
+        let dataset = Type3ChebyshevSet::from_f64_slice(&non_finite_midpoint).unwrap();
+        assert!(
+            dataset.evaluate(0.5, &summary).is_err(),
+            "a non-finite record midpoint must error, not panic"
+        );
     }
 
     #[test]

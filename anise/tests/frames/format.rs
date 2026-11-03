@@ -13,49 +13,46 @@ use anise::constants::frames::*;
 /// Tests the ephemeris computations from the de438s which don't require any frame transformation.
 #[test]
 fn format_frame() {
-    assert_eq!(format!("{SSB_J2000}"), "Solar System Barycenter J2000");
+    assert_eq!(format!("{SSB_ICRS}"), "Solar System Barycenter ICRS");
 
-    assert_eq!(format!("{SUN_J2000}"), "Sun J2000");
+    assert_eq!(format!("{SUN_ICRS}"), "Sun ICRS");
 
-    assert_eq!(format!("{MERCURY_J2000}"), "Mercury Barycenter J2000");
+    assert_eq!(format!("{MERCURY_ICRS}"), "Mercury Barycenter ICRS");
 
-    assert_eq!(format!("{VENUS_J2000}"), "Venus Barycenter J2000");
+    assert_eq!(format!("{VENUS_ICRS}"), "Venus Barycenter ICRS");
 
     assert_eq!(
-        format!("{EARTH_MOON_BARYCENTER_J2000}"),
-        "Earth-Moon Barycenter J2000"
+        format!("{EARTH_MOON_BARYCENTER_ICRS}"),
+        "Earth-Moon Barycenter ICRS"
     );
 
-    assert_eq!(format!("{EARTH_J2000}"), "Earth J2000");
+    assert_eq!(format!("{EARTH_ICRS}"), "Earth ICRS");
 
-    assert_eq!(format!("{MOON_J2000}"), "Moon J2000");
+    assert_eq!(format!("{MOON_ICRS}"), "Moon ICRS");
 
-    assert_eq!(format!("{MARS_J2000}"), "Mars J2000");
+    assert_eq!(format!("{MARS_ICRS}"), "Mars ICRS");
 
-    assert_eq!(format!("{MARS_BARYCENTER_J2000}"), "Mars Barycenter J2000");
-
-    assert_eq!(
-        format!("{JUPITER_BARYCENTER_J2000}"),
-        "Jupiter Barycenter J2000"
-    );
+    assert_eq!(format!("{MARS_BARYCENTER_ICRS}"), "Mars Barycenter ICRS");
 
     assert_eq!(
-        format!("{SATURN_BARYCENTER_J2000}"),
-        "Saturn Barycenter J2000"
+        format!("{JUPITER_BARYCENTER_ICRS}"),
+        "Jupiter Barycenter ICRS"
     );
 
     assert_eq!(
-        format!("{URANUS_BARYCENTER_J2000}"),
-        "Uranus Barycenter J2000"
+        format!("{SATURN_BARYCENTER_ICRS}"),
+        "Saturn Barycenter ICRS"
     );
 
     assert_eq!(
-        format!("{NEPTUNE_BARYCENTER_J2000}"),
-        "Neptune Barycenter J2000"
+        format!("{URANUS_BARYCENTER_ICRS}"),
+        "Uranus Barycenter ICRS"
     );
 
     assert_eq!(
-        format!("{PLUTO_BARYCENTER_J2000}"),
-        "Pluto Barycenter J2000"
+        format!("{NEPTUNE_BARYCENTER_ICRS}"),
+        "Neptune Barycenter ICRS"
     );
+
+    assert_eq!(format!("{PLUTO_BARYCENTER_ICRS}"), "Pluto Barycenter ICRS");
 }

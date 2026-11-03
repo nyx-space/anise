@@ -100,7 +100,7 @@ impl NAIFPrettyPrint for BPC {
                 });
             }
             if let Ok(summary) = self.daf_summary(idx) {
-                if summary.is_final_record() {
+                if summary.is_final_record() || summary.is_corrupt() {
                     break;
                 } else {
                     idx = Some(summary.next_record());
@@ -166,7 +166,7 @@ impl NAIFPrettyPrint for SPK {
                 });
             }
             if let Ok(summary) = self.daf_summary(idx) {
-                if summary.is_final_record() {
+                if summary.is_final_record() || summary.is_corrupt() {
                     break;
                 } else {
                     idx = Some(summary.next_record());

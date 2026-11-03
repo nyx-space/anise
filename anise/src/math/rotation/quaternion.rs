@@ -436,10 +436,24 @@ impl<'a> Decode<'a> for EulerParameter {
     fn decode<R: Reader<'a>>(decoder: &mut R) -> der::Result<Self> {
         let from = decoder.decode()?;
         let to = decoder.decode()?;
-        let w = decoder.decode()?;
-        let x = decoder.decode()?;
-        let y = decoder.decode()?;
-        let z = decoder.decode()?;
+        let w: f64 = decoder.decode()?;
+        let x: f64 = decoder.decode()?;
+        let y: f64 = decoder.decode()?;
+        let z: f64 = decoder.decode()?;
+
+        // The rotation queries convert an Euler parameter into a DCM, which divides every
+        // component by this norm, so a crafted kernel carrying a quaternion whose norm is
+        // zero or non-finite would silently turn every rotation through that frame into
+        // NaN. Reject it here like Ellipsoid::decode rejects its out-of-range radii.
+        let norm = (w * w + x * x + y * y + z * z).sqrt();
+        if !norm.is_finite() || norm <= 0.0 {
+            return Err(der::Error::new(
+                der::ErrorKind::Value {
+                    tag: der::Tag::Real,
+                },
+                der::Length::ONE,
+            ));
+        }
 
         Ok(Self {
             w,
@@ -672,6 +686,59 @@ mod ut_quaternion {
         let repr_dec = EulerParameter::from_der(&buf).unwrap();
 
         assert_eq!(repr, repr_dec);
+    }
+
+    #[test]
+    fn reject_unnormalizable_euler_parameter() {
+        // Converting any of these into a DCM would divide by a zero or non-finite norm and
+        // silently return a NaN (or zero) rotation matrix, so the decoder must reject them.
+        for (w, x, y, z) in [
+            (0.0, 0.0, 0.0, 0.0),
+            (f64::NAN, 0.0, 0.0, 0.5),
+            (f64::INFINITY, 0.0, 0.0, 0.5),
+            (f64::NEG_INFINITY, 0.0, 0.0, 0.5),
+        ] {
+            let bad = EulerParameter {
+                w,
+                x,
+                y,
+                z,
+                from: -9000,
+                to: 1,
+            };
+            let mut buf = vec![];
+            bad.encode_to_vec(&mut buf).unwrap();
+            assert!(
+                EulerParameter::from_der(&buf).is_err(),
+                "decoded an Euler parameter that cannot be normalized: {bad:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn crafted_epa_with_zero_quaternion_is_rejected() {
+        use crate::structure::EulerParameterDataSet;
+
+        // A zero quaternion in an EPA kernel used to load fine (the CRC32 only covers the
+        // bytes) and every rotation through that frame silently returned an all-NaN DCM.
+        let zero_q = EulerParameter {
+            w: 0.0,
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+            from: -9000,
+            to: 1,
+        };
+        let mut dataset = EulerParameterDataSet::default();
+        dataset.push(zero_q, Some(-9000), Some("CRAFTED")).unwrap();
+        dataset.set_crc32();
+        let mut buf = vec![];
+        dataset.encode_to_vec(&mut buf).unwrap();
+
+        assert!(
+            EulerParameterDataSet::try_from_bytes(&buf[..]).is_err(),
+            "loaded an EPA kernel carrying a zero quaternion"
+        );
     }
 
     #[test]

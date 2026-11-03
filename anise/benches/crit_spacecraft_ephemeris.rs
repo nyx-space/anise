@@ -1,4 +1,4 @@
-use anise::{constants::frames::EARTH_J2000, file2heap, prelude::*};
+use anise::{constants::frames::EARTH_ICRS, file2heap, prelude::*};
 use criterion::{Criterion, criterion_group, criterion_main};
 use rand::SeedableRng;
 use rand::seq::SliceRandom;
@@ -28,10 +28,10 @@ fn benchmark_spice_single_hop_type13_hermite(time_vec: &[Epoch]) {
 }
 
 fn benchmark_anise_single_hop_type13_hermite(ctx: &Almanac, time_vec: &[Epoch]) {
-    let my_sc_j2k = Frame::from_ephem_j2000(-85);
+    let my_sc_j2k = Frame::from_ephem_icrs(-85);
     for epoch in time_vec.iter().copied() {
         black_box(
-            ctx.translate_geometric(my_sc_j2k, EARTH_J2000, epoch)
+            ctx.translate_geometric(my_sc_j2k, EARTH_ICRS, epoch)
                 .unwrap(),
         );
     }

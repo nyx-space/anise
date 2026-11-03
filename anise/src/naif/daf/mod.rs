@@ -143,7 +143,8 @@ pub enum DAFError {
     #[snafu(display("DAF/{kind}: summary {id} not present"))]
     SummaryIdError { kind: &'static str, id: NaifId },
     #[snafu(display(
-        "DAF/{kind}: summary {id} valid from {start} to {end} but not at requested {epoch}"
+        "DAF/{kind}: summary {id} valid from {start} to {end}{} but not at requested {epoch}",
+        if *has_gap { " (with gaps)" } else { "" }
     ))]
     SummaryIdAtEpochError {
         kind: &'static str,
@@ -151,6 +152,7 @@ pub enum DAFError {
         epoch: Epoch,
         start: Epoch,
         end: Epoch,
+        has_gap: bool,
     },
     #[snafu(display("DAF/{kind}: summary `{name}` not present"))]
     SummaryNameError { kind: &'static str, name: String },
@@ -231,6 +233,10 @@ pub enum DAFError {
     InvalidIndex { kind: &'static str, idx: usize },
     #[snafu(display("could not build data vector of type DAF/{kind}"))]
     DataBuildError { kind: &'static str },
+    #[snafu(display(
+        "DAF/{kind}: modifying data is only supported in files with a single summary record"
+    ))]
+    MultipleSummaryRecords { kind: &'static str },
 }
 
 // Manual implementation of PartialEq because IOError does not derive it, sadly.
@@ -257,6 +263,7 @@ impl PartialEq for DAFError {
                     epoch: l_epoch,
                     start: l_start,
                     end: l_end,
+                    has_gap: l_has_gap,
                 },
                 Self::SummaryIdAtEpochError {
                     kind: r_kind,
@@ -264,6 +271,7 @@ impl PartialEq for DAFError {
                     epoch: r_epoch,
                     start: r_start,
                     end: r_end,
+                    has_gap: r_has_gap,
                 },
             ) => {
                 l_kind == r_kind
@@ -271,6 +279,7 @@ impl PartialEq for DAFError {
                     && l_epoch == r_epoch
                     && l_start == r_start
                     && l_end == r_end
+                    && l_has_gap == r_has_gap
             }
             (
                 Self::SummaryNameError {

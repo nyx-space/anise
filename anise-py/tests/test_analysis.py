@@ -1,12 +1,12 @@
 from pathlib import Path
 from sys import platform
 
-import anise.analysis as analysis
 from anise import (
     Aberration,
     Almanac,
     LocationDhallSet,
     LocationDhallSetEntry,
+    analysis,
 )
 from anise.analysis import Condition, Event
 from anise.astro import Frame, FrameUid, Location, TerrainMask
@@ -29,8 +29,8 @@ def test_analysis_gen_report():
     )
     almanac.describe(spk=True)
 
-    target_frame = analysis.FrameSpec.Loaded(Frames.EME2000)
-    observer_frame = analysis.FrameSpec.Loaded(Frames.MOON_J2000)
+    target_frame = analysis.FrameSpec.Loaded(Frames.GCRF)
+    observer_frame = analysis.FrameSpec.Loaded(Frames.MOON_ICRS)
 
     state = analysis.StateSpec(
         target_frame=target_frame,
@@ -46,7 +46,7 @@ def test_analysis_gen_report():
 
     sun_state = analysis.StateSpec(
         target_frame=target_frame,
-        observer_frame=analysis.FrameSpec.Loaded(Frames.SUN_J2000),
+        observer_frame=analysis.FrameSpec.Loaded(Frames.SUN_ICRS),
         ab_corr=Aberration("LT"),
     )
 
@@ -61,7 +61,7 @@ def test_analysis_gen_report():
 
     # Rebuild the Local Solar Time calculation from fundamental expressions
     earth_sun = analysis.StateSpec(
-        target_frame=analysis.FrameSpec.Loaded(Frames.SUN_J2000),
+        target_frame=analysis.FrameSpec.Loaded(Frames.SUN_ICRS),
         observer_frame=observer_frame,
         ab_corr=Aberration("LT"),
     )
@@ -95,7 +95,7 @@ def test_analysis_gen_report():
         # Otherwise PyO3 (the bindings) initializes them differently.
         # This causes a 'type' cannot be converted to ScalarExpr error!
         analysis.ScalarExpr.BetaAngle(),
-        analysis.ScalarExpr.SolarEclipsePercentage(eclipsing_frame=Frames.VENUS_J2000),
+        analysis.ScalarExpr.SolarEclipsePercentage(eclipsing_frame=Frames.VENUS_ICRS),
         analysis.ScalarExpr.Norm(analysis.VectorExpr.Radius(state)),
         analysis.ScalarExpr.DotProduct(
             a=analysis.VectorExpr.EccentricityVector(state),
@@ -167,7 +167,7 @@ def test_analysis_gen_report():
     assert (
         last_row["Hmag (km)"]
         == last_row[
-            "|Radius(Earth J2000 -> Moon J2000) ⨯ Velocity(Earth J2000 -> Moon J2000)|"
+            "|Radius(Earth ICRS -> Moon ICRS) ⨯ Velocity(Earth ICRS -> Moon ICRS)|"
         ]
     )
 
@@ -198,7 +198,7 @@ def test_analysis_event():
 
     lro_state_spec = analysis.StateSpec(
         target_frame=analysis.FrameSpec.Loaded(lro_frame),
-        observer_frame=analysis.FrameSpec.Loaded(Frames.MOON_J2000),
+        observer_frame=analysis.FrameSpec.Loaded(Frames.MOON_ICRS),
         ab_corr=None,
     )
 
@@ -211,7 +211,7 @@ def test_analysis_event():
     )
     apolune = Event.apoapsis()
     perilune = Event.periapsis()
-    eclipse = Event.total_eclipse(Frames.MOON_J2000)
+    eclipse = Event.total_eclipse(Frames.MOON_ICRS)
     eclipse_boundary = Event(
         eclipse.scalar, Condition.Equals(99.0), eclipse.epoch_precision, None
     )
@@ -223,7 +223,7 @@ def test_analysis_event():
 
     # Get the time domain for LRO from the loaded ephemeris
     start_epoch, end_epoch = almanac.spk_domain(-85)
-    start_orbit = almanac.transform(lro_frame, Frames.MOON_J2000, start_epoch, None)
+    start_orbit = almanac.transform(lro_frame, Frames.MOON_ICRS, start_epoch, None)
     period = start_orbit.period()
 
     # Find apoapsis events
@@ -345,7 +345,7 @@ def test_location_accesses():
 
     lro_state_spec = analysis.StateSpec(
         target_frame=analysis.FrameSpec.Loaded(lro_frame),
-        observer_frame=analysis.FrameSpec.Loaded(Frames.MOON_J2000),
+        observer_frame=analysis.FrameSpec.Loaded(Frames.MOON_ICRS),
         ab_corr=None,
     )
 

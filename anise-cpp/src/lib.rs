@@ -128,8 +128,10 @@ impl CxxEpoch {
             _ => self.0.to_tai_days(),
         }
     }
+
+    #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
-        format!("{}", self.0)
+        self.0.to_string()
     }
     fn epoch_add_duration(&self, duration: &CxxDuration) -> Box<CxxEpoch> {
         Box::new(CxxEpoch(self.0 + duration.0))

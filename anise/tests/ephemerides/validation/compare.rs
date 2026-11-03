@@ -136,7 +136,7 @@ impl CompareEphem {
                     break;
                 }
 
-                let from_frame = Frame::from_ephem_j2000(ephem1.target_id);
+                let from_frame = Frame::from_ephem_icrs(ephem1.target_id);
 
                 for ephem2 in spk.data_summaries(None).unwrap() {
                     if ephem1.target_id == ephem2.target_id {
@@ -159,7 +159,7 @@ impl CompareEphem {
                         continue;
                     }
 
-                    let to_frame = Frame::from_ephem_j2000(ephem2.target_id);
+                    let to_frame = Frame::from_ephem_icrs(ephem2.target_id);
 
                     // Query the ephemeris data for a bunch of different times.
                     let start_epoch = ephem1.start_epoch().max(ephem2.start_epoch()) + bound_offset;
@@ -181,7 +181,7 @@ impl CompareEphem {
                     continue;
                 }
 
-                let to_frame = Frame::from_ephem_j2000(ephem1.center_id);
+                let to_frame = Frame::from_ephem_icrs(ephem1.center_id);
 
                 pairs.insert(
                     key,

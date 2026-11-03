@@ -16,7 +16,7 @@ use crate::almanac::Almanac;
 use crate::astro::Aberration;
 use crate::astro::aberration::stellar_aberration;
 use crate::constants::SPEED_OF_LIGHT_KM_S;
-use crate::constants::frames::SSB_J2000;
+use crate::constants::frames::SSB_ICRS;
 use crate::hifitime::Epoch;
 use crate::math::Vector3;
 use crate::math::cartesian::CartesianState;
@@ -128,12 +128,12 @@ impl Almanac {
                 // Aberration correction case. This is a rewrite of NAIF SPICE's `spkapo`.
 
                 // Find the geometric position of the observer body with respect to the solar system barycenter (SSB).
-                let obs_ssb = self.translate(observer_frame, SSB_J2000, epoch, None)?;
+                let obs_ssb = self.translate(observer_frame, SSB_ICRS, epoch, None)?;
                 let obs_ssb_pos_km = obs_ssb.radius_km;
                 let obs_ssb_vel_km_s = obs_ssb.velocity_km_s;
 
                 // Find the geometric position of the target body with respect to the SSB at the same epoch.
-                let tgt_ssb = self.translate(target_frame, SSB_J2000, epoch, None)?;
+                let tgt_ssb = self.translate(target_frame, SSB_ICRS, epoch, None)?;
                 let tgt_ssb_pos_km = tgt_ssb.radius_km;
                 let tgt_ssb_vel_km_s = tgt_ssb.velocity_km_s;
 
@@ -154,7 +154,7 @@ impl Almanac {
                     let epoch_lt = epoch + lt_sign * one_way_lt_s * TimeUnit::Second;
                     // Find the position of the target at the corrected epoch.
                     let tgt_ssb = self
-                        .translate(target_frame, SSB_J2000, epoch_lt, None)
+                        .translate(target_frame, SSB_ICRS, epoch_lt, None)
                         .map_err(|e| EphemerisError::LightTimeCorrection {
                             epoch,
                             epoch_lt,

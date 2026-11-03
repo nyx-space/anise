@@ -53,6 +53,13 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             .get(idx)
             .ok_or(DAFError::InvalidIndex { idx, kind: R::NAME })?;
 
+        // Only the first summary record is rewritten below. Any later summary record keeps its
+        // data pointers unshifted, so they would address another segment's data or run past the
+        // end of the file once the bytes move. Refuse rather than silently corrupt the file.
+        if !self.daf_summary(None)?.is_final_record() {
+            return Err(DAFError::MultipleSummaryRecords { kind: R::NAME });
+        }
+
         if self.file_record()?.is_empty() {
             return Err(DAFError::FileRecord {
                 kind: R::NAME,
@@ -168,6 +175,13 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         let this_summary = summaries
             .get(idx)
             .ok_or(DAFError::InvalidIndex { idx, kind: R::NAME })?;
+
+        // Only the first summary record is rewritten below. Any later summary record keeps its
+        // data pointers unshifted, so they would address another segment's data or run past the
+        // end of the file once the bytes move. Refuse rather than silently corrupt the file.
+        if !self.daf_summary(None)?.is_final_record() {
+            return Err(DAFError::MultipleSummaryRecords { kind: R::NAME });
+        }
 
         if self.file_record()?.is_empty() {
             return Err(DAFError::FileRecord {
@@ -344,5 +358,79 @@ mod mut_daf_ut {
             Ok(_) => panic!("unexpected success for a segment overlapping the summary record"),
             Err(e) => panic!("unexpected error: {e}"),
         }
+    }
+
+    #[test]
+    fn multiple_summary_records_mutation() {
+        use crate::naif::daf::NAIFDataSet;
+        use crate::naif::daf::datatypes::Type2ChebyshevSet;
+        use hifitime::Epoch;
+
+        // Two summary records (records 2 and 4), each holding one segment, with the data of both
+        // segments starting at record 6. Deleting or resizing the first segment moves the second
+        // one's data, but only the first summary record is rewritten, so the second summary would
+        // keep pointing at words 651..660, past the end of the shrunk file.
+        let mut file_record = FileRecord::spk("TEST");
+        file_record.forward = 2;
+        file_record.backward = 4;
+        file_record.nd = 2;
+        file_record.ni = 6;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(file_record.as_bytes());
+        bytes.resize(1024, 0);
+
+        for (next_record, prev_record, start_idx, end_idx) in
+            [(4.0, 0.0, 641, 650), (0.0, 2.0, 651, 660)]
+        {
+            let mut summary_record = Vec::new();
+            summary_record.extend_from_slice(
+                SummaryRecord {
+                    next_record,
+                    prev_record,
+                    num_summaries: 1.0,
+                }
+                .as_bytes(),
+            );
+            summary_record.extend_from_slice(
+                SPKSummaryRecord {
+                    end_epoch_et_s: 1.0,
+                    data_type_i: 2,
+                    start_idx,
+                    end_idx,
+                    ..Default::default()
+                }
+                .as_bytes(),
+            );
+            summary_record.resize(1024, 0);
+            bytes.extend(summary_record);
+            // Name record
+            bytes.extend(vec![b' '; 1024]);
+        }
+        bytes.extend(vec![0u8; 20 * 8]);
+
+        let mut daf = super::DAF::<SPKSummaryRecord>::parse(BytesMut::from_iter(bytes)).unwrap();
+        let orig_bytes = daf.bytes.clone();
+
+        match daf.delete_nth_data(0) {
+            Err(DAFError::MultipleSummaryRecords { .. }) => {}
+            Ok(_) => panic!("unexpected success deleting from a multi summary record DAF"),
+            Err(e) => panic!("unexpected error: {e}"),
+        }
+
+        let data = [0.5, 0.5, 1.0, 1.0, 1.0, 0.0, 1.0, 5.0, 1.0];
+        let segment = Type2ChebyshevSet::from_f64_slice(&data).unwrap();
+        match daf.set_nth_data(
+            0,
+            segment,
+            Epoch::from_et_seconds(0.0),
+            Epoch::from_et_seconds(1.0),
+        ) {
+            Err(DAFError::MultipleSummaryRecords { .. }) => {}
+            Ok(_) => panic!("unexpected success setting data in a multi summary record DAF"),
+            Err(e) => panic!("unexpected error: {e}"),
+        }
+
+        assert_eq!(daf.bytes, orig_bytes);
     }
 }

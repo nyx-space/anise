@@ -126,6 +126,12 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             }
 
             for (summary_idx, cur_sum) in me.data_summaries(blk_idx)?.iter().enumerate() {
+                // A summary record is physically padded to its fixed record size.
+                // Do not index those empty slots: their default ID is zero and can
+                // otherwise displace a valid, chronologically ordered ID 0 segment.
+                if cur_sum.is_empty() {
+                    continue;
+                }
                 if let Some(prev_summaries) = index.get_mut(&cur_sum.id()) {
                     let prev_sum: &R =
                         &prev_summaries.last().expect("there must be at least one").0;
@@ -240,10 +246,10 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             .context(DecodingNameSnafu { kind: R::NAME })?;
         let rcrd_bytes = self
             .bytes
-            .get(rcrd_idx..rcrd_idx + RCRD_LEN)
+            .get(rcrd_idx..rcrd_idx.saturating_add(RCRD_LEN))
             .ok_or_else(|| DecodingError::InaccessibleBytes {
                 start: rcrd_idx,
-                end: rcrd_idx + RCRD_LEN,
+                end: rcrd_idx.saturating_add(RCRD_LEN),
                 size: self.bytes.len(),
             })
             .context(DecodingNameSnafu { kind: R::NAME })?;
@@ -270,10 +276,10 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             .context(DecodingSummarySnafu { kind: R::NAME })?;
         let rcrd_bytes = self
             .bytes
-            .get(rcrd_idx..rcrd_idx + RCRD_LEN)
+            .get(rcrd_idx..rcrd_idx.saturating_add(RCRD_LEN))
             .ok_or_else(|| DecodingError::InaccessibleBytes {
                 start: rcrd_idx,
-                end: rcrd_idx + RCRD_LEN,
+                end: rcrd_idx.saturating_add(RCRD_LEN),
                 size: self.bytes.len(),
             })
             .context(DecodingSummarySnafu { kind: R::NAME })?;
@@ -315,10 +321,10 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         };
         let rcrd_bytes = match self
             .bytes
-            .get(rcrd_idx..rcrd_idx + RCRD_LEN)
+            .get(rcrd_idx..rcrd_idx.saturating_add(RCRD_LEN))
             .ok_or_else(|| DecodingError::InaccessibleBytes {
                 start: rcrd_idx,
-                end: rcrd_idx + RCRD_LEN,
+                end: rcrd_idx.saturating_add(RCRD_LEN),
                 size: self.bytes.len(),
             }) {
             Ok(it) => it,
@@ -381,7 +387,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                     return Ok((data_summary, idx, summary_idx));
                 }
                 Err(e) => {
-                    if summary.is_final_record() {
+                    if summary.is_final_record() || summary.is_corrupt() {
                         return Err(e);
                     } else {
                         idx = Some(summary.next_record());
@@ -423,7 +429,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 }
             }
             let summary = self.daf_summary(idx)?;
-            if summary.is_final_record() {
+            if summary.is_final_record() || summary.is_corrupt() {
                 break;
             } else {
                 idx = Some(summary.next_record());
@@ -442,7 +448,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
         // If the summaries are ordered in the DAF file, then they are in the index, so we can run a binary search to find the proper index.
         if let Some(idx_data) = self.index.get(&id) {
             let idx = idx_data.partition_point(|(summary, _blk_idx, _summary_idx)| {
-                summary.start_epoch_et_s() - 100e-9 <= epoch_et_s
+                summary.start_epoch_et_s().next_down() <= epoch_et_s
             });
             if idx == 0 {
                 Err(DAFError::InterpolationDataErrorFromId {
@@ -452,7 +458,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 })
             } else {
                 let (summary, blk_idx, summary_idx) = &idx_data[idx - 1];
-                if epoch_et_s <= summary.end_epoch_et_s() + 100e-9 {
+                if epoch_et_s <= summary.end_epoch_et_s().next_up() {
                     Ok((summary, *blk_idx, *summary_idx))
                 } else {
                     Err(DAFError::InterpolationDataErrorFromId {
@@ -469,14 +475,14 @@ impl<R: NAIFSummaryRecord> DAF<R> {
             loop {
                 for (summary_idx, summary) in self.data_summaries(blk_idx)?.iter().enumerate() {
                     if summary.id() == id
-                        && epoch_et_s >= summary.start_epoch_et_s() - 100e-9
-                        && epoch_et_s <= summary.end_epoch_et_s() + 100e-9
+                        && epoch_et_s >= summary.start_epoch_et_s().next_down()
+                        && epoch_et_s <= summary.end_epoch_et_s().next_up()
                     {
                         return Ok((summary, blk_idx, summary_idx));
                     }
                 }
                 let summary = self.daf_summary(blk_idx)?;
-                if summary.is_final_record() {
+                if summary.is_final_record() || summary.is_corrupt() {
                     break;
                 } else {
                     blk_idx = Some(summary.next_record());
@@ -505,7 +511,7 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                 }
             }
             let summary = self.daf_summary(daf_idx)?;
-            if summary.is_final_record() {
+            if summary.is_final_record() || summary.is_corrupt() {
                 break;
             } else {
                 daf_idx = Some(summary.next_record());
@@ -774,7 +780,7 @@ impl<'a, R: NAIFSummaryRecord> Iterator for DafBlockIterator<'a, R> {
         let data = self.daf.data_summaries(Some(curr));
 
         // 4. Update state for the NEXT iteration
-        if summary.is_final_record() {
+        if summary.is_final_record() || summary.is_corrupt() {
             self.next_idx = None;
         } else {
             self.next_idx = Some(summary.next_record());
@@ -1066,6 +1072,61 @@ mod daf_ut {
     }
 
     #[test]
+    fn next_record_pointer_at_last_record_offset() {
+        use crate::naif::daf::FileRecord;
+        use crate::naif::daf::summary_record::SummaryRecord;
+        use crate::naif::spk::summary::SPKSummaryRecord;
+        use zerocopy::IntoBytes;
+
+        let mut file_record = FileRecord::spk("TEST");
+        file_record.forward = 2;
+        file_record.nd = 2;
+        file_record.ni = 6;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(file_record.as_bytes());
+        bytes.resize(1024, 0);
+
+        // A next-record pointer of 2^54 is an exact f64 integer, and (2^54 - 1) * RCRD_LEN is the
+        // last record offset that still fits in a usize, so the checked multiply accepts it and
+        // the end of the record range is what overflows.
+        let pointer = (1_u64 << 54) as f64;
+        let summary_header = SummaryRecord {
+            next_record: pointer,
+            prev_record: 0.0,
+            num_summaries: 1.0,
+        };
+        let summary = SPKSummaryRecord {
+            data_type_i: 13,
+            start_idx: 1,
+            end_idx: 5,
+            ..Default::default()
+        };
+
+        let mut summary_record = Vec::new();
+        summary_record.extend_from_slice(summary_header.as_bytes());
+        summary_record.extend_from_slice(summary.as_bytes());
+        summary_record.resize(1024, 0);
+        bytes.extend(summary_record);
+        bytes.extend(vec![0u8; 1024]);
+
+        match super::DAF::<SPKSummaryRecord>::parse(&bytes[..]) {
+            Err(DAFError::DecodingSummary { .. }) => {}
+            Ok(_) => panic!("unexpected success for an oversized next-record pointer"),
+            Err(e) => panic!("unexpected error: {e}"),
+        }
+
+        // daf_summary takes the same pointer when walking the chain.
+        let mut valid = bytes.clone();
+        valid[1024..1032].copy_from_slice(0.0_f64.as_bytes());
+        let daf = super::DAF::<SPKSummaryRecord>::parse(&valid[..]).unwrap();
+        assert!(matches!(
+            daf.daf_summary(Some(1 << 54)),
+            Err(DAFError::DecodingSummary { .. })
+        ));
+    }
+
+    #[test]
     fn cyclic_summary_chain() {
         use crate::naif::daf::FileRecord;
         use crate::naif::daf::summary_record::SummaryRecord;
@@ -1247,6 +1308,74 @@ mod daf_ut {
             Err(DAFError::DecodingSummary { .. }) => {}
             Ok(_) => panic!("unexpected success for a forward pointer below 2"),
             Err(e) => panic!("unexpected error: {e}"),
+        }
+    }
+
+    #[test]
+    fn fractional_next_record_pointer_terminates_walkers() {
+        use crate::naif::daf::FileRecord;
+        use crate::naif::daf::summary_record::SummaryRecord;
+        use crate::naif::pretty_print::NAIFPrettyPrint;
+        use crate::naif::spk::summary::SPKSummaryRecord;
+        use std::sync::mpsc;
+        use std::time::Duration;
+        use zerocopy::IntoBytes;
+
+        let mut file_record = FileRecord::spk("TEST");
+        file_record.forward = 2;
+        file_record.nd = 2;
+        file_record.ni = 6;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(file_record.as_bytes());
+        bytes.resize(1024, 0);
+
+        // A fractional next-record pointer is flagged by is_corrupt(), so parse() stops walking
+        // the chain there and accepts the file. The other walkers only checked is_final_record()
+        // and truncated the pointer to 2, which is this very record, so they followed it forever.
+        let summary_header = SummaryRecord {
+            next_record: 2.5,
+            prev_record: 0.0,
+            num_summaries: 1.0,
+        };
+        let summary = SPKSummaryRecord {
+            data_type_i: 13,
+            start_idx: 1,
+            end_idx: 5,
+            ..Default::default()
+        };
+
+        let mut summary_record = Vec::new();
+        summary_record.extend_from_slice(summary_header.as_bytes());
+        summary_record.extend_from_slice(summary.as_bytes());
+        summary_record.resize(1024, 0);
+        bytes.extend(summary_record);
+
+        // Name record (record 3).
+        bytes.extend(vec![0u8; 1024]);
+
+        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+
+        // The chain holds a single block, so the iterator must stop after it.
+        assert_eq!(daf.iter_summary_blocks().take(4).count(), 1);
+
+        // The lookups used to spin forever, so run them on a thread with a deadline.
+        let (tx, rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+            let by_id = daf.summary_from_id(123).is_err();
+            let by_name = daf.summary_from_name("nope").is_err();
+            let by_epoch = daf.summary_from_id_at_epoch(123, 0.0).is_err();
+            let data = daf.data_from_name::<HermiteSetType13>("nope").is_err();
+            let described = !daf.describe().is_empty();
+            let _ = tx.send(by_id && by_name && by_epoch && data && described);
+        });
+        match rx.recv_timeout(Duration::from_secs(10)) {
+            Ok(all_returned) => assert!(all_returned),
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                panic!("summary chain walkers did not terminate")
+            }
+            Err(e) => panic!("{e}"),
         }
     }
 }

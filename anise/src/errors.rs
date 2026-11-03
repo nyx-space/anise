@@ -63,7 +63,7 @@ pub enum AlmanacError {
     #[snafu(display("processing file #{fno} ({file:?}) caused an error: {source}"))]
     Meta {
         fno: usize,
-        file: MetaFile,
+        file: Option<MetaFile>,
         source: MetaAlmanacError,
     },
 }

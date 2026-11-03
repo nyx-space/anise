@@ -9,11 +9,10 @@
  */
 
 use hifitime::{Duration, Unit};
-use log::error;
 
 use crate::{
     astro::{Aberration, Occultation},
-    constants::{frames::SUN_J2000, orientations::J2000},
+    constants::{celestial_objects::SUN, frames::SUN_ICRS, orientations::ICRS},
     ephemerides::EphemerisPhysicsSnafu,
     errors::{AlmanacError, EphemerisSnafu, OrientationSnafu},
     frames::Frame,
@@ -168,17 +167,17 @@ impl Almanac {
 
         // Ensure that the observer is in the J2000 frame.
         observer = self
-            .rotate_to(observer, observer.frame.with_orient(J2000))
+            .rotate_to(observer, observer.frame.with_orient(ICRS))
             .context(OrientationSnafu {
                 action: "computing eclipse state",
             })?;
         let r_eb = self
-            .transform_to(observer, front_frame.with_orient(J2000), ab_corr)?
+            .transform_to(observer, front_frame.with_orient(ICRS), ab_corr)?
             .radius_km;
 
         // Get the radius vector of the back object to the spacecraft
         let r_ls = -self
-            .transform_to(observer, back_frame.with_orient(J2000), ab_corr)?
+            .transform_to(observer, back_frame.with_orient(ICRS), ab_corr)?
             .radius_km;
 
         // Compute the apparent radii of the back object and front object (preventing any NaN)
@@ -204,7 +203,9 @@ impl Almanac {
         };
 
         // Compute the apparent separation of both circles
-        let d_prime = (-(r_ls.dot(&r_eb)) / (r_eb.norm() * r_ls.norm())).acos();
+        let d_prime = (-(r_ls.dot(&r_eb)) / (r_eb.norm() * r_ls.norm()))
+            .clamp(-1.0, 1.0)
+            .acos();
 
         let percentage = compute_occultation_percentage(d_prime, r_ls_prime, r_fobj_prime)?;
 
@@ -231,7 +232,7 @@ impl Almanac {
         observer: Orbit,
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<Occultation> {
-        self.occultation(SUN_J2000, eclipsing_frame, observer, ab_corr)
+        self.occultation(SUN_ICRS, eclipsing_frame, observer, ab_corr)
     }
 
     /// Computes the Beta angle (β) for a given orbital state, in degrees. A Beta angle of 0° indicates that the orbit plane is edge-on to the Sun, leading to maximum eclipse time. Conversely, a Beta angle of +90° or -90° means the orbit plane is face-on to the Sun, resulting in continuous sunlight exposure and no eclipses.
@@ -249,7 +250,7 @@ impl Almanac {
             err: format!("{e}"),
         })?;
 
-        Ok(u_hvec.dot(&u_sun).asin().to_degrees())
+        Ok(u_hvec.dot(&u_sun).clamp(-1.0, 1.0).asin().to_degrees())
     }
 
     /// Compute the local solar time, returned as a Duration between 0 and 24 hours.
@@ -288,7 +289,7 @@ impl Almanac {
     /// :type ab_corr: Aberration, optional
     /// :rtype: Duration
     pub fn ltan(&self, orbit: Orbit, ab_corr: Option<Aberration>) -> AlmanacResult<Duration> {
-        let sun_state = self.transform(SUN_J2000, orbit.frame, orbit.epoch, ab_corr)?;
+        let sun_state = self.transform(SUN_ICRS, orbit.frame, orbit.epoch, ab_corr)?;
         let ra_sun_deg = sun_state.right_ascension_deg();
         let raan_orbit_deg = orbit.raan_deg().map_err(|e| AlmanacError::GenericError {
             err: format!("{e}"),
@@ -317,6 +318,54 @@ impl Almanac {
         }
 
         Ok(Unit::Hour * ltdn_h)
+    }
+
+    /// Compute the apparent solar time on the provided frame for the provided state, returned as a Duration between 0 and 24 hours.
+    ///
+    /// This function transforms the input state to the body fixed frame, and then computes the apparent solar time.
+    /// The position of the Sun is computed with the LT+S aberration flag as in SPICE's et2lst
+    pub fn apparent_solar_time(
+        &self,
+        state: Orbit,
+        observer_frame: Frame,
+    ) -> AlmanacResult<Duration> {
+        if observer_frame.ephemeris_id == SUN {
+            // It's always noon on the surface of the sun.
+            return Ok(Unit::Hour * 12);
+        }
+        // Transform to the desired frame.
+        let state_body_fixed = self.transform_to(state, observer_frame, Aberration::LT_S)?;
+        // As per et2lst from CSPICE
+        // We fetch the rotation sense of the body and oppose the angle if the rotation is retrograde.
+        // We determine this by looking at the sign of the first coefficient of the prime meridian
+        // of this planetary data.
+        // To simplify the logic, we define a multiplicative factor of 1.0 for prograde rotations
+        // and -1 for retrograde rotations.
+        let rot_sign = self
+            .get_planetary_data_from_id(state_body_fixed.frame.orientation_id)
+            .map(|planetary_data| {
+                planetary_data
+                    .prime_meridian
+                    .map(|pm| pm.rate_deg.signum())
+                    .unwrap_or(1.0)
+            })
+            .unwrap_or(1.0);
+        // Compute the longitude in degrees of the state
+        let long_deg = state_body_fixed.longitude_deg();
+        let sun_state = self.state_of(
+            SUN,
+            observer_frame,
+            state_body_fixed.epoch,
+            Aberration::LT_S,
+        )?;
+
+        let sun_long_deg = sun_state.longitude_deg();
+        // Angle between meridians
+        let delta_lon_deg = (long_deg - sun_long_deg) * rot_sign;
+        // Convert to hours (24 hours in 360 degrees), offset by 12 hours for noon definition
+        // SPICE 12 + (SITLNG - SUNLNG) / 15
+        let ast_h = (12.0 + (delta_lon_deg / 15.0)).rem_euclid(24.0);
+        Ok(Unit::Hour * ast_h)
     }
 }
 
@@ -347,12 +396,6 @@ fn compute_occultation_percentage(
         let d2 = (d_prime.powi(2) + r_ls_prime.powi(2) - r_fobj_prime.powi(2)) / (2.0 * d_prime);
 
         let shadow_area = circ_seg_area(r_fobj_prime, d1) + circ_seg_area(r_ls_prime, d2);
-        if shadow_area.is_nan() {
-            error!(
-                "Shadow area is NaN! Please file a bug with initial states, eclipsing bodies, etc."
-            );
-            return Ok(100.0);
-        }
         // Compute the nominal area of the back object
         let nominal_area = core::f64::consts::PI * r_ls_prime.powi(2);
         // And return the percentage (between 0 and 1) of the eclipse.
@@ -366,12 +409,20 @@ fn compute_occultation_percentage(
 
 /// Compute the area of the circular segment of radius r and chord length d
 fn circ_seg_area(r: f64, d: f64) -> f64 {
-    r.powi(2) * (d / r).acos() - d * (r.powi(2) - d.powi(2)).sqrt()
+    if d >= r {
+        0.0
+    } else if d <= -r {
+        core::f64::consts::PI * r.powi(2)
+    } else {
+        // Clamp the argument to acos strictly to [-1.0, 1.0] to prevent NaN
+        let cos_theta = (d / r).clamp(-1.0, 1.0);
+        r.powi(2) * cos_theta.acos() - d * (r.powi(2) - d.powi(2)).sqrt()
+    }
 }
 
 #[cfg(test)]
 mod ut_los {
-    use crate::constants::frames::{EARTH_J2000, MOON_J2000};
+    use crate::constants::frames::{EARTH_ICRS, MOON_ICRS};
 
     use super::*;
     use crate::math::Vector3;
@@ -403,8 +454,8 @@ mod ut_los {
 
     #[rstest]
     fn los_edge_case(almanac: Almanac) {
-        let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
-        let luna = almanac.frame_info(MOON_J2000).unwrap();
+        let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
+        let luna = almanac.frame_info(MOON_ICRS).unwrap();
 
         let dt1 = Epoch::from_gregorian_tai_hms(2020, 1, 1, 6, 7, 40);
         let dt2 = Epoch::from_gregorian_tai_hms(2020, 1, 1, 6, 7, 50);
@@ -501,7 +552,7 @@ mod ut_los {
 
     #[rstest]
     fn los_earth_eclipse(almanac: Almanac) {
-        let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+        let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
 
         let dt = Epoch::from_gregorian_tai_at_midnight(2020, 1, 1);
 

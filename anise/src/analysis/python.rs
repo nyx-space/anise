@@ -236,6 +236,10 @@ pub enum PyScalarExpr {
     BetaAngle(),
     /// Compute the local solar time, in hours
     LocalSolarTime(),
+    /// Compute the apparent (local) solar time in the observer frame, in hours
+    ApparentSolarTime {
+        obs_frame: Frame,
+    },
     /// Computes the local time of the ascending node, in hours
     LocalTimeAscNode(),
     /// Computes the local time of the descending node, in hours
@@ -366,6 +370,9 @@ impl Clone for PyScalarExpr {
                 },
                 Self::BetaAngle() => Self::BetaAngle(),
                 Self::LocalSolarTime() => Self::LocalSolarTime(),
+                Self::ApparentSolarTime { obs_frame } => Self::ApparentSolarTime {
+                    obs_frame: *obs_frame,
+                },
                 Self::LocalTimeAscNode() => Self::LocalTimeAscNode(),
                 Self::LocalTimeDescNode() => Self::LocalTimeDescNode(),
                 Self::SunAngle { observer_id } => Self::SunAngle {
@@ -914,6 +921,9 @@ impl TryFrom<ScalarExpr> for PyScalarExpr {
             match value {
                 ScalarExpr::BetaAngle => Ok(Self::BetaAngle()),
                 ScalarExpr::LocalSolarTime => Ok(Self::LocalSolarTime()),
+                ScalarExpr::ApparentSolarTime { obs_frame } => {
+                    Ok(Self::ApparentSolarTime { obs_frame })
+                }
                 ScalarExpr::LocalTimeAscNode => Ok(Self::LocalTimeAscNode()),
                 ScalarExpr::LocalTimeDescNode => Ok(Self::LocalTimeDescNode()),
                 ScalarExpr::Constant(v) => Ok(Self::Constant(v)),
@@ -1355,6 +1365,9 @@ impl From<PyScalarExpr> for ScalarExpr {
             },
             PyScalarExpr::BetaAngle() => ScalarExpr::BetaAngle,
             PyScalarExpr::LocalSolarTime() => ScalarExpr::LocalSolarTime,
+            PyScalarExpr::ApparentSolarTime { obs_frame } => {
+                ScalarExpr::ApparentSolarTime { obs_frame }
+            }
             PyScalarExpr::LocalTimeAscNode() => ScalarExpr::LocalTimeAscNode,
             PyScalarExpr::LocalTimeDescNode() => ScalarExpr::LocalTimeDescNode,
             PyScalarExpr::SunAngle { observer_id } => ScalarExpr::SunAngle { observer_id },

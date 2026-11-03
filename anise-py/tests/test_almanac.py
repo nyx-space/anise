@@ -12,12 +12,13 @@ from anise import (
     LocationDhallSet,
     LocationDhallSetEntry,
     MetaAlmanac,
-    MetaFile
+    MetaFile,
 )
 from anise.analysis import OrbitalElement
 from anise.astro import (
     Covariance,
     DataType,
+    DragData,
     DynamicFrame,
     EarthNutationModel,
     EarthPrecessionModel,
@@ -26,17 +27,16 @@ from anise.astro import (
     EphemerisRecord,
     Frame,
     FrameUid,
+    Inertia,
     LocalFrame,
     Location,
-    Orbit,
-    TerrainMask,
-    SpacecraftData,
     Mass,
-    SRPData,
-    DragData,
-    Inertia,
+    Orbit,
+    SpacecraftData,
     SpacecraftDhallSet,
     SpacecraftDhallSetEntry,
+    SRPData,
+    TerrainMask,
 )
 from anise.constants import Frames, Orientations
 from anise.rotation import DCM, Quaternion
@@ -75,7 +75,7 @@ def test_state_transformation():
             str(data_path.joinpath("earth_latest_high_prec.bpc"))
         )
 
-    eme2k = almanac.frame_info(Frames.EME2000)
+    eme2k = almanac.frame_info(Frames.GCRF)
     assert eme2k.mu_km3_s2() == 398600.435436096
     assert eme2k.shape.polar_radius_km == 6356.75
     assert abs(eme2k.shape.flattening() - 0.0033536422844278) < 2e-16
@@ -164,7 +164,7 @@ def test_state_transformation():
     assert abs(state_itrf93.height_km() - 1814.503598063825) < 1e-10
 
     # Convert back
-    from_state_itrf93_to_eme2k = almanac.transform_to(state_itrf93, Frames.EARTH_J2000)
+    from_state_itrf93_to_eme2k = almanac.transform_to(state_itrf93, Frames.EARTH_ICRS)
 
     print(from_state_itrf93_to_eme2k)
 
@@ -251,8 +251,8 @@ def test_state_transformation():
     tick = Epoch.system_now()
 
     states = almanac.transform_many(
-        Frames.EARTH_J2000,
-        Frames.SUN_J2000,
+        Frames.EARTH_ICRS,
+        Frames.SUN_ICRS,
         time_series,
         None,
     )
@@ -300,12 +300,21 @@ def test_convert_tpc():
     except FileNotFoundError:
         pass
 
+    data_path = Path(__file__).parent.joinpath("..", "..", "data")
+
     # First call to convert_tpc works
-    convert_tpc("data/pck00011.tpc", "data/gm_de440.tpc", "test_constants.tpc")
+    convert_tpc(
+        str(data_path / "pck00011.tpc"),
+        str(data_path / "gm_de440.tpc"),
+        "test_constants.tpc",
+    )
 
     # Second call, with overwrite enabled, also works
     convert_tpc(
-        "data/pck00011.tpc", "data/gm_de440.tpc", "test_constants.tpc", overwrite=True
+        str(data_path / "pck00011.tpc"),
+        str(data_path / "gm_de440.tpc"),
+        "test_constants.tpc",
+        overwrite=True,
     )
 
     # Try to load the constants file
@@ -316,7 +325,7 @@ def test_convert_tpc():
     ]
     almanac = new_meta.process()
 
-    earth_j2k = almanac.frame_info(Frames.EARTH_J2000)
+    earth_j2k = almanac.frame_info(Frames.EARTH_ICRS)
     assert earth_j2k.mu_km3_s2 is not None
     almanac.describe()
 
@@ -345,11 +354,11 @@ def test_exports():
 
 
 def test_frame_defs():
-    print(f"{Frames.SSB_J2000}")
+    print(f"{Frames.SSB_ICRS}")
     print(dir(Frames))
-    assert Frames.EME2000 == Frames.EME2000
-    assert Frames.EME2000 == Frames.EARTH_J2000
-    assert Frames.EME2000 != Frames.SSB_J2000
+    assert Frames.EME2000 != Frames.EARTH_ICRS
+    assert Frames.GCRF == Frames.EARTH_ICRS
+    assert Frames.EME2000 != Frames.SSB_ICRS
 
 
 def test_location():
@@ -432,10 +441,13 @@ def test_version():
 
 
 def test_oem():
+    data_path = Path(__file__).parent.joinpath("..", "..", "data")
     # Load an Almanac for the various frames used here.
-    almanac = Almanac("data/pck11.pca")
+    almanac = Almanac(str(data_path / "pck11.pca"))
     # 1. Load an OEM to Ephem
-    ephem = Ephemeris.from_ccsds_oem_file("data/tests/ccsds/oem/LRO_Nyx.oem")
+    ephem = Ephemeris.from_ccsds_oem_file(
+        str(data_path / "tests/ccsds/oem/LRO_Nyx.oem")
+    )
     print(ephem)
     assert ephem.degree == 7, f"Expected degree 7, got {ephem.degree}"
     (start, end) = ephem.domain()
@@ -451,28 +463,34 @@ def test_oem():
     # Export to SPICE BSP
     ephem.write_spice_bsp(
         -159,
-        "data/tests/naif/spk/ephem_from_python.bsp",
+        str(data_path / "tests/naif/spk/ephem_from_python.bsp"),
         DataType.Type13HermiteUnequalStep,
     )
     # Export to CCSDS OEM
     ephem.write_ccsds_oem(
-        "data/tests/naif/spk/ephem_from_python.oem", "My Originator", "OBJECT_NAME"
+        str(data_path / "tests/naif/spk/ephem_from_python.oem"),
+        "My Originator",
+        "OBJECT_NAME",
     )
     # Ensure we can read what we wrote
     ephem_reread = Ephemeris.from_ccsds_oem_file(
-        "data/tests/naif/spk/ephem_from_python.oem"
+        str(data_path / "tests/naif/spk/ephem_from_python.oem")
     )
     assert ephem_reread.start_epoch() == ephem.start_epoch()
     assert ephem_reread.end_epoch() == ephem.end_epoch()
 
     # 2. Load OEM to new Almanac, providing an ID to convert this OEM to SPK
-    almanac2 = Almanac.from_ccsds_oem_file("data/tests/ccsds/oem/LRO_Nyx.oem", -159)
+    almanac2 = Almanac.from_ccsds_oem_file(
+        str(data_path / "tests/ccsds/oem/LRO_Nyx.oem"), -159
+    )
     start2, end2 = almanac2.spk_domain(-159)
     # Small difference due to Ephemeris Time conversion, cf. hifitime docs
     assert (start2 - start).abs().to_seconds() < 1e-7
     assert (end2 - end).abs().to_seconds() < 1e-7
     # 3. Load OEM to existing almanac
-    almanac = almanac.load_ccsds_oem_file("data/tests/ccsds/oem/LRO_Nyx.oem", -160)
+    almanac = almanac.load_ccsds_oem_file(
+        str(data_path / "tests/ccsds/oem/LRO_Nyx.oem"), -160
+    )
     start3, end3 = almanac.spk_domain(-160)
     assert start2 == start3
     assert end2 == end3
@@ -482,7 +500,7 @@ def test_oem():
     print(f"SMA 1-sigma = {sigma_sma_km:.3} km")
 
     # Build an Ephemeris
-    eme2k = almanac.frame_info(Frames.EARTH_J2000)
+    eme2k = almanac.frame_info(Frames.EARTH_ICRS)
     epoch = Epoch("2024-02-29T12:34:56")
 
     orbit = Orbit.from_keplerian_altitude(
@@ -576,13 +594,22 @@ def test_mod_tod_teme():
 
 
 def test_frame_uid():
-    assert Frame.from_frameuid(Frames.EARTH_J2000.to_frameuid()) == Frames.EARTH_J2000
+    assert Frame.from_frameuid(Frames.EARTH_ICRS.to_frameuid()) == Frames.EARTH_ICRS
     uid = FrameUid(399, 399)
     assert isinstance(uid.to_frame(), Frame)
 
+
 def test_spacecraft_data():
-    inertia = Inertia(orientation_id=-159, i_xx_kgm2=15.0, i_yy_kgm2=16.0, i_zz_kgm2=17.0, i_xy_kgm2=18.0, i_xz_kgm2=19.0, i_yz_kgm2=20.0)
-    srp = SRPData(area_m2=23.4, coeff_reflectivity= 1.23)
+    inertia = Inertia(
+        orientation_id=-159,
+        i_xx_kgm2=15.0,
+        i_yy_kgm2=16.0,
+        i_zz_kgm2=17.0,
+        i_xy_kgm2=18.0,
+        i_xz_kgm2=19.0,
+        i_yz_kgm2=20.0,
+    )
+    srp = SRPData(area_m2=23.4, coeff_reflectivity=1.23)
     drag = DragData(area_m2=12.3, coeff_drag=1.23)
     mass = Mass(dry_mass_kg=15.0, prop_mass_kg=16.0, extra_mass_kg=17.0)
 
@@ -607,11 +634,11 @@ def test_spacecraft_data():
 
 
 if __name__ == "__main__":
-    # test_meta_load()
-    # test_exports()
-    # test_frame_defs()
-    # test_convert_tpc()
-    # test_state_transformation()
-    # test_location()
-    # test_oem()
+    test_meta_load()
+    test_exports()
+    test_frame_defs()
+    test_convert_tpc()
+    test_state_transformation()
+    test_location()
+    test_oem()
     test_spacecraft_data()

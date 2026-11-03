@@ -10,7 +10,6 @@
 
 use super::{Covariance, Ephemeris, EphemerisError, EphemerisRecord, LocalFrame, Orbit};
 use crate::NaifId;
-use crate::naif::daf::DafDataType;
 use crate::naif::daf::data_types::DataType;
 use nalgebra::Matrix6;
 use ndarray::Array2;
@@ -18,7 +17,16 @@ use numpy::{PyArray2, PyReadonlyArray2, PyUntypedArrayMethods};
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyType;
-use std::collections::BTreeMap;
+
+fn interpolation_name(interpolation: DataType) -> String {
+    match interpolation {
+        DataType::Type9LagrangeUnequalStep => "LAGRANGE".to_string(),
+        DataType::Type13HermiteUnequalStep | DataType::Type12HermiteEqualStep => {
+            "HERMITE".to_string()
+        }
+        _ => unreachable!(),
+    }
+}
 
 #[pymethods]
 impl Ephemeris {
@@ -34,26 +42,20 @@ impl Ephemeris {
 
     /// :rtype: str
     #[getter]
-    fn get_interpolation(&self) -> String {
-        match self.interpolation {
-            DataType::Type9LagrangeUnequalStep => "LAGRANGE".to_string(),
-            DataType::Type13HermiteUnequalStep | DataType::Type12HermiteEqualStep => {
-                "HERMITE".to_string()
-            }
-            _ => unreachable!(),
-        }
+    fn get_interpolation(&self) -> Result<String, EphemerisError> {
+        Ok(interpolation_name(self.interpolation()?))
     }
 
     /// :type interp: str
-    #[setter]
-    fn set_interpolation(&mut self, interp: &str) -> Result<(), PyErr> {
+    #[setter(interpolation)]
+    fn py_set_interpolation(&mut self, interp: &str) -> Result<(), PyErr> {
         match interp.to_lowercase().as_str() {
             "lagrange" => {
-                self.interpolation = DataType::Type9LagrangeUnequalStep;
+                self.set_interpolation(DataType::Type9LagrangeUnequalStep);
                 Ok(())
             }
             "hermite" => {
-                self.interpolation = DataType::Type13HermiteUnequalStep;
+                self.set_interpolation(DataType::Type13HermiteUnequalStep);
                 Ok(())
             }
             _ => Err(PyValueError::new_err(
@@ -64,35 +66,30 @@ impl Ephemeris {
 
     /// :rtype: int
     #[getter]
-    fn get_degree(&self) -> usize {
-        self.degree
+    fn get_degree(&self) -> Result<usize, EphemerisError> {
+        self.degree()
     }
 
     /// :type degree: int
-    #[setter]
-    fn set_degree(&mut self, degree: usize) -> Result<(), PyErr> {
+    #[setter(degree)]
+    fn py_set_degree(&mut self, degree: usize) -> Result<(), PyErr> {
         if degree < 1 {
             Err(PyValueError::new_err("degree must be strictly positive"))
         } else {
-            self.degree = degree;
+            self.set_degree(degree).map_err(PyErr::from)?;
             Ok(())
         }
     }
 
     #[new]
     fn py_new(orbit_list: Vec<Orbit>, object_id: String) -> Self {
-        let mut state_data = BTreeMap::new();
+        let mut ephem = Self::new(object_id);
 
         for orbit in orbit_list {
-            state_data.insert(orbit.epoch, EphemerisRecord { orbit, covar: None });
+            ephem.insert(EphemerisRecord { orbit, covar: None });
         }
 
-        Self {
-            state_data,
-            object_id,
-            interpolation: DafDataType::Type13HermiteUnequalStep,
-            degree: 7,
-        }
+        ephem
     }
 
     /// Initializes a new Ephemeris from a file path to CCSDS OEM file.
@@ -147,13 +144,6 @@ impl Ephemeris {
         self.write_spice_bsp(naif_id, output_fname, data_type)
     }
 
-    /// Returns the number of states
-    ///
-    /// :rtype: int
-    fn len(&self) -> usize {
-        self.state_data.len()
-    }
-
     fn __str__(&self) -> String {
         format!("{self}")
     }
@@ -163,18 +153,47 @@ impl Ephemeris {
     }
 
     fn __iter__(slf: Bound<'_, Self>) -> PyResult<EphemerisIterator> {
-        let keys: Vec<hifitime::Epoch> = slf.borrow().state_data.keys().copied().collect();
+        let mut records = slf
+            .borrow()
+            .segments
+            .iter()
+            .flat_map(|segment| segment.state_data.values().copied())
+            .collect::<Vec<_>>();
+        records.sort_by_key(|record| record.orbit.epoch);
         Ok(EphemerisIterator {
-            ephem: slf.into(),
-            keys: keys.into_iter(),
+            records: records.into_iter(),
         })
     }
 
+    /// Returns the interpolation method for the segment valid at the provided epoch.
+    ///
+    /// :type epoch: Epoch
+    /// :rtype: str
+    #[pyo3(name = "interpolation_at")]
+    fn py_interpolation_at(&self, epoch: hifitime::Epoch) -> Result<String, EphemerisError> {
+        Ok(interpolation_name(self.interpolation_at(epoch)?))
+    }
+
+    /// Returns the interpolation degree for the segment valid at the provided epoch.
+    ///
+    /// :type epoch: Epoch
+    /// :rtype: int
+    #[pyo3(name = "degree_at")]
+    fn py_degree_at(&self, epoch: hifitime::Epoch) -> Result<usize, EphemerisError> {
+        self.degree_at(epoch)
+    }
+
     fn __reversed__(slf: Bound<'_, Self>) -> PyResult<EphemerisIterator> {
-        let keys: Vec<hifitime::Epoch> = slf.borrow().state_data.keys().rev().copied().collect();
+        let mut records = slf
+            .borrow()
+            .segments
+            .iter()
+            .flat_map(|segment| segment.state_data.values().copied())
+            .collect::<Vec<_>>();
+        records.sort_by_key(|record| record.orbit.epoch);
+        records.reverse();
         Ok(EphemerisIterator {
-            ephem: slf.into(),
-            keys: keys.into_iter(),
+            records: records.into_iter(),
         })
     }
 }
@@ -224,8 +243,7 @@ impl Covariance {
 
 #[pyclass]
 struct EphemerisIterator {
-    ephem: Py<Ephemeris>,
-    keys: std::vec::IntoIter<hifitime::Epoch>,
+    records: std::vec::IntoIter<EphemerisRecord>,
 }
 
 #[pymethods]
@@ -234,11 +252,7 @@ impl EphemerisIterator {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<'_, Self>, py: Python<'_>) -> Option<EphemerisRecord> {
-        if let Some(key) = slf.keys.next() {
-            slf.ephem.borrow(py).state_data.get(&key).copied()
-        } else {
-            None
-        }
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<EphemerisRecord> {
+        slf.records.next()
     }
 }

@@ -37,6 +37,16 @@ pub enum OrbitalElement {
     ApoapsisRadius,
     /// Altitude of apoapsis (km)
     ApoapsisAltitude,
+    /// B-Plane angle between BR and BT (deg)
+    BPlaneAngle,
+    /// B-Plane B dot T (km)
+    BPlaneBT,
+    /// B-Plane B dot R (km)
+    BPlaneBR,
+    /// B-Plane vector magnitude
+    BPlaneMag,
+    /// B-Plane Linearized Time of Flight (s)
+    BPlaneLTOF,
     /// Brouwer Mean Short Semi major axis (km)
     BrouwerMeanShortSemiMajorAxis,
     /// Brouwer Mean Short Eccentricity
@@ -155,6 +165,22 @@ impl OrbitalElement {
             Self::ApoapsisAltitude => orbit
                 .apoapsis_altitude_km()
                 .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::BPlaneAngle => orbit
+                .b_plane_angle_deg()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::BPlaneBT => orbit
+                .b_t_km()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::BPlaneBR => orbit
+                .b_r_km()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::BPlaneMag => orbit
+                .b_plane_mag_km()
+                .context(PhysicsOrbitElSnafu { el: self, orbit }),
+            Self::BPlaneLTOF => Ok(orbit
+                .b_ltof()
+                .context(PhysicsOrbitElSnafu { el: self, orbit })?
+                .to_seconds()),
             Self::BrouwerMeanShortSemiMajorAxis => orbit
                 .sma_brouwer_short_km()
                 .context(PhysicsOrbitElSnafu { el: self, orbit }),
@@ -303,6 +329,7 @@ impl OrbitalElement {
             // Angles
             Self::AoL
             | Self::AoP
+            | Self::BPlaneAngle
             | Self::BrouwerMeanShortInclination
             | Self::BrouwerMeanShortRAAN
             | Self::BrouwerMeanShortAoP
@@ -326,6 +353,9 @@ impl OrbitalElement {
             Self::Altitude
             | Self::ApoapsisRadius
             | Self::ApoapsisAltitude
+            | Self::BPlaneBT
+            | Self::BPlaneBR
+            | Self::BPlaneMag
             | Self::BrouwerMeanShortSemiMajorAxis
             | Self::Height
             | Self::Hmag
@@ -353,7 +383,7 @@ impl OrbitalElement {
             | Self::EquinoctialP
             | Self::EquinoctialQ
             | Self::Custom => "unitless",
-            Self::Period | Self::LightTime => "s",
+            Self::Period | Self::LightTime | Self::BPlaneLTOF => "s",
         }
     }
 }

@@ -74,7 +74,7 @@ impl Almanac {
                 let mut events = zero_crossings
                     .par_iter()
                     .map(|(start_epoch, end_epoch)| -> AnalysisResult<Epoch> {
-                        brent_solver(f_eval, event, *start_epoch, *end_epoch)
+                        brent_solver(f_eval, event.epoch_precision, *start_epoch, *end_epoch)
                     })
                     .filter_map(|brent_rslt| brent_rslt.ok())
                     .map(|epoch: Epoch| -> AnalysisResult<EventDetails> {
@@ -143,7 +143,7 @@ impl Almanac {
                 let mut events = extremas
                     .par_iter()
                     .map(|(start_epoch, end_epoch)| -> AnalysisResult<Epoch> {
-                        brent_solver(f_deriv, &boundary, *start_epoch, *end_epoch)
+                        brent_solver(f_deriv, boundary.epoch_precision, *start_epoch, *end_epoch)
                     })
                     .filter_map(|brent_rslt| brent_rslt.ok())
                     .map(|epoch: Epoch| -> AnalysisResult<EventDetails> {
@@ -425,7 +425,8 @@ impl Almanac {
         obstructing_body: Option<Frame>,
     ) -> Result<Vec<VisibilityArc>, AnalysisError> {
         // Find the event arcs first to ensure that the location is valid so we can unwrap safely after the loop.
-        let event = Event::visible_from_location_id(location_id, obstructing_body);
+        let event =
+            Event::visible_from_location_id(location_id, obstructing_body, state_spec.ab_corr());
         let event_arcs = self.report_event_arcs(state_spec, &event, start_epoch, end_epoch)?;
 
         // Find the location info
@@ -468,7 +469,7 @@ impl Almanac {
                         rx,
                         location_id,
                         obstructing_body,
-                        state_spec.ab_corr(),
+                        event.ab_corr,
                     )
                     .context(AlmanacVisibilitySnafu { state: rx })
                 })

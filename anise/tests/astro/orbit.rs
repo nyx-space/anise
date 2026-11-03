@@ -1,7 +1,7 @@
 extern crate pretty_env_logger as pel;
 
 use anise::astro::orbit::ECC_EPSILON;
-use anise::constants::frames::{EARTH_J2000, MOON_J2000};
+use anise::constants::frames::{EARTH_ICRS, MOON_ICRS};
 use anise::errors::PhysicsError;
 use anise::math::Vector3;
 use anise::math::angles::{between_0_360, between_pm_180};
@@ -16,7 +16,10 @@ use rstest::{fixture, rstest};
 
 #[fixture]
 fn almanac() -> Almanac {
-    Almanac::new("../data/pck08.pca").unwrap()
+    Almanac::new("../data/pck08.pca")
+        .unwrap()
+        .load("../data/de440s.bsp")
+        .unwrap()
 }
 
 #[fixture]
@@ -26,14 +29,14 @@ fn epoch() -> Epoch {
 
 #[fixture]
 fn frame(almanac: Almanac) -> Frame {
-    almanac.frame_info(EARTH_J2000).unwrap()
+    almanac.frame_info(EARTH_ICRS).unwrap()
 }
 
 #[rstest]
 fn val_state_def_circ_inc(almanac: Almanac) {
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
     let eme2k = almanac
-        .frame_info(EARTH_J2000)
+        .frame_info(EARTH_ICRS)
         .unwrap()
         .with_mu_km3_s2(398_600.441_5);
 
@@ -226,7 +229,7 @@ fn val_state_def_circ_inc(almanac: Almanac) {
 fn val_state_def_elliptical(almanac: Almanac) {
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
     let eme2k = almanac
-        .frame_info(EARTH_J2000)
+        .frame_info(EARTH_ICRS)
         .unwrap()
         .with_mu_km3_s2(398_600.441_5);
 
@@ -333,7 +336,7 @@ fn val_state_def_elliptical(almanac: Almanac) {
 fn val_state_def_circ_eq(almanac: Almanac) {
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
     let eme2k = almanac
-        .frame_info(EARTH_J2000)
+        .frame_info(EARTH_ICRS)
         .unwrap()
         .with_mu_km3_s2(398_600.441_5);
 
@@ -438,7 +441,7 @@ fn val_state_def_circ_eq(almanac: Almanac) {
 fn val_state_def_equatorial(almanac: Almanac) {
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
     let eme2k = almanac
-        .frame_info(EARTH_J2000)
+        .frame_info(EARTH_ICRS)
         .unwrap()
         .with_mu_km3_s2(398_600.441_5);
 
@@ -482,13 +485,19 @@ fn val_state_def_equatorial(almanac: Almanac) {
         cart_rtn.rss_velocity_km_s(&cart).unwrap() < 5e-8,
         "RIC RSS velocity exceeds bound"
     );
+
+    // Change the epoch of the other, make sure that the standard RIC diff fails
+    let mut cart2 = cart;
+    cart2.epoch += Unit::Second * 1.23456;
+    assert!(cart.ric_difference(&cart2).is_err());
+    assert!(cart.ric_difference_unchecked(&cart2).is_ok());
 }
 
 #[rstest]
 fn val_state_def_reciprocity(almanac: Almanac) {
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
     let eme2k = almanac
-        .frame_info(EARTH_J2000)
+        .frame_info(EARTH_ICRS)
         .unwrap()
         .with_mu_km3_s2(398_600.441_5);
 
@@ -562,7 +571,7 @@ fn val_state_def_reciprocity(almanac: Almanac) {
 
 #[rstest]
 fn verif_geodetic_vallado(almanac: Almanac) {
-    let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+    let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
 
     let epoch = Epoch::from_mjd_tai(51_545.0);
     // Test case from Vallado, 4th Ed., page 173, Example 3-3
@@ -626,7 +635,7 @@ fn verif_geodetic_vallado(almanac: Almanac) {
 
 #[rstest]
 fn verif_with_init(almanac: Almanac) {
-    let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+    let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
 
     let epoch = Epoch::from_gregorian_tai_at_midnight(2021, 3, 4);
     let kep = Orbit::keplerian(
@@ -717,7 +726,7 @@ fn verif_with_init(almanac: Almanac) {
 
 #[rstest]
 fn verif_orbit_at_epoch(almanac: Almanac) {
-    let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+    let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
     let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 1, 10);
     let circ_incl = Orbit::keplerian(
         8_191.93, 1e-8, 12.85, 306.614, 314.19, 99.887_7, epoch, eme2k,
@@ -881,7 +890,7 @@ fn b_plane_davis(almanac: Almanac) {
     // This is a simple test from Dr. Davis' IMD class at CU Boulder.
     // Set the GM value from the GMAT data since we're validating the calculations against GMAT.
     let eme2k = almanac
-        .frame_info(EARTH_J2000)
+        .frame_info(EARTH_ICRS)
         .unwrap()
         .with_mu_km3_s2(398_600.441_5);
 
@@ -911,8 +920,35 @@ fn b_plane_davis(almanac: Almanac) {
 }
 
 #[rstest]
+fn vinf_turn_angle_uses_excess_velocity(almanac: Almanac) {
+    let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
+    let epoch = Epoch::from_gregorian_utc_at_midnight(2016, 1, 1);
+
+    // The turn angle of a hyperbola only depends on its eccentricity: sin(turn / 2) = 1 / e.
+    // It must not depend on where along the trajectory the state is evaluated.
+    for ta_deg in [0.0, 30.0, 90.0, 120.0] {
+        let orbit = Orbit::keplerian(-20_000.0, 1.5, 28.5, 10.0, 20.0, ta_deg, epoch, eme2k);
+        let ecc = orbit.ecc().unwrap();
+        let rp_km = orbit.periapsis_km().unwrap();
+        let expected_turn_deg = (2.0 * (1.0 / ecc).asin()).to_degrees();
+
+        let turn_deg = orbit.vinf_turn_angle_deg(rp_km).unwrap();
+        assert!(
+            (turn_deg - expected_turn_deg).abs() < 1e-9,
+            "ta = {ta_deg}: turn angle {turn_deg} != {expected_turn_deg}"
+        );
+
+        let periapsis_km = orbit.vinf_periapsis_km(expected_turn_deg).unwrap();
+        assert!(
+            (periapsis_km - rp_km).abs() < 1e-6,
+            "ta = {ta_deg}: periapsis {periapsis_km} != {rp_km}"
+        );
+    }
+}
+
+#[rstest]
 fn gh_regression_340(almanac: Almanac) {
-    let moon_j2k = almanac.frame_info(MOON_J2000).unwrap();
+    let moon_j2k = almanac.frame_info(MOON_ICRS).unwrap();
 
     let start = Epoch::from_str("2024-10-16").unwrap();
 
@@ -932,7 +968,7 @@ fn gh_regression_340(almanac: Almanac) {
 
 #[rstest]
 fn misc_verif(almanac: Almanac) {
-    let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+    let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
 
     // Blue Ghost landing day!
     let epoch = Epoch::from_gregorian_utc_at_noon(2025, 3, 2);
@@ -1158,4 +1194,141 @@ fn test_duration_to_radius_error_conditions(epoch: Epoch, frame: Frame) {
     // The InfiniteValue for n_rad_s is more about mu/sma^3 being NaN/Inf or zero due to sma being zero or Inf.
     // If sma_km() returns Inf, then sma_km.abs().powi(3) is Inf, then n_rad_s is 0. Caught.
     // If sma_km() returns some error that leads to NaN sma, then n_rad_s is NaN. Caught.
+}
+
+/// The flight path angle is the angle between the velocity vector and the local horizontal,
+/// so it must match asin(r . v / (|r| |v|)) for every true anomaly and eccentricity.
+#[rstest]
+fn val_fpa_matches_geometric_definition(epoch: Epoch, frame: Frame) {
+    for ecc in [0.1, 0.5, 0.9] {
+        for ta_deg in [0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0] {
+            let orbit = create_orbit(20_000.0, ecc, ta_deg, epoch, frame);
+            let r = orbit.radius_km;
+            let v = orbit.velocity_km_s;
+            let expected_deg = (r.dot(&v) / (r.norm() * v.norm())).asin().to_degrees();
+            f64_eq_tol!(
+                orbit.fpa_deg().unwrap(),
+                expected_deg,
+                1e-9,
+                format!("fpa for ecc = {ecc} at ta = {ta_deg} deg")
+            );
+
+            #[cfg(feature = "analysis")]
+            {
+                use anise::analysis::prelude::OrbitalElement;
+                use anise::astro::orbit_gradient::OrbitGrad;
+
+                let grad = OrbitGrad::from(orbit);
+                f64_eq_tol!(
+                    grad.partial_for(OrbitalElement::FlightPathAngle)
+                        .unwrap()
+                        .real(),
+                    expected_deg,
+                    1e-9,
+                    format!("fpa partials for ecc = {ecc} at ta = {ta_deg} deg")
+                );
+            }
+        }
+    }
+}
+
+/// The hyperbolic mean anomaly partials must match Orbit::ma_deg, on both the outbound and the
+/// inbound leg, and their gradient must match a finite difference of Orbit::ma_deg.
+#[cfg(feature = "analysis")]
+#[rstest]
+fn val_hyperbolic_ma_partials_match_orbit(epoch: Epoch, frame: Frame) {
+    use anise::analysis::prelude::OrbitalElement;
+    use anise::astro::orbit_gradient::OrbitGrad;
+
+    for ecc in [1.2, 1.5, 3.0] {
+        for ta_deg in [10.0, 45.0, 80.0] {
+            for inbound in [false, true] {
+                let mut orbit =
+                    Orbit::keplerian(-20_000.0, ecc, 30.0, 10.0, 20.0, ta_deg, epoch, frame);
+                if inbound {
+                    orbit.velocity_km_s = -orbit.velocity_km_s;
+                }
+
+                let partials = OrbitGrad::from(orbit)
+                    .partial_for(OrbitalElement::MeanAnomaly)
+                    .unwrap();
+                f64_eq_tol!(
+                    partials.real(),
+                    orbit.ma_deg().unwrap(),
+                    1e-9,
+                    format!(
+                        "ma partials for ecc = {ecc} at ta = {ta_deg} deg (inbound: {inbound})"
+                    )
+                );
+
+                let gradient = [
+                    partials.wrt_x(),
+                    partials.wrt_y(),
+                    partials.wrt_z(),
+                    partials.wrt_vx(),
+                    partials.wrt_vy(),
+                    partials.wrt_vz(),
+                ];
+                for (i, wrt) in gradient.into_iter().enumerate() {
+                    let step = if i < 3 { 1e-3 } else { 1e-6 };
+                    let mut state = orbit.to_cartesian_pos_vel();
+                    state[i] += step;
+                    let plus = orbit.with_cartesian_pos_vel(state).ma_deg().unwrap();
+                    state[i] -= 2.0 * step;
+                    let minus = orbit.with_cartesian_pos_vel(state).ma_deg().unwrap();
+                    let finite_diff = (plus - minus) / (2.0 * step);
+                    assert!(
+                        (wrt - finite_diff).abs() <= 1e-5 * finite_diff.abs().max(1.0),
+                        "d(ma)/d(state[{i}]) for ecc = {ecc} at ta = {ta_deg} deg (inbound: {inbound}): got {wrt} want {finite_diff}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[rstest]
+fn val_b_plane_gmat(almanac: Almanac) {
+    // This is a reproduction of the B-plane computation from the `Ex_LunarTransfer.script` file from GMAT
+    const GMAT_EARTH_MU: f64 = 398_600.441_5;
+    // Define the orbit in the ICRS frame
+    let epoch = Epoch::from_gregorian_tai(2014, 7, 22, 11, 29, 10, 811_000);
+    let orbit = Orbit::cartesian(
+        -137380.386760,
+        75679.517105,
+        21487.708113,
+        -0.232442,
+        -0.446282,
+        0.085610,
+        epoch,
+        almanac
+            .frame_info(EARTH_ICRS)
+            .expect("GCRF should be loaded (needed for c3 validation)")
+            .with_mu_km3_s2(GMAT_EARTH_MU),
+    );
+    // Transform into the Moon ICRS frame
+    let orbit_moon_icrs = almanac.transform_to(orbit, MOON_ICRS, None).unwrap();
+
+    println!("{orbit}\n{orbit_moon_icrs}");
+    assert!(
+        (orbit.c3_km2_s2().unwrap() - -4.775126658014266).abs() < 1e-5,
+        "invalid c3",
+    );
+
+    assert!(
+        (orbit_moon_icrs.b_r_km().unwrap() - 103578.8265522861).abs() < 1.0,
+        "invalid b dot R",
+    );
+    assert!(
+        (orbit_moon_icrs.b_t_km().unwrap() - 390913.1533788401).abs() < 1.0,
+        "invalid b dot T",
+    );
+    assert!(
+        (orbit_moon_icrs.b_plane_angle_deg().unwrap() - 14.84148076633666).abs() < 0.01,
+        "invalid b vector angle",
+    );
+    assert!(
+        (orbit_moon_icrs.b_plane_mag_km().unwrap() - 404402.3436889349).abs() < 1.0,
+        "invalid b mag",
+    );
 }

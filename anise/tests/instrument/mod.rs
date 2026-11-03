@@ -3,8 +3,8 @@ use anise::analysis::prelude::{
 };
 use anise::astro::Location;
 use anise::constants::celestial_objects::MOON;
-use anise::constants::frames::{IAU_MOON_FRAME, MOON_J2000};
-use anise::constants::orientations::{IAU_MOON, J2000};
+use anise::constants::frames::{IAU_MOON_FRAME, MOON_ICRS};
+use anise::constants::orientations::{IAU_MOON, ICRS};
 use anise::math::Vector3;
 use anise::math::rotation::EulerParameter;
 use anise::prelude::{Almanac, Frame, Orbit};
@@ -79,7 +79,7 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
         almanac.instrument_from_name("LRO Camera").unwrap()
     );
 
-    let lro_frame = Frame::new(-85, J2000);
+    let lro_frame = Frame::new(-85, ICRS);
     let start = almanac.spk_domain(-85).unwrap().0;
     let epoch = start + Unit::Day * 15;
     // Fetch the state of the vehicle in the Moon IAU frame
@@ -134,7 +134,7 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
     // Proof: if we pass in the rotation matrix J2000 to IAU, the footprint computation will raise an error.
 
     // Grab the rotation of the target.
-    let dcm = almanac.rotate(MOON_J2000, IAU_MOON_FRAME, epoch).unwrap();
+    let dcm = almanac.rotate(MOON_ICRS, IAU_MOON_FRAME, epoch).unwrap();
     let target_orientation_to_fixed = EulerParameter::from(dcm);
     assert!(
         instrument
@@ -257,7 +257,7 @@ fn lro_camera_fov_from_instrument(almanac: Almanac) {
 fn lro_camera_fov_from_analysis(mut almanac: Almanac) {
     let iau_moon = almanac.frame_info(IAU_MOON_FRAME).unwrap();
 
-    let lro_frame = Frame::new(-85, J2000);
+    let lro_frame = Frame::new(-85, ICRS);
     let start = almanac.spk_domain(-85).unwrap().0;
     let epoch = start + Unit::Day * 15;
 
@@ -284,7 +284,7 @@ fn lro_camera_fov_from_analysis(mut almanac: Almanac) {
             z: 0.0,
         }),
         primary_vec: Box::new(VectorExpr::Velocity(StateSpec {
-            target_frame: FrameSpec::Loaded(MOON_J2000),
+            target_frame: FrameSpec::Loaded(MOON_ICRS),
             observer_frame: FrameSpec::Loaded(lro_frame),
             ab_corr: None,
         })),
@@ -294,7 +294,7 @@ fn lro_camera_fov_from_analysis(mut almanac: Almanac) {
             z: -1.0,
         }),
         secondary_vec: Box::new(VectorExpr::Radius(StateSpec {
-            target_frame: FrameSpec::Loaded(MOON_J2000),
+            target_frame: FrameSpec::Loaded(MOON_ICRS),
             observer_frame: FrameSpec::Loaded(lro_frame),
             ab_corr: None,
         })),

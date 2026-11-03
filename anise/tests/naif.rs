@@ -11,7 +11,7 @@
 use std::mem::size_of_val;
 
 use anise::{
-    constants::frames::{EARTH_ITRF93, EARTH_MOON_BARYCENTER_J2000, MOON_J2000},
+    constants::frames::{EARTH_ITRF93, EARTH_MOON_BARYCENTER_ICRS, MOON_ICRS},
     file2heap,
     math::rotation::Quaternion,
     naif::{
@@ -259,7 +259,7 @@ fn test_spk_truncate_cheby() {
     let almanac = Almanac::default().with_spk(reloaded);
     let query_epoch = new_start + Unit::Day * 1;
     let state = almanac
-        .translate_geometric(MOON_J2000, EARTH_MOON_BARYCENTER_J2000, query_epoch)
+        .translate_geometric(MOON_ICRS, EARTH_MOON_BARYCENTER_ICRS, query_epoch)
         .unwrap();
     assert!(
         state.radius_km.norm() > 0.0,

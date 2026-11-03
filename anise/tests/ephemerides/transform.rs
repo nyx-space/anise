@@ -11,7 +11,7 @@
 use anise::astro::{AzElRange, Occultation};
 use anise::constants::celestial_objects::{EARTH, VENUS};
 use anise::constants::frames::{
-    EARTH_ITRF93, EARTH_J2000, IAU_EARTH_FRAME, IAU_MOON_FRAME, MOON_J2000, SUN_J2000, VENUS_J2000,
+    EARTH_ICRS, EARTH_ITRF93, IAU_EARTH_FRAME, IAU_MOON_FRAME, MOON_ICRS, SUN_ICRS, VENUS_ICRS,
 };
 use anise::constants::orientations::ITRF93;
 use anise::math::Vector3;
@@ -67,7 +67,7 @@ fn de440s_transform_verif_venus2emb() {
     let epoch = Epoch::from_gregorian_utc_at_midnight(2020, 2, 7);
 
     let state = almanac
-        .transform(VENUS_J2000, EARTH_ITRF93, epoch, Aberration::NONE)
+        .transform(VENUS_ICRS, EARTH_ITRF93, epoch, Aberration::NONE)
         .unwrap();
 
     let (spice_state, _) = spice::spkezr("VENUS", epoch.to_et_seconds(), "ITRF93", "NONE", "EARTH");
@@ -97,7 +97,7 @@ fn de440s_transform_verif_venus2emb() {
     );
 
     let state_rtn = almanac
-        .transform(EARTH_J2000, Frame::new(VENUS, ITRF93), epoch, None)
+        .transform(EARTH_ICRS, Frame::new(VENUS, ITRF93), epoch, None)
         .unwrap();
 
     println!("state = {state}");
@@ -186,7 +186,7 @@ fn spice_verif_iau_moon(almanac: Almanac) {
         -0.181449,
         -1.584180,
         epoch,
-        MOON_J2000,
+        MOON_ICRS,
     );
 
     let anise_iau_moon = almanac
@@ -225,7 +225,7 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
     let almanac = almanac.load(spk_path).unwrap();
 
     const LRO_ID: i32 = -85;
-    let lro_frame = Frame::from_ephem_j2000(LRO_ID);
+    let lro_frame = Frame::from_ephem_icrs(LRO_ID);
 
     // Load into SPICE
     spice::furnsh(spk_path);
@@ -237,12 +237,12 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
     let gh346_epoch = Epoch::from_gregorian_utc_at_midnight(2023, 12, 15);
     assert!(
         almanac
-            .common_ephemeris_path(lro_frame, SUN_J2000, gh346_epoch.to_et_seconds())
+            .common_ephemeris_path(lro_frame, SUN_ICRS, gh346_epoch.to_et_seconds())
             .is_ok()
     );
     assert!(
         almanac
-            .transform(lro_frame, SUN_J2000, gh346_epoch, None)
+            .transform(lro_frame, SUN_ICRS, gh346_epoch, None)
             .is_ok()
     );
 
@@ -250,7 +250,7 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
 
     // First, let's test that the common ephemeris path is correct
     let (node_count, path, common_node) = almanac
-        .common_ephemeris_path(lro_frame, SUN_J2000, epoch.to_et_seconds())
+        .common_ephemeris_path(lro_frame, SUN_ICRS, epoch.to_et_seconds())
         .unwrap();
 
     assert_eq!(common_node, 0, "common node should be the SSB");
@@ -277,12 +277,10 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
         spice_lro_state_raw[4],
         spice_lro_state_raw[5],
         epoch,
-        SUN_J2000,
+        SUN_ICRS,
     );
 
-    let anise_lro_state = almanac
-        .transform(lro_frame, SUN_J2000, epoch, None)
-        .unwrap();
+    let anise_lro_state = almanac.transform(lro_frame, SUN_ICRS, epoch, None).unwrap();
 
     println!("== VALIDATION==\nANISE\n{anise_lro_state}\nSPICE\n{spice_lro_state}");
     let rss_pos_km = anise_lro_state.rss_radius_km(&spice_lro_state).unwrap();
@@ -297,7 +295,7 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
 
     // Grab the orbital period in the Moon frame
     let lro_state = almanac
-        .transform(lro_frame, MOON_J2000, epoch, None)
+        .transform(lro_frame, MOON_ICRS, epoch, None)
         .unwrap();
 
     // Build the Madrid DSN gound station
@@ -341,7 +339,7 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
                 .unwrap();
 
         let rx_lro = almanac
-            .transform(lro_frame, MOON_J2000, epoch, None)
+            .transform(lro_frame, MOON_ICRS, epoch, None)
             .unwrap();
 
         let aer = almanac
@@ -428,11 +426,9 @@ fn validate_gh_283_multi_barycenter_and_los(almanac: Almanac) {
                 );
                 printed_umbra = true;
             }
-            let sun = almanac
-                .transform(SUN_J2000, MOON_J2000, epoch, None)
-                .unwrap();
+            let sun = almanac.transform(SUN_ICRS, MOON_ICRS, epoch, None).unwrap();
             let obstructed = almanac
-                .line_of_sight_obstructed(rx_lro, sun, MOON_J2000, None)
+                .line_of_sight_obstructed(rx_lro, sun, MOON_ICRS, None)
                 .unwrap();
             assert!(obstructed, "{occult} but not obstructed!");
         } else {

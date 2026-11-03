@@ -20,6 +20,7 @@ use anise::analysis::python::{
 use anise::analysis::report::PyReportScalars;
 use anise::astro::Aberration;
 use anise::astro::orbit::Orbit;
+use anise::astro::orbit_hyperbolic::BPlane;
 use anise::astro::{AzElRange, Location, Occultation, TerrainMask};
 use anise::ephemerides::ephemeris::{Covariance, Ephemeris, EphemerisRecord, LocalFrame};
 use anise::ephemerides::opm::{Maneuver, Opm};
@@ -103,6 +104,7 @@ pub(crate) fn astro(_py: Python, sm: &Bound<'_, PyModule>) -> PyResult<()> {
     sm.add_class::<PySpacecraftDataSet>()?;
     sm.add_class::<SpacecraftDhallSet>()?;
     sm.add_class::<SpacecraftDhallSetEntry>()?;
+    sm.add_class::<BPlane>()?;
 
     // Also add the constants as a submodule to astro for backward compatibility
     sm.add_wrapped(wrap_pymodule!(crate::constants::constants))?;

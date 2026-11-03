@@ -294,13 +294,44 @@ impl PyLocationDataSet {
 
 #[cfg(test)]
 mod ut_loc_dhall {
+    use der::Encode;
 
     use crate::{
         astro::{Location, TerrainMask},
         constants::frames::EARTH_ITRF93,
+        structure::LocationDataSet,
     };
 
     use super::{LocationDhallSet, LocationDhallSetEntry};
+
+    #[test]
+    fn gh850_location_ids_survive_roundtrip() {
+        for first_id in -100..100 {
+            let mut original = LocationDhallSet {
+                data: (0..300)
+                    .map(|i| LocationDhallSetEntry {
+                        id: Some(first_id + i),
+                        alias: Some(format!("Site#ANTdjdnkljsdckljnsdac-{i:05}")),
+                        value: Location {
+                            height_km: f64::from(i),
+                            frame: EARTH_ITRF93.into(),
+                            ..Default::default()
+                        },
+                    })
+                    .collect(),
+            };
+            let mut dataset = original.to_dataset().unwrap();
+            assert_eq!(dataset.to_dhallset().unwrap(), original);
+
+            dataset.set_crc32();
+            let loaded = LocationDataSet::try_from_bytes(dataset.to_der().unwrap()).unwrap();
+            assert_eq!(
+                loaded.to_dhallset().unwrap(),
+                original,
+                "locations starting at ID {first_id}"
+            );
+        }
+    }
 
     #[test]
     fn test_location_dhallset() {

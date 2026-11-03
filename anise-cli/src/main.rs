@@ -87,7 +87,9 @@ fn main() -> Result<(), CliErrors> {
             if let Ok(metadata) = Metadata::decode_header(&bytes) {
                 // Now, we can load this depending on the kind of data that it is
                 match metadata.dataset_type {
-                    DataSetType::NotApplicable => unreachable!("no such ANISE data yet"),
+                    DataSetType::NotApplicable => Err(CliErrors::ArgumentError {
+                        arg: format!("{path_str:?} has a malformed dataset type"),
+                    }),
                     DataSetType::SpacecraftData => {
                         // Decode as spacecraft data
                         let dataset =

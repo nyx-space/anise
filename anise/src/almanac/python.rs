@@ -9,7 +9,7 @@
  */
 
 use super::{Almanac, planetary::PlanetaryDataError};
-use crate::constants::orientations::J2000;
+use crate::constants::orientations::ICRS;
 use crate::ephemerides::ephemeris::Ephemeris;
 use crate::errors::{AlmanacError, EphemerisSnafu};
 use crate::structure::LocationDataSet;
@@ -300,10 +300,13 @@ impl Almanac {
     /// :type rx_tx_states: typing.List[Orbit]
     /// :type obstructing_body: Frame, optional
     /// :type ab_corr: Aberration, optional
+    /// :type suppress_error: bool, optional
     /// :rtype: typing.List[AzElRange]
     #[pyo3(name = "azimuth_elevation_range_sez_many", signature=(
         rx_tx_states,
-        obstructing_body=None, ab_corr=None
+        obstructing_body=None,
+        ab_corr=None,
+        suppress_error=None,
     ))]
     fn py_azimuth_elevation_range_sez_many(
         &self,
@@ -311,7 +314,9 @@ impl Almanac {
         rx_tx_states: Vec<(CartesianState, CartesianState)>,
         obstructing_body: Option<Frame>,
         ab_corr: Option<Aberration>,
+        suppress_error: Option<bool>,
     ) -> Vec<AzElRange> {
+        let suppress_error = suppress_error.unwrap_or_default();
         py.detach(|| {
             let mut rslt = rx_tx_states
                 .par_iter()
@@ -319,7 +324,9 @@ impl Almanac {
                     self.azimuth_elevation_range_sez(*rx, *tx, obstructing_body, ab_corr)
                         .map_or_else(
                             |e| {
-                                println!("{e}");
+                                if !suppress_error {
+                                    eprintln!("{e}");
+                                }
                                 None
                             },
                             Some,
@@ -442,11 +449,13 @@ impl Almanac {
     /// :type eclipsing_frame: Frame
     /// :type observers: typing.List[Orbit]
     /// :type ab_corr: Aberration, optional
+    /// :type suppress_error: bool, optional
     /// :rtype: typing.List[Occultation]
     #[pyo3(name = "solar_eclipsing_many", signature=(
         eclipsing_frame,
         observers,
         ab_corr=None,
+        suppress_error=None,
     ))]
     fn py_solar_eclipsing_many(
         &self,
@@ -454,7 +463,9 @@ impl Almanac {
         eclipsing_frame: Frame,
         observers: Vec<Orbit>,
         ab_corr: Option<Aberration>,
+        suppress_error: Option<bool>,
     ) -> Vec<Occultation> {
+        let suppress_error = suppress_error.unwrap_or_default();
         py.detach(|| {
             let mut rslt = observers
                 .par_iter()
@@ -462,7 +473,9 @@ impl Almanac {
                     self.solar_eclipsing(eclipsing_frame, *observer, ab_corr)
                         .map_or_else(
                             |e| {
-                                println!("{e}");
+                                if !suppress_error {
+                                    eprintln!("{e}");
+                                }
                                 None
                             },
                             Some,
@@ -538,12 +551,14 @@ impl Almanac {
     /// :type observer_frame: Frame
     /// :type time_series: TimeSeries
     /// :type ab_corr: Aberration, optional
+    /// :type suppress_error: bool, optional
     /// :rtype: typing.List[Orbit]
     #[pyo3(name = "transform_many", signature=(
         target_frame,
         observer_frame,
         time_series,
         ab_corr=None,
+        suppress_error=None,
     ))]
     fn py_transform_many(
         &self,
@@ -552,7 +567,9 @@ impl Almanac {
         observer_frame: Frame,
         time_series: TimeSeries,
         ab_corr: Option<Aberration>,
+        suppress_error: Option<bool>,
     ) -> Vec<CartesianState> {
+        let suppress_error = suppress_error.unwrap_or_default();
         py.detach(|| {
             let mut states = time_series
                 .par_bridge()
@@ -560,7 +577,9 @@ impl Almanac {
                     self.transform(target_frame, observer_frame, epoch, ab_corr)
                         .map_or_else(
                             |e| {
-                                eprintln!("{e}");
+                                if !suppress_error {
+                                    eprintln!("{e}");
+                                }
                                 None
                             },
                             Some,
@@ -601,11 +620,13 @@ impl Almanac {
     /// :type states: typing.List[Orbit]
     /// :type observer_frame: Frame
     /// :type ab_corr: Aberration, optional
+    /// :type suppress_error: bool, optional
     /// :rtype: typing.List[Orbit]
     #[pyo3(name = "transform_many_to", signature=(
         states,
         observer_frame,
         ab_corr=None,
+        suppress_error=None,
     ))]
     fn py_transform_many_to(
         &self,
@@ -613,7 +634,9 @@ impl Almanac {
         states: Vec<CartesianState>,
         observer_frame: Frame,
         ab_corr: Option<Aberration>,
+        suppress_error: Option<bool>,
     ) -> Vec<CartesianState> {
+        let suppress_error = suppress_error.unwrap_or_default();
         py.detach(|| {
             let mut rslt = states
                 .par_iter()
@@ -621,7 +644,9 @@ impl Almanac {
                     self.transform_to(*state, observer_frame, ab_corr)
                         .map_or_else(
                             |e| {
-                                println!("{e}");
+                                if !suppress_error {
+                                    eprintln!("{e}");
+                                }
                                 None
                             },
                             Some,
@@ -849,7 +874,7 @@ impl Almanac {
         from_frame: Frame,
         epoch: Epoch,
     ) -> Result<Bound<'py, PyArray1<f64>>, OrientationError> {
-        self.py_angular_velocity_rad_s(py, from_frame, from_frame.with_orient(J2000), epoch)
+        self.py_angular_velocity_rad_s(py, from_frame, from_frame.with_orient(ICRS), epoch)
     }
 
     /// Returns the angular velocity vector in deg/s of the from_frame wrt to the to_frame.
@@ -892,7 +917,7 @@ impl Almanac {
         from_frame: Frame,
         epoch: Epoch,
     ) -> Result<Bound<'py, PyArray1<f64>>, OrientationError> {
-        self.py_angular_velocity_deg_s(py, from_frame, from_frame.with_orient(J2000), epoch)
+        self.py_angular_velocity_deg_s(py, from_frame, from_frame.with_orient(ICRS), epoch)
     }
 
     /// Computes the azimuth (in degrees), elevation (in degrees), and range (in kilometers) of the
@@ -982,6 +1007,22 @@ impl Almanac {
     #[pyo3(name = "location_from_name")]
     pub fn py_location_from_name(&self, name: &str) -> AlmanacResult<Location> {
         self.location_from_name(name)
+    }
+
+    /// Returns a list of all location IDs present in the loaded location datasets, searching in reverse order of datasets loaded.
+    ///
+    /// :rtype: typing.List[int]
+    #[pyo3(name = "location_ids")]
+    pub fn py_location_ids(&self) -> Vec<i32> {
+        self.location_ids()
+    }
+
+    /// Returns a list of all location names present in the loaded location datasets, searching in reverse order of datasets loaded.
+    ///
+    /// :rtype: typing.List[str]
+    #[pyo3(name = "location_names")]
+    pub fn py_location_names(&self) -> Vec<String> {
+        self.location_names()
     }
 
     /// Inserts the provided location info, as a DhallSetEntry, into the Almanac. Use this to build a location kernel in memory.

@@ -40,7 +40,7 @@ ANISE provides the ability to create Cartesian states (also simply called `Orbit
 ```rust
 use anise::prelude::*;
 // ANISE provides pre-built frames, but examples below show how to build them from their NAIF IDs.
-use anise::constants::frames::{EARTH_ITRF93, EARTH_J2000};
+use anise::constants::frames::{EARTH_ITRF93, EARTH_ICRS};
 
 // Initialize an empty Almanac
 let ctx = Almanac::default();
@@ -62,7 +62,7 @@ let almanac = ctx
 
 // Let's build an orbit
 // Start by grabbing a copy of the frame.
-let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
 
 // Define an epoch, in TDB, but you may specify UTC, TT, TAI, GPST, and more.
 let epoch = Epoch::from_str("2021-10-29 12:34:56 TDB").unwrap();
@@ -85,7 +85,7 @@ println!("{state_itrf93:X}");
 
 // Convert back
 let from_state_itrf93_to_eme2k = almanac
-    .transform_to(state_itrf93, EARTH_J2000, Aberration::NONE)
+    .transform_to(state_itrf93, EARTH_ICRS, Aberration::NONE)
     .unwrap();
 
 println!("{from_state_itrf93_to_eme2k}");
@@ -155,8 +155,8 @@ let epoch = Epoch::from_str("2020-11-15 12:34:56.789 TDB").unwrap();
 
 let state = ctx
     .translate(
-        VENUS_J2000, // Target
-        EARTH_MOON_BARYCENTER_J2000, // Observer
+        VENUS_ICRS, // Target
+        EARTH_MOON_BARYCENTER_ICRS, // Observer
         epoch,
         None,
     )
@@ -241,19 +241,19 @@ You can determine if a spacecraft is in a solar eclipse using the `solar_eclipsi
 
 ```rust
 use anise::prelude::*;
-use anise::constants::frames::EARTH_J2000;
+use anise::constants::frames::EARTH_ICRS;
 use hifitime::Epoch;
 
 let almanac = Almanac::new("../data/de440s.bsp").unwrap().load("../data/pck08.pca").unwrap();
 let epoch = Epoch::from_gregorian_utc_at_midnight(2024, 1, 1);
-let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
 let orbit = Orbit::try_keplerian_altitude(
     500.0, 0.01, 1.0, 72.0, 45.0, 270.0, epoch, eme2k,
 ).unwrap();
 
 let occult = almanac
     .solar_eclipsing(
-        EARTH_J2000,
+        EARTH_ICRS,
         orbit.at_epoch(epoch).expect("two body prop failed"),
         None,
     )
@@ -268,13 +268,13 @@ ANISE allows you to transform an orbit from one frame to another using the `tran
 
 ```rust
 use anise::prelude::*;
-use anise::constants::frames::{EARTH_ITRF93, EARTH_J2000};
+use anise::constants::frames::{EARTH_ITRF93, EARTH_ICRS};
 use hifitime::Epoch;
 use core::str::FromStr;
 
 let almanac = MetaAlmanac::latest().unwrap();
 
-let eme2k = almanac.frame_info(EARTH_J2000).unwrap();
+let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
 let epoch = Epoch::from_str("2021-10-29 12:34:56 TDB").unwrap();
 
 let orig_state = Orbit::try_keplerian(

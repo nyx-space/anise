@@ -13,6 +13,24 @@ use crate::math::Vector3;
 
 use super::{FovShape, Instrument};
 
+/// The field of view half angles feed `to_radians()` and then `sin_cos`/`tan`/`normalize` in the
+/// instrument FOV helpers, so a non-finite angle read from an untrusted instrument dataset turns
+/// `generate_fov_boundary_vectors` into NaN rays and `fov_margin_deg` into a NaN margin, silently
+/// corrupting footprint and in-FOV results. Reject it on decode like the other ANISE decoders
+/// reject their out-of-range floats.
+fn reject_non_finite_angle(angle_deg: f64) -> der::Result<()> {
+    if angle_deg.is_finite() {
+        Ok(())
+    } else {
+        Err(der::Error::new(
+            der::ErrorKind::Value {
+                tag: der::Tag::Real,
+            },
+            der::Length::ONE,
+        ))
+    }
+}
+
 impl FovShape {
     fn variant(&self) -> u8 {
         match self {
@@ -60,14 +78,17 @@ impl<'a> Decode<'a> for FovShape {
 
         Ok(match variant {
             0 => {
-                let half_angle_deg = decoder.decode()?;
-                // Decode the f64::NAN we added for padding.
+                let half_angle_deg: f64 = decoder.decode()?;
+                // Decode the f64::NAN we added for padding (intentionally non-finite, not validated).
                 let _: f64 = decoder.decode()?;
+                reject_non_finite_angle(half_angle_deg)?;
                 Self::Conical { half_angle_deg }
             }
             1 => {
-                let x_half_angle_deg = decoder.decode()?;
-                let y_half_angle_deg = decoder.decode()?;
+                let x_half_angle_deg: f64 = decoder.decode()?;
+                let y_half_angle_deg: f64 = decoder.decode()?;
+                reject_non_finite_angle(x_half_angle_deg)?;
+                reject_non_finite_angle(y_half_angle_deg)?;
                 Self::Rectangular {
                     x_half_angle_deg,
                     y_half_angle_deg,
@@ -153,5 +174,48 @@ mod instrument_encdec {
         let repr_dec = Instrument::from_der(&buf).unwrap();
 
         assert_eq!(repr_dec, repr);
+    }
+
+    #[test]
+    fn reject_non_finite_fov_angles() {
+        // A crafted instrument dataset carrying a non-finite FOV half angle decodes fine without
+        // this guard, then normalize()/tan() in the FOV helpers turn it into NaN rays and margins.
+        for bad in [f64::INFINITY, f64::NEG_INFINITY, f64::NAN] {
+            let conical = FovShape::Conical {
+                half_angle_deg: bad,
+            };
+            let mut buf = vec![];
+            conical.encode_to_vec(&mut buf).unwrap();
+            assert!(
+                FovShape::from_der(&buf).is_err(),
+                "non-finite conical half angle {bad} must be rejected"
+            );
+
+            for rect in [
+                FovShape::Rectangular {
+                    x_half_angle_deg: bad,
+                    y_half_angle_deg: 12.3,
+                },
+                FovShape::Rectangular {
+                    x_half_angle_deg: 12.3,
+                    y_half_angle_deg: bad,
+                },
+            ] {
+                let mut buf = vec![];
+                rect.encode_to_vec(&mut buf).unwrap();
+                assert!(
+                    FovShape::from_der(&buf).is_err(),
+                    "non-finite rectangular half angle {bad} must be rejected"
+                );
+            }
+        }
+
+        // A valid finite FOV still round-trips.
+        let good = FovShape::Conical {
+            half_angle_deg: 12.3,
+        };
+        let mut buf = vec![];
+        good.encode_to_vec(&mut buf).unwrap();
+        assert_eq!(FovShape::from_der(&buf).unwrap(), good);
     }
 }
