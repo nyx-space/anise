@@ -4,7 +4,6 @@ from anise import analysis
 from anise import rotation
 from anise import time
 import numpy
-import time
 import typing
 
 @typing.final

@@ -197,8 +197,7 @@ impl Opm {
                 LocalFrame::TNW => "TNW",
                 LocalFrame::VNC => {
                     return Err(EphemerisError::OPMWritingError {
-                        details: "VNC frame is not supported for OPM covariance export"
-                            .to_string(),
+                        details: "VNC frame is not supported for OPM covariance export".to_string(),
                     });
                 }
             };
@@ -217,8 +216,7 @@ impl Opm {
                 LocalFrame::TNW => "TNW",
                 LocalFrame::VNC => {
                     return Err(EphemerisError::OPMWritingError {
-                        details: "VNC frame is not supported for OPM maneuver export"
-                            .to_string(),
+                        details: "VNC frame is not supported for OPM maneuver export".to_string(),
                     });
                 }
             };
