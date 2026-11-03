@@ -1430,7 +1430,7 @@ class Orbit:
         epoch: time.Epoch,
         frame: Frame,
     ) -> Orbit:
-        """Attempts to create a new Orbit from the Walker equinoctial orbital elements, by computing the Keplerian elements and calling [Orbit::try_keplerian_mean_anomaly].
+        """Attempts to create a new Orbit from the Walker equinoctial orbital elements by computing the Keplerian elements.
 
         + `sma_km`: the semi-major axis, in km: `a = (r_apo + r_peri) / 2`
         + `h`: eccentricity vector (y-component): `h = e sin(ω + Ω)`
@@ -1647,8 +1647,7 @@ class Orbit:
         """Returns the mean motion in degrees per seconds"""
 
     def modified_equinoctial_elements(self) -> list[float]:
-        """Returns the six Modified Equinoctial elements, computed directly from the Cartesian state
-        so that they stay well conditioned for circular and equatorial orbits.
+        """Returns the six Modified Equinoctial elements, computed directly from the Cartesian state.
 
         + `p`: the semi-latus rectum, in km: `p = a(1 - e²)` (finite for a parabolic orbit)
         + `f`: eccentricity vector (x-component): `f = e cos(ω + Ω)`

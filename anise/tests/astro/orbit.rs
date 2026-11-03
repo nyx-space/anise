@@ -789,12 +789,12 @@ fn verif_orbit_at_epoch_with_low_eccentricity(almanac: Almanac) {
     let epoch = Epoch::from_gregorian_utc_hms(2026, 8, 26, 12, 0, 0);
 
     let orbit_initial_eme2000 = Orbit::try_keplerian(
-        26_560.0, // sma_km
-        0.02,     // ecc
+        26_560.0,  // sma_km
+        0.02,      // ecc
         55.0,      // inc_deg
-        120.0,      // raan_deg
-        0.0,      // aop_deg
-        240.0,      // ta_deg
+        120.0,     // raan_deg
+        0.0,       // aop_deg
+        240.0,     // ta_deg
         epoch,
         eme2000,
     ).unwrap();

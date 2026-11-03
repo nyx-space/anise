@@ -380,8 +380,7 @@ impl Orbit {
         ])
     }
 
-    /// Returns the six Modified Equinoctial elements, computed directly from the Cartesian state
-    /// so that they stay well conditioned for circular and equatorial orbits.
+    /// Returns the six Modified Equinoctial elements, computed directly from the Cartesian state.
     ///
     /// + `p`: the semi-latus rectum, in km: `p = a(1 - e²)` (finite for a parabolic orbit)
     /// + `f`: eccentricity vector (x-component): `f = e cos(ω + Ω)`
