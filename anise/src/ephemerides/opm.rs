@@ -194,7 +194,12 @@ impl Opm {
             let cov_frame = match cov.local_frame {
                 LocalFrame::Inertial => "EME2000",
                 LocalFrame::RIC | LocalFrame::RCN => "RTN",
-                LocalFrame::VNC => "TNW",
+                LocalFrame::TNW => "TNW",
+                LocalFrame::VNC => {
+                    return Err(EphemerisError::OPMWritingError {
+                        details: "VNC frame is not supported for OPM covariance export".to_string(),
+                    });
+                }
             };
             writeln!(writer, "\nCOMMENT Covariance").map_err(err_hdlr)?;
             writeln!(writer, "COV_REF_FRAME = {cov_frame}").map_err(err_hdlr)?;
@@ -208,7 +213,12 @@ impl Opm {
             let ref_frame = match man.ref_frame {
                 LocalFrame::Inertial => "EME2000",
                 LocalFrame::RIC | LocalFrame::RCN => "RTN",
-                LocalFrame::VNC => "TNW",
+                LocalFrame::TNW => "TNW",
+                LocalFrame::VNC => {
+                    return Err(EphemerisError::OPMWritingError {
+                        details: "VNC frame is not supported for OPM maneuver export".to_string(),
+                    });
+                }
             };
             writeln!(writer, "\nCOMMENT Maneuver").map_err(err_hdlr)?;
             writeln!(
@@ -503,7 +513,7 @@ fn local_frame_from_token(token: &str, lno: usize) -> Result<LocalFrame, Ephemer
     match token {
         "EME2000" | "ICRF" | "J2000" => Ok(LocalFrame::Inertial),
         "RSW" | "RTN" => Ok(LocalFrame::RIC),
-        "TNW" => Ok(LocalFrame::VNC),
+        "TNW" => Ok(LocalFrame::TNW),
         _ => Err(EphemerisError::OPMParsingError {
             lno,
             details: format!("unsupported reference frame `{token}`"),

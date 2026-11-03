@@ -522,7 +522,7 @@ impl Ephemeris {
                     match cov_frame_str.as_str() {
                         "EME2000" | "ICRF" => cov_frame = Some(LocalFrame::Inertial),
                         "RSW" | "RTN" => cov_frame = Some(LocalFrame::RIC),
-                        "TNW" => cov_frame = Some(LocalFrame::VNC),
+                        "TNW" => cov_frame = Some(LocalFrame::TNW),
                         _ => {
                             return Err(EphemerisError::OEMParsingError {
                                 lno,
@@ -836,7 +836,13 @@ impl Ephemeris {
                         match covar.local_frame {
                             LocalFrame::Inertial => ref_frame,
                             LocalFrame::RIC => "RTN",
-                            LocalFrame::VNC => "TNW",
+                            LocalFrame::TNW => "TNW",
+                            LocalFrame::VNC => {
+                                return Err(EphemerisError::OEMWritingError {
+                                    details: "VNC frame is not supported for OEM covariance export"
+                                        .to_string(),
+                                });
+                            }
                             LocalFrame::RCN => {
                                 return Err(EphemerisError::OEMWritingError {
                                     details: "RCN frame is not supported for OEM covariance export"

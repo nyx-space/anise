@@ -813,6 +813,8 @@ class Frame:
         orientation_id: int,
         mu_km3_s2: typing.Optional[float] = None,
         shape: typing.Optional[Ellipsoid] = None,
+        force_inertial: typing.Optional[bool] = None,
+        frozen_epoch: typing.Optional[time.Epoch] = None,
     ) -> Frame:
         """A Frame uniquely defined by its ephemeris center and orientation. Refer to FrameDetail for frames combined with parameters."""
 
@@ -862,6 +864,10 @@ class Frame:
 
     def strip(self) -> None:
         """Removes the graviational parameter and the shape information from this frame.
+        Use this to prevent astrodynamical computations."""
+
+    def stripped(self) -> Frame:
+        """Returns a copy of this frame with the gravitational parameter and the shape information from this frame.
         Use this to prevent astrodynamical computations."""
 
     def to_asn1(self) -> bytes:
@@ -1006,6 +1012,7 @@ class LocalFrame:
     Inertial: LocalFrame = ...
     RCN: LocalFrame = ...
     RIC: LocalFrame = ...
+    TNW: LocalFrame = ...
     VNC: LocalFrame = ...
 
 @typing.final
@@ -1307,7 +1314,7 @@ class Orbit:
         This is not a true propagation of the orbit. This is akin to a two body propagation ONLY without any other force models applied.
         Use Nyx for high fidelity propagation. This implementation uses equinoctial elements and should be well behaved for circular equatorial orbits."""
 
-    def b_ltof(self) -> float:
+    def b_ltof(self) -> time.Duration:
         """Linearized Time of Flight (LTOF) along the incoming asymptote to B-Plane crossing:
         $\\text{LTOF} = -(\\mathbf{r} \\cdot \\hat{\\mathbf{S}}) / v_\\infty$.
         Positive when the spacecraft is inbound (prior to B-Plane crossing) and negative after crossing."""
@@ -1360,6 +1367,18 @@ class Orbit:
         2. Build the i vector as the cross product of \\hat{r} and c
         3. Build the RIC DCM as a 3x3 of the columns [\\hat{r}, \\hat{i}, \\hat{c}]
         4. Return the DCM structure **without** accounting for the transport theorem."""
+
+    def dcm3x3_from_tnw_to_inertial(self) -> rotation.DCM:
+        """Builds the rotation matrix that rotates from this state's inertial frame to this state's TNW frame (tangential, orbit normal, cross)
+
+        # Frame warning
+        If the state is NOT in an inertial frame, then this computation is INVALID.
+
+        # Algorithm
+        1. Compute \\hat{t} = \\hat{v}, \\hat{w} = \\hat{h}, the unit vectors of velocity and orbital momentum.
+        2. Compute \\hat{n} = \\hat{w} \\times \\hat{t}
+        3. Build the DCM with columns [\\hat{t}, \\hat{n}, \\hat{w}]
+        4. Return the DCM structure."""
 
     def dcm3x3_from_topocentric_to_body_fixed(self) -> rotation.DCM:
         """Builds the rotation matrix that rotates from the topocentric frame (SEZ) into the body fixed frame of this state.
@@ -1419,6 +1438,19 @@ class Orbit:
         # Note on the time derivative
         If the pre or post states cannot be computed, then the time derivative of the DCM will _not_ be set.
         Further note that most astrodynamics tools do *not* account for the time derivative in the RIC frame."""
+
+    def dcm_from_tnw_to_inertial(self) -> rotation.DCM:
+        """Builds the rotation matrix that rotates from this state's inertial frame to this state's TNW frame (tangential, orbit normal, cross)
+
+        # Frame warning
+        If the state is NOT in an inertial frame, then this computation is INVALID.
+
+        # Algorithm
+        1. Compute \\hat{t} = \\hat{v}, \\hat{w} = \\hat{h}, the unit vectors of velocity and orbital momentum.
+        2. Compute \\hat{n} = \\hat{w} \\times \\hat{t}
+        3. Build the DCM with columns [\\hat{t}, \\hat{n}, \\hat{w}]
+        4. Compute the difference between the DCMs of the pre and post states (+/- 1 ms), to build the DCM time derivative
+        5. Return the DCM structure with a 6x6 DCM with the time derivative of the TNW frame set."""
 
     def dcm_from_topocentric_to_body_fixed(self) -> rotation.DCM:
         """Builds the rotation matrix that rotates from the topocentric frame (SEZ) into the body fixed frame of this state.
@@ -1879,6 +1911,27 @@ class Orbit:
 
     def tlong_deg(self) -> float:
         """Returns the true longitude in degrees"""
+
+    def tnw_difference(self, other: Orbit) -> Orbit:
+        """Returns a Cartesian state representing the TNW difference between self and other, in position and velocity (with transport theorem).
+        Refer to dcm_from_tnw_to_inertial for details on the TNW frame.
+
+        # Algorithm
+        1. Compute the difference between `other` and `self`
+        2. Compute the TNW DCM of `self`
+        3. Rotate the difference into the TNW frame of `self`
+        4. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`"""
+
+    def tnw_difference_unchecked(self, other: Orbit) -> Orbit:
+        """Returns a Cartesian state representing the TNW difference between self and other, in position and velocity (with transport theorem).
+        Refer to dcm_from_tnw_to_inertial for details on the TNW frame.
+        The `unchecked` variant does not check that both epochs match!
+
+        # Algorithm
+        1. Compute the difference between `other` and `self`
+        2. Compute the TNW DCM of `self`
+        3. Rotate the difference into the TNW frame of `self`
+        4. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`"""
 
     def to_asn1(self) -> bytes:
         """Encodes this CartesianState (Orbit) into an ASN.1 DER encoded byte array."""
