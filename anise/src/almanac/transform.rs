@@ -136,9 +136,8 @@ impl Almanac {
             })
     }
 
-    /// Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame
-    ///
-    /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_state_to` function instead to include rotations.
+    /// Builds a state from the supplied position, velocity and input units, then
+    /// transforms it from `from_frame` to `to_frame`, including frame rotations.
     #[allow(clippy::too_many_arguments)]
     pub fn transform_state_to(
         &self,
@@ -151,33 +150,17 @@ impl Almanac {
         distance_unit: LengthUnit,
         time_unit: TimeUnit,
     ) -> AlmanacResult<CartesianState> {
-        let state = self
-            .translate_state_to(
-                position,
-                velocity,
-                from_frame,
-                to_frame,
-                epoch,
-                ab_corr,
-                distance_unit,
-                time_unit,
-            )
-            .context(EphemerisSnafu {
-                action: "transform provided state",
-            })?;
+        let distance_factor = distance_unit.to_meters() * LengthUnit::Kilometer.from_meters();
+        let state = CartesianState {
+            radius_km: position * distance_factor,
+            velocity_km_s: velocity * distance_factor / time_unit.in_seconds(),
+            epoch,
+            frame: from_frame,
+        };
 
-        // Compute the frame rotation
-        let dcm = self
-            .rotate(from_frame, to_frame, epoch)
-            .context(OrientationSnafu {
-                action: "transform provided state dcm",
-            })?;
-
-        (dcm * state)
-            .context(OrientationPhysicsSnafu {})
-            .context(OrientationSnafu {
-                action: "transform provided state",
-            })
+        // transform_to resolves the source orientation before adding the
+        // ephemeris translation, so components are never mixed across bases.
+        self.transform_to(state, to_frame, ab_corr)
     }
 
     /// Returns the unitary 3D vector between two [Frame]s (solid bodies) at desired [Epoch]
