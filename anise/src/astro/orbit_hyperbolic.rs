@@ -13,10 +13,7 @@ use super::PhysicsResult;
 use crate::{
     astro::orbit::Orbit,
     errors::{InfiniteValueSnafu, NotHyperbolicSnafu, PhysicsError},
-    math::{
-        Vector3,
-        angles::{between_0_360, between_pm_180},
-    },
+    math::{Vector3, angles::between_pm_180},
     prelude::Frame,
 };
 
@@ -28,7 +25,7 @@ use pyo3::prelude::*;
 
 #[cfg_attr(feature = "python", pymethods)]
 impl Orbit {
-    /// Returns the hyperbolic anomaly in degrees between 0 and 360.0
+    /// Returns the hyperbolic anomaly in degrees, negative on the inbound leg and unbounded.
     /// Returns an error if the orbit is not hyperbolic.
     ///
     /// :rtype: float
@@ -39,7 +36,7 @@ impl Orbit {
         } else {
             let (sin_ta, cos_ta) = self.ta_deg()?.to_radians().sin_cos();
             let sinh_h = (sin_ta * (ecc.powi(2) - 1.0).sqrt()) / (1.0 + ecc * cos_ta);
-            Ok(between_0_360(sinh_h.asinh().to_degrees()))
+            Ok(sinh_h.asinh().to_degrees())
         }
     }
 
