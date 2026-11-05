@@ -885,6 +885,43 @@ fn verif_orbit_at_epoch_equatorial_circular(almanac: Almanac) {
     );
 }
 
+/// Round-trips a polar, moderately eccentric orbit through one full orbital period
+/// and checks that the propagated position and velocity return to the original state.
+#[rstest]
+fn verif_orbit_at_epoch_polar_eccentric(almanac: Almanac) {
+    let eme2000 = almanac.frame_info(EARTH_J2000).unwrap();
+    let epoch = Epoch::from_gregorian_utc_hms(2026, 8, 26, 12, 0, 0);
+
+    let orbit_initial_eme2000 = Orbit::try_keplerian(
+        12_000.0,  // sma_km
+        0.3,       // ecc
+        90.0,      // inc_deg
+        45.0,      // raan_deg
+        30.0,      // aop_deg
+        75.0,      // ta_deg
+        epoch,
+        eme2000,
+    ).unwrap();
+
+    let orbit_later_eme2000 = orbit_initial_eme2000.at_epoch(
+        epoch + orbit_initial_eme2000.period().unwrap()
+    ).unwrap();
+
+    // Should come back to the original position and velocity after 1 period
+    f64_eq_tol!(
+        (orbit_later_eme2000.radius_km - orbit_initial_eme2000.radius_km).norm(),
+        0.0,
+        1e-3,  // 1 m tolerance
+        "Position drifted"
+    );
+    f64_eq_tol!(
+        (orbit_later_eme2000.velocity_km_s - orbit_initial_eme2000.velocity_km_s).norm(),
+        0.0,
+        1e-3, // 1 m/s tolerance
+        "Velocity drifted"
+    );
+}
+
 #[rstest]
 fn b_plane_davis(almanac: Almanac) {
     // This is a simple test from Dr. Davis' IMD class at CU Boulder.
