@@ -1,7 +1,7 @@
 extern crate pretty_env_logger as pel;
 
 use anise::astro::orbit::ECC_EPSILON;
-use anise::constants::frames::{EARTH_ICRS, MOON_ICRS};
+use anise::constants::frames::{EARTH_ICRS, EARTH_J2000, MOON_ICRS};
 use anise::errors::PhysicsError;
 use anise::math::Vector3;
 use anise::math::angles::{between_0_360, between_pm_180};
