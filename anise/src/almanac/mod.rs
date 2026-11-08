@@ -575,7 +575,7 @@ impl Almanac {
             self.bpc_data
                 .get_full_mut(alias)
                 .ok_or_else(|| AlmanacError::GenericError {
-                    err: format!("no SPK alias `{alias}`"),
+                    err: format!("no BPC alias `{alias}`"),
                 })?;
 
         // Take ownership of the Bytes temporarily
