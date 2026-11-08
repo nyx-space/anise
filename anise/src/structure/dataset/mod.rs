@@ -24,17 +24,10 @@ use core::ops::Deref;
 use der::{Decode, Encode, Reader, Writer, asn1::OctetString};
 use log::error;
 use snafu::prelude::*;
-
-macro_rules! io_imports {
-    () => {
-        use std::fs::File;
-        use std::io::{Error as IOError, ErrorKind as IOErrorKind, Write};
-        use std::path::Path;
-        use std::path::PathBuf;
-    };
-}
-
-io_imports!();
+use std::fs::File;
+use std::io::{Error as IOError, ErrorKind as IOErrorKind, Write};
+use std::path::Path;
+use std::path::PathBuf;
 
 mod datatype;
 mod error;

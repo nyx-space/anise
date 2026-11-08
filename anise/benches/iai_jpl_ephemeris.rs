@@ -1,6 +1,5 @@
 use anise::{
     constants::frames::{EARTH_ICRS, MOON_ICRS},
-    file2heap,
     prelude::*,
 };
 use iai_callgrind::{library_benchmark, library_benchmark_group, main};
@@ -29,8 +28,8 @@ fn benchmark_anise_single_hop_type2_cheby() {
     let epoch = Epoch::from_gregorian_at_noon(2025, 5, 25, TimeScale::ET);
 
     let path = "../data/de440s.bsp";
-    let buf = file2heap!(path).unwrap();
-    let spk = SPK::parse(buf).unwrap();
+    let buf = std::fs::read(path).unwrap();
+    let spk = SPK::parse(buf.into()).unwrap();
     let ctx = Almanac::from_spk(spk);
 
     black_box(

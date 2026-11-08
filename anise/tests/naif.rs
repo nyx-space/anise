@@ -12,7 +12,6 @@ use std::mem::size_of_val;
 
 use anise::{
     constants::frames::{EARTH_ITRF93, EARTH_MOON_BARYCENTER_ICRS, MOON_ICRS},
-    file2heap,
     math::rotation::Quaternion,
     naif::{
         Endian,
@@ -29,9 +28,9 @@ fn test_binary_pck_load() {
 
     // Using the DE421 as demo because the correct data is in the DAF documentation
     let filename = "../data/earth_latest_high_prec.bpc";
-    let bytes = file2heap!(filename).unwrap();
+    let bytes = std::fs::read(filename).unwrap();
 
-    let mut high_prec = DAF::<BPCSummaryRecord>::parse(bytes).unwrap();
+    let mut high_prec = DAF::<BPCSummaryRecord>::parse(bytes.into()).unwrap();
     high_prec.set_crc32();
 
     assert_eq!(high_prec.crc32(), 0x97bca34c);
@@ -54,9 +53,9 @@ fn test_spk_load_bytes() {
     let _ = pretty_env_logger::try_init();
 
     // Using the DE421 as demo because the correct data is in the DAF documentation
-    let bytes = file2heap!("../data/de421.bsp").unwrap();
+    let bytes = std::fs::read("../data/de421.bsp").unwrap();
 
-    let mut de421 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
+    let mut de421 = DAF::<SPKSummaryRecord>::parse(bytes.into()).unwrap();
     de421.set_crc32();
 
     assert_eq!(de421.crc32(), 0x5c78bc13);
@@ -144,13 +143,13 @@ fn test_spk_load_bytes() {
     // Now load another DE file
     // NOTE: Rust has strict lifetime requirements, and the Spice Context is set up such that loading another dataset will return a new context with that data set loaded in it.
     {
-        let bytes = file2heap!("../data/de440.bsp").unwrap();
-        let de440 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
+        let bytes = std::fs::read("../data/de440.bsp").unwrap();
+        let de440 = DAF::<SPKSummaryRecord>::parse(bytes.into()).unwrap();
         let spice = spice.clone().with_spk(de440);
 
         // And another
-        let bytes = file2heap!("../data/de440s.bsp").unwrap();
-        let de440 = DAF::<SPKSummaryRecord>::parse(bytes).unwrap();
+        let bytes = std::fs::read("../data/de440s.bsp").unwrap();
+        let de440 = DAF::<SPKSummaryRecord>::parse(bytes.into()).unwrap();
         let spice = spice.with_spk(de440);
 
         println!("{}", size_of_val(&spice));
@@ -178,7 +177,7 @@ fn test_spk_mut_summary_name() {
     let path = "../data/variable-seg-size-hermite.bsp";
     let output_path = "../target/rename-test.bsp";
 
-    let mut my_spk = SPK::load(path).unwrap();
+    let mut my_spk = SPK::load(path).unwrap().to_mutable();
 
     let summary_size = my_spk.file_record().unwrap().summary_size();
 
@@ -240,7 +239,7 @@ fn test_spk_truncate_cheby() {
     );
 
     // Now we can grab a mutable version of the SPK and modify it.
-    let mut my_spk_trunc = my_spk.clone();
+    let mut my_spk_trunc = my_spk.clone().to_mutable();
     assert!(
         my_spk_trunc
             .set_nth_data(idx, updated_segment, new_start, summary.end_epoch())
@@ -267,7 +266,7 @@ fn test_spk_truncate_cheby() {
     );
 
     // Test that we can remove segments all togethet
-    let mut my_spk_rm = my_spk.clone();
+    let mut my_spk_rm = my_spk.clone().to_mutable();
     assert!(my_spk_rm.delete_nth_data(idx).is_ok());
 
     // Serialize the data into a new BSP and confirm that we've updated everything.

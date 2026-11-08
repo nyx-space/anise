@@ -9,7 +9,7 @@
  */
 
 use super::{
-    DAFError, DecodingNameSnafu, NAIFDataSet, NAIFSummaryRecord, NameRecord, RCRD_LEN, daf::DAF,
+    DAFError, DecodingNameSnafu, NAIFDataSet, NAIFSummaryRecord, NameRecord, RCRD_LEN, daf::MutDAF,
 };
 use crate::{
     DBL_SIZE,
@@ -21,7 +21,7 @@ use hifitime::Epoch;
 use snafu::ResultExt;
 use zerocopy::IntoBytes;
 
-impl<R: NAIFSummaryRecord> DAF<R> {
+impl<R: NAIFSummaryRecord> MutDAF<R> {
     /// Sets the name record of this mutable DAF file to the one provided as a parameter.
     pub fn set_name_record(&mut self, new_name_record: NameRecord) -> Result<(), DAFError> {
         let rcrd_idx = self.file_record()?.fwrd_idx() * RCRD_LEN;
@@ -291,13 +291,13 @@ impl<R: NAIFSummaryRecord> DAF<R> {
 #[cfg(test)]
 mod mut_daf_ut {
     use crate::naif::daf::summary_record::SummaryRecord;
-    use crate::naif::daf::{DAFError, FileRecord};
+    use crate::naif::daf::{DAF, DAFError, FileRecord};
     use crate::naif::spk::summary::SPKSummaryRecord;
-    use bytes::BytesMut;
+    use bytes::Bytes;
     use zerocopy::IntoBytes;
 
     /// Builds a three record SPK whose single summary has the provided data pointers.
-    fn craft(start_idx: i32, end_idx: i32) -> BytesMut {
+    fn craft(start_idx: i32, end_idx: i32) -> Bytes {
         let mut file_record = FileRecord::spk("TEST");
         file_record.forward = 2;
         file_record.nd = 2;
@@ -329,7 +329,7 @@ mod mut_daf_ut {
         // Name record (record 3).
         bytes.extend(vec![0u8; 1024]);
 
-        BytesMut::from_iter(bytes)
+        Bytes::from(bytes)
     }
 
     #[test]
@@ -338,7 +338,9 @@ mod mut_daf_ut {
         // start pointer, it is negative and so sign extends to a huge index on the cast to usize,
         // and it is past the end of the file. All three used to panic in the drain.
         for (start_idx, end_idx) in [(5, 2), (1, -3), (1, 100_000)] {
-            let mut daf = super::DAF::<SPKSummaryRecord>::parse(craft(start_idx, end_idx)).unwrap();
+            let mut daf = DAF::<SPKSummaryRecord>::parse(craft(start_idx, end_idx))
+                .unwrap()
+                .to_mutable();
             match daf.delete_nth_data(0) {
                 Err(DAFError::DecodingData { .. }) => {}
                 Ok(_) => panic!("unexpected success for summary ({start_idx}, {end_idx})"),
@@ -352,7 +354,9 @@ mod mut_daf_ut {
         // This summary points at 1600 bytes of data starting at the very beginning of the file, so
         // deleting it leaves fewer bytes than the offset of the summary record that then has to be
         // written back, which used to panic.
-        let mut daf = super::DAF::<SPKSummaryRecord>::parse(craft(1, 200)).unwrap();
+        let mut daf = DAF::<SPKSummaryRecord>::parse(craft(1, 200))
+            .unwrap()
+            .to_mutable();
         match daf.delete_nth_data(0) {
             Err(DAFError::DecodingData { .. }) => {}
             Ok(_) => panic!("unexpected success for a segment overlapping the summary record"),
@@ -409,7 +413,9 @@ mod mut_daf_ut {
         }
         bytes.extend(vec![0u8; 20 * 8]);
 
-        let mut daf = super::DAF::<SPKSummaryRecord>::parse(BytesMut::from_iter(bytes)).unwrap();
+        let mut daf = DAF::<SPKSummaryRecord>::parse(Bytes::from_iter(bytes))
+            .unwrap()
+            .to_mutable();
         let orig_bytes = daf.bytes.clone();
 
         match daf.delete_nth_data(0) {

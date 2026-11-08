@@ -10,13 +10,13 @@ use anise::naif::daf::{DAF, DafDataType, NAIFDataSet};
 use anise::naif::pck::BPCSummaryRecord;
 use anise::naif::pretty_print::NAIFPrettyPrint;
 use anise::naif::spk::summary::SPKSummaryRecord;
-use bytes::BytesMut;
+use bytes::Bytes;
 use clap::Parser;
 use log::info;
 use snafu::prelude::*;
 use zerocopy::FromBytes;
 
-use anise::file2heap;
+use anise::errors::InputOutputError;
 use anise::naif::daf::{DAFError, FileRecord, NAIFRecord, file_record::FileRecordError};
 use anise::naif::kpl::parser::{convert_fk, convert_tpc};
 use anise::prelude::*;
@@ -82,7 +82,9 @@ fn main() -> Result<(), CliErrors> {
             crc32_checksum,
         } => {
             let path_str = file.clone();
-            let bytes = file2heap!(file).context(AniseSnafu)?;
+            let bytes = std::fs::read(file).map_err(|e| CliErrors::AniseError {
+                source: InputOutputError::IOError { kind: e.kind() },
+            })?;
             // Try to load this as a dataset by first trying to load the metadata
             if let Ok(metadata) = Metadata::decode_header(&bytes) {
                 // Now, we can load this depending on the kind of data that it is
@@ -134,13 +136,13 @@ fn main() -> Result<(), CliErrors> {
                 match file_record.identification().context(CliFileRecordSnafu)? {
                     "PCK" => {
                         info!("Loading {path_str:?} as DAF/PCK");
-                        BPC::check_then_parse(bytes, crc32_checksum).context(CliDAFSnafu)?;
+                        BPC::check_then_parse(bytes.into(), crc32_checksum).context(CliDAFSnafu)?;
                         info!("[OK] Checksum matches");
                         Ok(())
                     }
                     "SPK" => {
                         info!("Loading {path_str:?} as DAF/SPK");
-                        SPK::check_then_parse(bytes, crc32_checksum).context(CliDAFSnafu)?;
+                        SPK::check_then_parse(bytes.into(), crc32_checksum).context(CliDAFSnafu)?;
                         info!("[OK] Checksum matches");
                         Ok(())
                     }
@@ -209,8 +211,10 @@ fn main() -> Result<(), CliErrors> {
     }
 }
 
-fn read_and_record(path_str: PathBuf) -> Result<(bytes::BytesMut, FileRecord), CliErrors> {
-    let bytes = file2heap!(path_str).context(AniseSnafu)?;
+fn read_and_record(path_str: PathBuf) -> Result<(Bytes, FileRecord), CliErrors> {
+    let bytes = std::fs::read(path_str).map_err(|e| CliErrors::AniseError {
+        source: InputOutputError::IOError { kind: e.kind() },
+    })?;
     // Load the header only
     let file_record_bytes =
         bytes
@@ -223,10 +227,10 @@ fn read_and_record(path_str: PathBuf) -> Result<(bytes::BytesMut, FileRecord), C
             })?;
     let file_record =
         FileRecord::read_from_bytes(file_record_bytes).expect("cannot read bytes that exist");
-    Ok((bytes, file_record))
+    Ok((bytes.into(), file_record))
 }
 
-fn inspect<R>(path_str: PathBuf, bytes: BytesMut) -> Result<(), CliErrors>
+fn inspect<R>(path_str: PathBuf, bytes: Bytes) -> Result<(), CliErrors>
 where
     R: NAIFSummaryRecord,
     DAF<R>: NAIFPrettyPrint,
@@ -246,13 +250,13 @@ where
 
 fn rm_daf_by_id<R>(
     args::RmById { input, output, id }: args::RmById,
-    bytes: BytesMut,
+    bytes: Bytes,
 ) -> Result<(), CliErrors>
 where
     R: NAIFSummaryRecord,
 {
     info!("Loading {input:?} as DAF/PCK");
-    let fmt = DAF::<R>::parse(bytes).context(CliDAFSnafu)?;
+    let fmt = DAF::<R>::parse(bytes).context(CliDAFSnafu)?.to_mutable();
 
     let mut ids = HashSet::new();
     for summary in fmt.data_summaries(None).context(CliDAFSnafu)? {
@@ -280,13 +284,13 @@ fn truncate_daf_by_id<R>(
         start,
         end,
     }: args::TruncateById,
-    bytes: BytesMut,
+    bytes: Bytes,
 ) -> Result<(), CliErrors>
 where
     R: NAIFSummaryRecord,
 {
     info!("Loading {input:?} as DAF/PCK");
-    let fmt = DAF::<R>::parse(bytes).context(CliDAFSnafu)?;
+    let fmt = DAF::<R>::parse(bytes).context(CliDAFSnafu)?.to_mutable();
 
     let mut ids = HashSet::new();
     for summary in fmt.data_summaries(None).context(CliDAFSnafu)? {

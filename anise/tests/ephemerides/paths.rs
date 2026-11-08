@@ -12,7 +12,6 @@ use std::str::FromStr;
 
 use anise::constants::celestial_objects::{EARTH_MOON_BARYCENTER, SOLAR_SYSTEM_BARYCENTER};
 use anise::constants::frames::*;
-use anise::file2heap;
 use anise::prelude::*;
 
 /// Tests that direct path computations match what SPICE returned to within good precision.
@@ -30,8 +29,8 @@ fn common_root_verif() {
         "../data/de440s.bsp",
         "../data/de440.bsp",
     ] {
-        let buf = file2heap!(path).unwrap();
-        let spk = SPK::parse(buf).unwrap();
+        let buf = std::fs::read(path).unwrap();
+        let spk = SPK::parse(buf.into()).unwrap();
         let ctx = Almanac::from_spk(spk);
 
         // The root of all these files should be the SSB

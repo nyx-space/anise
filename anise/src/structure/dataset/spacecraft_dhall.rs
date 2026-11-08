@@ -16,8 +16,6 @@ use serde_dhall::StaticType;
 use std::collections::BTreeMap;
 
 #[cfg(feature = "python")]
-use crate::file2heap;
-#[cfg(feature = "python")]
 use pyo3::exceptions::PyException;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
@@ -232,7 +230,7 @@ impl PySpacecraftDataSet {
     #[classmethod]
     fn load(_cls: Bound<'_, PyType>, path: &str) -> Result<Self, PyErr> {
         let dataset = SpacecraftDataSet::try_from_bytes(
-            file2heap!(path).map_err(|e| PyException::new_err(e.to_string()))?,
+            std::fs::read(path).map_err(|e| PyException::new_err(e.to_string()))?,
         )
         .map_err(|e| PyException::new_err(e.to_string()))?;
 

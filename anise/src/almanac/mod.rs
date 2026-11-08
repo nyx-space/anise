@@ -8,7 +8,7 @@
  * Documentation: https://nyxspace.com/
  */
 
-use bytes::{BufMut, BytesMut};
+use bytes::{BufMut, Bytes, BytesMut};
 use hifitime::{Epoch, TimeScale};
 use indexmap::IndexMap;
 use log::{info, warn};
@@ -196,11 +196,11 @@ impl Almanac {
     }
 
     /// Loads the provides bytes as one of the data types supported in ANISE.
-    pub fn load_from_bytes(self, bytes: BytesMut) -> AlmanacResult<Self> {
+    pub fn load_from_bytes(self, bytes: Bytes) -> AlmanacResult<Self> {
         self._load_from_bytes(bytes, None)
     }
 
-    fn _load_from_bytes(self, bytes: BytesMut, path: Option<&str>) -> AlmanacResult<Self> {
+    fn _load_from_bytes(self, bytes: Bytes, path: Option<&str>) -> AlmanacResult<Self> {
         // Check if they forgot to run git lfs
         if let Some(lfs_header) = bytes.get(..8)
             && lfs_header == "version".as_bytes()
@@ -325,7 +325,7 @@ impl Almanac {
                     source: InputOutputError::IOError { kind: e.kind() },
                 });
             }
-            Ok(bytes) => BytesMut::from(&bytes[..]),
+            Ok(bytes) => Bytes::from(bytes),
         };
 
         self._load_from_bytes(bytes, Some(path))
@@ -487,22 +487,33 @@ impl Almanac {
                 path: new_spk_path.to_string(),
             })?;
 
-        let file_len = file.metadata().map(|m| m.len()).unwrap_or(0);
+        let file_len = file.metadata().map(|m| m.len() as usize).unwrap_or(0);
 
-        let entry = self
-            .spk_data
-            .get_mut(alias)
-            .ok_or(AlmanacError::GenericError {
-                err: format!("no SPK alias `{alias}`"),
-            })?;
+        // Locate the index in the IndexMap without removing it yet
+        let (idx, _, entry) =
+            self.spk_data
+                .get_full_mut(alias)
+                .ok_or_else(|| AlmanacError::GenericError {
+                    err: format!("no SPK alias `{alias}`"),
+                })?;
 
-        let buffer = &mut entry.bytes;
+        // Take ownership of the Bytes temporarily
+        let old_bytes = std::mem::take(&mut entry.bytes);
 
-        buffer.clear(); // Sets len to 0, keeps capacity
-        buffer.reserve(file_len as usize); // Ensure we have enough space to avoid re-allocs
+        // Reclaim the underlying allocation if uniquely owned, or allocate fresh
+        let buffer: BytesMut = match old_bytes.try_into_mut() {
+            Ok(mut b_mut) => {
+                b_mut.clear();
+                b_mut.reserve(file_len);
+                b_mut
+            }
+            Err(_shared_or_static_bytes) => {
+                // Either another Almanac clone holds a reference, or this was `from_static`.
+                // Drop our handle and allocate a new buffer.
+                BytesMut::with_capacity(file_len)
+            }
+        };
 
-        // Zero-Copy Read: Stream file directly into the BytesMut
-        // .writer() adapts the BytesMut to implement std::io::Write
         let mut writer = buffer.writer();
         std::io::copy(&mut file, &mut writer)
             .map_err(|e| InputOutputError::IOError { kind: e.kind() })
@@ -510,11 +521,29 @@ impl Almanac {
                 path: new_spk_path.to_string(),
             })?;
 
-        // 5. Handle Renaming
+        // Finally freeze into an Bytes and validate/parse
+        let new_bytes: Bytes = writer.into_inner().freeze();
+        // Call the parse to rebuild the index, compute the CRC, etc.
+        *entry = SPK::parse(new_bytes)
+            .context(SPKSnafu {
+                action: "swapping SPK files",
+            })
+            .context(EphemerisSnafu {
+                action: "swaping SPK files",
+            })?;
+
+        // Rename in-place without changing the IndexMap priority order (why we needed the idx above)
         if alias != new_alias {
-            // Use shift remove instead of swap remove to preserve loading order.
-            if let Some(entry) = self.spk_data.shift_remove(alias) {
-                self.spk_data.insert(new_alias, entry);
+            // Check if `new_alias` already exists elsewhere to avoid panicking or silent overwrites
+            if self.spk_data.contains_key(&new_alias) {
+                return Err(AlmanacError::GenericError {
+                    err: format!(
+                        "cannot rename `{alias}` to `{new_alias}`: target alias already exists"
+                    ),
+                });
+            }
+            if let Some((_, val)) = self.spk_data.shift_remove_index(idx) {
+                self.spk_data.shift_insert(idx, new_alias, val);
             }
         }
 
@@ -539,22 +568,33 @@ impl Almanac {
                 path: new_bpc_path.to_string(),
             })?;
 
-        let file_len = file.metadata().map(|m| m.len()).unwrap_or(0);
+        let file_len = file.metadata().map(|m| m.len() as usize).unwrap_or(0);
 
-        let entry = self
-            .bpc_data
-            .get_mut(alias)
-            .ok_or(AlmanacError::GenericError {
-                err: format!("no BPC alias `{alias}`"),
-            })?;
+        // Locate the index in the IndexMap without removing it yet
+        let (idx, _, entry) =
+            self.bpc_data
+                .get_full_mut(alias)
+                .ok_or_else(|| AlmanacError::GenericError {
+                    err: format!("no SPK alias `{alias}`"),
+                })?;
 
-        let buffer = &mut entry.bytes;
+        // Take ownership of the Bytes temporarily
+        let old_bytes = std::mem::take(&mut entry.bytes);
 
-        buffer.clear(); // Sets len to 0, keeps capacity
-        buffer.reserve(file_len as usize); // Ensure we have enough space to avoid re-allocs
+        // Reclaim the underlying allocation if uniquely owned, or allocate fresh
+        let buffer: BytesMut = match old_bytes.try_into_mut() {
+            Ok(mut b_mut) => {
+                b_mut.clear();
+                b_mut.reserve(file_len);
+                b_mut
+            }
+            Err(_shared_or_static_bytes) => {
+                // Either another Almanac clone holds a reference, or this was `from_static`.
+                // Drop our handle and allocate a new buffer.
+                BytesMut::with_capacity(file_len)
+            }
+        };
 
-        // Zero-Copy Read: Stream file directly into the BytesMut
-        // .writer() adapts the BytesMut to implement std::io::Write
         let mut writer = buffer.writer();
         std::io::copy(&mut file, &mut writer)
             .map_err(|e| InputOutputError::IOError { kind: e.kind() })
@@ -562,11 +602,29 @@ impl Almanac {
                 path: new_bpc_path.to_string(),
             })?;
 
-        // 5. Handle Renaming
+        // Finally freeze into an Bytes and validate/parse
+        let new_bytes: Bytes = writer.into_inner().freeze();
+        // Call the parse to rebuild the index, compute the CRC, etc.
+        *entry = BPC::parse(new_bytes)
+            .context(BPCSnafu {
+                action: "swapping BPC iles",
+            })
+            .context(OrientationSnafu {
+                action: "swaping BPC files",
+            })?;
+
+        // Rename in-place without changing the IndexMap priority order (why we needed the idx above)
         if alias != new_alias {
-            // Use shift remove instead of swap remove to preserve loading order.
-            if let Some(entry) = self.bpc_data.shift_remove(alias) {
-                self.bpc_data.insert(new_alias, entry);
+            // Check if `new_alias` already exists elsewhere to avoid panicking or silent overwrites
+            if self.bpc_data.contains_key(&new_alias) {
+                return Err(AlmanacError::GenericError {
+                    err: format!(
+                        "cannot rename `{alias}` to `{new_alias}`: target alias already exists"
+                    ),
+                });
+            }
+            if let Some((_, val)) = self.bpc_data.shift_remove_index(idx) {
+                self.bpc_data.shift_insert(idx, new_alias, val);
             }
         }
 
