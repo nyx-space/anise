@@ -481,6 +481,15 @@ impl Almanac {
         new_spk_path: &str,
         new_alias: String,
     ) -> Result<(), AlmanacError> {
+        // Prevent overwriting the underlying data if it's going to fail later.
+        if alias != new_alias && self.spk_data.contains_key(&new_alias) {
+            return Err(AlmanacError::GenericError {
+                err: format!(
+                    "cannot rename `{alias}` to `{new_alias}`: target alias already exists"
+                ),
+            });
+        }
+
         let mut file = std::fs::File::open(new_spk_path)
             .map_err(|e| InputOutputError::IOError { kind: e.kind() })
             .context(LoadingSnafu {
@@ -533,18 +542,10 @@ impl Almanac {
             })?;
 
         // Rename in-place without changing the IndexMap priority order (why we needed the idx above)
-        if alias != new_alias {
-            // Check if `new_alias` already exists elsewhere to avoid panicking or silent overwrites
-            if self.spk_data.contains_key(&new_alias) {
-                return Err(AlmanacError::GenericError {
-                    err: format!(
-                        "cannot rename `{alias}` to `{new_alias}`: target alias already exists"
-                    ),
-                });
-            }
-            if let Some((_, val)) = self.spk_data.shift_remove_index(idx) {
-                self.spk_data.shift_insert(idx, new_alias, val);
-            }
+        if alias != new_alias
+            && let Some((_, val)) = self.spk_data.shift_remove_index(idx)
+        {
+            self.spk_data.shift_insert(idx, new_alias, val);
         }
 
         Ok(())
