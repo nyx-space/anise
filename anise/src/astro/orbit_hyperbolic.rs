@@ -12,7 +12,7 @@ use super::PhysicsResult;
 
 use crate::{
     astro::orbit::Orbit,
-    errors::{InfiniteValueSnafu, NotHyperbolicSnafu, PhysicsError},
+    errors::{HyperbolicTrueAnomalySnafu, InfiniteValueSnafu, NotHyperbolicSnafu, PhysicsError},
     math::{Vector3, angles::between_pm_180},
     prelude::Frame,
 };
@@ -34,8 +34,11 @@ impl Orbit {
         if ecc <= 1.0 {
             Err(PhysicsError::NotHyperbolic { ecc })
         } else {
-            let (sin_ta, cos_ta) = self.ta_deg()?.to_radians().sin_cos();
-            let sinh_h = (sin_ta * (ecc.powi(2) - 1.0).sqrt()) / (1.0 + ecc * cos_ta);
+            let ta_deg = self.ta_deg()?;
+            let (sin_ta, cos_ta) = ta_deg.to_radians().sin_cos();
+            let denom = 1.0 + ecc * cos_ta;
+            ensure!(denom > 0.0, HyperbolicTrueAnomalySnafu { ta_deg });
+            let sinh_h = (sin_ta * (ecc.powi(2) - 1.0).sqrt()) / denom;
             Ok(sinh_h.asinh().to_degrees())
         }
     }
