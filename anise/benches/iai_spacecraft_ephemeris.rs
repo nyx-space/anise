@@ -1,4 +1,4 @@
-use anise::{constants::frames::EARTH_ICRS, file2heap, prelude::*};
+use anise::{constants::frames::EARTH_ICRS, prelude::*};
 use iai_callgrind::{library_benchmark, library_benchmark_group, main};
 use std::hint::black_box;
 
@@ -27,11 +27,11 @@ fn benchmark_anise_single_hop_type13_hermite() {
     let epoch = Epoch::from_gregorian_hms(2023, 12, 15, 14, 0, 0, TimeScale::UTC);
 
     let path = "../data/de440s.bsp";
-    let buf = file2heap!(path).unwrap();
-    let spk = SPK::parse(buf).unwrap();
+    let buf = std::fs::read(path).unwrap();
+    let spk = SPK::parse(buf.into()).unwrap();
 
-    let buf = file2heap!("../data/lro.bsp").unwrap();
-    let spacecraft = SPK::parse(buf).unwrap();
+    let buf = std::fs::read("../data/lro.bsp").unwrap();
+    let spacecraft = SPK::parse(buf.into()).unwrap();
 
     let ctx = Almanac::from_spk(spk).with_spk(spacecraft);
 

@@ -14,7 +14,6 @@ rustdoc-ars = ["--cfg", "docrs", "--generate-link-to-definition"]
 
 [dependencies]
 hifitime = { workspace = true }
-memmap2 = { workspace = true }
 crc32fast = { workspace = true }
 der = { workspace = true }
 log = { workspace = true }
@@ -61,6 +60,7 @@ rayon = "1.7"
 serde_yml = "0.0.13"
 rand_pcg = "0.10.0"
 rand = "0.10.0"
+memmap2 = { workspace = true }
 
 [build-dependencies]
 ureq = { version = "3.0.10", default-features = false, optional = true, features = [

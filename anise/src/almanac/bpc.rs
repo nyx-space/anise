@@ -309,7 +309,7 @@ mod ut_almanac_bpc {
         use crate::naif::BPC;
         use crate::naif::daf::{FileRecord, SummaryRecord};
         use crate::naif::pck::BPCSummaryRecord;
-        use bytes::BytesMut;
+        use bytes::Bytes;
         use zerocopy::IntoBytes;
 
         fn craft_bpc(start_et: f64, end_et: f64) -> BPC {
@@ -342,7 +342,7 @@ mod ut_almanac_bpc {
 
             bytes.extend(vec![0u8; 1024]);
 
-            BPC::parse(BytesMut::from_iter(bytes)).unwrap()
+            BPC::parse(Bytes::from(bytes)).unwrap()
         }
 
         let bpc1 = craft_bpc(0.0, 86400.0);

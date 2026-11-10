@@ -736,7 +736,7 @@ mod ut_quaternion {
         dataset.encode_to_vec(&mut buf).unwrap();
 
         assert!(
-            EulerParameterDataSet::try_from_bytes(&buf[..]).is_err(),
+            EulerParameterDataSet::try_from_bytes(buf.into()).is_err(),
             "loaded an EPA kernel carrying a zero quaternion"
         );
     }

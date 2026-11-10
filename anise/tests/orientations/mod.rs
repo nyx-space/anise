@@ -13,14 +13,15 @@ use anise::naif::kpl::parser::convert_tpc;
 use std::path::PathBuf;
 
 use anise::f64_eq_tol;
+use anise::prelude::*;
 use anise::structure::PlanetaryDataSet;
-use anise::{file2heap, prelude::*};
 
 mod validation;
 
 #[test]
 fn fetch_crc32() {
-    let data_set = PlanetaryDataSet::from_bytes(file2heap!("../data/pck11.pca").unwrap());
+    let data_set =
+        PlanetaryDataSet::from_bytes((std::fs::read("../data/pck11.pca").unwrap()).into());
     println!("{:x}", data_set.crc32());
 }
 

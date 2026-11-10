@@ -90,34 +90,3 @@ pub(crate) const DBL_SIZE: usize = 8;
 
 /// Defines the hash used to identify parents.
 pub(crate) type NaifId = i32;
-
-/// Loads a file directly onto the heap, returning a BytesMut
-#[macro_export]
-macro_rules! file2heap {
-    ($filename:tt) => {
-        match std::fs::read($filename) {
-            Err(e) => Err($crate::errors::InputOutputError::IOError { kind: e.kind() }),
-            Ok(bytes) => {
-                use bytes::BytesMut;
-                Ok(BytesMut::from(&bytes[..]))
-            }
-        }
-    };
-}
-
-/// Memory maps a file and **copies** the data on the heap prior to returning a pointer to this heap data.
-#[macro_export]
-macro_rules! file_mmap {
-    ($filename:tt) => {
-        match File::open($filename) {
-            Err(e) => Err(InputOutputError::IOError { kind: e.kind() }),
-            Ok(file) => unsafe {
-                use memmap2::MmapOptions;
-                match MmapOptions::new().map(&file) {
-                    Err(_) => Err(InputOutputError::IOUnknownError),
-                    Ok(mmap) => Ok(mmap),
-                }
-            },
-        }
-    };
-}

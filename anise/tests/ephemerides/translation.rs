@@ -9,7 +9,6 @@
  */
 
 use anise::constants::frames::{EARTH_ICRS, EARTH_MOON_BARYCENTER_ICRS, MOON_ICRS, VENUS_ICRS};
-use anise::file2heap;
 use anise::math::Vector3;
 use anise::prelude::*;
 
@@ -108,8 +107,8 @@ fn de438s_translation_verif_venus2moon() {
 
     // "Load" the file via a memory map (avoids allocations)
     let path = "../data/de440s.bsp";
-    let buf = file2heap!(path).unwrap();
-    let spk = SPK::parse(buf).unwrap();
+    let buf = std::fs::read(path).unwrap();
+    let spk = SPK::parse(buf.into()).unwrap();
     let ctx = Almanac::from_spk(spk);
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
@@ -198,8 +197,8 @@ fn de438s_translation_verif_emb2moon() {
 
     // "Load" the file via a memory map (avoids allocations)
     let path = "../data/de440s.bsp";
-    let buf = file2heap!(path).unwrap();
-    let spk = SPK::parse(buf).unwrap();
+    let buf = std::fs::read(path).unwrap();
+    let spk = SPK::parse(buf.into()).unwrap();
     let ctx = Almanac::from_spk(spk);
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);
@@ -352,8 +351,8 @@ fn multithread_query() {
     use rayon::prelude::*;
     // "Load" the file via a memory map (avoids allocations)
     let path = "../data/de440s.bsp";
-    let buf = file2heap!(path).unwrap();
-    let spk = SPK::parse(buf).unwrap();
+    let buf = std::fs::read(path).unwrap();
+    let spk = SPK::parse(buf.into()).unwrap();
     let ctx = Almanac::from_spk(spk);
 
     let start_epoch = Epoch::from_str("2000-01-01T00:00:00 ET").unwrap();

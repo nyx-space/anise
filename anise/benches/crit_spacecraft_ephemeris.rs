@@ -1,4 +1,4 @@
-use anise::{constants::frames::EARTH_ICRS, file2heap, prelude::*};
+use anise::{constants::frames::EARTH_ICRS, prelude::*};
 use criterion::{Criterion, criterion_group, criterion_main};
 use rand::SeedableRng;
 use rand::seq::SliceRandom;
@@ -48,11 +48,11 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     time_vec.shuffle(&mut rng);
 
     let path = "../data/de440s.bsp";
-    let buf = file2heap!(path).unwrap();
-    let spk = SPK::parse(buf).unwrap();
+    let buf = std::fs::read(path).unwrap();
+    let spk = SPK::parse(buf.into()).unwrap();
 
-    let buf = file2heap!("../data/lro.bsp").unwrap();
-    let spacecraft = SPK::parse(buf).unwrap();
+    let buf = std::fs::read("../data/lro.bsp").unwrap();
+    let spacecraft = SPK::parse(buf.into()).unwrap();
 
     let ctx = Almanac::from_spk(spk).with_spk(spacecraft);
 

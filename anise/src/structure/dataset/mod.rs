@@ -19,22 +19,15 @@ use crate::{
     errors::{DecodingError, IntegrityError},
     structure::dataset::error::DataSetIntegritySnafu,
 };
+use bytes::Bytes;
 use core::fmt;
-use core::ops::Deref;
 use der::{Decode, Encode, Reader, Writer, asn1::OctetString};
 use log::error;
 use snafu::prelude::*;
-
-macro_rules! io_imports {
-    () => {
-        use std::fs::File;
-        use std::io::{Error as IOError, ErrorKind as IOErrorKind, Write};
-        use std::path::Path;
-        use std::path::PathBuf;
-    };
-}
-
-io_imports!();
+use std::fs::File;
+use std::io::{Error as IOError, ErrorKind as IOErrorKind, Write};
+use std::path::Path;
+use std::path::PathBuf;
 
 mod datatype;
 mod error;
@@ -64,8 +57,8 @@ pub struct DataSet<T: DataSetT> {
 }
 
 impl<T: DataSetT> DataSet<T> {
-    /// Try to load an Anise file from a pointer of bytes
-    pub fn try_from_bytes<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DataSetError> {
+    /// Try to load an Anise file from a bytes struct
+    pub fn try_from_bytes(bytes: Bytes) -> Result<Self, DataSetError> {
         match Self::from_der(&bytes) {
             Ok(ctx) => {
                 // Check the full integrity on load of the file.
@@ -117,8 +110,8 @@ impl<T: DataSetT> DataSet<T> {
 
     /// Forces to load an Anise file from a pointer of bytes.
     /// **Panics** if the bytes cannot be interpreted as an Anise file.
-    pub fn from_bytes<B: Deref<Target = [u8]>>(buf: B) -> Self {
-        Self::try_from_bytes(buf).expect("failed to load ANISE data from bytes")
+    pub fn from_bytes(bytes: Bytes) -> Self {
+        Self::try_from_bytes(bytes).expect("failed to load ANISE data from bytes")
     }
 
     /// Compute the CRC32 of the underlying bytes
@@ -833,7 +826,7 @@ mod dataset_ut {
 
         // assert_eq!(ebuf.len(), 506);
 
-        let repr_dec = SpacecraftDataSet::from_bytes(ebuf);
+        let repr_dec = SpacecraftDataSet::from_bytes(ebuf.into());
 
         assert_eq!(dataset, repr_dec);
 

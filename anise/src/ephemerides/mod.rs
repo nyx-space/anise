@@ -76,7 +76,7 @@ pub enum EphemerisError {
         epoch: Epoch,
         epoch_lt: Epoch,
         ab_corr: Aberration,
-        #[snafu(source(from(EphemerisError, Box::new)))] // This ensures the source error is boxed
+        #[snafu(source(from(EphemerisError, Box::new)))]
         source: Box<EphemerisError>,
     },
     #[snafu(display("unknown name associated with NAIF ID {id}"))]

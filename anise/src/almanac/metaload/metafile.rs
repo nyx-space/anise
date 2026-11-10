@@ -28,7 +28,6 @@ use pyo3::prelude::*;
 #[cfg(feature = "python")]
 use pyo3::pyclass::CompareOp;
 
-use crate::file2heap;
 use crate::prelude::InputOutputError;
 
 use super::MetaAlmanacError;
@@ -150,7 +149,7 @@ impl MetaFile {
                                         {
                                             // Open the file and check the CRC32
                                             let dest_path_c = dest_path.clone(); // macro token issue
-                                            if let Ok(bytes) = file2heap!(dest_path_c) {
+                                            if let Ok(bytes) = std::fs::read(dest_path_c) {
                                                 let computed_crc32 = crc32fast::hash(&bytes);
                                                 let dest_path_s =
                                                     dest_path.to_string_lossy().to_string();

@@ -25,24 +25,23 @@ use hifitime::{Epoch, Unit};
 use log::error;
 use snafu::ResultExt;
 use std::collections::{HashMap, HashSet};
-
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
 use zerocopy::IntoBytes;
 use zerocopy::{FromBytes, Ref};
 
-macro_rules! io_imports {
-    () => {
-        use std::fs::File;
-        use std::io::Write;
-        use std::path::Path;
-    };
-}
+pub type DAF<R> = GenericDAF<R, Bytes>;
+pub type MutDAF<R> = GenericDAF<R, BytesMut>;
 
-io_imports!();
+pub trait MutKind: Deref<Target = [u8]> {}
+impl MutKind for Bytes {}
+impl MutKind for BytesMut {}
 
 pub(crate) const RCRD_LEN: usize = 1024;
 #[derive(Clone, Default, Debug, PartialEq)]
-pub struct DAF<R: NAIFSummaryRecord> {
-    pub bytes: BytesMut,
+pub struct GenericDAF<R: NAIFSummaryRecord, B: MutKind> {
+    pub bytes: B,
     pub file_record: FileRecord,
     /// CRC32 field enables memory scrubbing, reducing memory errors in a radiation-laden environment.
     pub crc32: Option<u32>,
@@ -78,128 +77,7 @@ fn file_record<R: NAIFSummaryRecord>(bytes: &[u8]) -> Result<FileRecord, DAFErro
     Ok(file_record)
 }
 
-impl<R: NAIFSummaryRecord> DAF<R> {
-    /// Parse the provided bytes as a SPICE Double Array File.
-    ///
-    /// # DAF File Structure
-    /// A DAF is composed of three main parts:
-    /// 1.  **File Record:** The first record (1024 bytes) of the file. It contains metadata about the file, such as the endianness, the number of records, and pointers to the other sections.
-    /// 2.  **Comment Area:** An optional area for storing comments.
-    /// 3.  **Summary/Name Records and Data:** The remaining records contain the summary records, name records, and the actual data arrays. The file record contains pointers to the start of these sections.
-    ///
-    /// # Parsing Process
-    /// 1.  The entire file is read into a `Bytes` object.
-    /// 2.  The CRC32 checksum of the bytes is computed.
-    /// 3.  The `file_record` and `name_record` are parsed to ensure the file is a valid DAF.
-    pub fn parse<B: Deref<Target = [u8]>>(bytes: B) -> Result<Self, DAFError> {
-        // Parse file record once.
-        let mut me = Self {
-            file_record: file_record::<R>(&bytes[..])?,
-            bytes: BytesMut::from(&bytes[..]),
-            crc32: None,
-            index: HashMap::new(),
-        };
-        // Check that the file record and name record can be parsed successfully.
-        // This validates that the file is a DAF and that the endianness is correct.
-        // me.file_record()?;
-        // Ensure tha twe can parse the first name record.
-        me.name_record(None)?;
-        // Build the index for all of the NAIF IDs which are ordered in the file.
-        let mut index: HashMap<i32, Vec<(R, Option<usize>, usize)>> = HashMap::new();
-        let mut unsorted = HashSet::new();
-        let mut visited_summary_records = HashSet::new();
-        let mut blk_idx = None;
-        loop {
-            let current_idx = blk_idx.unwrap_or(me.file_record.fwrd_idx());
-            if !visited_summary_records.insert(current_idx) {
-                return Err(DAFError::DecodingSummary {
-                    kind: R::NAME,
-                    source: DecodingError::Integrity {
-                        source: IntegrityError::InvalidValue {
-                            dataset: R::NAME,
-                            variable: "summary record index",
-                            value: current_idx as f64,
-                            reason: "because it appears more than once in the summary chain",
-                        },
-                    },
-                });
-            }
-
-            for (summary_idx, cur_sum) in me.data_summaries(blk_idx)?.iter().enumerate() {
-                // A summary record is physically padded to its fixed record size.
-                // Do not index those empty slots: their default ID is zero and can
-                // otherwise displace a valid, chronologically ordered ID 0 segment.
-                if cur_sum.is_empty() {
-                    continue;
-                }
-                if let Some(prev_summaries) = index.get_mut(&cur_sum.id()) {
-                    let prev_sum: &R =
-                        &prev_summaries.last().expect("there must be at least one").0;
-                    if prev_sum.end_epoch() > cur_sum.start_epoch() {
-                        // This index is not sorted because the previous summary starts before the current one, and we're iterating linerarly.
-                        index.remove(&cur_sum.id());
-                        unsorted.insert(cur_sum.id());
-                    } else {
-                        // Append this summary to the index.
-                        prev_summaries.push((*cur_sum, blk_idx, summary_idx));
-                    }
-                } else if !unsorted.contains(&cur_sum.id()) {
-                    index.insert(cur_sum.id(), vec![(*cur_sum, blk_idx, summary_idx)]);
-                }
-            }
-            let summary = me.daf_summary(blk_idx)?;
-            if summary.is_final_record() || summary.is_corrupt() {
-                break;
-            } else {
-                blk_idx = Some(summary.next_record());
-            }
-        }
-
-        me.index = index;
-
-        Ok(me)
-    }
-
-    /// Parse the DAF only if the CRC32 checksum of the data is valid
-    pub fn check_then_parse<B: Deref<Target = [u8]>>(
-        bytes: B,
-        expected: u32,
-    ) -> Result<Self, DAFError> {
-        let computed = crc32fast::hash(&bytes);
-        if computed != expected {
-            return Err(DAFError::DAFIntegrity {
-                source: IntegrityError::ChecksumInvalid {
-                    expected: Some(expected),
-                    computed,
-                },
-            });
-        }
-
-        let mut me = Self::parse(bytes)?;
-        me.crc32 = Some(computed);
-        Ok(me)
-    }
-
-    /// Loads the provided path in heap and parse.
-    pub fn load(path: &str) -> Result<Self, DAFError> {
-        let bytes = match std::fs::read(path) {
-            Err(e) => {
-                return Err(DAFError::IO {
-                    action: format!("loading {path:?}"),
-                    source: InputOutputError::IOError { kind: e.kind() },
-                });
-            }
-            Ok(bytes) => BytesMut::from(&bytes[..]),
-        };
-
-        Self::parse(bytes)
-    }
-
-    /// Parse the provided static byte array as a SPICE Double Array File
-    pub fn from_static<B: Deref<Target = [u8]>>(bytes: &'static B) -> Result<Self, DAFError> {
-        Self::parse(Bytes::from_static(bytes))
-    }
-
+impl<R: NAIFSummaryRecord, B: MutKind> GenericDAF<R, B> {
     /// Compute the CRC32 of the underlying bytes
     pub fn crc32(&self) -> u32 {
         crc32fast::hash(&self.bytes)
@@ -727,12 +605,160 @@ impl<R: NAIFSummaryRecord> DAF<R> {
     }
 
     /// Returns an iterator over all summary data blocks.
-    pub fn iter_summary_blocks<'a>(&'a self) -> DafBlockIterator<'a, R> {
+    pub fn iter_summary_blocks<'a>(&'a self) -> DafBlockIterator<'a, R, B> {
         // Initialize with the first record pointer
         let start = self.file_record().map(|f| f.fwrd_idx()).unwrap_or(0);
         DafBlockIterator {
             daf: self,
             next_idx: if start > 0 { Some(start) } else { None },
+        }
+    }
+}
+
+impl<R: NAIFSummaryRecord> DAF<R> {
+    /// Parse the provided bytes as a SPICE Double Array File.
+    ///
+    /// # DAF File Structure
+    /// A DAF is composed of three main parts:
+    /// 1.  **File Record:** The first record (1024 bytes) of the file. It contains metadata about the file, such as the endianness, the number of records, and pointers to the other sections.
+    /// 2.  **Comment Area:** An optional area for storing comments.
+    /// 3.  **Summary/Name Records and Data:** The remaining records contain the summary records, name records, and the actual data arrays. The file record contains pointers to the start of these sections.
+    ///
+    /// # Parsing Process
+    /// 1.  The entire file is read into a `Bytes` object.
+    /// 2.  The CRC32 checksum of the bytes is computed.
+    /// 3.  The `file_record` and `name_record` are parsed to ensure the file is a valid DAF.
+    pub fn parse(bytes: Bytes) -> Result<Self, DAFError> {
+        // Check that the file record and name record can be parsed successfully.
+        // This validates that the file is a DAF and that the endianness is correct.
+        let file_record = file_record::<R>(&bytes[..])?;
+        // Parse file record once.
+        let mut me = Self {
+            file_record,
+            bytes,
+            crc32: None,
+            index: HashMap::new(),
+        };
+        // Ensure tha twe can parse the first name record.
+        me.name_record(None)?;
+        // Build the index for all of the NAIF IDs which are ordered in the file.
+        let mut index: HashMap<i32, Vec<(R, Option<usize>, usize)>> = HashMap::new();
+        let mut unsorted = HashSet::new();
+        let mut visited_summary_records = HashSet::new();
+        let mut blk_idx = None;
+        loop {
+            let current_idx = blk_idx.unwrap_or(me.file_record.fwrd_idx());
+            if !visited_summary_records.insert(current_idx) {
+                return Err(DAFError::DecodingSummary {
+                    kind: R::NAME,
+                    source: DecodingError::Integrity {
+                        source: IntegrityError::InvalidValue {
+                            dataset: R::NAME,
+                            variable: "summary record index",
+                            value: current_idx as f64,
+                            reason: "because it appears more than once in the summary chain",
+                        },
+                    },
+                });
+            }
+
+            for (summary_idx, cur_sum) in me.data_summaries(blk_idx)?.iter().enumerate() {
+                // A summary record is physically padded to its fixed record size.
+                // Do not index those empty slots: their default ID is zero and can
+                // otherwise displace a valid, chronologically ordered ID 0 segment.
+                if cur_sum.is_empty() {
+                    continue;
+                }
+                if let Some(prev_summaries) = index.get_mut(&cur_sum.id()) {
+                    let prev_sum: &R =
+                        &prev_summaries.last().expect("there must be at least one").0;
+                    if prev_sum.end_epoch() > cur_sum.start_epoch() {
+                        // This index is not sorted because the previous summary starts before the current one, and we're iterating linerarly.
+                        index.remove(&cur_sum.id());
+                        unsorted.insert(cur_sum.id());
+                    } else {
+                        // Append this summary to the index.
+                        prev_summaries.push((*cur_sum, blk_idx, summary_idx));
+                    }
+                } else if !unsorted.contains(&cur_sum.id()) {
+                    index.insert(cur_sum.id(), vec![(*cur_sum, blk_idx, summary_idx)]);
+                }
+            }
+            let summary = me.daf_summary(blk_idx)?;
+            if summary.is_final_record() || summary.is_corrupt() {
+                break;
+            } else {
+                blk_idx = Some(summary.next_record());
+            }
+        }
+
+        me.index = index;
+
+        Ok(me)
+    }
+
+    /// Parse the DAF only if the CRC32 checksum of the data is valid
+    pub fn check_then_parse(bytes: Bytes, expected: u32) -> Result<Self, DAFError> {
+        let computed = crc32fast::hash(&bytes);
+        if computed != expected {
+            return Err(DAFError::DAFIntegrity {
+                source: IntegrityError::ChecksumInvalid {
+                    expected: Some(expected),
+                    computed,
+                },
+            });
+        }
+
+        let mut me = Self::parse(bytes)?;
+        me.crc32 = Some(computed);
+        Ok(me)
+    }
+
+    /// Loads the provided path on the heap and parse.
+    /// NOTE: DAF files loaded this way will always be loaded as read-only first
+    /// and you will need to call [to_mutable] to edit these files.
+    pub fn load(path: &str) -> Result<Self, DAFError> {
+        let bytes = match std::fs::read(path) {
+            Err(e) => {
+                return Err(DAFError::IO {
+                    action: format!("loading {path:?}"),
+                    source: InputOutputError::IOError { kind: e.kind() },
+                });
+            }
+            Ok(bytes) => Bytes::from(bytes),
+        };
+
+        Self::parse(bytes)
+    }
+
+    /// Loads the provided path on the heap and parse if the CRC32 matches the expected one.
+    pub fn load_with_check(path: &str, expected: u32) -> Result<Self, DAFError> {
+        let bytes = match std::fs::read(path) {
+            Err(e) => {
+                return Err(DAFError::IO {
+                    action: format!("loading {path:?}"),
+                    source: InputOutputError::IOError { kind: e.kind() },
+                });
+            }
+            Ok(bytes) => Bytes::from(bytes),
+        };
+
+        Self::check_then_parse(bytes, expected)
+    }
+    /// Parse the provided static byte array as a SPICE Double Array File
+    pub fn from_static(bytes: &'static [u8]) -> Result<Self, DAFError> {
+        Self::parse(Bytes::from_static(bytes))
+    }
+
+    /// Copies the underlying bytes of this DAF into a MutDAF, enabling modification of the DAF.
+    pub fn to_mutable(self) -> MutDAF<R> {
+        let mut bytes = BytesMut::with_capacity(0);
+        bytes.extend_from_slice(&self.bytes);
+        MutDAF {
+            bytes,
+            file_record: self.file_record,
+            crc32: self.crc32,
+            index: self.index,
         }
     }
 }
@@ -744,12 +770,12 @@ impl<R: NAIFSummaryRecord> Hash for DAF<R> {
     }
 }
 
-pub struct DafBlockIterator<'a, R: NAIFSummaryRecord> {
-    daf: &'a DAF<R>,
+pub struct DafBlockIterator<'a, R: NAIFSummaryRecord, B: MutKind> {
+    daf: &'a GenericDAF<R, B>,
     next_idx: Option<usize>,
 }
 
-impl<'a, R: NAIFSummaryRecord> Iterator for DafBlockIterator<'a, R> {
+impl<'a, R: NAIFSummaryRecord, B: MutKind> Iterator for DafBlockIterator<'a, R, B> {
     // Yields the slice of summaries for the current block
     type Item = Result<&'a [R], DAFError>;
 
@@ -797,7 +823,6 @@ mod daf_ut {
 
     use crate::{
         errors::{DecodingError, IntegrityError},
-        file2heap,
         naif::{
             BPC,
             daf::{DAFError, datatypes::HermiteSetType13, file_record::FileRecordError},
@@ -811,10 +836,7 @@ mod daf_ut {
         let nominal_crc = traj.crc32();
 
         assert_eq!(
-            SPK::check_then_parse(
-                file2heap!("../data/gmat-hermite.bsp").unwrap(),
-                nominal_crc + 1
-            ),
+            SPK::load_with_check("../data/gmat-hermite.bsp", nominal_crc + 1),
             Err(DAFError::DAFIntegrity {
                 source: IntegrityError::ChecksumInvalid {
                     expected: Some(nominal_crc + 1),
@@ -903,7 +925,7 @@ mod daf_ut {
         bytes.extend_from_slice(file_record.as_bytes());
         bytes.resize(1024 * 3, 0);
 
-        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+        let daf = super::DAF::<SPKSummaryRecord>::parse(bytes.into()).unwrap();
         // Before the guard in num_entries this divided 1024 by zero and panicked.
         // HermiteSetType13 does not implement Debug, so we cannot assert_eq the result.
         match daf.data_from_name::<crate::naif::daf::datatypes::HermiteSetType13>("anything") {
@@ -935,7 +957,7 @@ mod daf_ut {
         bytes[name_rcrd..name_rcrd + super::RCRD_LEN].fill(b' ');
         bytes[name_rcrd + 30 * 16..name_rcrd + 30 * 16 + 4].copy_from_slice(b"BOOM");
 
-        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+        let daf = super::DAF::<SPKSummaryRecord>::parse(bytes.into()).unwrap();
         // Before the guard this indexed the 25 summaries with entry 30 and panicked.
         match daf.summary_from_name("BOOM") {
             Err(DAFError::InvalidIndex { idx, .. }) => assert_eq!(idx, 30),
@@ -985,18 +1007,18 @@ mod daf_ut {
         // each one is looked up with the file record's own summary size: an `nd` that makes an
         // entry larger than the 1024 byte name record used to slice past it.
         let bytes = craft(200, 6);
-        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+        let daf = super::DAF::<SPKSummaryRecord>::parse(bytes.into()).unwrap();
         assert!(daf.describe().contains("MALFORMED NAME"));
 
         // An `nd` of u32::MAX used to overflow the addition in summary_size itself.
         let bytes = craft(u32::MAX, 6);
-        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+        let daf = super::DAF::<SPKSummaryRecord>::parse(bytes.into()).unwrap();
         assert!(daf.describe().contains("MALFORMED NAME"));
 
         // A zero summary size makes every entry zero bytes wide, so any index would otherwise
         // resolve to an empty range and be reported as a valid, blank name.
         let bytes = craft(0, 0);
-        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+        let daf = super::DAF::<SPKSummaryRecord>::parse(bytes.into()).unwrap();
         assert!(daf.describe().contains("MALFORMED NAME"));
     }
 
@@ -1018,7 +1040,7 @@ mod daf_ut {
 
         // Before the guard in daf_summary/data_summaries this subtraction
         // underflowed and panicked while building the index during parse.
-        match super::DAF::<SPKSummaryRecord>::parse(&bytes[..]) {
+        match super::DAF::<SPKSummaryRecord>::parse(bytes.into()) {
             Err(DAFError::DecodingSummary { .. }) => {}
             Ok(_) => panic!("unexpected success for a zero forward pointer"),
             Err(e) => panic!("unexpected error: {e}"),
@@ -1064,7 +1086,7 @@ mod daf_ut {
         bytes.extend(summary_record);
         bytes.extend(vec![0u8; 1024]);
 
-        match super::DAF::<SPKSummaryRecord>::parse(&bytes[..]) {
+        match super::DAF::<SPKSummaryRecord>::parse(bytes.into()) {
             Err(DAFError::DecodingSummary { .. }) => {}
             Ok(_) => panic!("unexpected success for an oversized next-record pointer"),
             Err(e) => panic!("unexpected error: {e}"),
@@ -1110,16 +1132,17 @@ mod daf_ut {
         bytes.extend(summary_record);
         bytes.extend(vec![0u8; 1024]);
 
-        match super::DAF::<SPKSummaryRecord>::parse(&bytes[..]) {
+        let mut valid = bytes.clone();
+
+        match super::DAF::<SPKSummaryRecord>::parse(bytes.into()) {
             Err(DAFError::DecodingSummary { .. }) => {}
             Ok(_) => panic!("unexpected success for an oversized next-record pointer"),
             Err(e) => panic!("unexpected error: {e}"),
         }
 
         // daf_summary takes the same pointer when walking the chain.
-        let mut valid = bytes.clone();
         valid[1024..1032].copy_from_slice(0.0_f64.as_bytes());
-        let daf = super::DAF::<SPKSummaryRecord>::parse(&valid[..]).unwrap();
+        let daf = super::DAF::<SPKSummaryRecord>::parse(valid.into()).unwrap();
         assert!(matches!(
             daf.daf_summary(Some(1 << 54)),
             Err(DAFError::DecodingSummary { .. })
@@ -1165,7 +1188,7 @@ mod daf_ut {
         // Name record (record 3).
         bytes.extend(vec![0u8; 1024]);
 
-        match super::DAF::<SPKSummaryRecord>::parse(&bytes[..]) {
+        match super::DAF::<SPKSummaryRecord>::parse(bytes.into()) {
             Err(DAFError::DecodingSummary {
                 source:
                     DecodingError::Integrity {
@@ -1222,7 +1245,7 @@ mod daf_ut {
         // Name record (record 3).
         bytes.extend(vec![0u8; 1024]);
 
-        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+        let daf = super::DAF::<SPKSummaryRecord>::parse(bytes.into()).unwrap();
         // Before the guard this subtracted 1 from a zero start index and panicked.
         match daf.nth_data::<crate::naif::daf::datatypes::HermiteSetType13>(None, 0) {
             Err(DAFError::DecodingData { .. }) => {}
@@ -1267,7 +1290,7 @@ mod daf_ut {
         // Add Name Record (Rec 4) just in case
         bytes.extend(vec![0u8; 1024]);
 
-        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+        let daf = super::DAF::<SPKSummaryRecord>::parse(bytes.into()).unwrap();
 
         let comments = daf.comments().unwrap();
 
@@ -1301,7 +1324,7 @@ mod daf_ut {
         bytes.resize(1024, 0);
         bytes.extend(vec![0u8; 1024 * 3]);
 
-        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+        let daf = super::DAF::<SPKSummaryRecord>::parse(bytes.into()).unwrap();
 
         let tmp = std::env::temp_dir().join("anise_persist_bad_forward.bsp");
         match daf.persist(&tmp) {
@@ -1354,7 +1377,7 @@ mod daf_ut {
         // Name record (record 3).
         bytes.extend(vec![0u8; 1024]);
 
-        let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+        let daf = super::DAF::<SPKSummaryRecord>::parse(bytes.clone().into()).unwrap();
 
         // The chain holds a single block, so the iterator must stop after it.
         assert_eq!(daf.iter_summary_blocks().take(4).count(), 1);
@@ -1362,7 +1385,7 @@ mod daf_ut {
         // The lookups used to spin forever, so run them on a thread with a deadline.
         let (tx, rx) = mpsc::channel();
         std::thread::spawn(move || {
-            let daf = super::DAF::<SPKSummaryRecord>::parse(&bytes[..]).unwrap();
+            let daf = super::DAF::<SPKSummaryRecord>::parse(bytes.into()).unwrap();
             let by_id = daf.summary_from_id(123).is_err();
             let by_name = daf.summary_from_name("nope").is_err();
             let by_epoch = daf.summary_from_id_at_epoch(123, 0.0).is_err();
