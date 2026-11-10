@@ -20,7 +20,8 @@ mod validation;
 
 #[test]
 fn fetch_crc32() {
-    let data_set = PlanetaryDataSet::from_bytes(std::fs::read("../data/pck11.pca").unwrap());
+    let data_set =
+        PlanetaryDataSet::from_bytes((std::fs::read("../data/pck11.pca").unwrap()).into());
     println!("{:x}", data_set.crc32());
 }
 

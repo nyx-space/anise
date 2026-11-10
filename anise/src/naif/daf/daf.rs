@@ -740,7 +740,6 @@ impl<R: NAIFSummaryRecord> DAF<R> {
                     source: InputOutputError::IOError { kind: e.kind() },
                 });
             }
-            // TODO Can I avoid copying the data once more here?
             Ok(bytes) => Bytes::from(bytes),
         };
 

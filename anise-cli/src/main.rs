@@ -82,9 +82,9 @@ fn main() -> Result<(), CliErrors> {
             crc32_checksum,
         } => {
             let path_str = file.clone();
-            let bytes = std::fs::read(file).map_err(|e| CliErrors::AniseError {
+            let bytes = Bytes::from(std::fs::read(file).map_err(|e| CliErrors::AniseError {
                 source: InputOutputError::IOError { kind: e.kind() },
-            })?;
+            })?);
             // Try to load this as a dataset by first trying to load the metadata
             if let Ok(metadata) = Metadata::decode_header(&bytes) {
                 // Now, we can load this depending on the kind of data that it is
@@ -136,13 +136,13 @@ fn main() -> Result<(), CliErrors> {
                 match file_record.identification().context(CliFileRecordSnafu)? {
                     "PCK" => {
                         info!("Loading {path_str:?} as DAF/PCK");
-                        BPC::check_then_parse(bytes.into(), crc32_checksum).context(CliDAFSnafu)?;
+                        BPC::check_then_parse(bytes, crc32_checksum).context(CliDAFSnafu)?;
                         info!("[OK] Checksum matches");
                         Ok(())
                     }
                     "SPK" => {
                         info!("Loading {path_str:?} as DAF/SPK");
-                        SPK::check_then_parse(bytes.into(), crc32_checksum).context(CliDAFSnafu)?;
+                        SPK::check_then_parse(bytes, crc32_checksum).context(CliDAFSnafu)?;
                         info!("[OK] Checksum matches");
                         Ok(())
                     }

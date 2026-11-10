@@ -15,6 +15,8 @@ use serde_dhall::StaticType;
 use std::collections::BTreeMap;
 
 #[cfg(feature = "python")]
+use bytes::Bytes;
+#[cfg(feature = "python")]
 use pyo3::exceptions::PyException;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
@@ -259,9 +261,9 @@ impl PyLocationDataSet {
     /// :rtype: LocationDataSet
     #[classmethod]
     fn load(_cls: Bound<'_, PyType>, path: &str) -> Result<Self, PyErr> {
-        let dataset = LocationDataSet::try_from_bytes(
+        let dataset = LocationDataSet::try_from_bytes(Bytes::from(
             std::fs::read(path).map_err(|e| PyException::new_err(e.to_string()))?,
-        )
+        ))
         .map_err(|e| PyException::new_err(e.to_string()))?;
 
         Ok(Self { inner: dataset })
@@ -322,7 +324,7 @@ mod ut_loc_dhall {
             assert_eq!(dataset.to_dhallset().unwrap(), original);
 
             dataset.set_crc32();
-            let loaded = LocationDataSet::try_from_bytes(dataset.to_der().unwrap()).unwrap();
+            let loaded = LocationDataSet::try_from_bytes(dataset.to_der().unwrap().into()).unwrap();
             assert_eq!(
                 loaded.to_dhallset().unwrap(),
                 original,
