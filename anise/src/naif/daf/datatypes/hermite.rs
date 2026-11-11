@@ -49,7 +49,6 @@ impl fmt::Display for HermiteSetType12<'_> {
 }
 
 impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
-    type StateKind = (Vector3, Vector3);
     type RecordKind = PositionVelocityRecord;
     const DATASET_NAME: &'static str = "Hermite Type 12";
 
@@ -155,7 +154,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType12<'a> {
         &self,
         epoch_et_s: f64,
         summary: &S,
-    ) -> Result<Self::StateKind, InterpolationError> {
+    ) -> Result<(Vector3, Vector3), InterpolationError> {
         if epoch_et_s < summary.start_epoch_et_s().next_down()
             || epoch_et_s > summary.end_epoch_et_s().next_up()
         {
@@ -297,7 +296,6 @@ impl fmt::Display for HermiteSetType13<'_> {
 }
 
 impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
-    type StateKind = (Vector3, Vector3);
     type RecordKind = PositionVelocityRecord;
     const DATASET_NAME: &'static str = "Hermite Type 13";
 
@@ -422,7 +420,7 @@ impl<'a> NAIFDataSet<'a> for HermiteSetType13<'a> {
         &self,
         epoch_et_s: f64,
         _: &S,
-    ) -> Result<Self::StateKind, InterpolationError> {
+    ) -> Result<(Vector3, Vector3), InterpolationError> {
         // Start by doing a binary search on the epoch registry to limit the search space in the total number of epochs.
         if self.epoch_data.is_empty() {
             return Err(InterpolationError::MissingInterpolationData {

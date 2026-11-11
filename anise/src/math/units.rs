@@ -9,7 +9,7 @@
  */
 use core::fmt::Display;
 
-/// Re-export hifitime's units as DurationUnit.
+/// Re-export hifitime's units as TimeUnit.
 pub use hifitime::Unit as TimeUnit;
 
 /// Defines the distance units supported by ANISE. This notably allows storing interpolation information from instruments to comets.

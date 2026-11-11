@@ -38,14 +38,14 @@ impl Almanac {
     /// This function only performs the translation and no rotation whatsoever. Use the `transform_to_parent_from` function instead to include rotations.
     pub(crate) fn translation_parts_to_parent(
         &self,
-        source: Frame,
+        source_ephem_id: i32,
         epoch_et_s: f64,
     ) -> Result<(Vector3, Vector3, Frame), EphemerisError> {
         // First, let's find the SPK summary for this frame.
         let (summary, spk_no, daf_idx, idx_in_spk) =
-            self.spk_summary_at_epoch(source.ephemeris_id, epoch_et_s)?;
+            self.spk_summary_at_epoch(source_ephem_id, epoch_et_s)?;
 
-        let new_frame = source.with_ephem(summary.center_id);
+        let new_frame = Frame::from(summary.center_frame_uid());
 
         // This should not fail because we've fetched the spk_no from above with the spk_summary_at_epoch call.
         let (_, spk_data) = self
@@ -156,7 +156,7 @@ impl Almanac {
         epoch: Epoch,
     ) -> Result<CartesianState, EphemerisError> {
         let (radius_km, velocity_km_s, frame) =
-            self.translation_parts_to_parent(source, epoch.to_et_seconds())?;
+            self.translation_parts_to_parent(source.ephemeris_id, epoch.to_et_seconds())?;
 
         Ok(CartesianState {
             radius_km,

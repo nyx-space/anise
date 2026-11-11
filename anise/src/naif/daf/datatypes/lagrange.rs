@@ -48,7 +48,6 @@ impl fmt::Display for LagrangeSetType8<'_> {
 }
 
 impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
-    type StateKind = (Vector3, Vector3);
     type RecordKind = PositionVelocityRecord;
     const DATASET_NAME: &'static str = "Lagrange Type 8";
 
@@ -142,7 +141,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType8<'a> {
         &self,
         epoch_et_s: f64,
         _: &S,
-    ) -> Result<Self::StateKind, InterpolationError> {
+    ) -> Result<(Vector3, Vector3), InterpolationError> {
         let t0 = self.first_state_epoch.to_et_seconds();
         let h = self.step_size.to_seconds();
 
@@ -282,7 +281,6 @@ impl fmt::Display for LagrangeSetType9<'_> {
 }
 
 impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
-    type StateKind = (Vector3, Vector3);
     type RecordKind = PositionVelocityRecord;
     const DATASET_NAME: &'static str = "Lagrange Type 9";
 
@@ -382,7 +380,7 @@ impl<'a> NAIFDataSet<'a> for LagrangeSetType9<'a> {
         &self,
         epoch_et_s: f64,
         _: &S,
-    ) -> Result<Self::StateKind, InterpolationError> {
+    ) -> Result<(Vector3, Vector3), InterpolationError> {
         // Start by doing a binary search on the epoch registry to limit the search space in the total number of epochs.
         if self.epoch_data.is_empty() {
             return Err(InterpolationError::MissingInterpolationData {

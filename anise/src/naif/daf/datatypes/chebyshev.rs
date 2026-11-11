@@ -80,7 +80,6 @@ impl fmt::Display for Type2ChebyshevSet<'_> {
 }
 
 impl<'a> NAIFDataSet<'a> for Type2ChebyshevSet<'a> {
-    type StateKind = (Vector3, Vector3);
     type RecordKind = Type2ChebyshevRecord<'a>;
     const DATASET_NAME: &'static str = "Chebyshev Type 2";
 

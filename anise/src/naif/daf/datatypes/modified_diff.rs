@@ -53,7 +53,6 @@ impl fmt::Display for ModifiedDiffType1<'_> {
 
 /// SPK Type 1 is UNDOCUMENTED, so this implementation is a reverse engineering of the original CSPICE code in spke01.c
 impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
-    type StateKind = (Vector3, Vector3);
     type RecordKind = ModifiedDiffRecord<'a>;
     const DATASET_NAME: &'static str = "Modified Differences Type 1";
 
@@ -105,7 +104,7 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType1<'a> {
         &self,
         epoch_et_s: f64,
         summary: &S,
-    ) -> Result<Self::StateKind, InterpolationError> {
+    ) -> Result<(Vector3, Vector3), InterpolationError> {
         let rcrd_idx = record_index(self.epoch_data, summary, epoch_et_s)?;
         let record = self.nth_record(rcrd_idx).context(InterpDecodingSnafu)?;
         record.check_orders_and_nodes()?;
@@ -150,7 +149,6 @@ impl fmt::Display for ModifiedDiffType21<'_> {
 
 /// SPK Type 21 is Type 1 with a per-segment difference line dimension (MAXDIM), cf. spke21.c
 impl<'a> NAIFDataSet<'a> for ModifiedDiffType21<'a> {
-    type StateKind = (Vector3, Vector3);
     type RecordKind = ModifiedDiffRecord<'a>;
     const DATASET_NAME: &'static str = "Extended Modified Differences Type 21";
 
@@ -217,7 +215,7 @@ impl<'a> NAIFDataSet<'a> for ModifiedDiffType21<'a> {
         &self,
         epoch_et_s: f64,
         summary: &S,
-    ) -> Result<Self::StateKind, InterpolationError> {
+    ) -> Result<(Vector3, Vector3), InterpolationError> {
         let rcrd_idx = record_index(self.epoch_data, summary, epoch_et_s)?;
         let record = self.nth_record(rcrd_idx).context(InterpDecodingSnafu)?;
         record.check_orders_and_nodes()?;

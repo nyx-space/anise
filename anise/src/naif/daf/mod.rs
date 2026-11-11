@@ -9,7 +9,9 @@
  */
 
 use crate::{
-    NaifId, errors::IntegrityError, math::interpolation::InterpolationError,
+    NaifId,
+    errors::IntegrityError,
+    math::{Vector3, interpolation::InterpolationError},
     prelude::InputOutputError,
 };
 use core::fmt::Display;
@@ -76,9 +78,6 @@ pub trait NAIFDataSet<'a>: Sized + Display + PartialEq {
     /// The underlying record representation
     type RecordKind: NAIFDataRecord<'a>;
 
-    /// The state that is returned from an evaluation of this data set
-    type StateKind;
-
     /// The name of this data set, used in errors
     const DATASET_NAME: &'static str;
 
@@ -95,11 +94,19 @@ pub trait NAIFDataSet<'a>: Sized + Display + PartialEq {
 
     fn nth_record(&self, n: usize) -> Result<Self::RecordKind, DecodingError>;
 
+    /// Evaluates the full state at the provided epoch in ET seconds
     fn evaluate<S: NAIFSummaryRecord>(
         &self,
         epoch_et_s: f64,
         summary: &S,
-    ) -> Result<Self::StateKind, InterpolationError>;
+    ) -> Result<(Vector3, Vector3), InterpolationError>;
+
+    // /// Evaluates the full state at the provided epoch in ET seconds
+    // fn evaluate<S: NAIFSummaryRecord>(
+    //     &self,
+    //     epoch_et_s: f64,
+    //     summary: &S,
+    // ) -> Result<(Vector3, Vector3), InterpolationError>;
 
     /// Checks the integrity of this data set, returns an error if the data has issues.
     fn check_integrity(&self) -> Result<(), IntegrityError>;

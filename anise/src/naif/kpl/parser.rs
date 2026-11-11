@@ -805,7 +805,7 @@ mod tpc_conversion_ut {
                 15917.10818695,
                 0.0,
                 189.63271560,
-                41215158.18420050,
+                41215158.1842005,
                 12.711923222,
             ]),
         );
@@ -814,7 +814,7 @@ mod tpc_conversion_ut {
         assert_eq!(system.num_nut_prec_angles, 2);
         assert_eq!(system.nut_prec_angles[0].accel_deg, 0.0);
         assert_eq!(system.nut_prec_angles[1].offset_deg, 189.63271560);
-        assert_eq!(system.nut_prec_angles[1].rate_deg, 41215158.18420050);
+        assert_eq!(system.nut_prec_angles[1].rate_deg, 41215158.1842005);
         assert_eq!(system.nut_prec_angles[1].accel_deg, 12.711923222);
     }
 
