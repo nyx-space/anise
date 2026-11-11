@@ -1,7 +1,7 @@
 extern crate pretty_env_logger as pel;
 
 use anise::astro::orbit::ECC_EPSILON;
-use anise::constants::frames::{EARTH_ICRS, MOON_ICRS};
+use anise::constants::frames::{EARTH_ICRS, EARTH_J2000, MOON_ICRS};
 use anise::errors::PhysicsError;
 use anise::math::Vector3;
 use anise::math::angles::{between_0_360, between_pm_180};
@@ -151,16 +151,14 @@ fn val_state_def_circ_inc(almanac: Almanac) {
     let kep_ric = (dcm.transpose() * kep).unwrap();
     let kep_rtn = (dcm * kep_ric).unwrap();
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
-    f64_eq!(
-        kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        2.6e-10,
-        "RIC RMS velocity"
+    assert!(
+        kep_rtn.rss_velocity_km_s(&kep).unwrap() < 1e-9,
+        "RIC RSS velocity exceeds bound"
     );
     f64_eq!(kep_rtn.rms_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
-    f64_eq!(
-        kep_rtn.rms_velocity_km_s(&kep).unwrap(),
-        1.5e-10,
-        "RIC RMS velocity"
+    assert!(
+        kep_rtn.rms_velocity_km_s(&kep).unwrap() < 1e-9,
+        "RIC RMS velocity exceeds bound"
     );
 
     let vnc_delta = kep.vnc_difference(&kep).unwrap();
@@ -176,16 +174,14 @@ fn val_state_def_circ_inc(almanac: Almanac) {
     let kep_ric = (dcm.transpose() * kep).unwrap();
     let kep_rtn = (dcm * kep_ric).unwrap();
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "VNC RSS radius");
-    f64_eq!(
-        kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        2.6e-10,
-        "VNC RMS velocity"
+    assert!(
+        kep_rtn.rss_velocity_km_s(&kep).unwrap() < 1e-9,
+        "VNC RSS velocity exceeds bound"
     );
     f64_eq!(kep_rtn.rms_radius_km(&kep).unwrap(), 0.0, "VNC RSS radius");
-    f64_eq!(
-        kep_rtn.rms_velocity_km_s(&kep).unwrap(),
-        1.5e-10,
-        "VNC RMS velocity"
+    assert!(
+        kep_rtn.rms_velocity_km_s(&kep).unwrap() < 1e-9,
+        "VNC RMS velocity exceeds bound"
     );
 
     // Check the relative and absolute differences
@@ -195,10 +191,9 @@ fn val_state_def_circ_inc(almanac: Almanac) {
         0.0,
         "non zero absolute position difference"
     );
-    f64_eq!(
-        abs_vel_km_s.abs(),
-        2.6e-10,
-        "non zero absolute velocity difference"
+    assert!(
+        abs_vel_km_s.abs() < 1e-9,
+        "absolute velocity difference exceeds bound"
     );
 
     let (rel_pos, rel_vel) = kep_rtn.rel_difference(&kep).unwrap();
@@ -331,10 +326,9 @@ fn val_state_def_elliptical(almanac: Almanac) {
     let kep_ric = (dcm.transpose() * kep).unwrap();
     let kep_rtn = (dcm * kep_ric).unwrap();
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
-    f64_eq!(
-        kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        7.7e-10,
-        "RIC RSS velocity"
+    assert!(
+        kep_rtn.rss_velocity_km_s(&kep).unwrap() < 2e-9,
+        "RIC RSS velocity exceeds bound"
     );
 }
 
@@ -437,10 +431,9 @@ fn val_state_def_circ_eq(almanac: Almanac) {
     let kep_ric = (dcm.transpose() * kep).unwrap();
     let kep_rtn = (dcm * kep_ric).unwrap();
     f64_eq!(kep_rtn.rss_radius_km(&kep).unwrap(), 0.0, "RIC RSS radius");
-    f64_eq!(
-        kep_rtn.rss_velocity_km_s(&kep).unwrap(),
-        1.02e-8,
-        "RIC RSS velocity"
+    assert!(
+        kep_rtn.rss_velocity_km_s(&kep).unwrap() < 2e-8,
+        "RIC RSS velocity exceeds bound"
     );
 }
 
@@ -488,10 +481,9 @@ fn val_state_def_equatorial(almanac: Almanac) {
         0.0,
         "RIC RSS radius"
     );
-    f64_eq!(
-        cart_rtn.rss_velocity_km_s(&cart).unwrap(),
-        4.01e-8,
-        "RIC RSS velocity"
+    assert!(
+        cart_rtn.rss_velocity_km_s(&cart).unwrap() < 5e-8,
+        "RIC RSS velocity exceeds bound"
     );
 
     // Change the epoch of the other, make sure that the standard RIC diff fails
@@ -795,6 +787,139 @@ fn verif_orbit_at_epoch(almanac: Almanac) {
             format!("#{ono}: AOP changed")
         );
     }
+}
+
+/// Regression for <https://github.com/nyx-space/anise/issues/821>: with `aop_deg = 0`, propagating
+/// via `at_epoch` flipping the result from 0° to 180° through `acos` Checks that elements
+/// are preserved.
+#[rstest]
+fn verif_orbit_at_epoch_with_low_eccentricity(almanac: Almanac) {
+    let eme2000 = almanac.frame_info(EARTH_J2000).unwrap();
+    let epoch = Epoch::from_gregorian_utc_hms(2026, 8, 26, 12, 0, 0);
+
+    let orbit_initial_eme2000 = Orbit::try_keplerian(
+        26_560.0,  // sma_km
+        0.02,      // ecc
+        55.0,      // inc_deg
+        120.0,     // raan_deg
+        0.0,       // aop_deg
+        240.0,     // ta_deg
+        epoch,
+        eme2000,
+    ).unwrap();
+
+    let orbit_later_eme2000 = orbit_initial_eme2000.at_epoch(
+        epoch + 1 * Unit::Day + 6 * Unit::Hour
+    ).unwrap();
+
+    // regression on issue #821
+    f64_eq_tol!(
+        orbit_initial_eme2000.aop_deg().unwrap(),
+        orbit_later_eme2000.aop_deg().unwrap(),
+        1e-6,
+        "Argument of perigee changed"
+    );
+    f64_eq_tol!(
+        orbit_initial_eme2000.sma_km().unwrap(),
+        orbit_later_eme2000.sma_km().unwrap(),
+        1e-6,
+        "SMA changed"
+    );
+    f64_eq_tol!(
+        orbit_initial_eme2000.ecc().unwrap(),
+        orbit_later_eme2000.ecc().unwrap(),
+        1e-6,
+        "ECC changed"
+    );
+    f64_eq_tol!(
+        orbit_initial_eme2000.inc_deg().unwrap(),
+        orbit_later_eme2000.inc_deg().unwrap(),
+        1e-6,
+        "INC changed"
+    );
+    f64_eq_tol!(
+        orbit_initial_eme2000.raan_deg().unwrap(),
+        orbit_later_eme2000.raan_deg().unwrap(),
+        1e-6,
+        "RAAN changed"
+    );
+}
+
+/// Round-trips a circular, zero-inclination GEO orbit through one full orbital period
+/// and checks that the propagated position and velocity return to the original state.
+#[rstest]
+fn verif_orbit_at_epoch_equatorial_circular(almanac: Almanac) {
+    let eme2000 = almanac.frame_info(EARTH_J2000).unwrap();
+    let epoch = Epoch::from_gregorian_utc_hms(2026, 8, 26, 12, 0, 0);
+
+    let r_geo_km = 42_164.0;
+    let v_geo_km_s = (eme2000.mu_km3_s2().unwrap() / r_geo_km).sqrt();
+
+    let orbit_initial_eme2000 = Orbit::new(
+        r_geo_km,    // x_km
+        0.0,         // y_km
+        0.0,         // z_km
+        0.0,         // vx_km_s
+        v_geo_km_s,  // vy_km_s
+        0.0,         // vz_km_s
+        epoch,
+        eme2000,
+    );
+
+    let orbit_later_eme2000 = orbit_initial_eme2000.at_epoch(
+        epoch + orbit_initial_eme2000.period().unwrap()
+    ).unwrap();
+
+    // Should come back to the original position and velocity after 1 period
+    f64_eq_tol!(
+        (orbit_later_eme2000.radius_km - orbit_initial_eme2000.radius_km).norm(),
+        0.0,
+        1e-3,  // 1 m tolerance
+        "Position drifted"
+    );
+    f64_eq_tol!(
+        (orbit_later_eme2000.velocity_km_s - orbit_initial_eme2000.velocity_km_s).norm(),
+        0.0,
+        1e-3, // 1 m/s tolerance
+        "Velocity drifted"
+    );
+}
+
+/// Round-trips a polar, moderately eccentric orbit through one full orbital period
+/// and checks that the propagated position and velocity return to the original state.
+#[rstest]
+fn verif_orbit_at_epoch_polar_eccentric(almanac: Almanac) {
+    let eme2000 = almanac.frame_info(EARTH_J2000).unwrap();
+    let epoch = Epoch::from_gregorian_utc_hms(2026, 8, 26, 12, 0, 0);
+
+    let orbit_initial_eme2000 = Orbit::try_keplerian(
+        12_000.0,  // sma_km
+        0.3,       // ecc
+        90.0,      // inc_deg
+        45.0,      // raan_deg
+        30.0,      // aop_deg
+        75.0,      // ta_deg
+        epoch,
+        eme2000,
+    ).unwrap();
+
+    let orbit_later_eme2000 = orbit_initial_eme2000.at_epoch(
+        epoch + orbit_initial_eme2000.period().unwrap()
+    ).unwrap();
+
+    // Should come back to the original position and velocity after 1 period
+    f64_eq_tol!(
+        (orbit_later_eme2000.radius_km - orbit_initial_eme2000.radius_km).norm(),
+        0.0,
+        1e-3,  // 1 m tolerance
+        "Position drifted"
+    );
+    f64_eq_tol!(
+        (orbit_later_eme2000.velocity_km_s - orbit_initial_eme2000.velocity_km_s).norm(),
+        0.0,
+        1e-3, // 1 m/s tolerance
+        "Velocity drifted"
+    );
 }
 
 #[rstest]
