@@ -60,6 +60,8 @@ pub struct EphemerisSegment {
     pub useable_start: Option<Epoch>,
     pub useable_end: Option<Epoch>,
     pub state_data: BTreeMap<Epoch, EphemerisRecord>,
+    /// OEM ephemeris data comments, one line per entry without the `COMMENT` prefix.
+    pub comments: Vec<String>,
 }
 
 #[derive(Clone, Copy)]
@@ -71,6 +73,7 @@ struct EphemerisSegmentView<'a> {
     useable_start: Epoch,
     useable_end: Epoch,
     state_data: &'a BTreeMap<Epoch, EphemerisRecord>,
+    comments: &'a [String],
 }
 
 impl EphemerisSegment {
@@ -81,6 +84,7 @@ impl EphemerisSegment {
             useable_start: None,
             useable_end: None,
             state_data: BTreeMap::new(),
+            comments: Vec::new(),
         }
     }
 
@@ -95,6 +99,7 @@ impl EphemerisSegment {
             useable_start: None,
             useable_end: None,
             state_data,
+            comments: Vec::new(),
         }
     }
 
@@ -111,6 +116,7 @@ impl EphemerisSegment {
             useable_start,
             useable_end,
             state_data: &self.state_data,
+            comments: &self.comments,
         })
     }
 }
@@ -724,6 +730,9 @@ impl Ephemeris {
                 (view.useable_start, view.useable_end)
             };
             let mut sampled_segment = EphemerisSegment::new(view.interpolation, view.degree);
+            sampled_segment
+                .comments
+                .clone_from(&source_segment.comments);
             for epoch in epochs.iter().copied() {
                 if (sampling_start..=sampling_end).contains(&epoch) {
                     sampled_segment
@@ -1520,6 +1529,7 @@ META_STOP
                 useable_start: Some(middle),
                 useable_end: Some(end),
                 state_data,
+                comments: vec!["source segment".to_string()],
             }],
         };
 
@@ -1531,6 +1541,7 @@ META_STOP
             .unwrap();
 
         assert_eq!(resampled.len(), 2);
+        assert_eq!(resampled.segments[0].comments, ["source segment"]);
         assert_eq!(resampled.start_epoch().unwrap(), start);
         assert_eq!(
             resampled
@@ -2282,6 +2293,7 @@ COV_REF_FRAME = EME2000
                 useable_start: None,
                 useable_end: None,
                 state_data,
+                comments: Vec::new(),
             }],
         };
         assert!(ephem.to_spice_bsp(-999, None).is_err());
@@ -2310,6 +2322,7 @@ COV_REF_FRAME = EME2000
                 useable_start: Some(epoch),
                 useable_end: Some(epoch),
                 state_data,
+                comments: Vec::new(),
             }],
         };
         assert!(ephem.to_spice_bsp(-999, None).is_err());
