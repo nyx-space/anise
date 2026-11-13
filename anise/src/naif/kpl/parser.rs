@@ -467,6 +467,32 @@ pub fn convert_fk_items(
 
     // Add all of the data into the data set
     for (id, item) in assignments {
+        // A class 4 (TK) frame is defined relative to the frame named in RELATIVE, whether it is
+        // specified with ANGLES or with a MATRIX, so record both kinds for the parent fix up below.
+        if (item.data.contains_key(&Parameter::Angles)
+            || item.data.contains_key(&Parameter::Matrix))
+            && let Some(class) = item.data.get(&Parameter::Class)
+        {
+            let class_val = class.to_i32().map_err(|_| DataSetError::Conversion {
+                action: format!("Class must be an Integer but was {class:?}"),
+            })?;
+            if class_val == 4 {
+                // This is a relative frame.
+                let relative_to = item.data.get(&Parameter::Relative).ok_or(DataSetError::Conversion {
+                    action: format!("frame {id} is class 4 relative to, but the RELATIVE_TO token was not found"),
+                })?;
+                let relative_to =
+                    relative_to
+                        .to_string()
+                        .map_err(|_| DataSetError::Conversion {
+                            action: format!("Relative must be a String but was {relative_to:?}"),
+                        })?;
+
+                // Always mark as something to update later.
+                ids_to_update.push((id, relative_to.clone()));
+            }
+        }
+
         if !item.data.contains_key(&Parameter::Angles)
             && !item.data.contains_key(&Parameter::Matrix)
         {
@@ -531,29 +557,6 @@ pub fn convert_fk_items(
             let to = to.to_i32().map_err(|_| DataSetError::Conversion {
                 action: format!("Center parameter must be an Integer but was {to:?}"),
             })?;
-            if let Some(class) = item.data.get(&Parameter::Class) {
-                let class_val = class.to_i32().map_err(|_| DataSetError::Conversion {
-                    action: format!("Class must be an Integer but was {class:?}"),
-                })?;
-                if class_val == 4 {
-                    // This is a relative frame.
-                    let relative_to = item.data.get(&Parameter::Relative).ok_or(DataSetError::Conversion {
-                        action: format!("frame {id} is class 4 relative to, but the RELATIVE_TO token was not found"),
-                    })?;
-                    let relative_to =
-                        relative_to
-                            .to_string()
-                            .map_err(|_| DataSetError::Conversion {
-                                action: format!(
-                                    "Relative must be a String but was {relative_to:?}"
-                                ),
-                            })?;
-
-                    // Always mark as something to update later.
-                    ids_to_update.push((id, relative_to.clone()));
-                }
-            }
-
             let mut dcm = Matrix3::identity();
 
             let axes = item
@@ -649,7 +652,9 @@ pub fn convert_fk_items(
                 ),
             })?;
 
-        let parent_id = dataset.data[(*parent_idx) as usize].to;
+        // The TK frame rotates into the RELATIVE frame itself, so its parent is that frame's ID
+        // and not the frame that the RELATIVE frame is in turn defined against.
+        let parent_id = dataset.data[(*parent_idx) as usize].from;
 
         // Modify this EP.
         let index = dataset.lut.by_id.get(&id).ok_or(DataSetError::Conversion {
