@@ -211,17 +211,23 @@ impl MetaFile {
                                                         }
                                                         Ok(mut file) => {
                                                             // Created the file, let's write the bytes.
-                                                            let bytes = resp
+                                                            let bytes = match resp
                                                                 .body_mut()
                                                                 .with_config()
                                                                 .limit(1024 * 1024 * 200) // 200 MB limit
                                                                 .read_to_vec()
-                                                                .map_err(|e| {
-                                                                    MetaAlmanacError::FetchError {
-                                                                        error: format!("{e:?}"),
-                                                                        uri: self.uri.clone(),
-                                                                    }
-                                                                })?;
+                                                            {
+                                                                Ok(bytes) => bytes,
+                                                                Err(e) => {
+                                                                    del_lock_file();
+                                                                    return Err(
+                                                                        MetaAlmanacError::FetchError {
+                                                                            error: format!("{e:?}"),
+                                                                            uri: self.uri.clone(),
+                                                                        },
+                                                                    );
+                                                                }
+                                                            };
                                                             let crc32 = crc32fast::hash(&bytes);
                                                             if let Some(expected) = self.crc32
                                                                 && crc32 != expected
@@ -232,8 +238,9 @@ impl MetaFile {
                                                                     "{dest_path_s} remote file CRC32 mismatch (got 0x{crc32:x}, expected 0x{expected:x}), file will be downloaded again on next load"
                                                                 );
                                                             }
-                                                            file.write_all(&bytes).map_err(
-                                                                |e| MetaAlmanacError::MetaIO {
+                                                            if let Err(e) = file.write_all(&bytes) {
+                                                                del_lock_file();
+                                                                return Err(MetaAlmanacError::MetaIO {
                                                                     path: dest_path
                                                                         .to_string_lossy()
                                                                         .into(),
@@ -242,8 +249,8 @@ impl MetaFile {
                                                                         InputOutputError::IOError {
                                                                             kind: e.kind(),
                                                                         },
-                                                                },
-                                                            )?;
+                                                                });
+                                                            }
 
                                                             info!(
                                                                 "Saved {url} to {} (CRC32 = 0x{crc32:x})",
@@ -471,6 +478,48 @@ mod ut_metafile {
         assert_eq!(mf.crc32, Some(crc32fast::hash(body)));
         assert!(std::path::Path::new(&mf.uri).exists());
         let _ = std::fs::remove_file(&mf.uri);
+    }
+
+    #[test]
+    fn failed_download_releases_lock() {
+        use platform_dirs::AppDirs;
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        use std::thread;
+
+        // The server announces more bytes than it sends, so reading the body fails.
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 1024];
+            let _ = stream.read(&mut buf);
+            stream
+                .write_all(
+                    b"HTTP/1.1 200 OK\r\nContent-Length: 1000\r\nConnection: close\r\n\r\nshort",
+                )
+                .unwrap();
+        });
+
+        let name = "anise-truncated-download-test.bin";
+        let mut mf = MetaFile {
+            uri: format!("http://127.0.0.1:{port}/{name}"),
+            crc32: None,
+        };
+        assert!(mf.process(false).is_err());
+        server.join().unwrap();
+
+        let data_dir = AppDirs::new(Some("nyx-space/anise"), true)
+            .unwrap()
+            .data_dir;
+        let lock_path = data_dir.join(format!("{name}.lock"));
+        let lock_left = lock_path.exists();
+        let _ = std::fs::remove_file(&lock_path);
+        let _ = std::fs::remove_file(data_dir.join(name));
+        assert!(
+            !lock_left,
+            "a failed download must not leave its lock file behind"
+        );
     }
 
     #[test]
