@@ -29,8 +29,9 @@ runs:
       uses: actions/cache@v3
       with:
         path: data
-        # Update the hash if the download script changes
-        key: test-data-${{ hashFiles('download_test_data.sh') }}
+        # Update the hash if the download script or the tracked dhall files change, since
+        # restoring the cache overwrites the checked out data folder
+        key: test-data-${{ hashFiles('download_test_data.sh', 'data/*.dhall') }}
 
     - name: Download Data
       if: steps.cache-data.outputs.cache-hit != 'true'
