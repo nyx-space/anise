@@ -1,8 +1,0 @@
-{
-  "track_id": "fix_python_type_hints_20260223",
-  "type": "bug",
-  "status": "new",
-  "created_at": "2026-02-23T11:00:00Z",
-  "updated_at": "2026-02-23T11:00:00Z",
-  "description": "Fix Python type hints in anise-py, update stubs, and resolve all mypy errors."
-}
