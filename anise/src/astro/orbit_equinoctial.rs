@@ -71,7 +71,6 @@ pub(crate) fn cartesian_to_modified_equinoctial(
     velocity_km_s: Vector3,
     mu_km3_s2: f64,
 ) -> PhysicsResult<[f64; 6]> {
-    let r_dot_v = radius_km.dot(&velocity_km_s);
     let r_hat = radius_km.normalize();
     let h_vec_km2_per_s = radius_km.cross(&velocity_km_s);
     let h_mag_km2_per_s = h_vec_km2_per_s.norm();
@@ -94,7 +93,7 @@ pub(crate) fn cartesian_to_modified_equinoctial(
     );
 
     // Transverse unit vector of the RTN frame
-    let transverse_dir = (radius_km.norm() * velocity_km_s - r_dot_v * r_hat) / h_mag_km2_per_s;
+    let transverse_dir = h_hat.cross(&r_hat);
     let p_km = h_mag_km2_per_s.powi(2) / mu_km3_s2;
     let k = h_hat[0] / (1.0 + h_hat[2]);
     let h = -h_hat[1] / (1.0 + h_hat[2]);

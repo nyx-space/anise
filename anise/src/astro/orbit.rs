@@ -1392,7 +1392,7 @@ impl Orbit {
             return Ok(*self);
         }
 
-        // Concert cartesian state to equinoctial
+        // Convert cartesian state to equinoctial
         let mu_km3_s2 = self.frame.mu_km3_s2()?;
         let [p_km, f, g, h, k, true_lon_deg] = cartesian_to_modified_equinoctial(
             self.radius_km,
