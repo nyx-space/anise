@@ -1,7 +1,4 @@
-use anise::{
-    constants::frames::{EARTH_ICRS, MOON_ICRS},
-    prelude::*,
-};
+use anise::{constants::celestial_objects::EARTH, constants::frames::MOON_ICRS, prelude::*};
 use iai_callgrind::{library_benchmark, library_benchmark_group, main};
 use std::hint::black_box;
 
@@ -32,10 +29,7 @@ fn benchmark_anise_single_hop_type2_cheby() {
     let spk = SPK::parse(buf.into()).unwrap();
     let ctx = Almanac::from_spk(spk);
 
-    black_box(
-        ctx.translate_geometric(EARTH_ICRS, MOON_ICRS, epoch)
-            .unwrap(),
-    );
+    black_box(ctx.state_of(EARTH, MOON_ICRS, epoch, None).unwrap());
 }
 
 library_benchmark_group!(name = bench_jpl_ephem; benchmarks = benchmark_anise_single_hop_type2_cheby, benchmark_spice_single_hop_type2_cheby);

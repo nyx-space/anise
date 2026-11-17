@@ -28,12 +28,8 @@ fn benchmark_spice_single_hop_type13_hermite(time_vec: &[Epoch]) {
 }
 
 fn benchmark_anise_single_hop_type13_hermite(ctx: &Almanac, time_vec: &[Epoch]) {
-    let my_sc_j2k = Frame::from_ephem_icrs(-85);
     for epoch in time_vec.iter().copied() {
-        black_box(
-            ctx.translate_geometric(my_sc_j2k, EARTH_ICRS, epoch)
-                .unwrap(),
-        );
+        black_box(ctx.state_of(-85, EARTH_ICRS, epoch, None).unwrap());
     }
 }
 

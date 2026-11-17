@@ -856,7 +856,7 @@ mod ut_oem {
     use crate::analysis::prelude::OrbitalElement;
     use crate::constants::frames::{EARTH_ICRS, EARTH_J2000};
     use crate::naif::daf::datatypes::{HermiteSetType12, HermiteSetType13, LagrangeSetType9};
-    use crate::prelude::{Frame, NAIFSummaryRecord, Orbit};
+    use crate::prelude::{NAIFSummaryRecord, Orbit};
     use hifitime::{Epoch, TimeSeries, Unit};
     use nalgebra::{Matrix6, SymmetricEigen, Vector6};
     use std::collections::BTreeMap;
@@ -1070,7 +1070,7 @@ mod ut_oem {
         let almanac = Almanac::from_spk(my_spk.clone());
         assert!(
             almanac
-                .translate_geometric(Frame::from_ephem_icrs(-159), EARTH_ICRS, unavailable)
+                .state_of(-159, EARTH_ICRS, unavailable, None)
                 .is_err()
         );
         let expected = ephem.segments[1]
@@ -1079,9 +1079,7 @@ mod ut_oem {
             .unwrap()
             .1
             .orbit;
-        let from_bsp = almanac
-            .translate_geometric(Frame::from_ephem_icrs(-159), EARTH_ICRS, boundary)
-            .unwrap();
+        let from_bsp = almanac.state_of(-159, EARTH_ICRS, boundary, None).unwrap();
         assert_eq!(from_bsp.frame.orientation_id, expected.frame.orientation_id);
         assert!((from_bsp.radius_km - expected.radius_km).norm() < 1e-9);
         assert!((from_bsp.velocity_km_s - expected.velocity_km_s).norm() < 1e-12);
@@ -1415,11 +1413,7 @@ mod ut_oem {
         // This OEM declares EME2000, which is distinct from the ICRS root frame.
         assert_eq!(final_summary.frame_id, EARTH_J2000.orientation_id);
         let final_state = Almanac::from_spk(spk.clone())
-            .translate_geometric(
-                Frame::new(-159, EARTH_J2000.orientation_id),
-                EARTH_J2000,
-                final_epoch,
-            )
+            .state_of(-159, EARTH_J2000, final_epoch, None)
             .unwrap();
         assert!((final_state.radius_km.x - 25.0).abs() < 1e-12);
 
@@ -2091,11 +2085,7 @@ COV_REF_FRAME = EME2000
             assert_eq!(data.first_state_epoch, Epoch::from_et_seconds(0.0));
             assert_eq!(data.step_size, Unit::Second * 1);
             let state = Almanac::from_spk(spk)
-                .translate_geometric(
-                    Frame::from_ephem_icrs(-159),
-                    EARTH_ICRS,
-                    Epoch::from_et_seconds(1.5),
-                )
+                .state_of(-159, EARTH_ICRS, Epoch::from_et_seconds(1.5), None)
                 .unwrap();
             assert_eq!(state.frame.orientation_id, EARTH_ICRS.orientation_id);
             assert!((state.radius_km.x - 1.5).abs() < 1e-12);
@@ -2137,11 +2127,7 @@ COV_REF_FRAME = EME2000
             }
             let query = (count as f64 - 1.0) / 2.0;
             let state = Almanac::from_spk(spk)
-                .translate_geometric(
-                    Frame::from_ephem_icrs(-159),
-                    EARTH_ICRS,
-                    Epoch::from_et_seconds(query),
-                )
+                .state_of(-159, EARTH_ICRS, Epoch::from_et_seconds(query), None)
                 .unwrap();
             assert!((state.radius_km.x - query).abs() < 1e-10);
             assert!((state.velocity_km_s.x - 1.0).abs() < 1e-10);
@@ -2220,9 +2206,7 @@ COV_REF_FRAME = EME2000
         let almanac = Almanac::from_spk(spk);
         for idx in 0..2 {
             let query = Epoch::from_et_seconds(start_et + 10.0 * idx as f64 + 0.15);
-            let state = almanac
-                .translate_geometric(Frame::from_ephem_icrs(-159), EARTH_ICRS, query)
-                .unwrap();
+            let state = almanac.state_of(-159, EARTH_ICRS, query, None).unwrap();
             assert!((state.radius_km.x - (1000.0 * idx as f64 + 0.15)).abs() < 1e-6);
         }
         let segment = &mut ephem.segments[1];

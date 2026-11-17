@@ -258,7 +258,7 @@ fn test_spk_truncate_cheby() {
     let almanac = Almanac::default().with_spk(reloaded);
     let query_epoch = new_start + Unit::Day * 1;
     let state = almanac
-        .translate_geometric(MOON_ICRS, EARTH_MOON_BARYCENTER_ICRS, query_epoch)
+        .transform(MOON_ICRS, EARTH_MOON_BARYCENTER_ICRS, query_epoch, None)
         .unwrap();
     assert!(
         state.radius_km.norm() > 0.0,

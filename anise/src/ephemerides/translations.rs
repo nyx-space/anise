@@ -49,7 +49,7 @@ impl Almanac {
     /// 3.  Iteratively traverse the ephemeris tree from the observer and target frames up to the common ancestor, accumulating the state vectors at each step using `translation_parts_to_parent`.
     /// 4.  If aberration corrections are requested, calculate the one-way light time and apply the correction to the target's position.
     /// 5.  The final state is the difference between the backward and forward state vectors.
-    pub fn translate(
+    pub(crate) fn translate(
         &self,
         target_frame: Frame,
         mut observer_frame: Frame,
@@ -202,20 +202,10 @@ impl Almanac {
         }
     }
 
-    /// Returns the geometric position vector, velocity vector, and acceleration vector needed to translate the `from_frame` to the `to_frame`, where the distance is in km, the velocity in km/s, and the acceleration in km/s^2.
-    pub fn translate_geometric(
-        &self,
-        target_frame: Frame,
-        observer_frame: Frame,
-        epoch: Epoch,
-    ) -> Result<CartesianState, EphemerisError> {
-        self.translate(target_frame, observer_frame, epoch, Aberration::NONE)
-    }
-
     /// Translates the provided Cartesian state into the requested observer frame
     ///
     /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_to` function instead to include rotations.
-    pub fn translate_to(
+    pub(crate) fn translate_to(
         &self,
         state: CartesianState,
         mut observer_frame: Frame,
@@ -231,33 +221,5 @@ impl Almanac {
         }
         new_state.frame = observer_frame.with_orient(state.frame.orientation_id);
         Ok(new_state)
-    }
-
-    /// Translates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame
-    ///
-    /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_state_to` function instead to include rotations.
-    #[allow(clippy::too_many_arguments)]
-    pub fn translate_state_to(
-        &self,
-        position: Vector3,
-        velocity: Vector3,
-        from_frame: Frame,
-        observer_frame: Frame,
-        epoch: Epoch,
-        ab_corr: Option<Aberration>,
-        distance_unit: LengthUnit,
-        time_unit: TimeUnit,
-    ) -> Result<CartesianState, EphemerisError> {
-        let dist_unit_factor = LengthUnit::Kilometer.to_meters() * distance_unit.from_meters();
-        let time_unit_factor = time_unit.in_seconds();
-
-        let state = CartesianState {
-            radius_km: position * dist_unit_factor,
-            velocity_km_s: velocity * dist_unit_factor / time_unit_factor,
-            epoch,
-            frame: from_frame,
-        };
-
-        self.translate_to(state, observer_frame, ab_corr)
     }
 }

@@ -1,7 +1,4 @@
-use anise::{
-    constants::frames::{EARTH_ICRS, MOON_ICRS},
-    prelude::*,
-};
+use anise::{constants::celestial_objects::EARTH, constants::frames::MOON_ICRS, prelude::*};
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
 
@@ -21,12 +18,11 @@ fn benchmark_spice_single_hop_type2_cheby(time_it: TimeSeries) {
 
 fn benchmark_anise_single_hop_type2_cheby(ctx: &Almanac, time_it: TimeSeries) {
     for epoch in time_it {
-        black_box(
-            ctx.translate_geometric(EARTH_ICRS, MOON_ICRS, epoch)
-                .unwrap(),
-        );
+        black_box(ctx.state_of(EARTH, MOON_ICRS, epoch, None).unwrap());
     }
 }
+
+// TODO add a position_of test
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     let start_epoch = Epoch::from_gregorian_at_noon(1900, 1, 1, TimeScale::ET);

@@ -35,12 +35,7 @@ fn benchmark_anise_single_hop_type13_hermite() {
 
     let ctx = Almanac::from_spk(spk).with_spk(spacecraft);
 
-    let my_sc_j2k = Frame::from_ephem_icrs(-85);
-
-    black_box(
-        ctx.translate_geometric(my_sc_j2k, EARTH_ICRS, epoch)
-            .unwrap(),
-    );
+    black_box(ctx.state_of(-85, EARTH_ICRS, epoch, None).unwrap());
 }
 
 library_benchmark_group!(name = bench_spacecraft_ephem; benchmarks = benchmark_anise_single_hop_type13_hermite, benchmark_spice_single_hop_type13_hermite);

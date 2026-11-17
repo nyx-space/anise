@@ -554,11 +554,11 @@ fn regression_test_issue_431_test() {
     let epoch = Epoch::from_str("2022-06-29 00:00:00 TDB").unwrap();
 
     let expected = almanac
-        .translate(EARTH_ICRS, MOON_PA_DE421_FRAME, epoch, None)
+        .transform(EARTH_ICRS, MOON_PA_DE421_FRAME, epoch, None)
         .unwrap();
 
     let computed = almanac
-        .translate_state_to(
+        .transform_state_to(
             Vector3::zeros(),
             Vector3::zeros(),
             EARTH_ICRS,

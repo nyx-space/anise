@@ -1,5 +1,6 @@
 // Start by creating the ANISE planetary data
 use anise::{
+    constants::celestial_objects::EARTH,
     constants::frames::{EARTH_ICRS, EARTH_ITRF93, SUN_ICRS},
     naif::kpl::parser::convert_tpc,
     prelude::{Aberration, Almanac, BPC, Orbit, SPK},
@@ -133,7 +134,7 @@ fn test_type3_state_transformation() {
     // Ensure that we can query the type 3 chebyshev DE440 file
 
     let state = almanac
-        .translate(EARTH_ICRS, SUN_ICRS, epoch, None)
+        .state_of(EARTH, SUN_ICRS, epoch, None)
         .expect("type 3 chebyshev could not be queried");
 
     println!("{state:x}");
