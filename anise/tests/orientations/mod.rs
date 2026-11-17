@@ -538,6 +538,125 @@ fn regression_test_issue_357_test_moon_me_j2k() {
     dbg!(lat, long, alt);
 }
 
+/// MOON_PA (31010) and MOON_ME (31011) are class 4 MATRIX frames relative to MOON_PA_DE440 and
+/// MOON_ME_DE440_ME421. The FK is converted here rather than loaded from moon_fk_de440.epa so that
+/// the test exercises the current converter.
+///
+/// Reference values from spiceypy 8.4.0 with naif0012.tls, moon_pa_de440_200625.bpc and
+/// moon_de440_220930.txt:
+///
+/// ```python
+/// et = sp.str2et("2024-01-01 22:28:39")
+/// sp.pxform("MOON_PA_DE440", "MOON_ME", et)
+/// sp.pxform("MOON_PA", "J2000", et)
+/// sp.pxform("MOON_ME", "J2000", et)
+/// sp.pxform("MOON_PA", "MOON_ME", et)
+/// ```
+#[test]
+fn test_moon_me_pa_tk_frames_vs_spice() {
+    use anise::constants::celestial_objects::MOON;
+    use anise::naif::kpl::parser::convert_fk;
+    use core::str::FromStr;
+
+    const MOON_PA_TK: i32 = 31010;
+    const MOON_ME_TK: i32 = 31011;
+    let moon_pa_frame = Frame::new(MOON, MOON_PA_TK);
+    let moon_me_frame = Frame::new(MOON, MOON_ME_TK);
+
+    let almanac = Almanac::new("../data/pck11.pca")
+        .unwrap()
+        .load("../data/moon_pa_de440_200625.bpc")
+        .unwrap()
+        .with_euler_parameters(convert_fk("../data/moon_de440_220930.txt", false).unwrap());
+
+    let epoch = Epoch::from_str("2024-01-01 22:28:39").unwrap();
+
+    // MOON_ME -> MOON_ME_DE440_ME421 -> MOON_PA_DE440 -> J2000
+    let (len, path) = almanac
+        .orientation_path_to_root(moon_me_frame, epoch)
+        .unwrap();
+    assert_eq!(&path[..len], &[Some(31009), Some(31008), Some(ICRS)]);
+    // MOON_PA -> MOON_PA_DE440 -> J2000
+    let (len, path) = almanac
+        .orientation_path_to_root(moon_pa_frame, epoch)
+        .unwrap();
+    assert_eq!(&path[..len], &[Some(31008), Some(ICRS)]);
+
+    let cases = [
+        (
+            MOON_PA_DE440_FRAME,
+            moon_me_frame,
+            Matrix3::new(
+                9.999998731138765e-01,
+                -3.289586579141938e-04,
+                3.815212082114573e-04,
+                3.289591969874853e-04,
+                9.999999458920105e-01,
+                -1.350206003622702e-06,
+                -3.815207434061568e-04,
+                1.475710742587233e-06,
+                9.999999272198697e-01,
+            ),
+        ),
+        (
+            moon_pa_frame,
+            MOON_ICRS,
+            Matrix3::new(
+                0.978289320322252,
+                0.207027066487512,
+                -0.009476259019312,
+                -0.195463789307068,
+                0.906520406668315,
+                -0.374185327563275,
+                -0.068876068508213,
+                0.367913775272805,
+                0.927305527402573,
+            ),
+        ),
+        (
+            moon_me_frame,
+            MOON_ICRS,
+            Matrix3::new(
+                0.978217477451179,
+                0.20734888534983,
+                -0.009849190486318,
+                -0.195904731880042,
+                0.906456563234423,
+                -0.37410938907791,
+                -0.068643301465341,
+                0.367889845896052,
+                0.927332280496326,
+            ),
+        ),
+        (
+            moon_pa_frame,
+            moon_me_frame,
+            Matrix3::new(
+                9.999998731138765e-01,
+                -3.289586579141938e-04,
+                3.815212082114573e-04,
+                3.289591969874853e-04,
+                9.999999458920105e-01,
+                -1.350206003622702e-06,
+                -3.815207434061568e-04,
+                1.475710742587233e-06,
+                9.999999272198697e-01,
+            ),
+        ),
+    ];
+
+    for (from, to, spice_rot_mat) in cases {
+        let dcm = almanac.rotate(from, to, epoch).unwrap();
+        let err = (dcm.rot_mat - spice_rot_mat).norm();
+        assert!(
+            err < 1e-12,
+            "{from} -> {to}: got {}want {}err = {err:.3e}",
+            dcm.rot_mat,
+            spice_rot_mat
+        );
+    }
+}
+
 #[test]
 fn regression_test_issue_431_test() {
     use core::str::FromStr;
