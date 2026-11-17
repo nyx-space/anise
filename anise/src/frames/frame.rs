@@ -387,6 +387,13 @@ impl Frame {
     pub const fn orient_origin_match(&self, other: Self) -> bool {
         self.orient_origin_id_match(other.orientation_id)
     }
+    /// Returns true if the orientation origin and ephemeris ID are both equal to the provided frame
+    ///
+    /// :type other: Frame
+    /// :rtype: bool
+    pub const fn matches(&self, other: Self) -> bool {
+        self.ephemeris_id == other.ephemeris_id && self.orientation_id == other.orientation_id
+    }
 
     /// Removes the graviational parameter and the shape information from this frame.
     /// Use this to prevent astrodynamical computations.
