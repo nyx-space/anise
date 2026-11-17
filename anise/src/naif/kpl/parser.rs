@@ -160,6 +160,15 @@ pub fn convert_tpc<P: AsRef<Path> + fmt::Debug>(
     convert_tpc_items(planetary_data, gravity_data)
 }
 
+/// SPICE allows the quadratic term of POLE_RA, POLE_DEC and PM to be omitted, in which case it is
+/// zero (e.g. BODY616 in pck00011.tpc). Pad the polynomial to its three terms before the
+/// nutation/precession coefficients are appended, so they are not read as polynomial terms.
+fn pad_quadratic_term(coeffs: &mut Vec<f64>) {
+    if !coeffs.is_empty() && coeffs.len() < 3 {
+        coeffs.resize(3, 0.0);
+    }
+}
+
 pub fn convert_tpc_items(
     mut planetary_data: HashMap<i32, TPCItem>,
     gravity_data: HashMap<i32, TPCItem>,
@@ -218,6 +227,7 @@ pub fn convert_tpc_items(
                                 match data {
                                     KPLValue::Matrix(pole_ra_data) => {
                                         let mut pole_ra_data = pole_ra_data.clone();
+                                        pad_quadratic_term(&mut pole_ra_data);
                                         if let Some(coeffs) =
                                             planetary_data.data.get(&Parameter::NutPrecRa)
                                         {
@@ -240,6 +250,7 @@ pub fn convert_tpc_items(
                                                 "PoleDec must be a matrix but was {pole_dec_data:?}"
                                             ),
                                             })?;
+                                        pad_quadratic_term(&mut pola_dec_data);
                                         if let Some(coeffs) =
                                             planetary_data.data.get(&Parameter::NutPrecDec)
                                         {
@@ -259,6 +270,7 @@ pub fn convert_tpc_items(
                                         let mut prime_mer_data: Vec<f64> = prime_mer_data
                                         .to_vec_f64()
                                         .map_err(|_| DataSetError::Conversion { action: format!("PrimeMeridian must be a matrix but was {prime_mer_data:?}") })?;
+                                        pad_quadratic_term(&mut prime_mer_data);
                                         if let Some(coeffs) =
                                             planetary_data.data.get(&Parameter::NutPrecPm)
                                         {
@@ -816,6 +828,41 @@ mod tpc_conversion_ut {
         assert_eq!(system.nut_prec_angles[1].offset_deg, 189.63271560);
         assert_eq!(system.nut_prec_angles[1].rate_deg, 41215158.18420050);
         assert_eq!(system.nut_prec_angles[1].accel_deg, 12.711923222);
+    }
+
+    #[test]
+    fn keep_linear_only_orientation() {
+        // pck00011.tpc gives Prometheus (616) a POLE_RA, POLE_DEC and PM without the quadratic term.
+        let (mut planetary, gravity) = tpc_items(1);
+        let body = planetary.get_mut(&599).unwrap();
+        body.data
+            .insert(Parameter::PoleRa, KPLValue::Matrix(vec![40.58, -0.036]));
+        body.data
+            .insert(Parameter::PoleDec, KPLValue::Matrix(vec![83.53, -0.004]));
+        body.data.insert(
+            Parameter::PrimeMeridian,
+            KPLValue::Matrix(vec![296.14, 587.289]),
+        );
+        body.data
+            .insert(Parameter::NutPrecRa, KPLValue::Matrix(vec![0.5]));
+        let dataset = convert_tpc_items(planetary, gravity).unwrap();
+        let body = dataset.get_by_id(599).unwrap();
+
+        let pole_ra = body.pole_right_ascension.unwrap();
+        assert_eq!(pole_ra.offset_deg, 40.58);
+        assert_eq!(pole_ra.rate_deg, -0.036);
+        assert_eq!(pole_ra.accel_deg, 0.0);
+        assert_eq!(pole_ra.coeffs_count, 1);
+        assert_eq!(pole_ra.coeffs[0], 0.5);
+
+        let pole_dec = body.pole_declination.unwrap();
+        assert_eq!(pole_dec.offset_deg, 83.53);
+        assert_eq!(pole_dec.rate_deg, -0.004);
+
+        let prime_mer = body.prime_meridian.unwrap();
+        assert_eq!(prime_mer.offset_deg, 296.14);
+        assert_eq!(prime_mer.rate_deg, 587.289);
+        assert_eq!(prime_mer.accel_deg, 0.0);
     }
 
     #[test]
