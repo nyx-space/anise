@@ -184,7 +184,7 @@ impl MetaFile {
 
                                         let del_lock_file = || {
                                             // Ignore if the deletion of the lock file fails
-                                            let _ = remove_file(lock_path);
+                                            let _ = remove_file(&lock_path);
                                         };
 
                                         let client: ureq::Agent = ureq::Agent::config_builder()
@@ -211,23 +211,18 @@ impl MetaFile {
                                                         }
                                                         Ok(mut file) => {
                                                             // Created the file, let's write the bytes.
-                                                            let bytes = match resp
+                                                            let bytes = resp
                                                                 .body_mut()
                                                                 .with_config()
                                                                 .limit(1024 * 1024 * 200) // 200 MB limit
                                                                 .read_to_vec()
-                                                            {
-                                                                Ok(bytes) => bytes,
-                                                                Err(e) => {
+                                                                .map_err(|e| {
                                                                     del_lock_file();
-                                                                    return Err(
-                                                                        MetaAlmanacError::FetchError {
-                                                                            error: format!("{e:?}"),
-                                                                            uri: self.uri.clone(),
-                                                                        },
-                                                                    );
-                                                                }
-                                                            };
+                                                                    MetaAlmanacError::FetchError {
+                                                                        error: format!("{e:?}"),
+                                                                        uri: self.uri.clone(),
+                                                                    }
+                                                                })?;
                                                             let crc32 = crc32fast::hash(&bytes);
                                                             if let Some(expected) = self.crc32
                                                                 && crc32 != expected
@@ -238,19 +233,18 @@ impl MetaFile {
                                                                     "{dest_path_s} remote file CRC32 mismatch (got 0x{crc32:x}, expected 0x{expected:x}), file will be downloaded again on next load"
                                                                 );
                                                             }
-                                                            if let Err(e) = file.write_all(&bytes) {
-                                                                del_lock_file();
-                                                                return Err(MetaAlmanacError::MetaIO {
-                                                                    path: dest_path
-                                                                        .to_string_lossy()
-                                                                        .into(),
-                                                                    what: "writing downloaded data",
-                                                                    source:
-                                                                        InputOutputError::IOError {
+                                                            file.write_all(&bytes).map_err(
+                                                                |e| {
+                                                                    del_lock_file();
+                                                                    MetaAlmanacError::MetaIO {
+                                                                        path: dest_path.to_string_lossy().into(),
+                                                                        what: "writing downloaded data",
+                                                                        source: InputOutputError::IOError {
                                                                             kind: e.kind(),
                                                                         },
-                                                                });
-                                                            }
+                                                                    }
+                                                                },
+                                                            )?;
 
                                                             info!(
                                                                 "Saved {url} to {} (CRC32 = 0x{crc32:x})",
