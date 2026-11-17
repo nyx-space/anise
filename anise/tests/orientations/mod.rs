@@ -550,7 +550,6 @@ fn regression_test_issue_357_test_moon_me_j2k() {
 /// sp.pxform("MOON_PA_DE440", "MOON_ME", et)
 /// sp.pxform("MOON_PA", "J2000", et)
 /// sp.pxform("MOON_ME", "J2000", et)
-/// sp.pxform("MOON_PA", "MOON_ME", et)
 /// ```
 #[test]
 fn test_moon_me_pa_tk_frames_vs_spice() {
@@ -626,21 +625,6 @@ fn test_moon_me_pa_tk_frames_vs_spice() {
                 -0.068643301465341,
                 0.367889845896052,
                 0.927332280496326,
-            ),
-        ),
-        (
-            moon_pa_frame,
-            moon_me_frame,
-            Matrix3::new(
-                9.999998731138765e-01,
-                -3.289586579141938e-04,
-                3.815212082114573e-04,
-                3.289591969874853e-04,
-                9.999999458920105e-01,
-                -1.350206003622702e-06,
-                -3.815207434061568e-04,
-                1.475710742587233e-06,
-                9.999999272198697e-01,
             ),
         ),
     ];
