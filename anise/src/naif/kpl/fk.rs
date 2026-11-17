@@ -285,6 +285,61 @@ mod fk_ut {
     }
 
     #[test]
+    fn test_convert_fk_relative_parents() {
+        use crate::naif::kpl::parser::{convert_fk_items, parse_bytes};
+
+        // MOON_ME (MATRIX) is relative to MOON_ME_DE440_ME421 (ANGLES), which is itself relative
+        // to MOON_PA_DE440 (class 2), as in moon_de440_220930.txt.
+        let fk = "\\begindata\n\
+                  FRAME_MOON_PA_DE440 = 31008\n\
+                  FRAME_31008_NAME = 'MOON_PA_DE440'\n\
+                  FRAME_31008_CLASS = 2\n\
+                  FRAME_31008_CLASS_ID = 31008\n\
+                  FRAME_31008_CENTER = 301\n\
+                  FRAME_MOON_ME_DE440_ME421 = 31009\n\
+                  FRAME_31009_NAME = 'MOON_ME_DE440_ME421'\n\
+                  FRAME_31009_CLASS = 4\n\
+                  FRAME_31009_CLASS_ID = 31009\n\
+                  FRAME_31009_CENTER = 301\n\
+                  TKFRAME_31009_SPEC = 'ANGLES'\n\
+                  TKFRAME_31009_RELATIVE = 'MOON_PA_DE440'\n\
+                  TKFRAME_31009_ANGLES = ( 67.8526 78.6944 0.2785 )\n\
+                  TKFRAME_31009_AXES = ( 3, 2, 1 )\n\
+                  TKFRAME_31009_UNITS = 'ARCSECONDS'\n\
+                  FRAME_MOON_ME = 31011\n\
+                  FRAME_31011_NAME = 'MOON_ME'\n\
+                  FRAME_31011_CLASS = 4\n\
+                  FRAME_31011_CLASS_ID = 31011\n\
+                  FRAME_31011_CENTER = 301\n\
+                  TKFRAME_31011_SPEC = 'MATRIX'\n\
+                  TKFRAME_31011_RELATIVE = 'MOON_ME_DE440_ME421'\n\
+                  TKFRAME_31011_MATRIX = ( 1 0 0 0 1 0 0 0 1 )\n\
+                  FRAME_MOON_ME_TILT = 31012\n\
+                  FRAME_31012_NAME = 'MOON_ME_TILT'\n\
+                  FRAME_31012_CLASS = 4\n\
+                  FRAME_31012_CLASS_ID = 31012\n\
+                  FRAME_31012_CENTER = 301\n\
+                  TKFRAME_31012_SPEC = 'ANGLES'\n\
+                  TKFRAME_31012_RELATIVE = 'MOON_ME_DE440_ME421'\n\
+                  TKFRAME_31012_ANGLES = ( 1.0 0.0 0.0 )\n\
+                  TKFRAME_31012_AXES = ( 3, 2, 1 )\n\
+                  TKFRAME_31012_UNITS = 'DEGREES'\n\
+                  \\begintext\n";
+
+        let assignments = parse_bytes::<_, FKItem>(&mut fk.as_bytes(), false).unwrap();
+        let dataset = convert_fk_items(assignments).unwrap();
+
+        // Each TK frame must point at its RELATIVE frame, whichever way it is specified and in
+        // whatever order the frames are converted.
+        assert_eq!(
+            dataset.get_by_name("MOON_ME_DE440_ME421").unwrap().to,
+            31008
+        );
+        assert_eq!(dataset.get_by_name("MOON_ME").unwrap().to, 31009);
+        assert_eq!(dataset.get_by_name("MOON_ME_TILT").unwrap().to, 31009);
+    }
+
+    #[test]
     fn build_de440_moon_fk() {
         use std::path::PathBuf;
         use std::str::FromStr;
@@ -298,6 +353,13 @@ mod fk_ut {
         let moon_me = dataset.get_by_name("MOON_ME_DE440_ME421").unwrap();
         let moon_me_by_id = dataset.get_by_id(MOON_ME_DE440_ME421).unwrap();
         assert_eq!(moon_me_by_id, moon_me);
+        // MOON_PA and MOON_ME are MATRIX frames relative to MOON_PA_DE440 and MOON_ME_DE440_ME421.
+        assert_eq!(moon_me.to, 31008);
+        assert_eq!(dataset.get_by_name("MOON_PA").unwrap().to, 31008);
+        assert_eq!(
+            dataset.get_by_name("MOON_ME").unwrap().to,
+            MOON_ME_DE440_ME421
+        );
         // From the file:
         // TKFRAME_31009_ANGLES  = ( 67.8526   78.6944   0.2785 )
         // TKFRAME_31009_AXES    = (3,      2,      1    )
