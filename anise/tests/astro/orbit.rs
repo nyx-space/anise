@@ -3,7 +3,7 @@ extern crate pretty_env_logger as pel;
 use anise::astro::orbit::ECC_EPSILON;
 use anise::constants::frames::{EARTH_ICRS, EARTH_J2000, MOON_ICRS};
 use anise::errors::PhysicsError;
-use anise::math::Vector3;
+use anise::math::{Vector3, Vector6};
 use anise::math::angles::{between_0_360, between_pm_180};
 use anise::prelude::*;
 use anise::time::{Epoch, TimeSeries, Unit};
@@ -920,6 +920,33 @@ fn verif_orbit_at_epoch_polar_eccentric(almanac: Almanac) {
         1e-3, // 1 m/s tolerance
         "Velocity drifted"
     );
+}
+
+/// Round-trips Modified Equinoctial elements through Cartesian and back, checking that
+/// `modified_equinoctial_elements()` recovers the original 6-element state.
+#[rstest]
+fn verif_modified_equinoctial_elements_roundtrip(almanac: Almanac) {
+    let eme2000 = almanac.frame_info(EARTH_J2000).unwrap();
+    let epoch = Epoch::from_gregorian_utc_hms(2026, 8, 26, 12, 0, 0);
+
+    let p_km = 11_000.0;
+    let f = 0.05;
+    let g = -0.08;
+    let h = 0.1;
+    let k = 0.2;
+    let true_lon_deg = 135.0;
+    let eoe_before = Vector6::new(p_km, f, g, h, k, true_lon_deg);
+
+    // EOEs will be converted to cartesian state
+    let orbit = Orbit::try_from_modified_equinoctial(
+        p_km, f, g, h, k, true_lon_deg, epoch, eme2000,
+    ).unwrap();
+
+    // Convert cartesian state back to EOE
+    let eoe_after = Vector6::from_row_slice(&orbit.modified_equinoctial_elements().unwrap());
+
+    // Verify round trip preserves elements
+    approx::assert_abs_diff_eq!(eoe_before, eoe_after, epsilon = 1e-9);
 }
 
 #[rstest]
