@@ -98,7 +98,7 @@ impl Almanac {
         // Let's see if this orientation is defined in the loaded BPC files
         let mut inertial_frame_id = if source_id == J2000 || source_id == ICRS {
             ICRS
-        } else if let Ok(dyn_frame) = DynamicFrame::try_from(source_id as u32) // XXX Collapse these branches
+        } else if let Ok(dyn_frame) = DynamicFrame::try_from(source_id as u32)
             && matches!(
                 dyn_frame,
                 DynamicFrame::EarthMeanOfDate { .. }

@@ -12,8 +12,13 @@ use hifitime::{Epoch, HifitimeError};
 use snafu::prelude::*;
 
 use crate::{
-    NaifId, astro::Aberration, errors::PhysicsError, math::interpolation::InterpolationError,
-    naif::daf::DAFError, naif::daf::data_types::DataType, prelude::FrameUid,
+    NaifId,
+    astro::Aberration,
+    errors::PhysicsError,
+    math::interpolation::InterpolationError,
+    naif::daf::{DAFError, data_types::DataType},
+    orientations::OrientationError,
+    prelude::FrameUid,
 };
 
 #[cfg(feature = "analysis")]
@@ -33,12 +38,22 @@ pub enum EphemerisError {
     #[snafu(display("could not {action} because {alias} is not loaded"))]
     AliasNotFound { alias: String, action: &'static str },
     #[snafu(display(
-        "Could not translate from {from} to {to}: no common origin found at epoch {epoch}"
+        "could not translate from {from} to {to}: no common origin found at epoch {epoch}"
     ))]
     TranslationOrigin {
         from: FrameUid,
         to: FrameUid,
         epoch: Epoch,
+    },
+    #[snafu(display(
+        "could not translate from {from} to {to} at {epoch} mixed orientation ephemerides failed to rotate: {source}"
+    ))]
+    TranslationMixedOrientation {
+        from: FrameUid,
+        to: FrameUid,
+        epoch: Epoch,
+        #[snafu(source(from(OrientationError, Box::new)))]
+        source: Box<OrientationError>,
     },
     #[snafu(display("no ephemeris data loaded (must call load_spk)"))]
     NoEphemerisLoaded,

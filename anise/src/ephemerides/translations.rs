@@ -19,6 +19,8 @@ use crate::astro::aberration::stellar_aberration;
 use crate::constants::SPEED_OF_LIGHT_KM_S;
 use crate::constants::frames::SSB_ICRS;
 use crate::constants::orientations::ICRS;
+use crate::ephemerides::TranslationMixedOrientationSnafu;
+use crate::frames::FrameUid;
 use crate::hifitime::Epoch;
 use crate::math::Vector3;
 use crate::math::cartesian::CartesianState;
@@ -105,6 +107,27 @@ impl Almanac {
                         let (cur_pos_fwrd, cur_vel_fwrd, cur_frame_fwrd) =
                             self.translation_parts_to_parent(frame_fwrd.ephemeris_id, epoch_et_s)?;
 
+                        // Frame check on the translation in case one of the loaded SPK files has a different orientation
+                        if cur_frame_fwrd.orientation_id != frame_fwrd.orientation_id {
+                            // Great, we've got a mixed orientation ephem, so we need to rotate the accumulated state data to the parent's orientation.
+                            // Rotating "up" reduces the number of rotations because the leaves _might_ be in non ICRS but the DE files always are.
+                            let prev_state = self
+                                .rotate_state_to(
+                                    pos_fwrd,
+                                    vel_fwrd,
+                                    frame_fwrd,
+                                    cur_frame_fwrd,
+                                    epoch,
+                                )
+                                .context(TranslationMixedOrientationSnafu {
+                                    from: FrameUid::from(frame_fwrd),
+                                    to: FrameUid::from(cur_frame_fwrd),
+                                    epoch,
+                                })?;
+                            pos_fwrd = prev_state.radius_km;
+                            vel_fwrd = prev_state.velocity_km_s;
+                        }
+
                         pos_fwrd += cur_pos_fwrd;
                         vel_fwrd += cur_vel_fwrd;
                         frame_fwrd = cur_frame_fwrd;
@@ -115,18 +138,45 @@ impl Almanac {
                         let (cur_pos_bwrd, cur_vel_bwrd, cur_frame_bwrd) =
                             self.translation_parts_to_parent(frame_bwrd.ephemeris_id, epoch_et_s)?;
 
+                        // Frame check on the translation in case one of the loaded SPK files has a different orientation
+                        if cur_frame_bwrd.orientation_id != frame_bwrd.orientation_id {
+                            // Great, we've got a mixed orientation ephem, so we need to rotate the accumulated state data to the parent's orientation.
+                            // Rotating "up" reduces the number of rotations because the leaves _might_ be in non ICRS but the DE files always are.
+                            let prev_state = self
+                                .rotate_state_to(
+                                    pos_fwrd,
+                                    vel_fwrd,
+                                    frame_fwrd,
+                                    cur_frame_bwrd,
+                                    epoch,
+                                )
+                                .context(TranslationMixedOrientationSnafu {
+                                    from: FrameUid::from(frame_fwrd),
+                                    to: FrameUid::from(cur_frame_bwrd),
+                                    epoch,
+                                })?;
+                            pos_fwrd = prev_state.radius_km;
+                            vel_fwrd = prev_state.velocity_km_s;
+                        }
+
                         pos_bwrd += cur_pos_bwrd;
                         vel_bwrd += cur_vel_bwrd;
                         frame_bwrd = cur_frame_bwrd;
                     }
                 }
 
+                let orient_id = if target_id == common_node {
+                    frame_fwrd.orientation_id
+                } else {
+                    frame_bwrd.orientation_id
+                };
+
                 // The final state is the difference between the state of the target and the observer, both relative to the common ancestor.
                 Ok(CartesianState {
                     radius_km: pos_bwrd - pos_fwrd,
                     velocity_km_s: vel_bwrd - vel_fwrd,
                     epoch,
-                    frame: observer_frame.with_orient(frame_bwrd.orientation_id),
+                    frame: observer_frame.with_orient(orient_id),
                 })
             }
             Some(ab_corr) => {

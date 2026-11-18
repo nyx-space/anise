@@ -18,7 +18,6 @@ use crate::hifitime::Epoch;
 use crate::math::Vector3;
 use crate::math::cartesian::CartesianState;
 use crate::math::rotation::DCM;
-use crate::math::units::*;
 use crate::prelude::Frame;
 
 impl Almanac {
@@ -205,29 +204,24 @@ impl Almanac {
         self.angular_velocity_deg_s(from_frame, from_frame.with_orient(ICRS), epoch)
     }
 
-    /// Rotates a state with its origin (`to_frame`) and given its units (distance_unit, time_unit), returns that state with respect to the requested frame
+    /// Rotates a state with its origin (`to_frame`) and returns that state with respect to the requested frame
     ///
-    /// **WARNING:** This function only performs the translation and no rotation _whatsoever_. Use the `transform_state_to` function instead to include rotations.
+    /// **WARNING:** This function only performs the rotation and no rotation _whatsoever_. Use the `transform_state_to` function instead to include rotations.
     #[allow(clippy::too_many_arguments)]
     pub fn rotate_state_to(
         &self,
-        position: Vector3,
-        velocity: Vector3,
+        radius_km: Vector3,
+        velocity_km_s: Vector3,
         from_frame: Frame,
         to_frame: Frame,
         epoch: Epoch,
-        distance_unit: LengthUnit,
-        time_unit: TimeUnit,
     ) -> Result<CartesianState, OrientationError> {
         // Compute the frame translation
         let dcm = self.rotate(from_frame, to_frame, epoch)?;
 
-        let dist_unit_factor = LengthUnit::Kilometer.to_meters() * distance_unit.from_meters();
-        let time_unit_factor = time_unit.in_seconds();
-
         let input_state = CartesianState {
-            radius_km: position * dist_unit_factor,
-            velocity_km_s: velocity * dist_unit_factor / time_unit_factor,
+            radius_km,
+            velocity_km_s,
             epoch,
             frame: from_frame,
         };
