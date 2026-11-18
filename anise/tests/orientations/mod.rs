@@ -4,7 +4,7 @@ use anise::constants::frames::{
     MOON_PA_DE440_FRAME,
 };
 use anise::constants::orientations::{
-    ECLIPJ2000, IAU_JUPITER, IAU_MOON, ICRS, ITRF93, MOON_PA_DE440,
+    ECLIPJ2000, IAU_JUPITER, IAU_MOON, ICRS, ITRF93, MOON_ME_DE440_ME421, MOON_PA_DE440,
 };
 use anise::constants::usual_planetary_constants::MEAN_EARTH_ANGULAR_VELOCITY_DEG_S;
 use anise::math::rotation::{DCM, EulerParameter};
@@ -436,7 +436,7 @@ fn regression_test_issue_357_test_moon_me_j2k() {
 
     // Check the path first
     let moon_pa_path = almanac
-        .orientation_path_to_root(MOON_PA_DE440_FRAME, epoch)
+        .orientation_path_to_root(MOON_PA_DE440, epoch)
         .unwrap();
 
     assert_eq!(moon_pa_path.0, 1, "Moon PA is defined wrt J2000");
@@ -447,7 +447,7 @@ fn regression_test_issue_357_test_moon_me_j2k() {
     );
 
     let moon_me_path = almanac
-        .orientation_path_to_root(MOON_ME_DE440_ME421_FRAME, epoch)
+        .orientation_path_to_root(MOON_ME_DE440_ME421, epoch)
         .unwrap();
     assert_eq!(
         moon_me_path.0, 2,

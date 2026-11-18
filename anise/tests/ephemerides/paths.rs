@@ -10,8 +10,7 @@
 
 use std::str::FromStr;
 
-use anise::constants::celestial_objects::{EARTH_MOON_BARYCENTER, SOLAR_SYSTEM_BARYCENTER};
-use anise::constants::frames::*;
+use anise::constants::celestial_objects::*;
 use anise::prelude::*;
 
 /// Tests that direct path computations match what SPICE returned to within good precision.
@@ -40,25 +39,25 @@ fn common_root_verif() {
         );
 
         // Common root between all planets (apart from Earth) and the Moon should be the solar system barycenter
-        for planet_ctr in &[
-            MERCURY_ICRS,
-            VENUS_ICRS,
-            MARS_BARYCENTER_ICRS,
-            JUPITER_BARYCENTER_ICRS,
-            SATURN_BARYCENTER_ICRS,
-            NEPTUNE_BARYCENTER_ICRS,
-            URANUS_BARYCENTER_ICRS,
-            PLUTO_BARYCENTER_ICRS,
+        for planet_ctr in [
+            MERCURY,
+            VENUS,
+            MARS_BARYCENTER,
+            JUPITER_BARYCENTER,
+            SATURN_BARYCENTER,
+            NEPTUNE_BARYCENTER,
+            URANUS_BARYCENTER,
+            PLUTO_BARYCENTER,
         ] {
             assert_eq!(
-                ctx.common_ephemeris_path(*planet_ctr, MOON_ICRS, epoch.to_et_seconds())
+                ctx.common_ephemeris_path(planet_ctr, MOON, epoch.to_et_seconds())
                     .unwrap()
                     .2,
                 SOLAR_SYSTEM_BARYCENTER
             );
 
             assert_eq!(
-                ctx.common_ephemeris_path(MOON_ICRS, *planet_ctr, epoch.to_et_seconds())
+                ctx.common_ephemeris_path(MOON, planet_ctr, epoch.to_et_seconds())
                     .unwrap()
                     .2,
                 SOLAR_SYSTEM_BARYCENTER
@@ -67,13 +66,13 @@ fn common_root_verif() {
 
         // Common root between Earth and Moon should be EMB
         assert_eq!(
-            ctx.common_ephemeris_path(MOON_ICRS, EARTH_ICRS, epoch.to_et_seconds())
+            ctx.common_ephemeris_path(MOON, EARTH, epoch.to_et_seconds())
                 .unwrap()
                 .2,
             EARTH_MOON_BARYCENTER
         );
         assert_eq!(
-            ctx.common_ephemeris_path(EARTH_ICRS, MOON_ICRS, epoch.to_et_seconds())
+            ctx.common_ephemeris_path(EARTH, MOON, epoch.to_et_seconds())
                 .unwrap()
                 .2,
             EARTH_MOON_BARYCENTER
@@ -81,13 +80,13 @@ fn common_root_verif() {
 
         // Common root between EMB and Moon should be EMB
         assert_eq!(
-            ctx.common_ephemeris_path(MOON_ICRS, EARTH_MOON_BARYCENTER_ICRS, epoch.to_et_seconds())
+            ctx.common_ephemeris_path(MOON, EARTH_MOON_BARYCENTER, epoch.to_et_seconds())
                 .unwrap()
                 .2,
             EARTH_MOON_BARYCENTER
         );
         assert_eq!(
-            ctx.common_ephemeris_path(EARTH_MOON_BARYCENTER_ICRS, MOON_ICRS, epoch.to_et_seconds())
+            ctx.common_ephemeris_path(EARTH_MOON_BARYCENTER, MOON, epoch.to_et_seconds())
                 .unwrap()
                 .2,
             EARTH_MOON_BARYCENTER

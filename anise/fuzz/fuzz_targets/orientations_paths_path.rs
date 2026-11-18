@@ -14,5 +14,6 @@ fuzz_target!(|data: (ArbitraryFrame, ArbitraryFrame, ArbitraryEpoch)| {
 
     let almanac = Almanac::default();
 
-    let _ = almanac.common_orientation_path(from_frame, to_frame, epoch);
+    let _ =
+        almanac.common_orientation_path(from_frame.orientation_id, to_frame.orientation_id, epoch);
 });

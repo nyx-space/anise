@@ -17,7 +17,11 @@ fuzz_target!(
 
         let bytes = Bytes::copy_from_slice(data.0);
         if let Ok(almanac) = almanac.load_from_bytes(bytes) {
-            let _ = almanac.common_ephemeris_path(from_frame, to_frame, epoch.to_et_seconds());
+            let _ = almanac.common_ephemeris_path(
+                from_frame.ephemeris_id,
+                to_frame.ephemeris_id,
+                epoch.to_et_seconds(),
+            );
         }
     }
 );

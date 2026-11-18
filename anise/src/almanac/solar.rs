@@ -9,7 +9,7 @@
  */
 
 use crate::{
-    NaifId, astro::Aberration, constants::frames::SUN_ICRS, ephemerides::EphemerisError,
+    NaifId, astro::Aberration, constants::celestial_objects::SUN, ephemerides::EphemerisError,
     prelude::Frame,
 };
 
@@ -78,14 +78,10 @@ impl Almanac {
         epoch: Epoch,
         ab_corr: Option<Aberration>,
     ) -> Result<f64, EphemerisError> {
-        let obs_to_sun = self.translate(
-            SUN_ICRS,
-            Frame::from_ephem_icrs(observer_id),
-            epoch,
-            ab_corr,
-        )?;
+        let obs_to_sun =
+            self.translate(SUN, Frame::from_ephem_icrs(observer_id), epoch, ab_corr)?;
         let obs_to_target = self.translate(
-            Frame::from_ephem_icrs(target_id),
+            target_id,
             Frame::from_ephem_icrs(observer_id),
             epoch,
             ab_corr,
@@ -143,8 +139,8 @@ mod ut_solar {
 
         let my_sc_j2k = Frame::from_ephem_icrs(sc_id);
 
-        // Grab the state in the J2000 frame
-        let state = ctx.transform(my_sc_j2k, EARTH_ICRS, epoch, None).unwrap();
+        // Grab the state in the ICRS frame
+        let state = ctx.state_of(sc_id, EARTH_ICRS, epoch, None).unwrap();
 
         // We'll check at four different points in the orbit
         for epoch in TimeSeries::inclusive(

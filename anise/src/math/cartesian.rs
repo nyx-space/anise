@@ -241,7 +241,7 @@ impl CartesianState {
     /// :rtype: float
     pub fn distance_to_km(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
-            self.frame.matches(other.frame),
+            self.frame.ids_match(other.frame),
             FrameMismatchSnafu {
                 action: "computing distance between states",
                 frame1: self.frame,
@@ -258,7 +258,7 @@ impl CartesianState {
     /// :rtype: float
     pub fn rss_radius_km(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
-            self.frame.matches(other.frame),
+            self.frame.ids_match(other.frame),
             FrameMismatchSnafu {
                 action: "computing radius RSS",
                 frame1: self.frame,
@@ -274,7 +274,7 @@ impl CartesianState {
     /// :rtype: float
     pub fn rss_velocity_km_s(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
-            self.frame.matches(other.frame),
+            self.frame.ids_match(other.frame),
             FrameMismatchSnafu {
                 action: "computing velocity RSS",
                 frame1: self.frame,
@@ -290,7 +290,7 @@ impl CartesianState {
     /// :rtype: float
     pub fn rms_radius_km(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
-            self.frame.matches(other.frame),
+            self.frame.ids_match(other.frame),
             FrameMismatchSnafu {
                 action: "computing radius RSS",
                 frame1: self.frame,
@@ -306,7 +306,7 @@ impl CartesianState {
     /// :rtype: float
     pub fn rms_velocity_km_s(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
-            self.frame.matches(other.frame),
+            self.frame.ids_match(other.frame),
             FrameMismatchSnafu {
                 action: "computing velocity RSS",
                 frame1: self.frame,
@@ -330,7 +330,7 @@ impl CartesianState {
             && (self.velocity_km_s.x - other.velocity_km_s.x).abs() < velocity_tol_km_s
             && (self.velocity_km_s.y - other.velocity_km_s.y).abs() < velocity_tol_km_s
             && (self.velocity_km_s.z - other.velocity_km_s.z).abs() < velocity_tol_km_s
-            && self.frame.matches(other.frame)
+            && self.frame.ids_match(other.frame)
     }
 
     /// Returns the light time duration between this object and the origin of its reference frame.
@@ -351,7 +351,7 @@ impl CartesianState {
     /// :rtype: float
     pub fn abs_pos_diff_km(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
-            self.frame.matches(other.frame),
+            self.frame.ids_match(other.frame),
             FrameMismatchSnafu {
                 action: "computing velocity RSS",
                 frame1: self.frame,
@@ -369,7 +369,7 @@ impl CartesianState {
     /// :rtype: float
     pub fn abs_vel_diff_km_s(&self, other: &Self) -> PhysicsResult<f64> {
         ensure!(
-            self.frame.matches(other.frame),
+            self.frame.ids_match(other.frame),
             FrameMismatchSnafu {
                 action: "computing velocity RSS",
                 frame1: self.frame,

@@ -64,7 +64,7 @@ impl Almanac {
     /// Try to construct the path from the source frame all the way to the root ephemeris of this context.
     pub fn ephemeris_path_to_root(
         &self,
-        source: Frame,
+        source_id: NaifId,
         epoch_et_s: f64,
     ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH]), EphemerisError> {
         let common_center = self.try_find_ephemeris_root()?;
@@ -72,15 +72,13 @@ impl Almanac {
         let mut of_path = [None; MAX_TREE_DEPTH];
         let mut of_path_len = 0;
 
-        if common_center == source.ephemeris_id {
+        if common_center == source_id {
             // We're querying the source, no need to check that this summary even exists.
             return Ok((of_path_len, of_path));
         }
 
         // Grab the summary data, which we use to find the paths
-        let summary = self
-            .spk_summary_at_epoch(source.ephemeris_id, epoch_et_s)?
-            .0;
+        let summary = self.spk_summary_at_epoch(source_id, epoch_et_s)?.0;
 
         let mut center_id = summary.center_id;
 
@@ -146,35 +144,36 @@ impl Almanac {
     /// This can probably be optimized to avoid rewinding the entire frame path up to the root frame
     pub fn common_ephemeris_path(
         &self,
-        from_frame: Frame,
-        to_frame: Frame,
+        from_ephem_id: NaifId,
+        to_ephem_id: NaifId,
         epoch_et_s: f64,
     ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH], NaifId), EphemerisError> {
-        if from_frame.ephemeris_id == to_frame.ephemeris_id {
+        if from_ephem_id == to_ephem_id {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
-            return Ok((0, [None; MAX_TREE_DEPTH], from_frame.ephemeris_id));
+            return Ok((0, [None; MAX_TREE_DEPTH], from_ephem_id));
         }
 
         // Grab the paths
-        let (from_len, from_path) = self.ephemeris_path_to_root(from_frame, epoch_et_s)?;
-        let (to_len, to_path) = self.ephemeris_path_to_root(to_frame, epoch_et_s)?;
+        let (from_len, from_path) = self.ephemeris_path_to_root(from_ephem_id, epoch_et_s)?;
+        let (to_len, to_path) = self.ephemeris_path_to_root(to_ephem_id, epoch_et_s)?;
 
         // Now that we have the paths, we can find the matching origin.
 
         // If either path is of zero length, that means one of them is at the root of this ANISE file, so the common
         // path is which brings the non zero-length path back to the file root.
         if from_len == 0 && to_len == 0 {
+            // Convert to the ICRS of that frame ID for the error to be pretty printed
             Err(EphemerisError::TranslationOrigin {
-                from: from_frame.into(),
-                to: to_frame.into(),
+                from: Frame::from_ephem_icrs(from_ephem_id).into(),
+                to: Frame::from_ephem_icrs(to_ephem_id).into(),
                 epoch: Epoch::from_et_seconds(epoch_et_s),
             })
         } else if from_len != 0 && to_len == 0 {
             // One has an empty path but not the other, so the root is at the empty path
-            Ok((from_len, from_path, to_frame.ephemeris_id))
+            Ok((from_len, from_path, to_ephem_id))
         } else if to_len != 0 && from_len == 0 {
             // One has an empty path but not the other, so the root is at the empty path
-            Ok((to_len, to_path, from_frame.ephemeris_id))
+            Ok((to_len, to_path, from_ephem_id))
         } else {
             // Either are at the ephemeris root, so we'll step through the paths until we find the common root.
             let mut common_path = [None; MAX_TREE_DEPTH];
@@ -183,20 +182,20 @@ impl Almanac {
             for to_obj in to_path.iter().take(to_len) {
                 // Check the trivial case of the common node being one of the input frames
                 let to_id = to_obj.expect("to_path entry within take(to_len) is always Some");
-                if to_id == from_frame.ephemeris_id {
-                    common_path[0] = Some(from_frame.ephemeris_id);
+                if to_id == from_ephem_id {
+                    common_path[0] = Some(from_ephem_id);
                     items = 1;
-                    return Ok((items, common_path, from_frame.ephemeris_id));
+                    return Ok((items, common_path, from_ephem_id));
                 }
 
                 for from_obj in from_path.iter().take(from_len) {
                     let from_id =
                         from_obj.expect("from_path entry within take(from_len) is always Some");
                     // Check the trivial case of the common node being one of the input frames
-                    if items == 0 && from_id == to_frame.ephemeris_id {
-                        common_path[0] = Some(to_frame.ephemeris_id);
+                    if items == 0 && from_id == to_ephem_id {
+                        common_path[0] = Some(to_ephem_id);
                         items = 1;
-                        return Ok((items, common_path, to_frame.ephemeris_id));
+                        return Ok((items, common_path, to_ephem_id));
                     }
 
                     // `items` accumulates across both the outer (to) and inner (from) walks,
@@ -232,8 +231,7 @@ mod path_depth_ut {
     use crate::almanac::Almanac;
     use crate::naif::daf::{FileRecord, SummaryRecord};
     use crate::naif::spk::summary::SPKSummaryRecord;
-    use crate::prelude::{Frame, SPK};
-    use hifitime::Epoch;
+    use crate::prelude::SPK;
     use zerocopy::IntoBytes;
 
     #[test]
@@ -281,10 +279,7 @@ mod path_depth_ut {
         let spk = SPK::parse(bytes.into()).unwrap();
         let almanac = Almanac::from_spk(spk);
 
-        let source = Frame::from_ephem_icrs(10);
-        let epoch = Epoch::from_et_seconds(0.0);
-
-        let result = almanac.ephemeris_path_to_root(source, epoch.to_et_seconds());
+        let result = almanac.ephemeris_path_to_root(10, 0.0);
         assert!(
             result.is_err(),
             "a chain deeper than MAX_TREE_DEPTH must error, not panic"
@@ -336,14 +331,10 @@ mod path_depth_ut {
         let spk = SPK::parse(bytes.into()).unwrap();
         let almanac = Almanac::from_spk(spk);
 
-        let from = Frame::from_ephem_icrs(5);
-        let to = Frame::from_ephem_icrs(8);
-        let epoch = Epoch::from_et_seconds(0.0);
-
         // The accumulated `items` counter runs past the fixed common-path buffer before the
         // branches meet, so the merge must report a MaxRecursionDepth error rather than writing
         // out of bounds and panicking.
-        let result = almanac.common_ephemeris_path(from, to, epoch.to_et_seconds());
+        let result = almanac.common_ephemeris_path(5, 8, 0.0);
         assert!(
             result.is_err(),
             "a common path that overruns the buffer must error, not panic"

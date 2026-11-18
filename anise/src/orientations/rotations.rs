@@ -58,8 +58,11 @@ impl Almanac {
             ));
         }
 
-        let (node_count, path, common_node) =
-            self.common_orientation_path(from_frame, to_frame, epoch)?;
+        let (node_count, path, common_node) = self.common_orientation_path(
+            from_frame.orientation_id,
+            to_frame.orientation_id,
+            epoch,
+        )?;
 
         // The `dcm_fwrd` variable stores the rotation from the `from_frame` to the common ancestor.
         let mut dcm_fwrd = if from_frame.orient_origin_id_match(common_node) {

@@ -532,9 +532,7 @@ mod ut_spk1 {
 
         let almanac = Almanac::default().load("../data/mro.bsp").unwrap();
 
-        let state = almanac
-            .translate_to_parent(Frame::from_ephem_icrs(-74), epoch)
-            .unwrap();
+        let state = almanac.state_to_parent(-74, epoch).unwrap();
 
         let expct_radius_km = Vector3::new(
             1.844_061_319_966_917_4e3,
@@ -559,11 +557,7 @@ mod ut_spk1 {
         let almanac = Almanac::default().load("../data/mro.bsp").unwrap();
         let epoch = Epoch::from_et_seconds(812411100.0);
 
-        assert!(
-            almanac
-                .translate_to_parent(Frame::from_ephem_icrs(-74), epoch)
-                .is_ok()
-        );
+        assert!(almanac.state_to_parent(-74, epoch).is_ok());
     }
 
     /// A crafted Type 1 segment whose kqmax1 / kq orders exceed the work-buffer sizes must be

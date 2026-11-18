@@ -47,7 +47,7 @@ impl Almanac {
     ) -> AlmanacResult<CartesianState> {
         // Translate
         let state = self
-            .translate(target_frame, observer_frame, epoch, ab_corr)
+            .translate(target_frame.ephemeris_id, observer_frame, epoch, ab_corr)
             .context(EphemerisSnafu {
                 action: "transform from/to",
             })?;
@@ -72,7 +72,7 @@ impl Almanac {
         observer_frame: Frame,
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<CartesianState> {
-        // If the input and final rotations differ, rotate into J2000 first
+        // If the input and final rotations differ, rotate into ICRS first
         state = if state.frame.orient_origin_match(observer_frame) {
             state
         } else {
@@ -82,7 +82,7 @@ impl Almanac {
                 })?
         };
 
-        // Transform in the base frame (J2000) or the common frame
+        // Transform in the base frame or the common frame
         state = self
             .translate_to(state, observer_frame, ab_corr)
             .context(EphemerisSnafu {
@@ -102,12 +102,12 @@ impl Almanac {
     /// The units will be those of the underlying ephemeris data (typically km and km/s)
     pub fn state_of(
         &self,
-        object: NaifId,
+        object_id: NaifId,
         observer: Frame,
         epoch: Epoch,
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<CartesianState> {
-        self.transform(Frame::from_ephem_icrs(object), observer, epoch, ab_corr)
+        self.transform(Frame::from_ephem_icrs(object_id), observer, epoch, ab_corr)
     }
 
     /// Alias fo SPICE's `spkezr` where the inputs must be the NAIF IDs of the objects and frames with the caveat that the aberration is moved to the last positional argument.
@@ -119,21 +119,7 @@ impl Almanac {
         observer: NaifId,
         ab_corr: Option<Aberration>,
     ) -> AlmanacResult<CartesianState> {
-        let tgt_j2000 = Frame::from_ephem_icrs(target);
-        let obs_j2000 = Frame::from_ephem_icrs(observer);
-
-        // Translate in J2000
-        let state = self
-            .translate(tgt_j2000, obs_j2000, epoch, ab_corr)
-            .context(EphemerisSnafu {
-                action: "transform from/to",
-            })?;
-
-        // Rotate into the desired frame
-        self.rotate_to(state, Frame::new(observer, frame))
-            .context(OrientationSnafu {
-                action: "spkerz from/to",
-            })
+        self.state_of(target, Frame::new(observer, frame), epoch, ab_corr)
     }
 
     /// Builds a state from the supplied position, velocity and input units, then

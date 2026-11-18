@@ -12,11 +12,13 @@ use snafu::ResultExt;
 
 use super::EphemerisError;
 use super::EphemerisPhysicsSnafu;
+use crate::NaifId;
 use crate::almanac::Almanac;
 use crate::astro::Aberration;
 use crate::astro::aberration::stellar_aberration;
 use crate::constants::SPEED_OF_LIGHT_KM_S;
 use crate::constants::frames::SSB_ICRS;
+use crate::constants::orientations::ICRS;
 use crate::hifitime::Epoch;
 use crate::math::Vector3;
 use crate::math::cartesian::CartesianState;
@@ -51,49 +53,50 @@ impl Almanac {
     /// 5.  The final state is the difference between the backward and forward state vectors.
     pub(crate) fn translate(
         &self,
-        target_frame: Frame,
+        target_id: NaifId,
         mut observer_frame: Frame,
         epoch: Epoch,
         ab_corr: Option<Aberration>,
     ) -> Result<CartesianState, EphemerisError> {
-        if observer_frame == target_frame {
-            // Both frames match, return this frame's hash (i.e. no need to go higher up).
-            return Ok(CartesianState::zero(observer_frame));
+        if observer_frame.ephem_origin_id_match(target_id) {
+            // Both frames match, return zero state
+            return Ok(CartesianState::zero_at_epoch(epoch, observer_frame));
         }
 
         // If there is no frame info, the user hasn't loaded this frame, but might still want to compute a translation.
         if let Ok(obs_frame_info) = self.frame_info(observer_frame) {
-            // User has loaded the planetary data for this frame, so let's use that as the to_frame.
+            // User has loaded the planetary data for this frame, so let's use that as the observer frame.
             observer_frame = obs_frame_info;
         }
 
         let epoch_et_s = epoch.to_et_seconds();
         let observer_id = observer_frame.ephemeris_id;
-        let target_id = target_frame.ephemeris_id;
 
         match ab_corr {
             None => {
                 // Geometric case (no aberration correction)
                 let (node_count, _path, common_node) =
-                    self.common_ephemeris_path(observer_frame, target_frame, epoch_et_s)?;
+                    self.common_ephemeris_path(observer_id, target_id, epoch_et_s)?;
 
                 // The `fwrd` variables store the state of the observer frame relative to the common ancestor.
-                let (mut pos_fwrd, mut vel_fwrd, mut frame_fwrd) =
-                    if observer_frame.ephem_origin_id_match(common_node) {
-                        // Observer is the common ancestor, so state is zero.
-                        (Vector3::zeros(), Vector3::zeros(), observer_frame)
-                    } else {
-                        self.translation_parts_to_parent(observer_id, epoch_et_s)?
-                    };
+                let (mut pos_fwrd, mut vel_fwrd, mut frame_fwrd) = if observer_id == common_node {
+                    // Observer is the common ancestor, so state is zero.
+                    (Vector3::zeros(), Vector3::zeros(), observer_frame)
+                } else {
+                    self.translation_parts_to_parent(observer_id, epoch_et_s)?
+                };
 
                 // The `bwrd` variables store the state of the target frame relative to the common ancestor.
-                let (mut pos_bwrd, mut vel_bwrd, mut frame_bwrd) =
-                    if target_frame.ephem_origin_id_match(common_node) {
-                        // Target is the common ancestor, so state is zero.
-                        (Vector3::zeros(), Vector3::zeros(), target_frame)
-                    } else {
-                        self.translation_parts_to_parent(target_id, epoch_et_s)?
-                    };
+                let (mut pos_bwrd, mut vel_bwrd, mut frame_bwrd) = if target_id == common_node {
+                    // Target is the common ancestor, so state is zero.
+                    (
+                        Vector3::zeros(),
+                        Vector3::zeros(),
+                        observer_frame.with_ephem(target_id),
+                    )
+                } else {
+                    self.translation_parts_to_parent(target_id, epoch_et_s)?
+                };
 
                 // Traverse the ephemeris tree from both the observer and target up to the common ancestor.
                 for _ in 0..node_count {
@@ -123,19 +126,19 @@ impl Almanac {
                     radius_km: pos_bwrd - pos_fwrd,
                     velocity_km_s: vel_bwrd - vel_fwrd,
                     epoch,
-                    frame: observer_frame.with_orient(target_frame.orientation_id),
+                    frame: observer_frame.with_orient(frame_bwrd.orientation_id),
                 })
             }
             Some(ab_corr) => {
                 // Aberration correction case. This is a rewrite of NAIF SPICE's `spkapo`.
 
                 // Find the geometric position of the observer body with respect to the solar system barycenter (SSB).
-                let obs_ssb = self.translate(observer_frame, SSB_ICRS, epoch, None)?;
+                let obs_ssb = self.translate(observer_id, SSB_ICRS, epoch, None)?;
                 let obs_ssb_pos_km = obs_ssb.radius_km;
                 let obs_ssb_vel_km_s = obs_ssb.velocity_km_s;
 
                 // Find the geometric position of the target body with respect to the SSB at the same epoch.
-                let tgt_ssb = self.translate(target_frame, SSB_ICRS, epoch, None)?;
+                let tgt_ssb = self.translate(target_id, SSB_ICRS, epoch, None)?;
                 let tgt_ssb_pos_km = tgt_ssb.radius_km;
                 let tgt_ssb_vel_km_s = tgt_ssb.velocity_km_s;
 
@@ -156,7 +159,7 @@ impl Almanac {
                     let epoch_lt = epoch + lt_sign * one_way_lt_s * TimeUnit::Second;
                     // Find the position of the target at the corrected epoch.
                     let tgt_ssb = self
-                        .translate(target_frame, SSB_ICRS, epoch_lt, None)
+                        .translate(target_id, SSB_ICRS, epoch_lt, None)
                         .map_err(|e| EphemerisError::LightTimeCorrection {
                             epoch,
                             epoch_lt,
@@ -196,7 +199,7 @@ impl Almanac {
                     radius_km: rel_pos_km,
                     velocity_km_s: rel_vel_km_s,
                     epoch,
-                    frame: observer_frame.with_orient(target_frame.orientation_id),
+                    frame: observer_frame.with_orient(ICRS),
                 })
             }
         }
@@ -211,7 +214,14 @@ impl Almanac {
         mut observer_frame: Frame,
         ab_corr: Option<Aberration>,
     ) -> Result<CartesianState, EphemerisError> {
-        let frame_state = self.translate(state.frame, observer_frame, state.epoch, ab_corr)?;
+        let frame_state = self.translate(
+            state.frame.ephemeris_id,
+            observer_frame,
+            state.epoch,
+            ab_corr,
+        )?;
+
+        // Unchecked add because the state param is still in the original frame, but the frame_state is in the observer frame.
         let mut new_state = state.add_unchecked(&frame_state);
 
         // If there is no frame info, the user hasn't loaded this frame, but might still want to compute a translation.

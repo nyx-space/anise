@@ -11,6 +11,7 @@
 use snafu::ResultExt;
 
 use super::{EphemerisError, SPKSnafu};
+use crate::NaifId;
 use crate::almanac::Almanac;
 use crate::ephemerides::EphemInterpolationSnafu;
 use crate::hifitime::Epoch;
@@ -54,7 +55,6 @@ impl Almanac {
             .ok_or(EphemerisError::Unreachable)?;
 
         // Now let's simply evaluate the data
-
         let (pos_km, vel_km_s) = match summary.data_type()? {
             DafDataType::Type1ModifiedDifferenceArray => {
                 let data = spk_data
@@ -145,11 +145,12 @@ impl Almanac {
 
 #[cfg_attr(feature = "python", pymethods)]
 impl Almanac {
-    /// Performs the GEOMETRIC translation to the parent. Use translate_from_to for aberration.
+    /// Performs the GEOMETRIC translation to the parent.
     ///
     /// :type source: Frame
     /// :type epoch: Epoch
     /// :rtype: Orbit
+    #[deprecated(since = "1.0.0", note = "use state_to_parent instead")]
     pub fn translate_to_parent(
         &self,
         source: Frame,
@@ -157,6 +158,27 @@ impl Almanac {
     ) -> Result<CartesianState, EphemerisError> {
         let (radius_km, velocity_km_s, frame) =
             self.translation_parts_to_parent(source.ephemeris_id, epoch.to_et_seconds())?;
+
+        Ok(CartesianState {
+            radius_km,
+            velocity_km_s,
+            epoch,
+            frame,
+        })
+    }
+
+    /// Returns the state of the object ID with respect to its parent in the Almanac in the frame it is defined in the Almanac.
+    ///
+    /// :type source_id: int
+    /// :type epoch: Epoch
+    /// :rtype: Orbit
+    pub fn state_to_parent(
+        &self,
+        source_ephem_id: NaifId,
+        epoch: Epoch,
+    ) -> Result<CartesianState, EphemerisError> {
+        let (radius_km, velocity_km_s, frame) =
+            self.translation_parts_to_parent(source_ephem_id, epoch.to_et_seconds())?;
 
         Ok(CartesianState {
             radius_km,

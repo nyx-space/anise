@@ -81,7 +81,7 @@ impl Almanac {
     /// Try to construct the path from the source frame all the way to the root orientation of this context.
     pub fn orientation_path_to_root(
         &self,
-        source: Frame,
+        source_id: NaifId,
         epoch: Epoch,
     ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH]), OrientationError> {
         let common_center = self.try_find_orientation_root()?;
@@ -89,16 +89,16 @@ impl Almanac {
         let mut of_path = [None; MAX_TREE_DEPTH];
         let mut of_path_len = 0;
 
-        if common_center == source.orientation_id {
+        if common_center == source_id {
             // We're querying the source, no need to check that this summary even exists.
             return Ok((of_path_len, of_path));
         }
 
         // Grab the summary data, which we use to find the paths
         // Let's see if this orientation is defined in the loaded BPC files
-        let mut inertial_frame_id = if source.orient_origin_id_match(J2000) {
+        let mut inertial_frame_id = if source_id == J2000 || source_id == ICRS {
             ICRS
-        } else if let Ok(dyn_frame) = DynamicFrame::try_from(source.orientation_id as u32)
+        } else if let Ok(dyn_frame) = DynamicFrame::try_from(source_id as u32) // XXX Collapse these branches
             && matches!(
                 dyn_frame,
                 DynamicFrame::EarthMeanOfDate { .. }
@@ -115,16 +115,15 @@ impl Almanac {
                 _ => unreachable!(),
             }
         } else {
-            let orientation_id =
-                if let Ok(dyn_frame) = DynamicFrame::try_from(source.orientation_id as u32) {
-                    match dyn_frame {
-                        DynamicFrame::BodyMeanOfDate { source_id }
-                        | DynamicFrame::BodyTrueOfDate { source_id } => source_id,
-                        _ => unreachable!("all other variants handled above"),
-                    }
-                } else {
-                    source.orientation_id
-                };
+            let orientation_id = if let Ok(dyn_frame) = DynamicFrame::try_from(source_id as u32) {
+                match dyn_frame {
+                    DynamicFrame::BodyMeanOfDate { source_id }
+                    | DynamicFrame::BodyTrueOfDate { source_id } => source_id,
+                    _ => unreachable!("all other variants handled above"),
+                }
+            } else {
+                source_id
+            };
 
             match self.bpc_summary_at_epoch(orientation_id, epoch) {
                 Ok((summary, _, _, _)) => summary.inertial_frame_id,
@@ -195,18 +194,18 @@ impl Almanac {
     /// Returns the orientation path between two frames and the common node. This may return a `DisjointRoots` error if the frames do not share a common root, which is considered a file integrity error.
     pub fn common_orientation_path(
         &self,
-        from_frame: Frame,
-        to_frame: Frame,
+        from_orientation_id: NaifId,
+        to_orientation_id: NaifId,
         epoch: Epoch,
     ) -> Result<(usize, [Option<NaifId>; MAX_TREE_DEPTH], NaifId), OrientationError> {
-        if from_frame == to_frame {
+        if from_orientation_id == to_orientation_id {
             // Both frames match, return this frame's hash (i.e. no need to go higher up).
-            return Ok((0, [None; MAX_TREE_DEPTH], from_frame.orientation_id));
+            return Ok((0, [None; MAX_TREE_DEPTH], from_orientation_id));
         }
 
         // Grab the paths
-        let (from_len, from_path) = self.orientation_path_to_root(from_frame, epoch)?;
-        let (to_len, to_path) = self.orientation_path_to_root(to_frame, epoch)?;
+        let (from_len, from_path) = self.orientation_path_to_root(from_orientation_id, epoch)?;
+        let (to_len, to_path) = self.orientation_path_to_root(to_orientation_id, epoch)?;
 
         // Now that we have the paths, we can find the matching origin.
 
@@ -214,16 +213,16 @@ impl Almanac {
         // path is which brings the non zero-length path back to the file root.
         if from_len == 0 && to_len == 0 {
             Err(OrientationError::RotationOrigin {
-                from: from_frame.into(),
-                to: to_frame.into(),
+                from: Frame::from_orient_ssb(from_orientation_id).into(),
+                to: Frame::from_orient_ssb(to_orientation_id).into(),
                 epoch,
             })
         } else if from_len != 0 && to_len == 0 {
             // One has an empty path but not the other, so the root is at the empty path
-            Ok((from_len, from_path, to_frame.orientation_id))
+            Ok((from_len, from_path, to_orientation_id))
         } else if to_len != 0 && from_len == 0 {
             // One has an empty path but not the other, so the root is at the empty path
-            Ok((to_len, to_path, from_frame.orientation_id))
+            Ok((to_len, to_path, from_orientation_id))
         } else {
             // Either are at the orientation root, so we'll step through the paths until we find the common root.
             let mut common_path = to_path;

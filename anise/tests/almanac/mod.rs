@@ -127,7 +127,7 @@ fn test_type3_state_transformation() {
 
     let epoch = Epoch::from_str("2021-10-29 12:34:56 TDB").unwrap();
 
-    let to_parent = almanac.translate_to_parent(EARTH_ICRS, epoch).unwrap();
+    let to_parent = almanac.state_to_parent(EARTH, epoch).unwrap();
 
     println!("{to_parent}");
 

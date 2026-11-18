@@ -307,7 +307,7 @@ impl Almanac {
 #[cfg(test)]
 mod ut_almanac_spk {
     use crate::{
-        constants::frames::{EARTH_ICRS, MOON_ICRS},
+        constants::celestial_objects::{EARTH, MOON},
         prelude::{Almanac, Epoch},
     };
 
@@ -404,14 +404,14 @@ mod ut_almanac_spk {
 
         assert!(
             almanac
-                .ephemeris_path_to_root(MOON_ICRS, e.to_et_seconds())
+                .ephemeris_path_to_root(MOON, e.to_et_seconds())
                 .is_err(),
             "empty Almanac should report an error"
         );
 
         assert!(
             almanac
-                .common_ephemeris_path(MOON_ICRS, EARTH_ICRS, e.to_et_seconds())
+                .common_ephemeris_path(MOON, EARTH, e.to_et_seconds())
                 .is_err(),
             "empty Almanac should report an error"
         );
