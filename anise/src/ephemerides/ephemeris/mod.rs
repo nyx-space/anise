@@ -1427,6 +1427,89 @@ mod ut_oem {
     }
 
     #[test]
+    fn spk_segment_in_non_icrs_frame_is_rotated_to_icrs() {
+        use crate::constants::frames::{EARTH_ECLIPJ2000, IAU_EARTH_FRAME};
+        use crate::constants::orientations::J2000_TO_ECLIPJ2000_ANGLE_RAD;
+        use crate::math::Vector3;
+
+        let pck = Almanac::default().load("../data/pck11.pca").unwrap();
+        let start = Epoch::from_gregorian_utc_at_midnight(2024, 1, 1);
+        let epoch = start + Unit::Minute * 3;
+        let (x, y, z) = (4000.0, 3000.0, 3500.0);
+
+        // A fixed point in the segment frame, e.g. a ground station SPK written in a body-fixed frame.
+        let station_spk = |seg_frame: Frame| {
+            let mut ephem = Ephemeris::new("STATION".to_string());
+            for i in 0..10 {
+                ephem.insert_orbit(Orbit::new(
+                    x,
+                    y,
+                    z,
+                    0.0,
+                    0.0,
+                    0.0,
+                    start + Unit::Minute * i,
+                    seg_frame,
+                ));
+            }
+            ephem.to_spice_bsp(-159, None).unwrap()
+        };
+
+        let translate = |almanac: Almanac| {
+            almanac
+                .translate_geometric(
+                    Frame::new(-159, EARTH_ICRS.orientation_id),
+                    EARTH_ICRS,
+                    epoch,
+                )
+                .unwrap()
+        };
+
+        // Ecliptic J2000 is an embedded constant rotation: no orientation data is needed.
+        let state = translate(Almanac::from_spk(station_spk(EARTH_ECLIPJ2000)));
+        let (sin_eps, cos_eps) = J2000_TO_ECLIPJ2000_ANGLE_RAD.sin_cos();
+        let expected = Vector3::new(x, y * cos_eps - z * sin_eps, y * sin_eps + z * cos_eps);
+        assert!(
+            (state.radius_km - expected).norm() < 1e-9,
+            "ECLIPJ2000 segment not rotated to ICRS: {} vs {expected}",
+            state.radius_km
+        );
+
+        for seg_frame in [EARTH_J2000, IAU_EARTH_FRAME] {
+            let state = translate(pck.clone().with_spk(station_spk(seg_frame)));
+            let expected = pck
+                .rotate_to(
+                    Orbit::new(x, y, z, 0.0, 0.0, 0.0, epoch, seg_frame),
+                    EARTH_ICRS,
+                )
+                .unwrap();
+
+            assert!(
+                (state.radius_km - expected.radius_km).norm() < 1e-9,
+                "{seg_frame}: segment position not rotated to ICRS: {} vs {}",
+                state.radius_km,
+                expected.radius_km
+            );
+            assert!(
+                (state.velocity_km_s - expected.velocity_km_s).norm() < 1e-12,
+                "{seg_frame}: segment velocity not rotated to ICRS: {} vs {}",
+                state.velocity_km_s,
+                expected.velocity_km_s
+            );
+        }
+
+        // EME2000 is also embedded, so it does not require any orientation data either.
+        let state = translate(Almanac::from_spk(station_spk(EARTH_J2000)));
+        let expected = pck
+            .rotate_to(
+                Orbit::new(x, y, z, 0.0, 0.0, 0.0, epoch, EARTH_J2000),
+                EARTH_ICRS,
+            )
+            .unwrap();
+        assert!((state.radius_km - expected.radius_km).norm() < 1e-9);
+    }
+
+    #[test]
     fn multisegment_oem_rejects_internal_useable_gap_queries() {
         let input_path = std::env::temp_dir().join("anise_segment_gap.oem");
         let mut file = File::create(&input_path).unwrap();

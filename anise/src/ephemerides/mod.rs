@@ -13,7 +13,8 @@ use snafu::prelude::*;
 
 use crate::{
     NaifId, astro::Aberration, errors::PhysicsError, math::interpolation::InterpolationError,
-    naif::daf::DAFError, naif::daf::data_types::DataType, prelude::FrameUid,
+    naif::daf::DAFError, naif::daf::data_types::DataType, orientations::OrientationError,
+    prelude::FrameUid,
 };
 
 #[cfg(feature = "analysis")]
@@ -58,6 +59,12 @@ pub enum EphemerisError {
     EphemInterpolation {
         #[snafu(backtrace)]
         source: InterpolationError,
+    },
+    #[snafu(display("could not rotate SPK segment data from frame {frame_id} to ICRS: {source}"))]
+    SPKFrameRotation {
+        frame_id: NaifId,
+        #[snafu(source(from(OrientationError, Box::new)))]
+        source: Box<OrientationError>,
     },
     #[snafu(display(
         "ephemeris segments use different interpolation methods; query interpolation_at(epoch)"

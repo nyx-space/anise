@@ -10,12 +10,13 @@
 
 use snafu::ResultExt;
 
-use super::{EphemerisError, SPKSnafu};
+use super::{EphemerisError, SPKFrameRotationSnafu, SPKSnafu};
 use crate::almanac::Almanac;
+use crate::constants::orientations::{ECLIPJ2000, ICRS, J2000};
 use crate::ephemerides::EphemInterpolationSnafu;
 use crate::hifitime::Epoch;
-use crate::math::Vector3;
 use crate::math::cartesian::CartesianState;
+use crate::math::{Vector3, Vector6};
 use crate::naif::daf::datatypes::modified_diff::{ModifiedDiffType1, ModifiedDiffType21};
 use crate::naif::daf::datatypes::{
     HermiteSetType12, HermiteSetType13, LagrangeSetType8, LagrangeSetType9, Type2ChebyshevSet,
@@ -139,7 +140,35 @@ impl Almanac {
             }
         };
 
-        Ok((pos_km, vel_km_s, new_frame))
+        if summary.frame_id == ICRS {
+            return Ok((pos_km, vel_km_s, new_frame));
+        }
+
+        // The segment data is expressed in the segment's own reference frame (e.g. EME2000 or ITRF93),
+        // so rotate it into ICRS before it is chained with the other segments, like SPICE's spkgeo does.
+        let seg_frame = Frame::from_orient_ssb(summary.frame_id);
+        let epoch = Epoch::from_et_seconds(epoch_et_s);
+        let dcm = if summary.frame_id == J2000 || summary.frame_id == ECLIPJ2000 {
+            // Embedded constant rotations from ICRS, available without any orientation data loaded.
+            self.rotation_to_parent(seg_frame, epoch)
+                .map(|dcm| dcm.transpose())
+        } else {
+            self.rotate(seg_frame, Frame::from_orient_ssb(ICRS), epoch)
+        }
+        .context(SPKFrameRotationSnafu {
+            frame_id: summary.frame_id,
+        })?;
+
+        let pos_vel = dcm
+            * Vector6::new(
+                pos_km.x, pos_km.y, pos_km.z, vel_km_s.x, vel_km_s.y, vel_km_s.z,
+            );
+
+        Ok((
+            pos_vel.fixed_rows::<3>(0).into(),
+            pos_vel.fixed_rows::<3>(3).into(),
+            new_frame,
+        ))
     }
 }
 
