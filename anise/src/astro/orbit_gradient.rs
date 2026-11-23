@@ -608,7 +608,7 @@ impl OrbitGrad {
         })
     }
 
-    /// Returns the hyperbolic anomaly in degrees between 0 and 360.0
+    /// Returns the hyperbolic anomaly in degrees, negative on the inbound leg and unbounded.
     pub fn hyperbolic_anomaly_deg(&self) -> PhysicsResult<OrbitalElementPartials> {
         let ecc = self.ecc()?;
         if ecc.real() <= 1.0 {
