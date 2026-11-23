@@ -164,7 +164,7 @@ where
         // 360.0 degrees. Let's be conservative: if we see a delta of half of that, consider
         // this normal, and accept the step, but don't consider it a valid event bracket.
 
-        if event.scalar.is_angle() {
+        if event.scalar.is_periodic() {
             // Atan2 is a triangular signal so a bracket exists only if y_prev is negative and y_next is positive.
             // Anything else is a fluke, and we can quickly speed through the whole trajectory.
             if y_prev.signum() != y_next.signum() && delta < 180.0 {
@@ -202,4 +202,56 @@ where
     }
 
     Ok(brackets)
+}
+
+#[cfg(test)]
+mod ut_analysis_utils {
+    use super::{adaptive_step_scanner, brent_solver};
+    use crate::analysis::event::{Condition, Event};
+    use crate::analysis::expr::ScalarExpr;
+    use crate::analysis::prelude::OrbitalElement;
+    use crate::constants::frames::EARTH_J2000;
+    use crate::prelude::{Almanac, Orbit};
+    use hifitime::{Epoch, Unit};
+
+    #[test]
+    fn modulo_event_wrap_is_not_a_crossing() {
+        // Event::eval maps modulo and local time scalars onto the unit circle, so the
+        // evaluation jumps by 360 degrees half a period away from the desired value.
+        // That jump must not be reported as a zero crossing.
+        let almanac = Almanac::default();
+        let frame = EARTH_J2000.with_mu_km3_s2(398_600.435_436);
+        let epoch = Epoch::from_gregorian_utc_at_midnight(2025, 1, 1);
+        let orbit = Orbit::keplerian(7000.0, 0.01, 30.0, 0.0, 0.0, 0.0, epoch, frame);
+        let period = orbit.period().unwrap();
+
+        // Mean anomaly modulo 180 deg equals 30 deg at M = 30 and 210 deg.
+        let event = Event {
+            scalar: ScalarExpr::Modulo {
+                v: Box::new(ScalarExpr::Element(OrbitalElement::MeanAnomaly)),
+                m: Box::new(ScalarExpr::Constant(180.0)),
+            },
+            condition: Condition::Equals(30.0),
+            epoch_precision: Unit::Millisecond * 100,
+            ab_corr: None,
+        };
+
+        let f_eval = |epoch: Epoch| event.eval(orbit.at_epoch(epoch).unwrap(), &almanac);
+
+        let brackets =
+            adaptive_step_scanner(f_eval, &event, epoch + Unit::Second, epoch + period).unwrap();
+
+        let roots = brackets
+            .iter()
+            .filter_map(|(start, end)| {
+                brent_solver(f_eval, event.epoch_precision, *start, *end).ok()
+            })
+            .collect::<Vec<Epoch>>();
+
+        for root in &roots {
+            let value = f_eval(*root).unwrap();
+            assert!(value.abs() < 1e-2, "spurious event at {root}: {value}");
+        }
+        assert_eq!(roots.len(), 2, "{roots:?}");
+    }
 }
