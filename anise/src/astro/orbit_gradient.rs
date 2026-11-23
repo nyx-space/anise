@@ -282,7 +282,7 @@ impl OrbitGrad {
             warn!("AoP is NaN");
             // acos has no derivative at +/-1, so a cosine at or past -1 means an AoP of 180 deg
             Ok(OrbitalElementPartials {
-                dual: OHyperdual::from(if cos_aop.real() < 0.0 { 180.0 } else { 0.0 }),
+                dual: OHyperdual::from(if cos_aop.real() <= -1.0 { 180.0 } else { 0.0 }),
                 oe: OrbitalElement::AoP,
             })
         } else if self.evec()?[2].real() < 0.0 {
@@ -312,7 +312,7 @@ impl OrbitGrad {
             warn!("RAAN is NaN");
             // acos has no derivative at +/-1, so a cosine at or past -1 means a RAAN of 180 deg
             OrbitalElementPartials {
-                dual: OHyperdual::from(if cos_raan.real() < 0.0 { 180.0 } else { 0.0 }),
+                dual: OHyperdual::from(if cos_raan.real() <= -1.0 { 180.0 } else { 0.0 }),
                 oe: OrbitalElement::RAAN,
             }
         } else if n[(1, 0)] < 0.0 {
