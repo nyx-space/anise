@@ -278,7 +278,7 @@ mod path_depth_ut {
         // Name record (block index 2).
         bytes.extend(vec![0u8; 1024]);
 
-        let spk = SPK::parse(&bytes[..]).unwrap();
+        let spk = SPK::parse(bytes.into()).unwrap();
         let almanac = Almanac::from_spk(spk);
 
         let source = Frame::from_ephem_icrs(10);
@@ -333,7 +333,7 @@ mod path_depth_ut {
         bytes.extend(summary_block);
         bytes.extend(vec![0u8; 1024]);
 
-        let spk = SPK::parse(&bytes[..]).unwrap();
+        let spk = SPK::parse(bytes.into()).unwrap();
         let almanac = Almanac::from_spk(spk);
 
         let from = Frame::from_ephem_icrs(5);
@@ -386,7 +386,7 @@ mod path_depth_ut {
         bytes.extend(summary_block);
         bytes.extend(vec![0u8; 1024]);
 
-        let spk = SPK::parse(&bytes[..]).unwrap();
+        let spk = SPK::parse(bytes.into()).unwrap();
         let almanac = Almanac::from_spk(spk);
 
         // Must not panic while scanning the summaries for the root.

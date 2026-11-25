@@ -295,7 +295,7 @@ mod orientation_root_ut {
         bytes.extend(summary_block);
         bytes.extend(vec![0u8; 1024]);
 
-        let bpc = BPC::parse(&bytes[..]).unwrap();
+        let bpc = BPC::parse(bytes.into()).unwrap();
         let almanac = Almanac::from_bpc(bpc);
 
         // Must not panic while scanning the summaries for the root.

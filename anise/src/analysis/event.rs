@@ -164,9 +164,7 @@ impl Event {
 
         // Special handling for angular values when we need to find a root.
         if let Condition::Equals(mut desired_val) = self.condition {
-            let use_trig = self.scalar.is_angle()
-                || self.scalar.is_local_time()
-                || matches!(self.scalar, ScalarExpr::Modulo { .. });
+            let use_trig = self.scalar.is_periodic();
 
             if use_trig {
                 // Scale to be akin to a full circle.

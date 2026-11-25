@@ -398,6 +398,8 @@ pub fn convert_tpc_items(
                                 coeffs[i] = PhaseAngle::<0> {
                                     offset_deg: nut_prec[0],
                                     rate_deg: nut_prec[1],
+                                    // Present when MAX_PHASE_DEGREE is 2, e.g. Phobos' tidal term.
+                                    accel_deg: nut_prec.get(2).copied().unwrap_or(0.0),
                                     ..Default::default()
                                 };
                                 num += 1;
@@ -497,11 +499,26 @@ pub fn convert_fk_items(
             let mut angle_data = angles.to_vec_f64().map_err(|_| DataSetError::Conversion {
                 action: format!("Angle data must be a Matrix but was {angles:?}"),
             })?;
-            if unit == &KPLValue::String("ARCSECONDS".to_string()) {
-                // Convert the angles data into degrees
-                for item in &mut angle_data {
-                    *item /= 3600.0;
+            // Convert the angles data into degrees, using the angle units SPICE accepts for TK frames.
+            let unit_str = unit.to_string().map_err(|_| DataSetError::Conversion {
+                action: format!("Units must be a String but was {unit:?}"),
+            })?;
+            let units_per_deg = match unit_str.trim().to_ascii_uppercase().as_str() {
+                "DEGREES" => 1.0,
+                "RADIANS" => 1.0_f64.to_radians(),
+                "ARCMINUTES" => 60.0,
+                "ARCSECONDS" => 3600.0,
+                "HOURANGLE" => 1.0 / 15.0,
+                "MINUTEANGLE" => 4.0,
+                "SECONDANGLE" => 240.0,
+                _ => {
+                    return Err(DataSetError::Conversion {
+                        action: format!("unsupported angle units `{unit_str}` for FK ID {id}"),
+                    });
                 }
+            };
+            for item in &mut angle_data {
+                *item /= units_per_deg;
             }
             // Build the quaternion from the Euler matrices
             let from = id;
@@ -775,6 +792,30 @@ mod tpc_conversion_ut {
         let (planetary, gravity) = tpc_items(1);
         let dataset = convert_tpc_items(planetary, gravity).unwrap();
         assert_eq!(dataset.get_by_id(599).unwrap().num_nut_prec_angles, 1);
+    }
+
+    #[test]
+    fn keep_quadratic_nut_prec_term() {
+        // With MAX_PHASE_DEGREE = 2 each angle carries a T^2 coefficient, which was dropped.
+        let (mut planetary, gravity) = tpc_items(2);
+        planetary.get_mut(&599).unwrap().data.insert(
+            Parameter::NutPrecAngles,
+            KPLValue::Matrix(vec![
+                190.72646643,
+                15917.10818695,
+                0.0,
+                189.63271560,
+                41215158.18420050,
+                12.711923222,
+            ]),
+        );
+        let dataset = convert_tpc_items(planetary, gravity).unwrap();
+        let system = dataset.get_by_id(599).unwrap();
+        assert_eq!(system.num_nut_prec_angles, 2);
+        assert_eq!(system.nut_prec_angles[0].accel_deg, 0.0);
+        assert_eq!(system.nut_prec_angles[1].offset_deg, 189.63271560);
+        assert_eq!(system.nut_prec_angles[1].rate_deg, 41215158.18420050);
+        assert_eq!(system.nut_prec_angles[1].accel_deg, 12.711923222);
     }
 
     #[test]

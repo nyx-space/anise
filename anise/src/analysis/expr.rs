@@ -551,6 +551,11 @@ impl ScalarExpr {
         )
     }
 
+    /// Returns true if an Equals event on this scalar is evaluated on the unit circle, i.e. angles, local times, and modulos.
+    pub fn is_periodic(&self) -> bool {
+        self.is_angle() || self.is_local_time() || matches!(self, ScalarExpr::Modulo { .. })
+    }
+
     /// Export this Scalar Expression to S-Expression / LISP syntax
     pub fn to_s_expr(&self) -> Result<String, serde_lexpr::Error> {
         Ok(serde_lexpr::to_value(self)?.to_string())
