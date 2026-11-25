@@ -97,9 +97,11 @@ impl Orbit {
             ParabolicEccentricitySnafu { limit: ECC_EPSILON }
         );
         if ecc > 1.0 {
-            let ta_deg = between_0_360(ta_deg);
+            // The true anomaly of a hyperbola is bounded by the asymptotes on both legs, so compare
+            // its magnitude in [-180, 180]: wrapping to [0, 360) would reject every inbound state.
+            let ta_deg = between_pm_180(ta_deg);
             ensure!(
-                ta_deg <= (PI - (1.0 / ecc).acos()).to_degrees(),
+                ta_deg.abs() <= (PI - (1.0 / ecc).acos()).to_degrees(),
                 HyperbolicTrueAnomalySnafu { ta_deg }
             );
         }
@@ -578,6 +580,66 @@ impl Orbit {
         })
     }
 
+    /// Builds the rotation matrix that rotates from this state's inertial frame to this state's TNW frame (tangential, orbit normal, cross)
+    ///
+    /// # Frame warning
+    /// If the state is NOT in an inertial frame, then this computation is INVALID.
+    ///
+    /// # Algorithm
+    /// 1. Compute \hat{t} = \hat{v}, \hat{w} = \hat{h}, the unit vectors of velocity and orbital momentum.
+    /// 2. Compute \hat{n} = \hat{w} \times \hat{t}
+    /// 3. Build the DCM with columns [\hat{t}, \hat{n}, \hat{w}]
+    /// 4. Return the DCM structure.
+    ///
+    /// :rtype: DCM
+    pub fn dcm3x3_from_tnw_to_inertial(&self) -> PhysicsResult<DCM> {
+        let t = self.velocity_km_s / self.vmag_km_s();
+        let w = self.hvec()? / self.hmag()?;
+        let n = w.cross(&t);
+        let rot_mat = Matrix3::from_columns(&[t, n, w]);
+
+        Ok(DCM {
+            rot_mat,
+            rot_mat_dt: None,
+            from: uuid_from_epoch(self.frame.orientation_id, self.epoch),
+            to: self.frame.orientation_id,
+        })
+    }
+
+    /// Builds the rotation matrix that rotates from this state's inertial frame to this state's TNW frame (tangential, orbit normal, cross)
+    ///
+    /// # Frame warning
+    /// If the state is NOT in an inertial frame, then this computation is INVALID.
+    ///
+    /// # Algorithm
+    /// 1. Compute \hat{t} = \hat{v}, \hat{w} = \hat{h}, the unit vectors of velocity and orbital momentum.
+    /// 2. Compute \hat{n} = \hat{w} \times \hat{t}
+    /// 3. Build the DCM with columns [\hat{t}, \hat{n}, \hat{w}]
+    /// 4. Compute the difference between the DCMs of the pre and post states (+/- 1 ms), to build the DCM time derivative
+    /// 5. Return the DCM structure with a 6x6 DCM with the time derivative of the TNW frame set.
+    ///
+    /// :rtype: DCM
+    pub fn dcm_from_tnw_to_inertial(&self) -> PhysicsResult<DCM> {
+        let rot_mat_dt = if let Ok(pre) = self.at_epoch(self.epoch - Unit::Millisecond * 1) {
+            if let Ok(post) = self.at_epoch(self.epoch + Unit::Millisecond * 1) {
+                let dcm_pre = pre.dcm3x3_from_tnw_to_inertial()?;
+                let dcm_post = post.dcm3x3_from_tnw_to_inertial()?;
+                Some(500.0 * (dcm_post.rot_mat - dcm_pre.rot_mat))
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        Ok(DCM {
+            rot_mat: self.dcm3x3_from_tnw_to_inertial()?.rot_mat,
+            rot_mat_dt,
+            from: uuid_from_epoch(self.frame.orientation_id, self.epoch),
+            to: self.frame.orientation_id,
+        })
+    }
+
     /// Returns the DCM to rotate this orbit from the provided local frame to the inertial frame.
     ///
     /// :type local_frame: LocalFrame
@@ -592,6 +654,7 @@ impl Orbit {
             LocalFrame::RIC => self.dcm_from_ric_to_inertial(),
             LocalFrame::RCN => self.dcm_from_rcn_to_inertial(),
             LocalFrame::VNC => self.dcm_from_vnc_to_inertial(),
+            LocalFrame::TNW => self.dcm_from_tnw_to_inertial(),
         }
     }
 
@@ -1360,7 +1423,7 @@ impl Orbit {
             Err(PhysicsError::NotHyperbolic { ecc })
         } else {
             let cos_rho = (0.5 * (PI - turn_angle_degrees.to_radians())).cos();
-            Ok((1.0 / cos_rho - 1.0) * self.frame.mu_km3_s2()? / self.vmag_km_s().powi(2))
+            Ok((1.0 / cos_rho - 1.0) * self.frame.mu_km3_s2()? / self.c3_km2_s2()?)
         }
     }
 
@@ -1374,25 +1437,9 @@ impl Orbit {
         if ecc <= 1.0 {
             Err(PhysicsError::NotHyperbolic { ecc })
         } else {
-            let rho = (1.0
-                / (1.0 + self.vmag_km_s().powi(2) * (periapsis_km / self.frame.mu_km3_s2()?)))
-            .acos();
+            let rho =
+                (1.0 / (1.0 + self.c3_km2_s2()? * (periapsis_km / self.frame.mu_km3_s2()?))).acos();
             Ok(between_0_360((PI - 2.0 * rho).to_degrees()))
-        }
-    }
-
-    /// Returns the hyperbolic anomaly in degrees between 0 and 360.0
-    /// Returns an error if the orbit is not hyperbolic.
-    ///
-    /// :rtype: float
-    pub fn hyperbolic_anomaly_deg(&self) -> PhysicsResult<f64> {
-        let ecc = self.ecc()?;
-        if ecc <= 1.0 {
-            Err(PhysicsError::NotHyperbolic { ecc })
-        } else {
-            let (sin_ta, cos_ta) = self.ta_deg()?.to_radians().sin_cos();
-            let sinh_h = (sin_ta * (ecc.powi(2) - 1.0).sqrt()) / (1.0 + ecc * cos_ta);
-            Ok(between_0_360(sinh_h.asinh().to_degrees()))
         }
     }
 
@@ -1593,6 +1640,24 @@ impl Orbit {
         rslt.frame.strip();
         Ok(rslt)
     }
+
+    /// Returns a Cartesian state representing the TNW difference between self and other, in position and velocity (with transport theorem).
+    /// Refer to dcm_from_tnw_to_inertial for details on the TNW frame.
+    ///
+    /// # Algorithm
+    /// 1. Compute the difference between `other` and `self`
+    /// 2. Compute the TNW DCM of `self`
+    /// 3. Rotate the difference into the TNW frame of `self`
+    /// 4. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`
+    ///
+    /// :type other: Orbit
+    /// :rtype: Orbit
+    pub fn tnw_difference(&self, other: &Self) -> PhysicsResult<Self> {
+        let mut rslt = (self.dcm_from_tnw_to_inertial()?.transpose() * (*other - *self)?)?;
+        rslt.frame.strip();
+        Ok(rslt)
+    }
+
     /// Returns a Cartesian state representing the RIC difference between self and other, in position and velocity (with transport theorem).
     /// Refer to dcm_from_ric_to_inertial for details on the RIC frame.
     /// The `unchecked` variant does not check that both epochs match!
@@ -1607,6 +1672,24 @@ impl Orbit {
     /// :rtype: Orbit
     pub fn ric_difference_unchecked(&self, other: &Self) -> PhysicsResult<Self> {
         let mut rslt = (self.dcm_from_ric_to_inertial()?.transpose() * other.sub_unchecked(self))?;
+        rslt.frame.strip();
+        Ok(rslt)
+    }
+
+    /// Returns a Cartesian state representing the TNW difference between self and other, in position and velocity (with transport theorem).
+    /// Refer to dcm_from_tnw_to_inertial for details on the TNW frame.
+    /// The `unchecked` variant does not check that both epochs match!
+    ///
+    /// # Algorithm
+    /// 1. Compute the difference between `other` and `self`
+    /// 2. Compute the TNW DCM of `self`
+    /// 3. Rotate the difference into the TNW frame of `self`
+    /// 4. Strip the astrodynamical information from the frame, enabling only computations from `CartesianState`
+    ///
+    /// :type other: Orbit
+    /// :rtype: Orbit
+    pub fn tnw_difference_unchecked(&self, other: &Self) -> PhysicsResult<Self> {
+        let mut rslt = (self.dcm_from_tnw_to_inertial()?.transpose() * other.sub_unchecked(self))?;
         rslt.frame.strip();
         Ok(rslt)
     }

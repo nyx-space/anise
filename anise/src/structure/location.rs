@@ -73,13 +73,8 @@ impl Location {
 
     /// Ensures that the terrain mask is ordered by azimuth, and remove duplicate azimuths
     pub fn sanitize_mask(&mut self) {
-        use std::cmp::Ordering;
-        self.terrain_mask.sort_by(|mask1, mask2| {
-            mask1
-                .azimuth_deg
-                .partial_cmp(&mask2.azimuth_deg)
-                .unwrap_or(Ordering::Less)
-        });
+        self.terrain_mask
+            .sort_by(|mask1, mask2| mask1.azimuth_deg.total_cmp(&mask2.azimuth_deg));
         self.terrain_mask.dedup_by_key(|mask| mask.azimuth_deg);
     }
 }
@@ -422,5 +417,47 @@ mod ut_loc {
         assert!((dss65.elevation_mask_at_azimuth_deg(361.0) - 5.0).abs() < f64::EPSILON);
         // Check azimuth below 0 wraps around
         assert!((dss65.elevation_mask_at_azimuth_deg(-1.0) - 3.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    #[cfg(feature = "analysis")]
+    fn sanitize_mask_sorts_non_finite_azimuths() {
+        use crate::{constants::frames::EARTH_ITRF93, structure::location::TerrainMask};
+
+        // Every third entry carries a NaN azimuth. The comparator used to map that to
+        // `Less` in both directions, which the standard library sort rejects by
+        // panicking once the mask holds more than a few entries. With total_cmp the
+        // NaN entries sort after the finite ones.
+        let mut loc = Location {
+            frame: EARTH_ITRF93.into(),
+            terrain_mask: (0..48)
+                .map(|i| TerrainMask {
+                    azimuth_deg: if i % 3 == 1 {
+                        f64::NAN
+                    } else {
+                        f64::from(i) * 7.0
+                    },
+                    elevation_mask_deg: f64::from(i),
+                })
+                .collect(),
+            ..Default::default()
+        };
+
+        loc.sanitize_mask();
+
+        assert_eq!(loc.terrain_mask.len(), 48);
+        assert!(
+            loc.terrain_mask[32..]
+                .iter()
+                .all(|mask| mask.azimuth_deg.is_nan())
+        );
+        assert!(
+            loc.terrain_mask[..32]
+                .windows(2)
+                .all(|pair| pair[0].azimuth_deg < pair[1].azimuth_deg)
+        );
+        assert!((loc.elevation_mask_at_azimuth_deg(0.0) - 0.0).abs() < f64::EPSILON);
+        assert!((loc.elevation_mask_at_azimuth_deg(14.0) - 2.0).abs() < f64::EPSILON);
+        assert!((loc.elevation_mask_at_azimuth_deg(359.0) - 47.0).abs() < f64::EPSILON);
     }
 }

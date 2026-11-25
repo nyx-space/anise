@@ -1,7 +1,7 @@
 #![no_main]
 use anise::almanac::Almanac;
 use anise::frames::Frame;
-use bytes::BytesMut;
+use bytes::Bytes;
 use hifitime::Epoch;
 
 use libfuzzer_sys::fuzz_target;
@@ -15,7 +15,7 @@ fuzz_target!(
         let epoch = Epoch::from(data.3);
         let almanac = Almanac::default();
 
-        let bytes = BytesMut::from(data.0);
+        let bytes = Bytes::copy_from_slice(data.0);
         if let Ok(almanac) = almanac.load_from_bytes(bytes) {
             let _ = almanac.common_ephemeris_path(from_frame, to_frame, epoch.to_et_seconds());
         }

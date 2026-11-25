@@ -19,7 +19,7 @@ fn main() {
             format!("{}/../data/pck11.pca", env!("CARGO_MANIFEST_DIR")),
         ),
         (
-            "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp",
+            "https://public-data.nyxspace.com/anise/de440s.bsp",
             format!("{}/../data/de440s.bsp", env!("CARGO_MANIFEST_DIR")),
         ),
     ];

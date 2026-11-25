@@ -9,15 +9,15 @@
  */
 
 use super::{AnalysisError, Event};
-use hifitime::{Epoch, Unit};
+use hifitime::{Duration, Epoch, Unit};
 
 /// A Brent method's root finder to find where, within the provided start/stop epoch brackets, the evaluator function evaluates to zero.
-/// The event's epoch precision is used for convergence.
+/// The provided epoch precision is used for convergence.
 /// This method finds at most one zero crossing, so ensure that only one such event happens in the provided bracket.
 /// This method will error immediately if the evaluator evaluates to the same sign on both sides of the bracket.
 pub fn brent_solver<F>(
     evaluator: F,
-    event: &Event,
+    epoch_precision: Duration,
     start_epoch: Epoch,
     end_epoch: Epoch,
 ) -> Result<Epoch, AnalysisError>
@@ -27,7 +27,7 @@ where
     let max_iter = 50;
 
     // Convergence criteria is strictly on the epoch bracketing.
-    let has_converged = |xa: f64, xb: f64| (xa - xb).abs() <= event.epoch_precision.to_seconds();
+    let has_converged = |xa: f64, xb: f64| (xa - xb).abs() <= epoch_precision.to_seconds();
 
     let xa_e = start_epoch;
     let xb_e = end_epoch;
@@ -49,10 +49,9 @@ where
     // If the root is not bracketed, there is no point in iterating, return an error.
     if ya * yb >= 0.0 {
         // The event isn't in the bracket
-        return Err(AnalysisError::EventNotFound {
+        return Err(AnalysisError::ZeroCrossingNotFound {
             start: start_epoch,
             end: end_epoch,
-            event: Box::new(event.clone()),
         });
     }
 
@@ -116,10 +115,9 @@ where
             std::mem::swap(&mut ya, &mut yb);
         }
     }
-    Err(AnalysisError::EventNotFound {
+    Err(AnalysisError::ZeroCrossingNotFound {
         start: start_epoch,
         end: end_epoch,
-        event: Box::new(event.clone()),
     })
 }
 
@@ -166,7 +164,7 @@ where
         // 360.0 degrees. Let's be conservative: if we see a delta of half of that, consider
         // this normal, and accept the step, but don't consider it a valid event bracket.
 
-        if event.scalar.is_angle() {
+        if event.scalar.is_periodic() {
             // Atan2 is a triangular signal so a bracket exists only if y_prev is negative and y_next is positive.
             // Anything else is a fluke, and we can quickly speed through the whole trajectory.
             if y_prev.signum() != y_next.signum() && delta < 180.0 {
@@ -204,4 +202,56 @@ where
     }
 
     Ok(brackets)
+}
+
+#[cfg(test)]
+mod ut_analysis_utils {
+    use super::{adaptive_step_scanner, brent_solver};
+    use crate::analysis::event::{Condition, Event};
+    use crate::analysis::expr::ScalarExpr;
+    use crate::analysis::prelude::OrbitalElement;
+    use crate::constants::frames::EARTH_J2000;
+    use crate::prelude::{Almanac, Orbit};
+    use hifitime::{Epoch, Unit};
+
+    #[test]
+    fn modulo_event_wrap_is_not_a_crossing() {
+        // Event::eval maps modulo and local time scalars onto the unit circle, so the
+        // evaluation jumps by 360 degrees half a period away from the desired value.
+        // That jump must not be reported as a zero crossing.
+        let almanac = Almanac::default();
+        let frame = EARTH_J2000.with_mu_km3_s2(398_600.435_436);
+        let epoch = Epoch::from_gregorian_utc_at_midnight(2025, 1, 1);
+        let orbit = Orbit::keplerian(7000.0, 0.01, 30.0, 0.0, 0.0, 0.0, epoch, frame);
+        let period = orbit.period().unwrap();
+
+        // Mean anomaly modulo 180 deg equals 30 deg at M = 30 and 210 deg.
+        let event = Event {
+            scalar: ScalarExpr::Modulo {
+                v: Box::new(ScalarExpr::Element(OrbitalElement::MeanAnomaly)),
+                m: Box::new(ScalarExpr::Constant(180.0)),
+            },
+            condition: Condition::Equals(30.0),
+            epoch_precision: Unit::Millisecond * 100,
+            ab_corr: None,
+        };
+
+        let f_eval = |epoch: Epoch| event.eval(orbit.at_epoch(epoch).unwrap(), &almanac);
+
+        let brackets =
+            adaptive_step_scanner(f_eval, &event, epoch + Unit::Second, epoch + period).unwrap();
+
+        let roots = brackets
+            .iter()
+            .filter_map(|(start, end)| {
+                brent_solver(f_eval, event.epoch_precision, *start, *end).ok()
+            })
+            .collect::<Vec<Epoch>>();
+
+        for root in &roots {
+            let value = f_eval(*root).unwrap();
+            assert!(value.abs() < 1e-2, "spurious event at {root}: {value}");
+        }
+        assert_eq!(roots.len(), 2, "{roots:?}");
+    }
 }

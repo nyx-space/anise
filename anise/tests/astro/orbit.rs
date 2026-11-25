@@ -16,7 +16,10 @@ use rstest::{fixture, rstest};
 
 #[fixture]
 fn almanac() -> Almanac {
-    Almanac::new("../data/pck08.pca").unwrap()
+    Almanac::new("../data/pck08.pca")
+        .unwrap()
+        .load("../data/de440s.bsp")
+        .unwrap()
 }
 
 #[fixture]
@@ -824,8 +827,70 @@ fn b_plane_davis(almanac: Almanac) {
         "turn angle to rp reciprocity failed"
     );
 
-    // The following is a regression test.
-    assert!(dbg!(orbit.hyperbolic_anomaly_deg().unwrap() - 149.610128737).abs() < 1e-9);
+    // The following is a regression test. This state is inbound, so the hyperbolic anomaly is negative.
+    assert!(dbg!(orbit.hyperbolic_anomaly_deg().unwrap() + 210.389871263).abs() < 1e-9);
+}
+
+#[rstest]
+fn hyperbolic_anomaly_is_not_wrapped(epoch: Epoch, frame: Frame) {
+    for ecc in [1.2, 1.5, 9.4] {
+        for ta_deg in [10.0, 45.0, 80.0] {
+            for inbound in [false, true] {
+                let mut orbit =
+                    Orbit::keplerian(-20_000.0, ecc, 30.0, 10.0, 20.0, ta_deg, epoch, frame);
+                if inbound {
+                    orbit.velocity_km_s = -orbit.velocity_km_s;
+                }
+
+                let h_rad = orbit.hyperbolic_anomaly_deg().unwrap().to_radians();
+                assert_eq!(h_rad < 0.0, inbound, "sign of H at ta = {ta_deg} deg");
+
+                // Hyperbolic conic equation: r = a (1 - e cosh(H))
+                let sma_km = orbit.sma_km().unwrap();
+                f64_eq_tol!(
+                    sma_km * (1.0 - ecc * h_rad.cosh()),
+                    orbit.rmag_km(),
+                    1e-9 * orbit.rmag_km(),
+                    format!("radius from H for ecc = {ecc} at ta = {ta_deg} deg")
+                );
+
+                // Hyperbolic Kepler equation: M = e sinh(H) - H
+                f64_eq_tol!(
+                    (ecc * h_rad.sinh() - h_rad).to_degrees(),
+                    orbit.ma_deg().unwrap(),
+                    1e-6,
+                    format!("mean anomaly from H for ecc = {ecc} at ta = {ta_deg} deg")
+                );
+            }
+        }
+    }
+}
+
+#[rstest]
+fn vinf_turn_angle_uses_excess_velocity(almanac: Almanac) {
+    let eme2k = almanac.frame_info(EARTH_ICRS).unwrap();
+    let epoch = Epoch::from_gregorian_utc_at_midnight(2016, 1, 1);
+
+    // The turn angle of a hyperbola only depends on its eccentricity: sin(turn / 2) = 1 / e.
+    // It must not depend on where along the trajectory the state is evaluated.
+    for ta_deg in [0.0, 30.0, 90.0, 120.0] {
+        let orbit = Orbit::keplerian(-20_000.0, 1.5, 28.5, 10.0, 20.0, ta_deg, epoch, eme2k);
+        let ecc = orbit.ecc().unwrap();
+        let rp_km = orbit.periapsis_km().unwrap();
+        let expected_turn_deg = (2.0 * (1.0 / ecc).asin()).to_degrees();
+
+        let turn_deg = orbit.vinf_turn_angle_deg(rp_km).unwrap();
+        assert!(
+            (turn_deg - expected_turn_deg).abs() < 1e-9,
+            "ta = {ta_deg}: turn angle {turn_deg} != {expected_turn_deg}"
+        );
+
+        let periapsis_km = orbit.vinf_periapsis_km(expected_turn_deg).unwrap();
+        assert!(
+            (periapsis_km - rp_km).abs() < 1e-6,
+            "ta = {ta_deg}: periapsis {periapsis_km} != {rp_km}"
+        );
+    }
 }
 
 #[rstest]
@@ -868,6 +933,52 @@ fn misc_verif(almanac: Almanac) {
 
 fn create_orbit(sma_km: f64, ecc: f64, ta_deg: f64, epoch: Epoch, frame: Frame) -> Orbit {
     Orbit::keplerian(sma_km, ecc, 0.0, 0.0, 0.0, ta_deg, epoch, frame)
+}
+
+#[rstest]
+fn hyperbolic_inbound_true_anomaly_is_accepted(epoch: Epoch, frame: Frame) {
+    // The inbound leg of a hyperbola has a true anomaly in ]-nu_inf, 0[, which ta_deg reports in
+    // ]360 - nu_inf, 360[. Both forms must build, and the setters must work from an inbound state.
+    let sma_km: f64 = -5000.0;
+    let ecc: f64 = 2.0; // nu_inf = acos(-1/e) = 120 deg
+
+    for ta_deg in [-30.0, 330.0, -119.0] {
+        let orbit = Orbit::try_keplerian(sma_km, ecc, 10.0, 20.0, 30.0, ta_deg, epoch, frame);
+        assert!(orbit.is_ok(), "ta = {ta_deg}: {:?}", orbit.err());
+        let orbit = orbit.unwrap();
+        f64_eq!(orbit.ta_deg().unwrap(), between_0_360(ta_deg), "ta");
+        assert!(
+            orbit.radius_km.dot(&orbit.velocity_km_s) < 0.0,
+            "ta = {ta_deg} is not inbound"
+        );
+    }
+
+    // Past the asymptote is still rejected on both legs.
+    for ta_deg in [-121.0, 239.0, 121.0] {
+        let orbit = Orbit::try_keplerian(sma_km, ecc, 10.0, 20.0, 30.0, ta_deg, epoch, frame);
+        assert!(
+            matches!(orbit, Err(PhysicsError::HyperbolicTrueAnomaly { .. })),
+            "ta = {ta_deg}: {orbit:?}"
+        );
+    }
+
+    // Mirror an outbound state onto the inbound leg by reversing its velocity, as a Cartesian
+    // state would arrive from an ephemeris, and check the Keplerian setters work from it.
+    let outbound = Orbit::keplerian(sma_km, ecc, 10.0, 20.0, 30.0, 30.0, epoch, frame);
+    let r = outbound.radius_km;
+    let v = outbound.velocity_km_s;
+    let inbound = Orbit::new(r.x, r.y, r.z, -v.x, -v.y, -v.z, epoch, frame);
+    f64_eq!(inbound.ta_deg().unwrap(), 330.0, "inbound ta");
+
+    let incl = inbound.with_inc_deg(15.0).unwrap();
+    f64_eq!(incl.inc_deg().unwrap(), 15.0, "inc");
+    f64_eq!(incl.ta_deg().unwrap(), 330.0, "ta after with_inc_deg");
+
+    let sma = inbound.with_sma_km(-6000.0).unwrap();
+    f64_eq_tol!(sma.sma_km().unwrap(), -6000.0, 1e-6, "sma");
+
+    let moved = outbound.with_ta_deg(-30.0).unwrap();
+    f64_eq!(moved.ta_deg().unwrap(), 330.0, "with_ta_deg(-30)");
 }
 
 #[rstest]
@@ -1167,4 +1278,50 @@ fn val_hyperbolic_ma_partials_match_orbit(epoch: Epoch, frame: Frame) {
             }
         }
     }
+}
+
+#[rstest]
+fn val_b_plane_gmat(almanac: Almanac) {
+    // This is a reproduction of the B-plane computation from the `Ex_LunarTransfer.script` file from GMAT
+    const GMAT_EARTH_MU: f64 = 398_600.441_5;
+    // Define the orbit in the ICRS frame
+    let epoch = Epoch::from_gregorian_tai(2014, 7, 22, 11, 29, 10, 811_000);
+    let orbit = Orbit::cartesian(
+        -137380.386760,
+        75679.517105,
+        21487.708113,
+        -0.232442,
+        -0.446282,
+        0.085610,
+        epoch,
+        almanac
+            .frame_info(EARTH_ICRS)
+            .expect("GCRF should be loaded (needed for c3 validation)")
+            .with_mu_km3_s2(GMAT_EARTH_MU),
+    );
+    // Transform into the Moon ICRS frame
+    let orbit_moon_icrs = almanac.transform_to(orbit, MOON_ICRS, None).unwrap();
+
+    println!("{orbit}\n{orbit_moon_icrs}");
+    assert!(
+        (orbit.c3_km2_s2().unwrap() - -4.775126658014266).abs() < 1e-5,
+        "invalid c3",
+    );
+
+    assert!(
+        (orbit_moon_icrs.b_r_km().unwrap() - 103578.8265522861).abs() < 1.0,
+        "invalid b dot R",
+    );
+    assert!(
+        (orbit_moon_icrs.b_t_km().unwrap() - 390913.1533788401).abs() < 1.0,
+        "invalid b dot T",
+    );
+    assert!(
+        (orbit_moon_icrs.b_plane_angle_deg().unwrap() - 14.84148076633666).abs() < 0.01,
+        "invalid b vector angle",
+    );
+    assert!(
+        (orbit_moon_icrs.b_plane_mag_km().unwrap() - 404402.3436889349).abs() < 1.0,
+        "invalid b mag",
+    );
 }

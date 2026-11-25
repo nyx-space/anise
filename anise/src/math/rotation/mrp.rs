@@ -131,7 +131,7 @@ impl MRP {
     /// dQ/dt = 1/4 [B(Q)] w
     pub fn b_matrix(&self) -> Matrix3 {
         let mut b = Matrix3::zeros();
-        let s2 = self.scalar_norm();
+        let s2 = self.norm_squared();
         let q = self.as_vector();
 
         b[(0, 0)] = 1.0 - s2 + 2.0 * q[0] * q[0];
@@ -388,5 +388,38 @@ mod ut_mrp {
         // Also check that if two quaternions are equal, then their MRPs should also be equal
         let rel_mrp: MRP = rel.try_into().unwrap();
         assert_eq!(rel_mrp, mx_rel_x0);
+    }
+
+    #[test]
+    fn test_diff_eq() {
+        use crate::math::Vector3;
+
+        let w = Vector3::new(0.1, -0.2, 0.3);
+        for angle in generate_angles() {
+            for q in [
+                Quaternion::about_x(angle, 0, 1).short(),
+                Quaternion::about_y(angle, 0, 1).short(),
+                Quaternion::about_z(angle, 0, 1).short(),
+                (Quaternion::about_z(0.7 * angle, 1, 2) * Quaternion::about_x(angle, 0, 1))
+                    .unwrap()
+                    .short(),
+            ] {
+                let Ok(m) = MRP::try_from(q) else {
+                    continue;
+                };
+                // Map the Euler parameter rate onto the MRP: s = q_v / (1 + q_w).
+                let q_dot = q.derivative(w);
+                let q_v = Vector3::new(q.x, q.y, q.z);
+                let q_v_dot = Vector3::new(q_dot.x, q_dot.y, q_dot.z);
+                let expected = (q_v_dot * (1.0 + q.w) - q_v * q_dot.w) / (1.0 + q.w).powi(2);
+
+                let s_dot = m.diff_eq(w);
+                let got = Vector3::new(s_dot.s0, s_dot.s1, s_dot.s2);
+                assert!(
+                    (got - expected).norm() < 1e-12,
+                    "angle {angle}: got {got} expected {expected}"
+                );
+            }
+        }
     }
 }

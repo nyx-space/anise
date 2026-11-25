@@ -68,6 +68,11 @@ pub enum DcmExpr {
         from: i32,
         to: i32,
     },
+    TNW {
+        state: Box<StateSpec>,
+        from: i32,
+        to: i32,
+    },
     RCN {
         state: Box<StateSpec>,
         from: i32,
@@ -149,6 +154,11 @@ impl fmt::Display for DcmExpr {
                 from: _,
                 to: _,
             } => write!(f, "VNC of {state}"),
+            Self::TNW {
+                state,
+                from: _,
+                to: _,
+            } => write!(f, "TNW of {state}"),
             Self::SEZ {
                 state,
                 from: _,
@@ -220,6 +230,22 @@ impl DcmExpr {
 
                 let mut dcm = state
                     .dcm_from_vnc_to_inertial()
+                    .context(PhysicsDcmExprSnafu {
+                        expr: Box::new(self.clone()),
+                        epoch,
+                    })?
+                    .transpose();
+                dcm.from = *from;
+                dcm.to = *to;
+
+                Ok(dcm)
+            }
+
+            Self::TNW { state, from, to } => {
+                let state = state.evaluate(epoch, almanac)?;
+
+                let mut dcm = state
+                    .dcm_from_tnw_to_inertial()
                     .context(PhysicsDcmExprSnafu {
                         expr: Box::new(self.clone()),
                         epoch,

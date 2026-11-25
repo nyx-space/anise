@@ -1,6 +1,5 @@
 use anise::{
     constants::frames::{EARTH_ICRS, MOON_ICRS},
-    file2heap,
     prelude::*,
 };
 use criterion::{Criterion, criterion_group, criterion_main};
@@ -37,8 +36,8 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
     // Load ANISE data
     let path = "../data/de440s.bsp";
-    let buf = file2heap!(path).unwrap();
-    let spk = SPK::parse(buf).unwrap();
+    let buf = std::fs::read(path).unwrap();
+    let spk = SPK::parse(buf.into()).unwrap();
     let ctx = Almanac::from_spk(spk);
 
     // Load SPICE data
