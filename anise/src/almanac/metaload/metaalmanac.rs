@@ -75,8 +75,8 @@ impl MetaAlmanac {
     ///
     /// # File list
     /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp>
-    /// - <http://public-data.nyxspace.com/anise/v0.10/pck11.pca>
-    /// - <http://public-data.nyxspace.com/anise/v0.10/moon_fk_de440.epa>
+    /// - <https://public-data.nyxspace.com/anise/v0.10/pck11.pca>
+    /// - <https://public-data.nyxspace.com/anise/v0.10/moon_fk_de440.epa>
     /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/moon_pa_de440_200625.bpc>
     /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc>
     ///
@@ -132,8 +132,8 @@ impl MetaAlmanac {
 ///
 /// # File list
 /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp>
-/// - <http://public-data.nyxspace.com/anise/v0.10/pck11.pca>
-/// - <http://public-data.nyxspace.com/anise/v0.10/moon_fk_de440.epa>
+/// - <https://public-data.nyxspace.com/anise/v0.10/pck11.pca>
+/// - <https://public-data.nyxspace.com/anise/v0.10/moon_fk_de440.epa>
 /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/moon_pa_de440_200625.bpc>
 /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc>
 ///
@@ -144,7 +144,7 @@ impl MetaAlmanac {
 impl Default for MetaAlmanac {
     fn default() -> Self {
         let nyx_cloud_stor =
-            Url::parse("http://public-data.nyxspace.com/anise/").expect("static URL is valid");
+            Url::parse("https://public-data.nyxspace.com/anise/").expect("static URL is valid");
         let jpl_cloud_stor = Url::parse("https://naif.jpl.nasa.gov/pub/naif/generic_kernels/")
             .expect("static URL is valid");
 

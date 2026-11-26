@@ -9,7 +9,6 @@
  */
 
 use anise::constants::frames::VENUS_ICRS;
-use anise::file2heap;
 use anise::math::Vector3;
 use anise::prelude::*;
 
@@ -17,7 +16,7 @@ const ZEROS: &[u8] = &[0; 256];
 /// Test that we can load data from a static pointer to it, even if there is less than one record length
 #[test]
 fn invalid_load_from_static() {
-    assert!(SPK::from_static(&ZEROS).is_err());
+    assert!(SPK::from_static(ZEROS).is_err());
 }
 
 #[test]
@@ -39,8 +38,8 @@ fn de400_domain() {
 fn de440s_parent_translation_verif() {
     let _ = pretty_env_logger::try_init();
 
-    let bytes = file2heap!("../data/de440s.bsp").unwrap();
-    let de438s = SPK::parse(bytes).unwrap();
+    let bytes = std::fs::read("../data/de440s.bsp").unwrap();
+    let de438s = SPK::parse(bytes.into()).unwrap();
     let ctx = Almanac::from_spk(de438s);
 
     let epoch = Epoch::from_gregorian_utc_at_midnight(2002, 2, 7);

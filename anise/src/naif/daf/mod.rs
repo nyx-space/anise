@@ -233,6 +233,10 @@ pub enum DAFError {
     InvalidIndex { kind: &'static str, idx: usize },
     #[snafu(display("could not build data vector of type DAF/{kind}"))]
     DataBuildError { kind: &'static str },
+    #[snafu(display(
+        "DAF/{kind}: modifying data is only supported in files with a single summary record"
+    ))]
+    MultipleSummaryRecords { kind: &'static str },
 }
 
 // Manual implementation of PartialEq because IOError does not derive it, sadly.

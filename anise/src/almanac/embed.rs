@@ -3,7 +3,6 @@ use crate::{
     errors::{AlmanacError, AlmanacResult, TLDataSetSnafu},
     structure::PlanetaryDataSet,
 };
-use bytes::BytesMut;
 use rust_embed::Embed;
 use snafu::ResultExt;
 
@@ -19,21 +18,24 @@ impl Almanac {
     ///
     /// Until <https://github.com/nyx-space/anise/issues/269>, this will provide 100 years of data
     pub fn until_2035() -> AlmanacResult<Self> {
+        use bytes::Bytes;
         // Regularly refer to https://github.com/nyx-space/anise/blob/master/data/ci_config.dhall for the latest CRC, although it should not change between minor versions!
         let pck11 = AstroData::get("pck11.pca").ok_or(AlmanacError::GenericError {
             err: "could not find pck11.pca in embedded files".to_string(),
         })?;
         let almanac = Almanac::default().with_planetary_data(
-            PlanetaryDataSet::try_from_bytes(pck11.data.as_ref()).context(TLDataSetSnafu {
-                action: "loading PCK11 from embedded file",
-            })?,
+            PlanetaryDataSet::try_from_bytes(Bytes::copy_from_slice(&pck11.data)).context(
+                TLDataSetSnafu {
+                    action: "loading PCK11 from embedded file",
+                },
+            )?,
         );
 
         let pl_ephem = AstroData::get("de440s.bsp").ok_or(AlmanacError::GenericError {
             err: "could not find de440s.bsp in embedded files".to_string(),
         })?;
 
-        almanac.load_from_bytes(BytesMut::from(pl_ephem.data.as_ref()))
+        almanac.load_from_bytes(Bytes::copy_from_slice(&pl_ephem.data))
     }
 }
 

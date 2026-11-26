@@ -161,20 +161,22 @@ impl Frame {
 impl Frame {
     /// Initializes a new [Frame] provided its ephemeris and orientation identifiers, and optionally its gravitational parameter (in km^3/s^2) and optionally its shape (cf. [Ellipsoid]).
     #[new]
-    #[pyo3(signature=(ephemeris_id, orientation_id, mu_km3_s2=None, shape=None))]
+    #[pyo3(signature=(ephemeris_id, orientation_id, mu_km3_s2=None, shape=None, force_inertial=None, frozen_epoch=None))]
     pub fn py_new(
         ephemeris_id: NaifId,
         orientation_id: NaifId,
         mu_km3_s2: Option<f64>,
         shape: Option<Ellipsoid>,
+        force_inertial: Option<bool>,
+        frozen_epoch: Option<Epoch>,
     ) -> Self {
         Self {
             ephemeris_id,
             orientation_id,
-            force_inertial: false,
+            force_inertial: force_inertial.unwrap_or_default(),
             mu_km3_s2,
             shape,
-            frozen_epoch: None,
+            frozen_epoch,
         }
     }
 
@@ -307,6 +309,17 @@ impl Frame {
     #[allow(clippy::wrong_self_convention)]
     fn to_frameuid(&self) -> FrameUid {
         self.into()
+    }
+
+    /// Returns a copy of this frame with the gravitational parameter and the shape information from this frame.
+    /// Use this to prevent astrodynamical computations.
+    ///
+    /// :rtype: Frame
+    #[pyo3(name = "stripped")]
+    fn py_stripped(&self) -> Self {
+        let mut me = *self;
+        me.strip();
+        me
     }
 }
 

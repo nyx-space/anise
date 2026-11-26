@@ -74,7 +74,7 @@ impl Almanac {
                 let mut events = zero_crossings
                     .par_iter()
                     .map(|(start_epoch, end_epoch)| -> AnalysisResult<Epoch> {
-                        brent_solver(f_eval, event, *start_epoch, *end_epoch)
+                        brent_solver(f_eval, event.epoch_precision, *start_epoch, *end_epoch)
                     })
                     .filter_map(|brent_rslt| brent_rslt.ok())
                     .map(|epoch: Epoch| -> AnalysisResult<EventDetails> {
@@ -143,7 +143,7 @@ impl Almanac {
                 let mut events = extremas
                     .par_iter()
                     .map(|(start_epoch, end_epoch)| -> AnalysisResult<Epoch> {
-                        brent_solver(f_deriv, &boundary, *start_epoch, *end_epoch)
+                        brent_solver(f_deriv, boundary.epoch_precision, *start_epoch, *end_epoch)
                     })
                     .filter_map(|brent_rslt| brent_rslt.ok())
                     .map(|epoch: Epoch| -> AnalysisResult<EventDetails> {

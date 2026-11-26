@@ -17,6 +17,8 @@ Tired of the usual complexities, global state, and lack of thread safety in lega
 
 Whether you are plotting a trajectory to Mars, orienting a constellation of satellites, or performing massive parallel analysis on the cloud, ANISE provides the tools you need to get it right.
 
+[![AI based documentation on DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/nyx-space/anise)
+
 ### Why ANISE?
 
 Space missions demand precision, but modern engineering demands efficiency and safety.

@@ -25,6 +25,7 @@ pub enum LocalFrame {
     RIC,
     VNC,
     RCN,
+    TNW,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]

@@ -771,6 +771,11 @@ pub enum PyDcmExpr {
         from_id: i32,
         to_id: i32,
     },
+    TNW {
+        state: Py<PyStateSpec>,
+        from_id: i32,
+        to_id: i32,
+    },
     RCN {
         state: Py<PyStateSpec>,
         from_id: i32,
@@ -860,6 +865,15 @@ impl Clone for PyDcmExpr {
                     from_id: from,
                     to_id: to,
                 } => Self::VNC {
+                    state: state.clone_ref(py),
+                    from_id: *from,
+                    to_id: *to,
+                },
+                Self::TNW {
+                    state,
+                    from_id: from,
+                    to_id: to,
+                } => Self::TNW {
                     state: state.clone_ref(py),
                     from_id: *from,
                     to_id: *to,
@@ -1319,6 +1333,11 @@ impl TryFrom<DcmExpr> for PyDcmExpr {
                     from_id: from,
                     to_id: to,
                 }),
+                DcmExpr::TNW { state, from, to } => Ok(PyDcmExpr::TNW {
+                    state: Py::new(py, <StateSpec as TryInto<PyStateSpec>>::try_into(*state)?)?,
+                    from_id: from,
+                    to_id: to,
+                }),
                 DcmExpr::SEZ { state, from, to } => Ok(PyDcmExpr::SEZ {
                     state: Py::new(py, <StateSpec as TryInto<PyStateSpec>>::try_into(*state)?)?,
                     from_id: from,
@@ -1632,6 +1651,15 @@ impl From<PyDcmExpr> for DcmExpr {
                 from_id: from,
                 to_id: to,
             } => DcmExpr::VNC {
+                state: Box::new(state.borrow(py).clone().into()),
+                from,
+                to,
+            },
+            PyDcmExpr::TNW {
+                state,
+                from_id: from,
+                to_id: to,
+            } => DcmExpr::TNW {
                 state: Box::new(state.borrow(py).clone().into()),
                 from,
                 to,
