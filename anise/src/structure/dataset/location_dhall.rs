@@ -117,7 +117,12 @@ impl LocationDhallSet {
     }
 
     /// Deserialize the Dhall string of a Location data set into its Dhall representation structure.
+    ///
+    /// Only environment variable imports (`env:MY_VAR as Text`) are resolved: the string is data
+    /// rather than a configuration file, so it must not be able to read files of the host nor
+    /// reach the network.
     pub fn from_dhall(repr: &str) -> Result<Self, String> {
+        crate::structure::dhall::check_imports(repr)?;
         let me: Self = serde_dhall::from_str(repr)
             .static_type_annotation()
             .parse()
@@ -379,5 +384,36 @@ mod ut_loc_dhall {
 
         let to_dataset = from_dhall.to_dataset().unwrap();
         println!("{to_dataset}");
+    }
+
+    #[test]
+    fn from_dhall_rejects_imports() {
+        let set = LocationDhallSet {
+            data: vec![LocationDhallSetEntry {
+                id: Some(1),
+                alias: Some("DSS65".to_string()),
+                value: Location {
+                    frame: EARTH_ITRF93.into(),
+                    ..Default::default()
+                },
+            }],
+        };
+        let as_dhall = set.to_dhall().unwrap();
+        assert!(as_dhall.contains("\"DSS65\""));
+
+        // Environment variable imports are still resolved when parsing a string.
+        let with_env = as_dhall.replace("\"DSS65\"", "(env:CARGO_MANIFEST_DIR as Text)");
+        let from_env = LocationDhallSet::from_dhall(&with_env).unwrap();
+        assert_eq!(
+            from_env.data[0].alias.as_deref(),
+            Some(env!("CARGO_MANIFEST_DIR"))
+        );
+
+        // A Dhall string is data rather than a configuration file on disk, so an import must
+        // not be able to pull the host's files into the parsed value nor reach the network.
+        let with_file = as_dhall.replace("\"DSS65\"", "(./Cargo.toml as Text)");
+        assert!(LocationDhallSet::from_dhall(&with_file).is_err());
+        let with_remote = as_dhall.replace("\"DSS65\"", "(https://example.com/alias as Text)");
+        assert!(LocationDhallSet::from_dhall(&with_remote).is_err());
     }
 }
