@@ -75,8 +75,8 @@ impl MetaAlmanac {
     ///
     /// # File list
     /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp>
-    /// - <http://public-data.nyxspace.com/anise/v0.10/pck11.pca>
-    /// - <http://public-data.nyxspace.com/anise/v0.10/moon_fk_de440.epa>
+    /// - <https://public-data.nyxspace.com/anise/v0.10/pck11.pca>
+    /// - <https://public-data.nyxspace.com/anise/v0.10/moon_fk_de440.epa>
     /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/moon_pa_de440_200625.bpc>
     /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc>
     ///
@@ -89,7 +89,17 @@ impl MetaAlmanac {
     }
 
     /// Loads this Meta Almanac from its Dhall string representation
+    ///
+    /// Only environment variable imports (`env:MY_VAR as Text`) are resolved: the string is data
+    /// rather than a configuration file, so it must not be able to read files of the host nor
+    /// reach the network.
     pub fn from_dhall(repr: &str) -> Result<Self, MetaAlmanacError> {
+        crate::structure::dhall::check_imports(repr).map_err(|err| {
+            MetaAlmanacError::ParseDhall {
+                err,
+                path: "from string representation".to_string(),
+            }
+        })?;
         serde_dhall::from_str(repr)
             .static_type_annotation()
             .parse::<Self>()
@@ -132,8 +142,8 @@ impl MetaAlmanac {
 ///
 /// # File list
 /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp>
-/// - <http://public-data.nyxspace.com/anise/v0.10/pck11.pca>
-/// - <http://public-data.nyxspace.com/anise/v0.10/moon_fk_de440.epa>
+/// - <https://public-data.nyxspace.com/anise/v0.10/pck11.pca>
+/// - <https://public-data.nyxspace.com/anise/v0.10/moon_fk_de440.epa>
 /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/moon_pa_de440_200625.bpc>
 /// - <https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc>
 ///
@@ -144,7 +154,7 @@ impl MetaAlmanac {
 impl Default for MetaAlmanac {
     fn default() -> Self {
         let nyx_cloud_stor =
-            Url::parse("http://public-data.nyxspace.com/anise/").expect("static URL is valid");
+            Url::parse("https://public-data.nyxspace.com/anise/").expect("static URL is valid");
         let jpl_cloud_stor = Url::parse("https://naif.jpl.nasa.gov/pub/naif/generic_kernels/")
             .expect("static URL is valid");
 

@@ -164,6 +164,26 @@ mod meta_test {
     }
 
     #[test]
+    fn default_downloads_use_authenticated_transport() {
+        // The default kernels are fetched and then trusted (the Moon frame kernel and planetary
+        // constants are loaded as data, and the GUI binary the Python bindings fetch is executed),
+        // while the CRC32 pins are only warned on, not enforced. So every default URI must use a
+        // transport that authenticates the source: https, never plain http.
+        for file in MetaAlmanac::default().files {
+            assert!(
+                file.uri.starts_with("https://"),
+                "default kernel uri is not fetched over https: {}",
+                file.uri
+            );
+            assert!(
+                !file.uri.contains("http://public-data.nyxspace.com"),
+                "default kernel uri uses the plaintext nyxspace host: {}",
+                file.uri
+            );
+        }
+    }
+
+    #[test]
     fn test_from_dhall() {
         let default = MetaAlmanac::default();
 
@@ -183,10 +203,10 @@ mod meta_test {
     , uri = "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp"
     }
   , { crc32 = Some 0x1edb3eac
-    , uri = "http://public-data.nyxspace.com/anise/v0.10/pck11.pca"
+    , uri = "https://public-data.nyxspace.com/anise/v0.10/pck11.pca"
     }
   , { crc32 = Some 0xc6c252fa
-    , uri = "http://public-data.nyxspace.com/anise/v0.10/moon_fk_de440.epa"
+    , uri = "https://public-data.nyxspace.com/anise/v0.10/moon_fk_de440.epa"
     }
   , { crc32 = Some 0xcde5ca7d
     , uri = "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/moon_pa_de440_200625.bpc"
@@ -201,5 +221,27 @@ mod meta_test {
         .unwrap();
 
         assert_eq!(from_str, default);
+    }
+
+    #[test]
+    fn from_dhall_rejects_imports() {
+        // Environment variable imports are the supported way of configuring ANISE, so they
+        // are still resolved when parsing a string.
+        let meta = MetaAlmanac::from_dhall(
+            "{ files = [ { crc32 = None Natural, uri = env:CARGO_MANIFEST_DIR as Text } ] }",
+        )
+        .unwrap();
+        assert_eq!(meta.files[0].uri, env!("CARGO_MANIFEST_DIR"));
+
+        // A Dhall string is data rather than a configuration file on disk, so it must not be
+        // able to pull the host's files into the parsed value, nor reach out to the network:
+        // the uri it yields is what `process` later requests.
+        for repr in [
+            "{ files = [ { crc32 = None Natural, uri = ./Cargo.toml as Text } ] }",
+            "{ files = [ { crc32 = None Natural, uri = /etc/hosts as Text } ] }",
+            "{ files = [ { crc32 = None Natural, uri = https://example.com/meta as Text } ] }",
+        ] {
+            assert!(MetaAlmanac::from_dhall(repr).is_err(), "{repr}");
+        }
     }
 }

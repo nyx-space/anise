@@ -827,8 +827,43 @@ fn b_plane_davis(almanac: Almanac) {
         "turn angle to rp reciprocity failed"
     );
 
-    // The following is a regression test.
-    assert!(dbg!(orbit.hyperbolic_anomaly_deg().unwrap() - 149.610128737).abs() < 1e-9);
+    // The following is a regression test. This state is inbound, so the hyperbolic anomaly is negative.
+    assert!(dbg!(orbit.hyperbolic_anomaly_deg().unwrap() + 210.389871263).abs() < 1e-9);
+}
+
+#[rstest]
+fn hyperbolic_anomaly_is_not_wrapped(epoch: Epoch, frame: Frame) {
+    for ecc in [1.2, 1.5, 9.4] {
+        for ta_deg in [10.0, 45.0, 80.0] {
+            for inbound in [false, true] {
+                let mut orbit =
+                    Orbit::keplerian(-20_000.0, ecc, 30.0, 10.0, 20.0, ta_deg, epoch, frame);
+                if inbound {
+                    orbit.velocity_km_s = -orbit.velocity_km_s;
+                }
+
+                let h_rad = orbit.hyperbolic_anomaly_deg().unwrap().to_radians();
+                assert_eq!(h_rad < 0.0, inbound, "sign of H at ta = {ta_deg} deg");
+
+                // Hyperbolic conic equation: r = a (1 - e cosh(H))
+                let sma_km = orbit.sma_km().unwrap();
+                f64_eq_tol!(
+                    sma_km * (1.0 - ecc * h_rad.cosh()),
+                    orbit.rmag_km(),
+                    1e-9 * orbit.rmag_km(),
+                    format!("radius from H for ecc = {ecc} at ta = {ta_deg} deg")
+                );
+
+                // Hyperbolic Kepler equation: M = e sinh(H) - H
+                f64_eq_tol!(
+                    (ecc * h_rad.sinh() - h_rad).to_degrees(),
+                    orbit.ma_deg().unwrap(),
+                    1e-6,
+                    format!("mean anomaly from H for ecc = {ecc} at ta = {ta_deg} deg")
+                );
+            }
+        }
+    }
 }
 
 #[rstest]

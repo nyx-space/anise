@@ -58,6 +58,7 @@ fn parse_metadata_epoch(
 fn finish_segment(
     segments: &mut Vec<EphemerisSegment>,
     state_data: &mut BTreeMap<Epoch, EphemerisRecord>,
+    comments: &mut Vec<String>,
     interpolation: DataType,
     degree: usize,
     time_system: &str,
@@ -66,6 +67,7 @@ fn finish_segment(
     lno: usize,
 ) -> Result<(), EphemerisError> {
     if state_data.is_empty() {
+        comments.clear();
         return Ok(());
     }
 
@@ -119,6 +121,7 @@ fn finish_segment(
         useable_start: Some(useable_start),
         useable_end: Some(useable_end),
         state_data: std::mem::take(state_data),
+        comments: std::mem::take(comments),
     });
     Ok(())
 }
@@ -154,6 +157,7 @@ impl Ephemeris {
         // Store the temporary data in a BTreeMap so we have O(1) access when adding the covariance information
         // and we can iterate in order when building the vector.
         let mut segment_state_data = BTreeMap::new();
+        let mut segment_comments = Vec::new();
         let mut segments = Vec::new();
 
         let parse_one_val = |lno: usize, line: &str, err: &str| -> Result<String, EphemerisError> {
@@ -174,7 +178,8 @@ impl Ephemeris {
                 details: format!("could not read line: {e}"),
             })?;
 
-            let line = line.trim();
+            let raw_line = line.trim_start();
+            let line = raw_line.trim_end();
             if line.is_empty() {
                 continue;
             }
@@ -202,6 +207,7 @@ impl Ephemeris {
                 finish_segment(
                     &mut segments,
                     &mut segment_state_data,
+                    &mut segment_comments,
                     interpolation,
                     degree,
                     &time_system,
@@ -394,7 +400,12 @@ impl Ephemeris {
                 }
                 parser_state = OemParserState::Header;
             } else if line.starts_with("COMMENT") {
-                // Ignore
+                if parser_state == OemParserState::States
+                    && segment_state_data.is_empty()
+                    && let Some(comment) = raw_line.strip_prefix("COMMENT ")
+                {
+                    segment_comments.push(comment.to_string());
+                }
             } else if parser_state == OemParserState::States {
                 let center_name_str =
                     center_name
@@ -649,6 +660,7 @@ impl Ephemeris {
         finish_segment(
             &mut segments,
             &mut segment_state_data,
+            &mut segment_comments,
             interpolation,
             degree,
             &time_system,
@@ -689,6 +701,17 @@ impl Ephemeris {
             return Err(EphemerisError::OEMParsingError {
                 lno: 0,
                 details: "ephemeris file contains no state data".to_string(),
+            });
+        }
+
+        if self
+            .segments
+            .iter()
+            .flat_map(|segment| &segment.comments)
+            .any(|comment| comment.contains(['\r', '\n']))
+        {
+            return Err(EphemerisError::OEMWritingError {
+                details: "OEM comments must each be a single line".to_string(),
             });
         }
 
@@ -802,6 +825,10 @@ impl Ephemeris {
             writeln!(writer, "INTERPOLATION_DEGREE = {}", segment.degree).map_err(err_hdlr)?;
             writeln!(writer, "META_STOP\n").map_err(err_hdlr)?;
 
+            for comment in segment.comments {
+                writeln!(writer, "COMMENT {comment}").map_err(err_hdlr)?;
+            }
+
             for (epoch, entry) in segment.state_data {
                 let orbit = entry.orbit;
                 writeln!(
@@ -879,6 +906,57 @@ mod tests {
     use super::*;
     use crate::constants::frames::{EARTH_ECLIPJ2000, EARTH_J2000};
     use hifitime::Unit;
+
+    #[test]
+    fn oem_segment_comments_survive_round_trip() {
+        let input = "../data/tests/ccsds/oem/MEO_60s.oem";
+        let mut ephemeris = Ephemeris::from_ccsds_oem_file(input).unwrap();
+        assert_eq!(
+            ephemeris.segments[0].comments,
+            [
+                "Vehicle's position at any requested time was actually computed using an algorithm, not an interpolation of a table of ephemeris."
+            ]
+        );
+        assert_eq!(
+            ephemeris.segments[1].comments,
+            ["Artificially added meta in the middle since some programs like doing this"]
+        );
+        ephemeris.segments[0]
+            .comments
+            .push("  Leading and trailing spaces  ".into());
+        ephemeris.segments[0].comments.push(String::new());
+        let path = std::env::temp_dir().join(format!(
+            "anise-oem-segment-comments-{}.oem",
+            std::process::id()
+        ));
+
+        ephemeris.write_ccsds_oem(&path, None, None).unwrap();
+        let output = std::fs::read_to_string(&path).unwrap();
+        let reparsed = Ephemeris::from_ccsds_oem_file(&path).unwrap();
+        std::fs::remove_file(path).unwrap();
+
+        assert_eq!(reparsed, ephemeris);
+        let segments: Vec<_> = output.split("META_STOP").skip(1).collect();
+        assert_eq!(segments.len(), 2);
+        assert!(segments[0].contains("COMMENT Vehicle's position at any requested time"));
+        assert!(segments[1].contains("COMMENT Artificially added meta in the middle"));
+    }
+
+    #[test]
+    fn oem_rejects_multiline_segment_comment_before_creating_file() {
+        let input = "../data/tests/ccsds/oem/MEO_60s.oem";
+        let mut ephemeris = Ephemeris::from_ccsds_oem_file(input).unwrap();
+        ephemeris.segments[0].comments.push("first\nsecond".into());
+        let path = std::env::temp_dir().join(format!(
+            "anise-oem-invalid-comment-{}.oem",
+            std::process::id()
+        ));
+        std::fs::write(&path, "existing contents").unwrap();
+
+        assert!(ephemeris.write_ccsds_oem(&path, None, None).is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "existing contents");
+        std::fs::remove_file(path).unwrap();
+    }
 
     #[test]
     fn review_oem_inertial_covariance_uses_each_segments_reference_frame() {

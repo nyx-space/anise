@@ -25,9 +25,10 @@ pub(crate) fn exec_gui() -> Result<(), MetaAlmanacError> {
             "windows" => Some(176953927),
             _ => unreachable!(),
         };
-        // Attempt to download from the public site.
+        // Attempt to download from the public site. This binary is made executable and run
+        // below, so it must be fetched over https.
         let mut gui = MetaFile {
-            uri: format!("http://public-data.nyxspace.com/anise/v0.10/anise-gui-{OS}.exe"),
+            uri: format!("https://public-data.nyxspace.com/anise/v0.10/anise-gui-{OS}.exe"),
             crc32,
         };
         gui.process(true)?;
@@ -40,7 +41,7 @@ pub(crate) fn exec_gui() -> Result<(), MetaAlmanacError> {
     } else {
         Err(MetaAlmanacError::FetchError {
             error: format!("{OS} not supported by ANISE GUI"),
-            uri: format!("http://public-data.nyxspace.com/anise/v0.9/anise-gui-{OS}.exe"),
+            uri: format!("https://public-data.nyxspace.com/anise/v0.9/anise-gui-{OS}.exe"),
         })
     }
 }
