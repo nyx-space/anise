@@ -11,6 +11,7 @@
 use std::f64::consts::{PI, TAU};
 
 use crate::errors::{MathError, PhysicsError};
+use crate::math::angles::between_0_tau;
 
 use super::PhysicsResult;
 
@@ -230,7 +231,7 @@ pub fn mean_anomaly_to_true_anomaly_rad(ma_radians: f64, ecc: f64) -> PhysicsRes
 ///
 /// # Returns
 ///
-/// The mean anomaly in radians (normalized to `[0, 2*PI)`), or a `MathError` if the computation fails.
+/// The mean anomaly in radians, reduced to `[0, 2*PI)` if elliptical (periodic) and unwrapped if hyperbolic (not periodic), or a `MathError`.
 pub fn true_anomaly_to_mean_anomaly_rad(nu_rad: f64, ecc: f64) -> Result<f64, MathError> {
     // Step 1: Calculate Eccentric Anomaly E_rad
     // The true_anomaly_to_eccentric_anomaly_rad function already checks for ecc < 0.0
@@ -239,27 +240,13 @@ pub fn true_anomaly_to_mean_anomaly_rad(nu_rad: f64, ecc: f64) -> Result<f64, Ma
     // Step 2: Calculate Mean Anomaly M_rad based on eccentricity
     let m_rad = if ecc < 1.0 {
         // Elliptical or circular orbit: M = E - e * sin(E)
-        e_rad - ecc * e_rad.sin()
+        between_0_tau(e_rad - ecc * e_rad.sin())
     } else {
         // Hyperbolic orbit: M = e * sinh(E) - E
         ecc * e_rad.sinh() - e_rad
     };
 
-    // Step 3: Normalize M_rad to be within the range [0, 2*PI)
-    // For hyperbolic orbits, mean anomaly is not an angle in the same way,
-    // but Kepler's equation for hyperbolic orbits (M = e*sinh(H) - H) is often used with M directly.
-    // However, the problem asks to normalize it to [0, 2*PI), which implies it's being treated
-    // as an angle for some purpose (perhaps consistency or specific conventions in this library).
-    // If this normalization is not desired for hyperbolic cases in a broader context,
-    // this part might need reconsideration for those cases.
-    // For now, strictly following the requirement.
-    let mut m_normalized_rad = m_rad % TAU;
-    if m_normalized_rad < 0.0 {
-        m_normalized_rad += TAU;
-    }
-
-    // Step 4: Return Ok(m_normalized_rad)
-    Ok(m_normalized_rad)
+    Ok(m_rad)
 }
 
 /// Computes the eccentric anomaly from the true anomaly.
