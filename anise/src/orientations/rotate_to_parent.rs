@@ -167,8 +167,9 @@ impl Almanac {
                 }
 
                 // Finally, let's see if it's in the loaded Euler Parameters.
-                // We can call `into` because EPs can be converted directly into DCMs.
-                Ok(self.euler_param_from_id(source.orientation_id)?.into())
+                // EPs are stored from the frame to its parent, so transpose to match the parent
+                // to frame direction of the BPC and planetary rotations above.
+                Ok(DCM::from(self.euler_param_from_id(source.orientation_id)?).transpose())
             }
         }
     }
